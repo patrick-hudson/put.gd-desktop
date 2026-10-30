@@ -341,6 +341,46 @@ class TrayRecipesTest(unittest.TestCase):
             tray.context_menu(ctx)
         self.assertFalse(any(e[0] in ('keys', 'click') for e in ctx.events))
 
+    def test_menu_action_preparation_keeps_background_and_uses_real_click(self):
+        ctx = FakeContext()
+        ctx.profile['tray'].update(menu_prepare_background=True, hover_before_click=True)
+        tray.tray_menu_upload_clipboard(ctx)
+        self.assertFalse(any(e[0] in ('view', 'keys') for e in ctx.events))
+        self.assertFalse(any(e[0] == 'call' and e[1] == 'action.invoke' for e in ctx.events))
+        self.assertIn(('click', 'Upload clipboard', 'left'), ctx.events)
+
+    def test_named_menu_label_uses_its_unique_owned_parent_enabled_state(self):
+        for parent_enabled in (True, False):
+            with self.subTest(parent_enabled=parent_enabled):
+                ctx = FakeContext()
+                ctx.profile['tray']['menu'] = {'role': 'label', 'enabled_from_parent': True}
+                accessible = ctx.accessible
+                def nodes(query):
+                    if query.get('role') == 'menu item':
+                        return [{'name': '', 'role': 'menu item', 'rect': [10, 20, 200, 30],
+                                 'pid': 4242, 'visible': True, 'showing': True, 'enabled': parent_enabled}]
+                    rows = accessible(query)
+                    for row in rows:
+                        row['enabled'] = not parent_enabled
+                        row['ancestors'] = [{'role': 'menu item', 'rect': [10, 20, 200, 30]}]
+                    return rows
+                ctx.accessible = nodes
+                if parent_enabled:
+                    tray._press(ctx, 'History', 'menu item')
+                    self.assertIn(('click', 'History', 'left'), ctx.events)
+                else:
+                    with self.assertRaises(RecipeFailed):
+                        tray._press(ctx, 'History', 'menu item')
+                    self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
+    def test_ambiguous_menu_parent_blocks_before_input(self):
+        ctx = FakeContext()
+        node = {'pid': 4242, 'ancestors': [{'role': 'menu item', 'rect': [1, 2, 3, 4]}]}
+        ctx.accessible = lambda query: []
+        with self.assertRaises(RecipeBlocked):
+            tray._menu_parent_state(ctx, node)
+        self.assertEqual(ctx.events, [])
+
     def test_gnome_gestures_block_before_incorrect_single_click(self):
         for function in (tray.activate, tray.scroll_noop):
             ctx = FakeContext()

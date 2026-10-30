@@ -39,6 +39,22 @@ def _shell(ctx, script):
     return result.get('stdout', '').strip()
 
 
+def _menu_parent_state(ctx, node):
+    parents = [a for a in node.get('ancestors', []) if a.get('role') == 'menu item']
+    if not parents or not node.get('pid'):
+        ctx.blocked('Named shell menu label lacks its live owned menu-item parent', 670)
+    rect = parents[-1].get('rect')
+    if not isinstance(rect, (list, tuple)) or len(rect) != 4 or min(rect[2:]) <= 0:
+        ctx.blocked('Shell menu parent has no positive live rectangle', 670)
+    rows = ctx.accessible({'name': '*', 'role': 'menu item', 'pid': node['pid'],
+                           'application': _profile(ctx)['icon']['application']})
+    rows = [r for r in rows if r.get('rect') == rect and r.get('pid') == node['pid']
+            and r.get('visible') and r.get('showing')]
+    if len(rows) != 1 or 'enabled' not in rows[0]:
+        ctx.blocked('Shell menu parent enabled state is missing or ambiguous', 670)
+    return dict(node, enabled=rows[0]['enabled'])
+
+
 def _nodes(ctx, name, role=None):
     is_menu = role == 'menu item'
     menu_policy = _profile(ctx).get('menu', {}) if is_menu else {}
@@ -58,9 +74,12 @@ def _nodes(ctx, name, role=None):
             x, y, w, h = rect
         return (x >= 0 and y >= 0 and w > 0 and h > 0
                 and not (menu_policy.get('reject_origin') and x == 0 and y == 0))
-    return [n for n in ctx.accessible(query)
-            if n.get('name') == name and n.get('visible', True)
-            and n.get('showing', True) and on_screen(n)]
+    nodes = [n for n in ctx.accessible(query)
+             if n.get('name') == name and n.get('visible', True)
+             and n.get('showing', True) and on_screen(n)]
+    if menu_policy.get('enabled_from_parent'):
+        nodes = [_menu_parent_state(ctx, n) for n in nodes]
+    return nodes
 
 
 def _node(ctx, name, role=None):
@@ -109,6 +128,9 @@ def _press(ctx, name, role=None, button='left'):
         query['application'] = node['application']
     else:
         ctx.blocked('Desktop node lacks an ownership identity: ' + name, 670)
+    if _profile(ctx).get('hover_before_click'):
+        ctx.hover_accessible(query)
+        _shell(ctx, "python3 -c 'import time; time.sleep(.25)'\n")
     ctx.click_accessible(query, button=button)
     return node
 
@@ -164,6 +186,13 @@ def _menu(ctx):
     return _node(ctx, 'History', 'menu item')
 
 
+def _dismiss_menu(ctx, *, depth=1):
+    if _profile(ctx).get('menu_prepare_background'):
+        _icon_input(ctx, 'right')
+    else:
+        ctx.keys(*(['Esc'] * depth))
+
+
 def _menu_frame(ctx, label, capture='full'):
     # Keep the full desktop, including the shell menu and panel icon. Passing
     # reference= would crop the current Qt window and hide the interaction.
@@ -204,9 +233,10 @@ def _settled(ctx, operation):
 
 
 @contextmanager
-def _local(ctx, *, failure=False, notifications=True, notification_only=False):
+def _local(ctx, *, failure=False, notifications=True, notification_only=False, desktop_menu=False):
     """Core owns profile restoration and helper cleanup, including timeouts."""
-    _begin(ctx, show_ui=not (notification_only and _profile(ctx).get('notification_prepare_cli')))
+    _begin(ctx, show_ui=not ((notification_only and _profile(ctx).get('notification_prepare_cli'))
+                             or (desktop_menu and _profile(ctx).get('menu_prepare_background'))))
     profile = ctx.fixture('app-profile')
     root = profile.root
     archive = profile.output_dir
@@ -295,7 +325,7 @@ def context_menu(ctx):
 def _navigation(interaction, label, target):
     @recipe(interaction, desktop_drawn=True)
     def navigate(ctx):
-        _begin(ctx)
+        _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
         if target == 'settings':
             ctx.view('ui.show', {'view': 'history'})
         try:
@@ -334,7 +364,7 @@ for _id, _label, _target in (
 
 @recipe('tray.menu-output-submenu', desktop_drawn=True)
 def output_submenu(ctx):
-    with _local(ctx):
+    with _local(ctx, desktop_menu=True):
         _menu(ctx)
         _menu_frame(ctx, 'before')
         try:
@@ -346,12 +376,12 @@ def output_submenu(ctx):
                 ctx.expect(node.get('enabled') is False, 'output row is informational: ' + action)
             _menu_frame(ctx, 'after', 'output')
         finally:
-            ctx.keys('Esc', 'Esc')
+            _dismiss_menu(ctx, depth=2)
 
 
 @recipe('tray.menu-edit-file', desktop_drawn=True)
 def edit_file(ctx):
-    _begin(ctx)
+    _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
     _menu(ctx)
     _press(ctx, 'edit-sources', 'menu item')
     _menu_frame(ctx, 'before')
@@ -367,7 +397,7 @@ def edit_file(ctx):
 def _action_recipe(interaction, action, shortcut=False, menu_open=False):
     @recipe(interaction, desktop_drawn=True)
     def action_recipe(ctx):
-        with _local(ctx):
+        with _local(ctx, desktop_menu=not shortcut):
             if shortcut:
                 diagnostics = ctx.call('ui.snapshot')['diagnostics']
                 status = diagnostics.get('shortcuts', {})
@@ -398,39 +428,33 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
             else:
                 _press(ctx, action, 'menu item')
             operation = _new_operation(ctx, previous, action)
-            cleanup_keys = True
-            try:
-                if action in ('region', 'edit', 'record'):
-                    ctx.expect(operation['state'] not in {'failed', 'interrupted'}, 'selector opened without an error')
-                    if menu_open:
-                        ctx.expect(not _nodes(ctx, 'Quit put.gd', 'menu item'), 'shortcut closed tray menu')
-                    ctx.frame('after')
-                    # If targeting is refused, fixture teardown owns selector
-                    # cleanup; never retry keyboard input through a failed guard.
-                    cleanup_keys = False
-                    try:
-                        ctx.focus('recsel' if action == 'record' else 'region')
-                        ctx.keys('Esc')
-                    except RecipeFailed as error:
-                        if 'override-redirect target does not take keyboard focus' in str(error):
-                            ctx.note(str(error))
-                            ctx.blocked('Native selector owns a keyboard grab, but the X11 foreground guard requires X input focus', 802)
-                        raise
-                    # A real cancellation also establishes that the shortcut did
-                    # not merely admit work which failed before showing a selector.
-                    settled = _settled(ctx, operation)
-                    ctx.expect(settled['state'] == 'cancelled', 'selector cancelled through real Escape input')
-                    if action == 'record':
-                        ctx.blocked('Initial recording selector was cancelled; full start/stop/raise toggle needs an owned active-recording fixture', 670)
-                else:
-                    settled = _settled(ctx, operation)
-                    ctx.expect(settled['state'] == 'completed' and settled.get('items'), 'local action completed')
-                    ctx.expect(all(i.get('uploadStatus') == 'local_only' and i.get('local', {}).get('status') == 'saved'
-                                   for i in settled['items']), 'every output saved locally without publication')
-                    ctx.frame('after')
-            finally:
-                if cleanup_keys:
+            if action in ('region', 'edit', 'record'):
+                ctx.expect(operation['state'] not in {'failed', 'interrupted'}, 'selector opened without an error')
+                if menu_open:
+                    ctx.expect(not _nodes(ctx, 'Quit put.gd', 'menu item'), 'shortcut closed tray menu')
+                ctx.frame('after')
+                # If targeting is refused, fixture teardown owns selector
+                # cleanup; never retry keyboard input through a failed guard.
+                try:
+                    ctx.focus('recsel' if action == 'record' else 'region')
                     ctx.keys('Esc')
+                except RecipeFailed as error:
+                    if 'override-redirect target does not take keyboard focus' in str(error):
+                        ctx.note(str(error))
+                        ctx.blocked('Native selector owns a keyboard grab, but the X11 foreground guard requires X input focus', 802)
+                    raise
+                # A real cancellation also establishes that the shortcut did
+                # not merely admit work which failed before showing a selector.
+                settled = _settled(ctx, operation)
+                ctx.expect(settled['state'] == 'cancelled', 'selector cancelled through real Escape input')
+                if action == 'record':
+                    ctx.blocked('Initial recording selector was cancelled; full start/stop/raise toggle needs an owned active-recording fixture', 670)
+            else:
+                settled = _settled(ctx, operation)
+                ctx.expect(settled['state'] == 'completed' and settled.get('items'), 'local action completed')
+                ctx.expect(all(i.get('uploadStatus') == 'local_only' and i.get('local', {}).get('status') == 'saved'
+                               for i in settled['items']), 'every output saved locally without publication')
+                ctx.frame('after')
     action_recipe.__name__ = interaction.replace('.', '_').replace('-', '_')
     return action_recipe
 
@@ -479,8 +503,8 @@ def saved_locally(ctx):
 
 @recipe('notification.local-save-failed', 'tray.icon-attention', desktop_drawn=True)
 def local_failure_attention(ctx):
-    with _local(ctx, failure=True) as root:
-        op = _local_upload(ctx)
+    with _local(ctx, failure=True, notification_only=True) as root:
+        op = _local_upload(ctx, notification_only=True)
         ctx.expect(op['state'] == 'failed' and op['items'], 'regular file obstruction caused local save failure')
         ctx.expect(all(i['uploadStatus'] == 'local_only' and i['local']['status'] == 'failed' for i in op['items']),
                    'attention is authorized by observed local-only failure (tray_progress.py)')
@@ -508,7 +532,7 @@ def local_failure_attention(ctx):
             ctx.frame('after')
             ctx.review('Compare the saved panel danger glyph/! badge with idle; AT-SPI exposes labels, not icon pixels')
         finally:
-            ctx.keys('Esc')
+            _dismiss_menu(ctx)
 
 
 @recipe('tray.menu-attention', desktop_drawn=True)
@@ -663,15 +687,16 @@ def scroll_noop(ctx):
 
 @recipe('tray.icon-idle', desktop_drawn=True)
 def idle(ctx):
-    _begin(ctx)
+    _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
     _menu(ctx)
     for label in ('Local save needs attention', 'Destination needs attention',
                   'Capture needs attention', 'Action needs attention'):
         if _nodes(ctx, label, 'menu item'):
             _press(ctx, next((k for k,v in CONTROLS.items() if v == label), label), 'menu item')
             break
-    ctx.keys('Esc')
-    ctx.view('ui.show', {'view': 'settings'})
+    _dismiss_menu(ctx)
+    if not _profile(ctx).get('menu_prepare_background'):
+        ctx.view('ui.show', {'view': 'settings'})
     ctx.frame('before')
     ctx.expect(all(o['state'] in TERMINAL for o in _recent(ctx)), 'resident has no active operation')
     _icon(ctx)
@@ -684,12 +709,12 @@ def idle(ctx):
         ctx.frame('after')
         ctx.review('Saved panel frame needs glyph/tint review; tooltip hover and SNI pixel observation are not in Context')
     finally:
-        ctx.keys('Esc')
+        _dismiss_menu(ctx)
 
 
 @recipe('tray.tooltip', desktop_drawn=True)
 def tooltip(ctx):
-    _begin(ctx)
+    _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
     _icon(ctx)
     ctx.hover_accessible(_profile(ctx)['icon'])
     rows = ctx.tray()
@@ -706,7 +731,7 @@ def tooltip(ctx):
 
 @recipe('tray.menu-shortcut-suffix', desktop_drawn=True)
 def shortcut_suffix(ctx):
-    with _local(ctx):
+    with _local(ctx, desktop_menu=True):
         _menu(ctx)
         try:
             for action, chord in CHORDS.items():
@@ -717,7 +742,7 @@ def shortcut_suffix(ctx):
                 ctx.expect(accelerator == chord, 'menu accelerator agrees with accepted shortcut: ' + action)
             _menu_frame(ctx, 'after')
         finally:
-            ctx.keys('Esc')
+            _dismiss_menu(ctx)
 
 
 @recipe('tray.icon-uploading', 'tray.menu-upload-status', desktop_drawn=True)
