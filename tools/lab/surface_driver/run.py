@@ -38,86 +38,9 @@ from tools.lab.surface_driver.redact import scan_run, detected
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
-# Live destinations need these pages' secret controls in the catalog (F6 masks
-# them; their inventories are how a frame knows what to require).
-SECRET_PAGES = {'history': ('history',), 'destinations': ('destination', 'credential', 'proton', 'settings')}
-
-
-def catalog_blockers(catalog, build):
-    """A complete ui-catalog for this exact build, with secret-control inventories."""
-    from tools.lab.surface_driver.catalog import Catalog
-    from tools.lab.surface_driver.redact import SECRET_FIELD
-    if not catalog or not build:
-        return ['catalog-missing']
-    directory = Path(catalog)
-    try:
-        manifest = json.loads((directory/'manifest.json').read_text())
-    except (OSError, ValueError):
-        return ['catalog-missing']
-    if manifest.get('kind') != 'synthetic-ui-catalog' or not manifest.get('captures'):
-        return ['catalog-empty']
-    identity = manifest.get('build') if isinstance(manifest.get('build'), dict) else {}
-    commit = identity.get('gitCommit') or identity.get('commit') or ''
-    blockers = []
-    if not (commit and commit.startswith(build)) and identity.get('version') != build or identity.get('dirty') is not False:
-        blockers.append('catalog-build-mismatch')
-    # As surface_map's check: every declared controls file exists (some
-    # captures, e.g. native-only ones, declare none).
-    if any(c.get('controls') and not (directory/c['controls']).is_file() for c in manifest['captures']):
-        blockers.append('catalog-controls-missing')
-    try:
-        inventories = Catalog(directory, {}).inventories
-    except (OSError, ValueError):
-        return blockers+['catalog-controls-missing']
-    for page, stems in SECRET_PAGES.items():
-        if not any(any(stem in name for stem in stems) and any(
-                (SECRET_FIELD.search(c.get('name', '')) or c.get('sensitive')) and c.get('class') not in ('QPushButton', 'QToolButton', 'QCheckBox', 'QRadioButton')
-                for c in inventory.get('controls', [])) for name, inventory in inventories.items()):
-            blockers.append('catalog-lacks-'+page+'-secret-controls')
-    return blockers
-
-
-def secret_safe_evidence_blockers(placement=None, catalog=None, build=None, physical=None):
-    """Check the loaded persistence path, not a global live-upload switch.
-
-    Live destinations also need a disposable placement (boat sandbox or owned
-    guest), an exact-build catalog and an OCR that reads small rendered text.
-    Physical desktops are refused: clipboard managers and browser history
-    keep working links outside the run (see the PR and its follow-up issue).
-    """
-    import shutil
-    from tools.lab.surface_driver import redact, receipts, context
-    blockers = []
-    if (receipts.Redactor is not redact.Redactor or getattr(receipts.Redactor, 'evidence_revision', None) != 2
-            or not all(callable(getattr(receipts.Redactor, name, None)) for name in ('remember', 'text', 'safe', 'add_link_hosts'))):
-        blockers.append('redaction-not-loaded')
-    if (Evidence is not receipts.Evidence or context.Evidence is not Evidence or DriverContext is not context.DriverContext
-            or receipts.save_frame is not redact.save_frame or not callable(receipts.save_frame)
-            or getattr(receipts.save_frame, 'evidence_revision', None) != 2
-            or getattr(getattr(Evidence, 'frame', None), 'prewrite_gate', None) is not receipts.save_frame
-            or getattr(DriverContext.frame, 'live_policy', None) is not DriverContext._frame_regions
-            or not callable(redact.ocr_text)):
-        blockers.append('prewrite-frame-gate-not-loaded')
-    if (scan_run is not redact.scan_run or receipts.scan_run is not scan_run or not callable(scan_run)
-            or getattr(scan_run, 'evidence_revision', None) != 2
-            or getattr(getattr(Evidence, 'scan', None), 'run_audit', None) is not scan_run
-            or not callable(finish_evidence)
-            or getattr(run_recipes, 'final_audit', None) is not finish_evidence):
-        blockers.append('end-run-scan-not-wired')
-    if not (ocr := shutil.which('tesseract')):
-        blockers.append('ocr-unavailable-install-tesseract-in-disposable-target')
-    else:
-        try:
-            if not redact.ocr_self_test(ocr):
-                blockers.append('ocr-self-test-failed')
-        except Exception:
-            blockers.append('ocr-self-test-failed')
-    if placement not in ('boat', 'guest'):
-        blockers.append('placement-not-disposable')
-    elif physical and placement != 'boat':
-        blockers.append('physical-desktop-refused')
-    blockers += catalog_blockers(catalog, build)
-    return blockers
+# Admission lives in gate.py so DriverContext can enforce it too; these names
+# stay importable from the runner.
+from tools.lab.surface_driver.gate import build_matches, catalog_blockers, secret_safe_evidence_blockers  # noqa: E402
 
 
 def native_endpoint(kind, address):
@@ -423,6 +346,13 @@ def confined(function):
 
 @confined
 def run_recipes(context, recipes, environment, out, campaign, coverage):
+    # Live evidence only through a context the gate admitted at construction,
+    # for the same destination; refused before anything is written.
+    destination = getattr(context, 'destination', 'local')
+    if environment.get('destination') != 'local' or destination != 'local':
+        if getattr(context, '_live_admitted', False) is not True or environment.get('destination') != destination:
+            from tools.lab.surface_driver.gate import LiveEvidenceRefused
+            raise LiveEvidenceRefused('live destination blocked: the context was not admitted by the secret-safe evidence gate')
     termination=[]
     def terminate(signum, _frame):
         termination.append(signum)
@@ -660,7 +590,7 @@ def parser():
     p.add_argument('--destination',required=True,choices=DESTINATIONS)
     p.add_argument('--recipes',required=True,help='comma-separated recipe/interactions globs or lane names')
     p.add_argument('--catalog',required=True,type=Path)
-    p.add_argument('--build',required=True)
+    p.add_argument('--build',required=True,help='exact clean commit of the resident and catalog: 12-40 hex')
     p.add_argument('--out',required=True,type=Path)
     p.add_argument('--campaign',default='surface-driver')
     p.add_argument('--coverage',type=Path)
@@ -677,6 +607,8 @@ def main(argv=None):
         raise SystemExit('native placement cannot name a guest')
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
+    if not re.fullmatch(r'[0-9a-f]{12,40}', args.build.lower()):
+        raise SystemExit('--build must be 12-40 hex characters of the exact commit (never a version string)')
     if args.destination!='local':
         # Physical desktops (--host-profile with placement native) are refused
         # before any target is touched; a boat head is its own disposable VM.
@@ -724,8 +656,8 @@ def main(argv=None):
         snapshot=context.call('ui.snapshot')
         observed=snapshot.get('build',{})
         environment['observed_build']=observed
-        actual=observed.get('gitCommit') or observed.get('commit')
-        if not actual or not (actual.startswith(args.build) or observed.get('version')==args.build):
+        # The same exact-commit rule as the catalog: never a version string.
+        if not build_matches(args.build, observed.get('gitCommit') or observed.get('commit')):
             raise RecipeBlocked('resident build does not match --build; observed identity retained in receipt')
         if observed.get('dirty'):
             raise RecipeBlocked('resident reports a dirty build; use an identified clean artifact')

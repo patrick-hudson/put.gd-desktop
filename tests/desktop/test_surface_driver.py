@@ -27,7 +27,7 @@ from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
 sys.path.insert(0,str(ROOT/'tests/desktop'))
-from surface_live_fixture import write_catalog
+from surface_live_fixture import pinned, write_catalog
 from tools.lab import lab
 try:
     from PIL import Image
@@ -273,7 +273,8 @@ class Running(unittest.TestCase):
     def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
         from tools.lab.surface_driver import run as runner, receipts, context, redact
         write_catalog(self.path)
-        self.assertEqual(runner.secret_safe_evidence_blockers('boat', self.path, 'abcdef'), [])
+        pin = pinned(self.path); pin.start(); self.addCleanup(pin.stop)
+        self.assertEqual(runner.secret_safe_evidence_blockers('boat', self.path, 'abcdef012345'), [])
         failures = ((redact.shutil, 'which'), (receipts, 'Redactor'), (receipts, 'save_frame'),
                     (receipts, 'scan_run'), (redact, 'ocr_text'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
         for destination in ('s3','b2','proton'):
@@ -282,7 +283,7 @@ class Running(unittest.TestCase):
                     out=self.path/('live-'+destination+'-'+name)
                     args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
                           '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
-                          '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out)]
+                          '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef012345','--out',str(out)]
                     replacement = (lambda *a:None) if name == 'which' else None
                     with patch.object(module,name,replacement), patch.object(runner,'Target') as target:
                         with self.assertRaises(SystemExit) as raised:
@@ -300,7 +301,7 @@ class Running(unittest.TestCase):
                 target.start=lambda:None;target.close=lambda:None
                 target.identity=lambda:{'session_type':'x11','desktop':'X-Cinnamon'}
                 def cli(method,*args,**kw):
-                    result=({'build':{'gitCommit':'abcdef','dirty':False}} if method=='ui.snapshot'
+                    result=({'build':{'gitCommit':'abcdef0123456789abcdef0123456789abcdef01','dirty':False}} if method=='ui.snapshot'
                             else {'metadata':{'observedRevision':'revision'}} if method=='settings.get' else {})
                     return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
                 target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
@@ -309,9 +310,10 @@ class Running(unittest.TestCase):
                 out=self.path/('admitted-'+destination)
                 args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
                       '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
-                      '--recipes','core_demo','--catalog',str(write_catalog(self.path/'catalog')),'--build','abcdef','--out',str(out),
+                      '--recipes','core_demo','--catalog',str(write_catalog(self.path/'catalog')),'--build','abcdef012345','--out',str(out),
                       '--coverage',str(out/'coverage.json')]
-                with patch.object(runner,'Target',return_value=target),patch.object(runner,'guard_target'),patch.object(runner,'discover',return_value=[recipe]):
+                with patch.object(runner,'Target',return_value=target),patch.object(runner,'guard_target'),patch.object(runner,'discover',return_value=[recipe]), \
+                        pinned(self.path/'catalog'):
                     self.assertEqual(runner.main(args),0)
                 self.assertEqual(touched,[destination])
                 self.assertTrue(json.loads((out/'receipt.json').read_text())['secret_scan']['passed'])
@@ -321,10 +323,10 @@ class Running(unittest.TestCase):
         from tools.lab.surface_driver import run as runner, redact
         self.ocr_patch.stop();self.selftest_patch.stop()
         with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],1,b'',b'')):
-            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef'))
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef012345'))
         # Exits 0 but reads nothing: still refused (blind OCR).
         with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'',b'')):
-            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef'))
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef012345'))
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
@@ -334,14 +336,14 @@ class Running(unittest.TestCase):
         calls=[]
         def cli(*args,timeout=60):
             calls.append(args)
-            result={'ui.snapshot':{'build':{'gitCommit':'abcdef','dirty':False}},
+            result={'ui.snapshot':{'build':{'gitCommit':'abcdef0123456789abcdef0123456789abcdef01','dirty':False}},
                     'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
             return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
         target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
         recipe=Recipe(('editor.undo',),lambda c:None)
         args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
               '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
-              '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
+              '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef012345','--out',str(self.path/'run'),
               '--coverage',str(self.path/'main-coverage.json')]
         with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),0)
@@ -349,7 +351,7 @@ class Running(unittest.TestCase):
         self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
-        self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+        self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef0123456789abcdef0123456789abcdef01')
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
         with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
@@ -1057,7 +1059,7 @@ class TargetSafety(unittest.TestCase):
                 target.start=Mock(side_effect=unsafe_start)
                 args=['--desktop','mint-cinnamon-x11','--host',host,'--placement',placement,
                       '--host-profile',str(root/'pinned.json'),'--boat-id','bx_test','--package','deb',
-                      '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',
+                      '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef012345',
                       '--out',str(root/str(number)),'--coverage',str(root/'coverage.json')]
                 if session:args+=['--lock-session',session]
                 with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
@@ -1267,7 +1269,7 @@ class EndpointSafety(unittest.TestCase):
         self.argv[-1]='patrick@192.168.68.69'
         args=['--desktop','mint-cinnamon-x11','--host','f44','--placement','native','--lock-session','owned',
               '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
-              '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
+              '--catalog',str(self.run),'--build','abcdef012345','--out',str(self.run/'result'),
               '--coverage',str(self.run/'coverage.json')]
         with patch('tools.lab.surface_driver.run.Target',return_value=self.target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)

@@ -16,7 +16,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).parent))
-from surface_live_fixture import EVIDENCE, FakeDesktop, control, owned_window, write_catalog
+from surface_live_fixture import BUILD, COMMIT, EVIDENCE, FakeDesktop, admitted, control, owned_window, pinned, write_catalog
 from tools.lab.surface_driver import redact, run as runner
 from tools.lab.surface_driver.api import Recipe, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
@@ -25,7 +25,7 @@ from tools.lab.surface_driver.redact import Redactor, Sensitive, detected, ocr_d
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
-    Image = None
+    Image = ImageDraw = None
 
 SHARE = 'https://put.gd/Fk4Rw8Lq2Zn7Hc5T.png'
 SHARE_TOKEN = 'Fk4Rw8Lq2Zn7Hc5T'
@@ -66,6 +66,7 @@ class Target:
 
 class Base(unittest.TestCase):
     destination = 's3'
+    admit = True  # unit contexts skip the real gate; gate tests turn this off
 
     def setUp(self):
         if Image is None:
@@ -77,9 +78,11 @@ class Base(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name)
         self.catalog = write_catalog(self.path/'catalog')
+        for patcher in ([admitted()] if self.admit else []) + [pinned(self.catalog)]:
+            patcher.start(); self.addCleanup(patcher.stop)
         self.out = self.path/'run'
         self.env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='g', package='deb',
-                        destination=self.destination, build='abcdef')
+                        destination=self.destination, build=BUILD)
         self.quarantines = []
         original = redact.tempfile.mkdtemp
         def mkdtemp(*args, **kwargs):
@@ -279,12 +282,14 @@ class F3Patterns(Base):
 
 
 class F4F7Gate(Base):
+    admit = False
+
     def setUp(self):
         super().setUp()
         patcher = patch.object(redact.shutil, 'which', return_value='unit-ocr')
         patcher.start(); self.addCleanup(patcher.stop)
 
-    def blockers(self, placement='boat', catalog=None, build='abcdef', physical=False, selftest=True):
+    def blockers(self, placement='boat', catalog=None, build='abcdef012345', physical=False, selftest=True):
         with patch.object(redact, 'ocr_self_test', return_value=selftest):
             return runner.secret_safe_evidence_blockers(placement, self.catalog if catalog is None else catalog, build, physical)
 
@@ -310,8 +315,7 @@ class F4F7Gate(Base):
         self.assertIn('catalog-build-mismatch', self.blockers(catalog=write_catalog(self.path/'dirty', dirty=True)))
         self.assertIn('catalog-build-mismatch', self.blockers(catalog=write_catalog(self.path/'nobuild', build='')))
         plain = write_catalog(self.path/'plain', secret=False)
-        self.assertIn('catalog-lacks-history-secret-controls', self.blockers(catalog=plain))
-        self.assertIn('catalog-lacks-destinations-secret-controls', self.blockers(catalog=plain))
+        self.assertIn('catalog-secret-states-differ-from-pin', self.blockers(catalog=plain))
         (self.catalog/'01-history-list.controls.json').unlink()
         self.assertIn('catalog-controls-missing', self.blockers())
 
@@ -324,7 +328,7 @@ class F4F7Gate(Base):
         out = self.path/'refused'
         args = ['--desktop', 'mint-cinnamon-x11', '--host', 'm74', '--placement', 'native', '--host-profile', str(self.path/'h.json'),
                 '--lock-session', 's', '--package', 'deb', '--destination', 'b2', '--recipes', 'core_demo',
-                '--catalog', str(self.catalog), '--build', 'abcdef', '--out', str(out)]
+                '--catalog', str(self.catalog), '--build','abcdef012345', '--out', str(out)]
         with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(runner, 'Target') as target:
             with self.assertRaises(SystemExit) as raised:
                 runner.main(args)
@@ -336,6 +340,201 @@ class F4F7Gate(Base):
     def test_real_ocr_self_test_reads_eleven_pixel_text(self):
         with patch.object(redact, 'ocr_text', REAL_OCR):
             self.assertTrue(redact.ocr_self_test(TESSERACT))
+
+
+class GateBuildIdentity(Base):
+    """Third validation, gate item 1: --build names one exact clean commit."""
+    admit = False
+
+    def test_build_must_be_an_exact_commit_prefix_of_twelve_or_more_hex(self):
+        from tools.lab.surface_driver.gate import build_matches
+        self.assertTrue(build_matches(BUILD, COMMIT))
+        self.assertTrue(build_matches(COMMIT.upper(), COMMIT))
+        for expected, commit in (('a', COMMIT), ('abcdef01', COMMIT), ('26.1030.1-nightly', COMMIT),
+                                 (BUILD, COMMIT[:12]), (BUILD, None), ('bcdef0123456', COMMIT), (BUILD+'x', COMMIT)):
+            self.assertFalse(build_matches(expected, commit), (expected, commit))
+
+    def test_catalog_needs_the_exact_commit_never_a_short_prefix_or_version(self):
+        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(redact.shutil, 'which', return_value='unit-ocr'):
+            for build in ('a', 'abcdef01', '26.1030.1-nightly'):
+                self.assertIn('catalog-build-mismatch', runner.catalog_blockers(self.catalog, build), build)
+            other = write_catalog(self.path/'other', build='f'*40)
+            self.assertIn('catalog-build-mismatch', runner.catalog_blockers(other, '26.1030.1-nightly'))
+            self.assertEqual(runner.catalog_blockers(self.catalog, BUILD), [])
+
+    def test_main_refuses_short_and_version_builds_before_any_target(self):
+        for build in ('2', 'abcdef01', '26.1030.2490-dev'):
+            out = self.path/('refused-'+build)
+            args = ['--desktop', 'mint-cinnamon-x11', '--host', 'boat', '--placement', 'guest', '--run', str(self.path),
+                    '--package', 'deb', '--destination', 'local', '--recipes', 'core_demo', '--catalog', str(self.catalog),
+                    '--build', build, '--out', str(out)]
+            with patch.object(runner, 'Target') as target, self.assertRaises(SystemExit) as raised:
+                runner.main(args)
+            target.assert_not_called()
+            self.assertIn('--build', str(raised.exception))
+            self.assertFalse(out.exists())
+
+    def test_resident_must_report_the_full_commit(self):
+        from tools.lab.surface_driver.gate import build_matches
+        # The resident check uses the same rule (run.main): a short or
+        # version-only resident identity never matches.
+        self.assertFalse(build_matches(BUILD, BUILD))
+        source = Path(runner.__file__).read_text()
+        self.assertIn("build_matches(args.build, observed.get('gitCommit')", source)
+        self.assertNotIn("observed.get('version')==args.build", source)
+
+
+class GateCatalogPin(Base):
+    """Gate item 2: every expected secret-control inventory, pinned."""
+    admit = False
+
+    def blockers(self, catalog):
+        return runner.catalog_blockers(catalog, BUILD)
+
+    def test_deleting_secret_states_with_their_manifest_entries_is_refused(self):
+        # The validator's attack: all but one destination state removed, with
+        # their manifest entries, so the catalog is self-consistent.
+        manifest = json.loads((self.catalog/'manifest.json').read_text())
+        manifest['captures'] = [c for c in manifest['captures'] if not c['file'].startswith('18-destination')]
+        (self.catalog/'manifest.json').write_text(json.dumps(manifest))
+        (self.catalog/'18-destination-credentials-compact.controls.json').unlink()
+        self.assertIn('catalog-secret-states-differ-from-pin', self.blockers(self.catalog))
+
+    def test_stripping_a_secret_control_is_refused(self):
+        inventory = self.catalog/'04-destinations-s3.controls.json'
+        value = json.loads(inventory.read_text())
+        value['controls'] = [c for c in value['controls'] if c['name'] != 'credentialSecretKey']
+        inventory.write_text(json.dumps(value))
+        self.assertIn('catalog-secret-states-differ-from-pin', self.blockers(self.catalog))
+
+    def test_a_declared_inventory_must_exist(self):
+        (self.catalog/'01-history-list.controls.json').unlink()
+        self.assertIn('catalog-controls-missing', self.blockers(self.catalog))
+
+    def test_committed_pin_lists_every_history_and_credential_state(self):
+        from tools.lab.surface_driver import gate
+        pin = json.loads(gate.PIN.read_text())['states']
+        self.assertGreaterEqual(len(pin), 29)
+        names = {n for v in pin.values() for n in v}
+        self.assertTrue({'historyLink', 'credentialAccessKey', 'credentialSecretKey', 'credentialSessionToken',
+                         'protonSharePassword'} <= names, names)
+        self.assertGreaterEqual(sum('credentialSecretKey' in v for v in pin.values()), 7)
+
+    def test_a_self_consistent_but_reduced_catalog_fails_the_real_pin(self):
+        # The validator's shape: three inventories, one per page, all present.
+        from tools.lab.surface_driver import gate
+        with patch.object(gate, 'expected_secret_states', wraps=lambda: json.loads(gate.PIN.read_text())['states']):
+            self.assertIn('catalog-secret-states-differ-from-pin', self.blockers(self.catalog))
+
+    def test_ci_check_catalog_command(self):
+        from tools.lab.surface_driver import gate
+        self.assertEqual(gate.main(['check-catalog', str(self.catalog)]), 0)
+        (self.catalog/'04-destinations-s3.controls.json').write_text(json.dumps({'controls': []}))
+        self.assertEqual(gate.main(['check-catalog', str(self.catalog)]), 1)
+
+
+class GateOcrSelfTest(unittest.TestCase):
+    """Gate item 3: a fresh random token per polarity, read exactly."""
+    def setUp(self):
+        if Image is None:
+            self.skipTest('requires python3-pil')
+
+    def drawn(self):
+        tokens = []
+        original = ImageDraw.ImageDraw.text
+        def text(draw, xy, value, *args, **kwargs):
+            tokens.append(value)
+            return original(draw, xy, value, *args, **kwargs)
+        return tokens, patch.object(ImageDraw.ImageDraw, 'text', text)
+
+    def test_replaying_a_fixed_token_fails(self):
+        for fixed in ('Link copied: https://put.gd/Kq7Zp3Wx9Ty.png', 'Link copied: https://put.gd/ACEFHKMNPRUV.png'):
+            with patch.object(redact, 'ocr_text', return_value=fixed):
+                self.assertFalse(redact.ocr_self_test('unit-ocr'))
+
+    def test_each_polarity_and_run_has_a_fresh_token_read_exactly(self):
+        tokens, drawing = self.drawn()
+        with drawing, patch.object(redact, 'ocr_text', side_effect=lambda image, ocr=None: tokens[-1]):
+            self.assertTrue(redact.ocr_self_test('unit-ocr'))
+            self.assertTrue(redact.ocr_self_test('unit-ocr'))
+        self.assertEqual(len(tokens), 4)
+        self.assertEqual(len(set(tokens)), 4)
+        # One misread glyph is a failure, not a fuzzy match.
+        tokens.clear()
+        def misread(image, ocr=None):
+            text = tokens[-1]
+            token = text.rsplit('/', 1)[1][:-4]
+            return text.replace(token, token[:-1] + ('A' if token[-1] != 'A' else 'C'))
+        with drawing, patch.object(redact, 'ocr_text', side_effect=misread):
+            self.assertFalse(redact.ocr_self_test('unit-ocr'))
+
+
+class GateEnforcement(Base):
+    """Gate item 4: live evidence only through an admitted context."""
+    admit = False
+
+    def test_live_context_is_refused_at_construction_before_any_write(self):
+        from tools.lab.surface_driver.gate import LiveEvidenceRefused
+        with patch.object(redact.shutil, 'which', return_value=None), self.assertRaises(LiveEvidenceRefused) as raised:
+            self.context()
+        self.assertIn('ocr-unavailable', str(raised.exception))
+        self.assertFalse(self.out.exists())
+
+    def test_admitted_live_context_needs_the_complete_gate(self):
+        with patch.object(redact, 'ocr_self_test', return_value=True):
+            ctx = self.context()
+        self.assertTrue(ctx._live_admitted)
+        self.env['build'] = 'abcdef01'
+        from tools.lab.surface_driver.gate import LiveEvidenceRefused
+        with patch.object(redact, 'ocr_self_test', return_value=True), self.assertRaises(LiveEvidenceRefused):
+            self.context()
+
+    def test_run_recipes_refuses_contexts_the_gate_did_not_admit(self):
+        from types import SimpleNamespace
+        from tools.lab.surface_driver.gate import LiveEvidenceRefused
+        local = dict(self.env, destination='local')
+        ctx = DriverContext(Target(), local, {'session': 'x11', 'at_spi': {'available': True}}, self.catalog, self.out)
+        for context, environment in ((ctx, self.env), (SimpleNamespace(destination='s3', _live_admitted=False), self.env),
+                                     (SimpleNamespace(destination='s3', _live_admitted=True), dict(self.env, destination='b2'))):
+            with self.assertRaises(LiveEvidenceRefused):
+                runner.run_recipes(context, [Recipe(('editor.undo',), lambda c: None, destinations=('s3', 'b2'))],
+                                   environment, self.out, 'gate', self.out/'coverage.json')
+        self.assertFalse((self.out/'receipt.json').exists())
+
+    def test_local_contexts_never_consult_the_gate(self):
+        local = dict(self.env, destination='local')
+        with patch.object(DriverContext, 'live_gate', staticmethod(lambda *a, **k: self.fail('gate consulted'))):
+            DriverContext(Target(), local, {'session': 'x11', 'at_spi': {'available': True}}, self.catalog, self.out)
+
+    def test_the_gate_requires_construction_to_still_run_it(self):
+        with patch.object(redact, 'ocr_self_test', return_value=True), \
+             patch.object(DriverContext, 'live_gate', staticmethod(lambda *a, **k: [])):
+            blockers = runner.secret_safe_evidence_blockers('boat', self.catalog, BUILD)
+        self.assertIn('prewrite-frame-gate-not-loaded', blockers)
+
+
+class SmallTrackedFixes(Base):
+    """Trivial parts of the third validation's separate findings (#852, #854)."""
+    def test_a_single_row_probe_result_registers_its_secret_field(self):
+        ctx = self.context(Target(probe={'role': 'password text', 'protected': True, 'objectName': 'secretKey',
+                                         'name': 'Secret access key', 'text': 'Zx9Qw8Er7Ty6Ui5Op4As', 'rect': [1, 1, 5, 5]}))
+        ctx._probe('control', {})
+        self.assertIn('Zx9Qw8Er7Ty6Ui5Op4As', ctx.evidence.redactor.audit_literals)
+
+    def test_a_label_showing_an_unregistered_key_id_or_marker_is_masked(self):
+        ctx = self.context()
+        for name in ('Access key AKIAV3VALIDATOR0000X', 'Authorization: Bearer v3tokenvalue'):
+            ctx._probe = FakeDesktop([owned_window()], [dict(control('', [10, 10, 60, 10], role='label'), name=name)])
+            self.assertTrue(ctx._secret_regions(0), name)
+
+    def test_frame_manifest_records_desktop_safe_and_policy(self):
+        ctx = self.context()
+        ctx._probe = FakeDesktop()
+        declared = ctx.frame('desktop', desktop_safe='reviewer-visible declaration')
+        undeclared = ctx.frame('desktop-undeclared')
+        frames = json.loads((self.out/'frame-masks.json').read_text())['frames']
+        self.assertEqual(frames[declared.path]['desktop_safe'], 'reviewer-visible declaration')
+        self.assertEqual(frames[undeclared.path]['policy'], 'live-desktop-masked')
 
 
 class F6VisiblePageOnly(Base):

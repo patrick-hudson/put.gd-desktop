@@ -548,16 +548,19 @@ def ocr_text(image, *, ocr=None):
     return '\n'.join(texts)
 
 
-OCR_PROBE_TOKEN = 'Kq7Zp3Wx9Ty'
+# Self-test tokens use glyphs OCR does not confuse with one another (see
+# CONFUSABLES), so an exact read is required rather than a fuzzy one.
+OCR_PROBE_ALPHABET = 'ACEFHKMNPRUVWXY347'
 
 
 def ocr_self_test(ocr=None, size=11):
-    """Render a known link at the smallest UI text size; OCR must read it.
+    """Render a fresh random link at the smallest UI text size; OCR must read it.
 
     Both polarities (dark on light, light on a dark notification banner) must
-    yield the link pattern and the literal token through the frame guard's
-    own reader and matcher. A blind or broken OCR fails here.
+    yield the link pattern and exactly that run's random token, through the
+    frame guard's own reader. A blind, broken or replaying OCR fails here.
     """
+    import secrets
     from PIL import Image, ImageDraw, ImageFont
     font = None
     for candidate in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf',
@@ -568,12 +571,13 @@ def ocr_self_test(ocr=None, size=11):
             break
     if font is None:
         font = ImageFont.load_default(size=size)
-    text = 'Link copied: https://put.gd/' + OCR_PROBE_TOKEN + '.png'
     for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')):
+        # A new token for each polarity: neither image's answer fits the other.
+        token = ''.join(secrets.choice(OCR_PROBE_ALPHABET) for _ in range(12))
         image = Image.new('RGB', (520, 40), background)
-        ImageDraw.Draw(image).text((10, 12), text, font=font, fill=foreground)
-        kinds = ocr_detected(ocr_text(image, ocr=ocr), (OCR_PROBE_TOKEN + '.png',))
-        if 'url' not in kinds or 'registered-secret' not in kinds:
+        ImageDraw.Draw(image).text((10, 12), 'Link copied: https://put.gd/' + token + '.png', font=font, fill=foreground)
+        text = ocr_text(image, ocr=ocr)
+        if 'url' not in ocr_detected(text) or token not in re.sub(r'\s+', '', text):
             return False
     return True
 

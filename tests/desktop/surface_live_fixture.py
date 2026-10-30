@@ -33,7 +33,17 @@ def control(object_name, rect, text='', role='text', window='put.gd'):
     return {'window': window, 'role': role, 'name': object_name, 'objectName': object_name, 'text': text, 'rect': list(rect)}
 
 
-def write_catalog(directory, build='abcdef', dirty=False, pages=('01-history-list', '04-destinations-s3'), secret=True):
+BUILD = 'abcdef012345'
+COMMIT = 'abcdef0123456789abcdef0123456789abcdef01'
+
+
+# Two destination states, as in the real catalog: removing one of them, or one
+# secret control, still leaves the page with secret controls.
+SECRETS = {'01-history-list': ('historyLink',), '04-destinations-s3': ('credentialSecretKey', 'credentialAccessKey'),
+           '18-destination-credentials-compact': ('credentialSecretKey',)}
+
+
+def write_catalog(directory, build=COMMIT, dirty=False, pages=tuple(SECRETS), secret=True):
     """A synthetic putgd-ui-catalog with secret-control inventories for build."""
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -41,11 +51,28 @@ def write_catalog(directory, build='abcdef', dirty=False, pages=('01-history-lis
     for name in pages:
         controls = [{'name': 'pageAnchor'+name.split('-')[1], 'class': 'QLabel', 'rect': [0, 0, 10, 10]}]
         if secret:
-            controls.append({'name': 'historyLink' if 'history' in name else 'credentialSecretKey',
-                             'class': 'QLineEdit', 'rect': [5, 5, 20, 5]})
+            controls += [{'name': control, 'class': 'QLineEdit', 'rect': [5, 5+10*i, 20, 5]}
+                         for i, control in enumerate(SECRETS.get(name, ()))]
         (directory/(name+'.controls.json')).write_text(json.dumps({'width': 100, 'height': 50, 'controls': controls}))
         captures.append({'file': name+'.png', 'controls': name+'.controls.json', 'width': 100, 'height': 50})
     captures.append({'file': '90-chrome.png', 'width': 100, 'height': 50})  # declares no inventory
     (directory/'manifest.json').write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'captures': captures,
-        'build': {'gitCommit': build+'0'*(40-len(build)), 'dirty': dirty, 'version': '26.1030.1-nightly'}}))
+        'build': {'gitCommit': build, 'dirty': dirty, 'version': '26.1030.1-nightly'}}))
     return directory
+
+
+def pinned(directory):
+    """Pin a synthetic catalog's secret-control states (tests only; the real pin
+    is tools/lab/surface_driver/secret-states.json)."""
+    from unittest.mock import patch
+    from tools.lab.surface_driver import gate
+    states = gate.catalog_states(directory)[1]
+    return patch.object(gate, 'expected_secret_states', return_value=states)
+
+
+def admitted():
+    """Unit tests that build live contexts without a real gate run (no tesseract,
+    synthetic catalog) admit them explicitly; production code cannot."""
+    from unittest.mock import patch
+    from tools.lab.surface_driver.context import DriverContext
+    return patch.object(DriverContext, 'live_gate', staticmethod(lambda *a, **k: []))

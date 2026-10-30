@@ -29,13 +29,14 @@ class Evidence:
         with (self.out/'commands.jsonl').open('a') as stream:
             stream.write(json.dumps(self.redactor.safe(event))+'\n')
 
-    def frame(self, image, path, regions, *, crop=None, fallback=False):
+    def frame(self, image, path, regions, *, crop=None, fallback=False, annotations=None):
         path = Path(path)
         # A frame is registered only after the first (already redacted) write.
         self.out.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.out.chmod(0o700)
         metadata = save_frame(image, path, regions, crop=crop, fallback=fallback, literals=self.redactor.audit_literals,
                               hosts=self.redactor.link_hosts)
+        metadata.update(annotations or {})
         self.frames[str(path.relative_to(self.out))] = metadata
         write_json(self.out/'frame-masks.json', {'frames': self.frames}, redactor=self.redactor)
         return metadata

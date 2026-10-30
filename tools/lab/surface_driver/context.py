@@ -11,7 +11,7 @@ from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
 from .target import input_release, qcodes
 from .receipts import Evidence
-from .redact import Sensitive, SECRET_FIELD, URL, rect
+from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect
 
 # Seconds; a cleanup call's own budget may not grow past this.
 CLEANUP_TIMEOUT_CAP = 600
@@ -25,6 +25,17 @@ class DriverContext(Context):
         self.target, self.environment, self.profile = target, environment, profile
         for key in ('desktop','host','placement','package','destination'):
             setattr(self,key,environment[key])
+        # Live destinations are admitted here, before any evidence can exist,
+        # whatever drives the context (run.main, a lane script, a test).
+        self._live_admitted = False
+        if self.destination != 'local':
+            from .gate import LiveEvidenceRefused
+            blockers = self.live_gate(environment.get('placement'), catalog, environment.get('build'),
+                                      bool(getattr(target, 'physical', None)))
+            if blockers:
+                raise LiveEvidenceRefused('live destination '+str(self.destination)+' blocked by secret-safe evidence: '
+                                          +', '.join(blockers))
+            self._live_admitted = True
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
         self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
@@ -156,7 +167,8 @@ class DriverContext(Context):
         """
         redactor = self.evidence.redactor
         redactor.remember(value)
-        rows = value if isinstance(value, list) else value.get('windows', []) if isinstance(value, dict) else []
+        # Lists of rows (accessible), a layout's windows, or one row (control).
+        rows = (value if isinstance(value, list) else value.get('windows', [value]) if isinstance(value, dict) else [])
         names = None
         for row in rows:
             if not isinstance(row, dict):
@@ -794,7 +806,10 @@ asyncio.run(main())
     def _leaks(self, *values):
         redactor = self.evidence.redactor
         text = ' '.join(v for v in values if isinstance(v, str) and v)
-        return bool(text) and (redactor.has_sensitive_url(text) or any(s in text for s in redactor.audit_literals))
+        # Links, registered values, and unregistered AWS key IDs or session/
+        # authorization markers (patterns, as the end-of-run audit uses).
+        return bool(text) and (redactor.has_sensitive_url(text) or any(s in text for s in redactor.audit_literals)
+                               or bool(patterns(text)))
 
     def _secret_names(self):
         names = {selector for selector, _ in self._sensitive_controls}
@@ -1015,11 +1030,11 @@ asyncio.run(main())
             scale = geometry.get('scale',1)
             x=(x-geometry.get('screen_x',0))*scale;y=(y-geometry.get('screen_y',0))*scale
             crop = [x,y,w*scale,h*scale]
-        metadata = self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
-        if policy:
-            metadata['policy'] = policy
-            if self._policy_reason:
-                metadata['policy_reason'] = self._policy_reason
+        # Recorded with the frame (#852): a reviewer sees which frames kept
+        # desktop pixels on a recipe's declaration, and why others are black.
+        annotations = {key: value for key, value in (('policy', policy), ('policy_reason', self._policy_reason),
+                       ('desktop_safe', self.evidence.redactor.text(desktop_safe) if desktop_safe else None)) if value}
+        metadata = self.evidence.frame(image,path,regions,crop=crop,fallback=fallback,annotations=annotations)
         if policy == 'live-desktop-masked' and metadata['guard'] == 'fully-masked':
             # Deliberate: a live desktop frame without a declaration is not evidence.
             self.note('desktop frame '+safe+' masked by live evidence policy')
@@ -1071,8 +1086,11 @@ def subtract(box, holes):
     return [piece for piece in pieces if piece[2] > 0 and piece[3] > 0]
 
 
-# Admission checks that frames still pass through the live evidence policy.
+# Admission checks that frames still pass through the live evidence policy
+# and that construction still runs the gate.
 DriverContext.frame.live_policy = DriverContext._frame_regions
+from .gate import secret_safe_evidence_blockers as _gate  # noqa: E402
+DriverContext.live_gate = staticmethod(_gate)
 
 
 def parse_notifications(text,since=0):
