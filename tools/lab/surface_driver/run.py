@@ -87,6 +87,9 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
                 context.frame('after')
             except Exception as error:
                 context.review('after-frame unavailable: '+type(error).__name__)
+        cleanup = context._cleanup_fixtures() if hasattr(context, '_cleanup_fixtures') else []
+        if cleanup:
+            functional, failure = 'failed', 'fixture cleanup failed: ' + '; '.join(cleanup)
         if failure:
             context.note(failure)
         if recipe.desktop_drawn and context.frames:

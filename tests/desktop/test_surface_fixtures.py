@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""Seconds-long fixture contracts. No product binary, GUI, VM or cloud account."""
+import copy
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import tempfile
+import threading
+import time
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
+from tools.lab.surface_driver.context import DriverContext
+from tools.lab.surface_driver.fixtures import FACTORIES, FixtureManager
+from tools.lab.surface_driver.fixtures.base import Fixture, Scope
+from tools.lab.surface_driver.fixtures import destinations, dialogs, history, images, live, notifications, profile, recordings
+from tools.lab.surface_driver.fixtures.profile import seed_profile, seeded_config
+from tools.lab.surface_driver.fixtures.s3_server import Server
+from tools.lab.surface_driver.run import run_recipes
+
+
+class Context:
+    def __init__(self, root):
+        self._deadline=time.monotonic()+120
+        self._fixtures={};self.host='boat';self.placement='boat';self.destination='local'
+        self.profile={'guest':'cinnamon-x11','session':'x11'}
+        self.calls=[];self.rows=[];self.operations={}
+        self.document=seeded_config(root)
+        self.target=SimpleNamespace(root=root,app_executable='putgd',started=True,close=lambda:[])
+        self.target.execute=self.shell
+        self.manager=FixtureManager(self)
+        self.target.cli=lambda *args,**kw:self.cli(*args,**kw)
+    def fixture(self,name,**options):return self.manager.get(name,**options)
+    def shell(self,script,timeout=60):
+        env=dict(os.environ)
+        env.update({key:self.target.root+'/'+value for key,value in
+                    (('XDG_CONFIG_HOME','config'),('XDG_DATA_HOME','data'),('XDG_STATE_HOME','state'))})
+        p=subprocess.run(script,shell=True,capture_output=True,text=True,timeout=timeout,env=env)
+        return dict(returncode=p.returncode,stdout=p.stdout,stderr=p.stderr)
+    def wait(self,predicate,what,timeout=10,interval=.01):
+        until=time.monotonic()+timeout
+        while True:
+            result=predicate()
+            if result:return result
+            if time.monotonic()>until:raise RecipeFailed(what)
+            time.sleep(interval)
+    def call(self,method,params=None):
+        params=params or {};self.calls.append((method,params))
+        if method=='settings.get':return {'document':copy.deepcopy(self.document),'metadata':{'path':self.target.root+'/config/putgd/config.json','observedRevision':'revision'}}
+        if method=='settings.save':self.document=copy.deepcopy(params['document']);return {}
+        if method=='settings.patch':
+            def merge(a,b):
+                for k,v in b.items():
+                    if isinstance(v,dict) and isinstance(a.get(k),dict):merge(a[k],v)
+                    else:a[k]=copy.deepcopy(v)
+            merge(self.document,params['patch']);return {}
+        if method=='history.list':return {'records':self.rows,'total':len(self.rows)}
+        if method=='history.clear':self.rows=[];return {}
+        if method=='cache.clear':return {}
+        if method=='editor.open':
+            identity='op-'+str(len(self.operations)+1)
+            self.operations[identity]={'source':params['path'],'id':identity,'state':'editing'}
+            return {'operationId':identity}
+        if method=='editor.inspect':return self.operations[params['id']]
+        if method=='editor.submit':
+            op=self.operations[params['id']];remote=self.document['actions']['edit']['destination']=='upload'
+            control=Path(self.manager.scope.root+'/control.json')
+            ctl=json.loads(control.read_text()) if control.exists() else {}
+            failed=ctl.get('failWrites') or Path(self.document['archive']['root']).is_file()
+            op['state']='failed' if failed else 'uploading' if ctl.get('stallSeconds') else 'completed'
+            op['items']=[{'artifact':{'id':'item-'+op['id'],'bytes':300},'uploadStatus':'uploading' if op['state']=='uploading' else 'failed' if failed else 'uploaded' if remote else 'local_only','local':{'path':op['source'],'status':'saved'}}]
+            self.rows.append({'id':'row-'+op['id'],'operationId':op['id'],'name':Path(op['source']).name,'local':{'path':op['source'],'status':'saved'},'receipt':{'directUrl':'http://127.0.0.1:1234/synthetic.png' if remote else ''}})
+            return {}
+        if method=='operation.inspect':return self.operations[params['id']]
+        if method=='operation.cancel':
+            op=self.operations[params['id']]
+            if op['state']=='uploading':op['state']='cancelled'
+            return {}
+        if method=='editor.cancel':return {}
+        if method=='history.detail':return next(r for r in self.rows if r['id']==params['id'])
+        if method=='update.status':return {'build':{'supported':False},'channel':None}
+        if method=='ui.snapshot':return {'build':{'version':'26.1029.1-dev'}}
+        return {}
+    def cli(self,method,params='{}',timeout=60):
+        return {'returncode':0,'stdout':json.dumps({'ok':True,'result':self.call(method,json.loads(params))}),'stderr':''}
+
+
+class Fixtures(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix='sd-')
+        self.root=Path(self.temp.name);self.root.chmod(0o700)
+        for name in ('config','data','state','runtime','files'):(self.root/name).mkdir(mode=0o700)
+        self.ctx=Context(str(self.root))
+        self.restart=patch.object(Scope,'restart');self.restart.start()
+    def tearDown(self):
+        errors=self.ctx.manager.close();self.restart.stop();self.temp.cleanup()
+        self.assertEqual(errors,[])
+    def test_recipe_contract_names(self):
+        names={'image','upload','history','history-row','local-history','recording','recording-review','review-controls','destination','mcp','live','release','notification_upload','destinations','selector-desktop','diagnostics-upload','file-dialog-portal','file-dialog-fallback','history_rows','history_pair','history_paging','history_retry_upload','history_retry_local','history_active_uploads','history_delete','history_saved_copy','history_window','launcher','recording-export-failure','recording-budget-stop','recording-preview-error','events.slow-upload','events.update-feed','events.older-update-feed','events.update-notification','events.record-storage','events.import-storage','events.recording-source','events.incomplete-multipart','events.browser-handler','events.software-updates-handler'}
+        self.assertFalse(names-FACTORIES.keys())
+    def test_seeded_config_references_no_provider_or_credentials(self):
+        doc=seeded_config('/tmp/new')
+        self.assertEqual(doc['profiles'],[])
+        self.assertTrue(all(a['destination']=='local' and a['profileId'] is None for a in doc['actions'].values()))
+        self.assertNotIn('secret',json.dumps(doc).lower())
+    def test_prelaunch_seed_and_first_launch_option(self):
+        seed_profile(self.ctx.target)
+        config=self.root/'config/putgd/config.json'
+        self.assertEqual(config.stat().st_mode&0o777,0o600)
+        self.assertEqual(json.loads(config.read_text())['profiles'],[])
+        with self.assertRaises(RecipeBlocked):seed_profile(self.ctx.target)
+        config.unlink();seed_profile(self.ctx.target,first_launch=True)
+        self.assertFalse(config.exists())
+    def test_image_known_pixels_and_cleanup_on_failure(self):
+        from PIL import Image
+        value=self.ctx.fixture('image')
+        with Image.open(value.path) as image:
+            self.assertEqual(image.size,(640,320))
+            self.assertEqual(len(set(image.getdata())),4)
+        self.assertIs(value,self.ctx.fixture('image'))
+        self.ctx._deadline=0 # cleanup must not inherit recipe expiry
+        self.assertEqual(self.ctx.manager.close(),[])
+        self.assertFalse(Path(value.path).exists())
+    def test_local_rows_and_settings_are_cleaned_on_failure(self):
+        baseline=copy.deepcopy(self.ctx.document)
+        row=self.ctx.fixture('history-row')
+        self.assertEqual(row.row['id'],row.history_id)
+        self.assertTrue(Path(row.path).exists())
+        self.assertEqual(self.ctx.manager.close(),[])
+        self.assertEqual(self.ctx.rows,[])
+        self.assertEqual(self.ctx.document,baseline)
+    def test_two_independent_operations_and_paging(self):
+        pair=self.ctx.fixture('history_pair')
+        self.assertEqual(len(set(pair.ids)),2)
+        self.assertEqual(pair.bytes,600)
+        self.ctx.manager.close()
+        self.assertEqual(self.ctx.fixture('history_paging').total,51)
+        self.assertEqual(len({r['operationId'] for r in self.ctx.rows}),51)
+    def test_retry_local_fault_is_removed_before_recipe(self):
+        row=self.ctx.fixture('history_retry_local')
+        self.assertEqual(row.state['state'],'failed')
+        self.assertTrue(Path(self.ctx.document['archive']['root']).is_dir())
+    def test_initial_history_is_preserved(self):
+        self.ctx.rows=[{'id':'preexisting'}]
+        with self.assertRaisesRegex(RecipeBlocked,'empty owned history'):self.ctx.fixture('app-profile')
+        self.assertEqual(self.ctx.rows,[{'id':'preexisting'}])
+    def test_settings_states_and_failure_restore(self):
+        baseline=copy.deepcopy(self.ctx.document)
+        self.ctx.fixture('settings-no-output')
+        self.assertFalse(self.ctx.document['archive']['keepUploads'])
+        self.ctx.manager.close()
+        self.assertEqual(self.ctx.document,baseline)
+    def test_finalizers_all_run_in_order_even_when_one_fails(self):
+        scope=self.ctx.manager.scope;seen=[]
+        scope.defer('last',lambda:seen.append('last'),priority=-1)
+        def broken():seen.append('broken');raise ValueError('must never be printed')
+        scope.defer('broken',broken)
+        scope.defer('first',lambda:seen.append('first'),priority=1)
+        self.assertEqual(scope.close(),['broken: ValueError'])
+        self.assertEqual(seen,['first','broken','last'])
+        self.assertEqual(self.ctx.manager.close(),['broken: ValueError'])
+    def test_partial_factory_failure_and_outer_close(self):
+        def fail(scope):
+            scope.initialize();scope.write(scope.root+'/partial',b'synthetic')
+            raise RecipeFailed('fixture setup failed')
+        with patch.dict(FACTORIES,{'partial':fail}):
+            with self.assertRaises(RecipeFailed):self.ctx.fixture('partial')
+        self.assertFalse(list(self.root.glob('fx-*')))
+        self.assertEqual(self.ctx.target.close(),[])
+    def test_unknown_fixture_and_live_provider_are_specific_blocks(self):
+        for name,issue in [('live-provider',669),('chooser-failure',671),('recording-preview-error',672),('tray-proton-busy',670)]:
+            with self.subTest(name=name),self.assertRaises(RecipeBlocked) as caught:self.ctx.fixture(name)
+            self.assertEqual(caught.exception.issue,issue)
+        with self.assertRaisesRegex(RecipeBlocked,'unknown fixture'):self.ctx.fixture('misspelled')
+    def test_destination_and_recording_contracts_have_safe_guards(self):
+        self.ctx.placement='native'
+        with self.assertRaises(RecipeBlocked):self.ctx.fixture('fake-keyring')
+        with self.assertRaises(RecipeBlocked):self.ctx.fixture('events.controllers')
+        with self.assertRaises(RecipeBlocked):self.ctx.fixture('release')
+    def test_dialog_environment_applied_before_restart(self):
+        self.ctx.fixture('file-dialog-fallback')
+        self.assertEqual(Scope.restart.call_args.args[0]['PUTGD_FILE_DIALOG'],'fallback')
+        self.ctx.manager.close()
+        self.ctx.profile['dialogs']={'backends':{'fallback':{'environment':{'DBUS_SESSION_BUS_ADDRESS':'foreign'}}}}
+        with self.assertRaises(RecipeBlocked):self.ctx.fixture('file-dialog-fallback')
+    def test_notification_is_published_lazily_after_needs(self):
+        calls=[]
+        with patch.object(notifications,'upload',lambda scope:calls.append('publish') or Fixture(link='http://127.0.0.1/synthetic',name='synthetic.png')):
+            value=self.ctx.fixture('notification_upload')
+            self.assertEqual(calls,[])
+            self.assertTrue(value.get('link'));self.assertEqual(value.name,'synthetic.png')
+            self.assertEqual(calls,['publish'])
+    def test_runner_cleans_fixture_after_failed_recipe_and_marks_cleanup_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            context=SimpleNamespace(begin=lambda r:None,frame=lambda *a,**k:None,frames=[],reviews=[],notes=[],review=lambda v:None,note=lambda v:None)
+            cleaned=[]
+            context._cleanup_fixtures=lambda:cleaned.append(True) or ['owned mount: RecipeBlocked']
+            def fail(c):raise RecipeFailed('synthetic recipe failure')
+            env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
+            result=run_recipes(context,[Recipe(('editor.undo',),fail)],env,directory,'fixture-test',Path(directory)/'coverage.json')
+            self.assertEqual(cleaned,[True]);self.assertEqual(result[0].functional,'failed')
+    def test_cleanup_never_removes_unowned_sibling(self):
+        sibling=self.root/'existing';sibling.write_text('preserve')
+        self.ctx.fixture('image');self.ctx.manager.close()
+        self.assertEqual(sibling.read_text(),'preserve')
+
+
+class Loopback(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix='s3-')
+        self.root=Path(self.temp.name);(self.root/'control.json').write_text('{}')
+        self.server=Server(self.root)
+        self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.url='http://127.0.0.1:'+str(self.server.server_address[1])
+    def tearDown(self):
+        self.server.shutdown();self.server.server_close();self.thread.join();self.temp.cleanup()
+    def request(self,path,method='GET',body=None):
+        return urlopen(Request(self.url+path,data=body,method=method,headers={'Authorization':'synthetic never retain'}),timeout=2)
+    def test_upload_public_get_delete_and_no_sensitive_request_log(self):
+        self.request('/bucket/synthetic.png','PUT',b'synthetic').close()
+        self.assertEqual(self.request('/bucket/synthetic.png').read(),b'synthetic')
+        self.assertEqual(self.request('/bucket/synthetic.png','DELETE').status,204)
+        with self.assertRaises(HTTPError) as caught:self.request('/bucket/synthetic.png')
+        self.assertEqual(caught.exception.code,404)
+        raw=json.dumps(self.server.events)
+        self.assertNotIn('Authorization',raw);self.assertNotIn('synthetic never retain',raw)
+        self.assertNotIn('synthetic.png',raw)
+    def test_fail_and_retry_same_key(self):
+        (self.root/'control.json').write_text('{"failWrites":true}')
+        with self.assertRaises(HTTPError) as caught:self.request('/bucket/file','PUT',b'x')
+        self.assertEqual(caught.exception.code,403)
+        (self.root/'control.json').write_text('{}')
+        self.assertEqual(self.request('/bucket/file','PUT',b'x').status,200)
+    def test_multipart_abort_denial_then_cleanup(self):
+        import xml.etree.ElementTree as ET
+        root=ET.fromstring(self.request('/bucket/file?uploads','POST',b'').read())
+        identity=root.findtext('{*}UploadId');query='?uploadId='+identity
+        self.request('/bucket/file'+query+'&partNumber=1','PUT',b'synthetic').close()
+        (self.root/'control.json').write_text('{"denyAbort":true}')
+        with self.assertRaises(HTTPError):self.request('/bucket/file'+query,'DELETE')
+        self.assertIn(identity,self.server.uploads)
+        (self.root/'control.json').write_text('{}')
+        self.request('/bucket/file'+query,'DELETE').close()
+        self.assertFalse(self.server.uploads)
+
+
+if __name__=='__main__':unittest.main()

@@ -1,0 +1,128 @@
+"""Guest-local feeds and reversible OS-event controllers."""
+import json
+from pathlib import Path
+import shlex
+
+from ..api import RecipeBlocked
+from .base import Fixture
+from .destinations import control
+from .uploads import submit
+
+
+def feed(scope, older=False):
+    ctx=scope.ctx
+    ctx.fixture('app-profile')
+    root=ctx.target.root+'/state/feed-'+scope.token[:8]
+    scope.python('from pathlib import Path\nPath('+repr(root)+').mkdir(mode=0o700)')
+    scope.defer('update feed directory',lambda:scope.python('import shutil\nshutil.rmtree('+repr(root)+')'))
+    # Port zero chosen in the guest, metadata in the owned directory. No logs of
+    # requests, release URLs, user-agent or arbitrary browser query strings.
+    code='''from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
+from pathlib import Path
+class H(SimpleHTTPRequestHandler):
+ def __init__(self,*a,**kw):super().__init__(*a,directory=ROOT,**kw)
+ def log_message(self,*a):pass
+s=ThreadingHTTPServer(('127.0.0.1',0),H)
+Path(PORT).write_text(str(s.server_address[1]))
+s.serve_forever()
+'''.replace('ROOT',repr(root)).replace('PORT',repr(scope.root+'/feed-port'))
+    scope.launch(['python3','-c',code],name='feed')
+    def port():
+        result=ctx.shell('cat '+shlex.quote(scope.root+'/feed-port')+' 2>/dev/null')
+        return int(result['stdout']) if result['stdout'].strip().isdigit() else None
+    port=ctx.wait(port,'guest update feed',timeout=10)
+    url='http://127.0.0.1:'+str(port)+'/'
+    scope.restart({'PUTGD_UPDATE_FEED_URL':url,'PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'})
+    snapshot=ctx.call('ui.snapshot')
+    # Public snapshot does not promise a resident PID; find it by exact socket
+    # env and executable and retain its start identity, never pgrep -f.
+    pid=scope.json('''import json,os
+from pathlib import Path
+found=[]
+for p in Path('/proc').iterdir():
+ if not p.name.isdigit():continue
+ try:
+  if p.stat().st_uid!=os.getuid() or Path(os.readlink(p/'exe')).name!='putgd':continue
+  env=dict(v.split(b'=',1) for v in (p/'environ').read_bytes().split(b'\\0') if b'=' in v)
+  if env.get(b'XDG_RUNTIME_DIR',b'').decode()==RUNTIME:found.append(int(p.name))
+ except (FileNotFoundError,PermissionError,ProcessLookupError):continue
+assert len(found)==1
+print(json.dumps(found[0]))
+'''.replace('RUNTIME',repr(ctx.target.root+'/runtime')))
+    status=ctx.call('update.status')
+    channel=status.get('channel') or 'stable'
+    version='26.101.1' if older else '99.1231.999'
+    document={'schema':1,'channel':channel,'release':{'version':version,'tag':'v'+version,'assets':{}}}
+    scope.python('from pathlib import Path\nPath('+repr(root+'/'+channel+'.json')+').write_text('+repr(json.dumps(document))+')')
+    return Fixture(url=url,root=root,residentPid=pid,version=version,channel=channel,
+                   supported=status.get('build',{}).get('supported',False),residentEpoch=snapshot.get('residentEpoch'))
+
+
+def storage(scope):
+    ctx=scope.ctx
+    ctx.fixture('app-profile')
+    if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
+        raise RecipeBlocked('quota filesystem requires a disposable nested guest',issue=682)
+    path=ctx.target.root+'/data/quota-'+scope.token[:8]
+    scope.python('from pathlib import Path\nPath('+repr(path)+').mkdir(mode=0o700)')
+    result=ctx.shell('sudo -n mount -t tmpfs -o size=1792m,mode=0700,uid=$(id -u),gid=$(id -g) tmpfs '+shlex.quote(path))
+    if result['returncode']:raise RecipeBlocked('guest cannot create private bounded tmpfs',issue=682)
+    def unmount():
+        # Stop the owned resident before unmounting its staging filesystem.
+        scope.restart() # retire processes using the mounted data directory
+        reply=ctx.shell('sudo -n umount -- '+shlex.quote(path)+' && rmdir -- '+shlex.quote(path))
+        if reply['returncode']:raise RecipeBlocked('owned tmpfs remains mounted')
+    scope.defer('quota tmpfs',unmount)
+    # ArtifactStore uses data/putgd; mount only that owned subdirectory and route
+    # its app data there while preserving the same session buses and runtime.
+    scope.restart({'XDG_DATA_HOME':path,'PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'})
+    return Fixture(mountPath=path,quotaBytes=1792*1024**2)
+
+
+def slow_upload(scope):
+    row=submit(scope,remote=True,active=True)
+    service=scope.ctx.fixture('loopback-s3')
+    return Fixture(row,destination='s3',address='127.0.0.1',port=service.port,timeoutSeconds=40)
+
+
+def incomplete(scope):
+    from .uploads import incomplete_multipart
+    return incomplete_multipart(scope)
+
+
+def clipboard(scope):
+    ctx=scope.ctx
+    text='putgd synthetic clipboard '+scope.token[:8]
+    command=('wl-copy --type text/plain' if ctx.profile['session']=='wayland' else 'xclip -selection clipboard')
+    reply=ctx.shell('printf %s '+shlex.quote(text)+' | '+command)
+    if reply['returncode']:raise RecipeBlocked('native clipboard owner unavailable',issue=682)
+    # Never read or restore the user's previous clipboard. This is guest-only.
+    return Fixture(text=text,synthetic=True)
+
+
+def controllers(scope):
+    ctx=scope.ctx
+    if ctx.placement not in ('boat','guest'):
+        raise RecipeBlocked('disruptive controllers require a disposable guest',issue=682)
+    def stall(address,port):
+        if address!='127.0.0.1' or not isinstance(port,int) or not 0<port<65536:
+            raise RecipeBlocked('network controller accepts only literal loopback fixture endpoints')
+        table='sd_'+scope.token[:12]
+        result=ctx.shell("sudo -n nft -f - <<'SD_NFT'\nadd table inet "+table+'\nadd chain inet '+table+' output { type filter hook output priority -10; policy accept; }\nadd rule inet '+table+' output ip daddr 127.0.0.1 tcp dport '+str(port)+' counter drop\nSD_NFT\n')
+        if result['returncode']:raise RecipeBlocked('guest nft controller unavailable',issue=682)
+        scope.defer('owned nft table',lambda:checked(ctx.shell('sudo -n nft delete table inet '+table)))
+        return table
+    def display(*args,**kwargs):
+        # QMP can hotplug a second virtual device, but a device command alone
+        # does not establish compositor topology. Require 2a's verified adapter.
+        adapter=getattr(ctx.target,'change_display',None)
+        if not adapter:raise RecipeBlocked('display event requires verified QMP topology/restore adapter from 2a',issue=682)
+        restore=adapter(*args,**kwargs)
+        scope.defer('display topology',restore)
+    def relogin():
+        raise RecipeBlocked('re-login requires core-owned visible console and protected login input; no ui.quit substitution',issue=682)
+    return Fixture(network_stall=stall,display_change=display,relogin=relogin,config_path=ctx.target.root+'/config/putgd/config.json')
+
+
+def checked(reply):
+    if reply['returncode']:raise RecipeBlocked('OS-event cleanup failed')
