@@ -1,0 +1,42 @@
+{
+  "beforeInstall": {
+    "passed": true,
+    "hostAvailableBytes": 36690083840,
+    "hostAvailableInodes": 4509278,
+    "hostReserveGiB": 10,
+    "guestReserveGiB": 2,
+    "expectedGrowthGiB": 1.0,
+    "guestFilesystems": {
+      "home": {
+        "availableBytes": 21388271616,
+        "availableInodes": 1584495,
+        "inodeAccounting": "reported"
+      },
+      "tmp": {
+        "availableBytes": 21388271616,
+        "availableInodes": 1584495,
+        "inodeAccounting": "reported"
+      }
+    }
+  },
+  "afterInstall": {
+    "passed": true,
+    "hostAvailableBytes": 35252031488,
+    "hostAvailableInodes": 4509235,
+    "hostReserveGiB": 10,
+    "guestReserveGiB": 2,
+    "expectedGrowthGiB": 0,
+    "guestFilesystems": {
+      "home": {
+        "availableBytes": 20790865920,
+        "availableInodes": 1582513,
+        "inodeAccounting": "reported"
+      },
+      "tmp": {
+        "availableBytes": 20790865920,
+        "availableInodes": 1582513,
+        "inodeAccounting": "reported"
+      }
+    }
+  }
+}
