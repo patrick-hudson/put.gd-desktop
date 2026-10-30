@@ -5,7 +5,7 @@ native desktop buses. The production chooser-failure fixture deliberately blocks
 until a real isolated Failed-result boundary exists (#671).
 
 Shell results use Context.shell's {returncode, stdout, stderr} contract. Call,
-view and MCP results are resident result objects, without transport envelopes.
+view results are resident objects; the official MCP helper returns CLI envelopes.
 Fallback catalog captures are requested through the profile; absent captures
 are explicitly sent to review. Never compare a portal frame to a Qt catalog.
 """
@@ -113,6 +113,13 @@ def _ready(ctx, inspect, backend, mode):
     return state
 
 
+def _same_path(actual, expected, mode):
+    # GTK folder completion may append a selected slash. File names stay exact:
+    # accepting a suffix in Save mode could conceal a duplicated extension.
+    return isinstance(actual, str) and (actual == expected or
+            mode == 'folder' and actual.rstrip('/') == expected.rstrip('/'))
+
+
 def _input(ctx, backend, path, mode, inspect):
     if backend == 'fallback':
         ctx.click('fileNameEdit', window='putgdFileDialog')
@@ -120,16 +127,20 @@ def _input(ctx, backend, path, mode, inspect):
     else:
         settings = ctx.profile['dialogs']['backends'][backend]
         ctx.keys(*settings['location_keys'])
+        # SaveFile selects only the old basename; replace the extension too.
+        ctx.keys('Ctrl+A')
     ctx.type_text(path)
     if backend == 'portal':
         # A title-only AT-SPI witness is insufficient: inspect the typed path
         # before Return can navigate, accept, or trigger an overwrite prompt.
         def contains_path():
             identity = ctx.profile['dialogs']['portal_identity']
-            nodes = ctx.accessible({'text': path, 'window': identity['name'],
+            # GTK exposes the focused entry beneath 'File Chooser Widget',
+            # independently of its title. Pin content to the observed process.
+            nodes = ctx.accessible({'text': path + '*' if mode == 'folder' else path,
                                     'pid': identity['pid'], 'visible': True, 'showing': True})
-            matches = [node for node in nodes if path in
-                       (node.get('text'), node.get('value'))]
+            matches = [node for node in nodes if any(_same_path(node.get(key), path, mode)
+                       for key in ('text', 'value'))]
             if nodes and not matches and not any('text' in node or 'value' in node for node in nodes):
                 ctx.blocked('AT-SPI probe exposes names only; cannot prove typed chooser path', issue=671)
             return matches
@@ -169,8 +180,9 @@ def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
                           if (s := command('inspect')) else None, 'chooser accepted')
         ctx.expect(chosen['last']['status'] == 'chosen', 'resident reports a choice')
         ctx.expect(chosen['last']['backend'] == backend, 'resident confirms the actual backend')
-        ctx.expect(chosen['last']['path'] == path, 'resident received the exact typed path')
+        ctx.expect(_same_path(chosen['last']['path'], path, mode), 'resident received the exact typed path')
     except Exception:
+        ctx.note('Chooser state at failure: ' + json.dumps(command('inspect'), sort_keys=True))
         _frame(ctx, 'dialog-failure', backend)
         raise
     finally:
@@ -221,7 +233,7 @@ def _output(ctx, backend, files, *, mcp=False, cancel_only=False):
             def accepted():
                 archive = _settings(ctx)['archive']
                 value = archive['root'] if field == 'root' else archive['folders'][field]
-                return value == files['folder']
+                return _same_path(value, files['folder'], 'folder')
             ctx.wait(accepted, 'resident autosaved chosen ' + field + ' folder')
         _frame(ctx, 'after-' + field, backend)
 
@@ -244,7 +256,7 @@ def _run(ctx, backend, scenario):
             return ctx.call('ui.diagnostics', {'action': 'inspect'})['package']['folder']
         try:
             _exercise(ctx, backend, 'folder', _ui_request('diagnosticsFolder'), consumer, files['folder'])
-            ctx.wait(lambda: consumer() == files['folder'], 'diagnostics package uses chosen folder')
+            ctx.wait(lambda: _same_path(consumer(), files['folder'], 'folder'), 'diagnostics package uses chosen folder')
             _frame(ctx, 'after', backend)
         finally:
             ctx.call('ui.diagnostics', {'action': 'closePackage'})

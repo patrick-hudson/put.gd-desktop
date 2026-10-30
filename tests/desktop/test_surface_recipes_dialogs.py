@@ -42,6 +42,10 @@ class FakeContext(Context):
         self.fallback_during_prepare = False
         self.names_only_accessibility = False
         self.path_name_only = False
+        self.typing_window = 'File Chooser Widget'
+        self.keep_save_suffix = False
+        self.folder_completion = False
+        self.selected_all = False
 
     def fixture(self, name):
         if name == 'chooser-failure':
@@ -99,6 +103,7 @@ class FakeContext(Context):
             if self.backend == 'fallback':
                 self.dialog['fallbackReason'] = 'disabled'
             self.prepare_inspects = 0
+            self.selected_all = False
         elif action == 'inspect' and self.dialog['open']:
             self.prepare_inspects += 1
             if self.fallback_during_prepare and self.prepare_inspects > 1:
@@ -159,11 +164,20 @@ class FakeContext(Context):
             return [{'name': query['text'], 'role': 'text', 'pid': 123}]
         if self.names_only_accessibility:
             return [{'name': 'Synthetic chooser', 'role': 'dialog', 'pid': 123}]
-        return [] if self.no_accessibility else [{'name': query.get('name'), 'text': query.get('text'), 'role': 'file chooser', 'pid': 123}]
+        if self.no_accessibility:
+            return []
+        if 'text' in query:
+            if query.get('window') not in (None, self.typing_window):
+                return []
+            return [{'name': '', 'text': self.typed, 'role': 'text', 'pid': 123,
+                     'window': self.typing_window}]
+        return [{'name': query.get('name'), 'text': '', 'role': 'file chooser', 'pid': 123}]
 
     def keys(self, *sequence):
         self.inputs.append(('keys', sequence))
         if self.dialog['open']:
+            if 'Ctrl+A' in sequence:
+                self.selected_all = True
             if 'Escape' in sequence:
                 self._finish('cancelled')
             elif 'Return' in sequence:
@@ -172,6 +186,10 @@ class FakeContext(Context):
     def type_text(self, text):
         self.inputs.append(('type', text))
         self.typed = text
+        if self.keep_save_suffix and self.dialog.get('mode') == 'save' and not self.selected_all:
+            self.typed += '.png'
+        if self.folder_completion and self.dialog.get('mode') == 'folder':
+            self.typed += '/'
 
     def click(self, control, window, button='left', offset=None):
         self.inputs.append(('click', control, window))
@@ -291,6 +309,31 @@ class DialogRecipes(unittest.TestCase):
                 row.function(ctx)
             self.assertEqual(error.exception.issue, 671)
             self.assertEqual(ctx.inputs, [])
+
+    def test_gtk_typing_field_has_its_own_window_name(self):
+        ctx = FakeContext('portal')
+        dialogs.edit_image_portal(ctx)
+        queries = [c[1] for c in ctx.calls if c[0] == 'accessible' and 'text' in c[1]]
+        self.assertTrue(queries)
+        self.assertTrue(all('window' not in q and q['pid'] == 123 for q in queries))
+
+    def test_save_replaces_the_old_extension(self):
+        ctx = FakeContext('portal')
+        ctx.keep_save_suffix = True
+        dialogs.history_save_as_portal(ctx)
+        self.assertEqual(ctx.history_path, '/tmp/pgfd.test/History copy.png')
+        typed = next(i for i, action in enumerate(ctx.inputs) if action[0] == 'type')
+        self.assertEqual(ctx.inputs[typed - 1], ('keys', ('Ctrl+A',)))
+
+    def test_folder_completion_slash_is_accepted(self):
+        ctx = FakeContext('portal')
+        ctx.folder_completion = True
+        dialogs.output_folder_portal(ctx)
+        self.assertEqual(ctx.document['archive']['root'], '/tmp/pgfd.test/Chosen folder/')
+        self.assertTrue(dialogs._same_path('/tmp/folder/', '/tmp/folder', 'folder'))
+        self.assertFalse(dialogs._same_path('/tmp/folder-more/', '/tmp/folder', 'folder'))
+        self.assertFalse(dialogs._same_path('/tmp/file.png.png', '/tmp/file.png', 'save'))
+        self.assertFalse(dialogs._same_path('/tmp/file.png/', '/tmp/file.png', 'open'))
 
     def test_independent_file_witness_is_required(self):
         ctx = FakeContext('fallback')
