@@ -453,7 +453,7 @@ class CandidateContracts(unittest.TestCase):
         """Real subprocess boundary, fake service; no Boat credentials/network."""
         executable = root / 'boat'
         executable.write_text('''#!/usr/bin/env python3
-import fcntl,json,os,sys
+import fcntl,json,os,signal,sys
 from pathlib import Path
 root=Path(os.environ['FAKE_BOAT_ROOT'])
 with (root/'lock').open('a') as lock:
@@ -479,6 +479,8 @@ with (root/'lock').open('a') as lock:
  else:
   raise SystemExit('unsupported fake command '+command)
  path.write_text(json.dumps(state))
+ if command=='new' and os.environ.get('FAKE_BOAT_LATE'):
+  os.kill(os.getpid(),signal.SIGTERM)  # accepted server-side, killed before any ID
  print(json.dumps(result))
 ''')
         executable.chmod(0o700)
@@ -518,7 +520,7 @@ with (root/'lock').open('a') as lock:
                      monotonic=lambda: clock[0], sleep=sleep, time=lambda: 0)):
                 result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
-            self.assertIn('did not return a sandbox ID', result['error'])
+            self.assertIn('boat exited -15', result['error'])
             self.assertTrue(result['cleanupVerified'])
             self.assertGreaterEqual(clock[0], 30)
             service = json.loads((root / 'service.json').read_text())
