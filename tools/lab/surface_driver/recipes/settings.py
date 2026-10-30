@@ -372,8 +372,14 @@ def binding(ctx, action, chord):
     status = shortcut_status(ctx)
     if not status.get('available'):
         ctx.blocked('Desktop reports no global shortcut channel; binding effect cannot be asserted.')
+    observed = None
     def matches():
+        nonlocal observed
         entry = shortcut_status(ctx).get('bindings', {}).get(action, {})
+        current = {key: entry.get(key) for key in ('state', 'bound', 'requested', 'effective', 'actual', 'error')}
+        if current != observed:
+            ctx.note('native shortcut binding ' + action + ': ' + json.dumps(current, sort_keys=True))
+            observed = current
         actual = entry.get('actual')
         return entry.get('bound') is True and not entry.get('error') and actual in (chord, [chord])
     ctx.wait(matches, action + ' binding confirmed by desktop')
