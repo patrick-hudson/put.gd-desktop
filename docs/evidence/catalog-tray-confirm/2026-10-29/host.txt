@@ -15,3 +15,10 @@ LOGO=ubuntu-logo
 6.4.2
 cmake version 3.28.3
 g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+
+# Test host vs JUnit hostname
+# The tests ran on the host above, box-node-4ba573fc7c0a75d6, the sandbox forked from snapshot putgd-build-base.
+# The JUnit `hostname` (box-node-92ad7400cc57c384) is CMake's cached SITE value. CTest writes SITE into JUnit,
+# and SITE was cached when putgd-build-base's build tree was first configured on that snapshot's origin sandbox.
+# The build tree was reused, not reconfigured, so SITE was inherited. It does not identify the test host.
+# An independent validator later rebuilt and re-ran the full suite on another sandbox (bx_2h8av5jg): 113/113 passed.
