@@ -612,6 +612,7 @@ def upload_complete(ctx):
     # A bus call is only metadata. Require the shell to expose the drawn title.
     _drawn_notice(ctx, notice)
     ctx.frame('after')
+    ctx.blocked('Drawn upload-complete popup observed; default-action click and browser effect await desktop worker', 670)
 
 
 def _drawn_notice(ctx, notice):

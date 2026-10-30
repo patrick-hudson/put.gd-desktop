@@ -304,6 +304,19 @@ class TrayRecipesTest(unittest.TestCase):
                     r.function(ctx)
                 self.assertEqual(caught.exception.issue, 670)
 
+    def test_upload_complete_default_action_stays_blocked_after_observing_popup(self):
+        from tools.lab.surface_driver.fixtures.base import Fixture
+        ctx = FakeContext()
+        ctx.fixture = lambda name: Fixture(state={'state': 'completed'})
+        ctx.notices = [{'id': 1, 'summary': 'Upload complete'}]
+        ctx.profile['notifications'] = {'accessible': {'application': 'cinnamon*'}}
+        ctx.accessible = lambda query: [{'rect': [10, 10, 100, 40]}]
+        with self.assertRaises(RecipeBlocked) as caught:
+            tray.upload_complete(ctx)
+        self.assertEqual(caught.exception.issue, 670)
+        self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+        self.assertIn(('frame', 'after', None), ctx.events)
+
     def test_notification_actions_block_before_input(self):
         for function in (tray.save_diagnostics, tray.show_in_folder,
                          tray.resident_close, tray.diagnostics_not_saved):
