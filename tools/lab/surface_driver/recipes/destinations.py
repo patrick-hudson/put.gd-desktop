@@ -118,8 +118,8 @@ def _open(ctx, count=1, *, saved_credentials=False):
     geometry = ctx.geometry('destinations')
     ctx.scroll(geometry['x'] + geometry['width'] - 32,
                geometry['y'] + geometry['height']//2, 30)
-    if profiles:
-        _selected(ctx, 0)
+    # The clean fixture opens its first profile. Rail selection is exercised
+    # by the list/reorder recipes themselves, not as unrelated setup input.
     _frame(ctx, 'before')
     return f, profiles
 
