@@ -71,8 +71,9 @@ every hosted Python suite once through `tools/ci/contracts.py`:
 - `evidence`: the saved source114 live-S3 numeric replay, which is historical
   validation rather than a fresh cloud or desktop run.
 
-Each group writes a JSON report and log to the `contracts` artifact. The job
-also runs `actionlint` 1.7.12, pinned by SHA-256, on every workflow.
+Each group writes a JSON report and log to the `contracts` artifact. A failing
+suite's output, with its failing cases and tracebacks, is also printed in the
+job log. The job also runs `actionlint` 1.7.12, pinned by SHA-256, on every workflow.
 
 **linux** builds the Debug `dev` preset with the bundled Proton helper on Ubuntu
 24.04 (minimum distro Qt API) and Ubuntu 26.04 (LayerShellQt). It runs the full
