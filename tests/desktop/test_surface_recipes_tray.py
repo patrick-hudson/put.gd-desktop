@@ -156,6 +156,8 @@ class FakeContext(Context):
         for n in self.notices:
             names.add(n['summary'])
             names.update(n.get('buttons', ()))
+        if name == '*':
+            return [node for value in sorted(names) for node in self.accessible(dict(query, name=value))]
         if name not in names:
             return []
         # A different rectangle per label ensures that tests track the node
@@ -180,7 +182,7 @@ class FakeContext(Context):
             return
         if name == 'put.gd':
             if button == 'right':
-                self.menu = True
+                self.menu = not self.menu if self.profile['tray'].get('menu_prepare_background') else True
             elif button == 'left':
                 self.target = 'History'
         elif name == 'Local only':
@@ -331,6 +333,7 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertFalse(any(e[0] in ('view', 'keys') for e in ctx.events))
         self.assertEqual([e for e in ctx.events if e[0] == 'click'],
                          [('click', 'put.gd', 'right'), ('click', 'put.gd', 'right')])
+        self.assertFalse(ctx.menu)
 
     def test_failed_menu_open_receives_no_cleanup_input(self):
         ctx = FakeContext()
@@ -650,14 +653,40 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertFalse(ctx.about_open)
         self.assertEqual(ctx.events[-1], ('keys', ('Esc',)))
 
-    def test_navigation_failure_closes_the_open_menu(self):
+    def test_about_failure_after_open_closes_the_dialog(self):
         ctx = FakeContext()
-        def fail_frame(*args, **kwargs):
-            raise RecipeFailed('synthetic frame failure')
+        frame = ctx.frame
+        def fail_frame(label, *args, **kwargs):
+            if label == 'after':
+                raise RecipeFailed('synthetic frame failure')
+            return frame(label, *args, **kwargs)
         ctx.frame = fail_frame
         with self.assertRaises(RecipeFailed):
             tray.tray_menu_about(ctx)
-        self.assertFalse(ctx.menu)
+        self.assertFalse(ctx.about_open)
+        self.assertIn(('focus', 'trayAbout'), ctx.events)
+
+    def test_idle_observes_absent_menu_rows_in_one_bounded_inventory(self):
+        ctx = FakeContext()
+        ctx.profile['tray']['menu_prepare_background'] = True
+        accessible = ctx.accessible
+        queries = []
+        def observed(query):
+            queries.append(query)
+            return accessible(query)
+        ctx.accessible = observed
+        tray.idle(ctx)
+        self.assertEqual(sum(q.get('name') == '*' for q in queries), 1)
+        self.assertFalse(any(q.get('name') in ('Cancel upload', 'Action needs attention') for q in queries))
+
+    def test_completed_navigation_does_not_send_unscoped_escape(self):
+        for function in (tray.tray_menu_history, tray.tray_menu_destinations,
+                         tray.tray_menu_change_output):
+            with self.subTest(recipe=function.__name__):
+                ctx = FakeContext()
+                ctx.profile['tray']['menu_prepare_background'] = True
+                function(ctx)
+                self.assertFalse(any(e[0] == 'keys' for e in ctx.events))
 
     def test_fake_click_targets_coordinates_not_the_last_queried_node(self):
         ctx = FakeContext()
@@ -672,7 +701,7 @@ class TrayRecipesTest(unittest.TestCase):
             fragment = ROOT / 'tools/lab/surface_driver/profiles' / (desktop['id'] + '.d') / 'tray.json'
             data = json.loads(fragment.read_text())
             self.assertEqual(set(data) - {'notifications'}, {'tray', 'windows'})
-            self.assertEqual(set(data['windows']), {'trayFixture'})
+            self.assertEqual(set(data['windows']), {'trayFixture', 'trayAbout'})
             self.assertIn(data['tray']['notification_server'], ('cinnamon', 'gnome-shell', 'Plasma'))
 
 

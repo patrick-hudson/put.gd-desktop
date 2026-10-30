@@ -328,6 +328,7 @@ def _navigation(interaction, label, target):
         _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
         if target == 'settings':
             ctx.view('ui.show', {'view': 'history'})
+        about_focused = False
         try:
             _menu(ctx)
             _menu_frame(ctx, 'before')
@@ -346,9 +347,12 @@ def _navigation(interaction, label, target):
                 ctx.expect(state.get('open'), 'edit image file chooser is open')
             if target == 'about':
                 _node(ctx, 'About put.gd', 'dialog')
+                ctx.focus('trayAbout')
+                about_focused = True
             ctx.frame('after')
         finally:
-            ctx.keys('Esc')
+            if about_focused:
+                ctx.keys('Esc')
     navigate.__name__ = interaction.replace('.', '_').replace('-', '_')
     return navigate
 
@@ -689,26 +693,30 @@ def scroll_noop(ctx):
 @recipe('tray.icon-idle', desktop_drawn=True)
 def idle(ctx):
     _begin(ctx, show_ui=not _profile(ctx).get('menu_prepare_background'))
-    _menu(ctx)
-    for label in ('Local save needs attention', 'Destination needs attention',
-                  'Capture needs attention', 'Action needs attention'):
-        if _nodes(ctx, label, 'menu item'):
-            _press(ctx, next((k for k,v in CONTROLS.items() if v == label), label), 'menu item')
-            break
-    _dismiss_menu(ctx)
-    if not _profile(ctx).get('menu_prepare_background'):
-        ctx.view('ui.show', {'view': 'settings'})
+    # app-profile starts a fresh private resident; there is no prior attention
+    # latch to clear. Observe all menu labels together instead of repeatedly
+    # walking the shell tree for names which should be absent.
     ctx.frame('before')
     ctx.expect(all(o['state'] in TERMINAL for o in _recent(ctx)), 'resident has no active operation')
-    _icon(ctx)
     _menu(ctx)
     try:
-        ctx.expect(not _nodes(ctx, 'Cancel upload', 'menu item'), 'idle menu has no cancel-upload row')
-        ctx.expect(not any(_nodes(ctx, label, 'menu item') for label in (
-            'Local save needs attention', 'Destination needs attention',
-            'Capture needs attention', 'Action needs attention')), 'idle menu has no attention latch')
+        policy = _profile(ctx).get('menu', {})
+        rows = ctx.accessible({'name': '*', 'role': policy.get('role', 'menu item'),
+                               'application': _profile(ctx)['icon']['application'],
+                               'visible': True, 'showing': True})
+        names = set()
+        for node in rows:
+            rect = node.get('rect')
+            if isinstance(rect, dict):
+                rect = [rect[k] for k in ('x', 'y', 'width', 'height')]
+            if (node.get('visible') and node.get('showing') and rect and min(rect[:2]) >= 0
+                    and min(rect[2:]) > 0):
+                names.add(node.get('name'))
+        ctx.expect('Cancel upload' not in names, 'idle menu has no cancel-upload row')
+        ctx.expect(not names.intersection({'Local save needs attention', 'Destination needs attention',
+                   'Capture needs attention', 'Action needs attention'}), 'idle menu has no attention latch')
         ctx.frame('after')
-        ctx.review('Saved panel frame needs glyph/tint review; tooltip hover and SNI pixel observation are not in Context')
+        ctx.review('Saved panel frame needs glyph/tint review; menu metadata cannot establish icon pixels')
     finally:
         _dismiss_menu(ctx)
 
