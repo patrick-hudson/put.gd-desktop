@@ -12,6 +12,8 @@
     },
     "clipboard_write_command": "wl-copy"
   },
+  "mcp_python": "/home/lab/putgd-surface-mcp/.venv/bin/python",
+  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp",
   "catalog_windows": {
     "settings": [
       "07-settings-general",
