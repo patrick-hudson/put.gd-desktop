@@ -38,7 +38,7 @@
     "configuredUser": "putgd-ci",
     "configuredUid": 1001,
     "observedUidFile": "ctest-observed-uid",
-    "locale": "en_US.UTF-8",
+    "locale": "C.UTF-8",
     "temporaryDirectory": "/tmp/p7m.UwYZp7/r.JBRcYN/tmp",
     "registeredTests": 114,
     "socketPreflight": "Conservative length-preserving normal socket templates; intentional rejection cases unchanged",
