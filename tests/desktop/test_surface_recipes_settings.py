@@ -720,6 +720,23 @@ class Contracts(unittest.TestCase):
             with self.assertRaises(RecipeFailed):
                 lane.binding(ctx, 'region', 'Ctrl+Alt+Shift+9')
 
+    def test_second_click_failure_is_framed_before_escape_cleanup(self):
+        ctx = Fake()
+        click = ctx.click
+        counts = []
+        def refuse_second_cancel(control, window, **kwargs):
+            if control == 'recordRegionShortcut':
+                counts.append(control)
+                if len(counts) == 4:
+                    return
+            return click(control, window, **kwargs)
+        ctx.click = refuse_second_cancel
+        with self.assertRaisesRegex(RecipeFailed, 'second keycap click cancels'):
+            lane.shortcut_recording(ctx)
+        self.assertIn(('shortcut-second-click-failed-region', 'settings', lane.REFERENCES[2]), ctx.frames)
+        self.assertIsNone(ctx.recording_action)
+        self.assertEqual(ctx.document['actions']['region']['shortcut'], '')
+
     def test_binding_configuration_is_not_desktop_proof(self):
         ctx = Fake()
         ctx.available = False

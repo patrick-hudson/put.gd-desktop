@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import shlex
 
-from tools.lab.surface_driver.api import recipe, RecipeBlocked
+from tools.lab.surface_driver.api import recipe, RecipeBlocked, RecipeFailed
 from .settings_input import (click as live_click, observe as input_witness,
                              prepare as prepare_input, ensure_accessible, collapse, field_click)
 
@@ -435,7 +435,12 @@ def shortcut_campaign(ctx, check):
                     ctx.wait(lambda: recording(ctx, action), 'recorder ready')
                     if check == 'record':
                         live_click(ctx, control)
-                        ctx.wait(lambda: not recording(ctx, action), 'second keycap click cancels recording (app issue #731)')
+                        try:
+                            ctx.wait(lambda: not recording(ctx, action), 'second keycap click cancels recording (app issue #731)')
+                        except RecipeFailed as error:
+                            if 'second keycap click cancels' in str(error):
+                                frame(ctx, 'shortcut-second-click-failed-' + action, 2)
+                            raise
                         saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
                     else:
                         ctx.keys('Backspace')
