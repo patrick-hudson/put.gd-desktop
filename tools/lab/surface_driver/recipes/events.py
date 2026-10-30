@@ -241,6 +241,11 @@ def network_stall(ctx: Context):
     # mutation. Its independent finalizer also covers setup/deadline failures.
     table = controllers['network_stall'](f['address'], f['port'])
     try:
+        # The tiny request may already be written when the event occurs. On
+        # loopback, also drop this server's response packets in the same owned
+        # table so a delayed successful response cannot escape the stall.
+        _shell(ctx, f'sudo -n /usr/sbin/nft add rule inet {table} output ip saddr 127.0.0.1 tcp sport {f["port"]} counter drop',
+               'stall only the loopback fixture response direction')
         op = ctx.wait(lambda: (o if (o := _operation(ctx, f['operationId'])).get('state') in ('failed', 'partial') else None),
                       'stalled upload reaches bounded failure', timeout=f['timeoutSeconds'])
         counters = json.loads(_shell(ctx, f'sudo -n /usr/sbin/nft -j list table inet {table}', 'read real packet-drop counters'))
@@ -286,7 +291,7 @@ PYFEED'''.replace('PID', str(pid)).replace('__FEED_URL__', repr(f['url']))
     _shell(ctx, script, 'resident is pinned to local test feed before checking')
     status = _result(ctx, 'update.status')
     if not status['build']['supported']:
-        ctx.blocked('Update flow needs tagged package bytes: ' + status['build'].get('reason', 'unsupported'))
+        ctx.blocked('Update flow needs tagged package bytes: ' + status['build'].get('reason', 'unsupported'), issue=682)
     ctx.expect(status['channel'] == f['channel'], 'fixture feed matches active channel')
     # Keep serving separate from this lane: the core owns server startup/teardown.
     feed = {'schema': 1, 'channel': f['channel'], 'release': {'version': f['version'], 'tag': 'v' + f['version'], 'assets': {}}}

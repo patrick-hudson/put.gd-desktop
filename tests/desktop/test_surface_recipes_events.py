@@ -218,7 +218,9 @@ class EventRecipes(unittest.TestCase):
         events.network_stall(ctx)
         self.assertIn(('controller', 'network_stall', '127.0.0.1', 19447), ctx.actions)
         scripts = [a[1] for a in ctx.actions if a[0] == 'shell']
-        self.assertEqual(scripts, ['sudo -n /usr/sbin/nft -j list table inet sd_owned_table'])
+        self.assertEqual(scripts, [
+            'sudo -n /usr/sbin/nft add rule inet sd_owned_table output ip saddr 127.0.0.1 tcp sport 19447 counter drop',
+            'sudo -n /usr/sbin/nft -j list table inet sd_owned_table'])
         self.assertTrue(any(a[0] == 'note' and 'cleanup registered' in a[1] for a in ctx.actions))
 
     def test_nft_requires_actual_dropped_packets(self):
