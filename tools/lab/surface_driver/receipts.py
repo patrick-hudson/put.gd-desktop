@@ -53,6 +53,10 @@ class Evidence:
         return self.failed_scan or result
 
 
+Evidence.frame.prewrite_gate = save_frame
+Evidence.scan.run_audit = scan_run
+
+
 def fail_coverage(path, rows):
     """Invalidate this receipt's rows, preserving unrelated campaign evidence."""
     path = Path(path)

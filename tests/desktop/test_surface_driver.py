@@ -265,18 +265,49 @@ class Running(unittest.TestCase):
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
     def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
+        from tools.lab.surface_driver import run as runner, receipts, context, redact
+        self.assertEqual(runner.secret_safe_evidence_blockers(), [])
+        failures = ((redact.shutil, 'which'), (receipts, 'Redactor'), (receipts, 'save_frame'),
+                    (receipts, 'scan_run'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
+        for destination in ('s3','b2','proton'):
+            for module, name in failures:
+                with self.subTest(destination=destination, missing=name):
+                    out=self.path/('live-'+destination+'-'+name)
+                    args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
+                          '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
+                          '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out)]
+                    replacement = (lambda *a:None) if name == 'which' else None
+                    with patch.object(module,name,replacement), patch.object(runner,'Target') as target:
+                        with self.assertRaises(SystemExit) as raised:
+                            runner.main(args)
+                        target.assert_not_called()
+                    self.assertIn('blocked by secret-safe evidence',str(raised.exception))
+                    self.assertFalse(out.exists())
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_main_allows_live_destinations_with_the_complete_evidence_pipeline(self):
         from tools.lab.surface_driver import run as runner
-        self.assertFalse(runner.LIVE_DESTINATIONS_ENABLED)
         for destination in ('s3','b2','proton'):
             with self.subTest(destination=destination):
-                out=self.path/('live-'+destination)
+                target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
+                target.start=lambda:None;target.close=lambda:None
+                target.identity=lambda:{'session_type':'x11','desktop':'X-Cinnamon'}
+                def cli(method,*args,**kw):
+                    result=({'build':{'gitCommit':'abcdef','dirty':False}} if method=='ui.snapshot'
+                            else {'metadata':{'observedRevision':'revision'}} if method=='settings.get' else {})
+                    return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
+                target.cli=cli
+                touched=[]
+                recipe=Recipe(('editor.undo',),lambda ctx:touched.append(ctx.destination),destinations=(destination,))
+                out=self.path/('admitted-'+destination)
                 args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
                       '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
-                      '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out)]
-                with self.assertRaises(SystemExit) as raised:
-                    runner.main(args)
-                self.assertIn('disabled until secret-safe evidence',str(raised.exception))
-                self.assertFalse(out.exists())
+                      '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out),
+                      '--coverage',str(out/'coverage.json')]
+                with patch.object(runner,'Target',return_value=target),patch.object(runner,'guard_target'),patch.object(runner,'discover',return_value=[recipe]):
+                    self.assertEqual(runner.main(args),0)
+                self.assertEqual(touched,[destination])
+                self.assertTrue(json.loads((out/'receipt.json').read_text())['secret_scan']['passed'])
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):

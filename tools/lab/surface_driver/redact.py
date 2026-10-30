@@ -514,6 +514,13 @@ def quarantine_files(root, files):
     return actions
 
 
+# Capability contracts for the live-run admission check. These belong to the
+# actual functions used by Evidence, so replacing/disconnecting a sink closes it.
+Redactor.evidence_revision = 1
+save_frame.evidence_revision = 1
+scan_run.evidence_revision = 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run', type=Path)

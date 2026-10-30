@@ -35,8 +35,29 @@ from tools.lab.surface_driver.redact import scan_run, detected
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
-# Live Proton/S3/B2 runs stay off until secret-safe evidence (redaction + leak scan, PR #726) merges.
-LIVE_DESTINATIONS_ENABLED = False
+def secret_safe_evidence_blockers():
+    """Check the loaded persistence path, not a global live-upload switch."""
+    import shutil
+    from tools.lab.surface_driver import redact, receipts, context
+    blockers = []
+    if (receipts.Redactor is not redact.Redactor or getattr(receipts.Redactor, 'evidence_revision', None) != 1
+            or not all(callable(getattr(receipts.Redactor, name, None)) for name in ('remember', 'text', 'safe'))):
+        blockers.append('redaction-not-loaded')
+    if (Evidence is not receipts.Evidence or context.Evidence is not Evidence or DriverContext is not context.DriverContext
+            or receipts.save_frame is not redact.save_frame or not callable(receipts.save_frame)
+            or getattr(receipts.save_frame, 'evidence_revision', None) != 1
+            or getattr(getattr(Evidence, 'frame', None), 'prewrite_gate', None) is not receipts.save_frame
+            or not callable(redact.ocr_text)):
+        blockers.append('prewrite-frame-gate-not-loaded')
+    if (scan_run is not redact.scan_run or receipts.scan_run is not scan_run or not callable(scan_run)
+            or getattr(scan_run, 'evidence_revision', None) != 1
+            or getattr(getattr(Evidence, 'scan', None), 'run_audit', None) is not scan_run
+            or not callable(finish_evidence)
+            or getattr(run_recipes, 'final_audit', None) is not finish_evidence):
+        blockers.append('end-run-scan-not-wired')
+    if not shutil.which('tesseract'):
+        blockers.append('ocr-unavailable-install-tesseract-in-disposable-target')
+    return blockers
 
 
 def native_endpoint(kind, address):
@@ -425,6 +446,10 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
     return result
 
 
+# Admission verifies this exact end-of-run gate is still attached to the runner.
+run_recipes.final_audit = finish_evidence
+
+
 def parser():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--desktop',required=True)
@@ -457,9 +482,9 @@ def main(argv=None):
         raise SystemExit('native placement cannot name a guest')
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
-    if args.destination!='local' and not LIVE_DESTINATIONS_ENABLED:
-        raise SystemExit('live destination '+args.destination+' is disabled until secret-safe evidence '
-                         '(PR #726) merges; use --destination local')
+    if args.destination!='local':
+        if blockers := secret_safe_evidence_blockers():
+            raise SystemExit('live destination '+args.destination+' blocked by secret-safe evidence: '+', '.join(blockers))
     run=args.run or args.guest
     if not args.host_profile:
         if not run:
