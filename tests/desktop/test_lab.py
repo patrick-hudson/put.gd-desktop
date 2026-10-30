@@ -701,8 +701,9 @@ class LabContracts(unittest.TestCase):
                             lab.recover_staging(run, job)
                     self.assertEqual(any('rmdir' in c.args[1] for c in ssh.call_args_list), finished)
                     for c in ssh.call_args_list:
-                        self.assertIn('test ! -e', c.args[1])
+                        self.assertIn(f'if [ -e ~/putgd-lab/{job}/progress.json ]', c.args[1])
                         self.assertIn('install-active/job', c.args[1])
+                        self.assertNotIn('&&', c.args[1])  # set -e ignores a failed && left side.
 
     def test_abandoned_recovery_requires_free_flock_and_dead_or_reused_identity(self):
         # A real live process proves that PID reuse checks never signal it.
@@ -765,7 +766,7 @@ class LabContracts(unittest.TestCase):
                 self.assertIsNone(process.poll())
 
     def test_abandoned_recovery_keeps_controller_ownership_and_supervisor_guards(self):
-        for case in ('no-failure-receipt', 'unowned', 'replacement-token', 'progress.json', 'result.json'):
+        for case in ('unowned', 'replacement-token', 'progress.json', 'result.json'):
             with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
                 run = Path(directory)
                 job = 'install-' + 'b' * 32
@@ -775,9 +776,8 @@ class LabContracts(unittest.TestCase):
                 active.mkdir()
                 held = 'install-' + 'c' * 32 if case == 'replacement-token' else job
                 (active / 'job').write_text(held)
-                if case != 'no-failure-receipt':
-                    (run / job).mkdir()
-                    lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
+                (run / job).mkdir()
+                lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
                 if case in ('progress.json', 'result.json'):
                     lab.write_json(remote / case, {'synthetic': True})
                 def ssh(_run, script, **kwargs):

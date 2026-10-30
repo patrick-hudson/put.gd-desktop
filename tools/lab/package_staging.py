@@ -68,17 +68,23 @@ def session_status(session):
             if fields[1] == '/proc' and any(option.startswith('hidepid=') and
                     option != 'hidepid=0' for option in fields[3].split(',')):
                 raise PermissionError('procfs hidepid prevents complete session enumeration')
-        live = []
-        for entry in Path('/proc').iterdir():
-            if not entry.name.isdecimal():
-                continue
-            try:
-                fields = proc_fields(entry.name)
-                if int(fields[3]) == session and fields[0] not in ('Z', 'X'):
-                    live.append(int(entry.name))
-            except (FileNotFoundError, ProcessLookupError):
-                continue  # A process that exited during the scan is harmless.
-        return {'sessionAlive': bool(live), 'sessionPids': sorted(live)}
+        def scan():
+            live = []
+            for entry in Path('/proc').iterdir():
+                if not entry.name.isdecimal():
+                    continue
+                try:
+                    fields = proc_fields(entry.name)
+                    if int(fields[3]) == session and fields[0] not in ('Z', 'X'):
+                        live.append(int(entry.name))
+                except (FileNotFoundError, ProcessLookupError):
+                    continue  # A process that exited during the scan is harmless.
+            return sorted(live)
+        # A member can fork and exit while one pass runs; after a PID wrap its
+        # child can land behind the scan position and be missed. Any live member
+        # refuses at once; an empty session must be empty on two passes.
+        live = scan() or scan()
+        return {'sessionAlive': bool(live), 'sessionPids': live}
     except (OSError, ValueError, IndexError) as error:
         return {'sessionAlive': None,
                 'inspectionError': 'Cannot enumerate staging session: ' + type(error).__name__}

@@ -1767,16 +1767,18 @@ def recover_staging(run, job, abandoned=False):
 
 def recover_staging_fenced(run, job, abandoned):
     remote = 'putgd-lab/' + job
-    missing_receipt = not (Path(run) / job / 'staging-failed.json').is_file()
-    identity_guard = f'test -s ~/{remote}/staging-process.json\n' if missing_receipt else ''
     verify_owned_guest(run)
     # Recovery is exclusively for pre-supervisor staging. Never clear an
-    # install supervisor's lock or a replacement job's token. The supervisor
-    # admits itself under install-guard only while this job holds install-active
-    # and writes progress.json before releasing it, so the guarded release
-    # below and a delayed supervisor start cannot both succeed.
-    ssh(run, f'set -eu\ntest "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
-             f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n' + identity_guard)
+    # install supervisor's lock or a replacement job's token. Each check is its
+    # own statement: under set -e a failed left side of && does not exit.
+    owned = (f'if [ "$(cat ~/putgd-lab/install-active/job)" != {job} ]; then\n'
+             'echo "install-active is not held by this job" >&2; exit 3\nfi\n'
+             f'if [ -e ~/{remote}/progress.json ] || [ -e ~/{remote}/result.json ]; then\n'
+             'echo "the install supervisor has started" >&2; exit 3\nfi\n')
+    ssh(run, 'set -eu\n' + owned)
+    # A missing host receipt needs no guest identity: the controller fence
+    # proves the controller exited, and reconcile fences a delayed staging
+    # launch before reporting staging-not-started.
     report = reconcile_staging(run, remote, abandoned=abandoned)
     if report['finished'] is not True:
         raise LabError(f'Staging {job} remains held ({report["state"]}); install-active blocks retries. '
@@ -1787,9 +1789,11 @@ def recover_staging_fenced(run, job, abandoned):
     evidence = Path(run) / job
     evidence.mkdir(mode=0o700, exist_ok=True)
     write_json(evidence / 'staging-recovery.json', report)
-    ssh(run, INSTALL_LOCK_PREFIX + f'test "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
-             f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n'
-             + identity_guard + 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    # The supervisor admits itself under install-guard only while this job
+    # holds install-active, writing progress.json before releasing the guard.
+    # Repeating the checks and releasing under that same guard means either
+    # this release or the supervisor's admission fails.
+    ssh(run, INSTALL_LOCK_PREFIX + owned + 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
     return report
 
 

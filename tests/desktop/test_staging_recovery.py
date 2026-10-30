@@ -4,6 +4,7 @@ Real local Linux processes and guest shell guards only; no apt, VM or desktop.
 """
 import contextlib
 import errno
+import fcntl
 import importlib.util
 import io
 import json
@@ -84,6 +85,10 @@ class StagingRecoveryContracts(unittest.TestCase):
                       'read = lambda p, *a, **kw: (_ for _ in ()).throw(PermissionError()) '
                       'if str(p).startswith("/proc/") and str(p).endswith("/stat") else original(p, *a, **kw); '
                       'patch.object(Path, "read_text", read).start(); ',
+            'first-scan-misses': 'from pathlib import Path; from unittest.mock import patch; '
+                      'original = Path.iterdir; calls = []; '
+                      'scan = lambda p: (calls.append(1) or iter(())) if str(p) == "/proc" and not calls else original(p); '
+                      'patch.object(Path, "iterdir", scan).start(); ',
             'hidden-proc': 'from pathlib import Path; from unittest.mock import patch; '
                       'original = Path.read_text; '
                       'read = lambda p, *a, **kw: "proc /proc proc rw,hidepid=2 0 0" '
@@ -500,6 +505,141 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.assertIn('TimeoutError', error)
         self.assertFalse((self.remote / 'progress.json').exists())
 
+    def admit_supervisor(self):
+        admission = self.supervisor(wait=1)
+        _, error = admission.communicate(timeout=10)
+        self.assertEqual(admission.returncode, 0, error)
+        self.assertTrue((self.remote / 'progress.json').exists())
+
+    def test_validator_admitted_supervisor_keeps_lock_with_or_without_receipt(self):
+        # B1 (validator r6): under set -e a failed `test ! -e progress.json &&`
+        # does not exit, so the identity check or rm that followed still ran.
+        (self.home / 'putgd-lab/install-guard').touch()
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
+        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.admit_supervisor()
+        for receipt in (True, False):
+            if not receipt:
+                (self.evidence / 'staging-failed.json').unlink()
+            for abandoned in (False, True):
+                with self.subTest(receipt=receipt, abandoned=abandoned):
+                    with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
+                        self.recover(abandoned=abandoned)
+                    self.assertEqual((self.active / 'job').read_text(), JOB)
+
+    def test_validator_admission_between_precheck_and_release_keeps_lock(self):
+        # B1 (validator r1, deterministic): the supervisor is admitted after the
+        # pre-check passed. The release under install-guard must see it.
+        (self.home / 'putgd-lab/install-guard').touch()
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
+        self.assertEqual(wrapper.wait(timeout=3), 0)
+        for receipt in (True, False):
+            with self.subTest(receipt=receipt):
+                (self.remote / 'progress.json').unlink(missing_ok=True)
+                if not receipt:
+                    (self.evidence / 'staging-failed.json').unlink()
+                def reconcile(*args, **kwargs):
+                    self.admit_supervisor()
+                    return self.reconcile('pidfd', kwargs['abandoned'])
+                with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=self.ssh), \
+                        patch.object(lab, 'reconcile_staging', side_effect=reconcile):
+                    with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
+                        lab.recover_staging(self.home, JOB)
+                self.assertEqual((self.active / 'job').read_text(), JOB)
+
+    def test_controller_dead_before_staging_identity_recovers_as_not_started(self):
+        # N1 (validator r3): the controller died after the guest lock and before
+        # the wrapper wrote staging-process.json. The free controller fence proves
+        # it is gone; reconcile fences a delayed wrapper launch.
+        with tempfile.TemporaryDirectory(prefix='stg761-') as directory:
+            home = Path(directory)
+            controller = subprocess.run([sys.executable, '-c', DYING_CONTROLLER,
+                str(ROOT / 'tools/lab/lab.py'), str(home)], capture_output=True, text=True, timeout=10)
+            self.assertEqual(controller.returncode, 137, controller.stderr)
+            remote = home / 'putgd-lab' / JOB
+            self.assertEqual((home / 'putgd-lab/install-active/job').read_text(), JOB)
+            self.assertFalse((home / JOB / 'staging-failed.json').exists())
+            self.assertFalse((remote / 'staging-process.json').exists())
+            def ssh(_run, script, **kwargs):
+                result = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+                    env={**os.environ, 'HOME': directory}, timeout=40)
+                if result.returncode:
+                    raise lab.LabError('synthetic guest guard refused recovery')
+                return result.stdout
+            with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=ssh):
+                # Abandonment still needs a recorded identity.
+                with self.assertRaisesRegex(lab.LabError, 'Cannot establish staging session leader identity'):
+                    lab.recover_staging(home, JOB, abandoned=True)
+                self.assertEqual((home / 'putgd-lab/install-active/job').read_text(), JOB)
+                report = lab.recover_staging(home, JOB)
+            self.assertEqual(report, {'finished': True, 'state': 'staging-not-started'})
+            self.assertFalse((home / 'putgd-lab/install-active').exists())
+            self.assertEqual(lab.read_json(home / JOB / 'staging-recovery.json'), report)
+            late = subprocess.run([sys.executable, str(STAGING), 'run', str(remote), 'touch ran'], timeout=5)
+            self.assertEqual(late.returncode, 125)
+            self.assertFalse((remote / 'ran').exists())
+
+    def test_subreaper_failure_before_admission_leaves_job_recoverable(self):
+        # N2: a failure between admission and the guarded supervisor body would
+        # leave progress.json without result.json, a permanent hold.
+        (self.home / 'putgd-lab/install-guard').touch()
+        self.remote.chmod(0o700)
+        helper = str(ROOT / 'tools/lab/package_install.py')
+        failing = ('import ctypes, runpy, sys; from unittest.mock import patch; '
+                   'patch.object(ctypes, "CDLL", lambda *a, **kw: type("L", (), '
+                   '{"prctl": staticmethod(lambda *a: -1)})()).start(); '
+                   f'runpy.run_path({helper!r}, run_name="__main__")')
+        result = subprocess.run([sys.executable, '-c', failing, str(self.remote), '5', '5'],
+            text=True, capture_output=True, timeout=30)
+        self.assertIn('Install supervisor refused to start', result.stderr)
+        self.assert_supervisor_never_started(result)
+        wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
+        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(self.recover(abandoned=False)['state'], 'staging-finished')
+        self.assertFalse(self.active.exists())
+
+    def test_subreaper_failure_after_admission_writes_terminal_result(self):
+        self.remote.chmod(0o700)
+        tools = self.home / 'fake-bin'
+        tools.mkdir()
+        for name in ('apt-get', 'dpkg'):
+            (tools / name).write_text(f'#!/bin/sh\necho {name} "$@" >> {self.home}/apt-started\nexit 1\n')
+            (tools / name).chmod(0o700)
+        helper = str(ROOT / 'tools/lab/package_install.py')
+        script = ('import importlib.util, sys; from pathlib import Path; from unittest.mock import patch; '
+                  'spec = importlib.util.spec_from_file_location("helper", sys.argv[1]); '
+                  'helper = importlib.util.module_from_spec(spec); spec.loader.exec_module(helper); '
+                  'patch.object(helper, "become_subreaper", side_effect=OSError("no subreaper")).start(); '
+                  'helper.supervise([["apt-get", "update"]], Path(sys.argv[2]), 5, 5)')
+        subprocess.run([sys.executable, '-c', script, helper, str(self.remote)], text=True, capture_output=True,
+            env={**os.environ, 'PATH': f'{tools}:{os.environ["PATH"]}'}, timeout=30)
+        report = lab.read_json(self.remote / 'result.json')
+        self.assertTrue(report['aborted'])
+        self.assertEqual(report['error'], 'OSError')
+        self.assertFalse(report['ok'])
+        self.assertNotIn('apt-get', (self.home / 'apt-started').read_text())  # Only the dpkg queries ran.
+
+    def test_session_must_be_empty_on_two_scans(self):
+        # N3: a member that forks and exits during one /proc pass can be missed.
+        member = None
+        leader = subprocess.Popen(['setsid', 'sh', '-c',
+            'while [ ! -e finish ]; do sleep .02; done & echo $!; exit 0'],
+            cwd=self.remote, stdout=subprocess.PIPE, text=True)
+        try:
+            member = int(leader.stdout.readline())
+            leader.wait(timeout=3)
+            lab.write_json(self.remote / 'staging-process.json',
+                           {'pid': leader.pid, 'sessionId': leader.pid, 'startTicks': 1})
+            report = self.reconcile('first-scan-misses', abandoned=True)
+            self.assertIs(report['sessionAlive'], True)
+            self.assertIn(member, report['sessionPids'])
+            self.assertFalse(report['finished'])
+        finally:
+            (self.remote / 'finish').touch()
+            leader.stdout.close()
+            if member:
+                wait_for(lambda: dead(member))
+
     def test_reconcile_waits_for_leader_that_released_flock_but_is_still_exiting(self):
         # run() drops staging.lock at return, before interpreter shutdown ends.
         leader = subprocess.Popen([sys.executable, '-c',
@@ -516,8 +656,20 @@ class StagingRecoveryContracts(unittest.TestCase):
             self.assertEqual(leader.stdout.readline().strip(), 'released')
             reconcile = subprocess.Popen([sys.executable, str(STAGING), 'reconcile', str(self.remote), '5'],
                                          stdout=subprocess.PIPE, text=True)
-            time.sleep(.5)
-            self.assertIsNone(reconcile.poll())  # Still waiting for the live leader.
+            def reconcile_holds_flock():
+                with open(self.remote / 'staging.lock', 'a') as probe:
+                    try:
+                        fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        return True
+                    return False
+            # Handshake: reconcile holds the flock, so it inspects the leader,
+            # which cannot exit before the gate below. It must keep waiting.
+            wait_for(reconcile_holds_flock)
+            time.sleep(.3)
+            self.assertIsNone(reconcile.poll())
+            self.assertTrue(reconcile_holds_flock())
+            self.assertIsNone(leader.poll())
             (self.remote / 'exit').touch()
             leader.wait(timeout=3)
             report = json.loads(reconcile.communicate(timeout=10)[0])
@@ -674,6 +826,27 @@ def rec(*a, **kw):
 with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), patch.object(lab, 'get', side_effect=get), \
         patch.object(lab, 'stage_install_helper', side_effect=stage), patch.object(lab, 'write_json', side_effect=write_json), \
         patch.object(lab, 'reconcile_staging', side_effect=rec):
+    lab.install_package(home, 'synthetic.deb')
+'''
+
+
+# A real controller that dies abruptly (no cleanup, like SIGKILL) while it
+# uploads the helper: after the guest lock, before any staging identity.
+DYING_CONTROLLER = r'''
+import importlib.util, os, subprocess, sys, types
+from pathlib import Path
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location('putgd_lab', sys.argv[1])
+lab = importlib.util.module_from_spec(spec); spec.loader.exec_module(lab)
+home = Path(sys.argv[2])
+lab.write_json(home / 'state.json', {'profile': 'cinnamon-x11'})
+lab.uuid.uuid4 = lambda: types.SimpleNamespace(hex='e' * 32)
+def ssh(_run, script, timeout=5, **kw):
+    return subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+        env={**os.environ, 'HOME': str(home)}, timeout=timeout, check=True).stdout
+def put(run, local, remote):
+    os._exit(137)
+with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put', side_effect=put):
     lab.install_package(home, 'synthetic.deb')
 '''
 

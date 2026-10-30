@@ -177,15 +177,21 @@ class OwnedProcesses:
             os.close(handle)
 
 
-def supervise(commands, directory, timeout, recovery, package='putgd'):
+def become_subreaper():
     # Reparent double-forked descendants here instead of losing ownership to init.
     if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0):  # PR_SET_CHILD_SUBREAPER
         raise OSError(ctypes.get_errno(), 'Cannot become package subreaper')
+
+
+def supervise(commands, directory, timeout, recovery, package='putgd'):
     started = time.monotonic()
     owned = OwnedProcesses()
     report = {'schemaVersion': 1, 'timeoutSeconds': timeout, 'recoverySeconds': recovery,
               'timedOut': False, 'aborted': False, 'ownedProcesses': [], 'exitCodes': []}
     try:
+        # Inside the guarded path: after admission every failure leaves a
+        # terminal result.json, never a progress.json without one.
+        become_subreaper()
         save(directory / 'progress.json', report)
         with output_file(directory / 'apt.log') as log:
             for arguments in commands:
@@ -276,6 +282,8 @@ def main():
     owner = int(os.environ.get('SUDO_UID', os.getuid()))
     enter_directory(args.directory, owner)
     try:
+        # Fail before admission where possible, leaving the job recoverable.
+        become_subreaper()
         admit(args.directory.name, owner)
     except (OSError, ValueError) as error:
         # No progress.json or result.json: the job (if it still holds the lock)
