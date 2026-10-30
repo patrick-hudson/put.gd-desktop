@@ -702,7 +702,7 @@ def about_open(ctx):
     result(ctx, ctx.view('ui.show', {'view': 'about'}))
     ctx.wait(lambda: visible(ctx, '^About put.gd$'), 'About window is visible')
     ctx.use_catalog('about', 'about')
-    ctx.focus('about')
+    ctx.focus('about', raise_window=True)
     ctx.frame('about-before', window='about', reference='about')
 
 
@@ -730,7 +730,7 @@ def about_details(ctx):
                  'build disclosure collapses')
     finally:
         if visible(ctx, '^About put.gd$'):
-            ctx.focus('about')
+            ctx.focus('about', raise_window=True)
             ctx.keys('Esc')
 
 
@@ -738,7 +738,7 @@ def about_close_recipe(identifier, key):
     @recipe(identifier)
     def close(ctx):
         about_open(ctx)
-        ctx.note('About close foreground: ' + json.dumps(ctx.focus('about'), sort_keys=True))
+        ctx.note('About close foreground: ' + json.dumps(ctx.focus('about', raise_window=True), sort_keys=True))
         ctx.note('About close control: ' + json.dumps(ctx.accessible(
             {'owned': True, 'window': 'About put.gd', 'name': 'Close',
              'role': 'push button', 'showing': True}), sort_keys=True))
@@ -773,7 +773,7 @@ def about_modeless(ctx):
         ctx.expect(bool(visible(ctx, '^About put.gd$')), 'About remains open during main-window input')
         ctx.frame('modeless-after')
     finally:
-        ctx.focus('about')
+        ctx.focus('about', raise_window=True)
         ctx.keys('Esc')
 
 
@@ -791,7 +791,7 @@ def about_version(ctx):
         ctx.wait(lambda: clipboard_text(ctx) == expected, 'version text can be selected and copied')
         ctx.frame('about-version-selected', window='about', reference='about')
     finally:
-        ctx.focus('about')
+        ctx.focus('about', raise_window=True)
         ctx.keys('Esc')
 
 
