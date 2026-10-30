@@ -9,6 +9,27 @@ from .base import Fixture
 from .uploads import track
 
 
+def desktop_contract(scope):
+    """Read native logical heads and reject a recording helper from another build."""
+    build=scope.ctx.call('ui.snapshot')['build']
+    value=scope.json('''import json,shutil,subprocess
+from pathlib import Path
+app=shutil.which(APP)
+assert app
+helper=Path(app).resolve().with_name('putgd-record')
+manifest=json.loads(subprocess.check_output([str(helper),'--version-json'],text=True))
+for key in ('version','gitCommit','gitTree','dirty'):
+ assert key in BUILD and manifest[key]==BUILD[key]
+outputs=json.loads(subprocess.check_output(['python3',COVER,'outputs'],text=True))
+assert outputs['logical']
+for group in outputs['logical']:
+ assert len(group['rect'])==4 and all(isinstance(n,int) for n in group['rect'])
+ assert group['rect'][2]>=640 and group['rect'][3]>=320 and group['names']
+print(json.dumps({'record_helper':str(helper),'logical':outputs['logical']}))
+'''.replace('APP',repr(scope.ctx.target.app_executable)).replace('BUILD',repr(build)).replace('COVER',repr(scope.root+'/cover.py')))
+    return value
+
+
 def pattern(scope):
     scope.ctx.fixture('app-profile')
     # Reuse the established output-pinned cover; add private FIFO controls for
@@ -20,6 +41,7 @@ def pattern(scope):
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
     scope.write(scope.root+'/cover.py',source.encode())
+    desktop=desktop_contract(scope)
     fifo=scope.root+'/pattern.fifo'
     scope.python('import os\nos.mkfifo('+repr(fifo)+',0o600)')
     # A child holds the FIFO open; no leaked shell, implicit desktop input or
@@ -27,8 +49,8 @@ def pattern(scope):
     code='''import os,sys
 fd=os.open(FIFO,os.O_RDWR)
 os.dup2(fd,0)
-os.execvp('python3',['python3',COVER,'play','--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture'])
-'''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover.py'))
+os.execvp('python3',['python3',COVER,'play','--output',OUTPUT,'--pattern','--media-now','--video-size','640x320','--title','putgd synthetic fixture'])
+'''.replace('FIFO',repr(fifo)).replace('COVER',repr(scope.root+'/cover.py')).replace('OUTPUT',repr(desktop['logical'][0]['names'][0]))
     scope.launch(['python3','-c',code],name='pattern',environment={'GTK_USE_PORTAL':'0'})
     def ready():
         result=scope.ctx.shell('cat '+shlex.quote(scope.root+'/pattern.log'))
@@ -43,7 +65,10 @@ os.execvp('python3',['python3',COVER,'play','--pattern','--media-now','--video-s
     rect=[x+(w-640)//2,y+(h-320)//2,640,320]
     def command(value):
         scope.python('import os\nfd=os.open('+repr(fifo)+',os.O_WRONLY|os.O_NONBLOCK)\nos.write(fd,'+repr((value+'\n').encode())+');os.close(fd)')
-    return Fixture(synthetic=True,rect=rect,screens=[info['rect']],output_dir=scope.root+'/out',
+    if info['rect']!=desktop['logical'][0]['rect']:
+        raise RecipeBlocked('synthetic cover moved away from the observed first logical head',issue=664)
+    return Fixture(synthetic=True,rect=rect,screens=[group['rect'] for group in desktop['logical']],output_dir=scope.root+'/out',
+                   record_helper=desktop['record_helper'],
                    command=command,prepare={'target':{'kind':'region','rect':rect},'format':'mp4','audio':{'system':False}},
                    prepare_command="python3 -c "+shlex.quote('import os;f=os.open('+repr(fifo)+',os.O_WRONLY|os.O_NONBLOCK);os.write(f,b"raise\n");os.close(f)'))
 

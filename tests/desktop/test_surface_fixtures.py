@@ -141,6 +141,26 @@ class Fixtures(unittest.TestCase):
         cancelled=[p['id'] for m,p in self.ctx.calls if m=='recording.cancel']
         self.assertTrue(set(commands).issubset(cancelled))
 
+    def test_selector_contract_observes_heads_and_matches_helper_build(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        build={'version':'26.1029.1-dev','gitCommit':'a'*40,'gitTree':'b'*40,'dirty':False}
+        logical=[{'rect':[0,0,1280,800],'names':['Virtual-1']},
+                 {'rect':[1280,0,1024,768],'names':['Virtual-2']}]
+        scope.write(scope.root+'/cover.py',('import json\nprint(json.dumps('+repr({'logical':logical})+'))').encode())
+        app=self.root/'putgd';app.write_text('');app.chmod(0o700)
+        helper=self.root/'putgd-record'
+        def helper_manifest(value):
+            helper.write_text('#!/usr/bin/env python3\nimport json\nprint(json.dumps('+repr(value)+'))')
+            helper.chmod(0o700)
+        helper_manifest(build);self.ctx.target.app_executable=str(app)
+        original=self.ctx.call
+        self.ctx.call=lambda method,params=None:{'build':build} if method=='ui.snapshot' else original(method,params)
+        value=recordings.desktop_contract(scope)
+        self.assertEqual(value['logical'],logical)
+        self.assertEqual(value['record_helper'],str(helper))
+        helper_manifest(dict(build,gitCommit='c'*40))
+        with self.assertRaises(RecipeBlocked):recordings.desktop_contract(scope)
+
     def test_keyring_generation_never_changes_default_or_reads_existing_items(self):
         scope=self.ctx.manager.scope;scope.initialize();scripts=[]
         with patch.object(scope,'json',lambda code:scripts.append(code) or {'collection':'/owned','reference':'owned'}),patch.object(scope,'python',lambda code:scripts.append(code) or ''):
