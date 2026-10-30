@@ -642,12 +642,15 @@ def _prepare(options):
 
 
 def _remove_created(created):
-    # Deepest first; a directory something else has written into stays.
+    # Deepest first. Anything inside a directory setup created appeared during
+    # the transaction: Firefox adds an empty ~/.mozilla/extensions, for one.
+    # Empty directories go; a directory holding any file stays, with the file.
     for directory in reversed(created):
-        try:
-            os.rmdir(directory)
-        except OSError:
-            pass
+        for parent, _, _ in os.walk(directory, topdown=False):
+            try:
+                os.rmdir(parent)
+            except OSError:
+                pass
 
 
 def _restore(state, scan=True):

@@ -960,6 +960,7 @@ class CreatedDirectories(unittest.TestCase):
                                            ('.local/share/applications', '.mozilla', '.mozilla/firefox',
                                             'isolated/data', 'isolated/data/applications')])
                 (home / 'isolated/data/applications/user-file.desktop').write_bytes(b'not ours')
+                (home / '.mozilla/extensions').mkdir()  # What a real Firefox start adds.
                 browser._restore(state)
             self.assertTrue((home / '.local/share').exists())
             self.assertFalse((home / '.local/share/applications').exists())
