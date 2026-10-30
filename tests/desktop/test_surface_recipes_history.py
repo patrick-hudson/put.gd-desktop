@@ -632,6 +632,17 @@ class HistoryRecipeTests(unittest.TestCase):
                 history._action_matrix(ctx, lambda action: None)
         self.assertEqual(attempted, ['clipboard', 'region', 'window', 'desktop'])
 
+    def test_chrome_clearance_moves_the_live_window_without_changing_its_size(self):
+        ctx = FakeContext()
+        ctx.profile = {'history_window_anchor': {'x': 24, 'y': 72}}
+        original = copy.deepcopy(ctx.window)
+        history._window_buttons_ready(ctx)
+        self.assertEqual((ctx.window['x'], ctx.window['y']), (24, 72))
+        self.assertEqual((ctx.window['width'], ctx.window['height']), (original['width'], original['height']))
+        self.assertEqual(len([e for e in ctx.events if e[0] == 'drag']), 1)
+        history._window_buttons_ready(ctx)
+        self.assertEqual(len([e for e in ctx.events if e[0] == 'drag']), 1)
+
     def test_window_buttons_require_observed_effect_and_restore_on_failure(self):
         for action, fault in ((history.minimize, 'minimize-no-effect'),
                               (history.close_window, 'close-no-effect')):

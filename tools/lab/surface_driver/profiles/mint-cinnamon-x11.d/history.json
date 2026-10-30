@@ -81,5 +81,9 @@
     "historyAddFilter": [
       "Add a history filter"
     ]
+  },
+  "history_window_anchor": {
+    "x": 24,
+    "y": 72
   }
 }

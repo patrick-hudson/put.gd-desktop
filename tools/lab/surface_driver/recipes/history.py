@@ -663,15 +663,28 @@ def edge_resize(ctx):
 
 
 def _window_buttons_ready(ctx):
-    gap = ctx.profile.get('history_window_buttons_blocked')
-    if gap:
-        ctx.blocked(gap['reason'], issue=gap['issue'])
+    anchor = ctx.profile.get('history_window_anchor')
+    if not anchor:
+        return
+    box = ctx.geometry('history')
+    if all(box[k] == anchor[k] for k in ('x', 'y')):
+        return
+    # Keep chrome outside the desktop's right-aligned notification column.
+    # Move by a live blank header point; every gesture retains the normal guard.
+    start = _header_point(ctx, box)
+    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    end = tuple(round(start[i] + (anchor[k] - box[k]) * scale) for i, k in enumerate(('x', 'y')))
+    ctx.drag(start, end)
+    moved = ctx.wait(lambda: (g if all((g := ctx.geometry('history'))[k] == anchor[k] for k in ('x', 'y')) else None),
+                     'main window moved clear of notification column')
+    ctx.expect(all(moved[k] == box[k] for k in ('width', 'height')), 'placement preserves the exact window size')
+
 
 
 @recipe('shell.window-maximize', needs=('history-row',))
 def maximize(ctx):
-    _window_buttons_ready(ctx)
     _row(ctx)
+    _window_buttons_ready(ctx)
     original = ctx.geometry('history')
     _frame(ctx, 'before')
     ctx.click('windowMaximize', window='history')
@@ -699,8 +712,8 @@ def _minimized(window):
 @recipe('shell.window-minimize', needs=('history-row',))
 def minimize(ctx):
     """Minimize with the chrome button and observe the compositor state."""
-    _window_buttons_ready(ctx)
     row = _row(ctx)
+    _window_buttons_ready(ctx)
     _frame(ctx, 'before')
     ctx.click('windowMinimize', window='history')
     try:
@@ -719,8 +732,8 @@ def minimize(ctx):
 @recipe('shell.window-close', needs=('history-row',))
 def close_window(ctx):
     """Close the shell and prove the resident still serves its original row."""
-    _window_buttons_ready(ctx)
     row = _row(ctx)
+    _window_buttons_ready(ctx)
     _frame(ctx, 'before')
     ctx.click('windowClose', window='history')
     try:
@@ -770,6 +783,7 @@ def launcher_history(ctx):
     _frame(ctx, 'before')
     epoch = _result(ctx.call('ui.snapshot'))['residentEpoch']
     for flag in ('--history', '--activity'):
+        _window_buttons_ready(ctx)
         ctx.click('windowClose', window='history')
         ctx.wait(lambda: not _main_windows(ctx), 'shell is hidden before second launcher')
         ctx.frame('closed-' + flag)
