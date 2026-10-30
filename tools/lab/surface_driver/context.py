@@ -884,13 +884,14 @@ asyncio.run(main())
                       or row.get('protected') or self._leaks(row.get('name'), row.get('text'), row.get('description')))
             if not secret:
                 continue
-            if not row.get('rect') or min(row['rect'][2:]) <= 0:
-                if editable and not self._leaks(row.get('name'), row.get('text'), row.get('description')) and row.get('rect') is not None:
+            box = row.get('rect') or row.get('unclipped_rect')
+            if not box or min(box[2:]) <= 0:
+                if editable and not self._leaks(row.get('name'), row.get('text'), row.get('description')) and box is not None:
                     continue  # a collapsed, empty field draws nothing
                 raise RecipeBlocked('showing secret control has no placement')
             found.add(row.get('objectName'))
             fields += editable
-            x, y, w, h = row['rect']
+            x, y, w, h = box
             regions.append(self._to_head([x-2, y-2, w+4, h+4], head, geometry))
         if role is not None:
             required, page = self._required_controls(role, rows)

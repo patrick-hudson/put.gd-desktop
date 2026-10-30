@@ -416,6 +416,18 @@ class F6VisiblePageOnly(Base):
         self.assertTrue(ctx.evidence.frames[frame.path]['fallback'])
         self.assertIsNone(self.pixels(ctx, frame).getbbox())
 
+    def test_secret_field_scrolled_past_the_window_edge_is_masked_where_drawn(self):
+        # Wayland: a field straddling the viewport edge has no in-frame rect,
+        # but the probe keeps its placed rectangle; the crop clips the mask.
+        ctx = self.context()
+        ctx.sensitive(SHARE)
+        self.window(ctx, page=None)
+        row = dict(control('', [0, 0, 1, 1]), rect=None, unclipped_rect=[30, 60, 40, 20], coordinate_error='outside')
+        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [row])
+        frame = ctx.frame('destinations', window='history')
+        self.assertFalse(ctx.evidence.frames[frame.path]['fallback'])
+        self.assertEqual(self.pixels(ctx, frame).getpixel((15, 55)), (0, 0, 0))
+
     def test_unreadable_window_tree_and_unplaced_secret_fail_closed(self):
         ctx = self.context()
         ctx.sensitive(SHARE)

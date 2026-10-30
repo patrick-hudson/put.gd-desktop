@@ -492,6 +492,9 @@ def accessible(query):
             return 'window-relative', str(error)
         placed = shift(row['rect'], where)
         if not placement.inside(placed, where['frame']):
+            # Scrolled past the window edge: not an input target, but evidence
+            # masking still needs where it would be drawn (clipped by the crop).
+            row['unclipped_rect'] = placed
             return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
         row['rect'] = placed
         row['window_id'] = where['window_id']
