@@ -113,6 +113,11 @@ class DriverContext(Context):
 
     def _probe(self, name, query):
         self._check_time()
+        compositor = self.profile.get('compositor')
+        if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows'):
+            # Wayland AT-SPI extents are window-relative: the compositor witness
+            # places them on the desktop and answers focus/hit-tests.
+            query = dict(query, compositor=compositor)
         source = Path(__file__).with_name('probe.py').read_text()
         # stdin contains code only. Query is a separate, shell-quoted JSON argument.
         script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'

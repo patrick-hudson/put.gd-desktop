@@ -311,5 +311,72 @@ class LockedProbe(unittest.TestCase):
         self.assertEqual(calls,[True,False])
 
 
+WITNESS={'kind':'gnome-lab-witness','shell_application':'gnome-shell*'}
+FRAMES={'windows':[{'id':11,'title':'Edit image — put.gd','pid':50,'wm_class':'putgd','type':0,'frame':[224,70,900,657],
+                    'focus':True,'minimized':False,'stack':3,'transient_for':None},
+                   {'id':12,'title':'','pid':50,'wm_class':'putgd','type':9,'frame':[700,400,229,190],'focus':False,
+                    'minimized':False,'stack':4,'transient_for':11}],'monitors':[{'rect':[0,0,1280,800],'scale':1}]}
+
+
+class WaylandCoordinates(unittest.TestCase):
+    def walk(self,rows):
+        from types import SimpleNamespace
+        canvas=FakeNode('Image being edited','filler',[0,108,659,456])
+        top=FakeNode('Edit image — put.gd','filler',[0,0,900,620],children=[canvas])
+        app=FakeNode('putgd-ui','application',None,children=[top])
+        shell_label=FakeNode('Upload complete','label',[830,30,200,20],pid=40)
+        shell=FakeNode('gnome-shell','application',None,children=[FakeNode('','window',[0,0,1280,800],pid=40,children=[shell_label])])
+        desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app,shell])
+        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop),DESKTOP_COORDS=0,
+                             STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
+        with patch.dict(sys.modules,pyatspi=fake),patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}),\
+             patch.object(probe,'compositor_windows',return_value=FRAMES),patch.object(probe,'popup_roots',return_value=[]):
+            return probe.accessible(rows)
+
+    def test_client_rows_move_to_the_compositor_content_origin(self):
+        # frame 900x657 vs content 900x620: 0 px sides, 37 px title bar.
+        row=self.walk({'name':'Image being edited','compositor':WITNESS})[0]
+        self.assertEqual(row['rect'],[224,70+37+108,659,456])
+        self.assertEqual((row['coordinate_space'],row['window_id']),('desktop',11))
+        self.assertEqual(row['ancestors'][-1]['rect'],[224,107,900,620])
+
+    def test_shell_rows_are_already_desktop_coordinates(self):
+        row=self.walk({'name':'Upload complete','compositor':WITNESS})[0]
+        self.assertEqual(row['rect'],[830,30,200,20])
+
+    def test_without_a_witness_wayland_rects_are_refused_not_guessed(self):
+        row=self.walk({'name':'Image being edited'})[0]
+        self.assertIsNone(row['rect']);self.assertEqual(row['coordinate_space'],'window-relative')
+        self.assertIn('no compositor',row['coordinate_error'])
+
+    def test_implausible_decorations_fail_loudly(self):
+        placement=probe.WaylandPlacement(WITNESS)
+        placement._windows=[dict(FRAMES['windows'][0],frame=[0,0,903,640])]
+        with self.assertRaisesRegex(RuntimeError,'implausible decoration split'):
+            placement.toplevel(50,'Edit image — put.gd',[0,0,900,620])
+        placement._windows=[]
+        with self.assertRaisesRegex(RuntimeError,'missing or ambiguous'):
+            placement.toplevel(50,'Edit image — put.gd',[0,0,900,620])
+
+    def test_popups_take_their_own_compositor_frame(self):
+        placement=probe.WaylandPlacement(WITNESS);placement._windows=FRAMES['windows']
+        where=placement.popup(50,[476,330,229,190])
+        self.assertEqual(probe.shift([482,336,217,32],where),[706,406,217,32])
+
+    def test_witness_foreground_names_the_panel_or_other_window(self):
+        target={'window_id':11,'pid':50}
+        with patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}):
+            with patch.object(probe,'compositor_pick',return_value={'window':FRAMES['windows'][0],'chain':[]}):
+                self.assertTrue(probe.foreground({'geometry':target,'point':[300,300],'compositor':WITNESS})['ok'])
+            with patch.object(probe,'compositor_pick',return_value={'window':None,'chain':[{'name':'panel'},{'name':'panelBox'}]}):
+                result=probe.foreground({'geometry':target,'point':[300,5],'compositor':WITNESS})
+            self.assertFalse(result['ok']);self.assertEqual(result['obscuring_window'],'shell panel')
+            other=dict(FRAMES['windows'][0],id=99,title='Core 2a obstruction',pid=77)
+            with patch.object(probe,'compositor_pick',return_value={'window':other,'chain':[]}):
+                self.assertEqual(probe.foreground({'geometry':target,'point':[300,300],'compositor':WITNESS})['obscuring_window'],'Core 2a obstruction')
+            with patch.object(probe,'compositor_windows',return_value={'windows':[dict(other,focus=True),dict(FRAMES['windows'][0],focus=False)]}):
+                self.assertFalse(probe.foreground({'geometry':target,'compositor':WITNESS})['ok'])
+
+
 if __name__=='__main__':
     unittest.main()

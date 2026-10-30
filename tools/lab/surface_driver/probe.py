@@ -19,7 +19,7 @@ import time
 WINDOW_ROLES = ('frame', 'dialog', 'window', 'file chooser', 'alert')
 POPUP_ROLES = ('menu', 'popup menu', 'tool tip')
 QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'window',
-              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within'}
+              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor'}
 
 
 def owned(pid):
@@ -44,6 +44,8 @@ def matches(row, query):
     for key, value in query.items():
         if key not in QUERY_KEYS:
             raise ValueError('unknown accessibility query key: ' + key)
+        if key == 'compositor':
+            continue  # placement input, not a row filter
         if key in ('name', 'text', 'description', 'application', 'window'):
             if not fnmatch.fnmatchcase(row.get(key, ''), value):
                 return False
@@ -246,6 +248,109 @@ def popup_roots(query):
 
 UNREAD = object()
 
+# Mutter window types for popup surfaces (MetaWindowType: DROPDOWN_MENU,
+# POPUP_MENU, TOOLTIP, COMBO); KWin reports popup/menu flags instead.
+POPUP_WINDOW_TYPES = {8, 9, 10, 13}
+
+
+def compositor_windows(compositor):
+    """The compositor's own window list: frame/buffer rects, pid, focus, stacking."""
+    kind = (compositor or {}).get('kind')
+    if kind == 'gnome-lab-witness':
+        import dbus
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return json.loads(str(witness.Windows(dbus_interface='org.putgd.LabWitness', timeout=3)))
+    if kind == 'kwin-script':
+        return kwin_windows()
+    raise RuntimeError('no compositor window witness configured for this Wayland profile')
+
+
+def compositor_pick(compositor, point):
+    """The compositor's hit-test at a desktop point: {window, chain}."""
+    kind = (compositor or {}).get('kind')
+    if kind == 'gnome-lab-witness':
+        import dbus
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return json.loads(str(witness.Pick(int(point[0]), int(point[1]), dbus_interface='org.putgd.LabWitness', timeout=3)))
+    if kind == 'kwin-script':
+        return kwin_pick(point)
+    raise RuntimeError('no compositor hit-test witness configured for this Wayland profile')
+
+
+def kwin_windows():
+    raise RuntimeError('KWin window witness is not implemented in this probe')
+
+
+def kwin_pick(point):
+    raise RuntimeError('KWin hit-test witness is not implemented in this probe')
+
+
+class WaylandPlacement:
+    """Wayland clients report AT-SPI extents relative to their own window.
+
+    Qt places a top-level at (0,0) and its children relative to the content
+    origin; it cannot know where the compositor put it. Map each client
+    window to the compositor's frame (same pid, title, plausible size), split
+    client-side decorations symmetrically (left=right=bottom, title bar on
+    top), and refuse anything implausible instead of guessing.
+    """
+    MAX_SIDE, MAX_TOP = 24, 120
+
+    def __init__(self, compositor):
+        self.compositor = compositor
+        self.shell = compositor.get('shell_application', '')
+        self._windows, self._cache = None, {}
+
+    def windows(self):
+        if self._windows is None:
+            self._windows = [w for w in compositor_windows(self.compositor)['windows'] if not w.get('minimized')]
+        return self._windows
+
+    def absolute(self, application):
+        return bool(self.shell) and fnmatch.fnmatchcase(application or '', self.shell)
+
+    def toplevel(self, pid, title, rect):
+        key = ('top', pid, title, tuple(rect))
+        if key not in self._cache:
+            self._cache[key] = self._toplevel(pid, title, rect)
+        return self._cache[key]
+
+    def _toplevel(self, pid, title, rect):
+        x, y, width, height = rect
+        found = [w for w in self.windows() if w['pid'] == pid and w['title'] == title and
+                 w.get('type') not in POPUP_WINDOW_TYPES and
+                 0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
+        if len(found) != 1:
+            raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)'
+                               % (title, pid, width, height, len(found)))
+        frame = found[0]['frame']
+        horizontal, vertical = frame[2] - width, frame[3] - height
+        side = horizontal // 2
+        top = vertical - side
+        if horizontal % 2 or side > self.MAX_SIDE or not 0 <= top <= self.MAX_TOP:
+            raise RuntimeError('implausible decoration split for %r: frame %s vs content %dx%d' % (title, frame, width, height))
+        return {'dx': frame[0] + side - x, 'dy': frame[1] + top - y, 'window_id': found[0]['id'], 'frame': frame}
+
+    def popup(self, pid, rect):
+        key = ('popup', pid, tuple(rect))
+        if key not in self._cache:
+            found = [w for w in self.windows() if w['pid'] == pid and w.get('type') in POPUP_WINDOW_TYPES and
+                     abs(w['frame'][2] - rect[2]) <= 2 and abs(w['frame'][3] - rect[3]) <= 2]
+            if len(found) != 1:
+                raise RuntimeError('compositor popup window for pid %s (%dx%d) is missing or ambiguous (%d matches)'
+                                   % (pid, rect[2], rect[3], len(found)))
+            frame = found[0]['frame']
+            self._cache[key] = {'dx': frame[0] - rect[0], 'dy': frame[1] - rect[1], 'window_id': found[0]['id'], 'frame': frame}
+        return self._cache[key]
+
+    def inside(self, rect, frame):
+        return (frame[0] - 1 <= rect[0] and frame[1] - 1 <= rect[1] and
+                rect[0] + rect[2] <= frame[0] + frame[2] + 1 and rect[1] + rect[3] <= frame[1] + frame[3] + 1)
+
+
+def shift(rect, placement):
+    return [rect[0] + placement['dx'], rect[1] + placement['dy'], rect[2], rect[3]] if rect else rect
+
 
 def extents(node):
     import pyatspi
@@ -266,6 +371,36 @@ def accessible(query):
     unknown = set(query) - QUERY_KEYS
     if unknown:
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
+    wayland = os.environ.get('XDG_SESSION_TYPE') == 'wayland'
+    placement = WaylandPlacement(query['compositor']) if wayland and query.get('compositor') else None
+    tops = {}
+    def place(row):
+        """Desktop coordinates for a Wayland client row, or None with a reason."""
+        if not wayland or not row['rect']:
+            return 'desktop', None
+        if placement is None:
+            return 'window-relative', 'no compositor window witness for this Wayland profile'
+        if placement.absolute(row['application']):
+            return 'desktop', None
+        try:
+            if row['popup']:
+                where = placement.popup(row['pid'], row['popup']['rect'])
+            else:
+                top = tops.get((row['pid'], row['window']))
+                if top is None:
+                    return 'window-relative', 'top-level window %r was not observed' % row['window']
+                where = placement.toplevel(row['pid'], row['window'], top)
+        except RuntimeError as error:
+            return 'window-relative', str(error)
+        placed = shift(row['rect'], where)
+        if not placement.inside(placed, where['frame']):
+            return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
+        row['rect'] = placed
+        row['window_id'] = where['window_id']
+        for ancestor in row['ancestors']:
+            if ancestor.get('rect') not in (None, UNREAD) and ancestor.get('role') != 'application':
+                ancestor['rect'] = shift(ancestor['rect'], where)
+        return 'desktop', None
     matches_ = []
     stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
     # LIFO: popup roots go first so the ordinary tree is walked before them;
@@ -297,6 +432,8 @@ def accessible(query):
                     continue
             if role in WINDOW_ROLES or (ancestors and ancestors[-1]['role']=='application' and role not in POPUP_ROLES):
                 window, popup = name, None
+                if placement is not None and not placement.absolute(application):
+                    tops[(pid, name)] = extents(node)
             state_set = node.getState()
             states = {}
             for key in ('visible', 'showing', 'enabled', 'sensitive', 'active', 'focused', 'focusable',
@@ -338,8 +475,21 @@ def accessible(query):
                        'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
                        'protected': protected, 'popup': popup, 'ancestors': ancestors}
                 row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
-                if matches(row, query):
+                row['coordinate_space'], reason = 'desktop', None
+                if wayland:
+                    # Translate before matching: 'within' is in desktop coordinates.
                     for ancestor in ancestors:
+                        if ancestor['rect'] is UNREAD:
+                            ancestor['rect'] = extents(ancestor['_node'])
+                    row['ancestors'] = [dict(a) for a in ancestors]  # shifted copies; children keep originals
+                    row['coordinate_space'], reason = place(row)
+                    if reason:
+                        row['coordinate_error'] = reason
+                        row['rect'] = row['bounds'] = None
+                    elif row['rect']:
+                        row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), row['rect']))
+                if matches(row, query):
+                    for ancestor in row['ancestors']:
                         if ancestor['rect'] is UNREAD:
                             ancestor['rect'] = extents(ancestor['_node'])
                     matches_.append(row)
@@ -401,8 +551,11 @@ def control_geometry(query):
     # No name prefilter: catalog text often differs from the live accessible
     # name, and objectName matches must not be filtered out by labels.
     filters = {'owned':True,'visible':True,'showing':True,
-               **({'pid':query['pid']} if query.get('pid') else {})}
+               **({'pid':query['pid']} if query.get('pid') else {}),
+               **({'compositor':query['compositor']} if query.get('compositor') else {})}
     rows = accessible(filters)
+    unplaced = [row for row in rows if row.get('coordinate_error') and
+                (selector_matches(row, query.get('selector',''), query.get('candidates', [])) is not None)]
     selected = []
     for row in rows:
         if not (row['visible'] and row['showing'] and row['enabled'] and row['rect'] and
@@ -425,6 +578,8 @@ def control_geometry(query):
     popups = [row for row in selected if row['popup']]
     if popups:
         selected = popups
+    if not selected and unplaced:
+        raise RuntimeError('owned live control has no desktop placement: ' + unplaced[0]['coordinate_error'])
     if len(selected) != 1:
         raise RuntimeError('owned live control is missing, hidden, disabled or ambiguous (' + str(len(selected)) + ' matches)')
     return selected[0]
@@ -518,17 +673,23 @@ def geometry(query):
             px, py = query['point']
             found = [w for w in found if w['x'] <= px < w['x']+w['width'] and w['y'] <= py < w['y']+w['height']]
     else:
-        rows = accessible({'owned': True, **query.get('accessible', {})})
-        found = []
+        compositor = {'compositor': query['compositor']} if query.get('compositor') else {}
+        rows = accessible({'owned': True, **query.get('accessible', {}), **compositor})
+        found, unplaced = [], []
         for row in rows:
             top = row['role'] in WINDOW_ROLES or (row.get('ancestors') and row['ancestors'][-1]['role']=='application')
             if not top or not re.search(query['title'], row['name']):
                 continue
+            if row.get('coordinate_error') and row['visible'] and row['showing']:
+                unplaced.append(row['name'] + ': ' + row['coordinate_error'])
             if not row['visible'] or not row['showing'] or not row['rect'] or min(row['rect'][2:]) <= 0:
                 continue
             found.append(dict(zip(('x', 'y', 'width', 'height'), row['rect'])) |
                          {'scale': query.get('scale', 1), 'pid': row['pid'], 'name': row['name'],
-                          'coordinate_space': 'logical', 'states': row['states']})
+                          'coordinate_space': 'logical', 'states': row['states'],
+                          **({'window_id': row['window_id']} if row.get('window_id') is not None else {})})
+        if not found and unplaced:
+            raise RuntimeError('Wayland window cannot be placed on the desktop: ' + '; '.join(unplaced))
     if len(found) != 1:
         raise RuntimeError('live window match is missing or ambiguous (' + str(len(found)) + ' matches)')
     return found[0]
@@ -822,6 +983,39 @@ def shell_hit(query):
     return {'ok':False,'backend':'shell-at-spi-pick','obscuring_window':'compositor shell stage did not pick the expected notification control'}
 
 
+def witness_foreground(query):
+    """Wayland focus/occlusion from the compositor's own state (read-only witness).
+
+    Pointer input: the compositor's hit-test at the point must be the target
+    window (or, with an open popup, a window of the same client). Keyboard
+    input: the focused window must be the target or its transient. Shell
+    chrome or another client at the point refuses input and is named.
+    """
+    compositor, target, point = query['compositor'], query['geometry'], query.get('point')
+    wid = target.get('window_id')
+    if wid is None:
+        raise RuntimeError('Wayland target has no compositor window identity')
+    if point is not None:
+        pick = compositor_pick(compositor, point)
+        window = pick.get('window')
+        ok = bool(window) and (window['id'] == wid or (bool(query.get('popup')) and window['pid'] == target.get('pid')))
+        if ok:
+            return {'ok': True, 'backend': compositor['kind'] + '-pick', 'target': wid, 'obscuring_window': None}
+        if window:
+            name = window['title'] or window['wm_class'] or 'untitled window'
+        else:
+            chrome = [c for c in pick.get('chain', []) if c.get('name') or c.get('accessible')]
+            name = 'shell ' + ((chrome[0].get('name') or chrome[0].get('accessible')) if chrome else 'chrome')
+        return {'ok': False, 'backend': compositor['kind'] + '-pick', 'target': wid, 'obscuring_window': name,
+                'obscuring_window_id': window['id'] if window else None}
+    windows = compositor_windows(compositor)['windows']
+    focused = [w for w in windows if w.get('focus')]
+    ok = bool(focused) and (focused[0]['id'] == wid or (focused[0]['pid'] == target.get('pid') and focused[0].get('transient_for') == wid))
+    return {'ok': ok, 'backend': compositor['kind'] + '-focus', 'target': wid,
+            'obscuring_window': None if ok else (focused[0]['title'] or focused[0]['wm_class'] if focused else 'no focused window'),
+            'obscuring_window_id': None if ok or not focused else focused[0]['id']}
+
+
 def foreground(query):
     # Compositor-drawn content (notification banners) is not an X window: an
     # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
@@ -830,6 +1024,8 @@ def foreground(query):
         return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_foreground(query)
+    if query.get('compositor') and query.get('geometry'):
+        return witness_foreground(query)
     script = query.get('compositor_script')
     if script:
         result = subprocess.run(script, shell=True, input=json.dumps(query), text=True,
