@@ -548,17 +548,21 @@ def ocr_text(image, *, ocr=None):
     return '\n'.join(texts)
 
 
-# Self-test tokens use glyphs OCR does not confuse with one another (see
-# CONFUSABLES), so an exact read is required rather than a fuzzy one.
-OCR_PROBE_ALPHABET = 'ACEFHKMNPRUVWXY347'
+# Self-test tokens use letters OCR does not confuse with one another (see
+# CONFUSABLES); digits are left out because tesseract reads 11 px 3/4/7 as
+# S/A or drops them. An exact read is required, never a fuzzy one.
+OCR_PROBE_ALPHABET = 'ACEFHKMNPRUVWXY'
+OCR_PROBE_ATTEMPTS = 3
 
 
 def ocr_self_test(ocr=None, size=11):
     """Render a fresh random link at the smallest UI text size; OCR must read it.
 
     Both polarities (dark on light, light on a dark notification banner) must
-    yield the link pattern and exactly that run's random token, through the
-    frame guard's own reader. A blind, broken or replaying OCR fails here.
+    yield the link pattern and exactly a freshly drawn random token, through
+    the frame guard's own reader. Each polarity gets up to three new tokens
+    (real tesseract misreads one at 11 px about 1 in 25 times); a blind,
+    broken or replaying OCR fails every attempt.
     """
     import secrets
     from PIL import Image, ImageDraw, ImageFont
@@ -571,15 +575,15 @@ def ocr_self_test(ocr=None, size=11):
             break
     if font is None:
         font = ImageFont.load_default(size=size)
-    for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')):
-        # A new token for each polarity: neither image's answer fits the other.
+    def reads(foreground, background):
+        # A new token for every image: no earlier answer fits it.
         token = ''.join(secrets.choice(OCR_PROBE_ALPHABET) for _ in range(12))
         image = Image.new('RGB', (520, 40), background)
         ImageDraw.Draw(image).text((10, 12), 'Link copied: https://put.gd/' + token + '.png', font=font, fill=foreground)
         text = ocr_text(image, ocr=ocr)
-        if 'url' not in ocr_detected(text) or token not in re.sub(r'\s+', '', text):
-            return False
-    return True
+        return 'url' in ocr_detected(text) and token in re.sub(r'\s+', '', text)
+    return all(any(reads(foreground, background) for _ in range(OCR_PROBE_ATTEMPTS))
+               for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')))
 
 
 def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None):

@@ -5,6 +5,7 @@ everything else runs anywhere in seconds.
 """
 import hashlib
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -459,7 +460,9 @@ class GateOcrSelfTest(unittest.TestCase):
             self.assertTrue(redact.ocr_self_test('unit-ocr'))
         self.assertEqual(len(tokens), 4)
         self.assertEqual(len(set(tokens)), 4)
-        # One misread glyph is a failure, not a fuzzy match.
+        self.assertTrue(all(re.fullmatch(r'Link copied: https://put\.gd/[ACEFHKMNPRUVWXY]{12}\.png', t) for t in tokens))
+        # One misread glyph in every attempt is a failure, not a fuzzy match;
+        # a single misread followed by an exact read of a new token passes.
         tokens.clear()
         def misread(image, ocr=None):
             text = tokens[-1]
@@ -467,6 +470,12 @@ class GateOcrSelfTest(unittest.TestCase):
             return text.replace(token, token[:-1] + ('A' if token[-1] != 'A' else 'C'))
         with drawing, patch.object(redact, 'ocr_text', side_effect=misread):
             self.assertFalse(redact.ocr_self_test('unit-ocr'))
+        self.assertEqual(len(tokens), redact.OCR_PROBE_ATTEMPTS)  # first polarity exhausted its new tokens
+        tokens.clear()
+        answers = iter([False, True, True])
+        with drawing, patch.object(redact, 'ocr_text', side_effect=lambda image, ocr=None: tokens[-1] if next(answers) else misread(image)):
+            self.assertTrue(redact.ocr_self_test('unit-ocr'))
+        self.assertEqual(len(set(tokens)), 3)
 
 
 class GateEnforcement(Base):
