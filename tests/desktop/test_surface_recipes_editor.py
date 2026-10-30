@@ -262,8 +262,8 @@ class EditorRecipes(unittest.TestCase):
 
     def test_discard_question_keeps_then_stores_nothing(self):
         ctx=FakeContext(); editor.discard(ctx)
-        self.assertIn(('frame','question','confirm','19-editor-discard-confirm'),ctx.events)
-        self.assertIn(('click','text:Keep editing','confirm'),ctx.events)
+        self.assertIn(('frame','question','editorDiscard','19-editor-discard-confirm'),ctx.events)
+        self.assertIn(('click','text:Keep editing','editorDiscard'),ctx.events)
         self.assertEqual('cancelled',ctx.phase)
 
     def test_all_pending_recipes_explain_block_after_frames(self):
