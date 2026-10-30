@@ -13,7 +13,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
@@ -56,11 +56,11 @@ class Mapping(unittest.TestCase):
     def test_scale_hidpi_and_negative_monitor_origin(self):
         inv={'width':100,'height':50};control={'rect':[10,5,20,10]}
         self.assertEqual(control_point(inv,control,{'x':30,'y':40,'width':100,'height':50,'scale':1}),(50,50))
-        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':200,'height':100,'scale':2,'screen_x':-1920}),(120,60))
+        self.assertEqual(control_point(inv,control,{'x':-1900,'y':10,'width':100,'height':50,'scale':2,'screen_x':-1920}),(80,40))
         self.assertEqual(control_point(inv,control,{'x':0,'y':0,'width':100,'height':50},(0,0)),(10,5))
 
     def test_nonuniform_resize_refused(self):
-        with self.assertRaisesRegex(RecipeBlocked,'aspect'):
+        with self.assertRaisesRegex(RecipeBlocked,'size differs'):
             control_point({'width':100,'height':50},{'rect':[0,0,10,10]}, {'x':0,'y':0,'width':200,'height':50})
 
     def test_selectors_and_ambiguity(self):
@@ -627,6 +627,7 @@ class InputFoundations(unittest.TestCase):
 
     def test_private_seed_precedes_launch_and_first_launch_is_explicit(self):
         target=Target.__new__(Target);target.root='/tmp/sd-seed';target.app_executable='putgd';target.started=False
+        target.preflight=lambda:None;target.preserve_clipboard=lambda:None
         calls=[]
         target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
         target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}
@@ -893,7 +894,13 @@ class TargetSafety(unittest.TestCase):
                 getattr(target,method)(*arguments)
                 with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
                 self.assertEqual(target.physical.ssh.call_count,2)
-                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),1)
+                # A wheel gesture consists of press plus deadline-safe release;
+                # the rejected second gesture must dispatch neither packet.
+                expected = 2 if method == 'scroll_vnc' else 1
+                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),expected)
+                if method == 'scroll_vnc':
+                    self.assertEqual(target._rfb.pointer_button.call_args_list,
+                                     [call(1,1,'wheel-up',True),call(1,1,'wheel-up',False)])
 
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},

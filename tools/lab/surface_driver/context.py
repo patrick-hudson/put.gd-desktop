@@ -9,7 +9,7 @@ import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
-from .target import qcodes
+from .target import input_release, qcodes
 
 
 from .fixtures import Fixture, FixtureManager
@@ -106,13 +106,18 @@ class DriverContext(Context):
             time.sleep(min(interval,max(0,deadline-time.monotonic())))
 
     def _probe(self, name, query):
+        self._check_time()
         source = Path(__file__).with_name('probe.py').read_text()
         # stdin contains code only. Query is a separate, shell-quoted JSON argument.
         script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
-        result = self.shell(script)
-        if result['returncode']:
-            raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
-        result = json.loads(result['stdout'])
+        persistent = getattr(self.target, 'probe', None)
+        if persistent:
+            result = persistent(name, query, source, timeout=min(15,max(.1,self._deadline-time.monotonic())))
+        else:
+            result = self.shell(script)
+            if result['returncode']:
+                raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
+            result = json.loads(result['stdout'])
         if not isinstance(result,dict) or 'ok' not in result:
             raise RecipeBlocked(name+' probe returned an invalid response')
         if not result['ok']:
@@ -168,7 +173,7 @@ class DriverContext(Context):
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
         if self._input_poisoned:
-            raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
         role = window or self._current_window
         if not role:
             raise RecipeBlocked('real input has no target window; use view(), focus(), or click(window=...)')
@@ -255,11 +260,18 @@ class DriverContext(Context):
         if not guarded:
             self._guard(point=self._global_point(x,y,head))
         for index in range(self._click_count):
-            self.target.pointer(x,y,w,h,True,button,head)
+            dispatched = False
             try:
+                # A refused physical press must never cause a release packet.
+                # Defer alarms until dispatch is recorded, so an alarm just
+                # after a successful send cannot hide the matching press.
+                with input_release():
+                    self.target.pointer(x,y,w,h,True,button,head)
+                    dispatched = True
                 time.sleep(.04)
             finally:
-                self.target.pointer(x,y,w,h,False,button,head)
+                if dispatched or not self.target.physical:
+                    self._release_pointer((x,y),w,h,button,head)
             if index+1 < self._click_count:
                 time.sleep(.06)
 
@@ -290,19 +302,39 @@ class DriverContext(Context):
         w,h = self._dimensions(head)
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
-        self._guard(point=self._global_point(*start,head))
-        self.target.pointer(*start,w,h,True,button,head)
+        witness = self._guard(point=self._global_point(*start,head))
+        unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
+        last = start
+        dispatched = False
         try:
-            # A held pointer may leave its window during a header/resize drag;
-            # recheck keyboard foreground without demanding hit-test at the end.
+            with input_release():
+                self.target.pointer(*start,w,h,True,button,head)
+                dispatched = True
+            # Managed header/resize grabs can leave the client. Unmanaged
+            # selector covers/bars need pointer witnesses, not keyboard focus:
+            # WA_ShowWithoutActivating deliberately leaves that elsewhere.
             for step in range(1,steps+1):
                 self._check_time()
-                self._guard()
                 x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
+                self._guard(**({'point':self._global_point(x,y,head)} if unmanaged else {}))
                 self.target.pointer(x,y,w,h,head=head)
+                last = (x,y)
                 time.sleep(.025)
         finally:
-            self.target.pointer(*end,w,h,False,button,head)
+            if dispatched or not self.target.physical:
+                self._release_pointer(last,w,h,button,head)
+
+    def _release_pointer(self, point, width, height, button, head):
+        with input_release():
+            try:
+                release = getattr(self.target, 'release_pointer', None)
+                if release:
+                    release(*point,width,height,button,head)
+                else:
+                    self.target.pointer(*point,width,height,False,button,head)
+            except BaseException:
+                self._input_poisoned = True
+                raise
 
     def keys(self,*sequence):
         codes = [qcodes(chord) for chord in sequence]
@@ -310,7 +342,8 @@ class DriverContext(Context):
             raise RecipeBlocked('key chord would release a key held by held_keys()')
         for chord in codes:
             self._guard()
-            self.target.key(chord)
+            with input_release():
+                self.target.key(chord)
         self._popup = None
 
     @contextmanager
@@ -323,11 +356,12 @@ class DriverContext(Context):
         self._guard()
         self._held_codes.extend(codes)
         def release():
-            try:
-                self.target.key_state(list(reversed(codes)),False)
-            except BaseException:
-                self._input_poisoned = True
-                raise
+            with input_release():
+                try:
+                    self.target.key_state(list(reversed(codes)),False)
+                except BaseException:
+                    self._input_poisoned = True
+                    raise
         try:
             # Dispatch can succeed before a reply/deadline failure. Acquisition
             # belongs inside the cleanup scope too.
@@ -350,7 +384,8 @@ class DriverContext(Context):
             raise RecipeBlocked('typed text would release a key held by held_keys()')
         for chord in chords:
             self._guard()
-            self.target.key(chord)
+            with input_release():
+                self.target.key(chord)
 
     def scroll(self,x,y,clicks,head=None):
         head = self._input_head if head is None else head
@@ -366,8 +401,12 @@ class DriverContext(Context):
             self.target.pointer(x,y,w,h,head=head)
             for _ in range(abs(clicks)):
                 self._guard(point=self._global_point(x,y,head))
-                for down in (True,False):
-                    self.target.events([{'type':'btn','data':{'button':'wheel-up' if clicks>0 else 'wheel-down','down':down}}],head)
+                button = 'wheel-up' if clicks>0 else 'wheel-down'
+                try:
+                    self.target.events([{'type':'btn','data':{'button':button,'down':True}}],head)
+                finally:
+                    with input_release():
+                        self.target.events([{'type':'btn','data':{'button':button,'down':False}}],head)
 
     def cli(self,*args,timeout=60):
         self._check_time()
