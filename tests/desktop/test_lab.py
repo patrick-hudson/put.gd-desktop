@@ -691,6 +691,75 @@ class LabContracts(unittest.TestCase):
                         self.assertIn('test ! -e', c.args[1])
                         self.assertIn('install-active/job', c.args[1])
 
+    def test_concurrent_release_and_recovery_cannot_remove_replacement_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / 'controller'
+            run.mkdir()
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put', side_effect=lab.LabError('upload')), \
+                    patch.object(lab, 'get'):
+                with self.assertRaisesRegex(lab.LabError, 'upload'):
+                    lab.install_package(run, 'synthetic.deb')
+            acquire = ssh.call_args_list[0].args[1]
+            release = next(c.args[1] for c in ssh.call_args_list if 'rmdir' in c.args[1])
+            job = next(run.glob('install-*')).name
+            replacement = 'install-' + 'c' * 32
+            acquire = acquire.replace(job, replacement)
+            with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', return_value='') as ssh, \
+                    patch.object(lab, 'reconcile_staging', return_value={'finished': True}):
+                lab.recover_staging(run, job)
+            recover = next(c.args[1] for c in ssh.call_args_list if 'rmdir' in c.args[1])
+            binaries = root / 'bin'
+            binaries.mkdir()
+            wrapper = binaries / 'rm'
+            wrapper.write_text('#!/bin/sh\nif [ "${BLOCK_RELEASE:-}" = 1 ]; then\n'
+                'touch "$GATE/blocked"\nwhile [ ! -e "$GATE/release" ]; do sleep .01; done\nfi\n'
+                'exec ' + lab.shlex.quote(shutil.which('rm')) + ' "$@"\n')
+            wrapper.chmod(0o700)
+            for number, (first, second) in enumerate(((release, recover), (recover, release), (recover, recover))):
+                with self.subTest(number=number):
+                    home = root / str(number)
+                    active = home / 'putgd-lab/install-active'
+                    active.mkdir(parents=True)
+                    (active / 'job').write_text(job)
+                    (home / 'putgd-lab' / job).mkdir()
+                    env = {**os.environ, 'HOME': str(home), 'GATE': str(home),
+                           'PATH': str(binaries) + ':' + os.environ['PATH']}
+                    processes = []
+                    def start(script, **extra):
+                        process = lab.subprocess.Popen(['sh', '-s'], stdin=lab.subprocess.PIPE,
+                            stdout=lab.subprocess.PIPE, stderr=lab.subprocess.PIPE, text=True, env={**env, **extra})
+                        process.stdin.write(script)
+                        process.stdin.close()
+                        processes.append(process)
+                        return process
+                    def ready(name):
+                        deadline = time.monotonic() + 3
+                        while not (home / name).exists():
+                            self.assertLess(time.monotonic(), deadline)
+                            time.sleep(.01)
+                    try:
+                        a = start(first, BLOCK_RELEASE='1')
+                        ready('blocked')  # A passed the old token check, before rm.
+                        b = start('touch "$GATE/b-ready"\n' + second)
+                        c = start('touch "$GATE/c-ready"\n' + acquire)
+                        ready('b-ready')
+                        ready('c-ready')
+                        # Without the shared guard, B releases A's old token and
+                        # C acquires a new job while A is paused before its rm.
+                        with self.assertRaises(lab.subprocess.TimeoutExpired):
+                            c.wait(timeout=.2)
+                    finally:
+                        (home / 'release').touch()
+                        for process in processes:
+                            process.wait(timeout=6)
+                            process.stdout.close()
+                            process.stderr.close()
+                    self.assertEqual(a.returncode, 0)
+                    self.assertEqual(c.returncode, 0)
+                    self.assertEqual((active / 'job').read_text(), replacement)
+
     def test_install_refused_retry_reports_held_job_without_orphan_evidence(self):
         self.check_install_refused_retry('aborted', 'result.json')
 

@@ -1720,6 +1720,12 @@ def stage_install_helper(run, remote, helper, digest):
                            f'inspect ~/{remote}/staging.log.')
 
 
+# All ownership transitions share this guest-side guard. A token check followed
+# by rm/rmdir alone can delete a replacement job after concurrent recovery.
+INSTALL_LOCK_PREFIX = ('set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
+                       'exec 9> ~/putgd-lab/install-guard\nflock -x -w 5 9\n')
+
+
 def reconcile_staging(run, remote, wait=30):
     lifetime = (HERE / 'package_staging.py').read_text()
     script = ('python3 -c ' + shlex.quote(lifetime) + ' reconcile "$HOME/' + remote + '" ' + str(wait) + '\n')
@@ -1745,7 +1751,7 @@ def recover_staging(run, job):
         raise LabError(f'Staging {job} remains held ({report["state"]}); install-active blocks retries. '
                        f'Inspect ~/{remote}/staging-process.json and staging-result.json; '
                        'do not remove the lock while staging may still be running.')
-    ssh(run, f'set -eu\ntest "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
+    ssh(run, INSTALL_LOCK_PREFIX + f'test "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
              f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n'
              'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
     return report
@@ -1765,13 +1771,13 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
     token = 'install-' + uuid.uuid4().hex
     def release_lock():
         # Do not clear a replacement job if an operator reconciled this one.
-        ssh(run, f'if [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then\n'
+        ssh(run, INSTALL_LOCK_PREFIX + f'if [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then\n'
                  'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\nfi\n')
     remote = 'putgd-lab/' + token
     evidence = Path(run) / token
     # Acquire before staging or creating host evidence. A refused retry reports
     # the held job's durable state and leaves no empty host install directory.
-    held = ssh(run, f'set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
+    held = ssh(run, INSTALL_LOCK_PREFIX +
         f'if mkdir ~/putgd-lab/install-active 2>/dev/null; then\n'
         f'printf %s {token} > ~/putgd-lab/install-active/job\nmkdir ~/{remote}\n'
         "else\npython3 - <<'PYLOCK'\n"
