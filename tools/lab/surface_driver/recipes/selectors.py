@@ -218,6 +218,8 @@ def _png_dimensions(ctx, path, width, height):
 
 def _retain(ctx, path, kind):
     """Export only signature-checked synthetic outputs from this private run."""
+    if ctx.placement not in ("boat", "guest") or getattr(ctx.target, "physical", None):
+        ctx.blocked("Original functional payload export requires a disposable guest; native collection is undeclared (#717)", issue=717)
     program = '''import base64,hashlib,json,os,stat
 from pathlib import Path
 p=Path(PATH);root=Path(ROOT).resolve(strict=True)

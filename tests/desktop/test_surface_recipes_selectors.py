@@ -414,6 +414,14 @@ class SelectorRecipes(unittest.TestCase):
         self.assertFalse((ctx.out / "functional").exists())
         self.assertTrue(list(ctx.out.with_name(ctx.out.name + "-functional").glob("*.png")))
 
+    def test_original_artifact_export_refuses_physical_targets(self):
+        ctx = FakeContext()
+        ctx.target.physical = object()
+        ctx.shell = lambda *a, **k: self.fail("physical payloads must be refused before reading")
+        with self.assertRaises(RecipeBlocked) as caught:
+            selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertEqual(caught.exception.issue, 717)
+
     def test_desktop_declaration_is_limited_to_local_disposable_guests(self):
         for placement, destination, guest, allowed in (("boat", "local", "unit", True),
                                                      ("guest", "local", "unit", True),
