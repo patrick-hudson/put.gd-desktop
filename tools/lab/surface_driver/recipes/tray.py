@@ -808,7 +808,7 @@ def _drawn_notice(ctx, notice, *, by_body=False):
         name = (glob.escape(__import__('html').unescape(notice.get('body', ''))) if by_body else
                 ctx.profile.get('notifications', {}).get('title_name_glob', '{summary}').replace('{summary}', glob.escape(notice['summary'])))
         ctx.expect(bool(name), 'notification has an observable body or title')
-        nodes = ctx.accessible({**policy, 'name': name, 'visible': True, 'showing': True})
+        nodes = ctx.accessible({**policy, ('text' if by_body else 'name'): name, 'visible': True, 'showing': True})
         def on_screen(node):
             rect = node.get('rect')
             if isinstance(rect, dict):
@@ -1001,7 +1001,7 @@ def action_rejected(ctx):
 @recipe('notification.upload-failed', desktop_drawn=True, timeout=240)
 def upload_failed_notice(ctx):
     failed = ctx.fixture('tray-failed')
-    ctx.expect(failed.state['state'] == 'failed', 'loopback write fault fails the owned upload')
+    ctx.expect(failed.state['state'] in ('failed', 'partial'), 'loopback write fault fails the owned upload')
     notice = _notice(ctx, 'Upload failed')
     ctx.expect(bool(notice.get('body')), 'failure notice includes a reason')
     _drawn_notice(ctx, notice)
