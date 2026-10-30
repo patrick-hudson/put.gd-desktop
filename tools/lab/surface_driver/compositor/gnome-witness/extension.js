@@ -4,6 +4,7 @@
 // focus(raise_window=True) on Wayland: the same activation a dock click does.
 // It never moves, resizes or closes anything.
 import Gio from 'gi://Gio';
+import Atk from 'gi://Atk';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
@@ -36,9 +37,14 @@ function describe(window, stack) {
 function actorDescription(actor) {
     const [x, y] = actor.get_transformed_position();
     const [w, h] = actor.get_transformed_size();
+    // Actor properties are overrides. StLabel/StButton supply their default
+    // semantic role and name on the actual ATK object exported to AT-SPI.
+    const accessible = actor.get_accessible?.();
     return {type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
-        style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? '',
-        text: actor.get_text?.() ?? '', role: Number(actor.accessible_role ?? -1),
+        // Atk.Action also has get_name(index). GJS can resolve that interface
+        // method on buttons, so call the Object methods explicitly.
+        style: actor.style_class ?? '', accessible: accessible ? Atk.Object.prototype.get_name.call(accessible) ?? '' : '',
+        text: actor.get_text?.() ?? '', role: accessible ? Number(Atk.Object.prototype.get_role.call(accessible)) : -1,
         rect: [x, y, w, h].map(Math.round)};
 }
 

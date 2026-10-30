@@ -71,6 +71,8 @@ class FakeProxy:
                 return self.bus.pids[args[0]]
             node=self.bus.nodes[(self.name,self.path)]
             if method=='Get':
+                if args[1] == 'Name' and node.get('name_error'):
+                    raise NotImplementedError('foreign app does not implement Name')
                 return {'Name':node.get('name',''),'Description':'','ChildCount':len(node.get('children',[])),
                         'NActions':1}.get(args[1])
             return {'GetRole':lambda:0,'GetRoleName':lambda:node['role'],'GetState':lambda:SHOWN,
@@ -87,6 +89,7 @@ class RawAccessibility(unittest.TestCase):
         probe._A11Y.clear()
         self.patches=[patch.dict(sys.modules,pyatspi=STATES),patch.object(probe,'a11y_bus',return_value=self.bus),
                       patch.object(probe,'role_name',side_effect=lambda role,fallback:fallback()),
+                      patch.object(probe,'executable',side_effect=lambda pid:['cinnamon'] if pid==40 else ['other-client']),
                       patch.object(probe,'owned',side_effect=lambda pid:pid==7),
                       patch.object(probe,'popup_roots',return_value=[])]
         for p in self.patches:p.start()
@@ -107,11 +110,34 @@ class RawAccessibility(unittest.TestCase):
         self.assertFalse([c for c in self.bus.calls if c[3]=='GetItems'])
 
     def test_shell_pick_is_a_component_call(self):
-        query={'desktop_node':{'application':'cinnamon','name':'Upload complete','role':'notification','pid':40},
+        query={'desktop_node':{'application':'cinnamon','name':'Upload complete','role':'notification','pid':40,'rect':[780,10,480,80]},
                'point':[900,40],'shell_application':'cinnamon*'}
         self.assertTrue(probe.shell_hit(query)['ok'])
         self.assertIn('notification',probe.shell_cover((900,40),'cinnamon*'))
         self.assertFalse([c for c in self.bus.calls if c[2]=='org.a11y.atspi.Cache'])
+
+    def test_shell_pick_rejects_a_same_name_node_with_different_bounds(self):
+        query = {'desktop_node': {'application': 'cinnamon', 'name': 'Upload complete',
+                  'role': 'notification', 'pid': 40, 'rect': [780, 10, 480, 60]},
+                 'point': [900, 40], 'shell_application': 'cinnamon*'}
+        self.assertFalse(probe.shell_hit(query)['ok'])
+
+    def test_unrelated_unimplemented_name_cannot_break_shell_cover(self):
+        self.bus.nodes[(probe.REGISTRY, ROOT_PATH)]['children'].insert(0, (':1.8', ROOT_PATH))
+        self.bus.pids[':1.8'] = 99
+        self.bus.nodes[(':1.8', ROOT_PATH)] = dict(role='application', name_error=True)
+        self.assertIn('notification', probe.shell_cover((900, 40), 'cinnamon*'))
+        self.assertFalse([c for c in self.bus.calls if c[0] == ':1.8'])
+
+    def test_matching_shell_observation_failure_still_refuses(self):
+        self.bus.nodes[(':1.9', ROOT_PATH)]['name_error'] = True
+        with self.assertRaisesRegex(RuntimeError, 'shell cover observation unavailable'):
+            probe.shell_cover((900, 40), 'cinnamon*')
+
+    def test_missing_shell_does_not_authorize_input(self):
+        self.bus.nodes[(probe.REGISTRY, ROOT_PATH)]['children'] = [(':1.5', ROOT_PATH)]
+        with self.assertRaisesRegex(RuntimeError, 'compositor stage was not observed'):
+            probe.shell_cover((900, 40), 'cinnamon*')
 
     def test_probe_source_does_not_use_libatspi_objects(self):
         source=Path(probe.__file__).read_text()

@@ -28,6 +28,38 @@ def context(profile=None):
 
 
 class FocusAndRoles(unittest.TestCase):
+    def test_live_control_refuses_any_part_clipped_by_a_viewport(self):
+        sys.path.insert(0, str(Path(__file__).parent))
+        from test_surface_driver_desktop import row
+        control = row('Upload clipboard', objectName='recordClipboardShortcut', rect=[1140, 903, 150, 36])
+        control['ancestors'] = [
+            {'role': 'desktop frame', 'rect': [0, 0, 1024, 768]},
+            {'role': 'application', 'rect': [0, 0, 1024, 768]},
+            {'role': 'frame', 'rect': [300, 73, 1320, 880]},
+            {'role': 'filler', 'rect': [516, 181, 1092, 732]}]
+        query = {'selector': 'recordClipboardShortcut', 'pid': 7, 'title': '^put\\.gd$'}
+        with patch.object(probe, 'accessible', return_value=[control]):
+            with self.assertRaisesRegex(RuntimeError, 'clipped by ancestor'):
+                probe.control_geometry(query)
+            control['rect'][1] = 850
+            self.assertEqual(probe.control_geometry(query), control)
+            control['rect'] = [1590, 850, 150, 36]  # horizontal clipping also refuses
+            with self.assertRaisesRegex(RuntimeError, 'clipped by ancestor'):
+                probe.control_geometry(query)
+
+    def test_popup_is_clipped_by_its_surface_not_its_logical_owner(self):
+        sys.path.insert(0, str(Path(__file__).parent))
+        from test_surface_driver_desktop import row
+        control = row('Submenu item', objectName='item', rect=[500, 160, 100, 30],
+                      popup={'role': 'menu', 'rect': [500, 150, 180, 180]})
+        control['ancestors'] = [{'role': 'menu item', 'rect': [300, 150, 180, 30]},
+                                {'role': 'menu', 'rect': [500, 150, 180, 180]}]
+        with patch.object(probe, 'accessible', return_value=[control]):
+            self.assertEqual(probe.control_geometry({'selector': 'item'}), control)
+            control['rect'][0] = 490
+            with self.assertRaisesRegex(RuntimeError, 'clipped by ancestor'):
+                probe.control_geometry({'selector': 'item'})
+
     def test_plain_kde_focus_verifies_without_requesting_unsupported_raise(self):
         ctx, directory = context({'session':'wayland','compositor':{'kind':'kwin-script'}})
         self.addCleanup(directory.cleanup)
@@ -110,6 +142,11 @@ class ResizeProof(unittest.TestCase):
 
 
 class ShellNotificationCover(unittest.TestCase):
+    def setUp(self):
+        patcher = patch.object(probe, 'executable', return_value=['cinnamon'])
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_nonreactive_notification_missed_by_stage_pick_still_refuses(self):
         sys.path.insert(0,str(Path(__file__).parent))
         from test_surface_driver_desktop import FakeNode, PickNode
@@ -150,6 +187,25 @@ class FrameClientNames(unittest.TestCase):
 
 
 class StageOverlay(unittest.TestCase):
+    def test_staging_persists_the_uuid_without_losing_other_extensions(self):
+        from tools.lab.surface_driver.compositor import stage_gnome_witness as staging
+        source = Path(staging.__file__).with_name('gnome-witness')
+        settings = Mock()
+        settings.get_strv.return_value = ['putgd@put.gd', 'other@lab']
+        gio = SimpleNamespace(Settings=SimpleNamespace(new=Mock(return_value=settings), sync=Mock()))
+        scripts = []
+        with patch.object(staging.lab, 'verify_owned_guest', return_value={}), \
+             patch.object(staging.lab, 'state', return_value={'profile': 'gnome-wayland'}), \
+             patch.object(staging.lab, 'load_profile', return_value={'session_process': 'gnome-shell'}), \
+             patch.object(staging.lab, 'guest_session', side_effect=lambda run, script: scripts.append(script)):
+            staging.stage('/owned/run', source)
+        body = scripts[0].split("<<'SD_ENABLE'\n", 1)[1].split('\nSD_ENABLE', 1)[0]
+        with patch.dict(sys.modules, {'gi.repository': SimpleNamespace(Gio=gio)}):
+            exec(body, {})
+        settings.set_strv.assert_called_once_with('enabled-extensions',
+            ['putgd@put.gd', 'other@lab', 'putgd-lab-witness@put.gd'])
+        gio.Settings.sync.assert_called_once()
+
     def test_real_desktop_and_golden_refused_before_any_install(self):
         from tools.lab.surface_driver.compositor import stage_gnome_witness as staging
         with patch.object(staging.lab,'verify_owned_guest',side_effect=staging.lab.LabError('not an owned overlay')),\

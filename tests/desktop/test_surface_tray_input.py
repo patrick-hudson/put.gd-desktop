@@ -117,4 +117,82 @@ class ShellActorPick(unittest.TestCase):
             self.assertFalse(probe.shell_witness_hit(self.query)['ok'])
 
 
+class NotificationTarget(unittest.TestCase):
+    def test_named_action_is_hovered_and_rechecked_before_its_press(self):
+        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+            ctx, directory = context({'session': 'x11', 'notifications': {
+                'accessible': {'application': 'cinnamon*'}}})
+        self.addCleanup(directory.cleanup)
+        notice = {'id': 5, 'at': 1, 'sender': ':1.2', 'server': ':1.3', 'summary': 'Saved',
+                  'actions': ['open', 'Open'], 'closed': None, 'action_events': []}
+        ctx.notifications = lambda: [notice]
+        hovered, reads = [], []
+        def accessible(query):
+            reads.append(query['name'])
+            return [{'pid': 70, 'application': 'cinnamon', 'name': query['name'],
+                     'role': 'label' if query['name'] == 'Saved' else 'push button',
+                     'rect': [100, 20 if query['name'] == 'Saved' else 100, 100, 20],
+                     'ancestors': [{'role': 'notification', 'rect': [80, 10, 300, 200]}]}]
+        ctx.accessible = accessible
+        def pointer(query, button, node=None):
+            if button is None:
+                hovered.append((node['name'], len(reads)))
+            else:
+                self.assertEqual(hovered[-1][0], 'Open', 'St action must process its own pointer enter before a press')
+                self.assertGreater(len(reads), hovered[-1][1], 'resolve fresh bounds after entering the action')
+                notice['action_events'] = [{'action': 'open'}]
+        ctx._accessible_pointer = pointer
+        ctx.wait = lambda callback, *a, **k: self.assertTrue(callback())
+        with patch('tools.lab.surface_driver.context.time.sleep'):
+            ctx.notification_action(5, 'open')
+
+    def test_hover_layout_change_requires_a_fresh_stable_action_rectangle(self):
+        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+            ctx, directory = context({'session': 'x11', 'notifications': {
+                'accessible': {'application': 'cinnamon*'}}})
+        self.addCleanup(directory.cleanup)
+        notice = {'id': 5, 'at': 1, 'sender': ':1.2', 'server': ':1.3', 'summary': 'Saved',
+                  'actions': ['open', 'Open'], 'closed': None, 'action_events': []}
+        ctx.notifications = lambda: [notice]
+        hovered, button_reads, clicked = [], [], []
+        def accessible(query):
+            if query['name'] == 'Saved':
+                return [{'pid': 70, 'application': 'cinnamon', 'name': 'Saved', 'role': 'label',
+                         'rect': [100, 40 if hovered else 20, 100, 20], 'ancestors': [
+                             {'role': 'notification', 'rect': [80, 10, 300, 200]}]}]
+            button_reads.append(True)
+            return [{'pid': 70, 'application': 'cinnamon', 'name': 'Open', 'role': 'push button',
+                     'rect': [100, 100 if len(button_reads) == 1 else 130, 100, 30]}]
+        ctx.accessible = accessible
+        def pointer(query, button, node=None):
+            if button is None:
+                hovered.append(True)
+            else:
+                clicked.append(node['rect'])
+                notice['action_events'] = [{'action': 'open'}]
+        ctx._accessible_pointer = pointer
+        ctx.wait = lambda callback, *a, **k: self.assertTrue(callback())
+        with patch('tools.lab.surface_driver.context.time.sleep'):
+            ctx.notification_action(5, 'open')
+        self.assertEqual(clicked, [[100, 130, 100, 30]])
+
+    def test_notification_closed_during_hover_never_receives_a_click(self):
+        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+            ctx, directory = context({'session': 'x11', 'notifications': {
+                'accessible': {'application': 'cinnamon*'}}})
+        self.addCleanup(directory.cleanup)
+        notice = {'id': 5, 'at': 1, 'sender': ':1.2', 'server': ':1.3', 'summary': 'Saved',
+                  'actions': ['default', 'Open'], 'closed': None, 'action_events': []}
+        ctx.notifications = lambda: [notice]
+        ctx.accessible = lambda query: [{'pid': 70, 'application': 'cinnamon', 'name': 'Saved',
+                                        'role': 'label', 'rect': [100, 20, 100, 20]}]
+        def pointer(query, button, node=None):
+            self.assertIsNone(button, 'closed notification must never receive a native click')
+            notice['closed'] = {'reason': 2}
+        ctx._accessible_pointer = pointer
+        with patch('tools.lab.surface_driver.context.time.sleep'):
+            with self.assertRaisesRegex(RecipeBlocked, 'generation changed'):
+                ctx.notification_action(5)
+
+
 if __name__=='__main__':unittest.main()
