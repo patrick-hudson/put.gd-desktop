@@ -932,12 +932,13 @@ def no_output(ctx):
 def capture_exceptions(ctx):
     fixture = ctx.fixture('settings-action-routes')
     opened(ctx, 1)
-    live_click(ctx, 'captureExceptionsToggle')
+    live_click(ctx, 'text:Different output for some actions')
     for action, label in (('region', 'Capture region'), ('window', 'Capture window'),
                           ('desktop', 'Capture desktop'), ('edit', 'Capture region & edit'),
                           ('clipboard', 'Upload clipboard'), ('record', 'Record screen')):
-        live_click(ctx, 'addCaptureException')
-        ctx.click('text:' + label, window='settings')
+        live_click(ctx, 'text:Add an exception…')
+        ctx.click_accessible({'owned': True, 'pid': ctx.geometry('settings')['pid'],
+                              'role': 'menu item', 'name': label, 'visible': True, 'showing': True})
         ctx.wait(lambda: not routing(ctx)[action]['inherited'], action + ' exception added')
         choose(ctx, 'profile' + action.title(), 2)
         saved(ctx, 'actions.' + action + '.profileId', fixture.profile_ids[1], 1)

@@ -145,6 +145,7 @@ def click(ctx, control, *, after_window=None):
     """Resolve each click anew, including scroll/status/disclosure layout changes."""
     options = ctx.profile.get('settings', {})
     if not options.get('foreground_script') or control not in options.get('live_controls', {}):
+        ctx.note('Resolving native Settings control: ' + control)
         # Qt omits fully clipped controls and the native guard refuses partly
         # clipped rectangles. Scroll the page, then resolve the control again;
         # never reuse a refused rectangle or relax compositor ownership.
