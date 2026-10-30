@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """Lightweight contracts; these do not establish graphical acceptance."""
 import base64
+import contextlib
 from contextlib import contextmanager
 import hashlib
 import json
+import os
 from pathlib import Path
+import re
+import shlex
+import signal
 import subprocess
 import socket
 import threading
 import sys
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -84,7 +90,7 @@ class BrowserContracts(unittest.TestCase):
     def setUp(self):
         self.context = FakeContext()
 
-    def remote(self, ctx, action, values):
+    def remote(self, ctx, action, values, **kwargs):
         ctx.events.append(('remote', action))
         if action == 'prepare':
             return {'directory': '/private/firefox', 'port': 1234}
@@ -120,7 +126,7 @@ class BrowserContracts(unittest.TestCase):
         self.assertIn(('remote', 'restore'), self.context.events)
 
     def test_failure_frame_withheld_when_another_browser_owns_foreground(self):
-        def remote(ctx, action, values):
+        def remote(ctx, action, values, **kwargs):
             if action == 'blank':
                 return {'blank': True, 'safe': False}
             return self.remote(ctx, action, values)
@@ -137,7 +143,7 @@ class BrowserContracts(unittest.TestCase):
 
     def test_dispatch_to_another_firefox_fails_closed_without_frames(self):
         seen = []
-        def remote(ctx, action, values):
+        def remote(ctx, action, values, **kwargs):
             if action == 'observe':
                 seen.append(action)
                 return {'matched': False, 'foreign': 1}
@@ -153,7 +159,7 @@ class BrowserContracts(unittest.TestCase):
         self.assertNotIn(id(self.context), browser._ACTIVE)
 
     def test_stale_or_mismatched_page_cannot_pass(self):
-        def remote(ctx, action, values):
+        def remote(ctx, action, values, **kwargs):
             return {} if action == 'observe' else self.remote(ctx, action, values)
         with patch.object(browser, '_remote', remote):
             with self.assertRaises(RecipeFailed):
@@ -184,7 +190,7 @@ class ProtocolContracts(unittest.TestCase):
                         data = json.dumps(value).encode()
                         conn.sendall(str(len(data)).encode() + b':' + data)
                     send({'marionetteProtocol': 3, 'applicationType': 'gecko'})
-                    for i in range(1, 5):
+                    for i in range(1, 6):
                         header = b''
                         while True:
                             char = stream.read(1)
@@ -198,9 +204,13 @@ class ProtocolContracts(unittest.TestCase):
                         if i == 1:
                             send([1, i, None, {'sessionId': 'fake', 'capabilities': {}}])
                         elif i == 2:
+                            # Firefox's own timeouts answer by name before the socket's.
+                            self.assertEqual(command[2:], ['WebDriver:SetTimeouts', {'script': 20000, 'pageLoad': 20000}])
+                            send([1, i, None, {'value': None}])
+                        elif i == 3:
                             self.assertEqual(command[2], 'WebDriver:GetWindowHandles')
                             send([1, i, None, {'value': ['tab-1', 'tab-2']}])
-                        elif i == 3:
+                        elif i == 4:
                             send([1, i, {'message': 'https://example.invalid/SECRET-TOKEN'}, None])
                         else:
                             send([1, i, None, {'value': None}])
@@ -236,7 +246,7 @@ class ObservationContracts(unittest.TestCase):
         self.addCleanup(mains.stop)
 
     def test_closed_tab_does_not_hide_a_later_matching_page(self):
-        client = SimpleNamespace()
+        client = SimpleNamespace(broken=False)
         def call(method, params=None):
             if method == 'WebDriver:GetWindowHandles':
                 return ['closed', 'good']
@@ -255,7 +265,7 @@ class ObservationContracts(unittest.TestCase):
         # Scanning with focus=True switched tabs; the frame then caught the
         # newly selected tab before it painted (blank guest frames, #693).
         calls = []
-        client = SimpleNamespace(close=lambda: None)
+        client = SimpleNamespace(close=lambda: None, broken=False)
         client.call = lambda method, params=None: (calls.append((method, params)),
                                                    ['blank', 'page'] if method.endswith('GetWindowHandles') else None)[1]
         selected = []
@@ -273,14 +283,14 @@ class ObservationContracts(unittest.TestCase):
         self.assertEqual(calls[-1], ('painted', None))
 
     def test_unpainted_or_background_match_does_not_pass(self):
-        client = SimpleNamespace(close=lambda: None, call=lambda *args: ['page'] if args[0].endswith('GetWindowHandles') else None,
+        client = SimpleNamespace(close=lambda: None, broken=False, call=lambda *args: ['page'] if args[0].endswith('GetWindowHandles') else None,
                                  script=lambda source, args=(), asynchronous=False:
                                      False if asynchronous else {'matched': True})
         with patch.object(browser, '_Marionette', return_value=client):
             self.assertEqual(browser._target('observe', {**self.values, 'expect': {}}), {})
 
     def test_non_mapping_browser_reply_does_not_pass(self):
-        client = SimpleNamespace(call=lambda *args: ['good'] if args[0].endswith('GetWindowHandles') else None,
+        client = SimpleNamespace(broken=False, call=lambda *args: ['good'] if args[0].endswith('GetWindowHandles') else None,
                                  script=lambda *args: None, close=lambda: None)
         with patch.object(browser, '_Marionette', return_value=client):
             self.assertEqual(browser._target('observe', {**self.values, 'expect': {}}), {})
@@ -293,7 +303,7 @@ class ObservationContracts(unittest.TestCase):
             (10, '50', [b'/usr/lib/firefox/firefox', b'about:blank']),
             (11, '150', [b'/usr/lib/firefox/firefox', b'http://127.0.0.1/private-token/fixture.txt']),
             (12, '160', [b'/usr/lib/firefox/firefox', b'--profile', str(self.directory).encode(), b'--kiosk'])]
-        client = SimpleNamespace(call=lambda *args: [] if args[0].endswith('GetWindowHandles') else None,
+        client = SimpleNamespace(broken=False, call=lambda *args: ['tab'] if args[0].endswith('GetWindowHandles') else None,
                                  script=lambda *args: True, close=lambda: None)
         with patch.object(browser, '_Marionette', return_value=client):
             result = browser._target('observe', {**self.values, 'expect': {'name': 'fixture.txt'}})
@@ -373,9 +383,9 @@ class DispatchFixes(unittest.TestCase):
                 if args[1] == 'default':
                     (config / 'mimeapps.list').write_bytes(b'x-scheme-handler/https=' + desktop.name.encode())
                 return subprocess.CompletedProcess(args, 0, desktop.name + '\n', '')
-            client = SimpleNamespace(call=lambda *args: [] if args[0].endswith('GetWindowHandles') else None,
+            client = SimpleNamespace(broken=False, call=lambda *args: ['tab'] if args[0].endswith('GetWindowHandles') else None,
                                      script=lambda *args: True, close=lambda: None)
-            def remote(ctx, action, values):
+            def remote(ctx, action, values, **kwargs):
                 ctx.events.append(('remote', action))
                 return json.loads(json.dumps(browser._target(action, json.loads(json.dumps(values)))))
             def trigger():
@@ -401,7 +411,7 @@ class DispatchFixes(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), hashlib.sha256(original).hexdigest())
                 self.assertEqual(path.stat().st_mode & 0o777, 0o640)
             self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
-            self.assertFalse(list((home / '.mozilla/firefox').iterdir()))
+            self.assertFalse((home / '.mozilla').exists())
             terminate.assert_called_once_with(999999999, '7')
             self.assertEqual([e for e in ctx.events if e[0] == 'remote'],
                              [('remote', a) for a in ('prepare', 'blank', 'blank', 'restore')])
@@ -488,7 +498,7 @@ class MimeTransactions(unittest.TestCase):
             self.assertEqual(mime.read_bytes(), original)
             self.assertEqual(recorder.read_bytes(), b'never delete me')
             self.assertEqual(list(applications.iterdir()), [recorder])
-            self.assertEqual(list((home / '.mozilla/firefox').iterdir()), [])
+            self.assertFalse((home / '.mozilla').exists())
 
     def test_normal_restore_covers_portal_and_isolated_app_mime_profiles(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -527,6 +537,434 @@ class MimeTransactions(unittest.TestCase):
             for config, original in zip(configs, originals):
                 self.assertEqual((config / 'mimeapps.list').read_bytes(), original)
             self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
+
+
+def _real_setup(home, configs, originals):
+    """Patches for running the real target helper in-process under a fake home."""
+    for config, original in zip(configs, originals):
+        config.mkdir(parents=True, exist_ok=True)
+        (config / 'mimeapps.list').write_bytes(original)
+        (config / 'mimeapps.list').chmod(0o640)
+    process = SimpleNamespace(pid=999999999, poll=lambda: None)
+    real_read = Path.read_text
+    def read(path, *args, **kwargs):
+        return FAKE_STAT if str(path) == '/proc/999999999/stat' else real_read(path, *args, **kwargs)
+    def mime(args, **kwargs):
+        config = Path(kwargs['env']['XDG_CONFIG_HOME'])
+        data = Path(kwargs['env']['XDG_DATA_HOME'])
+        desktop = next((data / 'applications').glob('putgdsurface*.desktop'))
+        if args[1] == 'default':
+            (config / 'mimeapps.list').write_bytes(b'x-scheme-handler/https=' + desktop.name.encode())
+        return subprocess.CompletedProcess(args, 0, desktop.name + '\n', '')
+    client = SimpleNamespace(broken=False, close=lambda: None,
+                             call=lambda *args: ['tab'] if args[0].endswith('GetWindowHandles') else None,
+                             script=lambda *args, **kwargs: True)
+    return [patch.dict(browser.os.environ, {'XDG_CONFIG_HOME': str(configs[1]),
+                                            'XDG_DATA_HOME': str(home / 'isolated/data')}),
+            patch.object(browser.pwd, 'getpwuid', return_value=SimpleNamespace(pw_dir=str(home))),
+            patch.object(browser.subprocess, 'Popen', return_value=process),
+            patch.object(browser, '_Marionette', return_value=client),
+            patch.object(browser, '_firefox_mains', return_value=[]),
+            patch.object(browser.subprocess, 'run', side_effect=mime),
+            patch.object(Path, 'read_text', read)]
+
+
+def _run_helper(script):
+    """What the target shell does with _remote's script, in-process."""
+    _, _, action, payload = shlex.split(script.split('\n', 1)[0])[:4]
+    try:
+        answer = browser._target(action, json.loads(base64.b64decode(payload)))
+    except BaseException as error:
+        answer = {'error': str(error) if isinstance(error, browser._TargetError) else type(error).__name__}
+    return {'returncode': 0, 'stdout': json.dumps(answer), 'stderr': ''}
+
+
+class DeadlineRestore(unittest.TestCase):
+    def test_deadline_inside_transaction_still_restores_everything(self):
+        # Validator B1: Context.shell refuses after the recipe deadline, which
+        # skipped restore and left the handler, profile and Firefox behind.
+        from tools.lab.surface_driver.context import DriverContext
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary) / 'home'
+            configs = [home / '.config', home / 'isolated/config']
+            originals = [b'[Default Applications]\r\nx-scheme-handler/https=recorder.desktop;\r\n', b'# isolated\n']
+            calls = []
+            target = SimpleNamespace(heartbeat=lambda: None)
+            def execute(script, timeout=60):
+                calls.append((shlex.split(script.split('\n', 1)[0])[2], timeout, ctx._deadline - time.monotonic()))
+                return _run_helper(script)
+            target.execute = execute
+            environment = dict(desktop='mint-cinnamon-x11', host='boat', placement='guest', package='deb',
+                               destination='local')
+            ctx = DriverContext(target, environment, {}, temporary, Path(temporary) / 'out')
+            ctx._deadline = time.monotonic() + 60
+            def trigger():
+                ctx._deadline = time.monotonic() - 1  # The recipe overran inside the transaction.
+            patches = _real_setup(home, configs, originals)
+            with contextlib.ExitStack() as stack:
+                for item in patches:
+                    stack.enter_context(item)
+                terminate = stack.enter_context(patch.object(browser, '_terminate'))
+                with self.assertRaisesRegex(RecipeFailed, '^recipe deadline exceeded$'):
+                    with browser.default_browser(ctx, 'firefox'):
+                        browser.open_and_verify(ctx, trigger, {'kind': 'local', 'name': 'f.txt', 'preview': False})
+            self.assertEqual([c[0] for c in calls], ['prepare', 'blank', 'restore'])
+            action, timeout, remaining = calls[-1]
+            self.assertLess(remaining, 0)  # Ran after the deadline...
+            self.assertEqual(timeout, browser._TIMEOUTS['cleanup'])  # ...with its own, unclipped budget.
+            for config, original in zip(configs, originals):
+                path = config / 'mimeapps.list'
+                self.assertEqual(path.read_bytes(), original)
+                self.assertEqual(hashlib.sha256(path.read_bytes()).hexdigest(), hashlib.sha256(original).hexdigest())
+                self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+            self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
+            self.assertFalse((home / '.mozilla').exists())
+            self.assertFalse((home / '.local/share/applications').exists())
+            terminate.assert_called_once_with(999999999, '7')
+            self.assertFalse(ctx.frames)
+            self.assertTrue(any('could not be blanked' in review for review in ctx.reviews))
+            self.assertNotIn(id(ctx), browser._ACTIVE)
+
+
+class FailurePath(unittest.TestCase):
+    def remote(self, events, **overrides):
+        def remote(ctx, action, values, timeout=None, cleanup=False):
+            events.append((action, cleanup))
+            if action in overrides:
+                value = overrides[action]
+                if isinstance(value, BaseException):
+                    raise value
+                return value(events) if callable(value) else value
+            return {'prepare': {'directory': '/private/firefox', 'port': 1234}, 'restore': {'restored': True},
+                    'observe': {'url_host': '127.0.0.1', 'title': 'fixture.txt', 'matched': True},
+                    'recover': {'recovered': 0}}.get(action, {'blank': True, 'safe': True})
+        return remote
+
+    def test_failure_blank_error_keeps_the_original_exception(self):
+        # CodeRabbit (browser.py:125) / validator N2.
+        ctx, events = FakeContext(), []
+        def blank(events):
+            if sum(e[0] == 'blank' for e in events) > 1:
+                raise RuntimeError('Target browser helper: Firefox did not answer WebDriver:Navigate within 30 s')
+            return {'blank': True, 'safe': True}
+        def fail():
+            raise RecipeFailed('entry point did not dispatch')
+        with patch.object(browser, '_remote', self.remote(events, blank=blank)):
+            with self.assertRaisesRegex(RecipeFailed, '^entry point did not dispatch$'):
+                with browser.default_browser(ctx):
+                    browser.open_and_verify(ctx, fail, ctx.upload['expect'])
+        self.assertFalse(any(e[0] == 'frame' for e in ctx.events))
+        self.assertTrue(any(e[0] == 'review' and 'WebDriver:Navigate' in e[1] for e in ctx.events))
+        self.assertEqual(events[-1], ('restore', True))
+
+    def test_keyboard_interrupt_skips_the_frame_and_still_restores(self):
+        ctx, events = FakeContext(), []
+        def interrupt():
+            raise KeyboardInterrupt
+        with patch.object(browser, '_remote', self.remote(events)):
+            with self.assertRaises(KeyboardInterrupt):
+                with browser.default_browser(ctx):
+                    browser.open_and_verify(ctx, interrupt, ctx.upload['expect'])
+        self.assertEqual(events, [('prepare', False), ('blank', False), ('restore', True)])
+        self.assertNotIn(id(ctx), browser._ACTIVE)
+
+    def test_failure_frame_error_keeps_the_original_exception(self):
+        ctx, events = FakeContext(), []
+        def fail():
+            raise RecipeFailed('entry point did not dispatch')
+        with patch.object(browser, '_remote', self.remote(events)), \
+             patch.object(ctx, 'frame', side_effect=RecipeFailed('recipe deadline exceeded')):
+            with self.assertRaisesRegex(RecipeFailed, '^entry point did not dispatch$'):
+                with browser.default_browser(ctx):
+                    browser.open_and_verify(ctx, fail, ctx.upload['expect'])
+        self.assertTrue(any(e[0] == 'review' and 'Failure frame unavailable' in e[1] for e in ctx.events))
+
+    def test_interrupted_setup_is_recovered_outside_the_deadline(self):
+        # Validator N3: the transport failed, but the target step may still finish.
+        ctx, events = FakeContext(), []
+        with patch.object(browser, '_remote', self.remote(events, prepare=RecipeBlocked('target session command unavailable'))):
+            with self.assertRaises(RecipeBlocked):
+                with browser.default_browser(ctx):
+                    self.fail('body must not run')
+        self.assertEqual(events, [('prepare', False), ('recover', True)])
+
+    def test_stray_firefox_found_at_restore_fails_a_passing_run(self):
+        # Validator N1: one started after the observation is still stopped and named.
+        ctx, events = FakeContext(), []
+        with patch.object(browser, '_remote', self.remote(events, restore={'restored': True, 'foreign': 1})):
+            with self.assertRaisesRegex(RecipeFailed, 'no Firefox started outside the private profile'):
+                with browser.default_browser(ctx):
+                    browser.open_and_verify(ctx, lambda: None, ctx.upload['expect'])
+
+    def test_named_pending_reason_reaches_the_page_timeout(self):
+        ctx, events = FakeContext(), []
+        with patch.object(browser, '_remote', self.remote(events, observe={'pending': 'Firefox WebDriver:ExecuteAsyncScript failed: script timeout'})):
+            with self.assertRaisesRegex(RecipeFailed, 'last Firefox answer: Firefox WebDriver:ExecuteAsyncScript failed: script timeout'):
+                with browser.default_browser(ctx):
+                    browser.open_and_verify(ctx, lambda: None, ctx.upload['expect'])
+
+    def test_profile_timeouts_are_validated_and_used(self):
+        ctx, timeouts = FakeContext(), []
+        ctx.profile = {'browser': {'timeouts': {'protocol': 30, 'page': 60}}}
+        def remote(ctx, action, values, timeout=None, cleanup=False):
+            timeouts.append((action, timeout))
+            return self.remote([])(ctx, action, values)
+        with patch.object(browser, '_remote', remote):
+            with browser.default_browser(ctx):
+                browser.open_and_verify(ctx, lambda: None, ctx.upload['expect'])
+        self.assertEqual(timeouts[0], ('prepare', 120 + 60))
+        self.assertEqual(timeouts[-1], ('restore', 180))
+        for bad in ({'protocol': 0}, {'protocol': 'slow'}, {'typo': 5}):
+            ctx.profile = {'browser': {'timeouts': bad}}
+            with self.assertRaises(ValueError):
+                with browser.default_browser(ctx):
+                    pass
+
+
+class Timeouts(unittest.TestCase):
+    def serve(self, answers):
+        """A Marionette peer answering command N with answers[N-1] (None: stay silent)."""
+        server = socket.socket()
+        server.bind(('127.0.0.1', 0))
+        server.listen(1)
+        seen = []
+        def run():
+            try:
+                conn, _ = server.accept()
+                with conn, conn.makefile('rb') as stream:
+                    def send(value):
+                        data = json.dumps(value).encode()
+                        conn.sendall(str(len(data)).encode() + b':' + data)
+                    send({'marionetteProtocol': 3})
+                    for i, answer in enumerate(answers, 1):
+                        header = b''
+                        while (char := stream.read(1)) not in (b':', b''):
+                            header += char
+                        if not header:
+                            return
+                        seen.append(json.loads(stream.read(int(header)))[2])
+                        if answer is None:
+                            stream.read(1)  # Silent until the client hangs up.
+                            return
+                        send([1, i] + answer)
+            finally:
+                server.close()
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        return server.getsockname()[1], seen
+
+    def test_silent_firefox_is_a_named_timeout_and_close_does_not_reread(self):
+        # Validator B2: close() read the timed-out socket and became a bare OSError.
+        port, seen = self.serve([[None, {}], [None, {}], None])
+        with patch.object(browser._Marionette, 'grace', 0.1):
+            client = browser._Marionette(port, timeout=0.2)
+            with self.assertRaisesRegex(browser._Timeout, r'^Firefox did not answer WebDriver:Navigate within 0\.3 s$'):
+                client.call('WebDriver:Navigate', {'url': 'about:blank'})
+            self.assertTrue(client.broken)
+            client.close()
+        self.assertEqual(seen, ['WebDriver:NewSession', 'WebDriver:SetTimeouts', 'WebDriver:Navigate'])
+
+    def test_firefox_timeout_error_is_named_without_its_message(self):
+        port, seen = self.serve([[None, {}], [None, {}],
+                                 [{'error': 'timeout', 'message': 'https://example.invalid/SECRET-TOKEN'}, None],
+                                 [None, {}]])
+        client = browser._Marionette(port)
+        with self.assertRaises(browser._Timeout) as error:
+            client.call('WebDriver:Navigate', {'url': 'about:blank'})
+        self.assertEqual(str(error.exception), 'Firefox WebDriver:Navigate failed: timeout')
+        self.assertFalse(client.broken)
+        client.close()
+        self.assertEqual(seen[-1], 'WebDriver:DeleteSession')
+
+    def test_slow_blank_navigation_is_checked_by_the_page_itself(self):
+        calls = []
+        def call(method, params=None):
+            calls.append(method)
+            if method.endswith('GetWindowHandles'):
+                return ['first', 'dispatched']
+            if method.endswith('Navigate'):
+                raise browser._Timeout('Firefox WebDriver:Navigate failed: timeout')
+        answers = iter([False, True])
+        client = SimpleNamespace(broken=False, call=call, script=lambda *args: next(answers))
+        with patch.object(browser.time, 'sleep'):
+            self.assertTrue(browser._blank(client, 5))
+        self.assertEqual(calls.count('WebDriver:CloseWindow'), 1)
+
+    def test_broken_tab_check_is_pending_not_an_aborted_observe(self):
+        client = SimpleNamespace(broken=False, call=lambda *args: ['a', 'b'] if args[0].endswith('GetWindowHandles') else None)
+        def script(source, args=(), asynchronous=False):
+            if asynchronous:
+                client.broken = True
+                raise browser._Timeout('Firefox did not answer WebDriver:ExecuteAsyncScript within 30 s')
+            return {'matched': True}
+        client.script = script
+        self.assertEqual(browser._observe(client, {}),
+                         {'pending': 'Firefox did not answer WebDriver:ExecuteAsyncScript within 30 s'})
+
+    def test_slow_tab_does_not_hide_a_later_match(self):
+        tabs = []
+        def call(method, params=None):
+            if method.endswith('GetWindowHandles'):
+                return ['slow', 'page']
+            tabs.append(params['handle'])
+        def script(source, args=(), asynchronous=False):
+            if tabs[-1] == 'slow':
+                raise browser._Timeout('Firefox WebDriver:ExecuteScript failed: script timeout')
+            return True if asynchronous else {'matched': True, 'url_host': '127.0.0.1', 'title': 'f.txt'}
+        client = SimpleNamespace(broken=False, call=call, script=script)
+        with patch.object(browser.time, 'sleep'):
+            self.assertTrue(browser._observe(client, {})['matched'])
+
+
+class ForeignAfterMatch(unittest.TestCase):
+    def test_stray_firefox_beside_a_matching_tab_fails_without_frame_and_is_stopped(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 100, 'foreign': [], 'desktops': [], 'backups': [],
+                 'pid': None}))
+            stray = (11, '150', [b'/usr/lib/firefox/firefox', b'http://127.0.0.1/private-token/f.txt'])
+            client = SimpleNamespace(broken=False, close=lambda: None,
+                                     call=lambda *args: ['page'] if args[0].endswith('GetWindowHandles') else None,
+                                     script=lambda source, args=(), asynchronous=False:
+                                         True if asynchronous else {'matched': True, 'url_host': 'h', 'title': 't'})
+            with patch.object(browser, '_Marionette', return_value=client), patch.object(browser.time, 'sleep'), \
+                 patch.object(browser, '_firefox_mains', return_value=[stray]):
+                result = browser._target('observe', {'directory': str(directory), 'port': 1, 'expect': {}})
+                self.assertEqual(result, {'matched': False, 'foreign': 1})
+                with patch.object(browser, '_terminate') as terminate:
+                    self.assertEqual(browser._restore({'directory': str(directory)}), {'restored': True, 'foreign': 1})
+                terminate.assert_called_once_with(11, '150')
+
+    def test_restore_scan_stops_an_unrecorded_stray(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'putgd-surface-x'
+            directory.mkdir()
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 100, 'foreign': [], 'desktops': [], 'backups': [], 'pid': None}))
+            mains = [(10, '50', [b'firefox']), (11, '150', [b'firefox', b'http://x/private-token'])]
+            with patch.object(browser, '_firefox_mains', return_value=mains), \
+                 patch.object(browser, '_terminate') as terminate:
+                self.assertEqual(browser._restore({'directory': str(directory)})['foreign'], 1)
+            terminate.assert_called_once_with(11, '150')
+            self.assertFalse(directory.exists())
+
+
+class Recovery(unittest.TestCase):
+    def test_setup_first_restores_a_transaction_an_interrupted_run_left(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            configs = [home / '.config', home / 'isolated/config']
+            originals = [b'# real portal\r\n', b'# isolated app\n']
+            with contextlib.ExitStack() as stack:
+                for item in _real_setup(home, configs, originals):
+                    stack.enter_context(item)
+                terminate = stack.enter_context(patch.object(browser, '_terminate'))
+                abandoned = Path(browser._prepare({})['directory'])  # Its controller vanished.
+                stored = json.loads((abandoned / 'transaction.json').read_text())
+                stored['helper'] = [999999998, '1']  # That helper has exited.
+                (abandoned / 'transaction.json').write_text(json.dumps(stored))
+                state = browser._prepare({})
+                self.assertEqual(state['recovered'], 1)
+                self.assertFalse(abandoned.exists())
+                # The new backup is of the originals, not the abandoned handler.
+                current = json.loads((Path(state['directory']) / 'transaction.json').read_text())
+                self.assertEqual({base64.b64decode(b['bytes']) for b in current['backups'] if b['bytes']}, set(originals))
+                self.assertTrue(browser._restore(state)['restored'])
+            self.assertEqual(terminate.call_count, 2)
+            for config, original in zip(configs, originals):
+                self.assertEqual((config / 'mimeapps.list').read_bytes(), original)
+            self.assertFalse(list(home.rglob('putgdsurface*.desktop')))
+            self.assertFalse((home / '.mozilla').exists())
+
+    def test_interrupted_restore_is_resumed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / 'putgd-surface-x'
+            (directory / 'cache').mkdir(parents=True)
+            mime = root / 'mimeapps.list'
+            mime.write_bytes(b'handler')
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 0, 'foreign': [], 'desktops': [], 'pid': None,
+                 'backups': [{'path': str(mime), 'bytes': base64.b64encode(b'original').decode(),
+                              'sha256': hashlib.sha256(b'original').hexdigest(), 'mode': 0o600}]}))
+            with patch.object(browser, '_firefox_mains', return_value=[]):
+                self.assertEqual(browser._target('recover', {'profile_root': str(root)}), {'recovered': 1})
+                self.assertEqual(browser._target('recover', {'profile_root': str(root)}), {'recovered': 0})
+                # A controller retrying restore after recovery finds nothing left to do.
+                self.assertTrue(browser._restore({'directory': str(directory)})['restored'])
+            self.assertEqual(mime.read_bytes(), b'original')
+            self.assertFalse(directory.exists())
+
+    def test_dropped_session_hangup_does_not_stop_recovery(self):
+        # Validator N3: the helper died by SIGHUP with the SSH session. Run the
+        # real helper process, hang it up mid-step, drop its stdout, and check
+        # that it still restores. It waits on a test-owned "setup helper".
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / 'putgd-surface-x'
+            directory.mkdir()
+            mime, desktop = root / 'mimeapps.list', root / 'putgdsurfacex.desktop'
+            mime.write_bytes(b'x-scheme-handler/https=putgdsurfacex.desktop')
+            desktop.write_bytes(b'[Desktop Entry]')
+            setup = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+            self.addCleanup(setup.wait)
+            self.addCleanup(setup.kill)
+            start = Path('/proc/%d/stat' % setup.pid).read_text().rsplit(')', 1)[1].split()[19]
+            # since is beyond any real start time: the helper scans this host's
+            # /proc, and nothing here may be mistaken for a stray Firefox.
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 10 ** 18, 'foreign': [], 'desktops': [str(desktop)],
+                 'pid': None, 'helper': [setup.pid, start],
+                 'backups': [{'path': str(mime), 'bytes': base64.b64encode(b'original').decode(),
+                              'sha256': hashlib.sha256(b'original').hexdigest(), 'mode': 0o640}]}))
+            payload = base64.b64encode(json.dumps({'profile_root': str(root), 'wait': 30}).encode()).decode()
+            helper = subprocess.Popen([sys.executable, browser.__file__, 'recover', payload],
+                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            self.addCleanup(helper.wait, 5)
+            deadline = time.monotonic() + 20
+            while True:
+                status = Path('/proc/%d/status' % helper.pid).read_text()
+                ignored = int(re.search(r'^SigIgn:\s*([0-9a-f]+)$', status, re.M)[1], 16)
+                if ignored & 1 and os.getpgid(helper.pid) != os.getpgid(0):
+                    break
+                self.assertLess(time.monotonic(), deadline, 'helper never detached from the session')
+                time.sleep(.05)
+            os.kill(helper.pid, signal.SIGHUP)
+            helper.stdout.close()  # The SSH channel is gone.
+            time.sleep(.3)
+            self.assertIsNone(helper.poll())
+            self.assertEqual(mime.read_bytes(), b'x-scheme-handler/https=putgdsurfacex.desktop')
+            setup.kill()  # The setup step ends (an unreaped zombie); recovery proceeds.
+            helper.wait(timeout=20)
+            self.assertEqual(mime.read_bytes(), b'original')
+            self.assertEqual(mime.stat().st_mode & 0o777, 0o640)
+            self.assertFalse(desktop.exists())
+            self.assertFalse(directory.exists())
+
+
+class CreatedDirectories(unittest.TestCase):
+    def test_restore_removes_only_directories_setup_created(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            (home / '.local/share').mkdir(parents=True)  # Pre-existing parent stays.
+            configs = [home / '.config', home / 'isolated/config']
+            with contextlib.ExitStack() as stack:
+                for item in _real_setup(home, configs, [b'a', b'b']):
+                    stack.enter_context(item)
+                stack.enter_context(patch.object(browser, '_terminate'))
+                state = browser._prepare({})
+                created = json.loads((Path(state['directory']) / 'transaction.json').read_text())['created']
+                self.assertEqual(created, [str(home / p) for p in
+                                           ('.local/share/applications', '.mozilla', '.mozilla/firefox',
+                                            'isolated/data', 'isolated/data/applications')])
+                (home / 'isolated/data/applications/user-file.desktop').write_bytes(b'not ours')
+                browser._restore(state)
+            self.assertTrue((home / '.local/share').exists())
+            self.assertFalse((home / '.local/share/applications').exists())
+            self.assertFalse((home / '.mozilla').exists())
+            self.assertEqual((home / 'isolated/data/applications/user-file.desktop').read_bytes(), b'not ours')
 
 
 class RecipeContracts(unittest.TestCase):

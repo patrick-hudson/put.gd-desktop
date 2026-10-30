@@ -1,5 +1,8 @@
 {
-  "browser": {"command": ["firefox"]},
+  "browser": {
+    "command": ["firefox"],
+    "timeouts": {"protocol": 30, "page": 60}
+  },
   "links": {
     "notification_query": {"name": "Upload complete"},
     "row_open_query": {"name": "Open in browser", "role": "menu item"}
