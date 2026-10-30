@@ -1019,7 +1019,9 @@ def shortcut_refresh(ctx):
         fixture.release()
     else:
         ctx.expect(fixture.observe().get('available') is False, 'native shortcut channel is actually unavailable')
+    ctx.note('native channel before Check again: ' + json.dumps(fixture.observe(), sort_keys=True))
     live_click(ctx, 'refreshShortcutSupport')
+    ctx.note('native channel after Check again: ' + json.dumps(fixture.observe(), sort_keys=True))
     if fixture.state == 'conflict':
         ctx.wait(lambda: fixture.observe().get('bindings', {}).get('region', {}).get('bound') is True,
                  'refresh acquires the released native shortcut')

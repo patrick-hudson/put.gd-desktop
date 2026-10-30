@@ -312,6 +312,14 @@
       "namingModeHelp": {
         "name": "Help for Naming",
         "role": "check box"
+      },
+      "shortcutHelpToggle": {
+        "name": "How shortcuts work",
+        "role": "check box"
+      },
+      "refreshShortcutSupport": {
+        "name": "Check shortcuts again",
+        "role": "push button"
       }
     },
     "theme_references": {
@@ -356,6 +364,9 @@
     ],
     "namingModeHelp": [
       "Help for Naming"
+    ],
+    "shortcutHelpToggle": [
+      "How shortcuts work"
     ]
   }
 }
