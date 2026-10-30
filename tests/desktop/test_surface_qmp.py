@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import sys
 import tempfile
 import threading
 import time
@@ -11,6 +12,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tools.lab import lab
 from tools.lab.surface_driver.run import verify_guest_endpoint
@@ -70,7 +73,7 @@ def full_listener(*, drain=True, respond=True, drop_input_reply=False):
             worker.join(3)
             assert not worker.is_alive()
             # A baseline client fails at connect, before the server's accept.
-            if errors and not isinstance(errors[0], TimeoutError):
+            if errors and sys.exc_info()[0] is None:
                 raise errors[0]
 
 
@@ -121,3 +124,7 @@ def test_surface_qmp_failed_handshake_closes_connection():
         with pytest.raises(lab.LabError, match='QMP closed'):
             lab.QMP(path, timeout=1)
         assert all(peer.fileno() == -1 for peer in attempts)
+
+
+if __name__ == '__main__':
+    raise SystemExit(pytest.main([__file__]))
