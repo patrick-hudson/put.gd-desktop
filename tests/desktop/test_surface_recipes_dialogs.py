@@ -43,6 +43,8 @@ class FakeContext(Context):
         self.names_only_accessibility = False
 
     def fixture(self, name):
+        if name == 'chooser-failure':
+            raise RecipeBlocked('production failure boundary unavailable', issue=671)
         if name.startswith('file-dialog-'):
             return {'available': True, 'reason': ''}
         return {'history': SimpleNamespace(history_id='history-1', path='/retained/original.png'),
@@ -142,6 +144,10 @@ class FakeContext(Context):
                 return result
         raise RecipeFailed(what)
 
+    def focus(self, window, raise_window=True):
+        self.calls.append(('focus', window, raise_window))
+        return self.geometry(window)
+
     def geometry(self, window):
         self.calls.append(('geometry', window))
         return {'x': 0, 'y': 0, 'width': 820, 'height': 520, 'scale': 1}
@@ -149,8 +155,8 @@ class FakeContext(Context):
     def accessible(self, query):
         self.calls.append(('accessible', query))
         if self.names_only_accessibility:
-            return [{'name': 'Synthetic chooser', 'role': 'dialog'}]
-        return [] if self.no_accessibility else [{'name': query.get('name'), 'text': query.get('text')}]
+            return [{'name': 'Synthetic chooser', 'role': 'dialog', 'pid': 123}]
+        return [] if self.no_accessibility else [{'name': query.get('name'), 'text': query.get('text'), 'role': 'file chooser', 'pid': 123}]
 
     def keys(self, *sequence):
         self.inputs.append(('keys', sequence))
@@ -195,7 +201,7 @@ class DialogRecipes(unittest.TestCase):
             for backend in dialogs.BACKENDS:
                 with self.subTest(scenario=scenario, backend=backend):
                     ctx = FakeContext(backend)
-                    blocked = scenario == 'failure-strip' or scenario in dialogs.BACKENDS and scenario != backend
+                    blocked = scenario == 'failure-strip'
                     if blocked:
                         with self.assertRaises(RecipeBlocked):
                             dialogs._run(ctx, backend, scenario)

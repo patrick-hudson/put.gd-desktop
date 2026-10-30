@@ -23,5 +23,14 @@
         "expected_reason": "disabled"
       }
     }
+  },
+  "windows": {
+    "putgdFileDialog": {
+      "accessible": {
+        "role": "*",
+        "objectName": "putgdFileDialog",
+        "application": "putgd*"
+      }
+    }
   }
 }

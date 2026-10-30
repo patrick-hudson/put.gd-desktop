@@ -1,11 +1,8 @@
 """Real chooser input, with independent portal and fallback recipe variants.
 
-Core fixture requests (not implemented by this lane):
-* file-dialog-{portal,fallback}: start a fresh private resident/helper family
-  with profile['dialogs']['backends'][backend]['environment']; return
-  {'available': bool, 'reason': str}. Do not change a running process's env.
-The core's history fixture supplies .history_id and .path for a retained
-synthetic file; its recording fixture supplies .id for a private MP4 review.
+Backend fixtures launch a fresh private resident/helper family while preserving
+native desktop buses. The production chooser-failure fixture deliberately blocks
+until a real isolated Failed-result boundary exists (#671).
 
 Shell results use Context.shell's {returncode, stdout, stderr} contract. Call,
 view and MCP results are resident result objects, without transport envelopes.
@@ -15,6 +12,7 @@ are explicitly sent to review. Never compare a portal frame to a Qt catalog.
 from __future__ import annotations
 
 import json
+import re
 import shlex
 
 from tools.lab.surface_driver.api import recipe
@@ -91,9 +89,20 @@ def _ready(ctx, inspect, backend, mode):
                 ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
                             str(current.get('fallbackReason')))
             return ctx.accessible({'name': current['title']})
-        ctx.wait(drawn, 'desktop chooser is accessible and drawn')
+        nodes = ctx.wait(drawn, 'desktop chooser is accessible and drawn')
+        # Desktop-owned portal windows are outside the private app family.
+        # Bind the input guard to the observed chooser title and process, never
+        # the obscured Settings/History owner behind the modal window.
+        top = [node for node in nodes if node.get('role') in ('dialog', 'file chooser', 'frame')]
+        if len(top) != 1:
+            ctx.blocked('Portal chooser top-level AT-SPI identity is missing or ambiguous', issue=671)
+        ctx.profile.setdefault('windows', {})['portalFileDialog'] = {
+            'title': '^' + re.escape(state['title']) + '$', 'owned': False,
+            'accessible': {'name': state['title'], 'pid': top[0]['pid'], 'owned': False},
+        }
+        ctx.focus('portalFileDialog', raise_window=False)
     else:
-        ctx.geometry('putgdFileDialog')
+        ctx.focus('putgdFileDialog', raise_window=False)
     _frame(ctx, 'dialog-ready', backend, mode)
     return state
 
@@ -112,7 +121,7 @@ def _input(ctx, backend, path, mode, inspect):
         def contains_path():
             nodes = ctx.accessible({'text': path})
             matches = [node for node in nodes if path in
-                       (node.get('text'), node.get('value'), node.get('name'))]
+                       (node.get('text'), node.get('value'))]
             if nodes and not matches and not any('text' in node or 'value' in node for node in nodes):
                 ctx.blocked('AT-SPI probe exposes names only; cannot prove typed chooser path', issue=671)
             return matches
@@ -207,14 +216,10 @@ def _output(ctx, backend, files, *, mcp=False, cancel_only=False):
 
 
 def _run(ctx, backend, scenario):
-    _backend(ctx, backend)
-    if scenario in BACKENDS and scenario != backend:
-        ctx.blocked(scenario + ' backend state does not exist in a ' + backend + ' run')
     if scenario == 'failure-strip':
-        # Response 2 normally opens the Qt fallback. Killing the desktop portal
-        # is neither isolated nor a reliable way to reach Result::Failed.
-        ctx.blocked('No isolated production chooser-failure fixture; need a real failed result, '
-                    'then Try again/dismiss controls and resident unchanged-state witness', issue=671)
+        ctx.fixture('chooser-failure')
+        ctx.blocked('Chooser failure fixture did not provide a production Failed result', issue=671)
+    _backend(ctx, backend)
     files = _files(ctx)
     if scenario in ('output-folder', 'portal', 'fallback', 'cancel', 'mcp.file-dialogs'):
         _output(ctx, backend, files, mcp=scenario == 'mcp.file-dialogs', cancel_only=scenario == 'cancel')
@@ -307,14 +312,14 @@ def _png(ctx, path):
 
 
 def _register(scenario, backend):
-    needs = ['file-dialog-' + backend]
+    needs = ['chooser-failure'] if scenario == 'failure-strip' else ['file-dialog-' + backend]
     if scenario == 'history-save-as':
         needs.append('history')
     if scenario == 'review-save-copy':
         needs.append('recording')
     interaction = scenario if scenario.startswith('mcp.') else 'dialog.' + scenario
 
-    @recipe(interaction, needs=needs, destinations=('local',), desktop_drawn=backend == 'portal')
+    @recipe(interaction, needs=needs, destinations=('local',), desktop_drawn=backend == 'portal', timeout=300)
     def run(ctx):
         _run(ctx, backend, scenario)
     run.__name__ = scenario.replace('.', '_').replace('-', '_') + '_' + backend
