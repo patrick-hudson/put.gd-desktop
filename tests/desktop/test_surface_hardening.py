@@ -178,6 +178,20 @@ class BoatCliSafety(unittest.TestCase):
             with self.assertRaises(RecipeBlocked):
                 resolve_boat_cli()
 
+    def test_owned_guests_do_not_require_an_unused_boat_cli(self):
+        with tempfile.TemporaryDirectory(prefix='sd-boat-') as td:
+            root = Path(td)
+            target = SimpleNamespace(physical=None, close=lambda: [])
+            args = ['--desktop', 'mint-cinnamon-x11', '--host', 'boat', '--placement', 'boat',
+                    '--boat-id', 'bx_test', '--run', str(root), '--package', 'source',
+                    '--destination', 'local', '--recipes', 'core_demo', '--catalog', str(root),
+                    '--build', 'abcdef', '--out', str(root/'out'), '--coverage', str(root/'coverage.json')]
+            with patch('tools.lab.surface_driver.run.resolve_boat_cli', side_effect=AssertionError('unused CLI')) as resolve, \
+                 patch('tools.lab.surface_driver.run.Target', return_value=target), \
+                 patch('tools.lab.surface_driver.run.guard_target', side_effect=RecipeBlocked('test stop')):
+                self.assertEqual(main(args), 2)
+            resolve.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

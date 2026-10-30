@@ -401,13 +401,15 @@ def main(argv=None):
     recipes=[]
     exit_code=2
     try:
-        args.boat_cli = resolve_boat_cli() if args.boat_id else None
-        if args.boat_cli:
-            environment['placement_details']['boat_cli'] = args.boat_cli
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
         target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
                       app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
+        # Only the boat native-head proof invokes this CLI. Owned guests do
+        # not acquire a new host-tool dependency merely by naming their boat id.
+        args.boat_cli = resolve_boat_cli() if target.physical and args.placement == 'boat' else None
+        if args.boat_cli:
+            environment['placement_details']['boat_cli'] = args.boat_cli
         guard_target(args,target)
         authorized=True
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
