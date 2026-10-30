@@ -14,6 +14,7 @@ must be ready. No local build toolchain, Docker daemon or AWS credentials are
 needed by this command.
 
 ```sh
+set -eu
 git fetch origin
 sha=$(git rev-parse origin/nightly)
 python3 tools/lab/boat/candidate.py "$sha" \
@@ -64,8 +65,9 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
 - AppImage uses the pinned Ubuntu 24.04 native container rather than GitHub's
   mutable `ubuntu-24.04` hosted VM. It runs `hosted_apt_mirrors.py`, installs Qt
   through fresh aqtinstall 3.3.* / py7zr 1.1.0 rather than the cached Action, and
-  exports `QT_PLUGIN_PATH` and `QML2_IMPORT_PATH`. The retained package inventory
-  identifies the actual distro packages. Hosted preinstalled desktop links can
+  exports `QT_PLUGIN_PATH` and `QML2_IMPORT_PATH`. Python is bootstrapped
+  before the mirror helper because the minimal container does not preinstall it.
+  The retained package inventory identifies the actual distro packages. Hosted preinstalled desktop links can
   differ; inspect `appimage-build.json`'s `rootDesktopEntry.removedLinks`.
 - UI catalog uses the package matrix's pinned Ubuntu 26.04 digest; CI's linux
   job uses the floating `ubuntu:26.04` tag. Dependency/build/render run blocks
@@ -141,6 +143,9 @@ sandboxes. Auto-stop bounds compute, but does not delete their disks. Recover
 only this commit's seven fixed candidate names, preserving unrelated workers:
 
 ```sh
+set -eu
+printf 'Full 40-character commit SHA from the failed manifest: '
+read -r sha
 python3 tools/lab/boat/candidate.py --cleanup "$sha" \
   --output "/home/patrick/work/boat-candidates/${sha}-cleanup1"
 ```
@@ -152,18 +157,32 @@ new output directory each time. Preserve logs/receipts before retrying and follo
 
 ## Lab snapshots
 
-The pilot's `putgd-lab-cinnamon` contains the Cinnamon golden and its historical
-built tree. `putgd-lab-ubuntu-gnome` is prepared from the same build-base template
-with the provisioned Ubuntu GNOME/Wayland golden and a separately identified
-built tree. Snapshot preparation does not boot a golden or establish a desktop
-pass. Fork a lab snapshot with `--no-env` and a finite TTL, wait for hydration,
-and create disposable overlays using the existing [VM lab](vm-lab.md) commands.
-The GNOME snapshot's preparation receipt is
-`/home/user/putgd-gnome-golden/snapshot-receipt.json`; its immutable disk is
-`/home/user/putgd-gnome-golden/image.qcow2`, and the host build tree is
-`/home/user/gnome-source`. That tree and fixture DEB target the Ubuntu 24.04
-sandbox host. Use the `ubuntu26.04` production artifact for the Ubuntu 26.04
-GNOME guest.
+Use `putgd-lab-ubuntu-gnome-v2` for Ubuntu GNOME guests. Its immutable golden is
+`/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2` (SHA-256
+`563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb`). It was copied
+and verified in a fresh fork before any overlay referenced the canonical path;
+the original golden and the old `putgd-lab-ubuntu-gnome` snapshot remain intact.
+The older snapshot keeps its GNOME golden outside the canonical root and is
+superseded; do not use that old path for new runs. The v2 preparation evidence is
+under `/home/user/fix721-evidence`; its `golden.json` identifies the canonical
+path and source digest.
+
+`putgd-lab-cinnamon` and `putgd-build-base` already keep their Cinnamon golden at
+`/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2` (SHA-256
+`4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da`). Their
+canonical layout was checked separately; no replacement names were needed.
+Both snapshots retain historical built trees. Snapshot preparation does not boot
+a golden or establish a desktop pass. Fork with `--no-env` and a finite TTL,
+wait for `hydrated: true`, and create disposable overlays using the existing
+[VM lab](vm-lab.md) commands. When lab.py comes from a separate source checkout,
+pass `--images-root /home/user/work/put.gd/work/lab-images` to guarded cleanup.
+The root must end in `work/lab-images`, and the base must be an owned, single-link
+regular file; a second hard link is not a supported workaround.
+
+The inherited `/home/user/gnome-source` tree and its fixture DEB target the
+Ubuntu 24.04 sandbox host. Use the `ubuntu26.04` production artifact for the
+Ubuntu 26.04 GNOME guest. Treat historical snapshot builds as caches to identify,
+not as current candidate artifacts.
 Before graphical work, meet the storage, socket, bootstrap, display-wall and
 saved-visual requirements in that guide.
 
