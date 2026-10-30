@@ -81,6 +81,16 @@ class PlasmaPick(unittest.TestCase):
             self.assertTrue(probe.foreground(self.query)['ok'])
 
 
+    def test_popup_root_is_bound_by_identity_when_its_title_is_empty(self):
+        self.node.update(window='',popup={'a11y_bus':':1.7','a11y_path':'/menu'})
+        self.top.name='plasmashell';self.top.bus=':1.7';self.top.path='/menu'
+        with patch.object(probe,'desktop_root',return_value=[]),patch.object(probe,'popup_roots',return_value=[((70,'/menu'),(self.top,2,'','plasmashell',None,[]))]):
+            self.assertTrue(probe.foreground(self.query)['ok'])
+        self.top.path='/other-menu'
+        with patch.object(probe,'popup_roots',return_value=[((70,'/other-menu'),(self.top,2,'','plasmashell',None,[]))]):
+            self.assertFalse(probe.foreground(self.query)['ok'])
+
+
 class Provisioning(unittest.TestCase):
     def test_kde_profile_selects_kwin_shell_guard_and_crash_policy(self):
         profile=load_profile('kubuntu-kde-wayland')

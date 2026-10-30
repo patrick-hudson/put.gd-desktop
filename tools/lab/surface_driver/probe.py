@@ -895,7 +895,8 @@ def accessible(query, toplevel=False, detail=True):
             # are filled in for matched rows only (a shell tree has ~2000 nodes).
             rect = extents(node, kind) if potential or role in POPUP_ROLES else UNREAD
             if role in POPUP_ROLES and states['showing']:
-                popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid}
+                popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid,
+                         'a11y_bus': getattr(node, 'bus', None), 'a11y_path': getattr(node, 'path', None)}
             if potential:
                 attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
                 protected = role == 'password text'
@@ -1695,7 +1696,13 @@ def plasma_witness_hit(query):
     tops = [top for app in desktop_root() if app is not None and app.get_process_id() == pid for top in app]
     tops.extend(root[0] for _, root in popup_roots({'pid':pid, 'compositor':query['compositor']}))
     for top in tops:
-        if (top.name or '') != expected.get('window'):
+        popup = expected.get('popup')
+        if popup:
+            # Qt's out-of-tree QMenu has a name but no window title. Bind its
+            # actual root identity, never a guessed or empty title match.
+            if (getattr(top,'bus',None),getattr(top,'path',None)) != (popup.get('a11y_bus'),popup.get('a11y_path')):
+                continue
+        elif (top.name or '') != expected.get('window'):
             continue
         raw = extents(top)
         content = window.get('content')

@@ -754,6 +754,19 @@ class TrayRecipesTest(unittest.TestCase):
             tray._press(ctx, 'Save diagnostics for this upload')
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 
+    def test_icon_waits_for_drawing_but_refuses_ambiguity(self):
+        from unittest.mock import Mock
+        ctx=FakeContext();node={'name':'put.gd','pid':70,'visible':True,'showing':True,'rect':[10,20,24,24]}
+        ctx.accessible=Mock(side_effect=[[],[node]])
+        def wait(predicate,*args,**kwargs):
+            return predicate() or predicate()
+        ctx.wait=wait
+        self.assertEqual(tray._icon(ctx),node)
+        self.assertEqual(ctx.accessible.call_count,2)
+        ctx.accessible=Mock(return_value=[node,dict(node,pid=71)])
+        with self.assertRaisesRegex(RecipeBlocked,'ambiguous'):tray._icon(ctx)
+        ctx.accessible.assert_called_once()
+
     def test_icon_selector_is_scoped_to_the_shell(self):
         ctx = FakeContext()
         ctx.profile['tray']['icon'] = None
