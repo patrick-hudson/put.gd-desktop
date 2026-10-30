@@ -112,11 +112,13 @@ class Round3(fixture_tests.Fixtures):
         self.ctx.profile.update(session='wayland',compositor={'kind':'gnome-lab-witness'})
         native={'available':True};commands=[];original=self.ctx.shell
         def shell(command,**kwargs):
+            if command=='LC_ALL=C gnome-extensions info putgd@put.gd':
+                return {'returncode':0,'stdout':'  State: ACTIVE\n','stderr':''}
             if command.startswith('gnome-extensions '):
                 commands.append(command);native['available']=' enable ' in command
                 return {'returncode':0,'stdout':'','stderr':''}
             return original(command,**kwargs)
-        with patch.object(desktop,'shortcut_status',return_value=native),patch.object(scope,'json',return_value=True),patch.object(self.ctx,'shell',shell):
+        with patch.object(desktop,'shortcut_status',return_value=native),patch.object(scope,'json',side_effect=AssertionError('private GSettings is not native state')),patch.object(self.ctx,'shell',shell):
             value=self.ctx.fixture('settings-binding-unavailable')
             self.assertTrue(value.controlled);self.assertFalse(value.observe()['available'])
             value.release();value.release();self.ctx.manager.close()

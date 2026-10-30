@@ -1,5 +1,6 @@
 """Owned external windows and actual native shortcut conflicts, guest-only."""
 import json
+import re
 import shlex
 
 from ..api import RecipeBlocked
@@ -82,7 +83,11 @@ def binding(scope, state='conflict'):
             # This is the app's own native helper in a disposable guest. Keep
             # the separate compositor witness and all other extensions intact.
             uuid='putgd@put.gd'
-            enabled=scope.json("import json\nfrom gi.repository import Gio\nprint(json.dumps("+repr(uuid)+" in Gio.Settings.new('org.gnome.shell').get_strv('enabled-extensions')))")
+            # GSettings here sees the fixture's private XDG_CONFIG_HOME, not
+            # Shell's real dconf database. Ask the running Shell through its
+            # extension CLI instead; only its native ACTIVE/ENABLED state counts.
+            info=ctx.shell('LC_ALL=C gnome-extensions info '+uuid)
+            enabled=not info['returncode'] and re.search(r'^\s*State:\s*(?:ACTIVE|ENABLED)\s*$',info['stdout'],re.M)
             if not enabled:
                 raise RecipeBlocked('native app helper is not enabled; existing extension state preserved',issue=681)
             restored=False
