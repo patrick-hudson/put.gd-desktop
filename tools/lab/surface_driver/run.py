@@ -55,8 +55,14 @@ def secret_safe_evidence_blockers():
             or not callable(finish_evidence)
             or getattr(run_recipes, 'final_audit', None) is not finish_evidence):
         blockers.append('end-run-scan-not-wired')
-    if not shutil.which('tesseract'):
+    if not (ocr := shutil.which('tesseract')):
         blockers.append('ocr-unavailable-install-tesseract-in-disposable-target')
+    else:
+        try:
+            from PIL import Image
+            redact.ocr_text(Image.new('RGB', (64, 64), 'white'), ocr=ocr)
+        except Exception:
+            blockers.append('ocr-self-test-failed')
     return blockers
 
 

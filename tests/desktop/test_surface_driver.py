@@ -268,7 +268,7 @@ class Running(unittest.TestCase):
         from tools.lab.surface_driver import run as runner, receipts, context, redact
         self.assertEqual(runner.secret_safe_evidence_blockers(), [])
         failures = ((redact.shutil, 'which'), (receipts, 'Redactor'), (receipts, 'save_frame'),
-                    (receipts, 'scan_run'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
+                    (receipts, 'scan_run'), (redact, 'ocr_text'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
         for destination in ('s3','b2','proton'):
             for module, name in failures:
                 with self.subTest(destination=destination, missing=name):
@@ -308,6 +308,13 @@ class Running(unittest.TestCase):
                     self.assertEqual(runner.main(args),0)
                 self.assertEqual(touched,[destination])
                 self.assertTrue(json.loads((out/'receipt.json').read_text())['secret_scan']['passed'])
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_live_gate_refuses_a_present_but_nonworking_ocr_executable(self):
+        from tools.lab.surface_driver import run as runner, redact
+        self.ocr_patch.stop()
+        with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],1,b'',b'')):
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers())
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
