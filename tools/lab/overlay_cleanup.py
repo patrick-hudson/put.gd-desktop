@@ -420,28 +420,40 @@ def _scan_processes(proc, run, device, inode, lock_pid):
             raise CleanupError('Host process inventory disappeared for a live PID')
 
 
+def _privileged_probe_source():
+    return ('import os, re, sys\nfrom pathlib import Path\n'
+            'class CleanupError(RuntimeError): pass\n' + inspect.getsource(_scan_processes) +
+            '\ntry:\n'
+            '    _scan_processes(Path("/proc"), sys.argv[1], int(sys.argv[2]), '
+            'int(sys.argv[3]), int(sys.argv[4]))\n'
+            'except CleanupError:\n    print("blocked")\n'
+            'except Exception:\n    print("unavailable")\n'
+            'else:\n    print("clear")\n')
+
+
+# Captured once at import: a checkout switched mid-run must not change what runs as root.
+_PRIVILEGED_PROBE = _privileged_probe_source()
+
+
 def _privileged_process_inventory(run, device, inode, lock_pid):
-    # Boat grants user passwordless sudo. Elevate only this read-only probe,
-    # never lab.py or a checkout import (which could run unrelated root code).
-    # -I ignores PYTHONPATH, user site packages and the working directory.
-    # No sudoers changes, prompts, installation, disk opens or mutations.
-    source = ('import os, re, sys\nfrom pathlib import Path\n'
-              'class CleanupError(RuntimeError): pass\n' + inspect.getsource(_scan_processes) +
-              '\ntry:\n'
-              '    _scan_processes(Path("/proc"), sys.argv[1], int(sys.argv[2]), '
-              'int(sys.argv[3]), int(sys.argv[4]))\n'
-              'except CleanupError:\n    print("blocked")\n'
-              'except Exception:\n    print("unavailable")\n'
-              'else:\n    print("clear")\n')
+    # Boat grants user passwordless sudo; builders allow /usr/bin/python3 without a prompt.
+    # Elevate only this read-only probe, never lab.py or a checkout import (which could run
+    # unrelated root code). -I ignores PYTHONPATH, user site packages and the working
+    # directory; -B writes no bytecode. No sudoers changes, prompts, installation, disk
+    # opens or mutations.
     try:
-        result = subprocess.run(['sudo', '-n', '--', '/usr/bin/python3', '-I', '-c', source,
-                                 str(run), str(device), str(inode), str(lock_pid)],
+        result = subprocess.run(['sudo', '-n', '--', '/usr/bin/python3', '-I', '-B', '-c',
+                                 _PRIVILEGED_PROBE, str(run), str(device), str(inode), str(lock_pid)],
                                 capture_output=True, text=True, timeout=15)
     except (OSError, subprocess.SubprocessError) as error:
         raise CleanupError('Host process inventory is not fully visible; '
                            'read-only sudo inventory unavailable; cleanup refused') from error
-    if result.returncode != 0 or result.stdout != 'clear\n' or result.stderr:
-        raise CleanupError('Privileged host process inventory blocked or incomplete; cleanup refused')
+    if result.returncode == 0 and result.stdout == 'clear\n' and not result.stderr:
+        return
+    if result.returncode == 0 and result.stdout == 'blocked\n' and not result.stderr:
+        raise CleanupError('Privileged host process inventory found a process using the overlay; '
+                           'cleanup refused')
+    raise CleanupError('Privileged host process inventory unavailable or incomplete; cleanup refused')
 
 
 def _check_processes(run, disk, *, lock_process=None):

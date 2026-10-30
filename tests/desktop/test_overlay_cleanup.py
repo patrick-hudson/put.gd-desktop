@@ -112,21 +112,37 @@ class ProcessInventory(unittest.TestCase):
                         with self.assertRaises(cleanup.CleanupError):
                             cleanup._privileged_process_inventory(self.root, info.st_dev, info.st_ino, -1)
                     args = run.call_args.args[0]
-                    self.assertEqual(args[:7], ['sudo', '-n', '--', '/usr/bin/python3', '-I', '-c', args[6]])
+                    self.assertEqual(args[:8], ['sudo', '-n', '--', '/usr/bin/python3', '-I', '-B', '-c', args[7]])
+                    self.assertEqual(args[7], cleanup._PRIVILEGED_PROBE)
                     self.assertEqual(run.call_args.kwargs['timeout'], 15)
                     # Run the exact transmitted program against synthetic /proc.
                     # No import of checkout code occurs in the elevated program.
-                    source = args[6].replace('Path("/proc")', 'Path(' + repr(str(self.proc)) + ')')
+                    source = args[7].replace('Path("/proc")', 'Path(' + repr(str(self.proc)) + ')')
                 result = subprocess.run([sys.executable, '-I', '-c', source, str(self.root),
                                          str(info.st_dev), str(info.st_ino), '-1'],
                                         capture_output=True, text=True, timeout=5)
                 self.assertEqual((result.returncode, result.stdout, result.stderr), (0, 'clear\n', ''))
 
+    def test_privileged_probe_is_captured_at_import_and_names_holders(self):
+        # A checkout switched mid-run must not change the program that runs as root.
+        with patch.object(cleanup.inspect, 'getsource', return_value='raise SystemExit(9)\n'), \
+             patch.object(cleanup.subprocess, 'run',
+                          return_value=subprocess.CompletedProcess([], 0, 'clear\n', '')) as run:
+            cleanup._privileged_process_inventory(self.root, 1, 2, -1)
+        self.assertNotIn('SystemExit(9)', run.call_args.args[0][7])
+        for stdout, message in (('blocked\n', 'found a process using the overlay'),
+                                ('unavailable\n', 'unavailable or incomplete')):
+            with self.subTest(stdout=stdout), \
+                 patch.object(cleanup.subprocess, 'run',
+                              return_value=subprocess.CompletedProcess([], 0, stdout, '')):
+                with self.assertRaisesRegex(cleanup.CleanupError, message):
+                    cleanup._privileged_process_inventory(self.root, 1, 2, -1)
+
     def test_privileged_program_refuses_held_hidden_and_unknown_inventory(self):
         with patch.object(cleanup.subprocess, 'run',
                           return_value=subprocess.CompletedProcess([], 0, 'clear\n', '')) as run:
             cleanup._privileged_process_inventory(self.root, 1, 2, -1)
-            source = run.call_args.args[0][6].replace(
+            source = run.call_args.args[0][7].replace(
                 'Path("/proc")', 'Path(' + repr(str(self.proc)) + ')')
         info = self.disk.stat()
         for case in ('held', 'mapped', 'hidepid', 'unknown-fds', 'malformed-identity'):
