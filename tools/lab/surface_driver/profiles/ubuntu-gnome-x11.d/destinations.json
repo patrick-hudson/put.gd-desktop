@@ -35,7 +35,7 @@
     "confirmDestinationRemove": {
       "title": "Remove destination",
       "accessible": {
-        "role": "dialog",
+        "role": "alert",
         "application": "putgd*",
         "name": "Remove destination"
       }
@@ -43,7 +43,7 @@
     "confirmDestinationDefault": {
       "title": "Use an untested destination",
       "accessible": {
-        "role": "dialog",
+        "role": "alert",
         "application": "putgd*",
         "name": "Use an untested destination"
       }
@@ -51,7 +51,7 @@
     "confirmDestinationReload": {
       "title": "Reload settings from file",
       "accessible": {
-        "role": "dialog",
+        "role": "alert",
         "application": "putgd*",
         "name": "Reload settings from file"
       }
@@ -63,6 +63,104 @@
     "destinationAddMenu": {
       "owner": "destinations",
       "popup": true
+    }
+  },
+  "live_controls": {
+    "destinationList": {
+      "name": "Destinations",
+      "role": "list"
+    },
+    "destinationLabel": {
+      "name": "Destination name",
+      "role": "text"
+    },
+    "addDestinationCredentials": {
+      "name": "Add credentials\u2026",
+      "role": "push button"
+    },
+    "s3Service": {
+      "name": "S3-compatible service",
+      "role": "combo box"
+    },
+    "s3Bucket": {
+      "name": "Bucket",
+      "role": "text"
+    },
+    "s3RegionChoices": {
+      "name": "Region",
+      "role": "combo box"
+    },
+    "s3ObjectPrefix": {
+      "name": "Folder in bucket",
+      "role": "text"
+    },
+    "s3PublicUrlBase": {
+      "name": "Link domain",
+      "role": "text"
+    },
+    "s3AclMode": {
+      "name": "Upload access request",
+      "role": "combo box"
+    },
+    "advancedSettings": {
+      "name": "Advanced connection settings",
+      "role": "check box"
+    },
+    "customEndpoint": {
+      "name": "Use a custom endpoint",
+      "role": "check box"
+    },
+    "s3Endpoint": {
+      "name": "Endpoint",
+      "role": "text"
+    },
+    "s3StorageClass": {
+      "name": "Storage class",
+      "role": "text"
+    },
+    "s3ConnectTimeoutMsControl": {
+      "name": "Connect timeout",
+      "role": "spin button"
+    },
+    "s3StorageClassReset": {
+      "name": "Reset Storage class",
+      "role": "push button"
+    },
+    "s3ConnectTimeoutMsReset": {
+      "name": "Reset Connect timeout",
+      "role": "push button"
+    },
+    "credentialMode": {
+      "name": "Credential storage",
+      "role": "combo box"
+    },
+    "credentialAccessKey": {
+      "name": "Access key ID",
+      "role": "text"
+    },
+    "credentialSecretKey": {
+      "name": "Secret access key",
+      "role": "password text"
+    },
+    "credentialSessionToken": {
+      "name": "Session token",
+      "role": "password text"
+    },
+    "storeCredentials": {
+      "name": "Use for this session",
+      "role": "push button"
+    },
+    "s3AclModeHelp": {
+      "name": "Help for Upload access request",
+      "role": "check box"
+    },
+    "destinationStatus": {
+      "name": "Destination status",
+      "role": "label"
+    },
+    "destinationsEmpty": {
+      "name": "No destinations yet*",
+      "role": "label"
     }
   }
 }
