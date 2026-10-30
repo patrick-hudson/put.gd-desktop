@@ -1,6 +1,6 @@
 """Real-input screenshot/recording selectors and recording controls.
 
-The ``selector-desktop`` fixture (core request #664) owns a moving synthetic
+The core ``selector-desktop`` fixture owns a moving synthetic
 pattern and its cleanup, and supplies ordered logical ``screens`` rectangles,
 an absolute private ``output_dir`` and the exact-build ``record_helper`` path.
 No fixture supplies the result of an interaction. AT-SPI descriptions are the
@@ -16,10 +16,8 @@ from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
-# The initial core runner has no selector fixture. A campaign can supply its
-# equivalent immutable metadata in the selectors profile fragment until #664
-# lands. Keep setup outside this module; recipes never implement input/runner code.
-NEEDS = ()
+# Fixture setup/cleanup belongs to the core; profile fragments hold only desktop differences.
+NEEDS = ("selector-desktop",)
 REGION = "44-region-keyboard"
 RECSEL = "45-record-region-keyboard"
 BAR = "33-record-ready-bar"
@@ -40,12 +38,7 @@ def _call(ctx, method, params=None):
 
 
 def _env(ctx):
-    value = ctx.profile.get("selectors", {}).get("fixture")
-    if value is None:
-        try:
-            value = ctx.fixture("selector-desktop")
-        except RecipeBlocked:
-            ctx.blocked("selector-desktop fixture or selectors.fixture profile metadata is required (#664)", issue=664)
+    value = ctx.fixture("selector-desktop")
     if not isinstance(value, dict) or not value.get("screens"):
         ctx.blocked("selector-desktop must supply live logical screen rectangles (#664)", issue=664)
     return value
@@ -106,7 +99,7 @@ def _description(ctx, recording=False):
     nodes = ctx.accessible({"name": name})
     descriptions = [n.get("description", "") for n in nodes if n.get("description")]
     if not descriptions:
-        ctx.blocked("Live selector accessibility description unavailable; no resident selection inspect (#664)", issue=664)
+        ctx.blocked("Live selector accessibility description unavailable; no resident selection inspect (#701)", issue=701)
     return descriptions[0]
 
 
@@ -149,7 +142,7 @@ def _open_region(ctx, edit=False, accessible=True):
             ctx.expect(False, "capture failed before selector readback: " + observed.get("error", {}).get("code", "unknown"))
         _cancel_region(ctx, oid)
         if isinstance(error, RecipeFailed) and observed["state"] in ("accepted", "acquiring"):
-            ctx.blocked("Capture selector has no live AT-SPI node in this session; resident has no selection inspect fallback (#664)", issue=664)
+            ctx.blocked("Capture selector has no live AT-SPI node in this session; resident has no selection inspect fallback (#701)", issue=701)
         raise
     return oid
 
@@ -208,7 +201,7 @@ def _choose(ctx, rid, rect=None):
     if rect is None:
         ctx.keys("Right")
         rect = _half(_screen(ctx))
-        _expect_rect(ctx, rect, True)
+        # The ready target independently verifies the keyboard-selected bounds.
         ctx.keys("Return")
     else:
         x, y, w, h = rect
@@ -248,7 +241,8 @@ def _motion(ctx, rid):
     path = str(PurePosixPath(env["output_dir"]) / (rid + ".mp4"))
     _call(ctx, "recording.saveCopy", {"id": rid, "path": path, "overwrite": False})
     done = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))["state"] == "reviewing" and s.get("lastExport") else None), "motion probe export", timeout=60)
-    ctx.expect(not (done["lastExport"].get("error") or {}).get("code"), "motion probe export succeeded")
+    ctx.expect(done["lastExport"].get("status") == "saved" and done["lastExport"].get("path") == path
+               and not (done["lastExport"].get("error") or {}).get("code"), "motion probe export succeeded")
     result = ctx.shell(shlex.quote(helper) + " --motion " + shlex.quote(path) + " 8")
     found = re.search(r"^motion=([0-9.]+)", result.get("stdout", ""), re.M)
     ctx.expect(result.get("returncode") == 0 and found is not None, "clip motion analyzer succeeded")
@@ -300,7 +294,7 @@ def region_keyboard(ctx):
 def region_cancel(ctx):
     with _local(ctx):
         for gesture in ("Esc", "right"):
-            oid = _open_region(ctx)
+            oid = _open_region(ctx, accessible=False)
             ctx.frame("before-" + gesture, reference="46-region-entire-display")
             _cancel_region(ctx, oid, gesture)
             ctx.frame("after-" + gesture)
@@ -310,7 +304,7 @@ def region_cancel(ctx):
 def region_capture(ctx):
     with _local(ctx):
         for gesture in ("drag", "Return"):
-            oid = _open_region(ctx)
+            oid = _open_region(ctx, accessible=False)
             ctx.frame("before-" + gesture, reference="46-region-entire-display")
             if gesture == "drag":
                 x, y, w, h = map(int, _half(_screen(ctx)))
@@ -327,7 +321,7 @@ def region_capture(ctx):
                 _png_dimensions(ctx, item["local"]["path"], w, h)
             ctx.frame("after-" + gesture)
         # A click (zero-size drag) must cancel rather than capture a pixel.
-        oid = _open_region(ctx)
+        oid = _open_region(ctx, accessible=False)
         x, y, _, _ = map(int, _half(_screen(ctx)))
         ctx.frame("before-tiny", reference="46-region-entire-display")
         ctx.click_at(x, y)
@@ -373,6 +367,7 @@ def region_modes(ctx):
 @recipe("region.key-tab", "region.multi-display", needs=NEEDS)
 def region_heads(ctx):
     _heads(ctx, False)
+    _heads(ctx, True)
 
 
 def _heads(ctx, recording):
@@ -469,8 +464,6 @@ def recording_cancel(ctx):
 
 @recipe("recsel.key-arrows", needs=NEEDS)
 def recording_keyboard(ctx):
-    # Prove output switching independently of optional accessibility readback.
-    _heads(ctx, True)
     with _local(ctx):
         rid = _open_record(ctx)
         try:

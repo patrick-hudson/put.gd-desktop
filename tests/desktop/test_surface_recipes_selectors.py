@@ -121,7 +121,7 @@ class FakeContext(Context):
             self.surface = "history"
             return {}
         if method == "recording.saveCopy":
-            self.recordings[params["id"]]["lastExport"] = {"path": params["path"], "error": {"code": ""}}
+            self.recordings[params["id"]]["lastExport"] = {"status": "saved", "path": params["path"], "error": {"code": ""}}
             return {"state": "exporting"}
         if method == "editor.inspect":
             assert self.operations[params["id"]]["state"] == "editing"
@@ -442,6 +442,50 @@ class SelectorRecipes(unittest.TestCase):
         ctx.click = unavailable_control
         with self.assertRaisesRegex(RecipeBlocked, "catalog aspect"):
             selectors.bar_discard(ctx)
+        self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
+
+    def test_profile_metadata_cannot_replace_core_fixture(self):
+        ctx = FakeContext()
+        ctx.profile = {"selectors": {"fixture": {"screens": [[0, 0, 999, 999]]}}}
+        self.assertIs(selectors._env(ctx), ctx.env)
+
+    def test_completed_capture_and_cancel_do_not_need_accessibility(self):
+        for function in (selectors.region_capture, selectors.region_cancel, selectors.recording_selection):
+            with self.subTest(recipe=function.__name__):
+                ctx = FakeContext()
+                ctx.no_accessibility = True
+                function(ctx)
+                self.assertEqual(ctx.document, ctx.original)
+                self.assertTrue(ctx.inputs)
+
+    def test_keyboard_movement_does_not_require_second_head(self):
+        ctx = FakeContext()
+        selectors.recording_keyboard(ctx)
+        self.assertTrue(any(kind == "key" and key == "Ctrl+Shift+Right"
+                            for kind, key, *rest in ctx.inputs))
+        self.assertFalse(any(kind == "key" and key == "Tab" for kind, key, *rest in ctx.inputs))
+
+    def test_tab_checks_both_screenshot_and_recording_outputs(self):
+        ctx = FakeContext(2)
+        ctx.no_accessibility = True
+        selectors.region_heads(ctx)
+        self.assertEqual(len(ctx.operations), 6)
+        captures = [op for op in ctx.operations.values() if op["action"] == "region"]
+        self.assertEqual(len(captures), 3)
+        self.assertEqual([r["target"]["rect"] for r in ctx.recordings.values()],
+                         [ctx.env["screens"][1], ctx.env["screens"][0], ctx.env["screens"][1]])
+
+    def test_unsaved_export_cannot_pass_motion_gate(self):
+        ctx = FakeContext()
+        real_call = ctx.call
+        def failed_export(method, params=None):
+            value = real_call(method, params)
+            if method == "recording.saveCopy":
+                ctx._record()["lastExport"]["status"] = "failed"
+            return value
+        ctx.call = failed_export
+        with self.assertRaisesRegex(RecipeFailed, "motion probe export succeeded"):
+            selectors.bar_recording(ctx)
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
 
     def test_unavailable_fixture_is_blocked(self):
