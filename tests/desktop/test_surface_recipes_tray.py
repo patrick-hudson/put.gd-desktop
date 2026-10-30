@@ -24,9 +24,7 @@ class FakeContext(Context):
 
     def __init__(self):
         self.profile = json.loads((ROOT / 'tools/lab/surface_driver/profiles/mint-cinnamon-x11.d/tray.json').read_text())
-        # Exercise recipe logic against a capable fake, independently of the
-        # real Cinnamon preflight blocker. This is never desktop evidence.
-        self.profile['tray'].pop('preflight_blocked', None)
+        # Exercise recipe logic with a capable fake; never desktop evidence.
         self.profile['tray']['icon'] = {'name': 'put.gd', 'application': 'cinnamon'}
         self.events = []
         self.rects = {}
@@ -332,6 +330,33 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertFalse(any(e[0] == 'call' and e[1] == 'diagnostics' for e in ctx.events))
         self.assertIn(('keys', (tray.CHORDS['clipboard'],)), ctx.events)
 
+    def test_outdated_helper_omitting_binding_blocks_before_input(self):
+        ctx = FakeContext()
+        original = ctx.call
+        def snapshot(method, params=None):
+            result = original(method, params)
+            if method == 'ui.snapshot':
+                d = result['diagnostics']
+                d['shortcuts']['bindings']['edit'] = {'requested': tray.CHORDS['edit']}
+                d['capabilities'] = {'source': {'helper': {'outdated': True, 'extensionVersion': 1,
+                                                         'packagedExtensionVersion': 15}}}
+            return result
+        ctx.call = snapshot
+        with self.assertRaisesRegex(RecipeBlocked, 'outdated'):
+            tray.shortcut_edit(ctx)
+        self.assertFalse(any(e[0] == 'keys' for e in ctx.events))
+
+    def test_refused_recording_selector_guard_does_not_retry_keyboard_cleanup(self):
+        ctx = FakeContext()
+        def refused(window, raise_window=True):
+            raise RecipeFailed("input target 'recsel' is obscured by 'put.gd' (window 42)")
+        ctx.focus = refused
+        with self.assertRaises(RecipeBlocked) as caught:
+            tray.shortcut_record(ctx)
+        self.assertEqual(caught.exception.issue, 670)
+        self.assertEqual([e for e in ctx.events if e[0] == 'keys'],
+                         [('keys', (tray.CHORDS['record'],))])
+
     def test_missing_shortcut_channel_blocks_without_pressing_the_shortcut(self):
         ctx = FakeContext()
         ctx.shortcut_available = False
@@ -376,7 +401,7 @@ class TrayRecipesTest(unittest.TestCase):
             tray.activate(ctx)
         self.assertFalse(any(e[0] == 'click' for e in ctx.events))
 
-    def test_catalog_reference_is_forwarded_only_when_configured(self):
+    def test_catalog_hint_keeps_the_full_desktop_frame(self):
         ctx = FakeContext()
         ctx.profile['tray']['references'] = {'full': '00-tray-menu'}
         tray.context_menu(ctx)

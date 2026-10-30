@@ -339,12 +339,20 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
     def action_recipe(ctx):
         with _local(ctx):
             if shortcut:
-                status = ctx.call('ui.snapshot')['diagnostics'].get('shortcuts', {})
+                diagnostics = ctx.call('ui.snapshot')['diagnostics']
+                status = diagnostics.get('shortcuts', {})
                 if not status.get('available'):
                     ctx.blocked('Resident reports no global shortcut channel: ' +
                                 _profile(ctx).get('shortcut_reason', 'desktop channel unavailable'),
                                 _profile(ctx).get('shortcut_issue'))
                 binding = status.get('bindings', {}).get(action, {})
+                if not binding.get('bound'):
+                    helper = diagnostics.get('capabilities', {}).get('source', {}).get('helper', {})
+                    ctx.note('native binding=' + json.dumps(binding))
+                    if helper.get('outdated'):
+                        ctx.blocked('Guest GNOME helper is outdated (' + str(helper.get('extensionVersion')) +
+                                    ' vs packaged ' + str(helper.get('packagedExtensionVersion')) +
+                                    ') and omits binding: ' + action, 670)
                 ctx.expect(binding.get('bound'), 'test shortcut bound: ' + action)
             if action == 'window':
                 ctx.fixture('selector-desktop')
@@ -360,13 +368,25 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
             else:
                 _press(ctx, action, 'menu item')
             operation = _new_operation(ctx, previous, action)
+            cleanup_keys = True
             try:
                 if action in ('region', 'edit', 'record'):
                     ctx.expect(operation['state'] not in {'failed', 'interrupted'}, 'selector opened without an error')
                     if menu_open:
                         ctx.expect(not _nodes(ctx, 'Quit put.gd', 'menu item'), 'shortcut closed tray menu')
                     ctx.frame('after')
-                    ctx.focus('recsel' if action == 'record' else 'region')
+                    # If targeting is refused, fixture teardown owns selector
+                    # cleanup; never retry keyboard input through a failed guard.
+                    cleanup_keys = False
+                    try:
+                        ctx.focus('recsel' if action == 'record' else 'region')
+                    except RecipeFailed as error:
+                        if action == 'record' and str(error).startswith(
+                                "input target 'recsel' is obscured by 'put.gd'"):
+                            ctx.note(str(error))
+                            ctx.blocked('Recording selector is drawn, but the foreground witness cannot target its nonactivating cover', 670)
+                        raise
+                    cleanup_keys = True
                     ctx.keys('Esc')
                     # A real cancellation also establishes that the shortcut did
                     # not merely admit work which failed before showing a selector.
@@ -379,7 +399,8 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                                    for i in settled['items']), 'every output saved locally without publication')
                     ctx.frame('after')
             finally:
-                ctx.keys('Esc')
+                if cleanup_keys:
+                    ctx.keys('Esc')
     action_recipe.__name__ = interaction.replace('.', '_').replace('-', '_')
     return action_recipe
 
@@ -628,8 +649,8 @@ def _drawn_notice(ctx, notice):
 # silently disappear from a lane run. Issue numbers are filled by the follow-up
 # tracker; no provider session is borrowed to cover an offline-only campaign.
 BLOCKED = {
-    'tray.icon-complete': 'Needs an offline successful upload and sub-600-ms icon sampling; local saves have no upload fill',
-    'tray.icon-recording': 'Needs a recording fixture and icon-pixel observation for active-dot and paused-bars evidence',
+    'tray.icon-complete': 'upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling',
+    'tray.icon-recording': 'recording fixture ends at review; needs active/paused state holds and icon-pixel sampling',
     'tray.menu-cancel-upload': 'Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls',
     'tray.menu-update-available': 'Needs a stable-tagged local build with isolated update-result fixture; no live update query',
     'tray.menu-quit': 'Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane',
