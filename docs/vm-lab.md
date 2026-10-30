@@ -324,24 +324,43 @@ way. The command then authenticates the owned running overlay, rejects a changed
 lock token and any package-supervisor progress/result, and repeats the bounded
 guest lifetime check before releasing that token.
 
-The root package supervisor also admits itself under `install-guard`. It starts
-only while its own job holds `install-active`, and writes `progress.json` before
-releasing the guard. Recovery's guarded release requires that `progress.json` is
-absent. Either recovery refuses, or a delayed supervisor start finds the token
-gone (or replaced), exits with `Install supervisor refused to start`, and writes
-no progress or result. The supervisor never runs without the lock. Both ordinary and abandoned recovery
-require a verifiable session leader identity and no live process in the recorded
-session. They enumerate `/proc/<pid>/stat` session IDs (field 6), including
-root-owned staging descendants. Missing identity, unreadable process information
-or incomplete enumeration (including restricted procfs mounts) refuses recovery.
+The root package supervisor also admits itself under `install-guard`. It
+becomes a subreaper first, then starts only while its own job holds
+`install-active`, and writes `progress.json` before releasing the guard. A
+failure before admission leaves no progress or result, so the job stays
+recoverable. After admission, the supervisor's own failures also end in
+`result.json`.
 
-If an abrupt controller death or interrupted receipt write left no host
-`staging-failed.json` and the controller has exited, recovery reconstructs the staging identity from the guest's
-`staging-process.json` under the same ownership, token, supervisor and lifetime
-guards. Missing guest metadata cannot authorize recovery. The command saves
-`staging-recovery.json` in the host job directory and preserves the install-time
-`staging-reconciliation.json`. It refuses a running or uncertain job. It does not
-resume the failed install; run `install` again after recovery succeeds.
+Recovery checks the token and the absence of `progress.json` and `result.json`
+twice. The first check happens before reconciling staging. The second happens
+in the release, which holds `install-guard`. Each check is a separate
+fail-closed shell statement. A delayed supervisor start therefore either
+leaves `progress.json` before the release (recovery refuses and keeps the lock),
+or finds the token gone or replaced. In that case it exits with
+`Install supervisor refused to start` and writes no progress or result. The
+supervisor never runs without the lock.
+
+Recovery that reconciles a started staging requires a verifiable session leader
+identity and no live process in the recorded session. That covers ordinary
+recovery after a recorded start, and every `--abandoned` recovery. The scan
+enumerates `/proc/<pid>/stat` session IDs (field 6), including root-owned
+staging descendants. An empty session must be empty on two consecutive passes,
+because a member that forks and exits during a single pass can be missed.
+Missing identity for `--abandoned`, unreadable process information or
+incomplete enumeration (including restricted procfs mounts) refuses recovery.
+
+An abrupt controller death or an interrupted receipt write can leave no host
+`staging-failed.json`. Once the controller has exited, recovery works from the
+guest's state under the same ownership, token, supervisor and lifetime guards.
+If the guest has `staging-process.json`, recovery reconciles that identity.
+If staging never recorded an identity, the controller died before staging
+started (for example, during the helper upload). Ordinary recovery then fences
+a delayed wrapper launch under `staging.lock`, reports `staging-not-started`
+and releases the token. `--abandoned` refuses in that case, because it
+requires a recorded identity. The command saves `staging-recovery.json` in the
+host job directory and preserves the install-time
+`staging-reconciliation.json`. It refuses a running or uncertain job. It does
+not resume the failed install; run `install` again after recovery succeeds.
 
 If the wrapper died without writing `staging-result.json`, ordinary recovery
 continues to refuse. Inspect the recorded PID/start ticks, logs and descendants
