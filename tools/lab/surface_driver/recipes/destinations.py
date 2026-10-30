@@ -214,6 +214,14 @@ def _confirmation_capture(ctx, window):
 
 
 def _confirmation_frame(ctx, window):
+    # QMenu delivery and modal creation are asynchronous. Observe the actual
+    # owned dialog before asking the evidence layer to crop it.
+    def ready():
+        try:
+            return ctx.geometry(window)
+        except RecipeBlocked:
+            return None
+    ctx.wait(ready, 'owned destination confirmation is visible: ' + window)
     reference = ctx.profile['catalog_windows'][window][0]
     ctx.frame('confirmation', window=window, reference=reference)
 
