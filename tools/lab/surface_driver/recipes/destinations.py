@@ -241,7 +241,9 @@ def _confirmation_frame(ctx, window):
 
 def _state(ctx, control, key):
     if control == 'destinationConflictBanner' and key == 'visible':
-        return ctx.call('ui.viewState')['settings']['conflict']
+        # Draft/conflict flags deliberately stay in the helper. Its public
+        # diagnostics expose the actual, nonsecret autosave footer instead.
+        return ctx.call('ui.diagnostics', {'action': 'inspect'}).get('autosave') == 'Settings changed elsewhere — reload to continue.'
     if control == 's3BucketError' and key == 'text':
         rows = ctx.accessible({'owned': True, 'visible': True, 'objectName': control})
         if rows:
@@ -417,7 +419,7 @@ def add(ctx):
         ctx.focus('destinations')
         # A new destination stays provisional until its required bucket is valid.
         _edit(ctx, 's3Bucket', 'surface-added-bucket')
-        if ctx.call('ui.viewState')['settings'].get('autosaveBlocked'):
+        if ctx.call('ui.diagnostics', {'action': 'inspect'}).get('autosave') == 'Couldn’t save changes — retry saving.':
             # B2's blank initial bucket can refuse the first save while the
             # name-dialog witness is captured. Follow the visible retry flow.
             _click(ctx, 'text:Retry saving')

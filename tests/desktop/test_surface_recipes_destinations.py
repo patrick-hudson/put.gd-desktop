@@ -37,6 +37,7 @@ class FakeContext(Context):
         self.corrupt_disk = False
         self.private_root = True
         self.conflict = False
+        self.refused_save = False
         self.available = False
         self.tested = False
         self.stored = False
@@ -86,7 +87,11 @@ class FakeContext(Context):
                 self.conflict = True
             return {'result': {}}
         if method == 'ui.viewState':
-            return {'settings': {'conflict': self.conflict}}
+            return {'settings': {'section': 1, 'captureRouting': {}}}
+        if method == 'ui.diagnostics':
+            assert params == {'action': 'inspect'}
+            return {'autosave': ('Settings changed elsewhere — reload to continue.' if self.conflict
+                                 else 'Couldn’t save changes — retry saving.' if self.refused_save else '')}
         if method == 'setup.credentialHint':
             mode = self.document['profiles'][0]['credentials']['mode']
             return {'available': self.available if mode == 'keychain' else self.stored, 'tokenStored': self.stored}
@@ -150,6 +155,8 @@ class FakeContext(Context):
             self.focused_control = 'nameDialog'
         if control == 'text:Cancel':
             self.dialog = None
+        if control == 'text:Retry saving':
+            self.refused_save = False
         if control == 'class:QLineEdit':
             self.focused_control = 'nameDialog'
         if control == 'confirmDiscard':
@@ -466,6 +473,13 @@ class DestinationsContracts(unittest.TestCase):
                    side_effect=AssertionError('fixed rail must not scroll the form')):
             lane._click(ctx, 'addS3Destination')
         self.assertIn(('click', 'addS3Destination', 'destinations'), ctx.events)
+
+    def test_add_retries_a_refused_save_through_the_visible_action(self):
+        ctx = self.context()
+        ctx.refused_save = True
+        lane.add(ctx)
+        self.assertIn(('click', 'text:Retry saving', 'destinations'), ctx.events)
+        self.assertFalse(ctx.refused_save)
 
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()
