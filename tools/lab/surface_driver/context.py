@@ -112,13 +112,18 @@ class DriverContext(Context):
             time.sleep(min(interval,max(0,deadline-time.monotonic())))
 
     def _probe(self, name, query):
+        self._check_time()
         source = Path(__file__).with_name('probe.py').read_text()
         # stdin contains code only. Query is a separate, shell-quoted JSON argument.
         script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
-        result = self.shell(script)
-        if result['returncode']:
-            raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
-        result = json.loads(result['stdout'])
+        persistent = getattr(self.target, 'probe', None)
+        if persistent:
+            result = persistent(name, query, source, timeout=min(15,max(.1,self._deadline-time.monotonic())))
+        else:
+            result = self.shell(script)
+            if result['returncode']:
+                raise RecipeBlocked(name+' probe failed (missing desktop probe dependencies)')
+            result = json.loads(result['stdout'])
         if not isinstance(result,dict) or 'ok' not in result:
             raise RecipeBlocked(name+' probe returned an invalid response')
         if not result['ok']:
@@ -265,8 +270,7 @@ class DriverContext(Context):
                 self.target.pointer(x,y,w,h,True,button,head)
                 time.sleep(.04)
             finally:
-                with input_release():
-                    self.target.pointer(x,y,w,h,False,button,head)
+                self._release_pointer((x,y),w,h,button,head)
             if index+1 < self._click_count:
                 time.sleep(.06)
 
@@ -298,6 +302,7 @@ class DriverContext(Context):
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
         self._guard(point=self._global_point(*start,head))
+        last = start
         try:
             self.target.pointer(*start,w,h,True,button,head)
             # A held pointer may leave its window during a header/resize drag;
@@ -307,10 +312,22 @@ class DriverContext(Context):
                 self._guard()
                 x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
                 self.target.pointer(x,y,w,h,head=head)
+                last = (x,y)
                 time.sleep(.025)
         finally:
-            with input_release():
-                self.target.pointer(*end,w,h,False,button,head)
+            self._release_pointer(last,w,h,button,head)
+
+    def _release_pointer(self, point, width, height, button, head):
+        with input_release():
+            try:
+                release = getattr(self.target, 'release_pointer', None)
+                if release:
+                    release(*point,width,height,button,head)
+                else:
+                    self.target.pointer(*point,width,height,False,button,head)
+            except BaseException:
+                self._input_poisoned = True
+                raise
 
     def keys(self,*sequence):
         codes = [qcodes(chord) for chord in sequence]

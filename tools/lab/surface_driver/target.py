@@ -6,9 +6,11 @@ selects physical.py's pinned transport, forwarded uinput socket and VNC listener
 import json
 from contextlib import contextmanager
 from functools import wraps
+import os
 from pathlib import Path
 import shlex
 import signal
+import selectors
 import subprocess
 import time
 import uuid
@@ -43,7 +45,7 @@ PREFLIGHT = r'''
 import ctypes.util, importlib, json, os, shutil
 session = os.environ.get('XDG_SESSION_TYPE')
 commands = ['python3', 'dbus-monitor', 'gdbus']
-commands += ['xdotool', 'xprop', 'xclip', 'xrandr'] if session == 'x11' else ['wl-paste', 'wl-copy']
+commands += ['xdotool', 'xprop', 'xwininfo', 'xclip', 'xrandr'] if session == 'x11' else ['wl-paste', 'wl-copy']
 missing = [name for name in commands if not shutil.which(name)]
 for module, package in [('pyatspi', 'python3-pyatspi'), ('PyQt6.QtGui', 'python3-pyqt6')]:
     try:
@@ -96,6 +98,39 @@ timer = QTimer()
 timer.timeout.connect(tick)
 timer.start(50)
 app.exec()
+'''
+
+
+PROBE_SERVER = r'''
+import json, sys
+namespace = {'__name__': 'surface_driver_probe'}
+exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
+functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
+             'foreground':'foreground', 'windows':'windows', 'tray':'tray'}
+while True:
+    line = sys.stdin.buffer.readline(1024 * 1024 + 1)
+    if not line:
+        break
+    if len(line) > 1024 * 1024 or not line.endswith(b'\n'):
+        break
+    try:
+        request = json.loads(line)
+        # AT-SPI state-change signals must be dispatched between observations;
+        # a persistent interpreter must not keep stale accessible states.
+        from gi.repository import GLib
+        context = GLib.MainContext.default()
+        for _ in range(200):
+            if not context.pending():
+                break
+            context.iteration(False)
+        else:
+            raise RuntimeError('accessibility events did not settle within the probe bound')
+        result = namespace[functions[request['probe']]](request['query'])
+        response = {'ok':True, 'result':result}
+    except Exception as error:
+        response = {'ok':False, 'error':type(error).__name__ + ': ' + str(error)}
+    sys.stdout.write(json.dumps(response) + '\n')
+    sys.stdout.flush()
 '''
 
 
@@ -159,6 +194,10 @@ class Target:
         self._created_root = False
         self.clipboard_pid = None
         self._outputs = None
+        self._probe_process = None
+        self._probe_buffer = b''
+        self._probe_source = None
+        self._probe_failed = False
 
     def require_lock(self, host, session):
         self._lock = (host, session)
@@ -306,6 +345,95 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
     def cli(self, *args, timeout=60):
         return self.execute(shlex.join(['putgd-cli','--socket',self.socket,*args]), timeout)
 
+    def probe(self, name, query, source, timeout=15):
+        """One owned SSH channel, with a fresh native witness for every request.
+
+        Keeping the interpreter/bus connection alive removes SSH startup from
+        each character and drag step. No witness or accessibility result is
+        cached, and a lost channel blocks further input.
+        """
+        self.heartbeat()
+        if self._probe_failed:
+            raise RecipeBlocked('persistent desktop probe failed; start a new run before further input')
+        if self._probe_process is None:
+            # Discover through the same native-session adapter as one-shot
+            # probes. Only desktop connection variables cross this boundary.
+            keys = ('DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','XDG_SESSION_TYPE',
+                    'XDG_CURRENT_DESKTOP','WAYLAND_DISPLAY','QT_QPA_PLATFORM',
+                    'XDG_RUNTIME_DIR','XDG_CONFIG_DIRS','XDG_DATA_DIRS')
+            script = "python3 - <<'SD_PROBE_ENV'\nimport os,json\nprint(json.dumps({k:os.environ[k] for k in " + repr(keys) + " if k in os.environ}))\nSD_PROBE_ENV\n"
+            native = json.loads(self.session(script, timeout=timeout))
+            command = 'set -eu\n' + ''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in native.items())
+            command += self.prefix() + 'exec python3 -u -c ' + shlex.quote('SOURCE='+repr(source)+chr(10)+PROBE_SERVER)
+            args = self.physical.ssh_arguments + [self.physical.endpoint] if self.physical else lab.ssh_args(self.run)
+            self._probe_process = subprocess.Popen(args+[command], stdin=subprocess.PIPE,
+                                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
+            self._probe_source = source
+        elif source != self._probe_source:
+            self._probe_failed = True
+            raise RecipeBlocked('desktop probe source changed during the run; start a new identified run')
+        process = self._probe_process
+        payload = (json.dumps({'probe':name,'query':query})+'\n').encode()
+        if len(payload) > 1024 * 1024:
+            raise RecipeBlocked('desktop probe request exceeded 1 MiB')
+        try:
+            remaining_payload = memoryview(payload)
+            while remaining_payload:
+                sent = process.stdin.write(remaining_payload)
+                if not sent:
+                    raise RecipeBlocked('persistent desktop probe request was not sent')
+                remaining_payload = remaining_payload[sent:]
+            deadline = time.monotonic()+timeout
+            with selectors.DefaultSelector() as ready:
+                ready.register(process.stdout, selectors.EVENT_READ)
+                while b'\n' not in self._probe_buffer:
+                    remaining = deadline-time.monotonic()
+                    if remaining <= 0 or not ready.select(remaining):
+                        raise RecipeBlocked('persistent desktop probe timed out; further input withheld')
+                    data = os.read(process.stdout.fileno(),65536)
+                    if not data:
+                        raise RecipeBlocked('persistent desktop probe closed; further input withheld')
+                    self._probe_buffer += data
+                    if len(self._probe_buffer) > 16 * 1024 * 1024:
+                        raise RecipeBlocked('desktop probe response exceeded 16 MiB')
+            line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
+            return json.loads(line)
+        except RecipeBlocked:
+            self._probe_failed = True
+            raise
+        except (OSError, ValueError) as error:
+            self._probe_failed = True
+            raise RecipeBlocked('persistent desktop probe transport unavailable') from error
+        except BaseException:
+            self._probe_failed = True
+            raise
+
+    def _close_probe(self):
+        process = getattr(self, '_probe_process', None)
+        if process is None:
+            return
+        process.stdin.close()
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            process.terminate()  # Only the SSH child this Target started.
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
+        process.stdout.close()
+        self._probe_process = None
+
+    def release_pointer(self, x, y, width, height, button='left', head=0):
+        """Release at the current guest position, without another absolute move."""
+        if self.physical and not (self.run / 'qmp.sock').exists():
+            # RFB requires coordinates in every pointer packet. Reuse the last
+            # dispatched position, never the unvisited drag endpoint.
+            self.vnc().pointer_button(x,y,button,False)
+        else:
+            lab.input_events(self.run,[{'type':'btn','data':{'button':button,'down':False}}])
+
     @desktop_transport
     def events(self, events, head=None):
         lab.input_events(self.run, events, head)
@@ -374,6 +502,10 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
 
     def close(self):
         errors=[]
+        try:
+            self._close_probe()
+        except (OSError, subprocess.TimeoutExpired):
+            errors.append('persistent desktop probe cleanup unavailable')
         if self._rfb is not None:
             try:
                 self._rfb.close()

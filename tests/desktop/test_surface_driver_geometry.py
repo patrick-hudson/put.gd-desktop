@@ -7,11 +7,13 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.target import Target, input_release
+from tools.lab.surface_driver.context import DriverContext
 
 
 class Geometry(unittest.TestCase):
@@ -62,6 +64,72 @@ class Geometry(unittest.TestCase):
 
 
 class Hygiene(unittest.TestCase):
+    def test_mid_drag_failure_releases_at_last_reached_position(self):
+        with tempfile.TemporaryDirectory() as td:
+            class Input:
+                physical = None
+                def pointer(self, *args, **kw):
+                    events.append(args)
+            events, guards = [], []
+            ctx = DriverContext(Input(), dict(desktop='test',host='boat',placement='boat',package='deb',destination='local'),
+                                {},td,td)
+            ctx._dimensions = lambda head:(100,100)
+            def guard(**query):
+                guards.append(query)
+                if len(guards) == 3:
+                    raise RecipeFailed('new window covers the drag')
+            ctx._guard = guard
+            with self.assertRaisesRegex(RecipeFailed,'new window'):
+                ctx.drag((10,10),(90,90),steps=4)
+            self.assertEqual(events[1][:2],(30,30))
+            self.assertEqual(events[-1][:2],(30,30))
+            self.assertFalse(events[-1][4])
+            self.assertFalse(any(row[:2] == (90,90) for row in events))
+
+    def test_guest_release_sends_no_absolute_movement(self):
+        target = Target.__new__(Target)
+        target.physical = None
+        target.run = Path('/owned/run')
+        with patch('tools.lab.surface_driver.target.lab.input_events') as send:
+            target.release_pointer(10,20,100,100)
+        self.assertEqual(send.call_args.args[1],[{'type':'btn','data':{'button':'left','down':False}}])
+
+    def test_persistent_probe_keeps_channel_but_observes_each_request(self):
+        target = self.probe_target()
+        source = 'counter=0\ndef geometry(query):\n global counter\n counter+=1\n return counter\n'
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
+                self.assertEqual(target.probe('geometry',{},source)['result'],1)
+                pid = target._probe_process.pid
+                self.assertEqual(target.probe('geometry',{},source)['result'],2)
+                self.assertEqual(target._probe_process.pid,pid)
+        finally:
+            target._close_probe()
+
+    def test_timed_out_probe_cannot_consume_a_late_witness_on_retry(self):
+        target = self.probe_target()
+        source = 'import time\ndef geometry(query):\n time.sleep(.2)\n return {}\n'
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
+                with self.assertRaisesRegex(RecipeBlocked,'timed out'):
+                    target.probe('geometry',{},source,timeout=.01)
+                with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
+                    target.probe('geometry',{},source)
+        finally:
+            target._close_probe()
+
+    def probe_target(self):
+        target = Target.__new__(Target)
+        target.physical = None
+        target.run = Path('/owned/run')
+        target.heartbeat = lambda:None
+        target.session = lambda *a,**kw:'{}'
+        target.prefix = lambda:'export PATH=/usr/bin:/bin\n'
+        target._probe_process = target._probe_source = None
+        target._probe_failed = False
+        target._probe_buffer = b''
+        return target
+
     def test_preflight_identifies_every_missing_tool_before_launch(self):
         target = Target.__new__(Target)
         target.execute = lambda *a, **k: {'returncode': 0, 'stdout': json.dumps(
