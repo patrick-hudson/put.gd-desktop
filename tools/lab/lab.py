@@ -1775,7 +1775,17 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
             get(run, remote + '/staging.log', evidence / 'staging.log', timeout=10)
         except (LabError, OSError, subprocess.TimeoutExpired):
             pass  # Missing log or disconnected guest must not hide the failure.
-        release_lock()
+        finally:
+            # Log collection can itself be interrupted (KeyboardInterrupt).
+            # No supervisor exists yet, so always release this staging lock.
+            interrupted = sys.exc_info()[1]
+            try:
+                release_lock()
+            except (LabError, OSError, subprocess.TimeoutExpired):
+                if not isinstance(interrupted, (KeyboardInterrupt, SystemExit)):
+                    raise
+                print('Install staging lock release failed; install-active may require reconciliation.',
+                      file=sys.stderr)
         raise
     try:
         ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
