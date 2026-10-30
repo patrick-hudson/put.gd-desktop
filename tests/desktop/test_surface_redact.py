@@ -204,7 +204,9 @@ class Secrets(unittest.TestCase):
         scripts = []
         def execute(script, **kwargs):
             scripts.append(script)
-            return {'returncode': 0, 'stdout': "(':1.42',)" if 'GetNameOwner' in script else '123', 'stderr': ''}
+            # Only the gdbus owner lookup; the monitor script embeds probe.py, which mentions GetNameOwner too.
+            owner = script.startswith('gdbus call') and 'GetNameOwner' in script
+            return {'returncode': 0, 'stdout': "(':1.42',)" if owner else '123', 'stderr': ''}
         self.ctx.target.execute = execute
         self.ctx.start_notifications()
         self.assertNotIn('notifications.log', '\n'.join(scripts))

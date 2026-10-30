@@ -305,6 +305,9 @@ class Running(unittest.TestCase):
                             else {'metadata':{'observedRevision':'revision'}} if method=='settings.get' else {})
                     return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
                 target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
+                # The desktop shell baseline (#857) runs before the recipes, on the admitted context.
+                shell={'process':'cinnamon','instances':[{'pid':5,'start':1,'dumping':False}],'crash_windows':[],'cores':[]}
+                target.probe=lambda name,query,source,timeout=15:{'ok':True,'result':shell} if name=='shell_state' else {'ok':False,'error':name}
                 touched=[]
                 recipe=Recipe(('editor.undo',),lambda ctx:touched.append(ctx.destination),destinations=(destination,))
                 out=self.path/('admitted-'+destination)
@@ -316,7 +319,9 @@ class Running(unittest.TestCase):
                         patch.object(runner,'prove_disposable'),pinned(self.path/'catalog'):
                     self.assertEqual(runner.main(args),0)
                 self.assertEqual(touched,[destination])
-                self.assertTrue(json.loads((out/'receipt.json').read_text())['secret_scan']['passed'])
+                receipt=json.loads((out/'receipt.json').read_text())
+                self.assertTrue(receipt['secret_scan']['passed'])
+                self.assertEqual(receipt['environment']['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_live_gate_refuses_a_present_but_nonworking_ocr_executable(self):
