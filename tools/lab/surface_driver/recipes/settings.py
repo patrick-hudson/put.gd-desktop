@@ -147,7 +147,16 @@ def replace(ctx, control, text):
     else:
         ctx.click(control, window='settings')
     ctx.keys('Ctrl+A')
-    ctx.type_text(text)
+    if control.endswith('Template'):
+        writer = ctx.profile.get('settings', {}).get('clipboard_write_command')
+        if not writer:
+            ctx.blocked('Template input requires the profile synthetic clipboard writer.')
+        reply = ctx.shell('printf %s ' + shlex.quote(text) + ' | ' + writer + ' >/dev/null 2>&1')
+        ctx.expect(reply['returncode'] == 0, 'synthetic template clipboard write succeeded')
+        ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
+        ctx.keys('Ctrl+V')
+    else:
+        ctx.type_text(text)
     ctx.keys('Tab')
     if control == 'archiveRoot' or control.endswith('Template'):
         input_witness(ctx, ctx.geometry('settings'))

@@ -205,6 +205,8 @@ class Fake(Context):
                     path, values = options[self.focus]
                     assign(self.document, path, values[self.pending_index])
                     self.checkpoint()
+            if key == 'Ctrl+V':
+                self.text = self.clipboard
             if key == 'Tab' and self.text:
                 path = {'recentActivityLimit': 'retention.recentActivityLimit', 'archiveRoot': 'archive.root'}.get(self.focus)
                 if self.focus and self.focus.startswith('folder'):
@@ -223,6 +225,9 @@ class Fake(Context):
     def shell(self, script, **kwargs):
         if script.startswith('python3 -c ') and 'XDG_CONFIG_HOME' in script:
             return {'returncode': 0, 'stdout': json.dumps({'path': self.config_path, 'document': self.disk})}
+        if script.startswith('printf %s '):
+            self.clipboard = shlex.split(script)[2]
+            return {'returncode': 0, 'stdout': ''}
         if 'private accessibility tree exceeded' in script:
             request = json.loads(shlex.split(script)[-1])
             return {'returncode': 0, 'stdout': json.dumps(self.accessible(request['query']))}
@@ -246,7 +251,8 @@ class Fake(Context):
         shift = 50 if self.recording_action or any('Esc' in str(i) for i in self.inputs) else 0
         rectangle = [700, 240 + shift, 180, 36]
         self.targets = {(760, 258 + shift): control}
-        return [{'pid': 123, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False}]
+        return [{'pid': 123, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False,
+                 'focused': self.focus == control}]
 
     def click_at(self, x, y, **kwargs):
         self.pointer = (x, y)

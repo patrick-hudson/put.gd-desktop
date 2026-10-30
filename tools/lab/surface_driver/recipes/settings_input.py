@@ -35,7 +35,8 @@ while stack and visited < 6000:
         if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
             rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
             rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect,
-                         'checked': node.getState().contains(pyatspi.STATE_CHECKED)})
+                         'checked': node.getState().contains(pyatspi.STATE_CHECKED),
+                         'focused': node.getState().contains(pyatspi.STATE_FOCUSED)})
         if depth < 30:
             stack.extend((child, depth + 1) for child in node if child is not None)
     except (RuntimeError, AttributeError, NotImplementedError):
@@ -159,6 +160,10 @@ def click(ctx, control):
     witness = observe(ctx, geometry)
     ctx.expect(abs(witness['x'] - point[0]) <= 1 and abs(witness['y'] - point[1]) <= 1,
                'pointer reached the live Settings control')
+    if control == 'archiveRoot' or control.endswith('Template'):
+        ctx.wait(lambda: any(row.get('focused') for row in controls(ctx, query, owner['pid'])),
+                 'intended Settings field has keyboard focus: ' + control)
+        ctx.note('settings field keyboard focus: ' + control)
     ctx.frame('input-after-' + control)
 
 

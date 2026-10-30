@@ -115,7 +115,8 @@
     "theme_references": {
       "dark": "07-settings-general",
       "light": "07-settings-general-light"
-    }
+    },
+    "clipboard_write_command": "xclip -selection clipboard"
   },
   "catalog_windows": {
     "settings": [
