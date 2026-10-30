@@ -932,11 +932,11 @@ def no_output(ctx):
 def capture_exceptions(ctx):
     fixture = ctx.fixture('settings-action-routes')
     opened(ctx, 1)
-    live_click(ctx, 'text:Different output for some actions')
+    live_click(ctx, 'captureExceptionsToggle')
     for action, label in (('region', 'Capture region'), ('window', 'Capture window'),
                           ('desktop', 'Capture desktop'), ('edit', 'Capture region & edit'),
                           ('clipboard', 'Upload clipboard'), ('record', 'Record screen')):
-        live_click(ctx, 'text:Add an exception…')
+        live_click(ctx, 'addCaptureException')
         ctx.click_accessible({'owned': True, 'pid': ctx.geometry('settings')['pid'],
                               'role': 'menu item', 'name': label, 'visible': True, 'showing': True})
         ctx.wait(lambda: not routing(ctx)[action]['inherited'], action + ' exception added')
@@ -970,7 +970,7 @@ def exercise_disclosure(ctx, control, section):
         live_click(ctx, control)
         opened_state = ctx.wait(lambda: (s if s.expanded else None)
                                if (s := observe(control)) else None, control + ' expands')
-    description = opened_state.control.get('description', '')
+    description = opened_state.control.get('description', '').removeprefix('Explanation shown. ')
     if control == 'shortcutHelpToggle':
         ctx.expect(any('Escape cancels' in text for text in opened_state.text), 'shortcut instructions are rendered accessibly')
     else:

@@ -228,5 +228,26 @@
     ]
   },
   "mcp_python": "/home/lab/putgd-surface-mcp/.venv/bin/python",
-  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp"
+  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp",
+  "live_controls": {
+    "captureExceptionsToggle": {
+      "name": "Different output for some actions",
+      "role": "push button"
+    },
+    "addCaptureException": {
+      "name": "Add an exception\u2026",
+      "role": "push button"
+    }
+  },
+  "control_names": {
+    "uploadClipboardBehaviorHelp": [
+      "Help for After uploading"
+    ],
+    "regionSelectionModeHelp": [
+      "Help for While selecting"
+    ],
+    "namingModeHelp": [
+      "Help for Naming"
+    ]
+  }
 }

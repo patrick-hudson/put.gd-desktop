@@ -473,7 +473,7 @@ class Contracts(unittest.TestCase):
         ctx.profile['settings'].pop('foreground_script')
         ctx.click = lambda *a, **k: expanded.__setitem__(0, not expanded[0])
         ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
-            expanded=expanded[0], control={'description': 'Synthetic help body'},
+            expanded=expanded[0], control={'description': 'Explanation shown. Synthetic help body' if expanded[0] else 'Synthetic help body'},
             text=['Synthetic help body'] if expanded[0] else []))
         lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
         self.assertFalse(expanded[0])

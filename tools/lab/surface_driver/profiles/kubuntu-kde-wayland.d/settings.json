@@ -83,6 +83,25 @@
     "resetAdvancedDefaults": {
       "name": "Reset resource and history limits\u2026",
       "role": "push button"
+    },
+    "captureExceptionsToggle": {
+      "name": "Different output for some actions",
+      "role": "push button"
+    },
+    "addCaptureException": {
+      "name": "Add an exception\u2026",
+      "role": "push button"
     }
+  },
+  "control_names": {
+    "uploadClipboardBehaviorHelp": [
+      "Help for After uploading"
+    ],
+    "regionSelectionModeHelp": [
+      "Help for While selecting"
+    ],
+    "namingModeHelp": [
+      "Help for Naming"
+    ]
   }
 }
