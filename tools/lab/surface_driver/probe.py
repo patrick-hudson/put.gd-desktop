@@ -287,6 +287,7 @@ def compositor_pick(compositor, point):
     raise RuntimeError('no compositor hit-test witness configured for this Wayland profile')
 
 
+_KWIN = None
 KWIN_SCRIPT = r"""
 const rect = g => [Math.round(g.x), Math.round(g.y), Math.round(g.width), Math.round(g.height)];
 const list = workspace.stackingOrder;
@@ -299,7 +300,7 @@ for (let i = 0; i < list.length; i++) {
                   desktop: !!w.desktopWindow, normal: !!w.normalWindow, notification: !!(w.notification || w.criticalNotification),
                   stack: i, transient_for: w.transientFor ? w.transientFor.internalId.toString() : null});
 }
-callDBus(RECEIVER, "/", "org.putgd.LabWitness", "Report", JSON.stringify({windows: windows}));
+callDBus(RECEIVER, RECEIVER_PATH, "org.putgd.LabWitness", "Report", JSON.stringify({windows: windows}));
 """
 
 
@@ -312,27 +313,36 @@ def kwin_windows():
     """
     import tempfile
     import dbus
+    import dbus.bus
     import dbus.service
     import dbus.mainloop.glib
     from gi.repository import GLib
-    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    bus = dbus.SessionBus()
-    receiver = 'org.putgd.LabWitness.p%d' % os.getpid()
+    global _KWIN
+    if _KWIN is None:
+        # One private connection per process, owning a private receiver name.
+        bus = dbus.bus.BusConnection(dbus.bus.BUS_SESSION, mainloop=dbus.mainloop.glib.DBusGMainLoop())
+        receiver = 'org.putgd.LabWitness.p%d' % os.getpid()
+        _KWIN = {'bus': bus, 'receiver': receiver, 'name': dbus.service.BusName(receiver, bus), 'calls': 0}
+    bus, receiver = _KWIN['bus'], _KWIN['receiver']
+    _KWIN['calls'] += 1
+    object_path = '/r%d' % _KWIN['calls']
     loop, reply = GLib.MainLoop(), {}
     class Receiver(dbus.service.Object):
         @dbus.service.method('org.putgd.LabWitness', in_signature='s')
         def Report(self, text):
             reply['text'] = str(text)
             loop.quit()
-    owned_name = dbus.service.BusName(receiver, bus)
-    Receiver(bus, '/')
+    handler = Receiver(bus, object_path)
     plugin = 'putgd-lab-witness-%d' % os.getpid()
     with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as stream:
-        stream.write('const RECEIVER = ' + json.dumps(receiver) + ';\n' + KWIN_SCRIPT)
+        stream.write('const RECEIVER = ' + json.dumps(receiver) + ';\nconst RECEIVER_PATH = ' + json.dumps(object_path) + ';\n' + KWIN_SCRIPT)
         path = stream.name
     scripting = dbus.Interface(bus.get_object('org.kde.KWin', '/Scripting'), 'org.kde.kwin.Scripting')
     try:
-        identifier = int(scripting.loadScript(path, plugin))
+        try:
+            identifier = int(scripting.loadScript(path, plugin, signature='ss'))
+        except dbus.DBusException:
+            identifier = int(scripting.loadScript(path, signature='s'))  # older one-argument form
         script = bus.get_object('org.kde.KWin', '/Scripting/Script%d' % identifier)
         dbus.Interface(script, 'org.kde.kwin.Script').run()
         GLib.timeout_add(3000, loop.quit)
@@ -343,7 +353,7 @@ def kwin_windows():
         except dbus.DBusException:
             pass
         os.unlink(path)
-        del owned_name
+        handler.remove_from_connection()
     if 'text' not in reply:
         raise RuntimeError('KWin witness script did not report within 3 s')
     document = json.loads(reply['text'])
