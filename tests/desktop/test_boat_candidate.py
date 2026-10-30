@@ -137,6 +137,9 @@ class CandidateContracts(unittest.TestCase):
         self.assertIn('CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture', script)
         self.assertIn('-DPUTGD_PACKAGE_TARGET= -DPUTGD_UPDATE_CHECK=OFF', script)
         self.assertIn('dpkg-deb -f', script)
+        self.assertIn('CPACK_DEBIAN_PACKAGE_CONFLICTS=putgd', script)
+        self.assertIn('CPACK_DEBIAN_PACKAGE_REPLACES=putgd', script)
+        self.assertIn('Disposable lab fixture build', script)
         self.assertIn('native.py audit intentionally not run', ' '.join(candidate.ci_differences('lab-fixture')))
 
     def test_inline_ci_steps_cannot_join_into_one_shell_token(self):
@@ -265,11 +268,11 @@ class CandidateContracts(unittest.TestCase):
                 self.make_archive(archive, [('catalog/window.png', 'file')])
                 digest = candidate.sha256(archive)
                 receipt = {}
-                with patch.object(candidate, 'run', side_effect=[digest + '  artifacts.tar', '']) as run:
+                with patch.object(candidate, 'run', side_effect=['1000 .\n1\nfilesystem\n', digest + '  artifacts.tar', '']) as run:
                     candidate.collect_artifacts(['ssh'], ['-F', '/dev/null'], 'host', '22', root, receipt, None, timeout=budget)
-                self.assertEqual(run.call_count, 2)
-                self.assertIn('tar -cf', run.call_args_list[0].args[0][-1])
-                scp = run.call_args_list[1].args[0]
+                self.assertEqual(run.call_count, 3)
+                self.assertIn('tar -cf', run.call_args_list[1].args[0][-1])
+                scp = run.call_args_list[2].args[0]
                 self.assertEqual(scp[0], 'scp')
                 self.assertNotIn('-r', scp)
                 self.assertAlmostEqual(run.call_args_list[0].kwargs['timeout'], max(150, budget), delta=1)
@@ -296,9 +299,10 @@ class CandidateContracts(unittest.TestCase):
                     return {'stdout': 'ssh-ed25519 synthetic-key'}
                 # An exhausted build budget leaves the optional benchmark one second,
                 # while collect_artifacts independently retains its 150-second reserve.
-                args = argparse.Namespace(commit=SHA, type='large', ttl=180, benchmark_catalog_scp=True)
+                args = argparse.Namespace(commit=SHA, type='large', ttl=180, run_nonce='0123456789abcdef', benchmark_catalog_scp=True)
                 with patch.object(candidate, 'run', side_effect=run) as calls, \
                      patch.object(candidate, 'boat', side_effect=boat), \
+                     patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}), \
                      patch.object(candidate, 'cleanup_workers', return_value={'verified': True}), \
                      patch.object(candidate, 'collect_artifacts') as collection, \
                      patch.object(candidate, 'verify_identity', return_value={}), \
@@ -366,20 +370,81 @@ class CandidateContracts(unittest.TestCase):
              self.assertRaisesRegex(RuntimeError, 'not complete'):
             candidate.cleanup_workers('exact', timeout=0)
 
-    def test_creation_without_an_id_still_recovers_by_fixed_name(self):
+    def test_creation_without_an_id_recovers_by_nonce_for_full_create_window(self):
         with tempfile.TemporaryDirectory() as temporary:
             def create(argv, **kwargs):
                 raise TimeoutError('interrupted before first ID')
             cleanup = {'verified': True, 'finalState': 'absent', 'deletedIds': ['bx_orphan']}
-            args = argparse.Namespace(commit=SHA, type='large', ttl=10800)
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='0123456789abcdef')
             with patch.object(candidate, 'run', side_effect=create), \
-                 patch.object(candidate, 'cleanup_workers', side_effect=[{'verified': True}, cleanup]) as cleaner:
+                 patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}), \
+                 patch.object(candidate, 'cleanup_workers', return_value=cleanup) as cleaner:
                 result = candidate.build_worker('appimage', args, Path(temporary), ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
             self.assertTrue(result['cleanupVerified'])
             self.assertEqual(result['cleanup']['deletedIds'], ['bx_orphan'])
-            self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage', None))
-            self.assertEqual(cleaner.call_args.kwargs['recovery_seconds'], 10)
+            self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage-0123456789abcdef', None))
+            self.assertGreater(cleaner.call_args.kwargs['recovery_seconds'], 119)
+            self.assertGreaterEqual(cleaner.call_args.kwargs['timeout'], 239)
+
+    def test_nonce_sweep_preserves_live_and_unknown_but_deletes_dead_and_expired(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(candidate, 'LEASE_ROOT', Path(temporary)):
+            names = ['000000000000000' + str(i) for i in range(4)]
+            with candidate.run_lease(names[1]):
+                pass  # dead local lease, retained for orphan recovery
+            def worker(nonce, **fields):
+                return dict(id=nonce, name=candidate.worker_name(SHA, 'appimage', nonce), **fields)
+            with candidate.run_lease(names[0]), \
+                 patch.object(candidate, 'all_sandboxes', return_value=[worker(n) for n in names[:3]] + [
+                     worker(names[3], createdAt='2000-01-01T00:00:00Z', ttlSeconds=600),
+                     {'id': 'unrelated', 'name': 'keep-me'}]), \
+                 patch.object(candidate, 'cleanup_workers', return_value={'verified': True}) as cleanup:
+                result = candidate.cleanup_orphans(SHA, 'appimage')
+            self.assertEqual(result['preserved'], names[:1] + names[2:3])
+            self.assertEqual([call.args[1] for call in cleanup.call_args_list], [names[1], names[3]])
+
+    def test_two_controllers_have_distinct_names_and_live_leases(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(candidate, 'LEASE_ROOT', Path(temporary)):
+            a, b = 'a' * 16, 'b' * 16
+            with candidate.run_lease(a), candidate.run_lease(b):
+                self.assertNotEqual(candidate.worker_name(SHA, 'debian13', a),
+                                    candidate.worker_name(SHA, 'debian13', b))
+                self.assertFalse(candidate.orphaned({}, a))
+                self.assertFalse(candidate.orphaned({}, b))
+            self.assertTrue(candidate.orphaned({}, a))
+
+    def test_late_create_is_found_after_ten_seconds_and_other_nonce_is_untouched(self):
+        now = [0]
+        name = candidate.worker_name(SHA, 'appimage', 'a' * 16)
+        other = {'id': 'peer', 'name': candidate.worker_name(SHA, 'appimage', 'b' * 16)}
+        def listing():
+            return [other] + ([{'id': 'late', 'name': name}] if 30 <= now[0] < 34 else [])
+        def sleep(seconds):
+            now[0] += seconds
+        with patch.object(candidate.time, 'monotonic', side_effect=lambda: now[0]), \
+             patch.object(candidate.time, 'sleep', side_effect=sleep), \
+             patch.object(candidate, 'all_sandboxes', side_effect=listing), \
+             patch.object(candidate, 'boat', return_value={'operation': {'status': 'pending'}}) as boat:
+            result = candidate.cleanup_workers(name, recovery_seconds=120, timeout=240)
+        self.assertEqual(result['deletedIds'], ['late'])
+        self.assertEqual(now[0], 120)
+        boat.assert_called_once_with('delete', 'late', '--yes', cleanup=True)
+
+    def test_appimage_pkg_config_appends_qt_and_preserves_existing_paths(self):
+        import yaml
+        packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
+        _, script, _ = candidate.recipe('appimage', packages, {})
+        export = next(line for line in script.splitlines() if line.startswith('export PKG_CONFIG_PATH='))
+        for existing, expected in [('', '/qt/lib/pkgconfig'), ('/existing', '/existing:/qt/lib/pkgconfig')]:
+            result = subprocess.run(['bash', '-c', export + '\nprintf "%s" "$PKG_CONFIG_PATH"'],
+                                    env={'QT_ROOT_DIR': '/qt', 'PKG_CONFIG_PATH': existing},
+                                    capture_output=True, text=True, check=True)
+            self.assertEqual(result.stdout, expected)
+
+    def test_collection_budget_scales_for_slow_large_outputs(self):
+        self.assertGreater(candidate.collection_budget(65 * 1024 * 1024, 9), 650)
+        self.assertGreater(candidate.collection_budget(0, 10000), 600)
+        self.assertEqual(candidate.collection_budget(0, 0), 150)
 
     def test_closed_output_stream_is_nonfatal_and_is_replaced_for_shutdown(self):
         closed = io.StringIO()
@@ -392,7 +457,7 @@ class CandidateContracts(unittest.TestCase):
 
     def test_cleanup_mode_requires_no_recipes_capacity_or_new_workers_and_handles_all_signals(self):
         with tempfile.TemporaryDirectory() as temporary:
-            with patch.object(candidate, 'cleanup_workers', return_value={'verified': True}) as cleaner, \
+            with patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}) as cleaner, \
                  patch.object(candidate, 'load_workflows') as load, \
                  patch.object(candidate.signal, 'signal') as signals:
                 code = candidate.main(['--cleanup', SHA, '--output', str(Path(temporary) / 'out')])
