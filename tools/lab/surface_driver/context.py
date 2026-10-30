@@ -308,16 +308,18 @@ class DriverContext(Context):
         w,h = self._dimensions(head)
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
-        self._guard(point=self._global_point(*start,head))
+        witness = self._guard(point=self._global_point(*start,head))
+        unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
         last = start
         try:
             self.target.pointer(*start,w,h,True,button,head)
-            # A held pointer may leave its window during a header/resize drag;
-            # recheck keyboard foreground without demanding hit-test at the end.
+            # Managed header/resize grabs can leave the client. Unmanaged
+            # selector covers/bars need pointer witnesses, not keyboard focus:
+            # WA_ShowWithoutActivating deliberately leaves that elsewhere.
             for step in range(1,steps+1):
                 self._check_time()
-                self._guard()
                 x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
+                self._guard(**({'point':self._global_point(x,y,head)} if unmanaged else {}))
                 self.target.pointer(x,y,w,h,head=head)
                 last = (x,y)
                 time.sleep(.025)

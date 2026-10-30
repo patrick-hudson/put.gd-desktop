@@ -94,6 +94,23 @@ class Hygiene(unittest.TestCase):
             target.release_pointer(10,20,100,100)
         self.assertEqual(send.call_args.args[1],[{'type':'btn','data':{'button':'left','down':False}}])
 
+    def test_unmanaged_drag_checks_each_intended_point_before_moving(self):
+        with tempfile.TemporaryDirectory() as td:
+            events = []
+            class Input:
+                physical = None
+                def pointer(self,*args,**kw):events.append(('pointer',args[:2]))
+            ctx = DriverContext(Input(),dict(desktop='test',host='boat',placement='boat',package='deb',destination='local'),{},td,td)
+            ctx._dimensions = lambda head:(100,100)
+            def guard(**query):
+                events.append(('guard',query['point']))
+                return {'ok':True,'backend':'x11-unmanaged-hit-test'}
+            ctx._guard = guard
+            ctx.drag((10,10),(30,30),steps=2)
+            self.assertEqual(events[:6],[('guard',(10,10)),('pointer',(10,10)),
+                                        ('guard',(20,20)),('pointer',(20,20)),
+                                        ('guard',(30,30)),('pointer',(30,30))])
+
     def test_persistent_probe_keeps_channel_but_observes_each_request(self):
         target = self.probe_target()
         source = 'counter=0\ndef geometry(query):\n global counter\n counter+=1\n return counter\n'
@@ -115,6 +132,29 @@ class Hygiene(unittest.TestCase):
                     target.probe('geometry',{},source,timeout=.01)
                 with self.assertRaisesRegex(RecipeBlocked,'start a new run'):
                     target.probe('geometry',{},source)
+        finally:
+            target._close_probe()
+
+    def test_accessibility_queries_get_fresh_interpreters_on_the_same_channel(self):
+        target = self.probe_target()
+        source = '''import json,os,sys
+counter=0
+def control_geometry(query):
+ global counter
+ counter+=1
+ return {'counter':counter,'pid':os.getpid()}
+def main():
+ print(json.dumps({'ok':True,'result':control_geometry(json.loads(sys.argv[1])['query'])}))
+if __name__=='__main__':main()
+'''
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
+                first = target.probe('control',{},source)['result']
+                channel = target._probe_process.pid
+                second = target.probe('control',{},source)['result']
+                self.assertEqual((first['counter'],second['counter']),(1,1))
+                self.assertNotEqual(first['pid'],second['pid'])
+                self.assertEqual(target._probe_process.pid,channel)
         finally:
             target._close_probe()
 
@@ -152,6 +192,27 @@ class Hygiene(unittest.TestCase):
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, previous)
+
+    def test_vnc_scroll_pulse_finishes_release_before_a_forced_deadline(self):
+        events = []
+        class Vnc:
+            def pointer_button(self,x,y,button,down):
+                if not down:
+                    signal.setitimer(signal.ITIMER_REAL,.01)
+                    time.sleep(.03)
+                events.append((button,down))
+        target = Target.__new__(Target)
+        target.heartbeat = lambda:None
+        target.vnc = lambda:Vnc()
+        def deadline(*_):raise RecipeFailed('forced scroll deadline')
+        previous = signal.signal(signal.SIGALRM,deadline)
+        try:
+            with self.assertRaisesRegex(RecipeFailed,'forced scroll deadline'):
+                target.scroll_vnc(10,10,1)
+            self.assertEqual(events,[('wheel-up',True),('wheel-up',False)])
+        finally:
+            signal.setitimer(signal.ITIMER_REAL,0)
+            signal.signal(signal.SIGALRM,previous)
 
     def test_root_cleanup_requires_created_root_and_successful_quit(self):
         target = Target.__new__(Target)
