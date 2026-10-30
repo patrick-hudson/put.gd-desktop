@@ -36,6 +36,7 @@ SECRET_FIELD = re.compile(r'(?:password|secret(?!_scan)|token|authorization|^(?:
 OBJECT_HOST = (r'(?:[a-z0-9-]+\.)*(?:s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?|backblazeb2\.com|backblaze\.com'
                r'|r2\.cloudflarestorage\.com|r2\.dev|digitaloceanspaces\.com|wasabisys\.com|linodeobjects\.com'
                r'|storage\.googleapis\.com|blob\.core\.windows\.net|s3(?:-[a-z0-9-]+)?(?:\.[a-z0-9-]+)+)')
+LINK_SCAN_REUSE = 4096
 LINK_TAIL = r'(?::[0-9]{1,5})?/[^\s<>"\'`\\]+'
 SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w./-])(?://)?(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+|'
                    + OBJECT_HOST + LINK_TAIL + '))', re.I)
@@ -172,6 +173,7 @@ class Redactor:
         self._secrets = set()
         self._hosts = set()
         self._host_links = None
+        self._link_scans = collections.OrderedDict()
 
     @property
     def link_hosts(self):
@@ -184,8 +186,20 @@ class Redactor:
 
     def links(self, text):
         """Every URL, share/object-store link and configured-endpoint link in text."""
+        # Shell scripts embed whole helper sources (browser.py is ~50 KB) and are
+        # scanned on every call; a large text's scan is reused while the
+        # configured hosts are unchanged.
+        key = (text, self._host_links) if len(text) >= LINK_SCAN_REUSE else None
+        if key in self._link_scans:
+            self._link_scans.move_to_end(key)
+            return list(self._link_scans[key])
         found = list(URL.finditer(text)) + list(SHARE.finditer(text))
-        return found + (list(self._host_links.finditer(text)) if self._host_links else [])
+        found += list(self._host_links.finditer(text)) if self._host_links else []
+        if key:
+            self._link_scans[key] = tuple(found)
+            while len(self._link_scans) > 8:
+                self._link_scans.popitem(last=False)
+        return found
 
     @property
     def audit_literals(self):
