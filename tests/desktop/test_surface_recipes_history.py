@@ -216,9 +216,9 @@ class FakeContext(Context):
             if self.question == 'clear':
                 self.total = 0
         elif control == 'windowMinimize':
-            self.minimized = True
+            self.minimized = self.fault != 'minimize-no-effect'
         elif control == 'windowClose':
-            self.closed = True
+            self.closed = self.fault != 'close-no-effect'
         elif control == 'windowMaximize':
             if self.saved_window:
                 self.window, self.saved_window = self.saved_window, None
@@ -455,6 +455,26 @@ class HistoryRecipeTests(unittest.TestCase):
         history._open(ctx)
         self.assertEqual(ctx.window, original)
         self.assertFalse(any(e[0] == 'drag' for e in ctx.events))
+
+    def test_window_buttons_require_observed_effect_and_restore_on_failure(self):
+        for action, fault in ((history.minimize, 'minimize-no-effect'),
+                              (history.close_window, 'close-no-effect')):
+            with self.subTest(action=action.__name__):
+                ctx = FakeContext(('history-row',), fault=fault)
+                with self.assertRaises(RecipeFailed):
+                    action(ctx)
+                self.assertFalse(ctx.closed)
+                self.assertFalse(ctx.minimized)
+                self.assertEqual(ctx.events[-1], ('view', 'ui.show', {'view': 'history'}))
+
+    def test_history_popup_owners_are_scoped_on_both_guests(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
+            profile = load_profile(desktop)
+            for name in ('historyAddFilterMenu', 'historySelectionMore',
+                         'historyInspectorMenu', 'historyManagementMenu'):
+                self.assertEqual(profile['windows'][name], {'owner': 'history', 'popup': True})
+            self.assertNotIn('history_catalog_size', profile)
 
     def test_loopback_mutations_allow_local_destination(self):
         for name in ('active_banner', 'cancel_all', 'delete_remote'):
