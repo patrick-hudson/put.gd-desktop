@@ -586,6 +586,26 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(points, [(760, 220)])
         self.assertTrue(all(q['owned'] and q['pid'] == 123 and q['within'] for q in queries))
 
+    def test_clear_filter_dismisses_combo_grab_before_underlying_click(self):
+        class PopupGrab(FakeContext):
+            popup = False
+            def keys(self, *keys):
+                super().keys(*keys)
+                if 'Return' in keys and self.focused_control == 'historyChoiceuploadStatus':
+                    self.popup = True
+                if 'Esc' in keys:
+                    self.popup = False
+            def click(self, control, window='history', button='left'):
+                if control == 'historyClearFilters' and self.popup:
+                    self.popup = False
+                    return  # Native popup consumes the first outside click.
+                return super().click(control, window, button)
+        ctx = PopupGrab(('history_rows',))
+        history.clear_filters(ctx)
+        self.assertFalse(ctx.popup)
+        self.assertFalse(ctx.query['uploadStatus'])
+        self.assertEqual(ctx.query['search'], ctx.fixture_row['name'])
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))

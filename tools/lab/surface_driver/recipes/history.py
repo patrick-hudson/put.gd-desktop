@@ -284,7 +284,11 @@ def clear_filters(ctx):
     ctx.focus('history', raise_window=False)
     _frame(ctx, 'filter-revealed', None)
     ctx.keys('Home', 'Down', 'Return')
-    ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']), 'upload filter applied')
+    ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']) and not _state(ctx)['busy'], 'upload filter applied')
+    # Return opens this noneditable combo on some Qt styles. Dismiss its grab
+    # before clicking the underlying Clear filters button.
+    ctx.keys('Esc')
+    ctx.expect(bool(_state(ctx)['query']['uploadStatus']), 'dismissing the combo retains the applied filter')
     _frame(ctx, 'filtered', '40-history-filters-active')
     clear = _click_history_node(ctx, {'name': 'Clear filters', 'role': 'push button'})
     ctx.note('Clear filters clicked through owned native bounds: ' + json.dumps(clear['rect']))
