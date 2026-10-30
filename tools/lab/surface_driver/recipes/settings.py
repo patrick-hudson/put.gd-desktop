@@ -994,7 +994,7 @@ def exercise_disclosure(ctx, control, section):
 def capture_help(ctx):
     opened(ctx, 1)
     controls = ctx.catalog.candidates('glob:*Help', 'settings', REFERENCES[1])
-    names = sorted({c['name'] for c in controls if c.get('visible') and c.get('class') == 'QToolButton'})
+    names = sorted({c['name'] for c in controls if c.get('visible', True) and c.get('class') == 'QToolButton'})
     ctx.expect(bool(names), 'capture catalog declares visible per-setting help')
     for name in names:
         exercise_disclosure(ctx, name, 1)

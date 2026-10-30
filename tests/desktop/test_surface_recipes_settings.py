@@ -455,6 +455,17 @@ class Contracts(unittest.TestCase):
         self.assertEqual(caught.exception.issue, 856)
         self.assertFalse(any(item[0] in ('keys', 'type') for item in ctx.inputs))
 
+    def test_help_catalog_defaults_visibility_when_flag_is_omitted(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        ctx = Fake()
+        ctx.catalog = SimpleNamespace(candidates=lambda *a: [
+            {'name': 'visibleHelp', 'class': 'QToolButton'},
+            {'name': 'hiddenHelp', 'class': 'QToolButton', 'visible': False}])
+        with patch.object(lane, 'opened'), patch.object(lane, 'exercise_disclosure') as exercise:
+            lane.capture_help(ctx)
+        exercise.assert_called_once_with(ctx, 'visibleHelp', 1)
+
     def test_disclosure_requires_rendered_text_and_collapse(self):
         from types import SimpleNamespace
         ctx = Fake()
