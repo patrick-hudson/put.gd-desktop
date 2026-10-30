@@ -1,0 +1,3405 @@
+{
+ "f44|core|click-physical|SIGINT": {
+  "tree": "core",
+  "scenario": "click-physical",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 123,
+  "tally": {
+   "cleanup-skipped": 123,
+   "ok": 1877
+  },
+  "examples": [
+   [
+    0.0,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    0.1,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    0.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    0.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    0.3,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    0.4,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|runner-cleanup|SIGTERM": {
+  "tree": "core",
+  "scenario": "runner-cleanup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 474,
+  "tally": {
+   "ok": 1526,
+   "cleanup-skipped": 90,
+   "swallowed": 11,
+   "run-continued-after-termination swallowed": 373
+  },
+  "examples": [
+   [
+    2.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|runner-cleanup|SIGHUP": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|fixture-setup|SIGALRM": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|held|SIGHUP": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|runner-cleanup|SIGTERM": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|click-physical|SIGINT": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|wheel|SIGALRM": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|wheel|SIGHUP": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|fixture-setup|SIGINT": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|browser-setup|SIGTERM": {
+  "tree": "core",
+  "scenario": "browser-setup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1941,
+  "tally": {
+   "ok": 59,
+   "swallowed": 79,
+   "cleanup-skipped": 1862
+  },
+  "examples": [
+   [
+    4.4,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.5,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.6,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.8,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|click-physical|SIGHUP": {
+  "tree": "core",
+  "scenario": "click-physical",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 129,
+  "tally": {
+   "cleanup-skipped": 129,
+   "ok": 1871
+  },
+  "examples": [
+   [
+    0.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    0.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    0.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    0.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    0.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    0.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|drag|SIGTERM": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|browser-exit|SIGINT": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|held|SIGALRM": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|fixture-setup|SIGHUP": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|click-guest|SIGINT": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|fixture-setup|SIGINT": {
+  "tree": "core",
+  "scenario": "fixture-setup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 380,
+  "tally": {
+   "ok": 1620,
+   "cleanup-skipped": 380
+  },
+  "examples": [
+   [
+    4.6,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    4.8,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    5.0,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    5.1,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    5.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|fixture-setup|SIGTERM": {
+  "tree": "core",
+  "scenario": "fixture-setup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 389,
+  "tally": {
+   "ok": 1611,
+   "cleanup-skipped": 112,
+   "cleanup-skipped swallowed": 277
+  },
+  "examples": [
+   [
+    4.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    4.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    5.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    5.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    5.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|click-physical|SIGALRM": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|fixture-setup|SIGALRM": {
+  "tree": "core",
+  "scenario": "fixture-setup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 386,
+  "tally": {
+   "ok": 1614,
+   "cleanup-skipped": 110,
+   "cleanup-skipped swallowed": 276
+  },
+  "examples": [
+   [
+    4.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    5.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    5.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    5.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    5.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    5.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|click-guest|SIGTERM": {
+  "tree": "core",
+  "scenario": "click-guest",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 85,
+  "tally": {
+   "ok": 1915,
+   "cleanup-skipped": 85
+  },
+  "examples": [
+   [
+    10.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    10.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    11.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    11.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    11.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    11.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|browser-setup|SIGINT": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|drag|SIGHUP": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|runner-cleanup|SIGALRM": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|drag|SIGALRM": {
+  "tree": "core",
+  "scenario": "drag",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 82,
+  "tally": {
+   "ok": 1918,
+   "cleanup-skipped": 82
+  },
+  "examples": [
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|runner-cleanup|SIGINT": {
+  "tree": "core",
+  "scenario": "runner-cleanup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 419,
+  "tally": {
+   "ok": 1581,
+   "cleanup-skipped": 419
+  },
+  "examples": [
+   [
+    2.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.3,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.3,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.4,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|held|SIGTERM": {
+  "tree": "core",
+  "scenario": "held",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 126,
+  "tally": {
+   "ok": 1874,
+   "cleanup-skipped": 126
+  },
+  "examples": [
+   [
+    2.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|browser-setup|SIGINT": {
+  "tree": "core",
+  "scenario": "browser-setup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1942,
+  "tally": {
+   "ok": 58,
+   "swallowed": 78,
+   "cleanup-skipped": 1864
+  },
+  "examples": [
+   [
+    4.3,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.4,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.5,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.6,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|click-guest|SIGALRM": {
+  "tree": "core",
+  "scenario": "click-guest",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 59,
+  "tally": {
+   "ok": 1941,
+   "cleanup-skipped": 59
+  },
+  "examples": [
+   [
+    11.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|drag|SIGINT": {
+  "tree": "core",
+  "scenario": "drag",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 107,
+  "tally": {
+   "ok": 1893,
+   "cleanup-skipped": 107
+  },
+  "examples": [
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.4,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|click-guest|SIGALRM": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|browser-exit|SIGALRM": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|click-physical|SIGTERM": {
+  "tree": "core",
+  "scenario": "click-physical",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 133,
+  "tally": {
+   "cleanup-skipped": 133,
+   "ok": 1867
+  },
+  "examples": [
+   [
+    0.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    0.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    0.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    0.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    0.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    0.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|fixture-setup|SIGTERM": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|browser-exit|SIGHUP": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|click-guest|SIGINT": {
+  "tree": "core",
+  "scenario": "click-guest",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 94,
+  "tally": {
+   "ok": 1906,
+   "cleanup-skipped": 94
+  },
+  "examples": [
+   [
+    10.4,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    10.6,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    10.7,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    10.8,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    10.9,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    11.0,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|held|SIGTERM": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|click-physical|SIGTERM": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|drag|SIGINT": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|browser-exit|SIGTERM": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|wheel|SIGHUP": {
+  "tree": "core",
+  "scenario": "wheel",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 160,
+  "tally": {
+   "ok": 1840,
+   "cleanup-skipped": 160
+  },
+  "examples": [
+   [
+    2.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|browser-exit|SIGHUP": {
+  "tree": "core",
+  "scenario": "browser-exit",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1910,
+  "tally": {
+   "ok": 90,
+   "active-leak cleanup-skipped": 7,
+   "cleanup-skipped": 16,
+   "swallowed": 1887
+  },
+  "examples": [
+   [
+    2.5,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|wheel|SIGALRM": {
+  "tree": "core",
+  "scenario": "wheel",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 121,
+  "tally": {
+   "ok": 1879,
+   "cleanup-skipped": 121
+  },
+  "examples": [
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|drag|SIGALRM": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|browser-setup|SIGALRM": {
+  "tree": "core",
+  "scenario": "browser-setup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1944,
+  "tally": {
+   "ok": 56,
+   "swallowed": 1944
+  },
+  "examples": [
+   [
+    4.2,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.3,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.4,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.4,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.5,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.6,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|drag|SIGTERM": {
+  "tree": "core",
+  "scenario": "drag",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 105,
+  "tally": {
+   "ok": 1895,
+   "cleanup-skipped": 105
+  },
+  "examples": [
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|browser-exit|SIGALRM": {
+  "tree": "core",
+  "scenario": "browser-exit",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|click-guest|SIGHUP": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|wheel|SIGTERM": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|drag|SIGHUP": {
+  "tree": "core",
+  "scenario": "drag",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 107,
+  "tally": {
+   "ok": 1893,
+   "cleanup-skipped": 107
+  },
+  "examples": [
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|click-guest|SIGTERM": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|runner-cleanup|SIGINT": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|browser-exit|SIGTERM": {
+  "tree": "core",
+  "scenario": "browser-exit",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1905,
+  "tally": {
+   "ok": 95,
+   "active-leak cleanup-skipped": 4,
+   "cleanup-skipped": 18,
+   "swallowed": 1883
+  },
+  "examples": [
+   [
+    2.8,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.0,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    7.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    7.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|browser-exit|SIGINT": {
+  "tree": "core",
+  "scenario": "browser-exit",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1906,
+  "tally": {
+   "ok": 94,
+   "active-leak cleanup-skipped": 6,
+   "cleanup-skipped": 1900
+  },
+  "examples": [
+   [
+    2.7,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.1,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "active-leak",
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|browser-setup|SIGALRM": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|held|SIGALRM": {
+  "tree": "core",
+  "scenario": "held",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 99,
+  "tally": {
+   "ok": 1901,
+   "cleanup-skipped": 99
+  },
+  "examples": [
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|held|SIGINT": {
+  "tree": "core",
+  "scenario": "held",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 126,
+  "tally": {
+   "ok": 1874,
+   "cleanup-skipped": 126
+  },
+  "examples": [
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|held|SIGHUP": {
+  "tree": "core",
+  "scenario": "held",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 134,
+  "tally": {
+   "ok": 1866,
+   "cleanup-skipped": 134
+  },
+  "examples": [
+   [
+    2.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    3.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|click-guest|SIGHUP": {
+  "tree": "core",
+  "scenario": "click-guest",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 84,
+  "tally": {
+   "ok": 1916,
+   "cleanup-skipped": 84
+  },
+  "examples": [
+   [
+    10.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    11.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    11.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    11.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    11.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    11.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|wheel|SIGTERM": {
+  "tree": "core",
+  "scenario": "wheel",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 152,
+  "tally": {
+   "ok": 1848,
+   "cleanup-skipped": 152
+  },
+  "examples": [
+   [
+    2.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ],
+   [
+    3.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGTERM",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|browser-setup|SIGHUP": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|click-physical|SIGHUP": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|fixture-setup|SIGHUP": {
+  "tree": "core",
+  "scenario": "fixture-setup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 386,
+  "tally": {
+   "ok": 1614,
+   "cleanup-skipped": 109,
+   "cleanup-skipped swallowed": 277
+  },
+  "examples": [
+   [
+    4.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    4.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    5.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    5.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    5.2,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    5.3,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|wheel|SIGINT": {
+  "tree": "core",
+  "scenario": "wheel",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 149,
+  "tally": {
+   "ok": 1851,
+   "cleanup-skipped": 149
+  },
+  "examples": [
+   [
+    3.0,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.1,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.2,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.3,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ],
+   [
+    3.4,
+    [
+     "cleanup-skipped"
+    ],
+    "KeyboardInterrupt",
+    "sweep interrupt",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|runner-cleanup|SIGALRM": {
+  "tree": "core",
+  "scenario": "runner-cleanup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 424,
+  "tally": {
+   "ok": 1576,
+   "cleanup-skipped handler-not-restored": 25,
+   "swallowed": 14,
+   "cleanup-skipped": 385
+  },
+  "examples": [
+   [
+    2.5,
+    [
+     "cleanup-skipped",
+     "handler-not-restored"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: __main__.first",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped",
+     "handler-not-restored"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: __main__.first",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped",
+     "handler-not-restored"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: __main__.first",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "cleanup-skipped",
+     "handler-not-restored"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: __main__.first",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "cleanup-skipped",
+     "handler-not-restored"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: __main__.first",
+    "NoneType"
+   ],
+   [
+    2.9,
+    [
+     "cleanup-skipped",
+     "handler-not-restored"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: __main__.first",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|runner-cleanup|SIGHUP": {
+  "tree": "core",
+  "scenario": "runner-cleanup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 517,
+  "tally": {
+   "ok": 1483,
+   "cleanup-skipped": 108,
+   "swallowed": 16,
+   "run-continued-after-termination swallowed": 393
+  },
+  "examples": [
+   [
+    2.4,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.5,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.6,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ],
+   [
+    2.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "runner interrupted by SIGHUP",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|head|wheel|SIGINT": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|browser-setup|SIGTERM": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|head|held|SIGINT": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "f44|core|browser-setup|SIGHUP": {
+  "tree": "core",
+  "scenario": "browser-setup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 1943,
+  "tally": {
+   "ok": 57,
+   "swallowed": 73,
+   "cleanup-skipped": 1870
+  },
+  "examples": [
+   [
+    4.3,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.4,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.4,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.5,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.6,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ],
+   [
+    4.7,
+    [
+     "swallowed"
+    ],
+    "RuntimeError",
+    "Target browser helper failed; raw output withheld",
+    "NoneType"
+   ]
+  ]
+ },
+ "f44|core|click-physical|SIGALRM": {
+  "tree": "core",
+  "scenario": "click-physical",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.14.8",
+  "bad": 66,
+  "tally": {
+   "ok": 1934,
+   "cleanup-skipped": 66
+  },
+  "examples": [
+   [
+    10.7,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    10.8,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    10.9,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.0,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ],
+   [
+    11.1,
+    [
+     "cleanup-skipped"
+    ],
+    "RecipeFailed",
+    "recipe deadline exceeded: sweep",
+    "NoneType"
+   ]
+  ]
+ },
+ "m74|head|runner-cleanup|SIGHUP": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|fixture-setup|SIGALRM": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|held|SIGHUP": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|runner-cleanup|SIGTERM": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-physical|SIGINT": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|wheel|SIGALRM": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|wheel|SIGHUP": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|fixture-setup|SIGINT": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|drag|SIGTERM": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-exit|SIGINT": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|held|SIGALRM": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|fixture-setup|SIGHUP": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-guest|SIGINT": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-physical|SIGALRM": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-setup|SIGINT": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|drag|SIGHUP": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|runner-cleanup|SIGALRM": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-guest|SIGALRM": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-exit|SIGALRM": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|fixture-setup|SIGTERM": {
+  "tree": "head",
+  "scenario": "fixture-setup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-exit|SIGHUP": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|held|SIGTERM": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-physical|SIGTERM": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|drag|SIGINT": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-exit|SIGTERM": {
+  "tree": "head",
+  "scenario": "browser-exit",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|drag|SIGALRM": {
+  "tree": "head",
+  "scenario": "drag",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-guest|SIGHUP": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|wheel|SIGTERM": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-guest|SIGTERM": {
+  "tree": "head",
+  "scenario": "click-guest",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|runner-cleanup|SIGINT": {
+  "tree": "head",
+  "scenario": "runner-cleanup",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-setup|SIGALRM": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGALRM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-setup|SIGHUP": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|click-physical|SIGHUP": {
+  "tree": "head",
+  "scenario": "click-physical",
+  "signal": "SIGHUP",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|wheel|SIGINT": {
+  "tree": "head",
+  "scenario": "wheel",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|browser-setup|SIGTERM": {
+  "tree": "head",
+  "scenario": "browser-setup",
+  "signal": "SIGTERM",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ },
+ "m74|head|held|SIGINT": {
+  "tree": "head",
+  "scenario": "held",
+  "signal": "SIGINT",
+  "trials": 2000,
+  "max_us": 150,
+  "python": "3.12.3",
+  "bad": 0,
+  "tally": {
+   "ok": 2000
+  },
+  "examples": []
+ }
+}
