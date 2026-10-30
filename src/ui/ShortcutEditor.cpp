@@ -10,10 +10,12 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QKeyEvent>
+#include <QMouseEvent>
 #include <QPointer>
 #include <QPushButton>
 #include <QPlainTextEdit>
 #include <QToolButton>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace putgd {
@@ -98,9 +100,12 @@ void ShortcutEditor::setActions(const QJsonObject& actions){cancelRecording();fo
 void ShortcutEditor::startRecording(const QString& action){
  cancelRecording();recordingAction_=action;recordingReady_=false;chord_={};pressed_.clear();
  const auto generation=++recordingGeneration_;
- editors_[action]->setPlaceholderText("Press shortcut…");recordButtons_[action]->setFocusPolicy(Qt::NoFocus);
+ editors_[action]->setPlaceholderText("Press shortcut…");
  recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
- editors_[action]->setFocus();qApp->installEventFilter(this);
+ // Keep focus on the clickable keycap. Focusing its mouse-transparent child
+ // while making the button unfocusable lets a real click focus the surrounding
+ // scroll area: FocusOut cancels, then clicked starts recording again.
+ recordButtons_[action]->setFocus();qApp->installEventFilter(this);
  if(!chordResolver_)keyboard_=std::make_unique<ShortcutKeyboard>();
  if(!recordingControl_){finishRecording("Recording is unavailable. Reopen Settings from the running app.");return;}
  QPointer<ShortcutEditor> guard(this);
@@ -114,8 +119,10 @@ void ShortcutEditor::startRecording(const QString& action){
 void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording canceled. The draft shortcut is unchanged.");}
 void ShortcutEditor::finishRecording(const QString& message){
  if(recordingAction_.isEmpty())return;
- ++recordingGeneration_;recordingReady_=false;
- editors_[recordingAction_]->setPlaceholderText("Not set");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
+ // Escape or deactivation also abandons a keycap switch held under the mouse.
+ if(pendingMouseFocusCancel_)if(auto* button=qobject_cast<QPushButton*>(QApplication::focusWidget());recordButtons_.values().contains(button)){canceledMouseRelease_=button;button->setDown(false);}
+ ++recordingGeneration_;recordingReady_=false;pendingMouseFocusCancel_=false;
+ editors_[recordingAction_]->setPlaceholderText("Not set");recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
  recordingStatus_->setText(message);
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns
@@ -124,10 +131,26 @@ void ShortcutEditor::finishRecording(const QString& message){
  });}
 }
 bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
+ if((event->type()==QEvent::MouseButtonPress||event->type()==QEvent::MouseButtonDblClick)&&static_cast<QMouseEvent*>(event)->button()==Qt::LeftButton)canceledMouseRelease_.clear();
+ if(canceledMouseRelease_&&object==canceledMouseRelease_.data()&&event->type()==QEvent::MouseButtonRelease&&static_cast<QMouseEvent*>(event)->button()==Qt::LeftButton){canceledMouseRelease_->setDown(false);canceledMouseRelease_.clear();}
  if(event->type()==QEvent::WindowActivate&&object==window()&&isVisible()&&recordingAction_.isEmpty()&&refresh_->isVisible()&&refreshAction_)refreshAction_();
  if(recordingAction_.isEmpty())return false;
  auto* input=editors_[recordingAction_];
- if((object==input&&event->type()==QEvent::FocusOut)||(object==this&&event->type()==QEvent::Hide)||(object==window()&&(event->type()==QEvent::WindowDeactivate||event->type()==QEvent::Close||event->type()==QEvent::Hide))||event->type()==QEvent::ApplicationDeactivate){cancelRecording();return false;}
+ if(object==recordButtons_[recordingAction_]&&event->type()==QEvent::FocusOut){
+  // Another keycap gets mouse focus before its press is delivered. Restoring
+  // bindings here hides the Paused labels and can move that keycap away from
+  // the release point. Let its completed click switch the recorder first.
+  auto* focus=qobject_cast<QPushButton*>(QApplication::focusWidget());
+  if(focus&&recordButtons_.values().contains(focus)&&QApplication::mouseButtons().testFlag(Qt::LeftButton)){pendingMouseFocusCancel_=true;return false;}
+  cancelRecording();return false;
+ }
+ if(pendingMouseFocusCancel_&&event->type()==QEvent::MouseButtonRelease&&static_cast<QMouseEvent*>(event)->button()==Qt::LeftButton){
+  pendingMouseFocusCancel_=false;const auto generation=recordingGeneration_;QPointer<ShortcutEditor> guard(this);
+  // An abandoned click still cancels on focus loss. A completed switch has
+  // already advanced the generation by the time this queued check runs.
+  QTimer::singleShot(0,this,[guard,generation]{if(guard&&generation==guard->recordingGeneration_&&QApplication::focusWidget()!=guard->recordButtons_.value(guard->recordingAction_))guard->cancelRecording();});
+ }
+ if((object==this&&event->type()==QEvent::Hide)||(object==window()&&(event->type()==QEvent::WindowDeactivate||event->type()==QEvent::Close||event->type()==QEvent::Hide))||event->type()==QEvent::ApplicationDeactivate){cancelRecording();return false;}
  if(event->type()!=QEvent::ShortcutOverride&&event->type()!=QEvent::KeyPress&&event->type()!=QEvent::KeyRelease)return false;
  auto* key=static_cast<QKeyEvent*>(event);event->accept();
  if(event->type()==QEvent::ShortcutOverride)return true;

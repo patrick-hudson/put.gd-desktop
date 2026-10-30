@@ -1,0 +1,44 @@
+[
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "appimage",
+    "verified": true
+  },
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "ubuntu24.04",
+    "verified": true
+  },
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "ubuntu26.04",
+    "verified": true
+  },
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "debian13",
+    "verified": true
+  },
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "fedora44",
+    "verified": true
+  },
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "ui-catalog",
+    "verified": true
+  },
+  {
+    "deleted": [],
+    "preserved": [],
+    "target": "lab-fixture",
+    "verified": true
+  }
+]

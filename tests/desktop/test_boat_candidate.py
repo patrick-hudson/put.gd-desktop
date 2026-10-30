@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -12,7 +13,13 @@ import tarfile
 import signal
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('boat_candidate', ROOT / 'tools/lab/boat/candidate.py')
@@ -40,6 +47,7 @@ class CandidateContracts(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             candidate.parser().parse_args([SHA, '--output', '/tmp/result', '--artifact', 'latest'])
 
+    @unittest.skipUnless(yaml, 'requires python3-yaml')
     def test_sha_must_identify_a_commit_object_before_any_worker_is_started(self):
         with patch.object(candidate, 'run', return_value='tree\n'), self.assertRaises(ValueError):
             candidate.load_workflows(SHA)
@@ -130,13 +138,16 @@ class CandidateContracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             candidate.step(job, 'missing')
 
+    @unittest.skipUnless(yaml, 'requires python3-yaml')
     def test_fixture_is_unmistakably_test_only(self):
-        import yaml
         packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
         _, script, _ = candidate.recipe('lab-fixture', packages, {})
         self.assertIn('CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture', script)
         self.assertIn('-DPUTGD_PACKAGE_TARGET= -DPUTGD_UPDATE_CHECK=OFF', script)
         self.assertIn('dpkg-deb -f', script)
+        self.assertIn('CPACK_DEBIAN_PACKAGE_CONFLICTS=putgd', script)
+        self.assertIn('CPACK_DEBIAN_PACKAGE_REPLACES=putgd', script)
+        self.assertIn('Disposable lab fixture build', script)
         self.assertIn('native.py audit intentionally not run', ' '.join(candidate.ci_differences('lab-fixture')))
 
     def test_inline_ci_steps_cannot_join_into_one_shell_token(self):
@@ -144,8 +155,8 @@ class CandidateContracts(unittest.TestCase):
         self.assertEqual(candidate.step(job, 'proton') + 'export FORMAT=DEB\n',
                          'python3 provision.py\nexport FORMAT=DEB\n')
 
+    @unittest.skipUnless(yaml, 'requires python3-yaml')
     def test_current_workflow_recipes_keep_pins_audits_and_socket_preflight(self):
-        import yaml
         packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
         ci = yaml.safe_load((ROOT / '.github/workflows/ci.yml').read_text())
         for target in candidate.TARGETS:
@@ -265,11 +276,11 @@ class CandidateContracts(unittest.TestCase):
                 self.make_archive(archive, [('catalog/window.png', 'file')])
                 digest = candidate.sha256(archive)
                 receipt = {}
-                with patch.object(candidate, 'run', side_effect=[digest + '  artifacts.tar', '']) as run:
+                with patch.object(candidate, 'run', side_effect=['1000 .\n1\nfilesystem\n', digest + '  artifacts.tar', '']) as run:
                     candidate.collect_artifacts(['ssh'], ['-F', '/dev/null'], 'host', '22', root, receipt, None, timeout=budget)
-                self.assertEqual(run.call_count, 2)
-                self.assertIn('tar -cf', run.call_args_list[0].args[0][-1])
-                scp = run.call_args_list[1].args[0]
+                self.assertEqual(run.call_count, 3)
+                self.assertIn('tar -cf', run.call_args_list[1].args[0][-1])
+                scp = run.call_args_list[2].args[0]
                 self.assertEqual(scp[0], 'scp')
                 self.assertNotIn('-r', scp)
                 self.assertAlmostEqual(run.call_args_list[0].kwargs['timeout'], max(150, budget), delta=1)
@@ -296,9 +307,10 @@ class CandidateContracts(unittest.TestCase):
                     return {'stdout': 'ssh-ed25519 synthetic-key'}
                 # An exhausted build budget leaves the optional benchmark one second,
                 # while collect_artifacts independently retains its 150-second reserve.
-                args = argparse.Namespace(commit=SHA, type='large', ttl=180, benchmark_catalog_scp=True)
+                args = argparse.Namespace(commit=SHA, type='large', ttl=180, run_nonce='0123456789abcdef', benchmark_catalog_scp=True)
                 with patch.object(candidate, 'run', side_effect=run) as calls, \
                      patch.object(candidate, 'boat', side_effect=boat), \
+                     patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}), \
                      patch.object(candidate, 'cleanup_workers', return_value={'verified': True}), \
                      patch.object(candidate, 'collect_artifacts') as collection, \
                      patch.object(candidate, 'verify_identity', return_value={}), \
@@ -366,20 +378,310 @@ class CandidateContracts(unittest.TestCase):
              self.assertRaisesRegex(RuntimeError, 'not complete'):
             candidate.cleanup_workers('exact', timeout=0)
 
-    def test_creation_without_an_id_still_recovers_by_fixed_name(self):
+    def test_creation_without_an_id_recovers_by_nonce_for_full_create_window(self):
         with tempfile.TemporaryDirectory() as temporary:
             def create(argv, **kwargs):
                 raise TimeoutError('interrupted before first ID')
             cleanup = {'verified': True, 'finalState': 'absent', 'deletedIds': ['bx_orphan']}
-            args = argparse.Namespace(commit=SHA, type='large', ttl=10800)
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='0123456789abcdef')
             with patch.object(candidate, 'run', side_effect=create), \
-                 patch.object(candidate, 'cleanup_workers', side_effect=[{'verified': True}, cleanup]) as cleaner:
+                 patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}), \
+                 patch.object(candidate, 'cleanup_workers', return_value=cleanup) as cleaner:
                 result = candidate.build_worker('appimage', args, Path(temporary), ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
             self.assertTrue(result['cleanupVerified'])
             self.assertEqual(result['cleanup']['deletedIds'], ['bx_orphan'])
-            self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage', None))
-            self.assertEqual(cleaner.call_args.kwargs['recovery_seconds'], 10)
+            self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage-0123456789abcdef', None))
+            self.assertGreater(cleaner.call_args.kwargs['recovery_seconds'], 119)
+            self.assertGreaterEqual(cleaner.call_args.kwargs['timeout'], 239)
+
+    def test_nonce_sweep_preserves_live_and_unknown_but_deletes_dead_and_expired(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(candidate, 'LEASE_ROOT', Path(temporary)):
+            names = ['000000000000000' + str(i) for i in range(4)]
+            with candidate.run_lease(names[1]):
+                pass  # dead local lease, retained for orphan recovery
+            def worker(nonce, **fields):
+                return dict(id=nonce, name=candidate.worker_name(SHA, 'appimage', nonce), **fields)
+            with candidate.run_lease(names[0]), \
+                 patch.object(candidate, 'all_sandboxes', return_value=[worker(n) for n in names[:3]] + [
+                     worker(names[3], createdAt='2000-01-01T00:00:00Z', ttlSeconds=600),
+                     {'id': 'unrelated', 'name': 'keep-me'}]), \
+                 patch.object(candidate, 'cleanup_workers', return_value={'verified': True}) as cleanup:
+                result = candidate.cleanup_orphans(SHA, 'appimage')
+            self.assertEqual(result['preserved'], names[:1] + names[2:3])
+            self.assertEqual([call.args for call in cleanup.call_args_list], [(None, names[1]), (None, names[3])])
+
+    def test_two_controllers_have_distinct_names_and_live_leases(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(candidate, 'LEASE_ROOT', Path(temporary)):
+            a, b = 'a' * 16, 'b' * 16
+            with candidate.run_lease(a), candidate.run_lease(b):
+                self.assertNotEqual(candidate.worker_name(SHA, 'debian13', a),
+                                    candidate.worker_name(SHA, 'debian13', b))
+                self.assertFalse(candidate.orphaned({}, a))
+                self.assertFalse(candidate.orphaned({}, b))
+            self.assertTrue(candidate.orphaned({}, a))
+
+    def test_expired_ttl_never_overrides_a_live_local_nonce_lease(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(candidate, 'LEASE_ROOT', Path(temporary)):
+            nonce = 'd' * 16
+            worker = {'createdAt': '2000-01-01T00:00:00Z', 'ttlSeconds': 600}
+            with candidate.run_lease(nonce):
+                self.assertFalse(candidate.orphaned(worker, nonce))
+            self.assertTrue(candidate.orphaned(worker, nonce))
+
+    def test_late_create_is_found_after_ten_seconds_and_other_nonce_is_untouched(self):
+        now = [0]
+        name = candidate.worker_name(SHA, 'appimage', 'a' * 16)
+        other = {'id': 'peer', 'name': candidate.worker_name(SHA, 'appimage', 'b' * 16)}
+        def listing():
+            return [other] + ([{'id': 'late', 'name': name}] if 30 <= now[0] < 34 else [])
+        def sleep(seconds):
+            now[0] += seconds
+        with patch.object(candidate.time, 'monotonic', side_effect=lambda: now[0]), \
+             patch.object(candidate.time, 'sleep', side_effect=sleep), \
+             patch.object(candidate, 'all_sandboxes', side_effect=listing), \
+             patch.object(candidate, 'boat', return_value={'operation': {'status': 'pending'}}) as boat:
+            result = candidate.cleanup_workers(name, recovery_seconds=120, timeout=240)
+        self.assertEqual(result['deletedIds'], ['late'])
+        self.assertEqual(now[0], 120)
+        boat.assert_called_once_with('delete', 'late', '--yes', cleanup=True)
+
+    @unittest.skipUnless(yaml, 'requires python3-yaml')
+    def test_appimage_pkg_config_appends_qt_and_preserves_existing_paths(self):
+        packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
+        _, script, _ = candidate.recipe('appimage', packages, {})
+        export = next(line for line in script.splitlines() if line.startswith('export PKG_CONFIG_PATH='))
+        for existing, expected in [('', '/qt/lib/pkgconfig'), ('/existing', '/existing:/qt/lib/pkgconfig')]:
+            result = subprocess.run(['bash', '-c', export + '\nprintf "%s" "$PKG_CONFIG_PATH"'],
+                                    env={'QT_ROOT_DIR': '/qt', 'PKG_CONFIG_PATH': existing},
+                                    capture_output=True, text=True, check=True)
+            self.assertEqual(result.stdout, expected)
+
+    def test_collection_budget_scales_for_slow_large_outputs(self):
+        self.assertGreater(candidate.collection_budget(65 * 1024 * 1024, 9), 650)
+        self.assertGreater(candidate.collection_budget(0, 10000), 600)
+        self.assertEqual(candidate.collection_budget(0, 0), 150)
+
+    @contextlib.contextmanager
+    def fake_boat_cli(self, root):
+        """Real subprocess boundary, fake service; no Boat credentials/network."""
+        executable = root / 'boat'
+        executable.write_text('''#!/usr/bin/env python3
+import fcntl,json,os,signal,sys
+from pathlib import Path
+root=Path(os.environ['FAKE_BOAT_ROOT'])
+with (root/'lock').open('a') as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ path=root/'service.json'
+ state=json.loads(path.read_text()) if path.exists() else {'sandboxes':[], 'events':[], 'lists':0}
+ args=sys.argv[1:]
+ args=[a for a in args if a not in ('--no-update','--json')]
+ command=args[0]
+ if command=='new':
+  name=args[args.index('--name')+1]
+  item={'id':'bx_'+str(len(state['events'])), 'name':name, 'visibleAfter':state['lists']+(9 if os.environ.get('FAKE_BOAT_LATE') else 0)}
+  state['sandboxes'].append(item)
+  state['events'].append({'create':item['id'],'name':name})
+  result={} if os.environ.get('FAKE_BOAT_LATE') else {'id':item['id']}
+ elif command=='list':
+  state['lists']+=1
+  result={'sandboxes':[s for s in state['sandboxes'] if s['visibleAfter']<=state['lists']]}
+ elif command=='delete':
+  state['events'].append({'delete':args[1]})
+  state['sandboxes']=[s for s in state['sandboxes'] if s['id']!=args[1]]
+  result={'operation':{'status':'pending'}}
+ else:
+  raise SystemExit('unsupported fake command '+command)
+ path.write_text(json.dumps(state))
+ if command=='new' and os.environ.get('FAKE_BOAT_LATE'):
+  os.kill(os.getpid(),signal.SIGTERM)  # accepted server-side, killed before any ID
+ print(json.dumps(result))
+''')
+        executable.chmod(0o700)
+        with patch.dict(os.environ, {'PATH': str(root) + os.pathsep + os.environ['PATH'],
+                                    'FAKE_BOAT_ROOT': str(root)}), \
+             patch.object(candidate, 'LEASE_ROOT', root / 'leases'):
+            yield
+
+    def test_fake_cli_same_sha_live_runs_never_delete_each_others_workers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.fake_boat_cli(root), candidate.run_lease('a' * 16), candidate.run_lease('b' * 16):
+                a = candidate.boat('new', '--name', candidate.worker_name(SHA, 'appimage', 'a' * 16))['id']
+                b = candidate.boat('new', '--name', candidate.worker_name(SHA, 'appimage', 'b' * 16))['id']
+                result = candidate.cleanup_orphans(SHA, 'appimage')
+                self.assertEqual(result['preserved'], [a, b])
+                with patch.object(candidate.time, 'sleep'):
+                    candidate.cleanup_workers(candidate.worker_name(SHA, 'appimage', 'a' * 16), a)
+                self.assertEqual([s['id'] for s in candidate.all_sandboxes()], [b])
+                with patch.object(candidate.time, 'sleep'):
+                    candidate.cleanup_workers(candidate.worker_name(SHA, 'appimage', 'b' * 16), b)
+            service = json.loads((root / 'service.json').read_text())
+            self.assertEqual([e['delete'] for e in service['events'] if 'delete' in e], [a, b])
+            self.assertEqual(service['sandboxes'], [])
+
+    def test_fake_cli_interrupted_create_without_id_recovers_late_worker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            clock = [0]
+            def sleep(seconds):
+                clock[0] += seconds
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='c' * 16)
+            with self.fake_boat_cli(root), candidate.run_lease(args.run_nonce), \
+                 patch.dict(os.environ, {'FAKE_BOAT_LATE': '1'}), \
+                 patch.object(candidate, 'CREATE_TIMEOUT', 30), \
+                 patch.object(candidate, 'time', SimpleNamespace(
+                     monotonic=lambda: clock[0], sleep=sleep, time=lambda: 0)):
+                result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
+            self.assertEqual(result['state'], 'failed')
+            self.assertIn('boat exited -15', result['error'])
+            self.assertTrue(result['cleanupVerified'])
+            self.assertGreaterEqual(clock[0], 30)
+            service = json.loads((root / 'service.json').read_text())
+            created = [e['create'] for e in service['events'] if 'create' in e]
+            deleted = [e['delete'] for e in service['events'] if 'delete' in e]
+            self.assertEqual(len(created), 1)
+            self.assertEqual(created, deleted, (result, service))
+            self.assertEqual(service['sandboxes'], [])
+
+    def test_orphan_sweep_deletes_only_expired_legacy_id_with_shared_name(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            name = candidate.worker_name(SHA, 'appimage')
+            sandboxes = [
+                {'id': 'expired', 'name': name, 'visibleAfter': 0,
+                 'createdAt': '2000-01-01T00:00:00Z', 'ttlSeconds': 600},
+                {'id': 'live', 'name': name, 'visibleAfter': 0,
+                 'createdAt': '2999-01-01T00:00:00Z', 'ttlSeconds': 600},
+                {'id': 'unnamed', 'visibleAfter': 0}]
+            (root / 'service.json').write_text(json.dumps(
+                {'sandboxes': sandboxes, 'events': [], 'lists': 0}))
+            with self.fake_boat_cli(root), patch.object(candidate.time, 'sleep'):
+                result = candidate.cleanup_orphans(SHA, 'appimage')
+                remaining = candidate.all_sandboxes()
+            self.assertEqual([s['id'] for s in remaining], ['live', 'unnamed'])
+            self.assertEqual(result['deleted'][0]['deletedIds'], ['expired'])
+            self.assertEqual(result['preserved'], ['live'])
+
+    def test_timeout_kill_has_grace_to_recover_create_visible_after_kill(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            clock = [0]
+            real_run = candidate.run
+            def run(argv, **kwargs):
+                if argv[0] == 'boat' and 'new' in argv:
+                    try:
+                        real_run(argv, **kwargs)
+                    except RuntimeError:
+                        clock[0] = 4  # CLI killed at the create timeout, no ID
+                        raise TimeoutError('create timed out')
+                return real_run(argv, **kwargs)
+            def sleep(seconds):
+                clock[0] += seconds
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='c' * 16)
+            with self.fake_boat_cli(root), candidate.run_lease(args.run_nonce), \
+                 patch.dict(os.environ, {'FAKE_BOAT_LATE': '1'}), \
+                 patch.object(candidate, 'CREATE_TIMEOUT', 4), \
+                 patch.object(candidate, 'run', side_effect=run), \
+                 patch.object(candidate, 'time', SimpleNamespace(
+                     monotonic=lambda: clock[0], sleep=sleep, time=lambda: 0)):
+                result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
+            self.assertEqual(result['state'], 'failed')
+            self.assertIn('create timed out', result['error'])
+            self.assertTrue(result['cleanupVerified'])
+            service = json.loads((root / 'service.json').read_text())
+            self.assertEqual(service['sandboxes'], [], result)
+            self.assertEqual(result['cleanup']['deletedIds'], ['bx_0'])
+            self.assertGreaterEqual(clock[0], 34)
+
+    def test_reported_create_id_skips_remaining_create_window_on_failure(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            clock = [0]
+            def sleep(seconds):
+                clock[0] += seconds
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='c' * 16)
+            with self.fake_boat_cli(root), candidate.run_lease(args.run_nonce), \
+                 patch.object(candidate, 'time', SimpleNamespace(
+                     monotonic=lambda: clock[0], sleep=sleep, time=lambda: 0)):
+                result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
+            self.assertEqual(result['state'], 'failed')  # fake CLI deliberately rejects info
+            self.assertEqual(result['sandboxId'], 'bx_0')
+            self.assertTrue(result['cleanupVerified'])
+            self.assertEqual(json.loads((root / 'service.json').read_text())['sandboxes'], [])
+            self.assertLess(clock[0], 10)
+
+    @unittest.skipUnless(yaml, 'requires python3-yaml')
+    def test_fixture_package_has_test_only_summary_and_long_description(self):
+        import shlex
+        packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
+        _, script, _ = candidate.recipe('lab-fixture', packages, {})
+        cpack = next(line for line in script.splitlines() if line.startswith('cpack '))
+        definitions = shlex.split(cpack)
+        self.assertIn('CPACK_PACKAGE_DESCRIPTION_SUMMARY=Disposable lab fixture build of put.gd; test use only', definitions)
+        self.assertIn('CPACK_DEBIAN_PACKAGE_DESCRIPTION=Disposable lab fixture build of put.gd; test use only', definitions)
+
+    def test_collection_size_budget_is_capped_at_ttl_and_expiry_is_explicit(self):
+        clock = [0]
+        receipt = {}
+        def run(argv, **kwargs):
+            self.assertLessEqual(kwargs['timeout'], 20 - clock[0])
+            if len(calls) == 0:
+                calls.append('probe')
+                return '68157440 .\n9\nfilesystem\n'
+            calls.append('pack')
+            clock[0] = 20
+            raise TimeoutError('pack timed out')
+        calls = []
+        with patch.object(candidate.time, 'monotonic', side_effect=lambda: clock[0]), \
+             patch.object(candidate, 'run', side_effect=run), \
+             self.assertRaisesRegex(TimeoutError, 'sandbox TTL expiry'):
+            candidate.collect_artifacts(['ssh'], [], 'host', '22', Path('/unused'),
+                                        receipt, None, timeout=600, ttl_deadline=20)
+        self.assertEqual(calls, ['probe', 'pack'])
+        self.assertEqual(receipt['collectionBudgetSeconds'], 20)
+        self.assertTrue(receipt['collectionTtlCapped'])
+        self.assertIn('sandbox TTL expiry', receipt['collectionError'])
+
+    def test_expired_ttl_starts_no_collection_command(self):
+        with patch.object(candidate.time, 'monotonic', return_value=20), \
+             patch.object(candidate, 'run') as run, \
+             self.assertRaisesRegex(TimeoutError, 'sandbox TTL expiry'):
+            candidate.collect_artifacts([], [], 'host', '22', Path('/unused'),
+                                        {}, None, ttl_deadline=20)
+        run.assert_not_called()
+
+    def test_restore_checks_collection_deadline_before_reading_archive(self):
+        with patch.object(candidate.time, 'monotonic', return_value=20), \
+             self.assertRaisesRegex(TimeoutError, 'sandbox TTL'):
+            candidate.restore_archive(Path('/nonexistent'), Path('/unused'), 'a' * 64, deadline=20)
+
+    def test_collection_worker_passes_conservative_ttl_deadline(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            def run(argv, **kwargs):
+                if argv[0] == 'boat':
+                    kwargs['log'].write('{"id":"bx_owned"}\n')
+                return ''
+            def boat(*args, **kwargs):
+                if args[0] == 'info':
+                    return {'sandbox': {'hydrated': True, 'state': 'ready', 'sshEndpoint': 'host:22'}}
+                return {'stdout': 'ssh-ed25519 synthetic-key'}
+            args = argparse.Namespace(commit=SHA, type='large', ttl=600, run_nonce='c' * 16)
+            with patch.object(candidate.time, 'monotonic', return_value=10), \
+                 patch.object(candidate, 'run', side_effect=run), \
+                 patch.object(candidate, 'boat', side_effect=boat), \
+                 patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}), \
+                 patch.object(candidate, 'cleanup_workers', return_value={'verified': True}), \
+                 patch.object(candidate, 'collect_artifacts', side_effect=TimeoutError('sandbox TTL expiry')) as collect:
+                result = candidate.build_worker('appimage', args, Path(temporary), ('image', 'build', 'release'))
+            self.assertEqual(collect.call_args.kwargs['ttl_deadline'], 610)
+            self.assertEqual(result['state'], 'failed')
+            self.assertIn('sandbox TTL expiry', result['error'])
+
+    def test_cleanup_help_describes_eligible_orphans_and_live_peers(self):
+        help_text = candidate.parser().format_help()
+        self.assertIn('eligible orphan', help_text)
+        self.assertIn('preserve live peers', help_text)
 
     def test_closed_output_stream_is_nonfatal_and_is_replaced_for_shutdown(self):
         closed = io.StringIO()
@@ -392,7 +694,7 @@ class CandidateContracts(unittest.TestCase):
 
     def test_cleanup_mode_requires_no_recipes_capacity_or_new_workers_and_handles_all_signals(self):
         with tempfile.TemporaryDirectory() as temporary:
-            with patch.object(candidate, 'cleanup_workers', return_value={'verified': True}) as cleaner, \
+            with patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}) as cleaner, \
                  patch.object(candidate, 'load_workflows') as load, \
                  patch.object(candidate.signal, 'signal') as signals:
                 code = candidate.main(['--cleanup', SHA, '--output', str(Path(temporary) / 'out')])
