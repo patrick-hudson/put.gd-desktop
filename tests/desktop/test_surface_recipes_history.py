@@ -397,6 +397,8 @@ class FakeContext(Context):
         args = shlex.split(script)
         self.assert_launcher_args(args)
         self.events.append(('shell', script))
+        if args[1] in ('--history', '--activity'):
+            self.closed = self.minimized = False
         value = json.dumps(self.build) if args[1] == '--version-json' else 'putgd 26.1029.42-nightly\n' if args[1] == '--version' else ''
         return {'returncode': 0, 'stdout': value, 'stderr': ''}
 
@@ -439,6 +441,17 @@ SIMULATED = [r for r in LANE if r.function.__code__.co_firstlineno < history.aut
 
 
 class HistoryRecipeTests(unittest.TestCase):
+    def simulate(self, item, ctx):
+        if item.function == history.header_drag:
+            original = copy.deepcopy(ctx.window)
+            with self.assertRaises(RecipeBlocked) as error:
+                item.function(ctx)
+            self.assertEqual(error.exception.issue, 904)
+            self.assertEqual(ctx.window, original)
+            self.assertEqual(len([e for e in ctx.events if e[0] == 'drag']), 2)
+        else:
+            item.function(ctx)
+
     def test_exactly_the_owned_71_ids_once(self):
         owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
         expected = {key for key, owner in owners.items() if owner == 'history'}
@@ -453,7 +466,7 @@ class HistoryRecipeTests(unittest.TestCase):
                 continue
             with self.subTest(recipe=item.name):
                 ctx = FakeContext(item.needs)
-                item.function(ctx)
+                self.simulate(item, ctx)
                 self.assertTrue(any(event[0] in {'click', 'drag', 'cli', 'mcp', 'shell'} for event in ctx.events))
                 self.assertTrue(any(event[0] == 'call' for event in ctx.events))
                 referenced = {label for label, _, reference in ctx.frames if reference}
@@ -476,7 +489,7 @@ class HistoryRecipeTests(unittest.TestCase):
             if item.interactions[0] in history.BLOCKED:
                 continue
             ctx = FakeContext(item.needs)
-            item.function(ctx)
+            self.simulate(item, ctx)
             for _, _, reference in ctx.frames:
                 if reference:
                     self.assertIn('"' + reference, source, reference)
@@ -645,7 +658,7 @@ class HistoryRecipeTests(unittest.TestCase):
         for action in (history.header_drag, history.edge_resize):
             entry = next(r for r in LANE if r.function == action)
             self.assertEqual(entry.needs, ('history-row',))
-            action(NativeContext(entry.needs))
+            self.simulate(entry, NativeContext(entry.needs))
 
     def test_header_point_excludes_navigation_and_refuses_covered_header(self):
         ctx = FakeContext()

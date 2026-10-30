@@ -615,6 +615,8 @@ def header_drag(ctx):
     ctx.call('ui.viewState')
     _frame(ctx, 'after')
     ctx.drag((start[0] + moved['x'] - box['x'], start[1] + moved['y'] - box['y']), start)
+    ctx.wait(lambda: all(ctx.geometry('history')[key] == box[key] for key in ('x', 'y')), 'header drag restores original position')
+    ctx.blocked('Header movement and restoration are verified; the composite also requires double-click maximize/restore at this blank span, but Context has no atomic point double-click.', issue=904)
 
 
 @recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row',), timeout=180)
@@ -741,6 +743,9 @@ def launcher_history(ctx):
     _frame(ctx, 'before')
     epoch = _result(ctx.call('ui.snapshot'))['residentEpoch']
     for flag in ('--history', '--activity'):
+        ctx.click('windowClose', window='history')
+        ctx.wait(lambda: not _main_windows(ctx), 'shell is hidden before second launcher')
+        ctx.frame('closed-' + flag)
         reply = _launcher(ctx, flag)
         ctx.expect(reply['returncode'] == 0, 'second launcher forwards ' + flag)
         ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'existing resident shows History')
