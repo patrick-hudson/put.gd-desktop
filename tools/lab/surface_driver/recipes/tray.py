@@ -1007,7 +1007,7 @@ def action_rejected(ctx):
 def upload_failed_notice(ctx):
     failed = ctx.fixture('tray-failed')
     ctx.expect(failed.state['state'] in ('failed', 'partial'), 'loopback write fault fails the owned upload')
-    notice = _notice(ctx, 'Upload failed')
+    notice = _notice(ctx, 'Completed with a problem', body='Upload failed')
     ctx.expect(bool(notice.get('body')), 'failure notice includes a reason')
     _drawn_notice(ctx, notice)
     _frame(ctx, 'failed-upload')
@@ -1015,7 +1015,7 @@ def upload_failed_notice(ctx):
     cancelled = ctx.fixture('tray-cancelled')
     ctx.expect(cancelled.state['state'] == 'cancelled', 'separate upload was cancelled')
     fresh = [n for n in ctx.notifications() if n.get('id') not in before]
-    ctx.expect(not any(n.get('summary') in ('Upload failed', 'Upload interrupted') for n in fresh),
+    ctx.expect(not any(any(message in n.get('body', '') for message in ('Upload failed', 'Upload interrupted')) for n in fresh),
                'cancelled upload emits no failure toast')
     _frame(ctx, 'cancelled-without-failure-toast')
     ctx.blocked('Failed-upload and cancellation variants exercised; interrupted upload with retained local copy still needs a core fixture', 670)

@@ -381,6 +381,18 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             tray.upload_failed_notice(ctx)
 
+    def test_upload_failure_uses_problem_title_and_failure_body(self):
+        from types import SimpleNamespace
+        ctx = FakeContext()
+        ctx.fixture = lambda name: SimpleNamespace(state={'state': 'cancelled' if name == 'tray-cancelled' else 'partial'})
+        ctx.notices = [{'id': 1, 'summary': 'Completed with a problem',
+                        'body': 'Upload failed: synthetic write fault. A local copy was saved.'}]
+        ctx.accessible = lambda query: [{'rect': [900, 60, 200, 80]}]
+        with self.assertRaisesRegex(RecipeBlocked, 'interrupted upload'):
+            tray.upload_failed_notice(ctx)
+        self.assertEqual([e[1] for e in ctx.events if e[0] == 'frame'],
+                         ['failed-upload', 'cancelled-without-failure-toast'])
+
     def test_pause_scenario_configures_all_native_chords_before_observation(self):
         from types import SimpleNamespace
         ctx = FakeContext()
