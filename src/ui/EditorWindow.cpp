@@ -132,9 +132,13 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* zoomMenu=new QMenu(status_);auto* zoomChoices=new QActionGroup(zoomMenu);zoomChoices->setExclusive(true);
  for(const int percent:{0,50,100,200}){auto* action=zoomMenu->addAction(percent?QString("%1%").arg(percent):QStringLiteral("Fit"));action->setCheckable(true);action->setData(percent);zoomChoices->addAction(action);connect(action,&QAction::triggered,this,[this,percent]{if(percent)canvas_->setZoom(percent/100.0);else canvas_->fit();});}
  zoomMenu->addSeparator();
- for(const bool in:{true,false}){auto* action=zoomMenu->addAction(in?"Zoom in":"Zoom out");action->setShortcut(QKeySequence(in?"Ctrl++":"Ctrl+-"));action->setShortcutContext(Qt::WidgetShortcut);connect(action,&QAction::triggered,this,[this,in]{canvas_->zoomBy(in?1.25:0.8);});}
- zoomMenu->actions()[0]->setShortcut(QKeySequence("Ctrl+0"));zoomMenu->actions()[0]->setShortcutContext(Qt::WidgetShortcut);
- zoomMenu->actions()[2]->setShortcut(QKeySequence("Ctrl+1"));zoomMenu->actions()[2]->setShortcutContext(Qt::WidgetShortcut);
+ for(const bool in:{true,false}){auto* action=zoomMenu->addAction(in?"Zoom in":"Zoom out");auto keys=QKeySequence::keyBindings(in?QKeySequence::ZoomIn:QKeySequence::ZoomOut);if(in&&!keys.contains(QKeySequence("Ctrl+=")))keys.append(QKeySequence("Ctrl+="));action->setShortcuts(keys);connect(action,&QAction::triggered,this,[this,in]{canvas_->zoomBy(in?1.25:0.8);});}
+ zoomMenu->actions()[0]->setShortcut(QKeySequence("Ctrl+0"));
+ zoomMenu->actions()[2]->setShortcut(QKeySequence("Ctrl+1"));
+ // Share each action between the menu and the editor window. A separate
+ // WindowShortcut plus a menu WidgetShortcut becomes ambiguous when Qt
+ // restores focus to the menu's tool button, even after the popup closes.
+ for(auto* action:zoomMenu->actions())if(!action->shortcuts().isEmpty()){action->setShortcutContext(Qt::WindowShortcut);addAction(action);}
  status_->setMenu(zoomMenu);
  root->addWidget(toolbar);
 
@@ -323,8 +327,6 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  };
  auto standard=[](QKeySequence::StandardKey key,QList<QKeySequence> extra={}){return QKeySequence::keyBindings(key)+extra;};
  bind(standard(QKeySequence::Undo,{QKeySequence("Ctrl+Z")}),undo);bind(standard(QKeySequence::Redo,{QKeySequence("Ctrl+Shift+Z"),QKeySequence("Ctrl+Y")}),redo);
- bind({QKeySequence("Ctrl+0")},[this]{canvas_->fit();});bind({QKeySequence("Ctrl+1")},[this]{canvas_->actualSize();});
- bind(standard(QKeySequence::ZoomIn,{QKeySequence("Ctrl+=")}),[this]{canvas_->zoomBy(1.25);});bind(standard(QKeySequence::ZoomOut),[this]{canvas_->zoomBy(0.8);});
  bind(standard(QKeySequence::Save),[this]{if(!busy_)saveCopy();});
  // Upload is never plain Enter, which completes text entry and crops.
  auto submit=[this]{if(busy_||savingCopy_)return;finishPendingEdits();emit uploadRequested();};

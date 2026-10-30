@@ -231,10 +231,13 @@ def recipe(target, packages, ci):
         script = common + step(linux, 'Install distro dependencies', {'matrix.distribution': '26.04'})
         script += 'bash tools/ci/provision-linux-sdk.sh\n'
         script += step(linux, 'Provision pinned Proton helper')
-        script += step(linux, 'Build')
+        script += step(linux, 'Build', {"matrix.distribution == '26.04' && 'ON' || 'OFF'": 'ON'})
         script += 'catalog_runtime=$(mktemp -d /tmp/pgc.XXXXXX)\n'
         script += 'python3 tools/diagnostics/check_socket_paths.py --socket "$catalog_runtime/putgd/session.sock" > /out/socket-preflight.json\n'
-        script += step(linux, 'Render the UI catalog for the surface map').replace('$(mktemp -d)', '$catalog_runtime')
+        # CI renders the catalog inside CTest (ui_catalog_dark); a worker renders it directly.
+        script += ('mkdir -p build/ui-catalog\n'
+                   'QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$catalog_runtime" build/dev/putgd-ui-catalog build/ui-catalog\n'
+                   'python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog\n')
         script += 'cp -a build/ui-catalog /out/\n'
         return matrix['ubuntu26.04']['image'], script, 'dev'
     # Disposable VM drivers need putgd-desktop-fixture in a separately labeled DEB.
@@ -500,7 +503,7 @@ def build_worker(target, args, output, specification):
     started = time.monotonic()
     directory = output / target
     directory.mkdir(mode=0o700)
-    receipt = {'artifact': target, 'commit': args.commit, 'snapshot': 'putgd-build-base',
+    receipt = {'artifact': target, 'commit': args.commit, 'snapshot': 'putgd-build-base-v3',
                'placementReason': 'parallel candidate packaging; preserve quiet physical acceptance hosts',
                'ciDifferences': ci_differences(target), 'runNonce': args.run_nonce,
                'name': worker_name(args.commit, target, args.run_nonce),
@@ -520,7 +523,7 @@ def build_worker(target, args, output, specification):
         creation_started = time.monotonic()
         try:
             with creation.open('w') as stream:
-                run(['boat', '--no-update', '--json', 'new', '--from', 'putgd-build-base',
+                run(['boat', '--no-update', '--json', 'new', '--from', 'putgd-build-base-v3',
                      '--no-env', '--type', args.type, '--ttl', str(args.ttl), '--name',
                      receipt['name']], log=stream, timeout=CREATE_TIMEOUT)
         finally:
@@ -681,7 +684,7 @@ def main(argv=None):
     if not any(item['type'] == args.type and item['available'] for item in limits['machineTypes']):
         raise ValueError('Requested Boat machine type is unavailable')
     snapshots = boat('snapshots')['named']
-    snapshot = next(item for item in snapshots if item['name'] == 'putgd-build-base')
+    snapshot = next(item for item in snapshots if item['name'] == 'putgd-build-base-v3')
     output = prepare_output(args.output)
     args.run_nonce = uuid.uuid4().hex[:16]
     started = time.monotonic()

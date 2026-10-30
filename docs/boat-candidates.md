@@ -12,7 +12,7 @@ The original controller arrived in
 Also require authenticated `boat`, OpenSSH (the Boat CLI's local
 `~/.ssh/ascii_box_ed25519` identity), Git, Python 3 and the distro's
 `python3-yaml` package. The public candidate commit must be pushed and available
-in the local Git object database. The existing `putgd-build-base` named snapshot
+in the local Git object database. The `putgd-build-base-v3` named snapshot
 must be ready. No local build toolchain, Docker daemon or AWS credentials are
 needed by this command.
 
@@ -30,7 +30,7 @@ private. The command rejects insufficient Boat capacity or start allowance
 before creating workers; it does not stop another session's workers.
 
 By default the command fans out seven `large` workers (8 vCPU, 16 GB), one per
-artifact, from `putgd-build-base`. Each has `--no-env`, an explicit auto-stop
+artifact, from `putgd-build-base-v3`. Each has `--no-env`, an explicit auto-stop
 TTL (default 10,800 seconds), and a controller deadline 180 seconds before that
 TTL for hydration/build. Collection retains the unused build budget or a size-scaled reserve
 (150 seconds + staged bytes / 128 KiB/s + 0.05 seconds per file, rounded up),
@@ -82,8 +82,10 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
   The AppImage CI dependency step instead sets three attempts, 300 seconds
   overall and 120 seconds stalled, with an AppImage label.
 - UI catalog uses the package matrix's pinned Ubuntu 26.04 digest; CI's linux
-  job uses the floating `ubuntu:26.04` tag. Dependency/build/render run blocks
-  are reused; the full CTest suite is separate. The private compiler cache is
+  job uses the floating `ubuntu:26.04` tag. The dependency and build run blocks
+  are reused (`PUTGD_UI_CATALOG_REFERENCES` resolved for 26.04); CI renders the
+  catalog inside CTest, so the worker renders it directly and runs the surface
+  map check. Reference-image comparison is CI's (see [the UI catalog](ui-catalog.md)). The private compiler cache is
   capped at 256 MiB rather than CI linux's 1 GiB.
 - The fixture package's Debian **Package** field and filename are
   `putgd-lab-fixture`, not `putgd`. Its package target is empty and
@@ -220,49 +222,49 @@ new output directory each time. Preserve logs/receipts before retrying and follo
 
 ## Lab snapshots
 
-Use `putgd-lab-ubuntu-gnome-v2` for Ubuntu GNOME guests. Its immutable golden is
-a verified copy of inventory image
-`gnome-provisioned-20261016`, stored at
-`/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2` (SHA-256
-`563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb`). It was copied
-and verified in a fresh fork before any overlay referenced the canonical path;
-the original golden and the old `putgd-lab-ubuntu-gnome` snapshot remain intact.
-The older snapshot keeps its GNOME golden outside the canonical root and is
-superseded; do not use that old path for new runs. The v2 preparation evidence is
-under `/home/user/fix721-evidence`; its `golden.json` identifies the canonical
-path and source digest. The [Boat copy inventory](remote-golden-images.md#verified-boat-snapshot-copies)
-maps this profile directory to the provisioned image; it is not the historical
-unprovisioned image named `gnome-wayland`.
+New lanes use `putgd-build-base-v3`, `putgd-lab-cinnamon-v3` and
+`putgd-lab-ubuntu-gnome-v4`. Their [repeatable recipe](boat-snapshots.md) and
+[campaign evidence](evidence/2026-10-30-boat-snapshots/README.md) record immutable
+IDs, source/new golden hashes, package inventories, cached build commits,
+bootstrap pins, cleanup receipts and fresh-fork results. Read the authoritative
+`tools/lab/boat/manifests/NAME.json` for the exact image path and package target.
 
-`putgd-lab-cinnamon` and `putgd-build-base` already keep their Cinnamon golden at
-`/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2` (SHA-256
-`4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da`). Their
-canonical layout was checked separately; no replacement names were needed.
-Both snapshots retain historical built trees. Snapshot preparation does not boot
-a golden or establish a desktop pass. Fork with `--no-env` and a finite TTL,
-wait for `hydrated: true`, and create disposable overlays using the existing
-[VM lab](vm-lab.md) commands. When lab.py comes from a separate source checkout,
-pass `--images-root /home/user/work/put.gd/work/lab-images` to guarded cleanup.
-The root must end in `work/lab-images`, and the base must be an owned, single-link
-regular file; a second hard link is not a supported workaround.
+| Snapshot | App package target | Host target |
+| --- | --- | --- |
+| `putgd-build-base-v3` | `ubuntu24.04` | `ubuntu24.04` |
+| `putgd-lab-cinnamon-v3` | `ubuntu24.04` (Mint 22.3 / Noble) | `ubuntu24.04` |
+| `putgd-lab-ubuntu-gnome-v4` | `ubuntu26.04` (Qt 6.10) | `ubuntu24.04` |
 
-The inherited `/home/user/gnome-source` tree and its fixture DEB target the
-Ubuntu 24.04 sandbox host. Use the `ubuntu26.04` production artifact for the
-Ubuntu 26.04 GNOME guest. Treat historical snapshot builds as caches to identify,
-not as current candidate artifacts.
-Before graphical work, meet the storage, socket, bootstrap, display-wall and
-saved-visual requirements in that guide.
+Build the GNOME guest DEB with `candidate.py COMMIT --artifact ubuntu26.04` in
+its pinned target container. A DEB packaged directly from the Ubuntu 24.04
+host tree cannot replace it. The snapshots retain audited matching packages
+under `/home/user/snapshot-packages/TARGET/`. Each recommended snapshot also
+contains a clean built nightly tree; its exact commit is recorded, and it is a
+cache to update to the requested candidate, not a release asset.
 
-Restore goldens directly from the private S3 inventory using short presigned
-GETs passed only through mode-0600 curl configuration files. Never place signed
-URLs in command arguments, logs, receipts or source; remove the configurations
-after transfer. Verify the S3 object's compressed SHA-256, the inventory's image
-SHA-256, standalone qcow2 metadata, virtual size, sidecar and `qemu-img check`
-before saving a new named snapshot. Do not overwrite a named golden snapshot
-without checking its ownership and purpose. Preserve immutable sources.
+The build-base persists automatic private tmpfs scratch through
+`PUTGD_CI_TMPDIR=/dev/shm` and `TMPDIR=/dev/shm`; the [supported runner](boat-snapshots.md#fast-scratch-and-a-plain-full-ctest-run)
+uses scale 3, the CI resource spec and parallel 12, with retries off. Fresh
+forks need no manual mount or scratch setup. Cinnamon's new golden disables
+Mint Update's autostart through a user XDG override, so verification needs no
+per-overlay Update Manager kill.
 
-Aurora Fedora 45 has no S3 golden copy as of the 2026-10-29 inventory check.
-[`#665`](https://github.com/patrick-hudson/put.gd-desktop/issues/665) tracks the
-blocked `putgd-lab-aurora` preparation. The builder copies were not transferred.
-A verified S3 copy and sidecar must be approved/published before that snapshot
-can be prepared. See [golden inventory](remote-golden-images.md).
+All original names remain intact, as do the intermediate
+`putgd-build-base-v2`, `putgd-lab-cinnamon-v2` and `putgd-lab-ubuntu-gnome-v3`.
+They are superseded for new build/Cinnamon/GNOME work. Every selected golden
+is below `/home/user/work/put.gd/work/lab-images`; never use the legacy
+`/home/user/putgd-gnome-golden/image.qcow2` path from an old snapshot.
+Use `manifest.golden.path` and its SHA-256, the inherited bootstrap pin and a
+fresh overlay, then reset and run guarded cleanup with the manifest's
+`imagesRoot`. See the [Boat image inventory](remote-golden-images.md#probe-equipped-boat-copies).
+
+These are Boat development caches. They establish no physical-desktop,
+performance, memory or release acceptance. Before GUI work verify storage,
+KVM, socket paths, the VNC tunnel listener and the live wall; retain saved
+visuals. Wait for full hydration, use `--no-env` and a finite TTL, and delete
+every worker after exporting verified evidence. Never overwrite a named
+snapshot or boot, modify or delete a source golden.
+
+Aurora v2 is deferred in [#769](https://github.com/patrick-hudson/put.gd-desktop/issues/769):
+its Toolbx/overlay probe route still needs validation without an rpm-ostree
+change to a golden. Its original named snapshot is preserved.

@@ -8,6 +8,7 @@ import fcntl
 import importlib.util
 import io
 import json
+import math
 import os
 from pathlib import Path
 import select
@@ -27,13 +28,29 @@ spec.loader.exec_module(lab)
 JOB = 'install-' + 'e' * 32
 
 
+def time_scale():
+    # Like tests/fixtures/Waits.h: PUTGD_TEST_TIME_SCALE, clamped to [1, 20].
+    try:
+        value = float(os.environ.get('PUTGD_TEST_TIME_SCALE', '1'))
+    except ValueError:
+        return 1.0
+    return min(max(value, 1.0), 20.0) if math.isfinite(value) else 1.0
+
+
+# Budget for things that will happen: a process exits, a handshake line
+# arrives, a guard script finishes. A passing wait ends as soon as its
+# condition holds; fixed 3 to 5 s budgets expired on a CPU-starved runner.
+# Timings that must elapse (admission waits, steady checks) stay literal.
+WAIT = 30 * time_scale()
+
+
 def identity(pid):
     fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
     return {'pid': pid, 'startTicks': int(fields[19]), 'sessionId': pid}
 
 
 def wait_for(predicate):
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + WAIT
     while not predicate():
         if time.monotonic() >= deadline:
             raise TimeoutError('synthetic staging handshake')
@@ -44,6 +61,8 @@ def dead(pid):
     try:
         return Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[0] in ('Z', 'X')
     except (FileNotFoundError, ProcessLookupError):
+        # An orphan can be reaped after the open but before the read, which
+        # then fails with ESRCH; package_staging.proc_fields callers do the same.
         return True
 
 
@@ -61,14 +80,9 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.evidence.mkdir()
         lab.write_json(self.evidence / 'staging-failed.json', {'error': 'KeyboardInterrupt'})
 
-    def test_dead_fixture_accepts_exit_before_open_or_during_proc_read(self):
-        for error in (FileNotFoundError(), ProcessLookupError()):
-            with self.subTest(error=type(error).__name__), patch.object(Path, 'read_text', side_effect=error):
-                self.assertTrue(dead(12345))
-
     def ssh(self, _run, script, **kwargs):
         result = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
-            env={**os.environ, 'HOME': str(self.home)}, timeout=5)
+            env={**os.environ, 'HOME': str(self.home)}, timeout=WAIT)
         if result.returncode:
             raise lab.LabError('synthetic guest guard refused recovery')
         return result.stdout
@@ -102,7 +116,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         }[mode]
         script = 'import os, runpy; ' + prelude + f'runpy.run_path({str(STAGING)!r}, run_name="__main__")'
         result = subprocess.run([sys.executable, '-c', script, 'reconcile', str(self.remote), '0'] +
-            (['--abandoned'] if abandoned else []), text=True, capture_output=True, check=True, timeout=5)
+            (['--abandoned'] if abandoned else []), text=True, capture_output=True, check=True, timeout=WAIT)
         self.assertEqual(result.stderr, '')
         return json.loads(result.stdout)
 
@@ -150,12 +164,20 @@ class StagingRecoveryContracts(unittest.TestCase):
                         finally:
                             if holder:
                                 holder.stdin.close()
-                                holder.wait(timeout=3)
+                                holder.wait(timeout=WAIT)
                                 holder.stdout.close()
         finally:
             live.stdin.close()
-            live.wait(timeout=3)
-            zombie.wait(timeout=3)
+            live.wait(timeout=WAIT)
+            zombie.wait(timeout=WAIT)
+
+    def test_dead_counts_a_process_reaped_during_the_read_as_gone(self):
+        # Nightly 41008430494: the orphaned descendant was reaped between the
+        # open and the read of /proc/PID/stat, and the read raised ESRCH.
+        for error in (FileNotFoundError(errno.ENOENT, 'gone'), ProcessLookupError(errno.ESRCH, 'reaped')):
+            with self.subTest(error=type(error).__name__), patch.object(Path, 'read_text', side_effect=error):
+                self.assertTrue(dead(os.getpid()))
+        self.assertFalse(dead(os.getpid()))
 
     def test_validator_real_wrapper_then_descendant_survives_sigkill(self):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote),
@@ -176,7 +198,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                 with self.assertRaisesRegex(lab.LabError, 'staging-running'):
                     self.recover(mode)
             wrapper.kill()  # Only the exact wrapper started by this test.
-            wrapper.wait(timeout=3)
+            wrapper.wait(timeout=WAIT)
             self.assertFalse(dead(child))
             # Even a matching terminal receipt cannot override a live session.
             lab.write_json(self.remote / 'staging-result.json', {**saved, 'finished': True, 'exitCode': 0})
@@ -193,7 +215,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         finally:
             (self.remote / 'finish').touch()
             if wrapper.poll() is None:
-                wrapper.wait(timeout=3)
+                wrapper.wait(timeout=WAIT)
             if child:
                 wait_for(lambda: dead(child))
 
@@ -217,7 +239,7 @@ class StagingRecoveryContracts(unittest.TestCase):
 
     def test_recovery_preserves_install_reconciliation(self):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         original = {'finished': False, 'state': 'staging-running'}
         lab.write_json(self.evidence / 'staging-reconciliation.json', original)
         report = self.recover(abandoned=False)
@@ -227,7 +249,7 @@ class StagingRecoveryContracts(unittest.TestCase):
 
     def test_missing_controller_receipt_reconstructs_from_guest_identity(self):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         (self.evidence / 'staging-failed.json').unlink()
         report = self.recover(abandoned=False)
         self.assertEqual(report['state'], 'staging-finished')
@@ -236,7 +258,7 @@ class StagingRecoveryContracts(unittest.TestCase):
 
     def test_wrapper_records_its_own_new_session(self):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         saved = lab.read_json(self.remote / 'staging-process.json')
         self.assertEqual(saved['sessionId'], wrapper.pid)
         self.assertNotEqual(saved['sessionId'], os.getsid(0))
@@ -245,7 +267,7 @@ class StagingRecoveryContracts(unittest.TestCase):
 
     def test_pidfd_enosys_falls_back_to_proc(self):
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         report = self.reconcile('enosys')
         self.assertIs(report['exactProcessAlive'], False)
         self.assertTrue(report['finished'])
@@ -260,7 +282,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                     if (release and phase != 'after') or ('echo released' in script and phase == 'unknown'):
                         raise KeyboardInterrupt()
                     result = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
-                        env={**os.environ, 'HOME': directory}, check=True, timeout=3).stdout
+                        env={**os.environ, 'HOME': directory}, check=True, timeout=WAIT).stdout
                     if release:
                         raise KeyboardInterrupt()
                     return result
@@ -299,7 +321,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                 try:
                     for expected in ('first', 'second-window'):
                         line = b''
-                        deadline = time.monotonic() + 5
+                        deadline = time.monotonic() + WAIT
                         while not line.endswith(b'\n'):
                             self.assertGreater(deadline - time.monotonic(), 0)
                             self.assertTrue(select.select([controller.stdout], [], [], max(0, deadline - time.monotonic()))[0])
@@ -310,7 +332,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                     if phase == 'get':
                         (remote / 'finish').touch()  # Finished before interrupted log collection.
                     os.kill(controller.pid, signal.SIGINT)
-                    _, error = controller.communicate(timeout=10)
+                    _, error = controller.communicate(timeout=WAIT)
                     self.assertNotEqual(controller.returncode, 0)
                     if phase == 'get':
                         self.assertFalse((home / 'putgd-lab/install-active').exists())
@@ -326,14 +348,14 @@ class StagingRecoveryContracts(unittest.TestCase):
                         # reconciler, including reconstruction after receipt loss.
                         def ssh(_run, script, **kwargs):
                             return subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
-                                env={**os.environ, 'HOME': directory}, check=True, timeout=5).stdout
+                                env={**os.environ, 'HOME': directory}, check=True, timeout=WAIT).stdout
                         with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=ssh):
                             self.assertTrue(lab.recover_staging(home, JOB)['finished'])
                 finally:
                     (remote / 'finish').touch()
                     if controller.poll() is None:
                         controller.kill()
-                    controller.communicate(timeout=5)
+                    controller.communicate(timeout=WAIT)
                     if (remote / 'staging-process.json').exists():
                         wait_for(lambda: dead(lab.read_json(remote / 'staging-process.json')['pid']))
 
@@ -347,7 +369,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         def release():
             if holder.poll() is None:
                 holder.stdin.close()
-                holder.wait(timeout=3)
+                holder.wait(timeout=WAIT)
             holder.stdout.close()
         self.addCleanup(release)
         return release
@@ -357,7 +379,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         # staging succeeded and the controller is still uploading package.deb or
         # launching the supervisor, so there is no progress.json and no receipt.
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         (self.evidence / 'staging-failed.json').unlink()
         release = self.hold(self.home / 'install.lock')
         for abandoned in (False, True):
@@ -385,7 +407,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                 self.assertFalse((remote / 'progress.json').exists())
                 def ssh(_run, script, **kwargs):
                     return subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
-                        env={**os.environ, 'HOME': directory}, check=True, timeout=5).stdout
+                        env={**os.environ, 'HOME': directory}, check=True, timeout=WAIT).stdout
                 for abandoned in (False, True):
                     with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=ssh), \
                             self.assertRaisesRegex(lab.LabError, 'install controller .* is still running'):
@@ -396,7 +418,7 @@ class StagingRecoveryContracts(unittest.TestCase):
                     lab.install_package(home, 'synthetic.deb')
                 guest.assert_not_called()
                 (home / 'upload-failed').touch()
-                _, error = controller.communicate(timeout=10)
+                _, error = controller.communicate(timeout=WAIT)
                 self.assertNotEqual(controller.returncode, 0)
                 self.assertIn('upload failed', error)
                 # Only the controller itself released its lock.
@@ -405,7 +427,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             finally:
                 (home / 'upload-failed').touch()
                 if controller.poll() is None:
-                    controller.communicate(timeout=10)
+                    controller.communicate(timeout=WAIT)
 
     def supervisor(self, wait=None, sudo_uid=None):
         # The real root helper as the lab user. Fake apt/dpkg record any start,
@@ -462,12 +484,12 @@ class StagingRecoveryContracts(unittest.TestCase):
     def test_supervisor_admission_records_start_while_holding_token(self):
         (self.home / 'putgd-lab/install-guard').touch()
         admission = self.supervisor(wait=1)
-        _, error = admission.communicate(timeout=10)
+        _, error = admission.communicate(timeout=WAIT)
         self.assertEqual(admission.returncode, 0, error)
         self.assertEqual(lab.read_json(self.remote / 'progress.json')['admittedJob'], JOB)
         # The supervisor has started: guarded recovery now refuses and keeps the token.
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         for abandoned in (False, True):
             with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
                 self.recover(abandoned=abandoned)
@@ -476,7 +498,7 @@ class StagingRecoveryContracts(unittest.TestCase):
     def test_delayed_supervisor_start_after_recovery_never_runs_unlocked(self):
         # The controller died after a launch whose sudo start was delayed.
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         (self.evidence / 'staging-failed.json').unlink()
         self.assertEqual(self.recover(abandoned=False)['state'], 'staging-finished')
         self.assertFalse(self.active.exists())
@@ -497,7 +519,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         (self.active / 'job').unlink()
         self.active.rmdir()
         release()
-        _, error = admission.communicate(timeout=10)
+        _, error = admission.communicate(timeout=WAIT)
         self.assertNotEqual(admission.returncode, 0)
         self.assertIn('install-active', error)
         self.assertFalse((self.remote / 'progress.json').exists())
@@ -506,13 +528,13 @@ class StagingRecoveryContracts(unittest.TestCase):
         (self.active / 'job').write_text(JOB)
         self.hold(guard)
         admission = self.supervisor(wait=.3)
-        _, error = admission.communicate(timeout=10)
+        _, error = admission.communicate(timeout=WAIT)
         self.assertIn('TimeoutError', error)
         self.assertFalse((self.remote / 'progress.json').exists())
 
     def admit_supervisor(self):
         admission = self.supervisor(wait=1)
-        _, error = admission.communicate(timeout=10)
+        _, error = admission.communicate(timeout=WAIT)
         self.assertEqual(admission.returncode, 0, error)
         self.assertTrue((self.remote / 'progress.json').exists())
 
@@ -521,7 +543,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         # does not exit, so the identity check or rm that followed still ran.
         (self.home / 'putgd-lab/install-guard').touch()
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         self.admit_supervisor()
         for receipt in (True, False):
             if not receipt:
@@ -537,7 +559,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         # pre-check passed. The release under install-guard must see it.
         (self.home / 'putgd-lab/install-guard').touch()
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         for receipt in (True, False):
             with self.subTest(receipt=receipt):
                 (self.remote / 'progress.json').unlink(missing_ok=True)
@@ -561,7 +583,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='stg761-') as directory:
             home = Path(directory)
             controller = subprocess.run([sys.executable, '-c', DYING_CONTROLLER,
-                str(ROOT / 'tools/lab/lab.py'), str(home)], capture_output=True, text=True, timeout=10)
+                str(ROOT / 'tools/lab/lab.py'), str(home)], capture_output=True, text=True, timeout=WAIT)
             self.assertEqual(controller.returncode, 137, controller.stderr)
             remote = home / 'putgd-lab' / JOB
             self.assertEqual((home / 'putgd-lab/install-active/job').read_text(), JOB)
@@ -582,7 +604,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             self.assertEqual(report, {'finished': True, 'state': 'staging-not-started'})
             self.assertFalse((home / 'putgd-lab/install-active').exists())
             self.assertEqual(lab.read_json(home / JOB / 'staging-recovery.json'), report)
-            late = subprocess.run([sys.executable, str(STAGING), 'run', str(remote), 'touch ran'], timeout=5)
+            late = subprocess.run([sys.executable, str(STAGING), 'run', str(remote), 'touch ran'], timeout=WAIT)
             self.assertEqual(late.returncode, 125)
             self.assertFalse((remote / 'ran').exists())
 
@@ -601,7 +623,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.assertIn('Install supervisor refused to start', result.stderr)
         self.assert_supervisor_never_started(result)
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote), 'true'])
-        self.assertEqual(wrapper.wait(timeout=3), 0)
+        self.assertEqual(wrapper.wait(timeout=WAIT), 0)
         self.assertEqual(self.recover(abandoned=False)['state'], 'staging-finished')
         self.assertFalse(self.active.exists())
 
@@ -634,7 +656,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             cwd=self.remote, stdout=subprocess.PIPE, text=True)
         try:
             member = int(leader.stdout.readline())
-            leader.wait(timeout=3)
+            leader.wait(timeout=WAIT)
             lab.write_json(self.remote / 'staging-process.json',
                            {'pid': leader.pid, 'sessionId': leader.pid, 'startTicks': 1})
             report = self.reconcile('first-scan-misses', abandoned=True)
@@ -674,15 +696,15 @@ class StagingRecoveryContracts(unittest.TestCase):
                 str(STAGING), 'reconcile', str(self.remote), '5'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             self.assertEqual(reconcile.stderr.readline().strip(), 'inspected True')
             (self.remote / 'exit').touch()
-            leader.wait(timeout=3)
-            output, inspections = reconcile.communicate(timeout=10)
+            leader.wait(timeout=WAIT)
+            output, inspections = reconcile.communicate(timeout=WAIT)
             self.assertIn('inspected False', inspections)
             report = json.loads(output)
             self.assertEqual(report['state'], 'staging-finished')
             self.assertTrue(report['finished'])
         finally:
             (self.remote / 'exit').touch()
-            leader.wait(timeout=3)
+            leader.wait(timeout=WAIT)
             leader.stdout.close()
 
     def test_dead_leader_with_live_session_reports_session_pids(self):
@@ -695,7 +717,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             cwd=self.remote, stdout=subprocess.PIPE, text=True)
         try:
             member = int(leader.stdout.readline())
-            leader.wait(timeout=3)
+            leader.wait(timeout=WAIT)
             self.assertEqual(os.getsid(member), leader.pid)
             with self.assertRaises(OSError) as einval:
                 os.close(os.pidfd_open(leader.pid))
@@ -728,15 +750,17 @@ class StagingRecoveryContracts(unittest.TestCase):
     def test_validator_orphaned_grandchild_and_reused_session_leader_refuse(self):
         # rev761b test_grandchild_in_session_refused and test_sid_reused_by_unrelated.
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote),
+            'echo $$ > descendant.pid; '
             '(sh -c \'echo $$ > grandchild.pid; while [ ! -e finish ]; do sleep .02; done\' &); '
             'while [ ! -e finish ]; do sleep .02; done'], start_new_session=True)
-        grandchild = None
+        descendant = grandchild = None
         try:
             wait_for(lambda: (self.remote / 'grandchild.pid').exists() and
                 (self.remote / 'grandchild.pid').read_text().strip())
+            descendant = int((self.remote / 'descendant.pid').read_text())
             grandchild = int((self.remote / 'grandchild.pid').read_text())
             wrapper.kill()  # Only the exact wrapper started by this test.
-            wrapper.wait(timeout=3)
+            wrapper.wait(timeout=WAIT)
             self.assertEqual(os.getsid(grandchild), wrapper.pid)
             for mode in ('pidfd', 'missing', 'enosys'):
                 for abandoned in (False, True):
@@ -745,8 +769,11 @@ class StagingRecoveryContracts(unittest.TestCase):
             self.assertEqual((self.active / 'job').read_text(), JOB)
         finally:
             (self.remote / 'finish').touch()
-            if grandchild:
-                wait_for(lambda: dead(grandchild))
+            # Both loops must see finish before tearDown deletes it; a loop that
+            # outlives its directory never ends and holds the suite's stdout.
+            for pid in (descendant, grandchild):
+                if pid:
+                    wait_for(lambda: dead(pid))
         unrelated = subprocess.Popen(['setsid', 'sh', '-c', 'while [ ! -e finish-unrelated ]; do sleep .02; done'],
                                      cwd=self.remote)
         try:
@@ -761,7 +788,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             self.assertIsNone(unrelated.poll())  # Never signalled.
         finally:
             (self.remote / 'finish-unrelated').touch()
-            unrelated.wait(timeout=3)
+            unrelated.wait(timeout=WAIT)
 
     def test_validator_setsid_escape_is_the_documented_abandoned_limit(self):
         # rev761b test_grandchild_setsid_escapes. While the wrapper lives it waits,
@@ -781,7 +808,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             with self.assertRaisesRegex(lab.LabError, 'staging-running'):
                 self.recover(abandoned=False)
             wrapper.kill()  # Only the exact wrapper started by this test.
-            wrapper.wait(timeout=3)
+            wrapper.wait(timeout=WAIT)
             with self.assertRaisesRegex(lab.LabError, 'remains held'):
                 self.recover(abandoned=False)
             report = self.recover(abandoned=True)
@@ -790,7 +817,7 @@ class StagingRecoveryContracts(unittest.TestCase):
         finally:
             (self.remote / 'finish').touch()
             if wrapper.poll() is None:
-                wrapper.wait(timeout=3)
+                wrapper.wait(timeout=WAIT)
             if escaped:
                 wait_for(lambda: dead(escaped))
 
@@ -815,18 +842,23 @@ def stage(run, remote, helper, digest):
     while not (home / remote / 'staging-process.json').exists(): time.sleep(.01)
     print('first', flush=True)
     os.kill(os.getpid(), signal.SIGINT)
+def window():
+    print('second-window', flush=True)
+    # Short sleeps: a SIGINT that arrives after the print but before one long
+    # sleep starts would only be handled when that whole sleep ends.
+    for _ in range(3000): time.sleep(.01)
 orig_write = lab.write_json
 def write_json(path, value):
     if phase == 'receipt' and str(path).endswith('staging-failed.json'):
-        print('second-window', flush=True); time.sleep(30)
+        window()
     return orig_write(path, value)
 def get(*a, **kw):
     if phase == 'get':
-        print('second-window', flush=True); time.sleep(30)
+        window()
 orig_rec = lab.reconcile_staging
 def rec(*a, **kw):
     if phase == 'reconcile':
-        print('second-window', flush=True); time.sleep(30)
+        window()
     return orig_rec(*a, **kw)
 with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), patch.object(lab, 'get', side_effect=get), \
         patch.object(lab, 'stage_install_helper', side_effect=stage), patch.object(lab, 'write_json', side_effect=write_json), \
