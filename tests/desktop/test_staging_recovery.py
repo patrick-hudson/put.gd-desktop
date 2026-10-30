@@ -738,12 +738,14 @@ class StagingRecoveryContracts(unittest.TestCase):
     def test_validator_orphaned_grandchild_and_reused_session_leader_refuse(self):
         # rev761b test_grandchild_in_session_refused and test_sid_reused_by_unrelated.
         wrapper = subprocess.Popen([sys.executable, str(STAGING), 'run', str(self.remote),
+            'echo $$ > descendant.pid; '
             '(sh -c \'echo $$ > grandchild.pid; while [ ! -e finish ]; do sleep .02; done\' &); '
             'while [ ! -e finish ]; do sleep .02; done'], start_new_session=True)
-        grandchild = None
+        descendant = grandchild = None
         try:
             wait_for(lambda: (self.remote / 'grandchild.pid').exists() and
                 (self.remote / 'grandchild.pid').read_text().strip())
+            descendant = int((self.remote / 'descendant.pid').read_text())
             grandchild = int((self.remote / 'grandchild.pid').read_text())
             wrapper.kill()  # Only the exact wrapper started by this test.
             wrapper.wait(timeout=WAIT)
@@ -755,8 +757,11 @@ class StagingRecoveryContracts(unittest.TestCase):
             self.assertEqual((self.active / 'job').read_text(), JOB)
         finally:
             (self.remote / 'finish').touch()
-            if grandchild:
-                wait_for(lambda: dead(grandchild))
+            # Both loops must see finish before tearDown deletes it; a loop that
+            # outlives its directory never ends and holds the suite's stdout.
+            for pid in (descendant, grandchild):
+                if pid:
+                    wait_for(lambda: dead(pid))
         unrelated = subprocess.Popen(['setsid', 'sh', '-c', 'while [ ! -e finish-unrelated ]; do sleep .02; done'],
                                      cwd=self.remote)
         try:
