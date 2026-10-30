@@ -467,6 +467,13 @@ class HistoryRecipeTests(unittest.TestCase):
                 self.assertFalse(ctx.minimized)
                 self.assertEqual(ctx.events[-1], ('view', 'ui.show', {'view': 'history'}))
 
+    def test_read_only_command_entries_do_not_require_pointer_geometry(self):
+        for action, needs in ((history.cli_version, ('launcher',)),
+                              (history.mcp_inspect, ('history-row',))):
+            ctx = FakeContext(needs)
+            action(ctx)
+            self.assertFalse(any(e[0] in ('click', 'drag', 'keys', 'type_text') for e in ctx.events))
+
     def test_history_popup_owners_are_scoped_on_both_guests(self):
         from tools.lab.surface_driver.profiles import load_profile
         for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):

@@ -525,7 +525,8 @@ def close_window(ctx):
 
 @recipe('cli.version', needs=('launcher',))
 def cli_version(ctx):
-    _open(ctx)
+    ctx.view('ui.show', {'view': 'history'})
+    ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'History helper ready')
     _frame(ctx, 'before')
     text = ctx.cli('--version')
     ctx.expect(text['returncode'] == 0 and text['stdout'].startswith('putgd '), 'launcher prints version')
@@ -551,7 +552,8 @@ def launcher_history(ctx):
 
 @recipe('mcp.inspect', needs=('history-row',))
 def mcp_inspect(ctx):
-    _row(ctx)
+    ctx.view('ui.show', {'view': 'history'})
+    ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'History helper ready')
     _frame(ctx, 'before')
     inspection = _result(ctx.mcp('inspect'))
     ctx.expect(set(inspection) == {'capabilities', 'diagnostics', 'configuration'}, 'MCP inspect returns three read-only inspections')
