@@ -1601,7 +1601,7 @@ def native_capture_process(pid):
 
 def selector_process(pid):
     import shutil
-    for name in ('putgd-capture', 'putgd-ui'):
+    for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
         try:
             expected = shutil.which(name)
             if expected and os.path.samefile('/proc/'+str(pid)+'/exe', expected):
