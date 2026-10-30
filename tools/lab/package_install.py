@@ -183,15 +183,19 @@ def become_subreaper():
         raise OSError(ctypes.get_errno(), 'Cannot become package subreaper')
 
 
-def verify_scope():
+def verify_scope(required=False):
     # sudo must preserve the dedicated user scope. Refuse before admission if a
     # guest PAM policy moved root elsewhere; never migrate a root process into
     # a caller-selected cgroup. Legacy/direct callers retain session tracking.
     try:
         identity = json.loads(Path('supervisor-process.json').read_text())
     except FileNotFoundError:
+        if required:
+            raise ValueError('Missing supervisor scope identity') from None
         return
     if identity.get('tracking', 'session') == 'session' and 'cgroup' not in identity:
+        if required:
+            raise ValueError('Root supervisor did not enter its dedicated cgroup')
         return
     group = identity['cgroup']
     unit = 'putgd-supervisor-' + Path.cwd().name + '.scope'
@@ -294,6 +298,7 @@ def main():
     parser.add_argument('directory', type=Path)
     parser.add_argument('timeout', type=int)
     parser.add_argument('recovery', type=int)
+    parser.add_argument('--require-scope', action='store_true')
     args = parser.parse_args()
     if args.timeout <= 0 or args.recovery <= 0:
         parser.error('Timeouts must be positive seconds')
@@ -302,7 +307,7 @@ def main():
     try:
         # Fail before admission where possible, leaving the job recoverable.
         become_subreaper()
-        verify_scope()
+        verify_scope(required=args.require_scope)
         admit(args.directory.name, owner)
     except (OSError, ValueError, KeyError, TypeError) as error:
         # No progress.json or result.json: the job (if it still holds the lock)

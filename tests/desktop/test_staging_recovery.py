@@ -980,20 +980,25 @@ class CgroupStagingContracts(unittest.TestCase):
             os.close(old)
 
     def test_launch_uses_user_scope_and_never_retries_failed_exec(self):
-        for available in (True, False):
-            with self.subTest(available=available), patch.object(self.staging.shutil, 'which', return_value='/bin/systemd-run'), \
+        for available, supervisor in ((True, False), (True, True), (False, False), (False, True)):
+            with self.subTest(available=available, supervisor=supervisor), patch.object(self.staging.shutil, 'which', return_value='/bin/systemd-run'), \
                     patch.object(self.staging.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0 if available else 1)), \
                     patch.object(self.staging.os, 'execvpe', side_effect=OSError('failed exec')) as execute:
                 with self.assertRaises(OSError):
-                    self.staging.launch('source', '/private/' + JOB, 'synthetic')
+                    self.staging.launch('source', '/private/' + JOB, 'synthetic', supervisor=supervisor)
                 self.assertEqual(execute.call_count, 1)
                 arguments, environment = execute.call_args.args[1:]
                 if available:
                     self.assertEqual(arguments[:3], ['systemd-run', '--user', '--scope'])
                     self.assertIn('--property=Delegate=yes', arguments)
                     self.assertIn('--scope', arguments[8:])
+                    command = arguments[arguments.index('--') + 1:]
+                    self.assertEqual(command[5], 'synthetic --require-scope' if supervisor else 'synthetic')
+                    self.assertTrue(command[-1].endswith('.scope'))
+                    self.assertNotIn('require-scope', command[-1])
                 else:
                     self.assertIn('--session-fallback', arguments)
+                    self.assertEqual(arguments[5], 'synthetic')
                 self.assertEqual(environment['XDG_RUNTIME_DIR'], '/run/user/' + str(os.getuid()))
 
 

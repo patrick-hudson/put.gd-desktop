@@ -79,11 +79,18 @@ print(json.dumps({'result': result, 'queries': queries}))
         with patch.object(Path, 'cwd', return_value=Path('/private/' + job)), \
                 patch.object(Path, 'read_text', read):
             helper.verify_scope()
+            helper.verify_scope(required=True)
             record['cgroup']['path'] += '/escaped'
             with self.assertRaisesRegex(ValueError, 'left its dedicated cgroup'):
                 helper.verify_scope()
         with patch.object(Path, 'read_text', side_effect=FileNotFoundError()):
             helper.verify_scope()  # Legacy callers remain supported.
+            with self.assertRaisesRegex(ValueError, 'Missing supervisor scope identity'):
+                helper.verify_scope(required=True)
+        with patch.object(Path, 'read_text', return_value='{"tracking":"session"}'):
+            helper.verify_scope()
+            with self.assertRaisesRegex(ValueError, 'did not enter its dedicated cgroup'):
+                helper.verify_scope(required=True)
 
     def test_output_rejects_symlinks_and_hardlinks_without_truncating_target(self):
         spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')

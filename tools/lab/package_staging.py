@@ -74,6 +74,10 @@ def launch(source, directory, script, supervisor=False):
         if not re.fullmatch(r'install-[0-9a-f]{32}', job):
             raise ValueError('Scope requires an install job ID')
         unit = ('putgd-supervisor-' if supervisor else 'putgd-staging-') + job + '.scope'
+        if supervisor:
+            # Require the scope record even if it disappears before sudo execs.
+            # This is the script argument, not the subsequently appended unit.
+            arguments[5] += ' --require-scope'
         arguments += ['--scope', unit]
         arguments = ['systemd-run', '--user', '--scope', '--quiet', '--property=Delegate=yes',
                      '--unit=' + unit, '--expand-environment=no', '--', *arguments]
