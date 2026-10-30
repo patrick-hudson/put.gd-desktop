@@ -88,14 +88,15 @@ def _ready(ctx, inspect, backend, mode):
             if current.get('backend') != backend:
                 ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
                             str(current.get('fallbackReason')), issue=671)
-            return ctx.accessible({'name': current['title'], 'visible': True, 'showing': True})
-        nodes = ctx.wait(drawn, 'desktop chooser is accessible and drawn')
+            nodes = ctx.accessible({'name': current['title'], 'visible': True, 'showing': True})
+            # GTK can expose the title label before its window enters AT-SPI.
+            # Readiness requires the unique input target, not any named child.
+            top = [node for node in nodes if node.get('role') in ('dialog', 'file chooser', 'frame')]
+            return top if len(top) == 1 else None
+        top = ctx.wait(drawn, 'desktop chooser top-level is accessible and drawn')
         # Desktop-owned portal windows are outside the private app family.
         # Bind the input guard to the observed chooser title and process, never
         # the obscured Settings/History owner behind the modal window.
-        top = [node for node in nodes if node.get('role') in ('dialog', 'file chooser', 'frame')]
-        if len(top) != 1:
-            ctx.blocked('Portal chooser top-level AT-SPI identity is missing or ambiguous', issue=671)
         identity = {'name': state['title'], 'pid': top[0]['pid'], 'owned': False}
         ctx.profile['dialogs']['portal_identity'] = identity
         spec = {'title': '^' + re.escape(state['title']) + '$', 'owned': False}

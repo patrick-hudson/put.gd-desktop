@@ -309,6 +309,19 @@ class DialogRecipes(unittest.TestCase):
                 self.assertEqual(identity['pid'], 123)
                 self.assertFalse(identity['owned'])
 
+    def test_title_label_does_not_make_portal_ready(self):
+        ctx = FakeContext('portal')
+        original = ctx.accessible
+        queries = []
+        def delayed_window(query):
+            queries.append(query)
+            if len(queries) == 1:
+                return [{'name': query['name'], 'role': 'label', 'pid': 123}]
+            return original(query)
+        ctx.accessible = delayed_window
+        dialogs.cancel_portal(ctx)
+        self.assertGreaterEqual(len(queries), 2)
+
     def test_failure_recipe_uses_core_fixture_before_backend_launch(self):
         for backend in dialogs.BACKENDS:
             row = next(r for r in REGISTRY if r.function is getattr(dialogs, 'failure_strip_' + backend))
