@@ -968,6 +968,7 @@ def command_tooltips(ctx):
         if unavailable:
             ctx.fixture('settings-no-output')
         _open(ctx)
+        _window_buttons_ready(ctx)
         if not unavailable:
             _frame(ctx, 'before')
         config = _result(ctx.call('settings.get'))['document']
@@ -1258,6 +1259,7 @@ def _shell_command_recipe(interaction, action):
         if action != 'clipboard':
             ctx.fixture('selector-desktop').command('raise')
         _open(ctx)
+        _window_buttons_ready(ctx)
         _frame(ctx, 'before')
         _exercise_command(ctx, action, lambda _: _click_history_node(ctx, _command_control(action)), external_focus=False)
         _open(ctx)
