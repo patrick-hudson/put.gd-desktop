@@ -16,6 +16,7 @@ from tests.desktop import test_surface_shell_health as shell_tests
 
 class PlasmaPick(unittest.TestCase):
     def setUp(self):
+        self.pid_api=probe.plasma_pid
         self.node={'name':'put.gd','application':'plasmashell','role':'button','pid':70,
                    'rect':[962,754,22,38],'window_id':'panel','window':'Panel',
                    'a11y_bus':':1.7','a11y_path':'/tray'}
@@ -64,13 +65,7 @@ class PlasmaPick(unittest.TestCase):
         daemon=Mock();daemon.GetConnectionUnixProcessID.return_value=70
         dbus=SimpleNamespace(SessionBus=Mock(return_value=Mock()),Interface=Mock(return_value=daemon))
         with patch.dict(sys.modules,dbus=dbus):
-            # setUp mocks the high-level function for pick tests; call its
-            # actual source separately to exercise the dbus-python surface.
-            namespace={};source=Path(probe.__file__).read_text()
-            import ast
-            function=next(n for n in ast.parse(source).body if isinstance(n,ast.FunctionDef) and n.name=='plasma_pid')
-            exec(compile(ast.Module(body=[function],type_ignores=[]),'<pid>','exec'),namespace)
-            self.assertEqual(namespace['plasma_pid'](),70)
+            self.assertEqual(self.pid_api(),70)
         daemon.GetConnectionUnixProcessID.assert_called_once_with('org.kde.plasmashell',timeout=3)
 
 
