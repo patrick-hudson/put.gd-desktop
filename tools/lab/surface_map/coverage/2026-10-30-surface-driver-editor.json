@@ -1,0 +1,3355 @@
+{
+  "schemaVersion": 2,
+  "campaign": "surface-driver-editor-round-2",
+  "entries": [
+    {
+      "interaction": "editor.opens-fit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=95227ab0-199d-4dc9-9bb2-e820199277f9; editor operationId=95227ab0-199d-4dc9-9bb2-e820199277f9",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.redact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.641808, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.redact/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6418075995033616,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:28Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=95227ab0-199d-4dc9-9bb2-e820199277f9; editor operationId=95227ab0-199d-4dc9-9bb2-e820199277f9",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.redact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.641808, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.redact/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6418075995033616,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:28Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=95227ab0-199d-4dc9-9bb2-e820199277f9; editor operationId=95227ab0-199d-4dc9-9bb2-e820199277f9",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.redact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.641808, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.redact/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6418075995033616,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:28Z"
+    },
+    {
+      "interaction": "editor.tool-arrow",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=8f64c057-9383-4518-9016-70736ca01b44; editor operationId=8f64c057-9383-4518-9016-70736ca01b44",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642742, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642365, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645918, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647267, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427422493967718,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423650291657882,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.645918464637946,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.647266914985827,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:56Z"
+    },
+    {
+      "interaction": "editor.tool-rectangle",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=8f64c057-9383-4518-9016-70736ca01b44; editor operationId=8f64c057-9383-4518-9016-70736ca01b44",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642742, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642365, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645918, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647267, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427422493967718,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423650291657882,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.645918464637946,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.647266914985827,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:56Z"
+    },
+    {
+      "interaction": "editor.tool-highlight",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=8f64c057-9383-4518-9016-70736ca01b44; editor operationId=8f64c057-9383-4518-9016-70736ca01b44",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642742, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642365, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645918, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647267, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427422493967718,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423650291657882,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.645918464637946,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.647266914985827,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:56Z"
+    },
+    {
+      "interaction": "editor.tool-select",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=8f64c057-9383-4518-9016-70736ca01b44; editor operationId=8f64c057-9383-4518-9016-70736ca01b44",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642742, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642365, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645918, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647267, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427422493967718,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423650291657882,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.645918464637946,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.647266914985827,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:19:56Z"
+    },
+    {
+      "interaction": "editor.tool-blur",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=78529251-5e38-4e30-a632-9a6c889b1b9b; editor operationId=78529251-5e38-4e30-a632-9a6c889b1b9b",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645639, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.blur/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645171, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.blur/02-warning.png reference=/home/user/editor-catalog/21-editor-blur-warning.png; catalog mismatch (distance=0.645666, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.blur/03-after.png reference=/home/user/editor-catalog/21-editor-blur-warning.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.blur/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.blur/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456390282755875,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.blur/02-warning.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.645171351933844,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/03-after.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6456659099960175,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.blur",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:12Z"
+    },
+    {
+      "interaction": "editor.blur-warning",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=78529251-5e38-4e30-a632-9a6c889b1b9b; editor operationId=78529251-5e38-4e30-a632-9a6c889b1b9b",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645639, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.blur/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645171, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.blur/02-warning.png reference=/home/user/editor-catalog/21-editor-blur-warning.png; catalog mismatch (distance=0.645666, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.blur/03-after.png reference=/home/user/editor-catalog/21-editor-blur-warning.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.blur/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.blur/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456390282755875,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.blur/02-warning.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.645171351933844,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/03-after.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6456659099960175,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.blur",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:12Z"
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=20f00b05-1314-47c7-b950-ab5e7c26f24d; editor operationId=20f00b05-1314-47c7-b950-ab5e7c26f24d",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.650024, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/02-text-anchor.png reference=/home/user/editor-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.641260, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/03-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.650024011994284,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6412598636587252,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:30Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=20f00b05-1314-47c7-b950-ab5e7c26f24d; editor operationId=20f00b05-1314-47c7-b950-ab5e7c26f24d",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.650024, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/02-text-anchor.png reference=/home/user/editor-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.641260, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/03-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.650024011994284,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6412598636587252,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:30Z"
+    },
+    {
+      "interaction": "editor.key-edit-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=20f00b05-1314-47c7-b950-ab5e7c26f24d; editor operationId=20f00b05-1314-47c7-b950-ab5e7c26f24d",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.650024, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/02-text-anchor.png reference=/home/user/editor-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.641260, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.text_entry/03-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.650024011994284,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6412598636587252,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:30Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f; editor operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645624, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456244992620704,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:53Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f; editor operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645624, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456244992620704,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:53Z"
+    },
+    {
+      "interaction": "editor.place-mark",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f; editor operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645624, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456244992620704,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:53Z"
+    },
+    {
+      "interaction": "editor.remove-mark",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f; editor operationId=ba4c3fce-e20c-42c0-8f9d-f5268bdddf8f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645624, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456244992620704,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:20:53Z"
+    },
+    {
+      "interaction": "editor.mouse-move-mark",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; editor operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; _release_pointer desktop transport unavailable: BlockingIOError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.selection_geometry/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:11Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-nudge",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; editor operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; _release_pointer desktop transport unavailable: BlockingIOError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.selection_geometry/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:11Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-resize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; editor operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; _release_pointer desktop transport unavailable: BlockingIOError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.selection_geometry/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:11Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-next-mark",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; editor operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; _release_pointer desktop transport unavailable: BlockingIOError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.selection_geometry/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:11Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-deselect",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; editor operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; _release_pointer desktop transport unavailable: BlockingIOError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.selection_geometry/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:11Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.marks-stay-on-image",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; editor operationId=8e2fe9e4-e5a1-4874-a505-8bb606e09cbc; _release_pointer desktop transport unavailable: BlockingIOError",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/edr2c2/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.selection_geometry/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:11Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.tool-crop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8d97143d-dcfb-4346-9f21-5f5df0e3733c; editor operationId=8d97143d-dcfb-4346-9f21-5f5df0e3733c; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.crop/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:25Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.apply-crop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8d97143d-dcfb-4346-9f21-5f5df0e3733c; editor operationId=8d97143d-dcfb-4346-9f21-5f5df0e3733c; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.crop/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:25Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.cancel-crop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=8d97143d-dcfb-4346-9f21-5f5df0e3733c; editor operationId=8d97143d-dcfb-4346-9f21-5f5df0e3733c; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.crop/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:25Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.geometry",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=353dff4e-4e8a-4b6b-a8f1-4fffe8328fe4; editor operationId=353dff4e-4e8a-4b6b-a8f1-4fffe8328fe4; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.properties/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.properties/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.properties/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.properties",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:37Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.keyboard-help",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=353dff4e-4e8a-4b6b-a8f1-4fffe8328fe4; editor operationId=353dff4e-4e8a-4b6b-a8f1-4fffe8328fe4; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.properties/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.properties/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.properties/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.properties",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:37Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.destination",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=353dff4e-4e8a-4b6b-a8f1-4fffe8328fe4; editor operationId=353dff4e-4e8a-4b6b-a8f1-4fffe8328fe4; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.properties/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.properties/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.properties/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.properties",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:37Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.zoom",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=b5de3883-7bb5-4aa6-b451-1cb6bc648e8e; editor operationId=b5de3883-7bb5-4aa6-b451-1cb6bc648e8e; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.zoom_pan/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.zoom_pan",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:49Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-pan-alt",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=b5de3883-7bb5-4aa6-b451-1cb6bc648e8e; editor operationId=b5de3883-7bb5-4aa6-b451-1cb6bc648e8e; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.zoom_pan/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.zoom_pan",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:49Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.mouse-pan",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=b5de3883-7bb5-4aa6-b451-1cb6bc648e8e; editor operationId=b5de3883-7bb5-4aa6-b451-1cb6bc648e8e; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.zoom_pan/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.zoom_pan",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:49Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.cancel",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=a533f7bf-49c4-4bfe-89ed-c1a93f07dbfd; editor operationId=a533f7bf-49c4-4bfe-89ed-c1a93f07dbfd; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.discard/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:59Z",
+      "issue": 772
+    },
+    {
+      "interaction": "confirm.editor-discard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=a533f7bf-49c4-4bfe-89ed-c1a93f07dbfd; editor operationId=a533f7bf-49c4-4bfe-89ed-c1a93f07dbfd; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.discard/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:21:59Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=453e347a-8d51-4800-ac2e-1682a02c0e52; editor operationId=453e347a-8d51-4800-ac2e-1682a02c0e52; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.upload/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.upload",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:22:10Z",
+      "issue": 772
+    },
+    {
+      "interaction": "cli.editor",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; editor operationId=4188eadb-0996-4dff-a64c-89083b290bf6; operationId=4188eadb-0996-4dff-a64c-89083b290bf6; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.cli_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.cli_editor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.cli_editor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.cli_editor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:22:22Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.double-click-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=4cc378ba-11ff-4686-b0f8-95d2d4d0dddd; editor operationId=4cc378ba-11ff-4686-b0f8-95d2d4d0dddd; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.double_click/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.double_click/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.double_click/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.double_click",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:22:32Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.preparation-failed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=bac59a38-26ef-4aa4-b9d9-a1b2fa575259; editor operationId=bac59a38-26ef-4aa4-b9d9-a1b2fa575259; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.preparation_failure/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.preparation_failure/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.preparation_failure/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.preparation_failure",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:22:42Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.colours",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=846ba61b-acab-48ca-90ff-ab1baddf6338; editor operationId=846ba61b-acab-48ca-90ff-ab1baddf6338; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.palette/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.palette/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.palette/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.palette",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:22:53Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=21a32251-de91-4169-835e-6f58a73f9393; editor operationId=21a32251-de91-4169-835e-6f58a73f9393; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.style_controls/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:04Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.custom-colour",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=d7ee8f7b-09d8-4317-8fd2-bf496879c02a; editor operationId=d7ee8f7b-09d8-4317-8fd2-bf496879c02a; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.custom_colour/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.custom_colour/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.custom_colour/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.custom_colour",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:14Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.affected-text",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=58ecb977-2ef6-4af5-bb59-5610af2da9dc; editor operationId=58ecb977-2ef6-4af5-bb59-5610af2da9dc; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.affected_text/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.affected_text/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.affected_text/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.affected_text",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:24Z",
+      "issue": 772
+    },
+    {
+      "interaction": "mcp.editor",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; editor operationId=93121c27-797f-4a1a-ac72-ef32dc662371; operationId=93121c27-797f-4a1a-ac72-ef32dc662371; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.mcp_editor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:41Z",
+      "issue": 772
+    },
+    {
+      "interaction": "mcp.editor-output",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; editor operationId=93121c27-797f-4a1a-ac72-ef32dc662371; operationId=93121c27-797f-4a1a-ac72-ef32dc662371; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.mcp_editor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:41Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=da6cbc44-ffb7-4206-a091-8a1ebaacd1a2; editor operationId=da6cbc44-ffb7-4206-a091-8a1ebaacd1a2; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_copy/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_copy/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_copy",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:50Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.save-feedback",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=56ffbcae-8e49-4292-9c22-efbc4c762027; editor operationId=56ffbcae-8e49-4292-9c22-efbc4c762027; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_feedback/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_feedback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_feedback",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:23:58Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=c74d7933-c6aa-481b-a69c-58b64db47df0; editor operationId=c74d7933-c6aa-481b-a69c-58b64db47df0; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.window_chrome/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.window_chrome",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:24:06Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.compact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=c74d7933-c6aa-481b-a69c-58b64db47df0; editor operationId=c74d7933-c6aa-481b-a69c-58b64db47df0; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.window_chrome/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.window_chrome",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:24:06Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.mouse-square",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=3967ff56-2e1b-4cde-802f-5e1af25c533c; editor operationId=3967ff56-2e1b-4cde-802f-5e1af25c533c; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.held_modifiers/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:24:14Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-pan-space",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=3967ff56-2e1b-4cde-802f-5e1af25c533c; editor operationId=3967ff56-2e1b-4cde-802f-5e1af25c533c; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.held_modifiers/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:24:14Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.mouse-zoom",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=3967ff56-2e1b-4cde-802f-5e1af25c533c; editor operationId=3967ff56-2e1b-4cde-802f-5e1af25c533c; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.held_modifiers/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:24:14Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.key-ctrl-cursor",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/editor-r2/final-export/edr2c2/receipt.json",
+      "note": "Cinnamon fresh-overlay repeat; recipe source 545f3e855372c0d6e79b7597ad95591a4d1ef55f; Boat development evidence, not native acceptance; classified core transport/release blocker #772; operationId=1b057f0c-950b-4bf8-8f0f-53ad19ff4846; editor operationId=1b057f0c-950b-4bf8-8f0f-53ad19ff4846; input release was not confirmed; further input is withheld for this run",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.ctrl_cursor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.ctrl_cursor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.ctrl_cursor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.ctrl_cursor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:24:22Z",
+      "issue": 772
+    },
+    {
+      "interaction": "editor.opens-fit",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.redact",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.redact",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.redact",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-arrow",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-rectangle",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-highlight",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-select",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.annotation_tools",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-blur",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.blur",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.blur-warning",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.blur",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.text_entry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.text_entry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-edit-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.text_entry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.place-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.remove-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.mark_history",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.mouse-move-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-nudge",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-resize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-next-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-deselect",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.marks-stay-on-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.selection_geometry",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.tool-crop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.crop",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.apply-crop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.crop",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.cancel-crop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.crop",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.geometry",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.properties",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.keyboard-help",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.properties",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.destination",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.properties",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.zoom",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.zoom_pan",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-pan-alt",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.zoom_pan",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.mouse-pan",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.zoom_pan",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.cancel",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.discard",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "confirm.editor-discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.discard",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.upload",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "cli.editor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.cli_editor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.double-click-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.double_click",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.preparation-failed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.preparation_failure",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.colours",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.palette",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.style_controls",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.custom-colour",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.custom_colour",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.affected-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.affected_text",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "mcp.editor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.mcp_editor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "mcp.editor-output",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.mcp_editor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.save_copy",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.save-feedback",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.save_feedback",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.window_chrome",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.compact",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.window_chrome",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.mouse-square",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.held_modifiers",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-pan-space",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.held_modifiers",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.mouse-zoom",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.held_modifiers",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    },
+    {
+      "interaction": "editor.key-ctrl-cursor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/editor-r2/gnome-export/edr2g1/receipt.json",
+      "note": "GNOME snapshot putgd-lab-ubuntu-gnome-v2; launch failed idle-policy readback before app installation or editor input; Boat development blocker, not native acceptance; origin: Idle policy readback mismatch: org.gnome.desktop.screensaver idle-activation-enabled (#776); runner after owned VM shutdown: unverified input target is physical; an owned QMP guest or builder desktop lock is required",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "recipe": "editor.ctrl_cursor",
+      "build": "0c329b0692ca",
+      "at": "2026-10-30T04:18:44Z",
+      "issue": 776
+    }
+  ]
+}
