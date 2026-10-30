@@ -12,6 +12,9 @@
       "title": ".*",
       "owner": "editor",
       "popup": true
+    },
+    "editorDiscard": {
+      "title": "^Discard edits\\?$"
     }
   },
   "control_names": {
@@ -53,6 +56,11 @@
       "Place rectangle",
       "Place highlight",
       "Place text label"
+    ]
+  },
+  "catalog_windows": {
+    "editorDiscard": [
+      "19-editor-discard-confirm"
     ]
   }
 }

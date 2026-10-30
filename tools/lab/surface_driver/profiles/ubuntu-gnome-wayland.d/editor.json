@@ -7,6 +7,9 @@
       "title": ".*",
       "owner": "editor",
       "popup": true
+    },
+    "editorDiscard": {
+      "title": "^Discard edits\\?$"
     }
   },
   "control_names": {
@@ -53,6 +56,11 @@
   "editor": {
     "restore_maximized_keys": [
       "Alt+F10"
+    ]
+  },
+  "catalog_windows": {
+    "editorDiscard": [
+      "19-editor-discard-confirm"
     ]
   }
 }
