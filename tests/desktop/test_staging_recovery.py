@@ -43,7 +43,7 @@ def wait_for(predicate):
 def dead(pid):
     try:
         return Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[0] in ('Z', 'X')
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
         return True
 
 
@@ -60,6 +60,11 @@ class StagingRecoveryContracts(unittest.TestCase):
         self.evidence = self.home / JOB
         self.evidence.mkdir()
         lab.write_json(self.evidence / 'staging-failed.json', {'error': 'KeyboardInterrupt'})
+
+    def test_dead_fixture_accepts_exit_before_open_or_during_proc_read(self):
+        for error in (FileNotFoundError(), ProcessLookupError()):
+            with self.subTest(error=type(error).__name__), patch.object(Path, 'read_text', side_effect=error):
+                self.assertTrue(dead(12345))
 
     def ssh(self, _run, script, **kwargs):
         result = subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
