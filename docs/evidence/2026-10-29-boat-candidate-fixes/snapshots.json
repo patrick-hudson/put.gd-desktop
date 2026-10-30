@@ -1,0 +1,414 @@
+{
+  "disposableForksDeleted": [
+    {
+      "deletedIds": [
+        "bx_vwz4dm6f"
+      ],
+      "finalState": "absent",
+      "name": "fix721-base",
+      "requests": [
+        {
+          "operation": {
+            "attemptCount": 0,
+            "completedAt": null,
+            "expectedBy": null,
+            "id": "bdop_82eb4aae166e4bfc93cd8f7dcc59e0ee",
+            "kind": "sandbox",
+            "reason": "explicit",
+            "requestedAt": "2026-10-30T00:59:21.171Z",
+            "stage": "removing",
+            "status": "pending",
+            "targetId": "bx_vwz4dm6f"
+          },
+          "sandboxId": "bx_vwz4dm6f"
+        }
+      ],
+      "verification": "boat list --all",
+      "verified": true,
+      "verifiedAt": 1793321963.7169175
+    },
+    {
+      "deletedIds": [
+        "bx_byuktmeh"
+      ],
+      "finalState": "absent",
+      "name": "fix721-cinnamon",
+      "requests": [
+        {
+          "operation": {
+            "attemptCount": 0,
+            "completedAt": null,
+            "expectedBy": null,
+            "id": "bdop_81a22e6c01b4429ea4d4d496438af36e",
+            "kind": "sandbox",
+            "reason": "explicit",
+            "requestedAt": "2026-10-30T00:59:24.327Z",
+            "stage": "removing",
+            "status": "pending",
+            "targetId": "bx_byuktmeh"
+          },
+          "sandboxId": "bx_byuktmeh"
+        }
+      ],
+      "verification": "boat list --all",
+      "verified": true,
+      "verifiedAt": 1793321966.850381
+    },
+    {
+      "deletedIds": [
+        "bx_5qayrjpd"
+      ],
+      "finalState": "absent",
+      "name": "fix721-gnome",
+      "requests": [
+        {
+          "operation": {
+            "attemptCount": 0,
+            "completedAt": null,
+            "expectedBy": null,
+            "id": "bdop_ec0b8b1b0b6343b8811acc71c142ac69",
+            "kind": "sandbox",
+            "reason": "explicit",
+            "requestedAt": "2026-10-30T01:13:55.814Z",
+            "stage": "removing",
+            "status": "pending",
+            "targetId": "bx_5qayrjpd"
+          },
+          "sandboxId": "bx_5qayrjpd"
+        }
+      ],
+      "verification": "boat list --all",
+      "verified": true,
+      "verifiedAt": 1793322840.007773
+    },
+    {
+      "deletedIds": [
+        "bx_xaa48327"
+      ],
+      "finalState": "absent",
+      "name": "fix721-v2-validation",
+      "requests": [
+        {
+          "operation": {
+            "attemptCount": 0,
+            "completedAt": null,
+            "expectedBy": null,
+            "id": "bdop_8a88d62af7ae4ce4847dbbf5f3e36e97",
+            "kind": "sandbox",
+            "reason": "explicit",
+            "requestedAt": "2026-10-30T01:24:22.675Z",
+            "stage": "removing",
+            "status": "pending",
+            "targetId": "bx_xaa48327"
+          },
+          "sandboxId": "bx_xaa48327"
+        }
+      ],
+      "verification": "boat list --all",
+      "verified": true,
+      "verifiedAt": 1793323465.1123762
+    }
+  ],
+  "namedSnapshots": [
+    {
+      "createdAt": "2026-10-30T01:00:35.369Z",
+      "name": "putgd-lab-ubuntu-gnome-v2",
+      "sizeBytes": 3049,
+      "snapshotId": "5497ec24-56ff-44b9-b046-851fcaa91a48",
+      "sourceSandboxId": "bx_5qayrjpd",
+      "status": "ready",
+      "type": "large"
+    },
+    {
+      "createdAt": "2026-10-29T23:26:36.849Z",
+      "name": "putgd-lab-ubuntu-gnome",
+      "sizeBytes": 49794826240,
+      "snapshotId": "ec09fae5-901a-4b53-8ef4-8358f712e5c9",
+      "sourceSandboxId": "bx_3erxun8p",
+      "status": "ready",
+      "type": "large"
+    },
+    {
+      "createdAt": "2026-10-22T03:48:58.057Z",
+      "name": "putgd-build-base",
+      "sizeBytes": 22323322880,
+      "snapshotId": "e53bf9cc-f068-47bd-9f5c-61af4572398c",
+      "sourceSandboxId": "bx_vsjhutda",
+      "status": "ready",
+      "type": "default"
+    },
+    {
+      "createdAt": "2026-10-22T03:48:32.337Z",
+      "name": "putgd-lab-cinnamon",
+      "sizeBytes": 22323322880,
+      "snapshotId": "370a66bc-62c4-4300-9c4a-82d87eee5cb7",
+      "sourceSandboxId": "bx_vsjhutda",
+      "status": "ready",
+      "type": "default"
+    }
+  ],
+  "oldGnomeSnapshotPreserved": true,
+  "proof": [
+    {
+      "case": "base",
+      "cleanup": {
+        "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+        "completedUtc": "2026-10-30T00:57:07.314254+00:00",
+        "disk": "/home/user/fix721-source/work/lab-runs/fix721/disk.qcow2",
+        "diskIdentity": {
+          "allocatedBytes": 200704,
+          "ctimeNs": 1793321827029218902,
+          "device": 64769,
+          "inode": 1960583,
+          "mtimeNs": 1793321827029218902,
+          "size": 197120
+        },
+        "evidence": {
+          "manifest": "/home/user/fix721-evidence/completion-manifest.json",
+          "mode": "explicit",
+          "runId": "42c24755-fb61-4670-809c-1f100f237e8e",
+          "sha256": "fdbe0b7d5c352f5d91c50acc3c310f83572fbf5cfa48431626c4e7515f4c7335"
+        },
+        "preparedUtc": "2026-10-30T00:57:07.270833+00:00",
+        "run": "/home/user/fix721-source/work/lab-runs/fix721",
+        "schemaVersion": 1,
+        "stateSha256": "c3810cda6cc4e0b059b9520086c147c0cd905bd449892d0146912acd9c59fbb8",
+        "status": "completed"
+      },
+      "golden": {
+        "canonicalGolden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+        "nlink": 1,
+        "profile": "base",
+        "qemuImgInfo": {
+          "actual-size": 12991950848,
+          "children": [
+            {
+              "info": {
+                "actual-size": 12991950848,
+                "children": [],
+                "dirty-flag": false,
+                "filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+                "format": "file",
+                "format-specific": {
+                  "data": {},
+                  "type": "file"
+                },
+                "virtual-size": 12991922176
+              },
+              "name": "file"
+            }
+          ],
+          "cluster-size": 65536,
+          "dirty-flag": false,
+          "filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+          "format": "qcow2",
+          "format-specific": {
+            "data": {
+              "compat": "1.1",
+              "compression-type": "zlib",
+              "corrupt": false,
+              "extended-l2": false,
+              "lazy-refcounts": false,
+              "refcount-bits": 16
+            },
+            "type": "qcow2"
+          },
+          "virtual-size": 34359738368
+        },
+        "sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+        "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "sourcePreserved": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2"
+      },
+      "verification": {
+        "goldenUnchangedAfterCleanup": true
+      }
+    },
+    {
+      "case": "cinnamon",
+      "cleanup": {
+        "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+        "completedUtc": "2026-10-30T00:57:33.430028+00:00",
+        "disk": "/home/user/fix721-source/work/lab-runs/fix721/disk.qcow2",
+        "diskIdentity": {
+          "allocatedBytes": 200704,
+          "ctimeNs": 1793321852987421506,
+          "device": 64769,
+          "inode": 1843455,
+          "mtimeNs": 1793321852987421506,
+          "size": 197120
+        },
+        "evidence": {
+          "manifest": "/home/user/fix721-evidence/completion-manifest.json",
+          "mode": "explicit",
+          "runId": "a0abfeeb-25f6-481d-86d7-b90ee59aead3",
+          "sha256": "d94f230342fa992ae52e47458f61376259fbb995a1eb44991df1eee8b96d3e7a"
+        },
+        "preparedUtc": "2026-10-30T00:57:33.316877+00:00",
+        "run": "/home/user/fix721-source/work/lab-runs/fix721",
+        "schemaVersion": 1,
+        "stateSha256": "46b34cabc3e9d3c19f82d1d08b0af26887d053213a992ce34dcd8dd49c32dd00",
+        "status": "completed"
+      },
+      "golden": {
+        "canonicalGolden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+        "nlink": 1,
+        "profile": "cinnamon",
+        "qemuImgInfo": {
+          "actual-size": 12991954944,
+          "children": [
+            {
+              "info": {
+                "actual-size": 12991954944,
+                "children": [],
+                "dirty-flag": false,
+                "filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+                "format": "file",
+                "format-specific": {
+                  "data": {},
+                  "type": "file"
+                },
+                "virtual-size": 12991922176
+              },
+              "name": "file"
+            }
+          ],
+          "cluster-size": 65536,
+          "dirty-flag": false,
+          "filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+          "format": "qcow2",
+          "format-specific": {
+            "data": {
+              "compat": "1.1",
+              "compression-type": "zlib",
+              "corrupt": false,
+              "extended-l2": false,
+              "lazy-refcounts": false,
+              "refcount-bits": 16
+            },
+            "type": "qcow2"
+          },
+          "virtual-size": 34359738368
+        },
+        "sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+        "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "sourcePreserved": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2"
+      },
+      "verification": {
+        "goldenUnchangedAfterCleanup": true
+      }
+    },
+    {
+      "case": "gnome-final",
+      "cleanup": {
+        "base": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+        "completedUtc": "2026-10-30T01:00:22.927943+00:00",
+        "disk": "/home/user/fix721-source/work/lab-runs/fix721/disk.qcow2",
+        "diskIdentity": {
+          "allocatedBytes": 200704,
+          "ctimeNs": 1793322022623003857,
+          "device": 64769,
+          "inode": 2757359,
+          "mtimeNs": 1793322022623003857,
+          "size": 197120
+        },
+        "evidence": {
+          "manifest": "/home/user/fix721-evidence/completion-manifest.json",
+          "mode": "explicit",
+          "runId": "821f1214-e7d5-46a2-b093-ab9385763819",
+          "sha256": "6d97e4cd8887d18974a0f8d7307353817d21f839a8552eb3e9627f5162e01114"
+        },
+        "preparedUtc": "2026-10-30T01:00:22.877515+00:00",
+        "run": "/home/user/fix721-source/work/lab-runs/fix721",
+        "schemaVersion": 1,
+        "stateSha256": "abb697ed315bb7650ce8d9afcb82aadd5c9809f96349604167d2512cf76e7d4a",
+        "status": "completed"
+      },
+      "golden": {
+        "canonicalGolden": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+        "nlink": 1,
+        "profile": "gnome",
+        "qemuImgInfo": {
+          "actual-size": 11492843520,
+          "children": [
+            {
+              "info": {
+                "actual-size": 11492843520,
+                "children": [],
+                "dirty-flag": false,
+                "filename": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+                "format": "file",
+                "format-specific": {
+                  "data": {},
+                  "type": "file"
+                },
+                "virtual-size": 11519624704
+              },
+              "name": "file"
+            }
+          ],
+          "cluster-size": 65536,
+          "dirty-flag": false,
+          "filename": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+          "format": "qcow2",
+          "format-specific": {
+            "data": {
+              "compat": "1.1",
+              "compression-type": "zlib",
+              "corrupt": false,
+              "extended-l2": false,
+              "lazy-refcounts": false,
+              "refcount-bits": 16
+            },
+            "type": "qcow2"
+          },
+          "virtual-size": 34359738368
+        },
+        "sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+        "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "sourcePreserved": "/home/user/putgd-gnome-golden/image.qcow2"
+      },
+      "verification": {
+        "goldenUnchangedAfterCleanup": true
+      }
+    },
+    {
+      "case": "gnome-v2",
+      "cleanup": {
+        "base": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+        "completedUtc": "2026-10-30T01:23:49.518699+00:00",
+        "disk": "/home/user/fix721-source/work/lab-runs/fix721-v2/disk.qcow2",
+        "diskIdentity": {
+          "allocatedBytes": 200704,
+          "ctimeNs": 1793323429135328039,
+          "device": 64769,
+          "inode": 2595372,
+          "mtimeNs": 1793323429135328039,
+          "size": 197120
+        },
+        "evidence": {
+          "manifest": "/home/user/fix721-v2-evidence/completion-manifest.json",
+          "mode": "explicit",
+          "runId": "d3905b94-ae30-444f-a037-16fe5e690020",
+          "sha256": "cb2ecdf6eef00a775bd59452444ddbb76a29043693cca2bae5302bb02b8de909"
+        },
+        "preparedUtc": "2026-10-30T01:23:49.462551+00:00",
+        "run": "/home/user/fix721-source/work/lab-runs/fix721-v2",
+        "schemaVersion": 1,
+        "stateSha256": "37864fbbdd4247acd2190e522c4946d335812e3ab1a31c0e1fdfc4ace9151ec3",
+        "status": "completed"
+      },
+      "golden": {
+        "canonicalGolden": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+        "sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+        "singleLink": true,
+        "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421"
+      },
+      "verification": {
+        "goldenUnchangedAfterCleanup": true,
+        "overlayAbsent": true
+      }
+    }
+  ],
+  "scope": "Real unbooted qcow2 overlay lifecycle only; no guest boot or desktop acceptance",
+  "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421"
+}

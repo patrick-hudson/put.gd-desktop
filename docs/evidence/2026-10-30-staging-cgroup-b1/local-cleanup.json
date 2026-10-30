@@ -1,0 +1,32 @@
+{
+  "ownedTunnelsStopped": [
+    {
+      "unit": "putgd-780b-cinnamon.service",
+      "stopExit": 0,
+      "state": "inactive"
+    },
+    {
+      "unit": "putgd-780b-ubuntu.service",
+      "stopExit": 0,
+      "state": "inactive"
+    }
+  ],
+  "ownedTilesRemoved": [
+    {
+      "name": "Issue780 B1 cinnamon bx_4ed6k7h2",
+      "port": 6193,
+      "type": "vm"
+    },
+    {
+      "name": "Issue780 B1 ubuntu bx_gc3kvcd7",
+      "port": 6197,
+      "type": "vm"
+    }
+  ],
+  "otherTileCountPreserved": 11,
+  "otherTilesPreserved": true,
+  "forwardedAgentStopped": true,
+  "agentSocketAbsent": true,
+  "physicalOrProtonLocksAcquired": [],
+  "wallAfterSha256": "9b3640aa5e930976dbd926c48e3327b6c33c06178090a6a3945948bb25a4329a"
+}

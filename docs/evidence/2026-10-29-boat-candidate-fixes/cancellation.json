@@ -1,0 +1,74 @@
+{
+  "artifacts": [
+    {
+      "artifact": "lab-fixture",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Test-only DEB named putgd-lab-fixture; PUTGD_PACKAGE_TARGET empty and PUTGD_UPDATE_CHECK OFF. It must not enter production staging.",
+        "native.py audit intentionally not run: production audit forbids fixture files and requires package name putgd. CPack control metadata, binary/build identity and per-file hashes retained instead."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_v695pu7v"
+        ],
+        "finalState": "absent",
+        "name": "putgd-905a42d801f6-lab-fixture",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_b00dbb71dbea4c35bdee618032b2cc1f",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T00:55:27.754Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_v695pu7v"
+            },
+            "sandboxId": "bx_v695pu7v"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793321730.1254764
+      },
+      "cleanupVerified": true,
+      "commit": "905a42d801f64f4e5fb46f5006852d1e04e21ac1",
+      "error": "Controller cancelled or deadline exceeded: boat",
+      "name": "putgd-905a42d801f6-lab-fixture",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_v695pu7v",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-905a42d801f6-lab-fixture",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793321724.1774292
+      },
+      "state": "failed",
+      "totalSeconds": 6.338,
+      "ttlSeconds": 10800,
+      "type": "large"
+    }
+  ],
+  "commit": "905a42d801f64f4e5fb46f5006852d1e04e21ac1",
+  "ownedSandboxesRemaining": [],
+  "passed": false,
+  "repository": "https://github.com/patrick-hudson/put.gd-desktop.git",
+  "schemaVersion": 1,
+  "scope": "candidate build rehearsal; no desktop or release acceptance",
+  "snapshot": {
+    "createdAt": "2026-10-22T03:48:58.057Z",
+    "name": "putgd-build-base",
+    "snapshotId": "e53bf9cc-f068-47bd-9f5c-61af4572398c"
+  },
+  "totalSeconds": 6.34
+}

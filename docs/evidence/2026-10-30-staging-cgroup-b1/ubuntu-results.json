@@ -1,0 +1,612 @@
+{
+  "passed": true,
+  "placement": "boat",
+  "results": [
+    {
+      "case": "production-staging",
+      "identity": {
+        "pid": 22191,
+        "sessionId": 22191,
+        "startTicks": 102047,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-dac95f17790a45f09d5be0688f50df84.scope",
+          "unit": "putgd-staging-install-dac95f17790a45f09d5be0688f50df84.scope",
+          "device": 30,
+          "inode": 60815,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+        }
+      },
+      "recovery": {
+        "pid": 22191,
+        "sessionId": 22191,
+        "startTicks": 102047,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-dac95f17790a45f09d5be0688f50df84.scope",
+          "unit": "putgd-staging-install-dac95f17790a45f09d5be0688f50df84.scope",
+          "device": 30,
+          "inode": 60815,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+        },
+        "exitCode": 0,
+        "finished": true,
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 22191,
+          "sessionId": 22191,
+          "startTicks": 102047,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-dac95f17790a45f09d5be0688f50df84.scope",
+            "unit": "putgd-staging-install-dac95f17790a45f09d5be0688f50df84.scope",
+            "device": 30,
+            "inode": 60815,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+          }
+        },
+        "sessionPids": [],
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "state": "staging-finished"
+      }
+    },
+    {
+      "case": "setsid-root-grandchild-wrapper-and-controller-sigkill",
+      "identity": {
+        "pid": 22557,
+        "sessionId": 22557,
+        "startTicks": 102492,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-7689cb371de04686873897c2e8feade6.scope",
+          "unit": "putgd-staging-install-7689cb371de04686873897c2e8feade6.scope",
+          "device": 30,
+          "inode": 62563,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+        }
+      },
+      "escaped": {
+        "pid": 22572,
+        "uid": 0,
+        "sessionId": 22572,
+        "startTicks": 102507,
+        "cgroup": "0::/system.slice/putgd-staging-install-7689cb371de04686873897c2e8feade6.scope"
+      },
+      "controllerKilled": {
+        "pid": 78969,
+        "startTicks": 253075
+      },
+      "wrapperUid": 1000,
+      "held": {
+        "finished": false,
+        "state": "staging-outcome-unknown",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 22557,
+          "sessionId": 22557,
+          "startTicks": 102492,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-7689cb371de04686873897c2e8feade6.scope",
+            "unit": "putgd-staging-install-7689cb371de04686873897c2e8feade6.scope",
+            "device": 30,
+            "inode": 62563,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": true,
+        "cgroupGone": false
+      },
+      "eventsObserved": [
+        "populated 1\nfrozen 0\n",
+        "populated 0\nfrozen 0\n"
+      ],
+      "recovery": {
+        "finished": true,
+        "state": "staging-abandoned",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 22557,
+          "sessionId": 22557,
+          "startTicks": 102492,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-7689cb371de04686873897c2e8feade6.scope",
+            "unit": "putgd-staging-install-7689cb371de04686873897c2e8feade6.scope",
+            "device": 30,
+            "inode": 62563,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true
+      },
+      "visual": {
+        "path": "setsid-survivor.png",
+        "sha256": "4f2a18a3f8f35529c1a547061c162d49e65df728d6fe40d37338c64a935c4b36"
+      }
+    },
+    {
+      "case": "root-supervisor-scope-and-real-admission",
+      "identity": {
+        "pid": 23578,
+        "sessionId": 23578,
+        "startTicks": 106950,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-supervisor-install-3d6d517b706043949aab6e332b9eaf6e.scope",
+          "unit": "putgd-supervisor-install-3d6d517b706043949aab6e332b9eaf6e.scope",
+          "device": 30,
+          "inode": 65161,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+        }
+      },
+      "root": {
+        "uid": 0,
+        "cgroup": "0::/system.slice/putgd-supervisor-install-3d6d517b706043949aab6e332b9eaf6e.scope",
+        "admitted": true,
+        "requiredScope": true
+      },
+      "recoveryRefusedAfterAdmission": true
+    },
+    {
+      "case": "existing-scope-name-collision",
+      "exitCode": 1,
+      "existingHolder": {
+        "pid": 24418,
+        "cgroup": "0::/system.slice/putgd-staging-install-1dd789870212468698f8442c03cd98d1.scope"
+      },
+      "commandDidNotRun": true,
+      "recovery": {
+        "finished": true,
+        "state": "staging-not-started"
+      }
+    },
+    {
+      "case": "logout-controller-sigkill-detached-watchdog",
+      "controllerKilled": {
+        "pid": 79474,
+        "startTicks": 259570
+      },
+      "rootSupervisor": {
+        "pid": 25413,
+        "startTicks": 109236,
+        "cgroup": "0::/system.slice/putgd-supervisor-install-ad03f6419cad47069aec34f05e72cfd4.scope"
+      },
+      "logoutCommand": "gnome-session-quit",
+      "lingerEnabled": false,
+      "terminatedDesktopSessions": [
+        "245"
+      ],
+      "loginEndResults": [
+        {
+          "session": "245",
+          "alreadyGone": true
+        }
+      ],
+      "userManagerSnapshots": [
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n332     0 root        -     26072 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 1.25027163499999
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n333     0 root        -     26634 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 2.875431477999882
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n334     0 root        -     26914 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 4.451566748000005
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n335     0 root        -     26954 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 6.027726382999845
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n336     0 root        -     26996 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 7.698006542999792
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n337     0 root        -     27036 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 9.2890193369999
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n338     0 root        -     27076 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 10.896299718000137
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n339     0 root        -     27116 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 12.472829752000052
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n340     0 root        -     27156 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 14.034276351999779
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n341     0 root        -     27196 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 15.620070731999931
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n342     0 root        -     27236 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 17.21014150200017
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n343     0 root        -     27276 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 18.843507589000183
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n344     0 root        -     27316 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 20.438208128000042
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n345     0 root        -     27356 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 22.03784629399979
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n346     0 root        -     27396 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 23.617953660999774
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n347     0 root        -     27436 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 25.249920701000065
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n348     0 root        -     27476 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 26.845906570999887
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n349     0 root        -     27516 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 28.417242389999956
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n350     0 root        -     27556 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 29.984866562000207
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n351     0 root        -     27596 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 31.573380485000143
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n352     0 root        -     27645 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 33.138349730999835
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n353     0 root        -     27685 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 34.71954295099977
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n354     0 root        -     27725 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 36.33515077799984
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n355     0 root        -     27765 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 37.937803711000015
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n356     0 root        -     27805 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 39.49404814299987
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n357     0 root        -     27845 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 41.09778032899976
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n358     0 root        -     27889 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 42.78218889499976
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n359     0 root        -     27929 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 44.55201562299999
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n360     0 root        -     27969 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 46.28440287100011
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n361     0 root        -     28009 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 47.91354587099977
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n362     0 root        -     28049 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 49.50353433500004
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n363     0 root        -     28089 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 51.0838209970002
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n364     0 root        -     28129 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 52.701887181000075
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n365     0 root        -     28169 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 54.32333368599984
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n366     0 root        -     28209 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 55.9343675099999
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n323  1000 lab         -     25364 user          -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n367     0 root        -     28249 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 57.52647548200002
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n369     0 root        -     28333 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 59.12263466200011
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n370     0 root        -     28373 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 60.70259134299977
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n371     0 root        -     28413 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 62.29693857199982
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n372     0 root        -     28460 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 63.9709949019998
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n373     0 root        -     28500 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 65.55237155499981
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "246  1000 lab         -     20260 manager       -    no -\n300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n374     0 root        -     28540 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 67.13992737499984
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n375     0 root        -     28580 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 68.72842884600004
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n376     0 root        -     28648 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 70.29134904700004
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n377     0 root        -     28688 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 71.8687760859998
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n378     0 root        -     28728 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 73.44879613100011
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n379     0 root        -     28768 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 75.01985741399994
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n380     0 root        -     28808 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 76.58684058600011
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n381     0 root        -     28848 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 78.2738795690002
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n382     0 root        -     28888 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 79.94017560500015
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "300     0 root        -     24129 manager-early -    no -\n331 60578 gdm-greeter -     26026 manager-early -    no -\n383     0 root        -     28928 user          -    no -\n c4 60578 gdm-greeter seat0 25898 greeter       tty1 no -\n",
+          "secondsAfterControllerKill": 81.50213492800003
+        }
+      ],
+      "managerAfterResult": "inactive",
+      "result": {
+        "schemaVersion": 1,
+        "timeoutSeconds": 180,
+        "recoverySeconds": 60,
+        "timedOut": false,
+        "aborted": false,
+        "ownedProcesses": [
+          {
+            "pid": 25414,
+            "startTicks": 109239
+          },
+          {
+            "pid": 25444,
+            "startTicks": 109260
+          },
+          {
+            "pid": 25486,
+            "startTicks": 109279
+          },
+          {
+            "pid": 25493,
+            "startTicks": 109280
+          },
+          {
+            "pid": 25545,
+            "startTicks": 109346
+          },
+          {
+            "pid": 25546,
+            "startTicks": 109348
+          },
+          {
+            "pid": 25547,
+            "startTicks": 109348
+          },
+          {
+            "pid": 29011,
+            "startTicks": 117794
+          },
+          {
+            "pid": 29021,
+            "startTicks": 117795
+          },
+          {
+            "pid": 29023,
+            "startTicks": 117796
+          },
+          {
+            "pid": 29037,
+            "startTicks": 117798
+          }
+        ],
+        "exitCodes": [
+          0,
+          0
+        ],
+        "elapsedSeconds": 85.82293106299994,
+        "remainingPids": [],
+        "dpkgStatus": {
+          "exitCode": 0,
+          "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.0.780\nDescription: Synthetic disposable watchdog lifetime fixture\n",
+          "stderr": ""
+        },
+        "dpkgAudit": {
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "ok": true
+      },
+      "wrapperTerminal": {
+        "pid": 25410,
+        "sessionId": 25410,
+        "startTicks": 109230,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-supervisor-install-ad03f6419cad47069aec34f05e72cfd4.scope",
+          "unit": "putgd-supervisor-install-ad03f6419cad47069aec34f05e72cfd4.scope",
+          "device": 30,
+          "inode": 71420,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "a74bd0fb-f0e8-489d-b170-7131e925f063"
+        },
+        "exitCode": 0,
+        "finished": true
+      },
+      "visual": {
+        "path": "logged-out-watchdog-alive.png",
+        "sha256": "44ea07ec7923adf2ced5688824cf38b84efceb787a85ee6eb73e1be9226f21bf"
+      },
+      "terminalFixtureLockAcknowledged": true
+    }
+  ]
+}

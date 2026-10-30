@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "placement": "boat",
+  "sourceCommit": "d22d53f76bd884108faa17d1e35e273514d2ec23",
+  "sandbox": "bx_chwa2hdm",
+  "snapshot": "putgd-lab-cinnamon",
+  "sandboxCount": 1,
+  "ttlSeconds": 7200,
+  "machineProvider": "baremetal",
+  "guest": {
+    "os": "Linux Mint 22.3",
+    "desktop": "Cinnamon 6.6.4",
+    "sessionType": "x11",
+    "sessionId": "c1",
+    "acceleration": "kvm",
+    "display": "QEMU VNC 5920, workstation wall tunnel 5997"
+  },
+  "lockHeld": {
+    "ok": true,
+    "placement": "boat",
+    "sandbox": "bx_chwa2hdm",
+    "sourceCommit": "d22d53f76bd884108faa17d1e35e273514d2ec23",
+    "run": "/tmp/sp/work/lab-runs/c1",
+    "runId": "b97ada46-ec0d-493d-a784-7fbe5d0f65ab",
+    "holder": {
+      "pid": 2096,
+      "startTicks": 6730,
+      "uid": 1000
+    },
+    "message": "Guest helper staging blocked by apt lists lock /var/lib/apt/lists/lock: holder PID 2096 (python3); apt-daily or Mint Update may be active. Wait for the holder to finish; inspect ~/putgd-lab/install-c10ee0be9fc54fe3a5ff127163d4bf95/staging.log.",
+    "elapsedSeconds": 2.7238824449999584,
+    "stagingLog": "/tmp/sp/work/lab-runs/c1/install-c10ee0be9fc54fe3a5ff127163d4bf95/staging.log",
+    "controllerSha256": "18814ef6d9ca398837ce942cfd3f60d4578ad4a05ded17897aacbe6f5b5b3a25",
+    "helperSha256": "fa7abaf534a74dae0f2a15053a2b4b1cfeeaad683494010621a00137bf4c4844"
+  },
+  "stagingAfterLockRelease": {
+    "ok": true,
+    "placement": "boat",
+    "helperSha256": "fa7abaf534a74dae0f2a15053a2b4b1cfeeaad683494010621a00137bf4c4844",
+    "route": "normal helper staging after exact holder stopped"
+  },
+  "targetedTests": {
+    "test_lab.py": 48,
+    "test_package_install.py": 6,
+    "test_overlay_cleanup.py": 20,
+    "totalPassed": 74,
+    "localAndBoat": true
+  },
+  "guestAuthorizedKeysAndAptIndexesUnchanged": true,
+  "goldenSha256Before": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "goldenSha256After": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "exportArchiveSha256": "88ba572c072eed789f9742c24aefdf9a7f004ffe0dfd0c43e45b83e52b8166ce",
+  "verifiedExportMembers": 35,
+  "exportManifestSha256": "625cdb1d34e332a00e6db32a805a1a8aea92e97489d50e3d31873ab76900e051",
+  "overlayCleanupStatus": "completed",
+  "failedPreflight": "Boat /home/user FUSE inode accounting unknown; retained failure, moved run to ext4-backed /tmp/sp, preflight passed",
+  "limitations": "Installer/helper lifecycle evidence only; no product build, package install, compositor acceptance, memory or release claim."
+}

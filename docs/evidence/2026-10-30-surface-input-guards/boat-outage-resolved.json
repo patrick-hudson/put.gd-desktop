@@ -1,0 +1,26 @@
+{
+  "firstObservedUtc": "2026-10-30T10:14:03.429301+00:00",
+  "sandboxes": [
+    {
+      "id": "bx_ftjc74at",
+      "name": "core-r3-cin",
+      "snapshot": "putgd-lab-cinnamon-v3",
+      "ttlSeconds": 14400,
+      "createdAt": "2026-10-30T08:38:10.021Z",
+      "archiveAfter": "2026-10-30T12:38:10.008Z"
+    },
+    {
+      "id": "bx_jrnr7ah6",
+      "name": "core-r3-gnome",
+      "snapshot": "putgd-lab-ubuntu-gnome-v4",
+      "ttlSeconds": 14400,
+      "createdAt": "2026-10-30T08:38:11.182Z",
+      "archiveAfter": "2026-10-30T12:38:11.163Z"
+    }
+  ],
+  "additionalCreateAttempts": 0,
+  "reportedSinceUtc": "2026-10-30T10:00:00Z",
+  "recoveredUtc": "2026-10-30T10:30:00Z",
+  "cinnamonDeletionConfirmed": "404 not_found after delete operation bdop_185f13a85420430495c2fb1e2d6047c9",
+  "gnomeDeletionConfirmed": "404 not_found after successful delete request"
+}

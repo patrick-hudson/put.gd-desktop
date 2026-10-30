@@ -1,0 +1,115 @@
+test_orphan_sweep_deletes_only_expired_legacy_id_with_shared_name (candidate_tests.CandidateContracts.test_orphan_sweep_deletes_only_expired_legacy_id_with_shared_name) ... FAIL
+test_timeout_kill_has_grace_to_recover_create_visible_after_kill (candidate_tests.CandidateContracts.test_timeout_kill_has_grace_to_recover_create_visible_after_kill) ... FAIL
+test_fixture_package_has_test_only_summary_and_long_description (candidate_tests.CandidateContracts.test_fixture_package_has_test_only_summary_and_long_description) ... FAIL
+test_collection_size_budget_is_capped_at_ttl_and_expiry_is_explicit (candidate_tests.CandidateContracts.test_collection_size_budget_is_capped_at_ttl_and_expiry_is_explicit) ... FAIL
+test_collection_worker_passes_conservative_ttl_deadline (candidate_tests.CandidateContracts.test_collection_worker_passes_conservative_ttl_deadline) ... ERROR
+test_cleanup_help_describes_eligible_orphans_and_live_peers (candidate_tests.CandidateContracts.test_cleanup_help_describes_eligible_orphans_and_live_peers) ... FAIL
+test_reported_create_id_skips_remaining_create_window_on_failure (candidate_tests.CandidateContracts.test_reported_create_id_skips_remaining_create_window_on_failure) ... FAIL
+
+======================================================================
+ERROR: test_collection_worker_passes_conservative_ttl_deadline (candidate_tests.CandidateContracts.test_collection_worker_passes_conservative_ttl_deadline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 677, in test_collection_worker_passes_conservative_ttl_deadline
+    self.assertEqual(collect.call_args.kwargs['ttl_deadline'], 610)
+                     ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+KeyError: 'ttl_deadline'
+
+======================================================================
+FAIL: test_orphan_sweep_deletes_only_expired_legacy_id_with_shared_name (candidate_tests.CandidateContracts.test_orphan_sweep_deletes_only_expired_legacy_id_with_shared_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 562, in test_orphan_sweep_deletes_only_expired_legacy_id_with_shared_name
+    self.assertEqual([s['id'] for s in remaining], ['live', 'unnamed'])
+AssertionError: Lists differ: ['unnamed'] != ['live', 'unnamed']
+
+First differing element 0:
+'unnamed'
+'live'
+
+Second list contains 1 additional elements.
+First extra element 1:
+'unnamed'
+
+- ['unnamed']
++ ['live', 'unnamed']
+
+======================================================================
+FAIL: test_timeout_kill_has_grace_to_recover_create_visible_after_kill (candidate_tests.CandidateContracts.test_timeout_kill_has_grace_to_recover_create_visible_after_kill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 593, in test_timeout_kill_has_grace_to_recover_create_visible_after_kill
+    self.assertEqual(service['sandboxes'], [], result)
+AssertionError: Lists differ: [{'id': 'bx_0', 'name': 'putgd-aaaaaaaaaaa[45 chars] 10}] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+{'id': 'bx_0', 'name': 'putgd-aaaaaaaaaaaa-appimage-cccccccccccccccc', 'visibleAfter': 10}
+
++ []
+- [{'id': 'bx_0',
+-   'name': 'putgd-aaaaaaaaaaaa-appimage-cccccccccccccccc',
+-   'visibleAfter': 10}] : {'artifact': 'appimage', 'commit': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'snapshot': 'putgd-build-base', 'placementReason': 'parallel candidate packaging; preserve quiet physical acceptance hosts', 'ciDifferences': ['Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.', 'No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.', 'Untagged development identity for the exact SHA; no release tag supplied.', 'PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.', 'Pinned native Ubuntu 24.04 container instead of mutable GitHub ubuntu-24.04 hosted VM; package inventory retained. Hosted preinstalled desktop links can differ (appimage-build.json rootDesktopEntry.removedLinks).', 'Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH/PKG_CONFIG_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.', 'Installer uses install-packages.sh defaults (4 attempts, 900s overall and 600s stall per attempt), rather than the AppImage CI dependency step environment (3 attempts, 300s overall, 120s stall). Installer labels default to distro/manager.'], 'runNonce': 'cccccccccccccccc', 'name': 'putgd-aaaaaaaaaaaa-appimage-cccccccccccccccc', 'type': 'large', 'ttlSeconds': 10800, 'state': 'failed', 'startupCleanup': {'deleted': [], 'preserved': [], 'verified': True}, 'error': 'create timed out', 'cleanup': {'name': 'putgd-aaaaaaaaaaaa-appimage-cccccccccccccccc', 'requests': [], 'verified': True, 'finalState': 'absent', 'verification': 'boat list --all', 'deletedIds': [], 'verifiedAt': 0}, 'cleanupVerified': True, 'totalSeconds': 4}
+
+======================================================================
+FAIL: test_fixture_package_has_test_only_summary_and_long_description (candidate_tests.CandidateContracts.test_fixture_package_has_test_only_summary_and_long_description)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 621, in test_fixture_package_has_test_only_summary_and_long_description
+    self.assertIn('CPACK_PACKAGE_DESCRIPTION_SUMMARY=Disposable lab fixture build of put.gd; test use only', definitions)
+AssertionError: 'CPACK_PACKAGE_DESCRIPTION_SUMMARY=Disposable lab fixture build of put.gd; test use only' not found in ['cpack', '--config', 'build/release/CPackConfig.cmake', '-G', 'DEB', '-D', 'CPACK_PACKAGE_NAME=putgd-lab-fixture', '-D', 'CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture', '-D', 'CPACK_PACKAGE_FILE_NAME=putgd-lab-fixture', '-D', 'CPACK_DEBIAN_PACKAGE_CONFLICTS=putgd', '-D', 'CPACK_DEBIAN_PACKAGE_REPLACES=putgd', '-D', 'CPACK_DEBIAN_PACKAGE_DESCRIPTION=Disposable lab fixture build of put.gd; test use only', '-B', 'build/lab-packages']
+
+======================================================================
+FAIL: test_collection_size_budget_is_capped_at_ttl_and_expiry_is_explicit (candidate_tests.CandidateContracts.test_collection_size_budget_is_capped_at_ttl_and_expiry_is_explicit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 639, in test_collection_size_budget_is_capped_at_ttl_and_expiry_is_explicit
+    candidate.collect_artifacts(['ssh'], [], 'host', '22', Path('/unused'),
+  File "/tmp/accept752/baseline.py", line 26, in uncapped
+    def uncapped(*args,ttl_deadline=None,**kwargs): return original(*args,**kwargs)
+                                                           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/accept752/before/tools/lab/boat/candidate.py", line 383, in collect_artifacts
+    raise collection_error
+  File "/tmp/accept752/before/tools/lab/boat/candidate.py", line 352, in collect_artifacts
+    probe = measured('probeSeconds', lambda: run([*ssh,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/accept752/before/tools/lab/boat/candidate.py", line 346, in measured
+    return action()
+           ^^^^^^^^
+  File "/tmp/accept752/before/tools/lab/boat/candidate.py", line 352, in <lambda>
+    probe = measured('probeSeconds', lambda: run([*ssh,
+                                             ^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1134, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1138, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1199, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 628, in run
+    self.assertLessEqual(kwargs['timeout'], 20 - clock[0])
+AssertionError: 600 not less than or equal to 20
+
+======================================================================
+FAIL: test_cleanup_help_describes_eligible_orphans_and_live_peers (candidate_tests.CandidateContracts.test_cleanup_help_describes_eligible_orphans_and_live_peers)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 683, in test_cleanup_help_describes_eligible_orphans_and_live_peers
+    self.assertIn('eligible orphan', help_text)
+AssertionError: 'eligible orphan' not found in 'usage: baseline.py [-h] [--cleanup SHA] --output OUTPUT\n                   [--artifact {appimage,ubuntu24.04,ubuntu26.04,debian13,fedora44,ui-catalog,lab-fixture}]\n                   [--benchmark-catalog-scp] [--ttl TTL]\n                   [--type {default,large}]\n                   [commit]\n\nBuild an exact public commit in parallel, disposable Boat workers. Requires\nthe authenticated boat CLI, OpenSSH and distro python3-yaml locally. All\ncompilation and rendering happen remotely. See docs/boat-candidates.md.\n\npositional arguments:\n  commit\n\noptions:\n  -h, --help            show this help message and exit\n  --cleanup SHA         delete only candidate workers named for this full\n                        commit; no build\n  --output OUTPUT       new private directory outside every Git checkout\n  --artifact {appimage,ubuntu24.04,ubuntu26.04,debian13,fedora44,ui-catalog,lab-fixture}\n                        repeat to select a subset; default: all seven\n  --benchmark-catalog-scp\n                        also collect the same catalog by legacy recursive SCP\n                        for timing evidence\n  --ttl TTL\n  --type {default,large}\n'
+
+======================================================================
+FAIL: test_reported_create_id_skips_remaining_create_window_on_failure (candidate_tests.CandidateContracts.test_reported_create_id_skips_remaining_create_window_on_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/accept752/fixed/tests/desktop/test_boat_candidate.py", line 612, in test_reported_create_id_skips_remaining_create_window_on_failure
+    self.assertLess(clock[0], 10)
+AssertionError: 120 not less than 10
+
+----------------------------------------------------------------------
+Ran 7 tests in 6.999s
+
+FAILED (failures=6, errors=1)
+All 7 regression cases fail on ca13f378 as expected.

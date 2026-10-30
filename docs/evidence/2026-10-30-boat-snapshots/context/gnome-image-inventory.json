@@ -1,0 +1,200 @@
+[
+  {
+    "path": "/home/user/putgd-gnome-golden/image.qcow2",
+    "info": {
+      "children": [
+        {
+          "name": "file",
+          "info": {
+            "children": [],
+            "virtual-size": 11519624704,
+            "filename": "/home/user/putgd-gnome-golden/image.qcow2",
+            "format": "file",
+            "actual-size": 11519651840,
+            "format-specific": {
+              "type": "file",
+              "data": {}
+            },
+            "dirty-flag": false
+          }
+        }
+      ],
+      "virtual-size": 34359738368,
+      "filename": "/home/user/putgd-gnome-golden/image.qcow2",
+      "cluster-size": 65536,
+      "format": "qcow2",
+      "actual-size": 11519651840,
+      "format-specific": {
+        "type": "qcow2",
+        "data": {
+          "compat": "1.1",
+          "compression-type": "zlib",
+          "lazy-refcounts": false,
+          "refcount-bits": 16,
+          "corrupt": false,
+          "extended-l2": false
+        }
+      },
+      "dirty-flag": false
+    }
+  },
+  {
+    "path": "/home/user/work/put.gd/src/work/lab-runs/cin-143a1e01/disk.qcow2",
+    "info": {
+      "children": [
+        {
+          "name": "file",
+          "info": {
+            "children": [],
+            "virtual-size": 1085669376,
+            "filename": "/home/user/work/put.gd/src/work/lab-runs/cin-143a1e01/disk.qcow2",
+            "format": "file",
+            "actual-size": 1085612032,
+            "format-specific": {
+              "type": "file",
+              "data": {}
+            },
+            "dirty-flag": false
+          }
+        }
+      ],
+      "backing-filename-format": "qcow2",
+      "virtual-size": 34359738368,
+      "filename": "/home/user/work/put.gd/src/work/lab-runs/cin-143a1e01/disk.qcow2",
+      "cluster-size": 65536,
+      "format": "qcow2",
+      "actual-size": 1085612032,
+      "format-specific": {
+        "type": "qcow2",
+        "data": {
+          "compat": "1.1",
+          "compression-type": "zlib",
+          "lazy-refcounts": false,
+          "refcount-bits": 16,
+          "corrupt": false,
+          "extended-l2": false
+        }
+      },
+      "full-backing-filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+      "backing-filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+      "dirty-flag": false
+    }
+  },
+  {
+    "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+    "info": {
+      "children": [
+        {
+          "name": "file",
+          "info": {
+            "children": [],
+            "virtual-size": 12991922176,
+            "filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+            "format": "file",
+            "actual-size": 12991959040,
+            "format-specific": {
+              "type": "file",
+              "data": {}
+            },
+            "dirty-flag": false
+          }
+        }
+      ],
+      "virtual-size": 34359738368,
+      "filename": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+      "cluster-size": 65536,
+      "format": "qcow2",
+      "actual-size": 12991959040,
+      "format-specific": {
+        "type": "qcow2",
+        "data": {
+          "compat": "1.1",
+          "compression-type": "zlib",
+          "lazy-refcounts": false,
+          "refcount-bits": 16,
+          "corrupt": false,
+          "extended-l2": false
+        }
+      },
+      "dirty-flag": false
+    }
+  },
+  {
+    "path": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+    "info": {
+      "children": [
+        {
+          "name": "file",
+          "info": {
+            "children": [],
+            "virtual-size": 11519624704,
+            "filename": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+            "format": "file",
+            "actual-size": 11492855808,
+            "format-specific": {
+              "type": "file",
+              "data": {}
+            },
+            "dirty-flag": false
+          }
+        }
+      ],
+      "virtual-size": 34359738368,
+      "filename": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+      "cluster-size": 65536,
+      "format": "qcow2",
+      "actual-size": 11492855808,
+      "format-specific": {
+        "type": "qcow2",
+        "data": {
+          "compat": "1.1",
+          "compression-type": "zlib",
+          "lazy-refcounts": false,
+          "refcount-bits": 16,
+          "corrupt": false,
+          "extended-l2": false
+        }
+      },
+      "dirty-flag": false
+    }
+  },
+  {
+    "path": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v2/image.qcow2",
+    "info": {
+      "children": [
+        {
+          "name": "file",
+          "info": {
+            "children": [],
+            "virtual-size": 25521618944,
+            "filename": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v2/image.qcow2",
+            "format": "file",
+            "actual-size": 25521692672,
+            "format-specific": {
+              "type": "file",
+              "data": {}
+            },
+            "dirty-flag": false
+          }
+        }
+      ],
+      "virtual-size": 34359738368,
+      "filename": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v2/image.qcow2",
+      "cluster-size": 65536,
+      "format": "qcow2",
+      "actual-size": 25521692672,
+      "format-specific": {
+        "type": "qcow2",
+        "data": {
+          "compat": "1.1",
+          "compression-type": "zlib",
+          "lazy-refcounts": false,
+          "refcount-bits": 16,
+          "corrupt": false,
+          "extended-l2": false
+        }
+      },
+      "dirty-flag": false
+    }
+  }
+]

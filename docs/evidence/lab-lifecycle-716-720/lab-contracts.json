@@ -1,0 +1,198 @@
+{
+  "suites": [
+    {
+      "command": [
+        "tests/desktop/test_cover_player.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.38
+    },
+    {
+      "command": [
+        "tests/desktop/test_desktop_lock.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.09
+    },
+    {
+      "command": [
+        "tests/desktop/test_guest_idle.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.37
+    },
+    {
+      "command": [
+        "tests/desktop/test_headless_output.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.32
+    },
+    {
+      "command": [
+        "tests/desktop/test_host_input.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.14
+    },
+    {
+      "command": [
+        "tests/desktop/test_lab.py"
+      ],
+      "exitCode": 0,
+      "seconds": 4.44
+    },
+    {
+      "command": [
+        "tests/desktop/test_lab_ui_contract.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.26
+    },
+    {
+      "command": [
+        "tests/desktop/test_live_credentials_lab.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.46
+    },
+    {
+      "command": [
+        "tests/desktop/test_multi_output.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.24
+    },
+    {
+      "command": [
+        "tests/desktop/test_multi_output_review.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.99
+    },
+    {
+      "command": [
+        "tests/desktop/test_native_acceptance.py"
+      ],
+      "exitCode": 0,
+      "seconds": 3.12
+    },
+    {
+      "command": [
+        "tests/desktop/test_neon_autologin.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.0
+    },
+    {
+      "command": [
+        "tests/desktop/test_overlay_cleanup.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.29
+    },
+    {
+      "command": [
+        "tests/desktop/test_package_install.py"
+      ],
+      "exitCode": 0,
+      "seconds": 3.29
+    },
+    {
+      "command": [
+        "tests/desktop/test_proton_lab.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.44
+    },
+    {
+      "command": [
+        "tests/desktop/test_record_run.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.16
+    },
+    {
+      "command": [
+        "tests/desktop/test_restore_evidence.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.16
+    },
+    {
+      "command": [
+        "tests/desktop/test_rfb_frames.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.13
+    },
+    {
+      "command": [
+        "tests/desktop/test_storage_preflight.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.38
+    },
+    {
+      "command": [
+        "tests/desktop/test_surface_map.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.33
+    },
+    {
+      "command": [
+        "tests/desktop/test_tray_progress_lab.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.14
+    },
+    {
+      "command": [
+        "tests/desktop/test_wall_vnc_watchdog.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.49
+    },
+    {
+      "command": [
+        "tests/desktop/test_windows_lab.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.58
+    },
+    {
+      "command": [
+        "tests/maintenance/test_archive_evidence.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.31
+    },
+    {
+      "command": [
+        "tests/maintenance/test_refresh_pins.py"
+      ],
+      "exitCode": 0,
+      "seconds": 0.26
+    },
+    {
+      "command": [
+        "tests/performance/test_bench_ui_process.py"
+      ],
+      "exitCode": 0,
+      "seconds": 1.44
+    }
+  ],
+  "scope": "Host protocol and storage safety contracts only; no graphical desktop acceptance",
+  "testedCodeCommit": "0227cfa28565086dd79d2ac8f93407d0429f3513",
+  "host": "Debian 13 / 192.168.68.69",
+  "suiteCount": 26,
+  "testCount": 432,
+  "passed": true,
+  "sourceFileSha256": {
+    "tools/lab/lab.py": "851e18ac7e4ec9406ed97b326d67bcf8f4d7563e8fd32f30718499393c0a4120",
+    "tools/lab/package_install.py": "be5ef95237fe94c21e19606bd7243f97d6c28f7f38d5c47ec1dcd1d1f6bda61c",
+    "tests/desktop/test_lab.py": "231df00af38409f1766e3709bc795134cfbb624434b66d5e68ff956f108a3fdf",
+    "tests/desktop/test_package_install.py": "dbf0354aec0b74fdd02c8c81bbcc760e036a4ef1d38340dd506db4f37f2f49ff"
+  }
+}

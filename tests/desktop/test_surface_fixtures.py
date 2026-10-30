@@ -184,6 +184,67 @@ class Fixtures(unittest.TestCase):
         self.assertIn('rm -- /etc/sudoers.d/putgd-surface-',hooks[1])
         self.assertEqual(order,['nft','unmount'])
 
+    def test_privilege_removal_retries_and_is_proven_by_sudo_listing(self):
+        # #762: a held apt lists lock skips the removal hook; retry, bounded,
+        # and accept removal only once sudo -l no longer grants the commands.
+        scope=self.ctx.manager.scope;hooks=[];listed=[1,1,1,1,0];notes=[]
+        self.ctx.note=notes.append
+        def shell(command,**kwargs):
+            if 'APT::Update::Pre-Invoke' in command:hooks.append(command)
+            if 'sudo -n -l' in command:return {'returncode':0,'stdout':str(listed.pop(0))+'\n','stderr':''}
+            return {'returncode':0,'stdout':'','stderr':''}
+        with patch.object(self.ctx,'shell',shell),patch.object(privileges.time,'sleep') as sleep:
+            privileges.ensure(scope)
+            self.assertEqual(notes,['removing a fixture sudo rule an earlier run left in this overlay'])
+            self.assertIn('for f in /etc/sudoers.d/putgd-surface-*',hooks[0])
+            self.assertEqual(scope.close(),[])
+        self.assertEqual(len(hooks),4)  # Staging, then three removal attempts.
+        self.assertEqual([c.args for c in sleep.call_args_list],[(1,),(3,)])
+        scope=self.ctx.manager.scope=Scope(self.ctx);listed[:]=[0,1]+[1]*3
+        with patch.object(self.ctx,'shell',shell),patch.object(privileges.time,'sleep'):
+            privileges.ensure(scope)
+            self.assertEqual(scope.close(),['overlay sudo rule: RecipeBlocked'])
+
+    def test_leftover_rules_removed_only_when_named_and_worded_as_staged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            names={token:Path(directory)/('putgd-surface-'+token) for token in ('a'*32,'b'*32,'c'*32,'xyz')}
+            names['a'*32].write_text(privileges.rule('a'*32))
+            names['b'*32].write_text(privileges.rule('b'*32)+'lab ALL=(ALL) ALL\n')
+            names['c'*32].write_text(privileges.rule('c'*32))
+            names['xyz'].write_text(privileges.rule('xyz'))
+            script=privileges.leftovers('/etc/sudoers.d/putgd-surface-'+'c'*32).replace('/etc/sudoers.d',directory)
+            subprocess.run(['sh','-c','set -eu; '+script],check=True,timeout=10)
+            self.assertEqual(sorted(p.name[-3:] for p in Path(directory).iterdir()),['bbb','ccc','xyz'])
+
+    def test_setup_failure_cleanup_defers_termination_until_finalizers_finish(self):
+        # #762: a SIGTERM (run.py's handler raises) or the recipe alarm during
+        # a failed setup's cleanup no longer aborts the running finalizer.
+        stops,finished,reviews=[],[],[]
+        self.ctx.review=reviews.append
+        def terminate(signum,_frame):
+            stops.append(signum)
+            raise RecipeFailed('runner interrupted by '+signal.Signals(signum).name)
+        def failing(scope):
+            def slow():
+                for sig in (signal.SIGTERM,signal.SIGALRM):signal.raise_signal(sig)
+                time.sleep(.01)
+                finished.append('slow')
+            scope.defer('slow',slow)
+            scope.defer('first',lambda:finished.append('first'))
+            raise RecipeBlocked('setup failed')
+        previous={sig:signal.signal(sig,terminate) for sig in (signal.SIGTERM,signal.SIGALRM)}
+        try:
+            with patch.dict(FACTORIES,{'failing':failing}),self.assertRaisesRegex(RecipeBlocked,'setup failed'):
+                self.ctx.fixture('failing')
+        finally:
+            for sig,handler in previous.items():signal.signal(sig,handler)
+        self.assertEqual(finished,['first','slow'])
+        self.assertEqual(stops,[signal.SIGTERM,signal.SIGALRM])
+        self.assertEqual(self.ctx.manager.errors,[])
+        self.assertTrue(any('SIGTERM fell due during fixture setup-failure cleanup' in r for r in reviews))
+        self.assertTrue(any('Recipe deadline fell due during fixture setup-failure cleanup' in r for r in reviews))
+        self.assertFalse(set(signal.pthread_sigmask(signal.SIG_BLOCK,()))&{signal.SIGTERM,signal.SIGALRM})
+
     def test_clipboard_missing_tool_blocks_clearly_without_launch(self):
         scope=self.ctx.manager.scope;scope.initialize()
         reply={'returncode':1,'stdout':'','stderr':''}
@@ -387,7 +448,7 @@ class Fixtures(unittest.TestCase):
         scope=self.ctx.manager.scope;original=scope.json
         def metadata(code,**kwargs):
             ast.parse(code)
-            if 'SO_PEERCRED' in code:return 42
+            if 'SO_PEERCRED' in code:return {'pid':42,'start':'owned-start'}
             return original(code,**kwargs)
         with patch.object(scope,'json',metadata):
             value=self.ctx.fixture('events.update-feed')
@@ -535,6 +596,18 @@ class Fixtures(unittest.TestCase):
         self.ctx.manager.close()
         self.ctx.profile['dialogs']={'backends':{'fallback':{'environment':{'DBUS_SESSION_BUS_ADDRESS':'foreign'}}}}
         with self.assertRaises(RecipeBlocked):self.ctx.fixture('file-dialog-fallback')
+
+    def test_dialog_fixture_prepares_and_retires_diagnostics_start_folder(self):
+        baseline=copy.deepcopy(self.ctx.document)
+        self.ctx.fixture('file-dialog-fallback')
+        folder=Path(self.ctx.document['archive']['root'])/'diagnostics'
+        self.assertTrue(folder.is_dir(), 'Nautilus must open the chooser without a missing-folder alert')
+        self.assertTrue(folder.is_relative_to(self.root))
+        self.assertEqual(folder.stat().st_mode & 0o777,0o700)
+        self.assertEqual(list(folder.iterdir()),[])
+        self.assertEqual(self.ctx.manager.close(),[])
+        self.assertFalse(folder.exists())
+        self.assertEqual(self.ctx.document,baseline)
     def test_notification_is_published_lazily_after_needs(self):
         calls=[]
         with patch.object(notifications,'upload',lambda scope:calls.append('publish') or Fixture(link='http://127.0.0.1/synthetic',name='synthetic.png')):

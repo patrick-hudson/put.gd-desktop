@@ -1,0 +1,52 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Remove \"Project archive\" from settings? Existing history and remote files remain."
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                289,
+                74,
+                155,
+                36
+            ],
+            "text": "Remove destination"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                210,
+                74,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        }
+    ],
+    "height": 126,
+    "keys": [
+    ],
+    "width": 468
+}
