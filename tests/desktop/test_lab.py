@@ -277,7 +277,8 @@ class LabContracts(unittest.TestCase):
                                            '--deb', '/tmp/synthetic-new-package.deb']), \
                             patch.object(lab, 'put', side_effect=lab.LabError('upload failed')
                                          if failed_stage == 'upload' else None), \
-                            patch.object(lab, 'ssh', return_value=''), \
+                            patch.object(lab, 'ssh', return_value=json.dumps({'ok': True, 'timedOut': False})), \
+                            patch.object(lab, 'get'), \
                             patch.object(lab, 'verify_installed_binaries',
                                          side_effect=lab.LabError('verification failed')), \
                             contextlib.redirect_stdout(io.StringIO()):
@@ -321,6 +322,69 @@ class LabContracts(unittest.TestCase):
             self.assertFalse(entries[1]['ok'])
             self.assertTrue(all(entry.get('timestampUtc') for entry in entries))
 
+    def test_launch_rejects_noncanonical_run_before_any_allocation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for relative in ('outside', 'work/lab-runs/nested/run', 'work/lab-runs'):
+                args = SimpleNamespace(run=str(root / relative))
+                with self.subTest(relative=relative), patch.object(lab.overlay_cleanup, 'ROOT', root), \
+                        patch.object(lab, 'command') as command, \
+                        patch.object(lab, '_launch_machine') as allocate:
+                    with self.assertRaisesRegex(lab.LabError, 'canonical.*107-byte'):
+                        lab.launch(args)
+                    command.assert_not_called()
+                    allocate.assert_not_called()
+                    self.assertEqual(list(root.iterdir()), [])
+
+    def test_launch_rejects_symlinked_canonical_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'outside').mkdir()
+            (root / 'work').mkdir()
+            (root / 'work/lab-runs').symlink_to(root / 'outside')
+            with patch.object(lab.overlay_cleanup, 'ROOT', root), patch.object(lab, '_launch_machine') as allocate:
+                with self.assertRaisesRegex(lab.LabError, '[Ss]ymlink'):
+                    lab.launch(SimpleNamespace(run=str(root / 'work/lab-runs/c1')))
+                allocate.assert_not_called()
+            self.assertEqual(list((root / 'outside').iterdir()), [])
+
+    def test_install_timeout_options_and_reconciled_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            deb = run / 'synthetic.deb'
+            deb.write_bytes(b'synthetic')
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            report = {'ok': True, 'timedOut': True, 'ownedProcesses': [{'pid': 123, 'startTicks': 45}]}
+            calls = []
+            def ssh(_run, script, **kwargs):
+                calls.append(script)
+                return json.dumps(report) if 'cat ~/' in script else ''
+            with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
+                    patch.object(lab, 'get'), patch.object(lab, 'verify_installed_binaries', return_value={'/usr/bin/putgd': 'a' * 64}):
+                result = lab.install_package(run, deb, 1200, 300)
+            self.assertTrue(result['timedOut'])
+            self.assertEqual(lab.read_json(Path(result['installEvidence']) / 'result.json'), report)
+            self.assertTrue(any('1200 300' in call for call in calls))
+            self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+
+    def test_install_profile_timeouts_and_abort_block_blind_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            calls = []
+            def ssh(_run, script, **kwargs):
+                calls.append(script)
+                return json.dumps({'ok': False, 'aborted': True, 'dpkgStatus': {'stdout': 'half-configured'}}) if 'cat ~/' in script else ''
+            with patch.object(lab, 'load_profile', return_value={'install_timeout': 42, 'install_recovery_timeout': 21}), \
+                    patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), patch.object(lab, 'get'), \
+                    patch.object(lab, 'verify_installed_binaries') as verify:
+                with self.assertRaisesRegex(lab.LabError, 'dpkg state.*blocks retries'):
+                    lab.install_package(run, 'synthetic.deb')
+                verify.assert_not_called()
+            self.assertTrue(any('42 21' in call for call in calls))
+            self.assertFalse(any('rmdir' in call for call in calls))
+            self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+
     def test_launch_rejects_wrong_host_key_endpoint_before_creating_run(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -328,7 +392,7 @@ class LabContracts(unittest.TestCase):
             golden.write_bytes(b'sealed test identity')
             trusted = root / 'known_hosts'
             trusted.write_text('[127.0.0.1]:22220 ssh-ed25519 AAAA\n')
-            run = root / 'new-run'
+            run = root / 'work/lab-runs/new-run'
             args = SimpleNamespace(profile='cinnamon-x11', golden=str(golden),
                 run=str(run), acceleration='tcg', ssh_port=22431,
                 known_hosts=str(trusted), bootstrap_key=str(root / 'identity'))
@@ -337,7 +401,7 @@ class LabContracts(unittest.TestCase):
                 if arguments[0] != 'ssh-keygen' or '-F' not in arguments:
                     self.fail('Launch mutated resources before rejecting an unpinned endpoint')
                 return original_command(arguments, **kwargs)
-            with patch.object(lab, 'command', side_effect=read_only_command):
+            with patch.object(lab.overlay_cleanup, 'ROOT', root), patch.object(lab, 'command', side_effect=read_only_command):
                 with self.assertRaisesRegex(lab.LabError, r'22431.*known.hosts'):
                     lab.launch(args)
             self.assertFalse(run.exists())
@@ -354,13 +418,13 @@ class LabContracts(unittest.TestCase):
                     trusted.write_text(endpoint + ' ssh-ed25519 AAAA\n')
                     if hashed:
                         lab.command(['ssh-keygen', '-H', '-f', trusted])
-                    run = root / 'existing-run'
-                    run.mkdir()
+                    run = root / 'work/lab-runs/existing-run'
+                    run.mkdir(parents=True)
                     args = SimpleNamespace(profile='cinnamon-x11', golden=str(golden),
                         run=str(run), acceleration='tcg', ssh_port=port,
                         known_hosts=str(trusted), bootstrap_key=str(root / 'identity'))
                     # Passing preflight reaches the existing-run guard, before any allocation.
-                    with self.assertRaises(FileExistsError):
+                    with patch.object(lab.overlay_cleanup, 'ROOT', root), self.assertRaises(FileExistsError):
                         lab.launch(args)
                     self.assertEqual(list(run.iterdir()), [])
 
