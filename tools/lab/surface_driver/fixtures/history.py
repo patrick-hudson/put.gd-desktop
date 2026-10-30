@@ -23,6 +23,8 @@ def rows(scope):
 
 
 def active(scope):
+    scope.ctx.fixture('loopback-s3')
+    scope.patch({'limits':{'concurrentUploads':2}})
     rows=[submit(scope,remote=True,active=True) for _ in range(2)]
     return Fixture(operation_ids=[r.operation_id for r in rows])
 

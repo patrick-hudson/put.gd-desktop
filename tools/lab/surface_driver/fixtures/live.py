@@ -20,4 +20,4 @@ def local(scope):
                    region_start=[x+w//4,y+h//4],region_end=[x+3*w//4,y+3*h//4],window_focus=[x+w//2,y+h//2],
                    region_shortcut='Ctrl+Shift+1',window_shortcut='Ctrl+Shift+2',owned_history_ids=[],
                    sensitive_transport=False,redacted_frames=False,
-                   cleanup=lambda:scope.close())
+                   cleanup=lambda:ctx._cleanup_fixtures() if hasattr(ctx,'_cleanup_fixtures') else ctx.manager.close())

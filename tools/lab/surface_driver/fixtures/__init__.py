@@ -109,7 +109,8 @@ class FixtureManager:
             self.scope.values[name]=value
             return value
         except BaseException:
-            self.errors.extend(self.scope.close())
+            failed, self.scope = self.scope, Scope(self.ctx)
+            self.errors.extend(failed.close())
             raise
 
     def close(self):

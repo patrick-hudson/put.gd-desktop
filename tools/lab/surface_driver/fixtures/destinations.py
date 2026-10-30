@@ -77,7 +77,7 @@ def loopback(scope):
              'settings':{'bucket':'surface-fixture','region':'us-east-1','endpoint':endpoint,
                          'objectPrefix':'campaign-'+scope.token[:12]+'/', 'storageClass':'STANDARD','aclMode':'public-read',
                          'publicUrlBase':endpoint+'/surface-fixture','addressing':'path','connectTimeoutMs':1000,
-                         'requestTimeoutMs':15000,'lowSpeedBytesPerSecond':1,'lowSpeedTimeSeconds':5}}
+                         'requestTimeoutMs':30000,'lowSpeedBytesPerSecond':1,'lowSpeedTimeSeconds':25}}
     scope.patch({'profiles':[profile],'archive':{'keepUploads':True}})
     current=scope.ctx.call('settings.get')
     job=scope.ctx.call('setup.unlockCredentials',{'profileId':profile_id,'expectedRevision':current['metadata']['observedRevision']})['setupId']

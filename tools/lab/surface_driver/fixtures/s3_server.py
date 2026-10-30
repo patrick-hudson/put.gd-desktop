@@ -57,10 +57,9 @@ class Handler(BaseHTTPRequestHandler):
             with self.server.lock:return self.reply(200,json.dumps(self.server.events).encode())
         ctl=self.server.control()
         if command in ('PUT','POST'):
-            deadline=time.monotonic()+ctl.get('stallSeconds',0)
-            while time.monotonic()<deadline:
+            started=time.monotonic()
+            while time.monotonic()-started<self.server.control().get('stallSeconds',0):
                 time.sleep(.1)
-                if not self.server.control().get('stallSeconds'):break
             if ctl.get('failWrites'):return self.error(403,'AccessDenied')
         with self.server.lock:
             self.server.events.append({'method':command,'bytes':len(body),'multipart':'uploadId' in query or 'uploads' in query})
@@ -83,8 +82,10 @@ class Handler(BaseHTTPRequestHandler):
                     return self.xml('ListPartsResult','<IsTruncated>false</IsTruncated>'+''.join('<Part><PartNumber>%d</PartNumber><ETag>"%s"</ETag><Size>%d</Size></Part>'%(n,hashlib.md5(b).hexdigest(),len(b)) for n,b in sorted(upload['parts'].items())))
                 if command=='POST':
                     body=b''.join(v for k,v in sorted(upload['parts'].items()))
-                    self.server.objects[key]=(body,upload['headers']);del self.server.uploads[identity]
-                    return self.xml('CompleteMultipartUploadResult','<Key>'+escape(key.split('/',1)[-1])+'</Key><ETag>"'+hashlib.md5(body).hexdigest()+'"</ETag>')
+                    checksum=hashlib.md5(b''.join(hashlib.md5(v).digest() for n,v in sorted(upload['parts'].items()))).hexdigest()+'-'+str(len(upload['parts']))
+                    headers=dict(upload['headers'],ETag='"'+checksum+'"')
+                    self.server.objects[key]=(body,headers);del self.server.uploads[identity]
+                    return self.xml('CompleteMultipartUploadResult','<Key>'+escape(key.split('/',1)[-1])+'</Key><ETag>"'+checksum+'"</ETag>')
             if 'versioning' in query:return self.xml('VersioningConfiguration','')
             if key and '/' not in key and command in ('HEAD','GET'):
                 return self.reply(200)
@@ -97,7 +98,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.server.objects.pop(key,None);return self.reply(204)
             if not obj:return self.error(404,'NoSuchKey')
             data,headers=obj
-            return self.reply(200,data,dict(headers,ETag='"'+hashlib.md5(data).hexdigest()+'"'))
+            return self.reply(200,data,dict(headers,ETag=headers.get('ETag','"'+hashlib.md5(data).hexdigest()+'"')))
     def metadata(self):
         return {k:v for k,v in self.headers.items() if k.lower().startswith('x-amz-meta-') or k.lower()=='content-type'}
 

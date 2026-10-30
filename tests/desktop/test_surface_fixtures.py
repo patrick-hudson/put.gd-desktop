@@ -238,6 +238,15 @@ class Fixtures(unittest.TestCase):
             with self.assertRaises(RecipeFailed):self.ctx.fixture('partial')
         self.assertFalse(list(self.root.glob('fx-*')))
         self.assertEqual(self.ctx.target.close(),[])
+    def test_scope_is_fresh_after_optional_factory_failure(self):
+        old=self.ctx.manager.scope
+        self.ctx.fixture('image')
+        with self.assertRaises(RecipeBlocked):self.ctx.fixture('chooser-failure')
+        self.assertIsNot(old,self.ctx.manager.scope)
+        new=self.ctx.fixture('image')
+        self.assertTrue(Path(new.path).exists())
+        self.assertIsNot(old,self.ctx.manager.scope)
+
     def test_unknown_fixture_and_live_provider_are_specific_blocks(self):
         for name,issue in [('live-provider',669),('chooser-failure',671),('tray-proton-busy',670)]:
             with self.subTest(name=name),self.assertRaises(RecipeBlocked) as caught:self.ctx.fixture(name)
@@ -247,6 +256,7 @@ class Fixtures(unittest.TestCase):
         self.ctx.placement='native'
         with self.assertRaises(RecipeBlocked):self.ctx.fixture('fake-keyring')
         with self.assertRaises(RecipeBlocked):self.ctx.fixture('events.controllers')
+        with self.assertRaises(RecipeBlocked):self.ctx.fixture('events.clipboard')
         with self.assertRaises(RecipeBlocked):self.ctx.fixture('release')
     def test_dialog_environment_applied_before_restart(self):
         self.ctx.fixture('file-dialog-fallback')
@@ -259,17 +269,31 @@ class Fixtures(unittest.TestCase):
         with patch.object(notifications,'upload',lambda scope:calls.append('publish') or Fixture(link='http://127.0.0.1/synthetic',name='synthetic.png')):
             value=self.ctx.fixture('notification_upload')
             self.assertEqual(calls,[])
+            self.assertFalse(hasattr(value,'__html__'))
+            with self.assertRaises(TypeError):json.dumps(value)
+            self.assertEqual(calls,[])
+            self.assertEqual(dict(value)['name'],'synthetic.png')
             self.assertTrue(value.get('link'));self.assertEqual(value.name,'synthetic.png')
             self.assertEqual(calls,['publish'])
     def test_runner_cleans_fixture_after_failed_recipe_and_marks_cleanup_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             context=SimpleNamespace(begin=lambda r:None,frame=lambda *a,**k:None,frames=[],reviews=[],notes=[],review=lambda v:None,note=lambda v:None)
             cleaned=[]
+            context.note=context.notes.append
             context._cleanup_fixtures=lambda:cleaned.append(True) or ['owned mount: RecipeBlocked']
             def fail(c):raise RecipeFailed('synthetic recipe failure')
             env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
             result=run_recipes(context,[Recipe(('editor.undo',),fail)],env,directory,'fixture-test',Path(directory)/'coverage.json')
             self.assertEqual(cleaned,[True]);self.assertEqual(result[0].functional,'failed')
+            self.assertIn('synthetic recipe failure',result[0].note)
+            self.assertIn('fixture cleanup failed',result[0].note)
+    def test_owned_helper_is_stopped_on_recipe_failure(self):
+        scope=self.ctx.manager.scope
+        process=scope.launch([sys.executable,'-c','import time;time.sleep(30)'],name='owned-helper')
+        self.assertEqual(self.ctx.manager.close(),[])
+        proc=Path('/proc')/str(process['pid'])/'stat'
+        self.assertTrue(not proc.exists() or proc.read_text().split(') ',1)[1].split()[0]=='Z')
+
     def test_cleanup_never_removes_unowned_sibling(self):
         sibling=self.root/'existing';sibling.write_text('preserve')
         self.ctx.fixture('image');self.ctx.manager.close()
@@ -302,6 +326,19 @@ class Loopback(unittest.TestCase):
         self.assertEqual(caught.exception.code,403)
         (self.root/'control.json').write_text('{}')
         self.assertEqual(self.request('/bucket/file','PUT',b'x').status,200)
+    def test_completed_multipart_retains_composite_etag(self):
+        import xml.etree.ElementTree as ET
+        root=ET.fromstring(self.request('/bucket/file?uploads','POST',b'').read())
+        identity=root.findtext('{*}UploadId');query='?uploadId='+identity
+        self.request('/bucket/file'+query+'&partNumber=1','PUT',b'one').close()
+        self.request('/bucket/file'+query+'&partNumber=2','PUT',b'two').close()
+        complete=ET.fromstring(self.request('/bucket/file'+query,'POST',b'<CompleteMultipartUpload/>').read())
+        etag=complete.findtext('{*}ETag')
+        with self.request('/bucket/file') as response:
+            self.assertEqual(response.read(),b'onetwo')
+            self.assertEqual(response.headers['ETag'],etag)
+        self.assertTrue(etag.endswith('-2"'))
+
     def test_multipart_abort_denial_then_cleanup(self):
         import xml.etree.ElementTree as ET
         root=ET.fromstring(self.request('/bucket/file?uploads','POST',b'').read())
@@ -313,6 +350,26 @@ class Loopback(unittest.TestCase):
         (self.root/'control.json').write_text('{}')
         self.request('/bucket/file'+query,'DELETE').close()
         self.assertFalse(self.server.uploads)
+
+
+class Restart(unittest.TestCase):
+    def test_scope_restores_launch_environment_once(self):
+        commands=[]
+        ctx=SimpleNamespace(_deadline=time.monotonic()+30)
+        ctx.target=SimpleNamespace(root='/tmp/owned-fixture',socket='/tmp/owned-fixture/runtime/putgd/session.sock',app_executable='putgd',started=True)
+        ctx.call=lambda *a,**k:{}
+        ctx.shell=lambda command,**k:commands.append(command) or {'returncode':0,'stdout':'','stderr':''}
+        ctx.cli=lambda *a,**k:{'returncode':0,'stdout':'{"ok":true}'}
+        ctx.wait=lambda predicate,*a,**k:predicate()
+        scope=Scope(ctx)
+        scope.restart({'PUTGD_FILE_DIALOG':'fallback'})
+        scope.restart({'PUTGD_UPDATE_FEED_URL':'http://127.0.0.1:1/'})
+        self.assertEqual(sum(label=='resident environment' for _,label,_ in scope.finalizers),1)
+        self.assertEqual(scope.close(),[])
+        launches=[c for c in commands if c.startswith('nohup')]
+        self.assertEqual(len(launches),3)
+        self.assertNotIn('PUTGD_FILE_DIALOG',launches[-1])
+        self.assertNotIn('PUTGD_UPDATE_FEED_URL',launches[-1])
 
 
 if __name__=='__main__':unittest.main()

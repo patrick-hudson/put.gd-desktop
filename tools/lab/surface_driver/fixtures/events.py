@@ -82,7 +82,8 @@ def storage(scope):
 def slow_upload(scope):
     row=submit(scope,remote=True,active=True)
     service=scope.ctx.fixture('loopback-s3')
-    return Fixture(row,destination='s3',address='127.0.0.1',port=service.port,timeoutSeconds=40)
+    control(scope,stallSeconds=20)
+    return Fixture(row,destination='s3',address='127.0.0.1',port=service.port,timeoutSeconds=60)
 
 
 def incomplete(scope):
@@ -92,12 +93,16 @@ def incomplete(scope):
 
 def clipboard(scope):
     ctx=scope.ctx
+    if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
+        raise RecipeBlocked('clipboard fixture requires a disposable nested guest',issue=682)
     text='putgd synthetic clipboard '+scope.token[:8]
-    command=('wl-copy --type text/plain' if ctx.profile['session']=='wayland' else 'xclip -selection clipboard')
-    reply=ctx.shell('printf %s '+shlex.quote(text)+' | '+command)
-    if reply['returncode']:raise RecipeBlocked('native clipboard owner unavailable',issue=682)
-    # Never read or restore the user's previous clipboard. This is guest-only.
-    return Fixture(text=text,synthetic=True)
+    scope.initialize()
+    path=scope.root+'/clipboard-text'
+    scope.write(path,text.encode())
+    args=['wl-copy','--foreground','--type','text/plain'] if ctx.profile['session']=='wayland' else ['xclip','-quiet','-selection','clipboard','-target','text/plain']
+    code='import os\nf=os.open('+repr(path)+',os.O_RDONLY);os.dup2(f,0)\nos.execvp('+repr(args[0])+','+repr(args)+')'
+    process=scope.launch(['python3','-c',code],name='text-clipboard')
+    return Fixture(text=text,synthetic=True,process=process)
 
 
 def controllers(scope):

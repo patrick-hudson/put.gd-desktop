@@ -1,4 +1,6 @@
 """Lazy publication and truthful running-build release descriptors."""
+from collections.abc import Mapping
+
 from ..api import RecipeBlocked
 from .base import Fixture
 from .uploads import upload
@@ -10,15 +12,21 @@ def notification_upload(scope):
     return LazyUpload(lambda:upload(scope))
 
 
-class LazyUpload(dict):
+class LazyUpload(Mapping):
+    """Explicit read activates publication; introspection/serialization does not."""
     def __init__(self, factory):
-        super().__init__();self.factory=factory;self.loaded=False
+        self.factory=factory
+        self.value=None
     def load(self):
-        if not self.loaded:
-            self.update(self.factory());self.loaded=True
-    def get(self,*args):self.load();return super().get(*args)
-    def __getitem__(self,key):self.load();return super().__getitem__(key)
+        if self.value is None:
+            self.value=self.factory()
+        return self.value
+    def __getitem__(self,key):return self.load()[key]
+    def __iter__(self):return iter(self.load())
+    def __len__(self):return len(self.load())
     def __getattr__(self,key):
+        if key.startswith('__'):
+            raise AttributeError(key)
         try:return self[key]
         except KeyError as error:raise AttributeError(key) from error
 

@@ -96,7 +96,8 @@ print(json.dumps(identity))
         self.python('''import os,signal,time
 from pathlib import Path
 pid=IDENTITY['pid'];p=Path('/proc')/str(pid)
-if p.exists():
+try:
+ if not p.exists():raise ProcessLookupError
  fd=os.pidfd_open(pid)
  try:
   assert p.stat().st_uid==os.getuid()
@@ -107,6 +108,7 @@ if p.exists():
    time.sleep(.1)
   else:signal.pidfd_send_signal(fd,signal.SIGKILL)
  finally:os.close(fd)
+except (ProcessLookupError,FileNotFoundError):pass
 '''.replace('IDENTITY', repr(identity)))
 
     def patch(self, patch):
@@ -120,6 +122,9 @@ if p.exists():
     def restart(self, environment=None, *, before=None):
         """Restart only this private resident; keep the real desktop/portal bus."""
         target = self.ctx.target
+        if environment and not self.values.get('_resident_restore'):
+            self.values['_resident_restore'] = True
+            self.defer('resident environment', lambda: self.restart(), priority=-500)
         self.ctx.call('ui.quit')
         target.started = False
         # The socket must actually disappear before another resident is launched.
@@ -128,7 +133,8 @@ if p.exists():
         if before:
             before()
         env = ' '.join(shlex.quote(k+'='+v) for k,v in (environment or {}).items())
-        command = 'nohup env '+env+' '+shlex.quote(target.app_executable)+' --background > '+shlex.quote(self.root+'/resident.log')+' 2>&1 < /dev/null &'
+        log = self.root+'/resident.log' if environment else target.root+'/app.log'
+        command = 'nohup env '+env+' '+shlex.quote(target.app_executable)+' --background >> '+shlex.quote(log)+' 2>&1 < /dev/null &'
         if self.ctx.shell(command)['returncode']:
             raise RecipeBlocked('cannot restart private fixture resident')
         target.started = True

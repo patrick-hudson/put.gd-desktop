@@ -14,6 +14,9 @@ def pattern(scope):
     # Reuse the established output-pinned cover; add private FIFO controls for
     # freeze/resume/raise. The real desktop, compositor and portal stay intact.
     source=(Path(__file__).resolve().parents[2]/'cover_player.py').read_text()
+    for anchor in ('def on_stdin(channel, condition):', "if command == 'quit':"):
+        if source.count(anchor) != 1:
+            raise RecipeBlocked('cover_player.py no longer matches pattern-control anchors',issue=672)
     source=source.replace('def on_stdin(channel, condition):', 'def on_stdin(channel, condition):\n        from gi.repository import Gst')
     source=source.replace("if command == 'quit':", "if command == 'freeze' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PAUSED)\n        if command == 'resume' and state['pipeline'] is not None:\n            state['pipeline'].set_state(Gst.State.PLAYING)\n        if command == 'raise':\n            window.present()\n        if command == 'quit':")
     scope.write(scope.root+'/cover.py',source.encode())
