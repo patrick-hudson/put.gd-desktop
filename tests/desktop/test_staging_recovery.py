@@ -830,18 +830,23 @@ def stage(run, remote, helper, digest):
     while not (home / remote / 'staging-process.json').exists(): time.sleep(.01)
     print('first', flush=True)
     os.kill(os.getpid(), signal.SIGINT)
+def window():
+    print('second-window', flush=True)
+    # Short sleeps: a SIGINT that arrives after the print but before one long
+    # sleep starts would only be handled when that whole sleep ends.
+    for _ in range(3000): time.sleep(.01)
 orig_write = lab.write_json
 def write_json(path, value):
     if phase == 'receipt' and str(path).endswith('staging-failed.json'):
-        print('second-window', flush=True); time.sleep(30)
+        window()
     return orig_write(path, value)
 def get(*a, **kw):
     if phase == 'get':
-        print('second-window', flush=True); time.sleep(30)
+        window()
 orig_rec = lab.reconcile_staging
 def rec(*a, **kw):
     if phase == 'reconcile':
-        print('second-window', flush=True); time.sleep(30)
+        window()
     return orig_rec(*a, **kw)
 with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), patch.object(lab, 'get', side_effect=get), \
         patch.object(lab, 'stage_install_helper', side_effect=stage), patch.object(lab, 'write_json', side_effect=write_json), \
