@@ -103,7 +103,7 @@ class Watch:
     def __init__(self, scope, consent, log, baseline, offset):
         self.scope, self.ctx, self.consent = scope, scope.ctx, consent
         self.log, self.baseline, self.offset = log, baseline, offset
-        self.clicked, self.dialog = False, None
+        self.clicked, self.dialog, self.refusals = False, None, []
 
     def rows(self):
         result = self.ctx.shell('head -c 1048577 ' + shlex.quote(self.log))
@@ -216,16 +216,17 @@ def drive(watch, request):
     node, reason = _accept_node(ctx, watch, request, window)
     if reason:
         return reason
+    x, y, w, h = node['rect']
+    point = (x + w / 2, y + h / 2)
+    if not shell:
+        fx, fy, fw, fh = window['frame']
+        if not (fx <= point[0] < fx + fw and fy <= point[1] < fy + fh):
+            return 'ScreenCast consent accept button lies outside its dialog frame'
     ctx.frame('screencast-consent-before')
     if shell:
         # Shell-drawn dialog: the shell stage pick proves the node is on top.
         ctx._accessible_pointer(None, 'left', node=node)
     else:
-        x, y, w, h = node['rect']
-        point = (x + w / 2, y + h / 2)
-        fx, fy, fw, fh = window['frame']
-        if not (fx <= point[0] < fx + fw and fy <= point[1] < fy + fh):
-            return 'ScreenCast consent accept button lies outside its dialog frame'
         geometry = {'x': fx, 'y': fy, 'width': fw, 'height': fh, 'pid': request['backend_pid'],
                     'window_id': window['id'], 'coordinate_space': 'logical'}
         # The compositor's own pick at the point must be the dialog window.
@@ -237,7 +238,13 @@ def drive(watch, request):
     watch.clicked, watch.dialog = True, {'backend': request.get('backend_exe'), 'window': window and window['id']}
     ctx.note('screencast consent: clicked ' + repr((consent.get('accept') or {}).get('name', 'Share')) +
              ' in ' + str(request.get('backend_exe')) + ' for this resident\'s request')
-    time.sleep(.5)
+    # Frame the desktop once the dialog has gone (bounded; the portal
+    # Response, not this frame, proves acceptance).
+    until = time.monotonic() + 3
+    while window is not None and time.monotonic() < until:
+        if not any(w['id'] == window['id'] for w in compositor_windows(ctx)['windows']):
+            break
+        time.sleep(.2)
     ctx.frame('screencast-consent-after')
     return None
 
@@ -273,6 +280,10 @@ def await_ready(scope, identity, watch, *, timeout=40):
                 last = 'accept was clicked once but the backend dialog stayed pending'
             else:
                 reason = drive(watch, value)
+                if reason and reason not in watch.refusals:
+                    # Evidence for each distinct pre-input refusal; no input was sent.
+                    watch.refusals.append(reason)
+                    ctx.note('screencast consent not yet driven: ' + reason)
                 last = reason or 'accept clicked; waiting for the portal response'
         elif watch.state()['ours']:
             last = 'this resident\'s ScreenCast Start was sent; no backend dialog request observed yet'

@@ -172,6 +172,12 @@ class Drive(unittest.TestCase):
                 return self.pick
             raise AssertionError(name)
         self.ctx._probe = probe
+        press = self.target.pointer
+        def pointer(x, y, w, h, down=None, button='left', head=0):
+            press(x, y, w, h, down, button, head)
+            if down is False:
+                self.windows = []  # the backend closes its dialog on Share
+        self.target.pointer = pointer
         self.watch = consent.Watch(SimpleNamespace(ctx=self.ctx), POLICY, '/dev/null', baseline={1, 2}, offset=0)
         self.request = impl_start()
     def tearDown(self):
@@ -187,6 +193,7 @@ class Drive(unittest.TestCase):
         self.assertEqual(guard['geometry']['window_id'], 77)
         self.assertEqual(guard['point'], (960.0, 189.0))
         self.assertEqual([f.label for f in self.ctx.frames], ['screencast-consent-before', 'screencast-consent-after'])
+        self.assertEqual(self.windows, [])  # after-frame waited for the dialog to close
         self.assertTrue(self.watch.clicked)
 
     def test_covered_share_button_is_refused_without_input(self):
