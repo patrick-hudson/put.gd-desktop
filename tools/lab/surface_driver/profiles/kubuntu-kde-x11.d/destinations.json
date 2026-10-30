@@ -247,11 +247,11 @@
       },
       "text:Show secret access key": {
         "name": "Show secret access key",
-        "role": "push button"
+        "role": "*"
       },
       "text:Hide secret access key": {
         "name": "Hide secret access key",
-        "role": "push button"
+        "role": "*"
       },
       "text:Unlock saved credentials": {
         "name": "Unlock saved credentials",

@@ -458,6 +458,15 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(len([e for e in ctx.events if e[0] == 'sensitive_control']), 3)
         self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
 
+    def test_native_add_uses_the_core_guard_for_the_fixed_rail(self):
+        from unittest.mock import patch
+        ctx = self.context()
+        ctx.profile['session'] = 'wayland'
+        with patch('tools.lab.surface_driver.recipes.settings_input.click',
+                   side_effect=AssertionError('fixed rail must not scroll the form')):
+            lane._click(ctx, 'addS3Destination')
+        self.assertIn(('click', 'addS3Destination', 'destinations'), ctx.events)
+
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()
         ctx.f['credentials_file'] = '/tmp/foreign-input.json'

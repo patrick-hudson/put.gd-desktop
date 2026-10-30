@@ -169,7 +169,9 @@ def _wheel(ctx, clicks):
 
 def _click(ctx, control, *, window='destinations'):
     options = ctx.profile.get('settings', {})
-    if window == 'destinations' and (ctx.profile.get('session') == 'wayland' or
+    fixed = control in ('destinationList', 'addS3Destination', 'destinationActions',
+                        'makeDefaultDestination', 'reloadDestinationConflict', 'text:Retry saving')
+    if window == 'destinations' and ((ctx.profile.get('session') == 'wayland' and not fixed) or
             (options.get('foreground_script') and control in options.get('live_controls', {}))):
         from .settings_input import click
         return click(ctx, control)
