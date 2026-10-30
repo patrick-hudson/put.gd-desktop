@@ -72,7 +72,7 @@ print(json.dumps({'result': result, 'queries': queries}))
         from unittest.mock import patch
         job = 'install-' + 'a' * 32
         unit = 'putgd-supervisor-' + job + '.scope'
-        path = '/user.slice/user-1000.slice/user@1000.service/app.slice/' + unit
+        path = '/system.slice/' + unit
         record = {'tracking': 'cgroup-v2', 'cgroup': {'unit': unit, 'path': path}}
         def read(target, *a, **kw):
             return json.dumps(record) if target.name == 'supervisor-process.json' else '0::' + path
@@ -83,6 +83,13 @@ print(json.dumps({'result': result, 'queries': queries}))
             record['cgroup']['path'] += '/escaped'
             with self.assertRaisesRegex(ValueError, 'left its dedicated cgroup'):
                 helper.verify_scope()
+        record['cgroup']['path'] = '/user.slice/user-1000.slice/user@1000.service/app.slice/' + unit
+        with patch.object(Path, 'cwd', return_value=Path('/private/' + job)), patch.object(Path, 'read_text',
+                lambda target, *a, **kw: json.dumps(record) if target.name == 'supervisor-process.json'
+                else '0::' + record['cgroup']['path']):
+            helper.verify_scope()  # A historical optional scope record remains readable.
+            with self.assertRaisesRegex(ValueError, 'left its dedicated cgroup'):
+                helper.verify_scope(required=True)
         with patch.object(Path, 'read_text', side_effect=FileNotFoundError()):
             helper.verify_scope()  # Legacy callers remain supported.
             with self.assertRaisesRegex(ValueError, 'Missing supervisor scope identity'):

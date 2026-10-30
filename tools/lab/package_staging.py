@@ -45,8 +45,8 @@ def scope_identity(unit):
     root = unified_mount()
     paths = [line[3:] for line in Path('/proc/self/cgroup').read_text().splitlines()
              if line.startswith('0::')]
-    if len(paths) != 1 or Path(paths[0]).name != unit:
-        raise ValueError('Staging did not enter its dedicated scope')
+    if len(paths) != 1 or paths[0] != '/system.slice/' + unit:
+        raise ValueError('Staging did not enter its dedicated system scope')
     directory = CGROUP_ROOT / paths[0].lstrip('/')
     info = directory.stat()
     if not populated(directory):
@@ -56,34 +56,74 @@ def scope_identity(unit):
             'bootId': BOOT_ID.read_text().strip()}
 
 
-def launch(source, directory, script, supervisor=False):
-    """Choose once, before work. A failed scope launch is never retried unscoped."""
-    environment = {**os.environ, 'XDG_RUNTIME_DIR': f'/run/user/{os.getuid()}',
-                   'DBUS_SESSION_BUS_ADDRESS': f'unix:path=/run/user/{os.getuid()}/bus'}
-    reason = 'cgroup v2 or the systemd user manager is unavailable'
+def system_scope_tools():
+    """Probe each prerequisite without creating a unit or relying on a login."""
     try:
         unified_mount()
-        available = shutil.which('systemd-run') and subprocess.run(
-            ['systemctl', '--user', 'show-environment'], env=environment,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5).returncode == 0
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        available = False
+    except (OSError, ValueError):
+        return None, 'cgroup v2 mount at /sys/fs/cgroup is unavailable'
+    paths = {}
+    for name in ('systemd-run', 'systemctl', 'sudo', 'setpriv'):
+        paths[name] = shutil.which(name)
+        if not paths[name]:
+            return None, name + ' executable is unavailable'
+    probes = [
+        ([paths['systemd-run'], '--version'], 'systemd-run version probe'),
+        ([paths['systemctl'], '--system', 'show', '--property=Version', '--value'],
+         'system manager bus probe'),
+        ([paths['sudo'], '-n', '-l', '--', paths['systemd-run']],
+         'passwordless sudo for systemd-run probe'),
+    ]
+    for arguments, prerequisite in probes:
+        try:
+            result = subprocess.run(arguments, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                    text=True, timeout=5)
+        except subprocess.TimeoutExpired:
+            return None, prerequisite + ' timed out'
+        except OSError:
+            return None, prerequisite + ' could not execute'
+        if result.returncode:
+            return None, prerequisite + ' failed'
+        if arguments[-1] == '--version':
+            version = re.match(r'systemd ([0-9]+)\b', result.stdout)
+            if not version:
+                return None, 'systemd-run version could not be established'
+            if int(version[1]) < 254:
+                return None, 'systemd-run version ' + version[1] + ' is below required 254'
+    return paths, None
+
+
+def launch(source, directory, script, supervisor=False):
+    """Choose once, before work. A failed scope launch is never retried unscoped."""
+    paths, reason = system_scope_tools()
     arguments = [sys.executable, '-c', source, 'supervise' if supervisor else 'run', directory, script]
-    if available:
+    tracking = {'tracking': 'session', 'fallbackReason': reason}
+    if paths:
         job = Path(directory).name
         if not re.fullmatch(r'install-[0-9a-f]{32}', job):
             raise ValueError('Scope requires an install job ID')
         unit = ('putgd-supervisor-' if supervisor else 'putgd-staging-') + job + '.scope'
         if supervisor:
-            # Require the scope record even if it disappears before sudo execs.
-            # This is the script argument, not the subsequently appended unit.
             arguments[5] += ' --require-scope'
         arguments += ['--scope', unit]
-        arguments = ['systemd-run', '--user', '--scope', '--quiet', '--property=Delegate=yes',
-                     '--unit=' + unit, '--expand-environment=no', '--', *arguments]
+        # PID 1 owns this scope. A user@UID.service stop after logout must not
+        # kill the detached watchdog. setpriv uses no PAM session and drops
+        # back to the caller before executing any wrapper/staging code.
+        import pwd
+        user = pwd.getpwuid(os.getuid())
+        arguments = [paths['sudo'], '-n', '--', paths['systemd-run'], '--system', '--scope',
+                     '--quiet', '--slice=system.slice', '--property=Delegate=yes',
+                     '--unit=' + unit, '--expand-environment=no', '--',
+                     paths['setpriv'], '--reuid=' + str(os.getuid()), '--regid=' + str(os.getgid()),
+                     '--init-groups', '--', '/usr/bin/env', 'HOME=' + user.pw_dir,
+                     'USER=' + user.pw_name, 'LOGNAME=' + user.pw_name,
+                     'PATH=' + os.environ.get('PATH', os.defpath), *arguments]
+        tracking = {'tracking': 'cgroup-v2', 'manager': 'system', 'unit': unit}
     else:
         arguments += ['--session-fallback', reason]
-    os.execvpe(arguments[0], arguments, environment)
+        print('putgd-staging-fallback ' + json.dumps(tracking), flush=True)
+    save(('supervisor' if supervisor else 'staging') + '-tracking.json', tracking)
+    os.execvpe(arguments[0], arguments, os.environ.copy())
 
 
 def run(script, unit=None, fallback='direct session-only invocation', supervisor=False):
@@ -139,7 +179,7 @@ def cgroup_status(identity):
         unit = group['unit']
         if (identity.get('tracking') != 'cgroup-v2' or not isinstance(path, str)
                 or not re.fullmatch(r'putgd-staging-install-[0-9a-f]{32}\.scope', unit)
-                or not path.startswith('/user.slice/') or Path(path).name != unit
+                or not path.startswith(('/system.slice/', '/user.slice/')) or Path(path).name != unit
                 or any(part in ('', '.', '..') for part in path.split('/')[1:])
                 or any(type(group[k]) is not int or group[k] <= 0
                        for k in ('device', 'inode', 'mountDevice', 'mountInode'))):

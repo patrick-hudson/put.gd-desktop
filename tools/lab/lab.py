@@ -1678,6 +1678,13 @@ def staging_invocation(remote, script, supervisor=False):
             + shlex.quote(script) + ' ' + shlex.quote(lifetime))
 
 
+def report_staging_tracking(tracking, phase):
+    if tracking.get('tracking') == 'session':
+        reason = tracking.get('fallbackReason', 'tracking prerequisite is unconfirmed')
+        print(f'Guest {phase} uses session-only tracking: {reason}. Session-scan limits apply.',
+              file=sys.stderr)
+
+
 def stage_install_helper(run, remote, helper, digest):
     # Old immutable goldens grant apt-get, not this new helper. Use that existing
     # authority only in the disposable overlay. Staging uses no repositories
@@ -1721,6 +1728,8 @@ def stage_install_helper(run, remote, helper, digest):
                       'staging_pid=$!\nwait "$staging_pid"\ncode=$?\n'
                       f'cat ~/{remote}/staging-output.log\nexit "$code"\n')
     for line in output.splitlines():
+        if line.startswith('putgd-staging-fallback '):
+            report_staging_tracking(json.loads(line.split(' ', 1)[1]), 'staging')
         if line.startswith('putgd-staging-apt-lock '):
             holder = json.loads(line.split(' ', 1)[1])
             raise LabError(f'Guest helper staging blocked by apt lists lock /var/lib/apt/lists/lock: '
@@ -1950,10 +1959,17 @@ def install_package_fenced(run, deb, timeout, recovery):
     # The detached guest watchdog survives a controller/SSH timeout. Never start
     # a replacement. Its own pidfds bound package recovery independently of SSH.
     startup_error = None
+    tracking_reported = False
     startup_deadline = time.monotonic() + 15
     deadline = time.monotonic() + timeout + recovery + 120
     while True:
         try:
+            if not tracking_reported:
+                tracking = ssh(run, f'if test -f ~/{remote}/supervisor-tracking.json; then '
+                               f'cat ~/{remote}/supervisor-tracking.json; fi\n', timeout=10)
+                if tracking.strip():
+                    report_staging_tracking(json.loads(tracking), 'supervisor')
+                    tracking_reported = True
             output = ssh(run, f'if test -f ~/{remote}/result.json; then cat ~/{remote}/result.json; '
                          f'elif ! test -f ~/{remote}/progress.json; then '
                          "printf '%s\\n' '{\"startupPending\":true}'; fi\n", timeout=10)
@@ -1981,7 +1997,8 @@ def install_package_fenced(run, deb, timeout, recovery):
     write_json(evidence / 'result.json', report)
     try:
         for name in ('apt.log', 'progress.json', 'supervisor.log', 'staging.log',
-                     'staging-process.json', 'staging-result.json', 'staging-output.log', 'supervisor-process.json'):
+                     'staging-process.json', 'staging-result.json', 'staging-output.log', 'supervisor-process.json',
+                     'staging-tracking.json', 'supervisor-tracking.json'):
             get(run, remote + '/' + name, evidence / name)
         if not report.get('ok'):
             raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '

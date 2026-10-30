@@ -434,6 +434,13 @@ class LabContracts(unittest.TestCase):
             self.assertNotIn('authorized_keys', stage)
             self.assertTrue(lab.read_json(Path(result['installEvidence']) / 'helper.json')['verified'])
 
+    def test_install_fallback_is_printed_with_the_failed_prerequisite(self):
+        with contextlib.redirect_stderr(io.StringIO()) as output:
+            lab.report_staging_tracking({'tracking': 'session', 'fallbackReason':
+                'passwordless sudo for systemd-run probe failed'}, 'supervisor')
+        self.assertIn('supervisor uses session-only tracking', output.getvalue())
+        self.assertIn('passwordless sudo for systemd-run probe failed', output.getvalue())
+
     def test_install_staging_lock_error_names_holder_without_running_hook(self):
         self.check_install_staging_lock_error(
             'E: Could not get lock /var/lib/apt/lists/lock. It is held by process 12345 (apt-get)',

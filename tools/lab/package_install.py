@@ -184,7 +184,7 @@ def become_subreaper():
 
 
 def verify_scope(required=False):
-    # sudo must preserve the dedicated user scope. Refuse before admission if a
+    # sudo must preserve the dedicated system scope. Refuse before admission if a
     # guest PAM policy moved root elsewhere; never migrate a root process into
     # a caller-selected cgroup. Legacy/direct callers retain session tracking.
     try:
@@ -200,6 +200,7 @@ def verify_scope(required=False):
     group = identity['cgroup']
     unit = 'putgd-supervisor-' + Path.cwd().name + '.scope'
     if (identity.get('tracking') != 'cgroup-v2' or group['unit'] != unit
+            or (required and group['path'] != '/system.slice/' + unit)
             or Path(group['path']).name != unit
             or '0::' + group['path'] not in Path('/proc/self/cgroup').read_text().splitlines()):
         raise ValueError('Root supervisor left its dedicated cgroup')

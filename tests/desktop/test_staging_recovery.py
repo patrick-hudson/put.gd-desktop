@@ -979,27 +979,94 @@ class CgroupStagingContracts(unittest.TestCase):
             os.fchdir(old)
             os.close(old)
 
-    def test_launch_uses_user_scope_and_never_retries_failed_exec(self):
+    def test_logout_cannot_stop_the_scoped_watchdog_and_exec_is_not_retried(self):
+        paths = {name: '/usr/bin/' + name for name in ('sudo', 'systemd-run', 'systemctl', 'setpriv')}
         for available, supervisor in ((True, False), (True, True), (False, False), (False, True)):
-            with self.subTest(available=available, supervisor=supervisor), patch.object(self.staging.shutil, 'which', return_value='/bin/systemd-run'), \
-                    patch.object(self.staging.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0 if available else 1)), \
+            with self.subTest(available=available, supervisor=supervisor), \
+                    patch.object(self.staging, 'system_scope_tools', return_value=(paths, None) if available else
+                                 (None, 'passwordless sudo for systemd-run probe failed')), \
+                    patch.object(self.staging, 'save') as save, \
                     patch.object(self.staging.os, 'execvpe', side_effect=OSError('failed exec')) as execute:
                 with self.assertRaises(OSError):
                     self.staging.launch('source', '/private/' + JOB, 'synthetic', supervisor=supervisor)
                 self.assertEqual(execute.call_count, 1)
                 arguments, environment = execute.call_args.args[1:]
                 if available:
-                    self.assertEqual(arguments[:3], ['systemd-run', '--user', '--scope'])
+                    # Fake logind teardown kills every unit owned by the user
+                    # manager. The watchdog must remain owned by PID 1 instead.
+                    manager = 'user' if '--user' in arguments else 'system' if '--system' in arguments else None
+                    user_manager_alive = False
+                    watchdog_alive = manager == 'system' or user_manager_alive
+                    self.assertTrue(watchdog_alive, 'logout killed the detached watchdog')
+                    self.assertEqual(arguments[:4], ['/usr/bin/sudo', '-n', '--', '/usr/bin/systemd-run'])
+                    self.assertIn('--slice=system.slice', arguments)
                     self.assertIn('--property=Delegate=yes', arguments)
-                    self.assertIn('--scope', arguments[8:])
-                    command = arguments[arguments.index('--') + 1:]
+                    self.assertIn('--reuid=' + str(os.getuid()), arguments)
+                    self.assertIn('--regid=' + str(os.getgid()), arguments)
+                    self.assertIn('--init-groups', arguments)
+                    self.assertLess(arguments.index('/usr/bin/setpriv'), arguments.index('source'))
+                    command = arguments[arguments.index(sys.executable):]
                     self.assertEqual(command[5], 'synthetic --require-scope' if supervisor else 'synthetic')
                     self.assertTrue(command[-1].endswith('.scope'))
                     self.assertNotIn('require-scope', command[-1])
+                    self.assertEqual(save.call_args.args[1]['manager'], 'system')
                 else:
                     self.assertIn('--session-fallback', arguments)
                     self.assertEqual(arguments[5], 'synthetic')
-                self.assertEqual(environment['XDG_RUNTIME_DIR'], '/run/user/' + str(os.getuid()))
+                    self.assertEqual(save.call_args.args[1]['fallbackReason'],
+                                     'passwordless sudo for systemd-run probe failed')
+                self.assertNotIn('XDG_RUNTIME_DIR', {k:v for k,v in environment.items() if k not in os.environ})
+
+    def test_specific_prerequisite_failures_and_old_systemd_fall_back(self):
+        import io
+        from contextlib import redirect_stdout
+        paths = lambda name: '/usr/bin/' + name
+        def version(value):
+            return subprocess.CompletedProcess([], 0, 'systemd ' + value + ' (test)\n')
+        cases = [
+            ('cgroup', 'cgroup v2 mount', None),
+            ('executable', 'setpriv executable', None),
+            ('version', 'version 253 is below required 254', [version('253')]),
+            ('malformed', 'version could not be established', [subprocess.CompletedProcess([], 0, '')]),
+            ('manager', 'system manager bus probe failed', [version('255'), subprocess.CompletedProcess([], 1, '')]),
+            ('sudo', 'passwordless sudo for systemd-run probe failed',
+             [version('255'), subprocess.CompletedProcess([], 0, ''), subprocess.CompletedProcess([], 1, '')]),
+            ('timeout', 'version probe timed out', subprocess.TimeoutExpired('version', 5)),
+        ]
+        for case, reason, replies in cases:
+            with self.subTest(case=case), patch.object(self.staging, 'unified_mount',
+                    side_effect=ValueError() if case == 'cgroup' else None), \
+                    patch.object(self.staging.shutil, 'which', side_effect=lambda name:
+                                 None if case == 'executable' and name == 'setpriv' else paths(name)), \
+                    patch.object(self.staging.subprocess, 'run', side_effect=replies) as probe:
+                tools, actual = self.staging.system_scope_tools()
+                self.assertIsNone(tools)
+                self.assertIn(reason, actual)
+        for supported in ('254', '259'):
+            with patch.object(self.staging, 'unified_mount'), patch.object(self.staging.shutil, 'which', side_effect=paths), \
+                    patch.object(self.staging.subprocess, 'run', side_effect=[version(supported),
+                        subprocess.CompletedProcess([], 0, ''), subprocess.CompletedProcess([], 0, '')]) as probes:
+                tools, reason = self.staging.system_scope_tools()
+                self.assertIsNotNone(tools)
+                self.assertIsNone(reason)
+                self.assertTrue(all('--user' not in call.args[0] for call in probes.call_args_list))
+        with patch.object(self.staging, 'system_scope_tools', return_value=(None, 'systemd-run executable is unavailable')), \
+                patch.object(self.staging, 'save'), patch.object(self.staging.os, 'execvpe', side_effect=OSError()), \
+                redirect_stdout(io.StringIO()) as output:
+            with self.assertRaises(OSError):self.staging.launch('source', '/private/' + JOB, 'script')
+            self.assertIn('putgd-staging-fallback', output.getvalue())
+            self.assertIn('systemd-run executable is unavailable', output.getvalue())
+
+    def test_system_scope_path_and_legacy_user_scope_metadata_both_remain_guarded(self):
+        old = self.group
+        target = self.mount / 'system.slice' / self.group.name
+        target.parent.mkdir()
+        old.rename(target)
+        self.group = target
+        self.identity['cgroup']['path'] = '/system.slice/' + target.name
+        self.assertIs(self.status()['cgroupPopulated'], True)
+        (target/'cgroup.events').write_text('populated 0')
+        self.assertIs(self.status()['cgroupPopulated'], False)
 
 
 if __name__ == '__main__':
