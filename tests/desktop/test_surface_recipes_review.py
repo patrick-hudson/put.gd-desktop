@@ -121,6 +121,11 @@ class FakeContext(Context):
     def click(self, control, window, button='left', offset=None):
         self.trace.append(('click', control, window))
         self.last_click = control
+        control = {'text:Add mask':'addMask', 'text:Masks':'masks',
+                   'text:Mask options':'maskOptions', 'text:Play':'play',
+                   'text:Playback speed':'speed', 'text:Set trim start at playhead':'text:Start here',
+                   'text:Reset trim':'text:Reset', 'text:Format tips':'formatAdvice',
+                   'text:Maximize':'windowMaximize', 'text:Restore':'windowMaximize'}.get(control, control)
         if control == 'text:Output format':
             control = 'format'
         if not self.inputs_work:
@@ -202,6 +207,9 @@ class FakeContext(Context):
         self.state['timeline']['lanes'] = count + 1
         self.state['timeline']['firstLane'] = max(0, count-1)
 
+    def click_accessible(self, query, button='left'):
+        self.trace.append(('click_accessible', query, button))
+
     def click_at(self, x, y, button='left'):
         self.trace.append(('click_at', x, y))
         self.state['playheadUs'] = max(0, min(6_000_000, (x-220)/720*6_000_000))
@@ -234,7 +242,7 @@ class FakeContext(Context):
         self.trace.append(('accessible', query))
         if query.get('window') == 'review':
             return []
-        return [{'name': 'Isolated local copies', 'popup': {'role':'menu'}}]
+        return [{'name': 'Destination: local-test', 'popup': {'role':'menu'}}]
 
 
 class ReviewRecipes(unittest.TestCase):
@@ -321,11 +329,17 @@ class ReviewRecipes(unittest.TestCase):
         self.assertEqual(len(ctx.info['edit']['masks']), 5)
 
     def test_catalog_named_format_and_fallback(self):
-        for controls, selector in [([{'name': 'format'}], 'format'), ([], 'text:Output format')]:
+        for controls, selector in [([{'name': 'format'}], 'text:Output format'), ([], 'text:Output format')]:
             ctx = FakeContext()
             ctx.fixture_data['review-controls']['controls'] = controls
             review._choose_format(ctx, 'recording-id', 'mp4', 'h265')
             self.assertIn(('click', selector, 'review'), ctx.trace)
+
+    def test_playback_targets_accessible_names_instead_of_tooltips(self):
+        ctx = FakeContext()
+        review.playback(ctx)
+        self.assertIn(('click', 'text:Playback speed', 'review'), ctx.trace)
+        self.assertIn(('click', 'text:Play', 'review'), ctx.trace)
 
     def test_unavailable_codec_blocked_not_passed(self):
         ctx = FakeContext()
@@ -525,6 +539,8 @@ class ReviewRecipes(unittest.TestCase):
         self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
         self.assertEqual(ctx.frames[-1]['reference'], '01-history-list')
         self.assertIn(('accessible', {'owned':True,'visible':True,'showing':True}), ctx.trace)
+        self.assertIn(('click_accessible', {'owned':True,'window':'Review*','role':'push button',
+                                          'name':'local-test · *','visible':True,'showing':True}, 'left'), ctx.trace)
 
     def test_upload_does_not_accept_an_unrelated_destination_label(self):
         ctx = FakeContext()

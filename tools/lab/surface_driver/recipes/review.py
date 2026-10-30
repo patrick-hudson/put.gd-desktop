@@ -76,7 +76,7 @@ def _video(ctx, rid, fx=.5, fy=.5):
 
 
 def _arm(ctx, rid, kind='solid'):
-    ctx.click('addMask', window='review')
+    ctx.click('text:Add mask', window='review')
     # Menu order is defined by ReviewWindow and recorded in 31d-review-add-mask-menu.
     ctx.keys('Home', *(['Down'] if kind == 'blur' else []), 'Return')
     ctx.wait(lambda: _state(ctx, rid)['armed'] == kind, 'mask tool is armed')
@@ -137,12 +137,10 @@ def _select_mask(ctx, rid, mask):
 
 
 def _choose_format(ctx, rid, fmt, codec=''):
-    # Prefer the stable name added by fix/surface-objectnames. For older builds
-    # use the combo's accessible name, which differs from its selected item.
-    controls = ctx.fixture('review-controls')['controls']
-    named = next((c for c in controls if c.get('name') == 'format'), None)
-    selector = 'format' if named else 'text:Output format'
-    ctx.click(selector, window='review')
+    # Qt 6.4 does not export objectName, and the catalog's selected item is
+    # different from the combo's live accessible name. This name is stable on
+    # both supported Qt versions and does not depend on the selected format.
+    ctx.click('text:Output format', window='review')
     caps = ctx.call('recording.capabilities')
     choices = [(f, c) for f in caps['formats'] for c in (caps['codecs'].get(f) or [''])]
     if (fmt, codec) not in choices:
@@ -290,11 +288,11 @@ def _export(ctx, rid, name='review-check'):
 @recipe('review.play', 'review.speed', needs=('recording',))
 def playback(ctx):
     rid = _open(ctx)
-    ctx.click('speed', window='review')
+    ctx.click('text:Playback speed', window='review')
     ctx.keys('Home', 'Down', 'Down', 'Return')
     ctx.wait(lambda: _state(ctx, rid)['speed'] == 2, '2x playback selected')
     at = _state(ctx, rid)['playheadUs']
-    ctx.click('play', window='review')
+    ctx.click('text:Play', window='review')
     ctx.wait(lambda: (s := _state(ctx, rid))['playing'] and s['playheadUs'] > at, 'playhead advances')
     ctx.keys('Space')
     ctx.wait(lambda: not _state(ctx, rid)['playing'], 'Space pauses playback')
@@ -317,7 +315,7 @@ def trim(ctx):
     info = _changed(ctx, rid, info['edit']['revision'])
     ctx.expect(info['edit']['trimEnd'] < info['durationUs'], 'right trim handle moves end')
     _seek(ctx, rid, .25)
-    ctx.click('text:Start here', window='review')
+    ctx.click('text:Set trim start at playhead', window='review')
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimStart'] > info['edit']['trimStart'], 'Start here trims')
     _seek(ctx, rid, .75)
     ctx.keys('O')
@@ -336,7 +334,7 @@ def trim(ctx):
     ctx.keys('End')
     end = _state(ctx, rid)
     ctx.expect(abs(end['playheadUs'] - end['trim']['end']) < 100_000, 'End jumps to trim end')
-    ctx.click('text:Reset', window='review')
+    ctx.click('text:Reset trim', window='review')
     ctx.wait(lambda: (s := _inspect(ctx, rid))['edit']['trimStart'] == 0 and s['edit']['trimEnd'] is None,
              'Reset restores whole clip')
     _frame(ctx, 'after')
@@ -387,7 +385,7 @@ def masks(ctx):
     previous_start = _inspect(ctx, rid)['edit']['masks'][0]['start']
     ctx.drag(_point(ctx, s, bar, 0, .5), _point(ctx, s, bar, .15, .5))
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['start'] > previous_start, 'mask bar handle retimes')
-    ctx.click('masks', window='review')
+    ctx.click('text:Masks', window='review')
     ctx.keys('Home', 'Return')
     ctx.expect(_state(ctx, rid)['selectedMaskId'] == mask['id'], 'mask chooser selects mask')
     _export(ctx, rid)
@@ -404,7 +402,7 @@ def masks(ctx):
 def mask_options(ctx):
     rid = _open(ctx)
     mask = _add(ctx, rid, 'blur')
-    ctx.click('maskOptions', window='review')
+    ctx.click('text:Mask options', window='review')
     ctx.wait(lambda: _state(ctx, rid)['maskOptions']['open'], 'mask options menu opens')
     _frame(ctx, 'blur-options', '31i-review-mask-options', 'maskOptionsMenu')
     ctx.click('class:QSpinBox', window='maskOptionsMenu')
@@ -497,12 +495,14 @@ def upload(ctx):
         ctx.blocked('Boat forbids S3 credentials and Proton sessions; use a configured builder destination')
     rid = _open(ctx)
     destination = ctx.fixture('destination')
-    ctx.click('uploadDestinationMenu', window='review')
+    destination_name = destination['id'] if ctx.destination == 'local' else destination['label']
+    ctx.click_accessible({'owned': True, 'window': 'Review*', 'role': 'push button',
+                          'name': destination_name + ' · *', 'visible': True, 'showing': True})
     # This menu describes the immutable destination snapshot, rather than selecting another one.
     entries = [e for e in ctx.accessible({'owned': True, 'visible': True, 'showing': True}) if e.get('popup')]
     if not entries:
         ctx.blocked('Review destination popup is not exposed by the live accessibility resolver (#672)', issue=672)
-    ctx.expect(any(destination['label'] in e.get('name', '') for e in entries), 'destination menu names configured destination')
+    ctx.expect(any(destination_name in e.get('name', '') for e in entries), 'destination menu names configured destination')
     ctx.keys('Esc')
     before = _inspect(ctx, rid)
     ctx.click('upload', window='review')
@@ -546,9 +546,9 @@ def discard(ctx):
 @recipe('review.window-close', needs=('recording',))
 def window_close(ctx):
     rid = _open(ctx)
-    ctx.click('windowMaximize', window='review')
+    ctx.click('text:Maximize', window='review')
     ctx.expect(_state(ctx, rid)['visible'], 'maximized review remains visible')
-    ctx.click('windowMaximize', window='review')
+    ctx.click('text:Restore', window='review')
     ctx.click('windowMinimize', window='review')
     ctx.call('recording.raise', {'id': rid})
     ctx.wait(lambda: _state(ctx, rid)['visible'], 'review restored after minimize')
@@ -563,14 +563,14 @@ def window_close(ctx):
 @recipe('review.advice', needs=('recording', 'review-controls', 'recording-export-failure'))
 def advice(ctx):
     rid = _open(ctx, 'recording-export-failure')
-    ctx.click('errorDetails', window='review')
+    ctx.click('text:Details…', window='review')
     ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'genuine export failure opens details')
     ctx.expect(bool(_state(ctx, rid)['adviceDialog']['text']), 'export failure advice contains actual details')
     _frame(ctx, 'export-advice', '68-review-error-details', 'confirmAction')
     ctx.focus('confirmAction')
     ctx.keys('Esc')
     _choose_format(ctx, rid, 'mp4', 'h265')
-    ctx.click('formatAdvice', window='review')
+    ctx.click('text:Format tips', window='review')
     ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'Format tips opens')
     ctx.expect(bool(_state(ctx, rid)['adviceDialog']['text']), 'Format tips contains compatibility/audio advice')
     _frame(ctx, 'after', '68-review-error-details', 'confirmAction')
@@ -587,7 +587,7 @@ def stop_notice(ctx):
     if info.get('stopReason') != 'budget':
         ctx.blocked('Needs a genuine byte-budget stopped motion recording, not a synthetic notice')
     ctx.expect(bool(_state(ctx, rid)['notice']) and bool(info.get('stopDetails')), 'budget notice explains actual stop')
-    ctx.click('play', window='review')
+    ctx.click('text:Play', window='review')
     ctx.keys('Space')
     _frame(ctx, 'after')
 
