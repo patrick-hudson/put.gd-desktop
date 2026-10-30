@@ -103,7 +103,7 @@ def _wait_window(ctx, window):
         ctx.blocked('No unambiguous live geometry after waiting for ' + window + '.', issue=820)
 
 
-def _click_window_node(ctx, window, query):
+def _window_node(ctx, window, query):
     """Click one app child through its bounds and its own window's guard."""
     box = _wait_window(ctx, window)
     query = dict(query)
@@ -125,9 +125,39 @@ def _click_window_node(ctx, window, query):
     scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
     point = tuple(round((value - box.get(origin, 0)) * scale)
                   for value, origin in zip(point, ('screen_x', 'screen_y')))
+    return box, node, point
+
+
+def _click_window_node(ctx, window, query):
+    box, node, point = _window_node(ctx, window, query)
     ctx.focus(window, raise_window=False)
     ctx.click_at(*point, head=box.get('head', 0))
     return node
+
+
+def _hover_history_node(ctx, query):
+    box, node, point = _window_node(ctx, 'history', query)
+    ctx.focus('history', raise_window=False)
+    ctx.hover(*point, head=box.get('head', 0))
+    return node
+
+
+def _double_history_row(ctx):
+    box = ctx.geometry('history')
+    lists = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
+                            'name': 'History items and upload activity'})
+    if len(lists) != 1 or not lists[0].get('rect'):
+        ctx.blocked('Double-click requires one live History list before resolving its unique row.', issue=820)
+    rows = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
+                           'role': 'list item', 'within': lists[0]['rect']})
+    if len(rows) != 1 or not rows[0].get('name'):
+        ctx.blocked('Double-click requires a uniquely searched native row with its exact accessible name.', issue=820)
+    previous = ctx.profile.get('live_controls', {})
+    ctx.profile['live_controls'] = {**previous, 'historySearchedRow': {'name': rows[0]['name'], 'role': 'list item'}}
+    try:
+        ctx.double_click('historySearchedRow', window='history')
+    finally:
+        ctx.profile['live_controls'] = previous
 
 
 def _click_history_node(ctx, query):
@@ -484,7 +514,7 @@ def delete_remote(ctx):
     _frame(ctx, 'after', '48-history-deletion-recovery')
 
 
-@recipe('history.more-menu', 'confirm.history-clear', needs=('history_rows',))
+@recipe('history.more-menu', 'confirm.history-clear', needs=('history_rows',), timeout=240)
 def clear_history(ctx):
     _open(ctx)
     before = _state(ctx)['total']
@@ -855,15 +885,16 @@ def escape_details(ctx):
 
 
 
-@recipe('shell.autosave-status', needs=('settings-save-failure',))
+@recipe('shell.autosave-status', needs=('settings-save-failure',), timeout=240)
 def autosave_status(ctx):
     fault = ctx.fixture('settings-save-failure')
     ctx.view('ui.show', {'view': 'settings'})
-    ctx.click('settingsSection0', window='settings')
+    _click_history_node(ctx, {'name': 'General', 'role': 'list item'})
+    ctx.wait(lambda: _result(ctx.call('ui.viewState'))['settings']['section'] == 0, 'General settings selected')
     before = _result(ctx.call('settings.get'))
     enabled = before['document']['preferences']['notifications']
     _frame(ctx, 'before', None)
-    ctx.click('notifications', window='settings')
+    _click_history_node(ctx, {'name': 'Show desktop notifications', 'role': 'check box'})
     def refused():
         rows = _nodes(ctx, name='Settings save status')
         return rows[0] if len(rows) == 1 and rows[0].get('description') else None
@@ -872,7 +903,7 @@ def autosave_status(ctx):
                'refused write preserves the accepted configuration')
     ctx.frame('changes-not-saved')
     fault.restore()
-    ctx.click('retryAutosave', window='settings')
+    _click_history_node(ctx, {'name': 'Retry saving', 'role': 'push button'})
     ctx.wait(lambda: _result(ctx.call('settings.get'))['document']['preferences']['notifications'] != enabled,
              'real Retry saving commits the pending edit')
     ctx.wait(lambda: all(not n.get('description') for n in _nodes(ctx, name='Settings save status')),
@@ -895,7 +926,7 @@ def command_tooltips(ctx):
         for action, label in labels.items():
             query = {'owned': True, 'visible': True, 'showing': True,
                      'pid': ctx.geometry('history')['pid'], 'name': label, 'role': 'push button'}
-            ctx.hover_accessible(query)
+            _hover_history_node(ctx, {'name': label, 'role': 'push button'})
             def tooltip():
                 rows = _nodes(ctx, role='tool tip')
                 texts = [n.get('text') or n.get('name', '') for n in rows]
@@ -1015,7 +1046,7 @@ def navigation(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('shell.app-menu-quit', needs=('resident-lifecycle',))
+@recipe('shell.app-menu-quit', needs=('resident-lifecycle',), timeout=240)
 def quit_application(ctx):
     lifecycle = ctx.fixture('resident-lifecycle')
     _open(ctx)
@@ -1031,7 +1062,7 @@ def quit_application(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('shell.output-summary', needs=('settings-action-routes',))
+@recipe('shell.output-summary', needs=('settings-action-routes',), timeout=240)
 def output_summary(ctx):
     routes = ctx.fixture('settings-action-routes')
     routes.add('clipboard', routes.profile_ids[1])
@@ -1078,7 +1109,7 @@ def first_launch(ctx):
     _frame(ctx, 'after', None)
 
 
-@recipe('history.list', needs=('history_rows',))
+@recipe('history.list', needs=('history_rows',), timeout=240)
 def list_gestures(ctx):
     data = ctx.fixture('history_rows')
     row = _row(ctx, 'history_rows')
@@ -1091,7 +1122,7 @@ def list_gestures(ctx):
     ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape closes Enter details')
     query = {'owned': True, 'visible': True, 'showing': True,
              'pid': ctx.geometry('history')['pid'], 'role': 'list item'}
-    ctx.double_click_accessible(query)
+    _double_history_row(ctx)
     ctx.wait(lambda: _state(ctx)['detailsOpen'], 'double-click opens exact selected delegate')
     ctx.expect(_state(ctx)['selectedIds'] == [row['id']], 'double-click preserves receipt identity')
     ctx.keys('Esc')
@@ -1105,7 +1136,14 @@ def list_gestures(ctx):
     _search(ctx, row['name'])
     _focus_items(ctx)
     ctx.keys('Home')
-    ctx.click_accessible(query, button='right')
+    previous = ctx.profile.get('live_controls', {})
+    native = ctx.accessible(query)
+    ctx.expect(len(native) == 1 and bool(native[0].get('name')), 'one searched context row')
+    ctx.profile['live_controls'] = {**previous, 'historySearchedContextRow': {'name': native[0]['name'], 'role': 'list item'}}
+    try:
+        ctx.click('historySearchedContextRow', window='history', button='right')
+    finally:
+        ctx.profile['live_controls'] = previous
     _wait_menu(ctx, 'Copy details')
     ctx.frame('context-menu')
     copied = _copied_row_details(ctx, row)

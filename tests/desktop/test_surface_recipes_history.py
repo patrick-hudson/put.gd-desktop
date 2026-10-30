@@ -593,6 +593,24 @@ class HistoryRecipeTests(unittest.TestCase):
         for entry in LANE:
             self.assertTrue(set(entry.needs) <= set(FACTORIES), entry.name)
 
+    def test_dynamic_row_alias_is_restored_when_a_double_click_is_refused(self):
+        class RowContext(FakeContext):
+            def accessible(self, query):
+                value = super().accessible(query)
+                if query.get('role') == 'list item':
+                    value[0]['name'] = 'only synthetic row'
+                return value
+            def double_click(self, control, window, button='left'):
+                self_test.assertEqual(self.profile['live_controls'][control], {'name': 'only synthetic row', 'role': 'list item'})
+                raise RecipeFailed('gesture refused by foreground guard')
+        self_test = self
+        ctx = RowContext()
+        original = {'existing': {'name': 'Existing', 'role': 'push button'}}
+        ctx.profile = {'live_controls': original}
+        with self.assertRaisesRegex(RecipeFailed, 'foreground guard'):
+            history._double_history_row(ctx)
+        self.assertIs(ctx.profile['live_controls'], original)
+
     def test_new_operation_ignores_existing_and_other_actions(self):
         ctx = FakeContext()
         with patch.object(history, '_recent', return_value=[
