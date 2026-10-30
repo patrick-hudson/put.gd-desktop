@@ -5,7 +5,7 @@ The surface driver runs on the QEMU host and uses the guest's native desktop.
 launching a resident. A missing tool blocks startup with its exact name and #709,
 rather than blocking every recipe independently.
 
-For the Debian/Ubuntu/Mint guest in boat's `putgd-lab-cinnamon` snapshot, install
+For the Debian/Ubuntu/Mint guest in boat's `putgd-lab-cinnamon-v3` snapshot, install
 these normal distribution packages **inside a disposable guest**:
 
 ```sh
@@ -108,7 +108,11 @@ any call reaches them, so the shell and unrelated applications are never
 queried. Do not set the a11y bus `ScreenReaderEnabled` property in a lab guest:
 it starts Orca, which answers slowly or not at all and adds an AT-SPI client the
 run does not control. A timed-out, interrupted or invalid channel
-blocks further input; a late response cannot satisfy a later request. Closing
+blocks further input; a late response cannot satisfy a later request. The timeout
+budget includes channel startup. Refusals retain the outstanding request, elapsed
+time, budget and SSH process state, including when a recipe alarm interrupted the
+read. Start a new run after such a refusal; an alive SSH process does not prove
+that its pending reply can safely be reused. Closing
 the Target closes its probe process before removing the private root.
 
 Authorized interrupted drags release at the last dispatched position. Guest QMP release
@@ -169,21 +173,30 @@ before a notification check.
 
 On X11, pointer guards also ask the shell's AT-SPI stage pick whether a banner,
 panel or shell menu is drawn at the point. The X hit-test cannot see these,
-because they are not X windows. A just-mapped target may settle (#750): if the
+because they are not X windows. A bounded, fresh shell-tree observation also
+checks showing notification, alert and popup rectangles when the stage pick
+returns only the full-screen stage. A cover refusal names that shell surface.
+An unnamed X11 WM frame is resolved to its unique client before reporting it. A just-mapped target may settle (#750): if the
 active window is 0, or another window of the same private process, the probe
-activates the target once, waits up to 2.5 s and re-observes. It never displaces
-a foreign window.
+rechecks the active window immediately before activating the target once, waits
+up to 2.5 s and re-observes. A newly foreign active window refuses activation.
+The X11 observation and activation are separate protocol requests; the recheck
+closes the known settle gap, without claiming a server-side atomic transaction.
 
 Wayland clients report AT-SPI extents relative to their own window. A profile
 `compositor` witness places them on the desktop and answers focus and hit-tests:
 
 - **GNOME** uses the lab-only `putgd-lab-witness@put.gd` Shell extension under
-  `tools/lab/surface_driver/compositor/gnome-witness`. Stage it **only in a
-  disposable guest**: run `compositor/stage-gnome-witness.sh DIR` inside the
-  guest, then `python3 tools/lab/guest_reboot.py RUN`, and enable it if it is not
-  `ACTIVE`. It reports Mutter's frame rects, focus, stacking and stage pick. Its
-  only action is `Activate`, for an explicit `focus(raise_window=True)`. GNOME
-  denies an untokenised `editor.raise`. Never install it on a real desktop.
+  `tools/lab/surface_driver/compositor/gnome-witness`. From the **QEMU host**,
+  run `sh tools/lab/surface_driver/compositor/stage-gnome-witness.sh RUN [SOURCE]`,
+  where `RUN` is the running disposable `lab.py` overlay directory and optional
+  `SOURCE` is the local extension directory. The wrapper calls the same
+  disk/process/SSH/QMP ownership checks as `lab.py`, twice, including immediately
+  before writing. Real desktops, goldens and non-GNOME overlays are refused.
+  Then use `python3 tools/lab/guest_reboot.py RUN` and verify version 4 is `ACTIVE`.
+  It reports Mutter's frame rects, focus, stacking, native stage picks and bounded
+  grab-begin/end history. Its only action is `Activate`, for an explicit
+  `focus(raise_window=True)`. GNOME denies an untokenised `editor.raise`.
 - **KDE** needs no install. Each observation loads a read-only KWin script over
   `org.kde.KWin /Scripting`; the script reports `workspace.stackingOrder` with
   exact `clientGeometry`.
@@ -197,3 +210,37 @@ Cinnamon it is the private family's `Capture region` pane, found through its
 focus event. On GNOME it is the put.gd Shell extension's St actor in
 gnome-shell's tree. The release's `putgd@put.gd` extension must be enabled in
 the GNOME golden overlay.
+
+
+## Input contracts
+
+Plain `focus()` verifies focus with `raise_window=False`. Request
+`focus(raise_window=True)` explicitly when raising is required; an unsupported
+KDE raise still blocks. Accessibility rows keep the server's role spelling
+(`button` remains `button`); selector matching normalizes synonymous roles such
+as `button` and `push button`.
+
+`double_click_accessible(query, button='left')` sends one guarded double-click.
+`scroll_accessible(query, clicks)` sends integer wheel pulses, freshly guarding
+each pulse. Both use the same foreground, occlusion, ownership and compositor
+witness checks as `click_accessible` and call the existing bounded release
+path. A refused or unconfirmed release withholds later input. Neither invokes an accessibility action or a menu service to synthesize
+input. GNOME Shell actors must match the actual Shell PID, picked actor/subtree,
+name/text, bounds and canonical ATK/AT-SPI role name; the two libraries have
+different numeric role enums. A window behind a Shell surface cannot pass this
+path.
+
+The X11 native region selector can receive keyboard input only when its private
+`putgd-capture` process, executable identity, focused native `Capture region`
+accessible, override-redirect center hit and absence of a Shell cover jointly
+prove the application's keyboard grab. A foreign override-redirect window does
+not qualify.
+
+Use `drag(start, end, require_resize=True)` when a GNOME recipe needs proof of
+interactive resize. After press and the first motion, the driver requires a new
+Mutter resize-begin event for the exact client window and PID, within the same
+witness epoch and without lost history, before continuing. A move-begin, old
+event or keyboard-resize event cannot prove it. Missing evidence blocks with a
+resize-start reason and uses the existing release path. This proves initiation,
+not an eventual size change or minimum-size behavior. Other compositors block
+this option until they have an equivalent witness.

@@ -1,0 +1,29 @@
+FF
+======================================================================
+FAIL: test_recipe_alarm_keeps_the_outstanding_request_cause (__main__.PersistentBudgets.test_recipe_alarm_keeps_the_outstanding_request_cause)
+----------------------------------------------------------------------
+tools.lab.surface_driver.api.RecipeBlocked: persistent desktop probe failed; start a new run before further input
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/probe-interrupt-baseline/tests/desktop/test_surface_input_guards.py", line 250, in test_recipe_alarm_keeps_the_outstanding_request_cause
+    with self.assertRaisesRegex(RecipeBlocked,'geometry; interrupted by RecipeFailed.*SSH process still running.*start a new run'):
+AssertionError: "geometry; interrupted by RecipeFailed.*SSH process still running.*start a new run" does not match "persistent desktop probe failed; start a new run before further input"
+
+======================================================================
+FAIL: test_closed_channel_names_request_and_child_exit (__main__.PersistentBudgets.test_closed_channel_names_request_and_child_exit)
+----------------------------------------------------------------------
+tools.lab.surface_driver.api.RecipeBlocked: persistent desktop probe closed; further input withheld
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-92ed5b64/work/r3/probe-interrupt-baseline/tests/desktop/test_surface_input_guards.py", line 261, in test_closed_channel_names_request_and_child_exit
+    with self.assertRaisesRegex(RecipeBlocked,'closed during geometry; SSH exit'):
+AssertionError: "closed during geometry; SSH exit" does not match "persistent desktop probe closed; further input withheld"
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.150s
+
+FAILED (failures=2)
