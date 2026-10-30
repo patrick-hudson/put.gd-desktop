@@ -30,6 +30,9 @@ from tools.lab.surface_driver.receipts import stamp, write_receipts
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
+# Live Proton/S3/B2 runs stay off until secret-safe evidence (redaction + leak scan, PR #726) merges.
+LIVE_DESTINATIONS_ENABLED = False
+
 
 def native_endpoint(kind, address):
     """Read-only service proof; also sent over the profile's pinned SSH channel."""
@@ -349,6 +352,9 @@ def main(argv=None):
         raise SystemExit('native placement cannot name a guest')
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
+    if args.destination!='local' and not LIVE_DESTINATIONS_ENABLED:
+        raise SystemExit('live destination '+args.destination+' is disabled until secret-safe evidence '
+                         '(PR #726) merges; use --destination local')
     run=args.run or args.guest
     if not args.host_profile:
         if not run:
