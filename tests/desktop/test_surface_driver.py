@@ -264,6 +264,20 @@ class Running(unittest.TestCase):
         self.ctx.type_text('Ab!')
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
+    def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
+        from tools.lab.surface_driver import run as runner
+        self.assertFalse(runner.LIVE_DESTINATIONS_ENABLED)
+        for destination in ('s3','b2','proton'):
+            with self.subTest(destination=destination):
+                out=self.path/('live-'+destination)
+                args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
+                      '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
+                      '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out)]
+                with self.assertRaises(SystemExit) as raised:
+                    runner.main(args)
+                self.assertIn('disabled until secret-safe evidence',str(raised.exception))
+                self.assertFalse(out.exists())
+
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
         target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
