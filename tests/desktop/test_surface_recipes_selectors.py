@@ -419,10 +419,15 @@ class SelectorRecipes(unittest.TestCase):
         class OwnedScope:
             def __init__(self, target):
                 self.ctx = target
+                self.initialized = False
+            def initialize(self):
+                self.initialized = True
+                events.append("initialize")
             def close(self):
                 events.append("cleanup")
                 return []
         def start(scope):
+            self.assertTrue(scope.initialized, "the monitor must not create a directory before Scope.initialize")
             events.append("monitor-before-prepare")
             return object()
         def ready(scope, rid, watch, timeout):
@@ -434,7 +439,7 @@ class SelectorRecipes(unittest.TestCase):
             with selectors._local(ctx):
                 rid = selectors._open_record(ctx, rect=[320, 200, 640, 400])
                 selectors._cancel_record(ctx, rid)
-        self.assertEqual(events, ["monitor-before-prepare", "core-consent-ready", "cleanup"])
+        self.assertEqual(events, ["initialize", "monitor-before-prepare", "core-consent-ready", "cleanup"])
         self.assertIsNone(ctx._selectors_consent)
         self.assertFalse(ctx.inputs)
 
