@@ -94,7 +94,20 @@ SSH session for each observation. Every character and drag step still obtains
 fresh geometry and foreground witnesses. Accessibility observations run in fresh bounded interpreters on that same
 channel, so stale AT-SPI caches or a continuously busy event queue cannot
 authorize input. X11 geometry and foreground witnesses remain in the persistent
-process. A timed-out, interrupted or invalid channel
+process.
+
+Probes read AT-SPI over raw D-Bus (`Accessible`, `Component`, `Text` and
+`Action` calls on the a11y bus), never through libatspi objects (#814). libatspi
+sends `org.a11y.atspi.Cache.GetItems` to every application it first meets, and
+`getDesktop(0)` meets every registered application, so each fresh probe asked
+the shell to serialise its whole ATK-bridge cache. On Mint 22.3 (Cinnamon 6.6.4,
+at-spi2-core 2.52.0) that call crashed Cinnamon into fallback mode
+(`impl_GetItems` → `g_hash_table_foreach` → `g_object_ref` on a stale cache
+entry). Owned-control walks select applications by the bus daemon's PID before
+any call reaches them, so the shell and unrelated applications are never
+queried. Do not set the a11y bus `ScreenReaderEnabled` property in a lab guest:
+it starts Orca, which answers slowly or not at all and adds an AT-SPI client the
+run does not control. A timed-out, interrupted or invalid channel
 blocks further input; a late response cannot satisfy a later request. Closing
 the Target closes its probe process before removing the private root.
 
@@ -102,6 +115,28 @@ Authorized interrupted drags release at the last dispatched position. Guest QMP 
 sends only button-up, with no absolute-axis event. The RFB fallback reuses its
 last dispatched coordinates because RFB pointer packets require coordinates;
 it never moves to an unvisited drag endpoint during cleanup.
+
+## Desktop shell crash detection
+
+A profile's `shell_health` names the desktop shell process and its crash-notice
+window titles, for example Cinnamon's
+`{"process": "cinnamon", "crash_windows": ["^Cinnamon just crashed"]}`. After
+setup the runner records that process's PID and start time in the receipt's
+`environment.shell_health`. Before every real input the guard checks that the
+same process is still running. Between recipes it also looks for crash-notice
+windows and for new `coredumpctl` entries of that process. If the shell crashed,
+the in-flight recipe and every remaining recipe are `blocked` with issue 814 and
+the reason. The remaining recipes get no input, frames or fixtures, and the
+in-flight row keeps its own result as context only. A shell that is missing, or
+that already shows a crash notice at run start, blocks the run.
+
+When Cinnamon crashes, `cinnamon-launcher` leaves the session in fallback mode:
+no `cinnamon` process, `metacity --replace`, and the "Cinnamon just crashed"
+dialog. Session commands that find the desktop through the `cinnamon` process
+fail afterwards, so resident cleanup cannot finish (#848). To prove the detector
+in a disposable overlay, send `SIGSEGV` to `cinnamon` mid-run. Cinnamon absorbs
+the first external `SIGSEGV` with a one-shot handler, so repeat it until the
+process is gone. Only `mint-cinnamon-x11` declares `shell_health` so far (#849).
 
 ## Desktop observation, occlusion and Wayland placement
 
@@ -118,10 +153,11 @@ dies with its parent.
 - **Runtime menus and out-of-tree widgets.** Qt lists only non-popup top-level
   windows as application children. A `QMenu::exec()` context or row menu, a
   viewport child widget, and Cinnamon's native region selector are therefore
-  missing from an AT-SPI tree walk. The observer listens for
-  `object:state-changed:showing` and `:focused`, and records the private family's
-  showing popups and focused widget in `$XDG_RUNTIME_DIR/putgd-lab-popups.json`.
-  Each `accessible()` call walks them live over the a11y bus as extra roots.
+  missing from an AT-SPI tree walk. The observer registers
+  `object:state-changed:showing` and `:focused` with the AT-SPI registry, reads
+  those signals off the a11y bus, and records the private family's showing
+  popups and focused widget in `$XDG_RUNTIME_DIR/putgd-lab-popups.json`. Each
+  `accessible()` call walks them live over the a11y bus as extra roots.
 
 Notification input waits briefly for the banner to be drawn. It hovers the drawn
 title, because shell buttons arm only after the pointer enters, and then clicks
