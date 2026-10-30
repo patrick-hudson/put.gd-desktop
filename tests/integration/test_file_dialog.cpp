@@ -180,7 +180,7 @@ private slots:
    for(auto* widget:QApplication::topLevelWidgets())if(qobject_cast<QFileDialog*>(widget)&&widget->isVisible())return false;
    return true;
   };
-  PUTGD_VERIFY_STEADY(noChooser(),200);
+  PUTGD_VERIFY_STEADY(!fellBack&&noChooser(),200);
  }
  void whileOpenTheWindowIsBlockedAndCancelClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::Wait;
