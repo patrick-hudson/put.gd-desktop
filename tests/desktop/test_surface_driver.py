@@ -17,10 +17,13 @@ from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.context import DriverContext, parse_notifications
 from tools.lab.surface_driver.profiles import load_profile, merge
 from tools.lab.surface_driver.receipts import write_receipts
-from tools.lab.surface_driver.run import discover, run_recipes, validate_recipes
+from tools.lab.surface_driver.run import discover, main, run_recipes, validate_recipes
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image=None
 
 
 class Profiles(unittest.TestCase):
@@ -71,6 +74,8 @@ class Mapping(unittest.TestCase):
         self.assertEqual(qcodes('Ctrl+Z'),['ctrl','z'])
         self.assertEqual(qcodes('Ctrl+Shift+Z'),['ctrl','shift','z'])
         self.assertEqual(qcodes('Escape'),['esc'])
+        self.assertEqual(qcodes('Ctrl++'),['ctrl','shift','equal'])
+        self.assertEqual(qcodes('Backtab'),['shift','tab'])
         self.assertEqual(qcodes('!'),['shift','1'])
         with self.assertRaises(RecipeBlocked): qcodes('☃')
         self.assertEqual(checked_socket('/'+'x'*106),'/'+'x'*106)
@@ -102,6 +107,7 @@ class Running(unittest.TestCase):
         validate_recipes(discover('core_demo'))
         with self.assertRaises(ValueError):validate_recipes([Recipe(('not.real',),lambda c:None)])
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_runner_pass_fail_block_and_exact_schema(self):
         def good(ctx):ctx.expect(ctx.call('capabilities')['ready'],'resident ready')
         def bad(ctx):ctx.expect(False,'actual failure')
@@ -121,6 +127,7 @@ class Running(unittest.TestCase):
         for row in rows:
             self.assertEqual([f['label'] for f in row.frames],['before','after'])
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_visual_within_and_outside_tolerance(self):
         Image.new('RGB',(20,10),'white').save(self.path/'good.png')
         Image.new('RGB',(20,10),'black').save(self.path/'bad.png')
@@ -135,6 +142,7 @@ class Running(unittest.TestCase):
         self.assertIn(str(self.path/'bad.png'),rows[1].review_reason)
         self.assertIn(str(self.path/'frames'),rows[1].review_reason)
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_desktop_drawn_never_compares(self):
         self.ctx.begin(Recipe(('tray.tooltip',),lambda c:None,desktop_drawn=True))
         self.ctx.frame('tray',reference='does-not-exist')
@@ -147,6 +155,7 @@ class Running(unittest.TestCase):
         self.ctx.profile['at_spi']['available']=False
         with self.assertRaises(RecipeBlocked):self.ctx.accessible({})
 
+    @unittest.skipUnless(Image,'requires python3-pil')
     def test_missing_reference_requests_review(self):
         self.ctx.frame('missing',reference='unknown')
         self.assertTrue(self.ctx.reviews)
@@ -161,6 +170,113 @@ class Running(unittest.TestCase):
 
     def test_physical_module_import_has_no_side_effects(self):
         importlib.import_module('tools.lab.physical')
+
+    def test_coverage_preserves_other_desktops(self):
+        row=ReceiptRow('editor.undo','mint-cinnamon-x11','deb','passed',host='boat',placement='boat')
+        other=dataclasses.replace(row,desktop='ubuntu-gnome-x11')
+        write_receipts(self.path/'one',self.env,[row],'campaign',self.path/'coverage.json')
+        write_receipts(self.path/'two',self.env,[other],'campaign',self.path/'coverage.json')
+        row.functional='failed'
+        write_receipts(self.path/'one',self.env,[row],'campaign',self.path/'coverage.json')
+        entries=json.loads((self.path/'coverage.json').read_text())['entries']
+        self.assertEqual(len(entries),2)
+        self.assertEqual({r['desktop']:r['functional'] for r in entries},
+                         {'mint-cinnamon-x11':'failed','ubuntu-gnome-x11':'passed'})
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_click_uses_catalog_and_releases_button(self):
+        inv={'width':20,'height':10,'controls':[{'name':'upload','rect':[2,2,4,4]}]}
+        (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
+        self.ctx.catalog=Catalog(self.path,{})
+        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1}
+        events=[]
+        self.ctx.target.pointer=lambda *args:events.append(args)
+        self.ctx.click('upload',window='editor')
+        self.assertEqual(events[0][:5],(4,4,20,10,True))
+        self.assertEqual(events[-1][:5],(4,4,20,10,False))
+
+    def test_resized_layout_uses_live_control_instead_of_guessing(self):
+        inv={'width':20,'height':10,'controls':[{'name':'upload','text':'&Upload','rect':[2,2,4,4]}]}
+        (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
+        self.ctx.catalog=Catalog(self.path,{})
+        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':40,'height':20,'scale':1}
+        self.ctx._dimensions=lambda head=0:(100,100)
+        probes=[]
+        self.ctx._probe=lambda name,query:probes.append((name,query)) or [6,8,10,12]
+        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
+        self.ctx.click('upload',window='editor')
+        self.assertEqual(events[0][:2],(11,14))
+        self.assertEqual(probes[0][0],'control')
+        self.assertEqual(probes[0][1]['label'],'Upload')
+        self.ctx.profile['at_spi']['available']=False
+        with self.assertRaisesRegex(RecipeBlocked,'live AT-SPI'):
+            self.ctx.click('upload',window='editor')
+
+    def test_unicode_input_refuses_before_partial_typing(self):
+        sent=[];self.ctx.target.key=lambda value:sent.append(value)
+        with self.assertRaises(RecipeBlocked):self.ctx.type_text('hello ☃')
+        self.assertEqual(sent,[])
+        self.ctx.type_text('Ab!')
+        self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_main_checks_identity_and_configures_local_output(self):
+        target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
+        target.start=lambda:None;target.close=lambda:None
+        target.identity=lambda:{'session_type':'x11','desktop':'X-Cinnamon'}
+        calls=[]
+        def cli(*args,timeout=60):
+            calls.append(args)
+            result={'ui.snapshot':{'build':{'gitCommit':'abcdef','dirty':False}},
+                    'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
+            return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
+        target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
+        recipe=Recipe(('editor.undo',),lambda c:None)
+        args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
+              '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
+              '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
+              '--coverage',str(self.path/'main-coverage.json')]
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+            self.assertEqual(main(args),0)
+        mutation=next(json.loads(a[1]) for a in calls if a[0]=='settings.patch')
+        self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
+        self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
+        self.assertTrue(mutation['patch']['archive']['keepUploads'])
+        self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+        target.close=lambda:['cleanup incomplete']
+        args[args.index('--out')+1]=str(self.path/'run-error')
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+            self.assertEqual(main(args),2)
+        self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
+
+    def test_cleanup_attempts_quit_when_monitor_transport_fails(self):
+        target=Target.__new__(Target)
+        target._rfb=None;target.monitor_pid=123;target.started=True
+        def unavailable(*args,**kwargs):raise RecipeBlocked('lost monitor transport')
+        target.execute=unavailable
+        calls=[]
+        target.cli=lambda *args,**kwargs:calls.append(args) or {'returncode':0}
+        errors=target.close()
+        self.assertEqual(calls,[('ui.quit',)])
+        self.assertFalse(target.started)
+        self.assertEqual(errors,['notification monitor cleanup unavailable'])
+
+    def test_resident_operation_identity_is_retained(self):
+        self.ctx.target.cli=lambda *args,**kwargs:{'returncode':0,'stderr':'','stdout':
+            json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
+        self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
+        self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
+
+    def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
+        from types import SimpleNamespace
+        target=Target.__new__(Target)
+        target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=105
+        calls=[]
+        target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
+        target.run=self.path
+        with patch('tools.lab.surface_driver.target.time.monotonic',return_value=110):
+            with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
+        self.assertEqual(len(calls),1)
 
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
