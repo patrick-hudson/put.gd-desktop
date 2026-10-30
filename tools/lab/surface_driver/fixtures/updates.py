@@ -81,7 +81,8 @@ for item in [doc['current']]+[a for release in doc['releases'] for a in release[
  f=Path(item['path']);s=f.lstat()
  assert f.resolve()==f and stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid()
  with f.open('rb') as stream:assert hashlib.file_digest(stream,'sha256').hexdigest()==item['sha256']
-current=doc['current'];build=json.loads(subprocess.check_output([current['path'],'--version-json'],text=True,timeout=30))
+current=doc['current'];build=json.loads(subprocess.check_output([current['path'],'--version-json'],text=True,timeout=30,
+ env=dict(os.environ,APPIMAGE_EXTRACT_AND_RUN='1')))
 assert build==current['build'] and not build['dirty'] and current['tag']=='v'+build['version']
 assert re.fullmatch(r'[2-9][0-9]\\.[1-9][0-9]{2,3}\\.[1-9][0-9]{0,8}(-nightly)?',build['version'])
 assert current['path'].endswith('.AppImage')

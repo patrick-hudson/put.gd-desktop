@@ -2,6 +2,7 @@
 from ..api import RecipeBlocked,RecipeFailed
 from .base import Fixture
 from .uploads import submit,track
+from .desktop import shortcut_status
 
 
 def attention(scope):
@@ -77,7 +78,7 @@ def shortcut_recorder(scope):
     ctx=scope.ctx
     ctx.fixture('app-profile')
     observation=ctx.fixture('settings-observations')
-    def status():return ctx.call('diagnostics').get('shortcuts',{})
+    def status():return shortcut_status(ctx)
     def start(action='region'):
         if action not in ('region','window','desktop','clipboard','edit','record'):
             raise ValueError('unknown shortcut action')
@@ -128,4 +129,4 @@ def keyboard_layout(scope,layout='de'):
     scope.defer('native X11 keyboard layout',restore,priority=800)
     set_layout({**baseline,'layout':layout,'variant':''})
     return Fixture(layout=layout,baseline=baseline,restore=restore,
-                   shortcuts=lambda:ctx.call('diagnostics').get('shortcuts',{}))
+                   shortcuts=lambda:shortcut_status(ctx))

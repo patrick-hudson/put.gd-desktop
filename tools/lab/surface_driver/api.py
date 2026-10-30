@@ -314,6 +314,8 @@ class Context:
           controlled, observe(), release() for an owned X11 conflict. Other
           states must actually exist in the native channel or block; desktop
           environment labels and diagnostics replies are never substituted.
+          observe() reads ui.snapshot.diagnostics.shortcuts unchanged; X11
+          conflicts use error='shortcut_conflict', not a fabricated state.
         * locked-keyring: unique blank-password synthetic collection,
           lock()/unlock(); no personal item/default alias is read or changed.
         * events.update-feed / settings-update-feed: url/root/residentPid,

@@ -1,7 +1,9 @@
 """Round-3 fixture safety and semantic selectors; no desktop/cloud access."""
 import ast
 import copy
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
+import hashlib
+import io
 import json
 from pathlib import Path
 import sys
@@ -82,6 +84,15 @@ class Round3(fixture_tests.Fixtures):
         for name in ('settings-binding-unavailable','settings-binding-pending','settings-binding-unsupported'):
             with self.assertRaisesRegex(RecipeBlocked,'absent'):self.ctx.fixture(name)
 
+    def test_shortcut_observation_uses_native_snapshot_and_retains_wire_shape(self):
+        native={'available':True,'bindings':{'region':{'bound':False,'error':'shortcut_unsupported'}}}
+        original=self.ctx.call
+        self.ctx.call=lambda method,params=None: {'diagnostics':{'shortcuts':native}} if method=='ui.snapshot' else original(method,params)
+        self.assertIs(desktop.shortcut_status(self.ctx),native)
+        value=self.ctx.fixture('settings-binding-unsupported')
+        self.assertIs(value.observe(),native)
+        self.assertFalse(value.controlled)
+
     def test_recording_label_and_disclosure_are_observations(self):
         nodes=[{'name':'Help','objectName':'help','role':'toggle button','states':{'checked':True,'expanded':False},'text':'Help'},
                {'name':'Visible help content','role':'label','text':'Visible help content'}]
@@ -99,6 +110,28 @@ class Round3(fixture_tests.Fixtures):
         with self.assertRaisesRegex(RecipeBlocked,'authentic tagged'):self.ctx.fixture('settings-update-lifecycle')
         self.assertEqual(self.ctx.calls,[])
         self.assertEqual(self.ctx.target.app_executable,'putgd')
+
+    def test_update_manifest_rejects_tampering_and_dirty_or_mismatched_builds(self):
+        # Execute the exact target-side validator, mocking only the immutable
+        # release's process response. No test asset is a signed release.
+        script=next(v for v in updates.lifecycle.__code__.co_consts
+                    if isinstance(v,str) and 'hashlib.file_digest' in v)
+        image=self.root/'release.AppImage';image.write_bytes(b'unit validation input')
+        build={'version':'26.1026.1416-nightly','dirty':False}
+        manifest=self.root/'bundle.json'
+        current={'path':str(image),'sha256':hashlib.sha256(image.read_bytes()).hexdigest(),
+                 'tag':'v'+build['version'],'build':build}
+        def validate(document,reported):
+            manifest.write_text(json.dumps(document))
+            with patch('subprocess.check_output',return_value=json.dumps(reported)) as run,redirect_stdout(io.StringIO()):
+                exec(script.replace('BUNDLE',repr(str(manifest))),{})
+                self.assertEqual(run.call_args.kwargs['env']['APPIMAGE_EXTRACT_AND_RUN'],'1')
+        validate({'current':current,'releases':[]},build)
+        dirty=dict(build,dirty=True)
+        with self.assertRaises(AssertionError):validate({'current':dict(current,build=dirty),'releases':[]},dirty)
+        with self.assertRaises(AssertionError):validate({'current':dict(current,tag='v26.1026.1-nightly'),'releases':[]},build)
+        image.write_bytes(b'tampered unit input')
+        with self.assertRaises(AssertionError):validate({'current':current,'releases':[]},build)
 
     def test_uncached_destination_restarts_only_private_resident(self):
         service=Fixture(profile={'id':'synthetic','provider':'s3','settings':{}},private=True)

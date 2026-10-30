@@ -6,6 +6,12 @@ from ..api import RecipeBlocked
 from .base import Fixture
 
 
+def shortcut_status(ctx):
+    # The generic diagnostics method exposes OperationService only. Native
+    # binding state is added by the resident to the UI snapshot diagnostics.
+    return ctx.call('ui.snapshot').get('diagnostics',{}).get('shortcuts',{})
+
+
 def guest(scope):
     ctx=scope.ctx
     if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
@@ -40,7 +46,7 @@ app.exec()
             raise RecipeBlocked('owned Settings window did not minimize',issue=681)
     return Fixture(process=process,role=role,focus=lambda:ctx.focus(role,raise_window=True),
                    deactivate=lambda:ctx.focus(role,raise_window=True),hide=hide,
-                   restore=lambda:ctx.focus('settings',raise_window=True),observe=lambda:ctx.call('diagnostics').get('shortcuts',{}))
+                   restore=lambda:ctx.focus('settings',raise_window=True),observe=lambda:shortcut_status(ctx))
 
 
 def input_events(scope):
@@ -68,10 +74,10 @@ def binding(scope, state='conflict'):
     guest(scope)
     ctx=scope.ctx
     if state!='conflict' or ctx.profile.get('session')!='x11':
-        current=ctx.call('diagnostics').get('shortcuts',{})
+        current=shortcut_status(ctx)
         bindings=current.get('bindings',{})
-        if any(value.get('state')==state for value in bindings.values()) or (state=='unavailable' and current.get('available') is False):
-            return Fixture(state=state,observe=lambda:ctx.call('diagnostics').get('shortcuts',{}),controlled=False)
+        if any(value.get('state')==state or value.get('error')=='shortcut_'+state for value in bindings.values()) or (state=='unavailable' and current.get('available') is False):
+            return Fixture(state=state,observe=lambda:shortcut_status(ctx),controlled=False)
         raise RecipeBlocked('requested native shortcut state '+state+' is absent; no production state injection or substituted desktop identity is used',issue=681)
     shortcut='Ctrl+Shift+F12'
     scope.patch({'actions':{'region':{'shortcut':shortcut}}})
@@ -108,4 +114,4 @@ while True:time.sleep(1)
         if not released:
             scope.stop(identities[0]);released=True
     return Fixture(state=state,shortcut=shortcut,controlled=True,release=release,
-                   observe=lambda:ctx.call('diagnostics').get('shortcuts',{}))
+                   observe=lambda:shortcut_status(ctx))
