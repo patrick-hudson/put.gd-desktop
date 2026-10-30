@@ -773,7 +773,7 @@ def about_version(ctx):
                  'role': 'label', 'showing': True}
         rows = ctx.accessible(query)
         ctx.expect(len(rows) == 1, 'About version label matches build')
-        ctx.click_accessible(query)
+        ctx.click('text:' + expected, window='about')
         ctx.keys('Ctrl+A', 'Ctrl+C')
         ctx.wait(lambda: ctx.clipboard_text() == expected, 'version text can be selected and copied')
         ctx.frame('about-version-selected', window='about', reference='about')

@@ -636,6 +636,12 @@ class Contracts(unittest.TestCase):
                 next(r for r in RECIPES if identifier in r.interactions).function(ctx)
                 self.assertFalse(ctx.about_visible)
 
+    def test_about_version_uses_owned_window_input(self):
+        ctx = Fake()
+        ctx.click_accessible = lambda *a, **k: self.fail('About is not a desktop-drawn surface')
+        lane.about_version(ctx)
+        self.assertEqual(ctx.clipboard, ctx.build['version'].split('-')[0])
+
     def test_actual_private_config_guard(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
