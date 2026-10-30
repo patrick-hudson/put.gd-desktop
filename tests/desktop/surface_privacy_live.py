@@ -121,6 +121,7 @@ window.show_all();Gtk.main()
         frame=preparation.frame('baseline-redact',window='editor')
         (catalog/'20-editor-redact.png').write_bytes((preparation.out/frame.path).read_bytes())
         cancelled(preparation,identity)
+        assert not preparation._cleanup_fixtures(), 'baseline fixtures must be released'
         core=DriverContext(target,dict(env),profile,catalog,args.out/'core-demo')
         rows=run_recipes(core,discover('core_demo'),core.environment,core.out,'privacy726-core',core.out/'coverage.json')
         assert all(r.functional=='passed' for r in rows)

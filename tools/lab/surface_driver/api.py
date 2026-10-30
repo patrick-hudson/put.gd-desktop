@@ -241,7 +241,7 @@ class Context:
         raise NotImplementedError
 
     # Fixtures shared between recipes in one run (an upload, a recording, a history row)
-    def fixture(self, name: str) -> Any:
+    def fixture(self, name: str, **options: Any) -> Any:
         raise NotImplementedError
 
     # Evidence and verdicts

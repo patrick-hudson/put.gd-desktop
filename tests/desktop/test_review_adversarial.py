@@ -363,7 +363,7 @@ class Adv(unittest.TestCase):
     def test_resident_private_log_and_state_root_removed_after_quit(self):
         from tools.lab.surface_driver.target import Target
         target=Target.__new__(Target)
-        target._rfb=None;target.monitor_pid=None;target.started=True;target._owns_root=True
+        target._rfb=None;target.monitor_pid=None;target.started=True;target._owns_root=True;target._created_root=True
         target.root='/tmp/sd-owned';target.socket=target.root+'/runtime/putgd/session.sock'
         target.cli=lambda *a,**kw:{'returncode':0}
         scripts=[]
