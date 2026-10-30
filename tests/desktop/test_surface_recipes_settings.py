@@ -391,6 +391,13 @@ class Contracts(unittest.TestCase):
         self.assertEqual(scrolled, [(1536, 520, -3)])
         self.assertEqual(ctx.focus, 'archiveRoot')
 
+    def test_unavailable_clipboard_writer_withholds_input(self):
+        ctx = Fake()
+        ctx.shell = lambda script, **kwargs: {'returncode': 127, 'stdout': ''}
+        with self.assertRaisesRegex(RecipeBlocked, 'clipboard writer unavailable'):
+            lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
+        self.assertFalse(ctx.inputs)
+
     def test_template_clipboard_is_ready_before_selection(self):
         ctx = Fake()
         lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')

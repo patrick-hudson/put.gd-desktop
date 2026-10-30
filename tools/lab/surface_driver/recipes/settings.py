@@ -148,7 +148,8 @@ def replace(ctx, control, text):
         if not writer:
             ctx.blocked('Template input requires the profile synthetic clipboard writer.')
         reply = ctx.shell('printf %s ' + shlex.quote(text) + ' | ' + writer + ' >/dev/null 2>&1')
-        ctx.expect(reply['returncode'] == 0, 'synthetic template clipboard write succeeded')
+        if reply['returncode'] != 0:
+            ctx.blocked('Profile synthetic clipboard writer unavailable; template input withheld.')
         ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
     if control == 'archiveRoot' or paste:
         live_click(ctx, control)
