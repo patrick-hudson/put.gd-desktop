@@ -1,7 +1,7 @@
 {
   "results.json": "0900d4d64dd6c2b095b764b929ce26cd8793bc72938ec36b28b9fee77590c9d7",
   "cinnamon-after.png": "f1ece23ead66217e941067f6ccc9035b91a8140c04e087de9805088fe5f44f16",
-  "README.md": "af78eeaff40d00180b05845e76544b4ae659fd15536ab282dbfa887f3f4673f6",
+  "README.md": "bd147616d2be97aed0777b15c31b31c2009bef861c3644dc1bdaefd01a8ccbc7",
   "code-checks-final.json": "9973fe3c0bbdc18a8c5743fdca0abed08a65e28822d23535b9028c2c2e323e5b",
   "baseline-idle-failures.log": "f68a53bc1d1ab3d08aef13a1adb2d966717dfd44f5a98840773f4384f3276aa3",
   "gnome-before.png": "d0a0aaf94e9201d9e21caafd88e2e34208107431973b0c326ef6ffbfcb153100",
@@ -24,7 +24,7 @@
   "text-exports.json": "9ec21b2aed5483cd0841f248745d0d5f9e1458b145b4262cf98a18065fd3cf81",
   "retention.json": "7cd3f3859c9c5ece8001a3babbda389b98410394b2aabc4d9b469819c9b422a1",
   "reproduce/capture-current.py": "48dc7365241377c2aa07c61e55d00be595254dbbaaab5c94ad76eaacc53fb2a7",
-  "reproduce/focused-excerpt.txt": "ea7358d2b5adc00db7f633594edeeadab12f779b7c23d9fdfd25a4aeb6fa926d",
+  "tests/focused-excerpt.txt": "ea7358d2b5adc00db7f633594edeeadab12f779b7c23d9fdfd25a4aeb6fa926d",
   "reproduce/final-review-full-checks.sh": "5a663754b8aa659c49813679a0cf476af4b82e9f97cba48e44ab1c84a53ab84e",
   "reproduce/profile.py": "cd36dc479f9f68becb07ac729964a909de6a3d80143af6aa56d224ea49dbc0fd",
   "reproduce/measure-guest.py": "799609e37a5c3de365b5714974bab62f31abcc3bf1734ffd3c8a15ae0282b7d3",

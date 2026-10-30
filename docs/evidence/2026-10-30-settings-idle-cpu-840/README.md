@@ -109,8 +109,8 @@ in this documentation packet.
 Each completed overlay was stopped, exported and checksum-verified before the
 guarded cleanup command retired its disk. Both original and review-run receipts,
 and the failed Cinnamon receipt, are retained under [cleanup](cleanup/).
-The sealed backing images and named snapshots were preserved. There were at
-most two active task sandboxes; three forks were used in total, with the build
-fork deleted before Cinnamon was forked. All task forks were deleted after
-export, and only this task's wall entries, tunnels and SSH agent were removed.
+The sealed backing images and named snapshots were preserved. Three sandbox forks were created in total, exceeding the task's two-sandbox
+limit. At most two were active at once; the build fork was deleted before
+Cinnamon was forked. All three forks were deleted after export, and only this
+task's wall entries, tunnels and SSH agent were removed.
 The worktree was detached for handoff. No PR was merged and issue #840 stays open.
