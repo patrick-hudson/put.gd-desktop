@@ -82,8 +82,10 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
   The AppImage CI dependency step instead sets three attempts, 300 seconds
   overall and 120 seconds stalled, with an AppImage label.
 - UI catalog uses the package matrix's pinned Ubuntu 26.04 digest; CI's linux
-  job uses the floating `ubuntu:26.04` tag. Dependency/build/render run blocks
-  are reused; the full CTest suite is separate. The private compiler cache is
+  job uses the floating `ubuntu:26.04` tag. The dependency and build run blocks
+  are reused (`PUTGD_UI_CATALOG_REFERENCES` resolved for 26.04); CI renders the
+  catalog inside CTest, so the worker renders it directly and runs the surface
+  map check. Reference-image comparison is CI's (see [the UI catalog](ui-catalog.md)). The private compiler cache is
   capped at 256 MiB rather than CI linux's 1 GiB.
 - The fixture package's Debian **Package** field and filename are
   `putgd-lab-fixture`, not `putgd`. Its package target is empty and
