@@ -1,0 +1,15 @@
+[
+  {
+    "session": "513",
+    "properties": {
+      "User": "1000",
+      "Leader": "12557",
+      "Type": "tty",
+      "Class": "user",
+      "State": "closing"
+    },
+    "killExit": 0,
+    "terminateExit": 0,
+    "scopeStatusSha256": "26ecc8becb470c0463c6a9ee0c2154bc022867ed0eadfb9ca84d9605caf544f9"
+  }
+]

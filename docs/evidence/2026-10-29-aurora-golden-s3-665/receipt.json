@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "recordedUtc": "2026-10-30T01:51:40.887689+00:00",
+  "issue": 665,
+  "userApprovedSourceChange": "Use the existing EC2-built Aurora F45 golden from the same pinned OS; a distinct qcow2 hash is accepted instead of completing the home byte-copy upload.",
+  "scope": "Golden inventory and existing named-snapshot evidence; no new VM or application desktop acceptance performed by this documentation session.",
+  "golden": {
+    "name": "aurora-testing-45.20261022.1-ec2-20261029-a1",
+    "profile": "aurora-kde-wayland",
+    "sourceContainer": "ghcr.io/ublue-os/aurora@sha256:969e4f6f164742b9f3f85e74b958faf88e357b65620e7c2f1cc28723948a9930",
+    "imageSha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+    "compressedSha256": "10cb310ce793cc3d3666bbb2b212d2f6db81392ec5c70bc24b27c64acf600be0",
+    "imageBytes": 10503323648,
+    "compressedBytes": 4311949729,
+    "virtualBytes": 50994348032,
+    "standalone": true,
+    "f44CurrentReadOnlyAudit": {
+      "path": "/home/patrick/work/put.gd/work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2",
+      "bytes": 10503323648,
+      "mtime_ns": 1793322155646812732,
+      "mode": "0o444",
+      "sha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+      "auditedUnix": 1793325064.1996412
+    },
+    "d69ExistingRestoreReceipt": {
+      "sha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+      "verified": true
+    }
+  },
+  "s3": {
+    "bucket": "putgd-lab-images-626193791566",
+    "imageKey": "linux/aurora-testing-45.20261022.1-ec2-20261029-a1/aurora-testing-45.20261022.1-ec2-20261029-a1.qcow2.zst",
+    "manifestKey": "linux/aurora-testing-45.20261022.1-ec2-20261029-a1/aurora-testing-45.20261022.1-ec2-20261029-a1.manifest.json",
+    "head": {
+      "AcceptRanges": "bytes",
+      "LastModified": "2026-10-30T00:56:18+00:00",
+      "ContentLength": 4311949729,
+      "ChecksumSHA256": "UJFDDDU3KHt+Megzp2WwAIpSImrkPoPbZQLMcTutsMQ=-65",
+      "ChecksumType": "COMPOSITE",
+      "ETag": "\"b8921a4528197a436c09facb32a74a71-65\"",
+      "ContentType": "binary/octet-stream",
+      "ServerSideEncryption": "AES256",
+      "Metadata": {
+        "sha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+        "source-container-digest": "sha256:969e4f6f164742b9f3f85e74b958faf88e357b65620e7c2f1cc28723948a9930",
+        "zst-sha256": "10cb310ce793cc3d3666bbb2b212d2f6db81392ec5c70bc24b27c64acf600be0",
+        "virtual-size": "50994348032"
+      },
+      "StorageClass": "GLACIER_IR"
+    },
+    "ec2RoundTrip": {
+      "roundTripCompressedSha256": "10cb310ce793cc3d3666bbb2b212d2f6db81392ec5c70bc24b27c64acf600be0",
+      "roundTripSha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+      "qcow2Check": "No errors were found on the image.\n160232/778112 = 20.59% allocated, 0.00% fragmented, 0.00% compressed clusters\nImage end offset: 10503323648\n",
+      "qcow2Compare": "Images are identical.\n",
+      "roundTripPassed": true
+    },
+    "firmware": [
+      {
+        "key": "linux/aurora-testing-45.20261022.1-ec2-20261029-a1/sidecars/firmware/OVMF_CODE_4M.fd",
+        "bytes": 3653632,
+        "builderAndS3Sha256": "ad23261d43116abc3747d59a7837fbf578c9586a8993f4eeba064cd07eccb083",
+        "s3ChecksumSHA256": "rSMmHUMRarw3R9WaeDf79XjJWGqJk/TuugZM0H7MsIM="
+      },
+      {
+        "key": "linux/aurora-testing-45.20261022.1-ec2-20261029-a1/sidecars/firmware/OVMF_VARS_4M.fd",
+        "bytes": 540672,
+        "builderAndS3Sha256": "5d2ac383371b408398accee7ec27c8c09ea5b74a0de0ceea6513388b15be5d1e",
+        "s3ChecksumSHA256": "XSrDgzcbQIOYrM7n7CfIwJ6lt0oN4M7qZRM4ixW+XR4="
+      },
+      {
+        "key": "linux/aurora-testing-45.20261022.1-ec2-20261029-a1/sidecars/firmware/provisioned-vars.fd",
+        "bytes": 540672,
+        "builderAndS3Sha256": "e0cf2c017ec5dde2c82bcb2350f5cbcbbdec5b77c8230027e8051f0abc7306c4",
+        "s3ChecksumSHA256": "4M8sAX7F3eLIK8sjUPXLy73sW3fIIwAn6AUfCrxzBsQ="
+      }
+    ]
+  },
+  "ec2Provisioning": {
+    "version": "testing-45.20261022.1",
+    "session": {
+      "Name": "lab",
+      "Service": "plasmalogin-autologin",
+      "Desktop": "KDE",
+      "Type": "wayland",
+      "Class": "user",
+      "State": "active"
+    },
+    "uupdTimer": "masked",
+    "idlePolicyPassed": true,
+    "standardLoginVerifiedVisibly": true,
+    "manualGraphicalLoginPassed": true,
+    "autologinPassed": true,
+    "cleanup": {
+      "instanceId": "i-090ee09487f679661",
+      "instanceState": "terminated",
+      "deletedVolumeId": "vol-069cc95e308cf1648",
+      "deletedNetworkInterfaceId": "eni-0aa78e1a1f9352c64",
+      "deletedSecurityGroupId": "sg-08c2c303637b2fcec",
+      "deletedKeyPairId": "key-0db62a17f8329b122",
+      "deletedRoleAndProfile": "putgd-aurora665-20261029-a1",
+      "noIncompleteMultipartUpload": true,
+      "provisioningOverlayRetired": true,
+      "wallTileRemoved": true,
+      "tunnelStopped": true,
+      "privateDownloadUrlDeleted": true,
+      "workstationPrivateSshKeyPreserved": true
+    },
+    "evidenceSource": "/home/patrick/work/put.gd/work/aurora665-ec2/completion.json",
+    "scope": "Aurora Fedora 45 OS golden provisioning and publication; no put.gd application acceptance claimed"
+  },
+  "boat": {
+    "existingSnapshot": {
+      "createdAt": "2026-10-30T01:43:22.727Z",
+      "name": "putgd-lab-aurora",
+      "sizeBytes": 37281640796,
+      "snapshotId": "23bc3677-0b0d-42eb-9930-3e29cc3c47b5",
+      "sourceSandboxId": "bx_9hdk65yn",
+      "status": "ready",
+      "type": "large"
+    },
+    "createdBy": "Separate EC2/Boat preparation session; not replaced by this session",
+    "source": {
+      "schemaVersion": 1,
+      "version": "26.1030.2333-dev+g6c09178f058f",
+      "baseVersion": "26.1030.2333",
+      "packageVersion": "26.1030.2333~dev+g6c09178f058f",
+      "gitCommit": "6c09178f058f93eaba64f198c54151cd67f94a2e",
+      "gitTree": "c540c2305f4cf1f06a8893a8ae0cb1e0e3a71d70",
+      "commitCount": 2333,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "goldenPath": "/home/user/work/put.gd/src/work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2",
+    "host": "Ubuntu24.04 x86_64 / distro Qt6.4.2 / official AWS SDK1.11.907",
+    "restore": {
+      "schemaVersion": 1,
+      "sha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+      "compressedSha256": "10cb310ce793cc3d3666bbb2b212d2f6db81392ec5c70bc24b27c64acf600be0",
+      "compressedBytes": 4311949729,
+      "virtualBytes": 50994348032,
+      "qcow2Check": "No errors were found on the image.\n160232/778112 = 20.59% allocated, 0.00% fragmented, 0.00% compressed clusters\nImage end offset: 10503323648\n",
+      "downloadAndVerifySeconds": 199.63,
+      "ranges": 33,
+      "concurrency": 8,
+      "curlConfigDeleted": true,
+      "source": "S3 presigned HTTPS GET; secret never included in command arguments or receipts",
+      "verified": true
+    },
+    "preparationTests": {
+      "blocking": [],
+      "failed": [
+        "gui_settings",
+        "proton_transport"
+      ],
+      "failedFirst": [
+        "gui_settings",
+        "gui_tray",
+        "proton_transport"
+      ],
+      "ok": false,
+      "passedOnRetry": [
+        "gui_tray"
+      ],
+      "retried": [
+        "gui_settings",
+        "gui_tray",
+        "proton_transport"
+      ],
+      "tests": 113,
+      "unexplainedCtestFailure": false
+    },
+    "freshForkQualification": "Owned by the separate preparation session and still in progress when this inventory was checked; saved snapshot readiness is verified here",
+    "scope": "Reusable build and nested-VM environment; no physical desktop/release acceptance claim",
+    "evidenceSource": "/home/patrick/work/put.gd/work/boat-aurora-665/template.json"
+  },
+  "supersededHomeUpload": {
+    "golden": "aurora-testing-45.20261022.1-852d34e885c1",
+    "sourceImageBefore": {
+      "bytes": 23965663232,
+      "mtime_ns": 1792715012483065435,
+      "mode": "0o444",
+      "sha256": "33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556"
+    },
+    "sourceImageAfterCancellation": {
+      "bytes": 23965663232,
+      "mtime_ns": 1792715012483065435,
+      "mode": "0o444",
+      "sha256": "33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556"
+    },
+    "allNineOriginalSourceFilesUnchanged": true,
+    "verifiedPartCount": 84,
+    "verifiedPartBytes": 5637144576,
+    "incompleteMultipartUploadAborted": true,
+    "oldCompleteImageObjectCreated": false,
+    "smallMetadataAndFirmwareObjectsPreserved": 8,
+    "uploaderAndSigningControllerStopped": true,
+    "unusedBoatWorker": "bx_ntk8efmv",
+    "unusedBoatWorkerDeleted": true,
+    "remainingOwnedWorkers": [],
+    "unrelatedWorkerCountAtCleanup": 15,
+    "unusedBuildSource": "5985e9043ea81a3ac33d2931203384e40bde035e",
+    "unusedBuildHeadlessTests": {
+      "passed": 113,
+      "failed": 0,
+      "seconds": 160.25,
+      "scope": "Unused deleted worker only; not the existing named snapshot"
+    }
+  },
+  "privateEvidenceRoot": "/home/patrick/work/aurora-golden-665-20261029",
+  "credentialsOrPresignedUrlsIncluded": false
+}

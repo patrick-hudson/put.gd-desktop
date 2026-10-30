@@ -1,0 +1,52 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                57
+            ],
+            "text": "Removes cached previews and temporary upload files. Some failed uploads will no longer be retryable. Saved local copies and uploaded files remain."
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                282,
+                93,
+                162,
+                36
+            ],
+            "text": "Clear temporary files"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                203,
+                93,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        }
+    ],
+    "height": 145,
+    "keys": [
+    ],
+    "width": 468
+}

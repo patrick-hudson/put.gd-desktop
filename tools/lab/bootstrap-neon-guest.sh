@@ -97,6 +97,7 @@ key=$(cat "$1")
 case "$key" in ssh-ed25519\ *) ;; *) echo 'Expected an Ed25519 public key.' >&2; exit 1 ;; esac
 id lab >/dev/null
 [ -f "$(dirname "$0")/guest_idle.py" ] || { echo 'Missing guest_idle.py companion.' >&2; exit 1; }
+[ -f "$(dirname "$0")/package_install.py" ] || { echo 'Missing package_install.py companion.' >&2; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y openssh-server python3
@@ -108,7 +109,9 @@ chmod 600 /home/lab/.ssh/authorized_keys
 # Test package installation only; this rule is never installed on the host. neon's
 # neon-settings-2 puts an apt-get wrapper in /usr/sbin, which sudo's secure_path finds first;
 # it only execs /usr/bin/apt-get.
-printf 'lab ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/sbin/apt-get\n' > /etc/sudoers.d/putgd-lab
+install -d -m 755 /usr/local/lib/putgd-lab
+install -m 755 "$(dirname "$0")/package_install.py" /usr/local/lib/putgd-lab/package_install.py
+printf 'lab ALL=(root) NOPASSWD: /usr/bin/apt-get, /usr/sbin/apt-get, /usr/local/lib/putgd-lab/package_install.py\n' > /etc/sudoers.d/putgd-lab
 chmod 440 /etc/sudoers.d/putgd-lab
 visudo -cf /etc/sudoers.d/putgd-lab
 mkdir -p /etc/plasmalogin.conf.d

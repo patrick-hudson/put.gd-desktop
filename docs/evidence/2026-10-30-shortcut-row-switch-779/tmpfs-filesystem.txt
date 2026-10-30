@@ -1,0 +1,5 @@
+  File: "/tmp/p7m.UwYZp7"
+    ID: aec0aab7808c4f53 Namelen: 255     Type: tmpfs
+Block size: 4096       Fundamental block size: 4096
+Blocks: Total: 1048576    Free: 1048576    Available: 1048576
+Inodes: Total: 2046972    Free: 2046965

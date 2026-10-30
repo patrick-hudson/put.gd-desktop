@@ -1,0 +1,23 @@
+{
+  "placement": "boat",
+  "sandbox": "bx_9mptfeqh",
+  "snapshot": "putgd-lab-ubuntu-gnome-v3",
+  "hostname": "box-node-46e0dd49ef1814d9",
+  "kernel": "6.8.0-117-generic",
+  "qemuVersion": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)",
+  "run": {
+    "schemaVersion": 1,
+    "id": "80792d91-fb5d-40f3-8703-d1c43ccba89e",
+    "profile": "gnome-wayland",
+    "guest_user": "lab",
+    "ssh_port": 22220,
+    "vnc_display": 20,
+    "acceleration": "kvm",
+    "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v2/image.qcow2",
+    "golden_sha256": "349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656",
+    "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+    "known_hosts": "/home/user/i780/work/lab-runs/c1/known_hosts",
+    "overlay": "/home/user/i780/work/lab-runs/c1/disk.qcow2",
+    "pid": 102986
+  }
+}

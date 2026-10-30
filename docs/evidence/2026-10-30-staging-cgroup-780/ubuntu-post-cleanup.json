@@ -1,0 +1,11 @@
+{
+  "placement": "boat",
+  "sandbox": "bx_9mptfeqh",
+  "qemuAbsent": true,
+  "overlaysRetired": [
+    "c1"
+  ],
+  "controllerFencesFree": true,
+  "physicalOrProtonLocksAcquired": [],
+  "optionalExportStopped": true
+}

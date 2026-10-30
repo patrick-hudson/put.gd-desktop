@@ -1,0 +1,798 @@
+{
+  "errorType": "AssertionError",
+  "message": "{'wrapperAlive': True, 'launchChainAlive': [True, True], 'loginScope': 'active', 'userManager': 'inactive', 'wrapperCgroup': '0::/system.slice/putgd-supervisor-install-44e4e1d280eb48dbafa10a6a2b76d8f0.scope', 'scopeEvents': 'populated 1', 'sessions': '107    0 root    -     - active  no -\\n 87 1000 lab     -     - closing no -\\n c2  113 lightdm seat0 - active  no -\\n'}",
+  "completed": [
+    {
+      "case": "fallback-first-install",
+      "tracking": {
+        "staging-tracking.json": {
+          "tracking": "session",
+          "fallbackReason": "scope launcher /usr/local/lib/putgd-lab/package_scope.py is not installed"
+        },
+        "supervisor-tracking.json": {
+          "tracking": "cgroup-v2",
+          "manager": "system",
+          "unit": "putgd-supervisor-install-293bc921ebd84d7a85e1be89246259c6.scope"
+        }
+      },
+      "grant": "lab ALL=(root) NOPASSWD: /usr/local/lib/putgd-lab/package_install.py, /usr/local/lib/putgd-lab/package_scope.py\nroot 755\n0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8  /usr/local/lib/putgd-lab/package_scope.py\n",
+      "result": {
+        "schemaVersion": 1,
+        "timeoutSeconds": 300,
+        "recoverySeconds": 60,
+        "timedOut": false,
+        "aborted": false,
+        "ownedProcesses": [
+          {
+            "pid": 1994,
+            "startTicks": 2617
+          },
+          {
+            "pid": 2008,
+            "startTicks": 2637
+          },
+          {
+            "pid": 2015,
+            "startTicks": 2655
+          },
+          {
+            "pid": 2016,
+            "startTicks": 2655
+          },
+          {
+            "pid": 2024,
+            "startTicks": 2672
+          },
+          {
+            "pid": 2044,
+            "startTicks": 2766
+          },
+          {
+            "pid": 2048,
+            "startTicks": 2774
+          },
+          {
+            "pid": 2051,
+            "startTicks": 2774
+          },
+          {
+            "pid": 2057,
+            "startTicks": 2815
+          },
+          {
+            "pid": 2058,
+            "startTicks": 2815
+          },
+          {
+            "pid": 2061,
+            "startTicks": 2815
+          }
+        ],
+        "exitCodes": [
+          0,
+          0
+        ],
+        "elapsedSeconds": 2.260385521,
+        "remainingPids": [],
+        "dpkgStatus": {
+          "exitCode": 0,
+          "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.780.3\nDescription: Synthetic disposable #780 lifetime fixture\n",
+          "stderr": ""
+        },
+        "dpkgAudit": {
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "ok": true
+      },
+      "controllerWarning": [
+        "Guest staging uses session-only tracking: scope launcher /usr/local/lib/putgd-lab/package_scope.py is not installed. Session-scan limits apply."
+      ],
+      "lockAfter": null
+    },
+    {
+      "case": "supervisor-stop-session",
+      "phase": "supervisor",
+      "loginEnd": {
+        "mode": "stop-session",
+        "command": "systemctl stop session-45.scope",
+        "output": "exit=0",
+        "seconds": 0.1844194799999741
+      },
+      "job": "install-9235270466d74e93a74881682ae6b73a",
+      "identities": {
+        "wrapper": {
+          "pid": 2399,
+          "ppid": 2382,
+          "sessionId": 2399,
+          "startTicks": 3282,
+          "uid": 1000,
+          "comm": "python3",
+          "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+        },
+        "launchChain": [
+          {
+            "pid": 2382,
+            "ppid": 2375,
+            "sessionId": 2375,
+            "startTicks": 3272,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2375,
+            "ppid": 1,
+            "sessionId": 2375,
+            "startTicks": 3263,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/user.slice/user-1000.slice/session-45.scope"
+          }
+        ],
+        "loginScope": "session-45.scope",
+        "scopeMembers": [
+          {
+            "pid": 2382,
+            "ppid": 2375,
+            "sessionId": 2375,
+            "startTicks": 3272,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2399,
+            "ppid": 2382,
+            "sessionId": 2399,
+            "startTicks": 3282,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2400,
+            "ppid": 2399,
+            "sessionId": 2399,
+            "startTicks": 3282,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2403,
+            "ppid": 2400,
+            "sessionId": 2399,
+            "startTicks": 3283,
+            "uid": 0,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2418,
+            "ppid": 2403,
+            "sessionId": 2399,
+            "startTicks": 3306,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2453,
+            "ppid": 2418,
+            "sessionId": 2453,
+            "startTicks": 3367,
+            "uid": 0,
+            "comm": "dpkg",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2454,
+            "ppid": 2453,
+            "sessionId": 2453,
+            "startTicks": 3369,
+            "uid": 0,
+            "comm": "putgd.postinst",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          },
+          {
+            "pid": 2479,
+            "ppid": 2454,
+            "sessionId": 2453,
+            "startTicks": 3420,
+            "uid": 0,
+            "comm": "sleep",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope"
+          }
+        ],
+        "sessions": "45 1000 lab  -     -    closing no -\n53    0 root -     -    active  no -\nc1 1000 lab  seat0 tty7 active  no -\n"
+      },
+      "afterLoginEnd": [
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "55    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "56    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "57    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "58    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "59    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "60    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "61    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "62    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "63    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "64    0 root -     -    active no -\nc1 1000 lab  seat0 tty7 active no -\n"
+        }
+      ],
+      "refusedWhileRunning": "recover-staging refused install-9235270466d74e93a74881682ae6b73a: the install supervisor has started and session processes are still running: PIDs [2399, 2400, 2403, 2418] (supervisor-running); install-active blocks retries. Inspect ~/putgd-lab/install-9235270466d74e93a74881682ae6b73a/supervisor-process.json, progress.json and result.json.",
+      "terminal": {
+        "result.json": {
+          "schemaVersion": 1,
+          "timeoutSeconds": 300,
+          "recoverySeconds": 60,
+          "timedOut": false,
+          "aborted": false,
+          "ownedProcesses": [
+            {
+              "pid": 2404,
+              "startTicks": 3286
+            },
+            {
+              "pid": 2418,
+              "startTicks": 3306
+            },
+            {
+              "pid": 2425,
+              "startTicks": 3325
+            },
+            {
+              "pid": 2426,
+              "startTicks": 3325
+            },
+            {
+              "pid": 2436,
+              "startTicks": 3333
+            },
+            {
+              "pid": 2453,
+              "startTicks": 3367
+            },
+            {
+              "pid": 2454,
+              "startTicks": 3369
+            },
+            {
+              "pid": 2456,
+              "startTicks": 3370
+            },
+            {
+              "pid": 2479,
+              "startTicks": 3420
+            },
+            {
+              "pid": 2516,
+              "startTicks": 3470
+            },
+            {
+              "pid": 2528,
+              "startTicks": 3520
+            },
+            {
+              "pid": 2529,
+              "startTicks": 3570
+            },
+            {
+              "pid": 2543,
+              "startTicks": 3620
+            },
+            {
+              "pid": 2544,
+              "startTicks": 3671
+            },
+            {
+              "pid": 2547,
+              "startTicks": 3721
+            },
+            {
+              "pid": 2559,
+              "startTicks": 3771
+            },
+            {
+              "pid": 2563,
+              "startTicks": 3821
+            },
+            {
+              "pid": 2577,
+              "startTicks": 3872
+            },
+            {
+              "pid": 2581,
+              "startTicks": 3922
+            },
+            {
+              "pid": 2592,
+              "startTicks": 3972
+            },
+            {
+              "pid": 2596,
+              "startTicks": 4022
+            },
+            {
+              "pid": 2597,
+              "startTicks": 4072
+            },
+            {
+              "pid": 2611,
+              "startTicks": 4122
+            },
+            {
+              "pid": 2612,
+              "startTicks": 4173
+            },
+            {
+              "pid": 2626,
+              "startTicks": 4223
+            },
+            {
+              "pid": 2627,
+              "startTicks": 4273
+            },
+            {
+              "pid": 2630,
+              "startTicks": 4323
+            },
+            {
+              "pid": 2642,
+              "startTicks": 4374
+            },
+            {
+              "pid": 2643,
+              "startTicks": 4424
+            },
+            {
+              "pid": 2657,
+              "startTicks": 4474
+            },
+            {
+              "pid": 2661,
+              "startTicks": 4524
+            },
+            {
+              "pid": 2664,
+              "startTicks": 4574
+            },
+            {
+              "pid": 2676,
+              "startTicks": 4624
+            },
+            {
+              "pid": 2677,
+              "startTicks": 4675
+            },
+            {
+              "pid": 2700,
+              "startTicks": 4725
+            },
+            {
+              "pid": 2701,
+              "startTicks": 4775
+            },
+            {
+              "pid": 2713,
+              "startTicks": 4825
+            },
+            {
+              "pid": 2714,
+              "startTicks": 4875
+            },
+            {
+              "pid": 2715,
+              "startTicks": 4926
+            },
+            {
+              "pid": 2716,
+              "startTicks": 4976
+            },
+            {
+              "pid": 2717,
+              "startTicks": 5026
+            },
+            {
+              "pid": 2718,
+              "startTicks": 5076
+            },
+            {
+              "pid": 2719,
+              "startTicks": 5127
+            },
+            {
+              "pid": 2720,
+              "startTicks": 5177
+            },
+            {
+              "pid": 2721,
+              "startTicks": 5227
+            },
+            {
+              "pid": 2722,
+              "startTicks": 5277
+            },
+            {
+              "pid": 2723,
+              "startTicks": 5327
+            },
+            {
+              "pid": 2724,
+              "startTicks": 5378
+            },
+            {
+              "pid": 2725,
+              "startTicks": 5428
+            },
+            {
+              "pid": 2726,
+              "startTicks": 5478
+            },
+            {
+              "pid": 2727,
+              "startTicks": 5528
+            },
+            {
+              "pid": 2728,
+              "startTicks": 5578
+            },
+            {
+              "pid": 2736,
+              "startTicks": 5629
+            },
+            {
+              "pid": 2737,
+              "startTicks": 5679
+            },
+            {
+              "pid": 2738,
+              "startTicks": 5729
+            },
+            {
+              "pid": 2739,
+              "startTicks": 5779
+            },
+            {
+              "pid": 2740,
+              "startTicks": 5829
+            },
+            {
+              "pid": 2741,
+              "startTicks": 5880
+            },
+            {
+              "pid": 2742,
+              "startTicks": 5930
+            },
+            {
+              "pid": 2743,
+              "startTicks": 5980
+            },
+            {
+              "pid": 2744,
+              "startTicks": 6030
+            },
+            {
+              "pid": 2745,
+              "startTicks": 6080
+            },
+            {
+              "pid": 2746,
+              "startTicks": 6131
+            },
+            {
+              "pid": 2747,
+              "startTicks": 6181
+            },
+            {
+              "pid": 2748,
+              "startTicks": 6231
+            },
+            {
+              "pid": 2749,
+              "startTicks": 6281
+            },
+            {
+              "pid": 2750,
+              "startTicks": 6331
+            },
+            {
+              "pid": 2751,
+              "startTicks": 6382
+            },
+            {
+              "pid": 2752,
+              "startTicks": 6432
+            },
+            {
+              "pid": 2753,
+              "startTicks": 6482
+            },
+            {
+              "pid": 2754,
+              "startTicks": 6532
+            },
+            {
+              "pid": 2755,
+              "startTicks": 6582
+            },
+            {
+              "pid": 2756,
+              "startTicks": 6633
+            },
+            {
+              "pid": 2757,
+              "startTicks": 6683
+            },
+            {
+              "pid": 2758,
+              "startTicks": 6733
+            },
+            {
+              "pid": 2759,
+              "startTicks": 6783
+            },
+            {
+              "pid": 2760,
+              "startTicks": 6834
+            },
+            {
+              "pid": 2761,
+              "startTicks": 6884
+            },
+            {
+              "pid": 2762,
+              "startTicks": 6934
+            },
+            {
+              "pid": 2763,
+              "startTicks": 6984
+            },
+            {
+              "pid": 2764,
+              "startTicks": 7034
+            },
+            {
+              "pid": 2765,
+              "startTicks": 7085
+            },
+            {
+              "pid": 2766,
+              "startTicks": 7135
+            },
+            {
+              "pid": 2767,
+              "startTicks": 7185
+            },
+            {
+              "pid": 2768,
+              "startTicks": 7235
+            },
+            {
+              "pid": 2769,
+              "startTicks": 7286
+            },
+            {
+              "pid": 2770,
+              "startTicks": 7336
+            },
+            {
+              "pid": 2771,
+              "startTicks": 7386
+            },
+            {
+              "pid": 2772,
+              "startTicks": 7436
+            },
+            {
+              "pid": 2773,
+              "startTicks": 7486
+            },
+            {
+              "pid": 2774,
+              "startTicks": 7537
+            },
+            {
+              "pid": 2775,
+              "startTicks": 7587
+            },
+            {
+              "pid": 2776,
+              "startTicks": 7637
+            },
+            {
+              "pid": 2777,
+              "startTicks": 7687
+            },
+            {
+              "pid": 2781,
+              "startTicks": 7738
+            }
+          ],
+          "exitCodes": [
+            0,
+            0
+          ],
+          "elapsedSeconds": 45.263363072000004,
+          "remainingPids": [],
+          "dpkgStatus": {
+            "exitCode": 0,
+            "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.780.3\nDescription: Synthetic disposable #780 lifetime fixture\n",
+            "stderr": ""
+          },
+          "dpkgAudit": {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "ok": true
+        },
+        "supervisor-result.json": {
+          "pid": 2399,
+          "sessionId": 2399,
+          "startTicks": 3282,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+            "unit": "putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+            "device": 30,
+            "inode": 10594,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "fc2b8d3c-d257-4dde-a10f-78bf47b8cdcd"
+          },
+          "exitCode": 0,
+          "finished": true
+        }
+      },
+      "recovery": {
+        "finished": true,
+        "state": "supervisor-finished",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 2399,
+          "sessionId": 2399,
+          "startTicks": 3282,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+            "unit": "putgd-supervisor-install-9235270466d74e93a74881682ae6b73a.scope",
+            "device": 30,
+            "inode": 10594,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "fc2b8d3c-d257-4dde-a10f-78bf47b8cdcd"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "result": {
+          "ok": true,
+          "aborted": false,
+          "timedOut": false,
+          "exitCodes": [
+            0,
+            0
+          ],
+          "remainingPids": [],
+          "error": null
+        }
+      },
+      "lockAfter": null
+    }
+  ]
+}

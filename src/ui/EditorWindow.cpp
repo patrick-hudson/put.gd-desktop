@@ -132,9 +132,13 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* zoomMenu=new QMenu(status_);auto* zoomChoices=new QActionGroup(zoomMenu);zoomChoices->setExclusive(true);
  for(const int percent:{0,50,100,200}){auto* action=zoomMenu->addAction(percent?QString("%1%").arg(percent):QStringLiteral("Fit"));action->setCheckable(true);action->setData(percent);zoomChoices->addAction(action);connect(action,&QAction::triggered,this,[this,percent]{if(percent)canvas_->setZoom(percent/100.0);else canvas_->fit();});}
  zoomMenu->addSeparator();
- for(const bool in:{true,false}){auto* action=zoomMenu->addAction(in?"Zoom in":"Zoom out");action->setShortcut(QKeySequence(in?"Ctrl++":"Ctrl+-"));action->setShortcutContext(Qt::WidgetShortcut);connect(action,&QAction::triggered,this,[this,in]{canvas_->zoomBy(in?1.25:0.8);});}
- zoomMenu->actions()[0]->setShortcut(QKeySequence("Ctrl+0"));zoomMenu->actions()[0]->setShortcutContext(Qt::WidgetShortcut);
- zoomMenu->actions()[2]->setShortcut(QKeySequence("Ctrl+1"));zoomMenu->actions()[2]->setShortcutContext(Qt::WidgetShortcut);
+ for(const bool in:{true,false}){auto* action=zoomMenu->addAction(in?"Zoom in":"Zoom out");auto keys=QKeySequence::keyBindings(in?QKeySequence::ZoomIn:QKeySequence::ZoomOut);if(in&&!keys.contains(QKeySequence("Ctrl+=")))keys.append(QKeySequence("Ctrl+="));action->setShortcuts(keys);connect(action,&QAction::triggered,this,[this,in]{canvas_->zoomBy(in?1.25:0.8);});}
+ zoomMenu->actions()[0]->setShortcut(QKeySequence("Ctrl+0"));
+ zoomMenu->actions()[2]->setShortcut(QKeySequence("Ctrl+1"));
+ // Share each action between the menu and the editor window. A separate
+ // WindowShortcut plus a menu WidgetShortcut becomes ambiguous when Qt
+ // restores focus to the menu's tool button, even after the popup closes.
+ for(auto* action:zoomMenu->actions())if(!action->shortcuts().isEmpty()){action->setShortcutContext(Qt::WindowShortcut);addAction(action);}
  status_->setMenu(zoomMenu);
  root->addWidget(toolbar);
 
@@ -171,7 +175,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* grid=new QGridLayout;grid->setContentsMargins(0,0,0,0);grid->setSpacing(Ui::space(Space::xs));int cell=0;
  const QStringList colorNames{"Red","Orange","Yellow","Green","Blue","White","Black"};
  for(const auto& color:{QColor(220,38,38),QColor(245,158,11),QColor(250,204,21),QColor(34,197,94),QColor(59,130,246),QColor(255,255,255),QColor(17,19,23)}){
-  auto* swatch=makeSwatch(color);swatch->setAccessibleName("Color "+colorNames[cell]);swatch->setAccessibleDescription(color.name());swatch->setToolTip(colorNames[cell]+" ("+color.name()+")");swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
+  auto* swatch=makeSwatch(color);swatch->setObjectName("colorSwatch"+colorNames[cell]);swatch->setAccessibleName("Color "+colorNames[cell]);swatch->setAccessibleDescription(color.name());swatch->setToolTip(colorNames[cell]+" ("+color.name()+")");swatches_.append(swatch);grid->addWidget(swatch,cell/4,cell%4);++cell;
  }
  // The custom picker follows the palette, making two even rows of four rather
  // than six and an orphaned pair; recent custom colours get their own row.
@@ -182,7 +186,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(Ui::space(Space::xs));recentLayout_->addStretch(1);recent->setObjectName("recentColors");recent->setAccessibleName("Recent custom colors");layout->addWidget(recent);
  properties->addWidget(colorRow_);
  widthRow_=column(panel,layout);layout->addWidget(fieldLabel("Line width",widthRow_));
- width_=Ui::choiceBox(widthRow_);width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
+ width_=Ui::choiceBox(widthRow_);width_->setObjectName("lineWidth");width_->addItem("Thin · 2 px",2);width_->addItem("Medium · 4 px",4);width_->addItem("Thick · 8 px",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
  properties->addWidget(widthRow_);
  auto* blurRadius=new BlurRadius(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur,12,false,panel);blurRow_=blurRadius;Ui::role(blurRadius->label(),"caption");blurRadius->layout()->setSpacing(Ui::space(Space::s));
  strength_=blurRadius->slider();strength_->setObjectName("blurStrength");strengthValue_=blurRadius->spinBox();strengthValue_->setObjectName("blurStrengthValue");
@@ -323,8 +327,6 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  };
  auto standard=[](QKeySequence::StandardKey key,QList<QKeySequence> extra={}){return QKeySequence::keyBindings(key)+extra;};
  bind(standard(QKeySequence::Undo,{QKeySequence("Ctrl+Z")}),undo);bind(standard(QKeySequence::Redo,{QKeySequence("Ctrl+Shift+Z"),QKeySequence("Ctrl+Y")}),redo);
- bind({QKeySequence("Ctrl+0")},[this]{canvas_->fit();});bind({QKeySequence("Ctrl+1")},[this]{canvas_->actualSize();});
- bind(standard(QKeySequence::ZoomIn,{QKeySequence("Ctrl+=")}),[this]{canvas_->zoomBy(1.25);});bind(standard(QKeySequence::ZoomOut),[this]{canvas_->zoomBy(0.8);});
  bind(standard(QKeySequence::Save),[this]{if(!busy_)saveCopy();});
  // Upload is never plain Enter, which completes text entry and crops.
  auto submit=[this]{if(busy_||savingCopy_)return;finishPendingEdits();emit uploadRequested();};
@@ -383,8 +385,9 @@ void EditorWindow::setRecentColors(const QStringList& colors){
 }
 
 void EditorWindow::rebuildRecentColors(){
- for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->deleteLater();}
- for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setToolTip("Recent custom color "+name);recentSwatches_.append(swatch);recentLayout_->insertWidget(recentLayout_->count()-1,swatch);}
+ // Retired swatches stay alive until deferred deletion, but must stop matching selectors immediately.
+ for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->setObjectName({});swatch->hide();recentLayout_->removeWidget(swatch);swatch->deleteLater();}
+ for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setObjectName("recentColorSwatch_"+name.mid(1));swatch->setToolTip("Recent custom color "+name);recentSwatches_.append(swatch);recentLayout_->insertWidget(recentLayout_->count()-1,swatch);}
  recentLayout_->parentWidget()->setVisible(!recentColors_.isEmpty());
 }
 

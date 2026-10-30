@@ -1,0 +1,37 @@
+{
+  "stoppedOwnedUnits": [
+    "putgd-snap-fgnome.service",
+    "putgd-snap-fcinnamon.service",
+    "putgd-snap-fbase2.service",
+    "putgd-snap-fbase.service",
+    "putgd-snap-pbuild.service",
+    "putgd-snap-pcinnamon.service",
+    "putgd-snap-vgnome.service",
+    "putgd-snap-vcinnamon.service",
+    "putgd-snap-vbuild.service",
+    "putgd-snap-build.service",
+    "putgd-snap-cinnamon.service",
+    "putgd-snap-gnome.service",
+    "putgd-snap-host-pcinnamon.service"
+  ],
+  "removedWallEntries": [
+    {
+      "name": "Snapshot fresh fcinnamon bx_wsvvktyu",
+      "port": 5991,
+      "type": "vm"
+    },
+    {
+      "name": "Snapshot fresh fgnome bx_kywgfsas",
+      "port": 5992,
+      "type": "vm"
+    },
+    {
+      "name": "Snapshot fresh fbase2 bx_rxgaakqm",
+      "port": 6261,
+      "type": "vm"
+    }
+  ],
+  "unrelatedWallEntriesPreserved": true,
+  "isolatedLabAgentPid": 1709621,
+  "isolatedLabAgentSocketAbsent": true
+}

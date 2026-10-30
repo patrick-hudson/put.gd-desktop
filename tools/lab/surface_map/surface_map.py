@@ -49,7 +49,10 @@ DESTINATIONS = ('local', 's3', 'b2', 'proton')
 ROW_FIELDS = ('host', 'placement', 'guest', 'destination', 'review', 'review_reason',
               'frames', 'recipe', 'build')
 # Synthetic captures putgd-ui-catalog draws only offscreen (tests/gui/ui_catalog.cpp).
-OFFSCREEN_ONLY_CAPTURES = {'00-tray-upload-status'}
+OFFSCREEN_ONLY_CAPTURES = {
+    '00-tray-upload-status', '00-tray-menu-idle', '00-tray-menu-uploading',
+    '00-tray-menu-proton-busy', '00-tray-output-submenu', '00-tray-edit-submenu',
+}
 
 
 class ModelError(ValueError):
@@ -100,6 +103,10 @@ def validate_model(model):
         for key in item.get('keys', []):
             if not isinstance(key, str) or not key:
                 problems.append(iid + ': keys must be non-empty strings')
+        if 'capture' in item:
+            captures = item['capture'] if isinstance(item['capture'], list) else [item['capture']]
+            if not captures or any(not isinstance(c, str) or not re.fullmatch(r'[a-zA-Z0-9_.-]+', c) for c in captures):
+                problems.append(iid + ': capture must be a non-empty name or list of names')
         for selector in selectors(item):
             if not isinstance(selector, str) or not selector:
                 problems.append(iid + ': control selectors must be non-empty strings')
@@ -348,6 +355,17 @@ def summarise(model, entries):
 
 # -------------------------------------------------------------- catalog
 
+def interaction_captures(item, surface):
+    """Explicit state(s) override the surface default; old models need no changes."""
+    capture = item.get('capture', surface.get('capture'))
+    return capture if isinstance(capture, list) else ([capture] if capture else [])
+
+
+def surface_captures(surface, items):
+    return list(dict.fromkeys(([surface['capture']] if surface.get('capture') else []) +
+                             [c for item in items for c in interaction_captures(item, surface)]))
+
+
 def load_controls(catalog, capture):
     if not catalog or not capture:
         return None
@@ -452,38 +470,41 @@ def build_page_data(model, entries, catalog, output, embed=False, label=''):
     surfaces = []
     for surface in model['surfaces']:
         items = by_surface.get(surface['id'], [])
-        controls = load_controls(catalog, surface.get('capture'))
-        image = None
-        if catalog and surface.get('capture'):
-            source = Path(catalog) / (surface['capture'] + '.png')
-            if source.exists():
-                if embed:
-                    image = 'data:image/png;base64,' + base64.b64encode(source.read_bytes()).decode('ascii')
-                else:
-                    captures_dir.mkdir(parents=True, exist_ok=True)
-                    # Content-hashed name: a changed capture gets a new URL, so a cached
-                    # old picture never sits under new hotspots.
-                    digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
-                    name = '%s.%s.png' % (source.stem, digest)
-                    shutil.copyfile(source, captures_dir / name)
-                    image = 'captures/' + name
-        hotspots = []
-        for item in items:
-            for selector in selectors(item):
-                control = match_control(controls, selector)
-                if control:
-                    hotspots.append({'interaction': item['id'], 'rect': control['rect'], 'text': control.get('text', '')})
-                    break
-        missing_controls, missing_keys = unmodelled(controls, model['interactions'])
-        surfaces.append({
-            **{k: v for k, v in surface.items()},
-            'image': image,
-            'imageSize': [controls['width'], controls['height']] if controls else None,
-            'hotspots': hotspots,
-            'unmodelledControls': missing_controls,
-            'unmodelledKeys': missing_keys,
-            'hasControls': controls is not None,
-        })
+        states = []
+        for capture in surface_captures(surface, items):
+            controls = load_controls(catalog, capture)
+            image = None
+            if catalog and capture:
+                source = Path(catalog) / (capture + '.png')
+                if source.exists():
+                    if embed:
+                        image = 'data:image/png;base64,' + base64.b64encode(source.read_bytes()).decode('ascii')
+                    else:
+                        captures_dir.mkdir(parents=True, exist_ok=True)
+                        # Content-hashed name: a changed capture gets a new URL, so a cached
+                        # old picture never sits under new hotspots.
+                        digest = hashlib.sha256(source.read_bytes()).hexdigest()[:12]
+                        name = '%s.%s.png' % (source.stem, digest)
+                        shutil.copyfile(source, captures_dir / name)
+                        image = 'captures/' + name
+            hotspots = []
+            for item in items:
+                if capture not in interaction_captures(item, surface):
+                    continue
+                for selector in selectors(item):
+                    for control in (controls or {}).get('controls', []):
+                        if control_matches(control, selector) and not any(h['interaction'] == item['id'] and h['rect'] == control['rect'] for h in hotspots):
+                            hotspots.append({'interaction': item['id'], 'rect': control['rect'], 'text': control.get('text', '')})
+            missing_controls, missing_keys = unmodelled(controls, model['interactions'])
+            states.append({
+                'capture': capture, 'image': image, 'placeholder': surface.get('placeholder'),
+                'imageSize': [controls['width'], controls['height']] if controls else None,
+                'hotspots': hotspots, 'unmodelledControls': missing_controls,
+                'unmodelledKeys': missing_keys, 'hasControls': controls is not None,
+            })
+        default = states[0] if states else dict(image=None, imageSize=None, hotspots=[],
+                                               unmodelledControls=[], unmodelledKeys=[], hasControls=False)
+        surfaces.append({**surface, **default, 'captures': states})
     drivers = drivers_by_interaction(model)
     interactions = []
     for item in model['interactions']:
@@ -773,8 +794,9 @@ def check(args):
             print('declared controls files missing from catalog: ' + ', '.join(lost), file=sys.stderr)
             return 1
         platform = meta.get('platform')
-        missing = [s['capture'] for s in model['surfaces'] if s.get('capture')
-                   and not (Path(args.catalog) / (s['capture'] + '.png')).exists()]
+        missing = sorted({c for s in model['surfaces']
+                          for c in surface_captures(s, [i for i in model['interactions'] if i['surface'] == s['id']])
+                          if not (Path(args.catalog) / (c + '.png')).exists()})
         # Only the documented offscreen-only synthetic states may be absent, and only from a
         # native (PUTGD_CATALOG_HANDSHAKE) catalog; the map shows them as placeholders.
         allowed = OFFSCREEN_ONLY_CAPTURES if platform != 'offscreen' else set()
@@ -789,14 +811,21 @@ def check(args):
         everywhere = [json.loads(p.read_text(encoding='utf-8')) for p in sorted(Path(args.catalog).glob('*.controls.json'))]
         elsewhere, nowhere = [], []
         for surface in model['surfaces']:
-            controls = load_controls(args.catalog, surface.get('capture'))
             for item in model['interactions']:
-                if item['surface'] != surface['id'] or controls is None:
+                if item['surface'] != surface['id']:
+                    continue
+                states = interaction_captures(item, surface)
+                controls = [load_controls(args.catalog, c) for c in states]
+                if 'capture' in item and selectors(item):
+                    absent = [name for name, inventory in zip(states, controls) if inventory is None and name not in allowed]
+                    if absent:
+                        nowhere.append(item['id'] + ': missing controls for ' + ', '.join(absent))
+                if not any(c is not None for c in controls):
                     continue
                 for selector in selectors(item):
-                    if match_control(controls, selector):
+                    if any(match_control(c, selector) for c in controls):
                         continue
-                    if any(match_control(other, selector) for other in everywhere):
+                    if 'capture' not in item and any(match_control(other, selector) for other in everywhere):
                         elsewhere.append('%s -> %s' % (item['id'], selector))
                     else:
                         nowhere.append('%s -> %s' % (item['id'], selector))

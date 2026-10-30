@@ -1,0 +1,14 @@
+### 3: Ctrl-C at 2s during boat new; server-side create visible at 5s; CREATE_TIMEOUT=15
+{'state': 'failed', 'error': 'Controller cancelled or deadline exceeded: boat', 'cleanupVerified': True, '_elapsed': 33.6} ['bx_1']
+remaining: []
+events: [{'create': 'bx_1', 'name': 'putgd-aaaaaaaaaaaa-appimage-c8fe42dc9cfd481c'}, {'delete': 'bx_1'}]
+### 3b: boat new hangs to CREATE_TIMEOUT=4 (killed); server-side create visible at 7s
+{'state': 'failed', 'error': 'Controller cancelled or deadline exceeded: boat', 'cleanupVerified': True, '_elapsed': 35.8} ['bx_1']
+remaining: []
+events: [{'create': 'bx_1', 'name': 'putgd-aaaaaaaaaaaa-appimage-88be0f73ae7e47dc'}, {'delete': 'bx_1'}]
+### 3c: --cleanup afterwards (dead lease) recovers it
+exit=0
+scen2.sh: line 15: y: command not found
+scen2.sh: line 18: from: command not found
+scen2.sh: line 19: syntax error near unexpected token `'putgd-'+SHA[:12]+'-appimage',20000,10800,'legacy_expired''
+scen2.sh: line 19: `seed('putgd-'+SHA[:12]+'-appimage',20000,10800,'legacy_expired')'

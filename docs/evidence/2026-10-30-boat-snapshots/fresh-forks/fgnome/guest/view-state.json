@@ -1,0 +1,124 @@
+{
+  "appearance": {
+    "desktop": "light",
+    "desktopSource": "qt",
+    "scheme": "light",
+    "theme": "system",
+    "tokens": {
+      "accent": "#8f5b20",
+      "accentHover": "#774816",
+      "bg": "#ffffff",
+      "border": "#ebebeb",
+      "borderStrong": "#8e8e87",
+      "controlOutline": "#82827b",
+      "danger": "#a44139",
+      "dangerHover": "#8f322b",
+      "dangerSurface": "#f4e0de",
+      "icon": "#383834",
+      "iconSecondary": "#86867e",
+      "iconSecondarySelected": "#787874",
+      "iconSelected": "#292926",
+      "lead": "#f0efea",
+      "leadOutline": "#82827b",
+      "link": "#80521d",
+      "live": "#c8302b",
+      "onAccent": "#ffffff",
+      "primary": "#292926",
+      "primaryHover": "#3a3a37",
+      "selected": "#ecebe6",
+      "success": "#386a4b",
+      "successSurface": "#dfede3",
+      "surface": "#f5f5f2",
+      "surfaceRaised": "#ffffff",
+      "text": "#292926",
+      "textDisabled": "#878780",
+      "textMuted": "#62625b",
+      "textSecondary": "#484844",
+      "warning": "#8f5b20",
+      "warningSurface": "#eee5d8",
+      "well": "#ededea"
+    }
+  },
+  "settings": {
+    "captureRouting": {
+      "clipboard": {
+        "destination": "No destination",
+        "destinationEnabled": false,
+        "effectivePublicationMode": "",
+        "inherited": true,
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      },
+      "default": {
+        "destination": "No destination",
+        "destinationEnabled": true,
+        "effectivePublicationMode": "",
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      },
+      "desktop": {
+        "destination": "No destination",
+        "destinationEnabled": false,
+        "effectivePublicationMode": "",
+        "inherited": true,
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      },
+      "edit": {
+        "destination": "No destination",
+        "destinationEnabled": false,
+        "effectivePublicationMode": "",
+        "inherited": true,
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      },
+      "record": {
+        "destination": "No destination",
+        "destinationEnabled": false,
+        "effectivePublicationMode": "",
+        "inherited": true,
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      },
+      "region": {
+        "destination": "No destination",
+        "destinationEnabled": false,
+        "effectivePublicationMode": "",
+        "inherited": true,
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      },
+      "window": {
+        "destination": "No destination",
+        "destinationEnabled": false,
+        "effectivePublicationMode": "",
+        "inherited": true,
+        "profileId": "",
+        "publicationMode": "default",
+        "sharing": "Destination default",
+        "sharingEnabled": false,
+        "status": "Uploads are off; keeps a local copy in your folders."
+      }
+    },
+    "section": 0
+  },
+  "state": "ready"
+}
