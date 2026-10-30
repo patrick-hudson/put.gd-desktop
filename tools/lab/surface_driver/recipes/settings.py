@@ -598,7 +598,7 @@ def cli_settings(ctx):
         frame(ctx, 'after', 0)
     finally:
         patch(ctx, {'preferences': {'notifications': not expected}})
-    ctx.blocked('Partial CLI settings evidence saved; settings.save, reorderProfiles and setup.* need isolated multi-profile/setup fixtures.', issue=CORE_ISSUE)
+    ctx.blocked('Partial CLI settings evidence saved; setup.* needs an isolated setup lifecycle fixture. The multi-profile fixture is available, but this CLI recipe still needs explicit save/reorder coverage.', issue=CORE_ISSUE)
 
 
 @recipe('cli.ui')
@@ -858,7 +858,7 @@ def reload_confirmation(ctx):
 # Honest declarations for edges that the current interface cannot prepare or
 # observe. Each gets its own blocked receipt (and never a visual-only pass).
 BLOCKED = {
-    'settings.footer': 'Needs deterministic failed-save/conflict fixture and footer/retry observation; accepted config alone cannot prove retry UI.',
+    'settings.footer': 'Conflict fixture is available; needs deterministic failed-save/retry fixture and footer/retry observation. Accepted config alone cannot prove retry UI.',
     'capture.default-destination': 'Needs isolated destination choices with known profile IDs and full capture-route assertions.',
     'capture.default-sharing': 'Needs isolated share/private capable destination with capture-route assertions.',
     'capture.no-output': 'Needs no-output fixture and assertions for both recovery buttons before source acquisition.',
@@ -866,7 +866,7 @@ BLOCKED = {
     'capture.browse': 'Needs native folder chooser fixture and deterministic failed-open/retry channel from dialogs lane.',
     'capture.help-toggles': 'Help disclosures are absent from resident view state; needs accessible expanded/text observation for every setting.',
     'shortcuts-page.chord': 'Context.keys cannot hold overlapping second-key/AltGr events or assert physical unshifted digits; needs input event fixture.',
-    'shortcuts-page.focus-loss': 'Needs accessible recording-status observation and controlled external focus/hide/deactivation fixture.',
+    'shortcuts-page.focus-loss': 'Recording status is observed; needs controlled external focus/hide/deactivation fixture with native-channel assertions.',
     'shortcuts-page.refresh': 'Refresh is hidden on healthy bindings; needs conflict/unavailable/pending desktop-channel fixture.',
     'shortcuts-page.help': 'Help visibility absent from resident view state; needs accessible expanded/text observation.',
     'shortcuts-page.unsupported-desktop': 'Required desktop profiles have a shortcut channel; needs an explicitly unsupported Wayland profile.',
