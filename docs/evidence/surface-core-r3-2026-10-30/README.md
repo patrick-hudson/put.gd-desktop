@@ -57,3 +57,13 @@ Both custom completion manifests were independently verified before cleanup. Cin
 The Boat control API returned HTTP 525 at this worker’s polls at 10:13, 10:19 and 10:24Z; pinned SSH continued to work. The limits endpoint recovered at 10:29:49Z. No sandbox was created or attempted during the outage. Cinnamon deletion `bdop_d2bb7ad9d35941cdbd503b1abc120c3a` completed at 10:45:53Z; GNOME deletion `bdop_36316aa16bf64561a3a5000093c0567c` completed at 10:47:20Z. Both IDs subsequently returned not-found. No sandbox is retained. The two owned wall entries were removed while preserving seven other entries; the exact owned tunnel processes were already gone, and the private agent was stopped.
 
 Raw archives retain exact packages, raw PPM/PNG frames, receipts, all superseded probes, command sources and logs. They were streamed to the workstation and every manifest member was independently hash-verified before guarded overlay retirement. Duplicate raw PPM pixels remain losslessly in the archive without expanding them on the workstation. `restore.json` lists archive paths, checksums, member counts and extracted evidence locations. Protected login inputs, SSH identities, generated credential files and VM disks are excluded.
+
+## Saved observations
+
+The unmodified Cinnamon selector probe frame shows the accepted thin line width and recent color. Its live row/readback details are in `fixtures.json`.
+
+![Cinnamon guarded selector probe](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/83ee752c50cf9fdfb89cf5af48b302680e96fc77/docs/evidence/surface-core-r3-2026-10-30/cinnamon-selectors.png)
+
+The shortcut label visibly renders the ready instruction while its captured AT-SPI text and description are empty (#862).
+
+![Cinnamon shortcut accessibility gap](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/83ee752c50cf9fdfb89cf5af48b302680e96fc77/docs/evidence/surface-core-r3-2026-10-30/cinnamon-shortcut-accessibility.png)
