@@ -1,7 +1,7 @@
 {
   "uuid": "putgd-lab-witness@put.gd",
   "name": "put.gd lab compositor witness",
-  "description": "Lab-only, for disposable guests: read-only window geometry, focus, stacking and stage hit-tests for the surface driver. Never ship or install on a real desktop.",
+  "description": "Lab-only, for disposable guests: window geometry, focus, stacking, stage hit-tests and explicit activation for the surface driver. Never ship or install on a real desktop.",
   "shell-version": ["46", "47", "48", "49", "50"],
-  "version": 1
+  "version": 2
 }

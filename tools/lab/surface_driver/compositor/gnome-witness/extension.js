@@ -1,6 +1,8 @@
 // Lab-only compositor witness for the put.gd surface driver (disposable guests).
-// Read-only: it reports Mutter's own window geometry, focus and stacking, and
-// the stage hit-test at a point. It never moves, raises or focuses anything.
+// It reports Mutter's own window geometry, focus and stacking, and the stage
+// hit-test at a point. Its one action, Activate, is the driver's explicit
+// focus(raise_window=True) on Wayland: the same activation a dock click does.
+// It never moves, resizes or closes anything.
 import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
@@ -10,6 +12,7 @@ const PATH = '/org/putgd/LabWitness';
 const XML = `<node><interface name="org.putgd.LabWitness">
 <method name="Windows"><arg type="s" direction="out"/></method>
 <method name="Pick"><arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Activate"><arg type="t" direction="in"/><arg type="b" direction="out"/></method>
 </interface></node>`;
 
 const rect = r => [r.x, r.y, r.width, r.height];
@@ -46,6 +49,14 @@ export default class LabWitness extends Extension {
             monitors.push({rect: rect(display.get_monitor_geometry(i)), scale: display.get_monitor_scale(i)});
         const windows = windowActors().map((actor, i) => describe(actor.meta_window, i));
         return JSON.stringify({windows, monitors});
+    }
+
+    Activate(id) {
+        const actor = windowActors().find(a => a.meta_window.get_id() === Number(id));
+        if (!actor)
+            return false;
+        actor.meta_window.activate(global.get_current_time());
+        return true;
     }
 
     Pick(x, y) {

@@ -377,6 +377,15 @@ class WaylandCoordinates(unittest.TestCase):
             with patch.object(probe,'compositor_windows',return_value={'windows':[dict(other,focus=True),dict(FRAMES['windows'][0],focus=False)]}):
                 self.assertFalse(probe.foreground({'geometry':target,'compositor':WITNESS})['ok'])
 
+    def test_wayland_raise_activates_then_requires_compositor_focus(self):
+        target={'window_id':11,'pid':50}
+        states=iter([{'windows':[dict(FRAMES['windows'][0],focus=False)]}]+[{'windows':[FRAMES['windows'][0]]}]*3)
+        with patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}),\
+             patch.object(probe,'compositor_activate',return_value=True) as activate,\
+             patch.object(probe,'compositor_windows',side_effect=lambda _:next(states)),patch.object(probe.time,'sleep'):
+            self.assertTrue(probe.foreground({'geometry':target,'compositor':WITNESS,'raise':True})['ok'])
+        activate.assert_called_once_with(WITNESS,11)
+
 
 class StartupFocus(unittest.TestCase):
     """#750: right after mapping, _NET_ACTIVE_WINDOW can still be 0."""

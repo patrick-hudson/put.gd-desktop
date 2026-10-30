@@ -265,6 +265,16 @@ def compositor_windows(compositor):
     raise RuntimeError('no compositor window witness configured for this Wayland profile')
 
 
+def compositor_activate(compositor, window_id):
+    """Explicit raise for focus(raise_window=True) on Wayland: the compositor's own activation."""
+    kind = (compositor or {}).get('kind')
+    if kind == 'gnome-lab-witness':
+        import dbus
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return bool(witness.Activate(dbus.UInt64(window_id), dbus_interface='org.putgd.LabWitness', timeout=3))
+    raise RuntimeError('this compositor witness cannot raise windows')
+
+
 def compositor_pick(compositor, point):
     """The compositor's hit-test at a desktop point: {window, chain}."""
     kind = (compositor or {}).get('kind')
@@ -1034,6 +1044,12 @@ def witness_foreground(query):
     wid = target.get('window_id')
     if wid is None:
         raise RuntimeError('Wayland target has no compositor window identity')
+    if query.get('raise'):
+        if not compositor_activate(compositor, wid):
+            raise RuntimeError('compositor no longer has the target window')
+        deadline = time.monotonic() + 2.5
+        while time.monotonic() < deadline and not any(w['id'] == wid and w.get('focus') for w in compositor_windows(compositor)['windows']):
+            time.sleep(.1)
     if point is not None:
         pick = compositor_pick(compositor, point)
         window = pick.get('window')
