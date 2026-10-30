@@ -1,6 +1,5 @@
 """Plasma guards and guest-only provisioning. Mocks are not desktop evidence."""
 from pathlib import Path
-import copy
 import sys
 import tempfile
 import os
@@ -51,7 +50,7 @@ class PlasmaPick(unittest.TestCase):
         self.top.queryComponent.assert_not_called()
 
     def test_stale_bounds_name_bus_and_default_coordinate_guess_do_not_authorize(self):
-        for row in [dict(self.node,rect=[962,750,22,38]),dict(self.node,a11y_path='/duplicate'),dict(self.node,window_id='other')]:
+        for row in [dict(self.node,name='changed'),dict(self.node,role='label'),dict(self.node,rect=[962,750,22,38]),dict(self.node,a11y_path='/duplicate'),dict(self.node,window_id='other')]:
             with patch.object(probe,'accessible',return_value=[row]):
                 self.assertFalse(probe.foreground(self.query)['ok'])
         with patch.object(probe,'plasma_pid',return_value=71):

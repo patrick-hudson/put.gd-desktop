@@ -1672,7 +1672,8 @@ def plasma_witness_hit(query):
                        'role':expected['role'], 'visible':True, 'showing':True, 'compositor':query['compositor']})
     same = [r for r in rows if r.get('a11y_bus') == expected['a11y_bus']
             and r.get('a11y_path') == expected['a11y_path'] and r.get('window_id') == window['id']
-            and r.get('rect') == expected['rect']]
+            and r.get('rect') == expected['rect'] and r.get('name') == expected['name']
+            and normalize_role(r.get('role','')) == normalize_role(expected['role']) and r.get('pid') == pid]
     if len(same) != 1:
         return refused('Plasma actor changed or disappeared before input')
     rect = expected['rect']

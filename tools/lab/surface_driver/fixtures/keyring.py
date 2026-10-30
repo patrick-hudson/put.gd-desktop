@@ -29,7 +29,6 @@ try:
  while wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]:
   assert time.monotonic()<deadline,'KWallet did not create the fixture wallet'
   time.sleep(.1)
- collection='/org/freedesktop/secrets/collection/'+wallet.replace('-','_2d')
  # Resolve only our exact label: KDE's object-path escaping varies by version.
  candidates=call(service,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Service','Collections')),'(v)')[0]
  found=[p for p in candidates if call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]==wallet]
@@ -49,6 +48,7 @@ KDE_SALT_CLEANUP = '''
 import stat
 p=Path.home()/'.local/share/kwalletd'/(LABEL+'.salt')
 if p.exists():
+ assert LABEL not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0], 'owned wallet was not deleted; retain its salt'
  s=p.lstat()
  assert stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and not s.st_mode&0o077
  assert (s.st_dev,s.st_ino)==(SALT_DEVICE,SALT_INODE)
