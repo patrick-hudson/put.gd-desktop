@@ -34,7 +34,8 @@ while stack and visited < 6000:
             anchors.append(list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)))
         if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
             rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
-            rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect})
+            rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect,
+                         'checked': node.getState().contains(pyatspi.STATE_CHECKED)})
         if depth < 30:
             stack.extend((child, depth + 1) for child in node if child is not None)
     except (RuntimeError, AttributeError, NotImplementedError):
@@ -159,3 +160,15 @@ def click(ctx, control):
     ctx.expect(abs(witness['x'] - point[0]) <= 1 and abs(witness['y'] - point[1]) <= 1,
                'pointer reached the live Settings control')
     ctx.frame('input-after-' + control)
+
+
+def collapse(ctx, control):
+    query = ctx.profile['settings']['live_controls'][control]
+    owner = observe(ctx, ctx.geometry('settings'), foreground=True)
+    def checked():
+        rows = controls(ctx, query, owner['pid'])
+        ctx.expect(len(rows) == 1, 'one owned Settings disclosure: ' + control)
+        return rows[0]['checked']
+    if checked():
+        click(ctx, control)
+        ctx.wait(lambda: not checked(), 'Settings disclosure collapses: ' + control)

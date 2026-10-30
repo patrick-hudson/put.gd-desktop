@@ -106,6 +106,10 @@
       "settingsSection3": {
         "name": "Advanced",
         "role": "list item"
+      },
+      "categoryFoldersToggle": {
+        "name": "Different folders by file type",
+        "role": "check box"
       }
     },
     "theme_references": {

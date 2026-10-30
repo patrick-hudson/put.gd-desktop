@@ -72,6 +72,7 @@ class Fake(Context):
         self.calls = []
         self.clipboard = ''
         self.support_expanded = False
+        self.category_expanded = False
         self.available = True
         self.disk_writable = True
         self.command_error = None
@@ -167,6 +168,8 @@ class Fake(Context):
             if self.pkg['upload']:
                 self.pkg['saved'].update(link='http://127.0.0.1/synthetic', linkCopied=True)
                 self.clipboard = self.pkg['saved']['link']
+        if control == 'categoryFoldersToggle':
+            self.category_expanded = not self.category_expanded
         if control == 'desktopSupportDetailsToggle':
             self.support_expanded = not self.support_expanded
         if control == 'copyDesktopDetails':
@@ -243,7 +246,7 @@ class Fake(Context):
         shift = 50 if self.recording_action or any('Esc' in str(i) for i in self.inputs) else 0
         rectangle = [700, 240 + shift, 180, 36]
         self.targets = {(760, 258 + shift): control}
-        return [{'pid': 123, 'rect': rectangle}]
+        return [{'pid': 123, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False}]
 
     def click_at(self, x, y, **kwargs):
         self.pointer = (x, y)
@@ -420,6 +423,20 @@ class Contracts(unittest.TestCase):
         ctx.wait = delayed_wait
         lane.saved(ctx, 'preferences.diagnostics.debugLogging', True, 0)
         self.assertEqual(polls, [False])
+
+    def test_blocked_category_recipe_restores_its_disclosure(self):
+        ctx = Fake()
+        click = ctx.click
+        def missing_inventory(control, *args, **kwargs):
+            if control == 'folderImages':
+                ctx.blocked('missing category field inventory')
+            return click(control, *args, **kwargs)
+        ctx.click = missing_inventory
+        with self.assertRaisesRegex(RecipeBlocked, 'missing category field'):
+            lane.category_folders(ctx)
+        self.assertFalse(ctx.category_expanded)
+        lane.naming(ctx)
+        self.assertFalse(ctx.category_expanded)
 
     def test_blocked_package_does_not_poison_next_recipe(self):
         ctx = Fake()

@@ -10,7 +10,7 @@ import shlex
 
 from tools.lab.surface_driver.api import recipe
 from .settings_input import (click as live_click, observe as input_witness,
-                             prepare as prepare_input, ensure_accessible)
+                             prepare as prepare_input, ensure_accessible, collapse)
 
 CORE_ISSUE = 681
 
@@ -294,11 +294,15 @@ def category_folders(ctx):
         frame(ctx, 'after', 1)
     finally:
         patch(ctx, {'archive': {'folders': original}})
+        collapse(ctx, 'categoryFoldersToggle')
 
 
 @recipe('capture.naming', timeout=240)
 def naming(ctx):
     opened(ctx, 1)
+    # Both this disclosure and the template editor contain a Clipboard text
+    # field. Restore the intended page state before resolving that live name.
+    collapse(ctx, 'categoryFoldersToggle')
     original = get(ctx)['document']['naming']
     frame(ctx, 'before', 1)
     try:
