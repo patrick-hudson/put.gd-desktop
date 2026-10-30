@@ -552,6 +552,8 @@ def guest(args):
         if package:
             exclusive_json(evidence / 'package-artifact.json', {**package, 'packageTarget': target})
             exclusive_json(evidence / 'install.json', lab.install(run_dir, deb=args.deb))
+            socket_script = "python3 - <<'SOCKET'\nimport os,json\nfrom pathlib import Path\np=str(Path(os.environ['XDG_RUNTIME_DIR']).resolve()/'putgd/session.sock')\nn=len(p.encode('utf-8'))\nprint(json.dumps(dict(socket=p,utf8Bytes=n,limit=107,ok=n<=107)))\nassert n<=107\nSOCKET\n"
+            exclusive_json(evidence / 'app-socket-preflight.json', json.loads(lab.guest_session(run_dir, socket_script)))
             started = lab.start(run_dir, timeout=60)
             exclusive_json(evidence / 'start.json', started)
             observed = json.loads(lab.guest_session(run_dir, 'putgd-cli --version-json\n'))
