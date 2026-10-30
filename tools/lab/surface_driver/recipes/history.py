@@ -400,7 +400,7 @@ def key_menu(ctx):
         _frame(ctx, 'selected-' + key)
         ctx.keys(key)
         _wait_menu(ctx, 'Copy details')
-        ctx.frame('menu-' + key)
+        _frame(ctx, 'menu-' + key, None)
         _copied_row_details(ctx, row)
     _frame(ctx, 'after')
 
