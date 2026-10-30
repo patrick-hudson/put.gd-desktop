@@ -33,7 +33,9 @@ artifact, from `putgd-build-base`. Each has `--no-env`, an explicit auto-stop
 TTL (default 10,800 seconds), and a controller deadline 180 seconds before that
 TTL for hydration/build. Collection retains the unused build budget or a size-scaled reserve
 (150 seconds + staged bytes / 128 KiB/s + 0.05 seconds per file, rounded up),
-whichever is greater. Cleanup follows even when either phase fails.
+whichever is greater, capped at the sandbox TTL measured conservatively from
+worker startup. An exhausted TTL fails collection with an explicit reason.
+Cleanup follows even when either phase fails.
 Use `--type default` for the 4-vCPU/8-GB size, or `--ttl SECONDS` (600–14,400)
 for a deliberate bounded run. A small TTL can expire during cold provisioning.
 The command waits for `hydrated: true` before accessing a worker and reads the
@@ -86,7 +88,9 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
   `putgd-lab-fixture`, not `putgd`. Its package target is empty and
   `PUTGD_UPDATE_CHECK=OFF`; it cannot advertise a production update target.
   It declares `Conflicts: putgd` and `Replaces: putgd` because it ships the
-  same application paths, with a distinct disposable-test description. Install
+  same application paths. Both the package summary (the first `Description`
+  line shown by `dpkg -l`/APT) and long description identify disposable test use.
+  Install
   either package in a disposable environment; the two cannot coexist.
   `lab-package-control.txt` and `update-info.json` record these choices.
   `native.py` deliberately does not audit this DEB: its production policy
@@ -125,12 +129,14 @@ it once over pinned SSH/SCP, verifies its SHA-256, and validates all members bef
 restoring them. Absolute paths, parent traversal, duplicate paths, links and
 special files are rejected. Per-file inventories still bind the restored bytes;
 transport archives and failed collection evidence are retained. Packing and transfer
-receive the remaining size-scaled collection budget. Restoration is checked
-against the deadline when it completes; local restoration can overrun before
-that check. An overrun fails the worker, retains written local evidence and
+receive the remaining size-scaled collection budget, capped at the sandbox TTL.
+Hash verification and restoration check that deadline between archive members and
+1 MiB chunks and on completion; a single local filesystem call can overrun before
+the next check. An overrun fails the worker, retains written local evidence and
 still attempts worker cleanup (which has its own recorded outcome). Receipts record
 `collectionInput` (bytes, file count, filesystem and I/O pressure),
-`collectionBudgetSeconds`, and `collectionPhases` (probe, packing, transfer,
+`collectionBudgetSeconds` (after the TTL cap), `collectionTtlCapped`, and
+`collectionPhases` (probe, packing, transfer,
 verification/restoration). The transport remains uncompressed `tar -cf`; packages
 and PNGs are already compressed. This exposes slow storage/network phases
 without guessing from an aggregate duration. For a before/after measurement
@@ -161,10 +167,16 @@ Startup cleanup deletes workers with dead local nonce leases, or workers with
 unknown leases and expired Boat creation-time TTLs. A held local lease always
 wins over TTL expiry. Unknown leases (including controllers on another
 workstation) are preserved until TTL expiry. Legacy
-fixed names have no lease and are preserved until TTL expiry. Each run’s final
-cleanup deletes only its own exact nonce names/IDs, observing the remainder of
-the original 120-second `boat new` timeout plus up to 120 seconds for deletion.
-This includes late creations whose IDs were never printed.
+fixed names have no lease and are preserved until TTL expiry. Orphan sweeps
+always delete by the exact eligible ID, preserving a fresh legacy worker even
+when it shares an expired worker's name. Each run’s final cleanup uses its own
+exact nonce name/ID. When creation reported an ID, deletion starts immediately
+without waiting out the create timeout. Without an ID, cleanup observes the longer
+of the remaining original 120-second `boat new` window and 30 seconds after the
+CLI stops, including a timeout kill, plus up to 120 seconds for deletion. This is
+a bounded observation window for late creates; it cannot prove that the service
+will never create a worker afterward. Cleanup failures leave
+`cleanupVerified: false` and a `cleanupError` reason.
 
 Deletion receipts retain the API's initial operation status (which can be
 `pending`) separately from final `cleanup.finalState: absent`. The controller
@@ -174,7 +186,8 @@ empty account-wide list is expected only when no other session owns a worker.
 
 SIGKILL, workstation loss or an unavailable Boat API can leave TTL-stopped
 sandboxes. Auto-stop bounds compute, but does not delete their disks. Recover
-this commit’s eligible orphan workers, preserving live/unknown runs and unrelated workers:
+only this commit’s eligible orphan workers: dead local leases or expired unknown/legacy
+workers. Preserve held local leases, unexpired unknown/legacy workers and unrelated workers:
 
 ```sh
 set -eu

@@ -32,9 +32,9 @@ This is a budget fix, not a speedup claim. The ~385-second validator outliers in
 
 The current production Ubuntu 24.04 DEB and fixture DEB were installed in one disposable Ubuntu container inside existing fixture worker `bx_jrjetfwk`. [Identity/command/hashes](fixture-proof.json), [the exact script](fixture-container.sh), and [full saved output](fixture-conflict.log) bind the proof to this run. Runtime dependencies were installed inside that container. No workstation or physical host package was installed.
 
-`dpkg -i production.deb` succeeded. `dpkg -i fixture.deb` succeeded by explicitly removing production in favour of the fixture (the intended Conflicts/Replaces transition). Installing production again returned 1 with `putgd-lab-fixture conflicts with putgd` and `conflicting packages - not installing putgd`. No `trying to overwrite` error occurred. The final state was fixture installed, production not installed. Control metadata records `Conflicts: putgd`, `Replaces: putgd` and the distinct disposable-test description.
+`dpkg -i production.deb` succeeded. `dpkg -i fixture.deb` succeeded by explicitly removing production in favour of the fixture (the intended Conflicts/Replaces transition). Installing production again returned 1 with `putgd-lab-fixture conflicts with putgd` and `conflicting packages - not installing putgd`. No `trying to overwrite` error occurred. The final state was fixture installed, production not installed. Control metadata records `Conflicts: putgd`, `Replaces: putgd` and the disposable-test long description. These historical package bytes predate the review fix that also labels the summary line; that fix is covered by the fake-only regression evidence below.
 
-The [first proof invocation](fixture-first-attempt.json) omitted Docker’s `--interactive`, so it received no stdin script and produced an empty log despite exiting 0. It is not proof. The corrected invocation retained stdin and required the saved `FIXTURE_CONFLICT_PROOF_PASSED` sentinel; the container result above is that verified correction, using the same existing sandbox and same package bytes.
+The [first proof invocation](fixture-first-attempt.json) omitted Docker’s `--interactive`, so it received no stdin script and produced an empty log despite exiting 0. It is not proof. The complete replay command in `fixture-proof.json` now records `< fixture-container.sh`, saves `fixture-conflict.log`, and checks its exact sentinel. This command reconstruction was checked against the retained script/log without a new sandbox run. The corrected historical invocation retained stdin and required the saved `FIXTURE_CONFLICT_PROOF_PASSED` sentinel; the container result above is that verified correction, using the same existing sandbox and same package bytes.
 
 ## Full current-nightly run and cleanup
 
@@ -53,3 +53,12 @@ The [first proof invocation](fixture-first-attempt.json) omitted Docker’s `--i
 The controller’s final cleanup receipts verify all seven nonce workers absent. The already-cancelled baseline’s seven fixed-name workers are absent too: [all fourteen owned IDs](all-owned-workers-gone.json) were checked against `boat list --all`, preserving unrelated workers. [Explicit final `--cleanup SHA`](cleanup-mode.json) succeeds without any new worker. Named snapshots were never deleted or modified. Private raw logs, bootstrap/recipe scripts, pinned keys and artifact bytes remain under `/home/patrick/work/boat-candidates/issue752-20261030/`; none is a release publication.
 
 Live same-SHA concurrency remains deferred by the coordinator’s quota instruction. The fake-CLI concurrency/interruption gates pass, the single requested full run passes, and the extra cancelled old-controller baseline is retained separately. Issue #752 remains open. Required CI and review state are reported in the linked PRs.
+
+## Independent review follow-up (fake CLI only)
+
+Controller `b02ad2dd4391725dc924a7218dad5dfc33fd3bc0` fixes B1 and N1–N5.
+[Review regression evidence](review-followups/README.md) records the before/after
+contracts, reviewer scenarios, and optional PyYAML dependency checks. It supersedes
+the earlier controller cleanup/timeout claims for the new revision. The historical
+live package proof above remains bound to its original bytes. No live Boat command,
+package build, or sandbox start was used for this follow-up.
