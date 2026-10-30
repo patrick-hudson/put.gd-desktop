@@ -546,6 +546,8 @@ class StagingRecoveryContracts(unittest.TestCase):
                     with self.assertRaisesRegex(lab.LabError, 'guest guard refused'):
                         lab.recover_staging(self.home, JOB)
                 self.assertEqual((self.active / 'job').read_text(), JOB)
+                # A refused release leaves no recovery receipt claiming success.
+                self.assertFalse((self.evidence / 'staging-recovery.json').exists())
 
     def test_controller_dead_before_staging_identity_recovers_as_not_started(self):
         # N1 (validator r3): the controller died after the guest lock and before

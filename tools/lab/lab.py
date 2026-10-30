@@ -1786,14 +1786,16 @@ def recover_staging_fenced(run, job, abandoned):
                        + (f'staging session processes are still running: PIDs {report["sessionPids"]}'
                           if report.get('sessionPids') else
                           report.get('inspectionError', 'staging session exit is unconfirmed')) + '.')
-    evidence = Path(run) / job
-    evidence.mkdir(mode=0o700, exist_ok=True)
-    write_json(evidence / 'staging-recovery.json', report)
     # The supervisor admits itself under install-guard only while this job
     # holds install-active, writing progress.json before releasing the guard.
     # Repeating the checks and releasing under that same guard means either
     # this release or the supervisor's admission fails.
     ssh(run, INSTALL_LOCK_PREFIX + owned + 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    # Record recovery only after the release succeeded: a refused release
+    # (a supervisor admitted after reconcile) must not leave a receipt.
+    evidence = Path(run) / job
+    evidence.mkdir(mode=0o700, exist_ok=True)
+    write_json(evidence / 'staging-recovery.json', report)
     return report
 
 
