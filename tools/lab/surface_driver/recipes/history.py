@@ -870,7 +870,7 @@ def launcher_history(ctx):
         _wait_window(ctx, 'history')
         ctx.wait(lambda: _selected_page(ctx, 'History'), 'forwarded launcher selects History')
         ctx.expect(_result(ctx.call('ui.snapshot'))['residentEpoch'] == epoch, 'second launch forwards to the same resident')
-        ctx.expect(_state(ctx)['total'] >= 1, 'forwarded launch retains history')
+        ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['total'] >= 1, 'forwarded launch retains settled history')
     _frame(ctx, 'after')
 
 
@@ -1078,7 +1078,15 @@ def _nodes(ctx, **query):
 
 
 def _selected_page(ctx, label):
-    return any(n.get('states', {}).get('selected') for n in _nodes(ctx, role='page tab', name=label))
+    if any(n.get('states', {}).get('selected') for n in _nodes(ctx, role='page tab', name=label)):
+        return True
+    # Some Qt versions omit the native tab's selected projection. Require one
+    # unambiguous visible page body instead; hidden pages must not count.
+    witnesses = {'History': {'name': 'All items', 'role': 'list item'},
+                 'Destinations': {'name': 'Add destination', 'role': 'push button'},
+                 'Settings': {'name': 'General', 'role': 'list item'}}
+    visible = {page: len(_nodes(ctx, **query)) == 1 for page, query in witnesses.items()}
+    return visible.get(label, False) and sum(visible.values()) == 1
 
 
 def _capture_settings(ctx):

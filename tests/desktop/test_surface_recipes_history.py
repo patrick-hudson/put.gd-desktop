@@ -641,6 +641,25 @@ class HistoryRecipeTests(unittest.TestCase):
             self.assertEqual(history._local_digest(DigestContext(), str(path)), expected)
             self.assertNotIn(expected, redactor.audit_literals)
 
+    def test_navigation_can_use_one_visible_body_when_tab_selection_is_absent(self):
+        ctx = FakeContext()
+        visible = {'All items'}
+        def accessible(query):
+            if query['role'] == 'page tab':
+                return [{'states': {}}]
+            return [{'name': query['name']}] if query['name'] in visible else []
+        ctx.accessible = accessible
+        self.assertTrue(history._selected_page(ctx, 'History'))
+        self.assertFalse(history._selected_page(ctx, 'Settings'))
+        visible.clear();visible.add('General')
+        self.assertTrue(history._selected_page(ctx, 'Settings'))
+        self.assertFalse(history._selected_page(ctx, 'History'))
+
+    def test_navigation_does_not_guess_when_multiple_page_bodies_are_showing(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda query: [{'states': {}}]
+        self.assertFalse(history._selected_page(ctx, 'History'))
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))
