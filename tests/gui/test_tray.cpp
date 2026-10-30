@@ -460,15 +460,24 @@ private slots:
   const auto red=Ui::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(3100);
-  bool failedRetryDone=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);failedRetryDone=true;});PUTGD_TRY_VERIFY(failedRetryDone);
+  auto* recovery=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");
+  recovery->trigger();QCOMPARE(tray->toolTip(),idleTooltip);
+  // The failed attempt must reach the tray before its reply. A second async
+  // inspect could otherwise re-latch it after acknowledgement and success.
+  bool failedRetryDone=false;operations.retryLocalSave(id,[&](Error e,QJsonObject result){
+   failedRetryDone=true;QVERIFY(!e);
+   QCOMPARE(result["items"].toArray()[0].toObject()["local"].toObject()["status"].toString(),QString("failed"));
+   QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
+   QVERIFY(recovery->isVisible());QCOMPARE(recovery->property("operationId").toString(),id);
+  });PUTGD_TRY_VERIFY(failedRetryDone);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   QVERIFY(QFile::remove(blocker));QVERIFY(QDir().mkpath(blocker));
-  tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->trigger();
+  recovery->trigger();
   bool done=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);done=true;});
   QVERIFY(tray->toolTip().contains("Saving local copy"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
   QCOMPARE(store.operation(id).state,prior.state);
-  PUTGD_TRY_VERIFY(done);QCOMPARE(tray->toolTip(),idleTooltip);QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
+  PUTGD_TRY_VERIFY(done);QCOMPARE(tray->toolTip(),idleTooltip);QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);QVERIFY(!recovery->isVisible());
   const auto retried=store.operation(id);QCOMPARE(retried.items[0].local.status,QString("saved"));QCOMPARE(provider->uploads.load(),1);
   QCOMPARE(retried.state,prior.state);QCOMPARE(retried.copyStatus,prior.copyStatus);
   auto before=prior.items[0].toJson(),after=retried.items[0].toJson();before.remove("local");after.remove("local");QCOMPARE(after,before);
