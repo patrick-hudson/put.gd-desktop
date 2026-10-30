@@ -118,7 +118,7 @@ class FakeContext(Context):
     def click(self, control, window, button='left', offset=None):
         self.trace.append(('click', control, window))
         self.last_click = control
-        if control.startswith('text:Browser video'):
+        if control == 'text:Output format':
             control = 'format'
         if not self.inputs_work:
             return
@@ -286,7 +286,7 @@ class ReviewRecipes(unittest.TestCase):
         self.assertEqual(len(ctx.info['edit']['masks']), 5)
 
     def test_catalog_named_format_and_fallback(self):
-        for controls, selector in [([{'name': 'format'}], 'format'), ([], 'text:Browser video — WebM (VP9)')]:
+        for controls, selector in [([{'name': 'format'}], 'format'), ([], 'text:Output format')]:
             ctx = FakeContext()
             ctx.fixture_data['review-controls']['controls'] = controls
             review._choose_format(ctx, 'recording-id', 'mp4', 'h265')

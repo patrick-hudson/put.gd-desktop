@@ -134,13 +134,10 @@ def _select_mask(ctx, rid, mask):
 
 def _choose_format(ctx, rid, fmt, codec=''):
     # Prefer the stable name added by fix/surface-objectnames. For older builds
-    # use the current text selector from the catalog, not a guessed combo index.
+    # use the combo's accessible name, which differs from its selected item.
     controls = ctx.fixture('review-controls')['controls']
     named = next((c for c in controls if c.get('name') == 'format'), None)
-    current = _state(ctx, rid)['format']
-    labels = {('mp4', 'h264'): 'Compatible video — MP4 (H.264) · Recommended', ('mp4', 'h265'): 'Smaller video — MP4 (H.265)',
-              ('webm', 'vp9'): 'Browser video — WebM (VP9)', ('gif', ''): 'Animated GIF', ('webp', ''): 'Animated WebP — silent'}
-    selector = 'format' if named else 'text:' + labels[(current['format'], current.get('codec', ''))]
+    selector = 'format' if named else 'text:Output format'
     ctx.click(selector, window='review')
     caps = ctx.call('recording.capabilities')
     choices = [(f, c) for f in caps['formats'] for c in (caps['codecs'].get(f) or [''])]
