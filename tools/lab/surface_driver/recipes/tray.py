@@ -1,7 +1,8 @@
 """Real-input tray/notification/shortcut recipes; never activate a D-Bus action.
 
 Desktop node selectors live in profile fragments. AT-SPI is an observation
-channel only: clicks use its live screen rectangle, never doAction(). Synthetic clipboard owners and settings rollback come from core fixtures.
+channel only: clicks use its live screen rectangle, never doAction().
+Synthetic clipboard owners and settings rollback come from core fixtures.
 The local scenarios mirror tray_progress.py's regular-file archive obstruction.
 """
 from __future__ import annotations
@@ -10,7 +11,7 @@ from contextlib import contextmanager
 import json
 import shlex
 
-from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
+from tools.lab.surface_driver.api import RecipeFailed, recipe
 
 
 TERMINAL = {'completed', 'failed', 'partial', 'interrupted', 'cancelled'}
@@ -38,12 +39,13 @@ def _shell(ctx, script):
 
 
 def _nodes(ctx, name, role=None):
-    menu_policy = _profile(ctx).get('menu', {}) if role == 'menu item' else {}
+    is_menu = role == 'menu item'
+    menu_policy = _profile(ctx).get('menu', {}) if is_menu else {}
     role = menu_policy.get('role', role)
     query = {'name': name}
     if role:
         query['role'] = role
-    if menu_policy:
+    if is_menu:
         query['application'] = _profile(ctx)['icon']['application']
     def on_screen(node):
         rect = node.get('rect', node.get('bounds'))
@@ -343,6 +345,9 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                                 _profile(ctx).get('shortcut_issue'))
                 binding = status.get('bindings', {}).get(action, {})
                 ctx.expect(binding.get('bound'), 'test shortcut bound: ' + action)
+            if action == 'window':
+                ctx.fixture('selector-desktop')
+                ctx.focus('trayFixture')
             if action == 'clipboard':
                 _clipboard(ctx)
             previous = {o['id'] for o in _recent(ctx)}
@@ -543,6 +548,39 @@ def idle(ctx):
         ctx.keys('Esc')
 
 
+@recipe('tray.tooltip', desktop_drawn=True)
+def tooltip(ctx):
+    _begin(ctx)
+    _icon(ctx)
+    ctx.hover_accessible(_profile(ctx)['icon'])
+    rows = ctx.tray()
+    ctx.expect(len(rows) == 1, 'one owned status notifier')
+    ctx.note('SNI tooltip=' + json.dumps(rows[0]['tooltip']))
+    policy = {'role': 'tool tip', 'application': _profile(ctx)['icon']['application'],
+              'visible': True, 'showing': True}
+    try:
+        ctx.wait(lambda: ctx.accessible(policy), 'drawn shell tooltip', timeout=5)
+    except RecipeFailed:
+        ctx.blocked('SNI tooltip metadata is available, but the drawn tooltip is absent from shell accessibility', 670)
+    ctx.frame('after')
+
+
+@recipe('tray.menu-shortcut-suffix', desktop_drawn=True)
+def shortcut_suffix(ctx):
+    with _local(ctx):
+        _menu(ctx)
+        try:
+            for action, chord in CHORDS.items():
+                node = _node(ctx, LABELS[action], 'menu item')
+                accelerator = node.get('accelerator')
+                if not accelerator:
+                    ctx.blocked('Shell menu exposes no accelerator metadata for ' + action, 670)
+                ctx.expect(accelerator == chord, 'menu accelerator agrees with accepted shortcut: ' + action)
+            _menu_frame(ctx, 'after')
+        finally:
+            ctx.keys('Esc')
+
+
 @recipe('tray.icon-uploading', 'tray.menu-upload-status', desktop_drawn=True)
 def uploading(ctx):
     fixture = ctx.fixture('tray-offline')
@@ -588,13 +626,11 @@ def _drawn_notice(ctx, notice):
 # silently disappear from a lane run. Issue numbers are filled by the follow-up
 # tracker; no provider session is borrowed to cover an offline-only campaign.
 BLOCKED = {
-    'tray.tooltip': 'Needs real pointer hover plus read-only tooltip observation; Context exposes clicks but no hover',
     'tray.icon-complete': 'Needs an offline successful upload and sub-600-ms icon sampling; local saves have no upload fill',
     'tray.icon-recording': 'Needs a recording fixture and icon-pixel observation for active-dot and paused-bars evidence',
     'tray.menu-cancel-upload': 'Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls',
     'tray.menu-update-available': 'Needs a stable-tagged local build with isolated update-result fixture; no live update query',
     'tray.menu-quit': 'Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane',
-    'tray.menu-shortcut-suffix': 'Needs AT-SPI accelerator metadata or read-only menu snapshot tied to current shortcut bindings',
     'tray.qt-fallback': 'Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray',
     'shortcut.over-open-menu': 'Needs an independently owned other-client popup fixture with keyboard-grab witness',
     'shortcut.ignored-while-recording': 'Needs current-build shortcut recorder controls plus a bounded no-operation observation window',

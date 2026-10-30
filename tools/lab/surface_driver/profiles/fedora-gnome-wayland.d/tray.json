@@ -18,5 +18,14 @@
       "proton-busy": "00-tray-menu-proton-busy",
       "edit": "00-tray-edit-submenu"
     }
+  },
+  "windows": {
+    "trayFixture": {
+      "title": "^putgd synthetic fixture$",
+      "accessible": {
+        "name": "putgd synthetic fixture",
+        "role": "frame"
+      }
+    }
   }
 }

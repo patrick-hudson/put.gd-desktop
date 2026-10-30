@@ -53,6 +53,8 @@ class FakeContext(Context):
         self.events.append(('fixture', name))
         if name == 'app-profile':
             return Fixture(root='/tmp/tray-fake', output_dir='/tmp/tray-fake/out')
+        if name == 'selector-desktop':
+            return Fixture(synthetic=True)
         if name == 'events.clipboard':
             self.clipboard = 'putgd synthetic clipboard text'
             return Fixture(text=self.clipboard)
@@ -389,6 +391,37 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertIn(('fixture', 'events.clipboard'), ctx.events)
         self.assertFalse(any(e[0] == 'shell' and 'mktemp' in e[1] for e in ctx.events))
 
+    def test_window_capture_focuses_an_independent_synthetic_target(self):
+        ctx = FakeContext()
+        tray.shortcut_window(ctx)
+        source = ctx.events.index(('fixture', 'selector-desktop'))
+        focus = ctx.events.index(('focus', 'trayFixture'))
+        input_at = ctx.events.index(('keys', (tray.CHORDS['window'],)))
+        self.assertLess(source, focus)
+        self.assertLess(focus, input_at)
+
+    def test_desktop_node_without_owner_never_receives_a_click(self):
+        ctx = FakeContext()
+        original = ctx.accessible
+        def unowned(query):
+            rows = original(query)
+            for row in rows:
+                row.pop('pid', None)
+                row.pop('application', None)
+            return rows
+        ctx.accessible = unowned
+        with self.assertRaises(RecipeBlocked) as caught:
+            tray._press(ctx, 'Settings')
+        self.assertEqual(caught.exception.issue, 670)
+        self.assertFalse(any(e[0] == 'click' for e in ctx.events))
+
+    def test_notify_call_alone_does_not_prove_a_drawn_popup(self):
+        ctx = FakeContext()
+        ctx.profile['notifications'] = {'accessible': {'application': 'cinnamon*'}}
+        ctx.accessible = lambda query: []
+        with self.assertRaises(RecipeBlocked):
+            tray._drawn_notice(ctx, {'summary': 'Upload complete'})
+
     def test_catalog_ids_match_published_action_identity_rules(self):
         import hashlib
         for label in ('About put.gd', 'Quit put.gd', 'Edit clipboard image', 'Edit an image file…'):
@@ -425,7 +458,8 @@ class TrayRecipesTest(unittest.TestCase):
         for desktop in json.loads((ROOT / 'tools/lab/surface_map/model.json').read_text())['desktops']:
             fragment = ROOT / 'tools/lab/surface_driver/profiles' / (desktop['id'] + '.d') / 'tray.json'
             data = json.loads(fragment.read_text())
-            self.assertEqual(list(data), ['tray'])
+            self.assertEqual(set(data), {'tray', 'windows'})
+            self.assertEqual(set(data['windows']), {'trayFixture'})
             self.assertIn(data['tray']['notification_server'], ('cinnamon', 'gnome-shell', 'Plasma'))
 
 
