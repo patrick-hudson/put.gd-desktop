@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import functools
 import collections
 import stat
 import tempfile
@@ -87,6 +88,17 @@ def public_url(value):
                  or (p.hostname == 'put.gd' and p.path in ('', '/', '/docs', '/docs/'))))
     except ValueError:
         return False
+
+
+@functools.lru_cache(maxsize=8192)
+def ordered_spellings(value):
+    """spellings(value), longest first; cached because scrubbing repeats per text part (#943)."""
+    return tuple(sorted(spellings(value), key=len, reverse=True))
+
+
+@functools.lru_cache(maxsize=8192)
+def _hex_pattern(value):
+    return re.compile(re.escape(value.encode().hex()), re.I)
 
 
 def spellings(value):
@@ -315,9 +327,10 @@ class Redactor:
             part = MARKER.sub('[redacted session/authorization]', part)
             if replace_secrets:
                 for secret in sorted(self._secrets, key=len, reverse=True):
-                    part = re.sub(re.escape(secret.encode().hex()), '[redacted]', part, flags=re.I)
-                    for spelling in sorted(spellings(secret), key=len, reverse=True):
-                        part = part.replace(spelling, '[redacted]')
+                    part = _hex_pattern(secret).sub('[redacted]', part)
+                    for spelling in ordered_spellings(secret):
+                        if spelling in part:
+                            part = part.replace(spelling, '[redacted]')
             # Decoding may expose a public documentation URL not in the secret registry.
             part = URL.sub(lambda m: '[url '+json.dumps(self.url(m[0]), sort_keys=True)+']', part)
             return part
@@ -516,7 +529,7 @@ def detected(text, literals=(), hosts=()):
     extra = host_links(hosts)
     for value in candidates:
         kinds.update(patterns(value, extra))
-    if any(spelling in candidate for literal in literals for spelling in spellings(literal) for candidate in candidates):
+    if any(spelling in candidate for literal in literals for spelling in ordered_spellings(literal) for candidate in candidates):
         kinds.add('registered-secret')
     return sorted(kinds)
 
