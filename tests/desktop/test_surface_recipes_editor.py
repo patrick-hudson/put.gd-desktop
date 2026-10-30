@@ -189,18 +189,18 @@ class EditorRecipes(unittest.TestCase):
         ctx=FakeContext()
         ctx.accessible=lambda query: [
             {'name':'Keyboard help','role':'tool tip','enabled':True,'pid':12,'window':'Edit image'},
-            {'name':'Keyboard help','role':'toggle button','enabled':True,'pid':12,'window':'Edit image'}]
+            {'name':'Keyboard help','role':'toggle button','enabled':True,'pid':12,'window':'Edit image','rect':[100,100,20,20]}]
         clicks=[]
-        ctx.click_accessible=lambda query: clicks.append(query)
+        ctx.click_at=lambda x,y,**kwargs: clicks.append((x,y,kwargs))
         editor._click_keyboard_help(ctx)
-        self.assertEqual([{'owned':True,'pid':12,'window':'Edit image','name':'Keyboard help','role':'toggle button'}],clicks)
+        self.assertEqual([(110,110,{'head':0})],clicks)
 
     def test_help_click_refuses_two_interactive_matches(self):
         ctx=FakeContext()
-        row={'name':'Keyboard help','role':'toggle button','enabled':True,'pid':12,'window':'Edit image'}
+        row={'name':'Keyboard help','role':'toggle button','enabled':True,'pid':12,'window':'Edit image','rect':[100,100,20,20]}
         ctx.accessible=lambda query: [row,row]
         clicks=[]
-        ctx.click_accessible=lambda query: clicks.append(query)
+        ctx.click_at=lambda x,y,**kwargs: clicks.append((x,y,kwargs))
         with self.assertRaises(RecipeBlocked): editor._click_keyboard_help(ctx)
         self.assertEqual([],clicks)
 

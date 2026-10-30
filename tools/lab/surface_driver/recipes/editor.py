@@ -320,17 +320,27 @@ def crop(ctx):
         _frame(ctx, 'after', '23-editor-crop')
 
 
+def _click_editor_text(ctx, name, roles):
+    # AT-SPI may expose a same-label tooltip/text child. Resolve one enabled
+    # owned interactive node, then use the editor's guarded pointer API.
+    owner = ctx.geometry('editor')
+    nodes = ctx.accessible({'owned':True, 'name':name, 'visible':True, 'showing':True})
+    nodes = [n for n in nodes if n.get('enabled') and n.get('role') in roles and
+             not n.get('popup') and n.get('rect') and min(n['rect'][2:]) > 0 and
+             (not owner.get('pid') or n.get('pid')==owner['pid'])]
+    if len(nodes) != 1:
+        ctx.blocked('Editor control '+name+' needs one owned enabled '+str(roles)+' node, without tooltip duplicates', issue=CORE_ISSUE)
+    x,y,w,h = nodes[0]['rect']
+    x,y = x+w/2,y+h/2
+    if not (owner['x'] <= x < owner['x']+owner['width'] and owner['y'] <= y < owner['y']+owner['height']):
+        ctx.blocked('Editor control '+name+' is outside its owned window', issue=CORE_ISSUE)
+    scale = owner.get('scale', 1)
+    ctx.click_at(round((x-owner.get('screen_x',0))*scale),
+                 round((y-owner.get('screen_y',0))*scale),head=owner.get('head',0))
+
+
 def _click_keyboard_help(ctx):
-    # The visible text also names a help/tooltip node after expansion. Select
-    # the enabled interactive disclosure, never an arbitrary same-label node.
-    nodes = ctx.accessible({'owned':True, 'name':'Keyboard help', 'visible':True, 'showing':True})
-    buttons = [n for n in nodes if n.get('enabled') and n.get('role') in
-               ('push button','toggle button','check box')]
-    if len(buttons) != 1:
-        ctx.blocked('Keyboard help needs one owned interactive disclosure; same-label non-controls must not receive input', issue=CORE_ISSUE)
-    node = buttons[0]
-    ctx.click_accessible({'owned':True,'pid':node['pid'],'window':node['window'],
-                          'name':'Keyboard help','role':node['role']})
+    _click_editor_text(ctx, 'Keyboard help', ('push button','toggle button','check box'))
 
 
 @recipe('editor.geometry', needs=IMAGE)
@@ -369,7 +379,7 @@ def destination(ctx):
     with _session(ctx) as op:
         text = _inspect(ctx, op)['view']['destination']['text']
         ctx.expect(bool(text), 'destination identifies the isolated local output')
-        ctx.click_accessible({'owned':True,'name':text,'role':'label'})
+        _click_editor_text(ctx, text, ('label',))
         ctx.expect(_inspect(ctx, op)['view']['destination']['text']==text, 'destination remains visible after real pointer input')
         _frame(ctx, 'after')
 
