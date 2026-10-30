@@ -2,7 +2,7 @@
 import json
 import shlex
 
-from tools.lab.surface_driver.api import RecipeFailed
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 
 
 def observe(ctx, geometry, *, foreground=False):
@@ -18,6 +18,42 @@ def observe(ctx, geometry, *, foreground=False):
     if str(witness['active']) != str(geometry['window_id']):
         ctx.blocked('Settings foreground is obstructed; input withheld.', issue=699)
     return witness
+
+
+def prepare(ctx):
+    script = ctx.profile.get('settings', {}).get('prepare_script')
+    geometry = ctx.geometry('settings')
+    if script:
+        reply = ctx.shell('settings_window=' + shlex.quote(str(geometry['window_id'])) + '\n' + script)
+        ctx.expect(reply['returncode'] == 0, 'profile prepared Settings window and accessibility')
+    return geometry
+
+
+def ensure_accessible(ctx):
+    geometry = ctx.geometry('settings')
+    owner = observe(ctx, geometry, foreground=True)
+    query = ctx.profile['settings']['live_controls']['settingsSection0']
+    if any(row.get('pid') == owner['pid'] for row in ctx.accessible(query)):
+        return
+    # Qt 6.4 reads the AT-SPI properties at helper startup and does not
+    # subscribe to their changes (qtbase/src/gui/accessible/linux/dbusconnection.cpp).
+    # A fresh profile may already have opened its first-launch helper. Close
+    # only this foreground, private-profile window and reopen it cooperatively.
+    ctx.note('Reopening the private Settings helper after enabling accessibility.')
+    ctx.frame('accessibility-before-reopen')
+    ctx.keys('Alt+F4')
+    pid = str(int(owner['pid']))
+    ctx.wait(lambda: ctx.shell('test ! -d /proc/' + pid)['returncode'] == 0,
+             'previous private Settings helper exits')
+    ctx.view('ui.show', {'view': 'settings'})
+    def ready():
+        try:
+            return ctx.geometry('settings')
+        except RecipeBlocked:
+            return None
+    ctx.wait(ready, 'reopened private Settings window is visible')
+    prepare(ctx)
+    ctx.frame('accessibility-after-reopen')
 
 
 def click(ctx, control):

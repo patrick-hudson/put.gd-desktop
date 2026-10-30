@@ -308,6 +308,23 @@ class Contracts(unittest.TestCase):
                 self.assertEqual(ctx.disk, ctx.document)
                 self.assertTrue(any(method == 'ui.viewState' for method, _ in ctx.calls))
 
+    def test_first_launch_helper_reopens_after_accessibility_enablement(self):
+        from tools.lab.surface_driver.recipes.settings_input import ensure_accessible
+        ctx = Fake()
+        accessible, shell = ctx.accessible, ctx.shell
+        queries = []
+        def probe(query):
+            queries.append(query)
+            return [] if len(queries) == 1 else accessible(query)
+        ctx.accessible = probe
+        ctx.shell = lambda script, **kwargs: ({'returncode': 0, 'stdout': ''}
+                    if script == 'test ! -d /proc/123' else shell(script, **kwargs))
+        ensure_accessible(ctx)
+        self.assertIn(('keys', ('Alt+F4',)), ctx.inputs)
+        self.assertIn(('ui.show', {'view': 'settings'}), ctx.calls)
+        self.assertIn('accessibility-before-reopen', [f[0] for f in ctx.frames])
+        self.assertIn('accessibility-after-reopen', [f[0] for f in ctx.frames])
+
     def test_theme_reference_tracks_observed_scheme(self):
         ctx = Fake()
         lane.appearance(ctx)

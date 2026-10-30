@@ -9,7 +9,8 @@ import json
 import shlex
 
 from tools.lab.surface_driver.api import recipe
-from .settings_input import click as live_click, observe as input_witness
+from .settings_input import (click as live_click, observe as input_witness,
+                             prepare as prepare_input, ensure_accessible)
 
 CORE_ISSUE = 681
 
@@ -107,13 +108,10 @@ def opened(ctx, section):
         ctx.wait(lambda: not package(ctx)['open'], 'previous package dialog closed')
     ctx.wait(lambda: state(ctx).get('appearance', {}).get('theme') == 'dark',
              'catalog appearance applied to the UI')
-    # Native layout preparation is profile data, never a desktop branch in a
-    # recipe. Control rectangles still come only from the catalog.
-    preparation = ctx.profile.get('settings', {}).get('prepare_script')
-    if preparation:
-        geometry = ctx.geometry('settings')
-        preparation = 'settings_window=' + shlex.quote(str(geometry['window_id'])) + '\n' + preparation
-        ctx.expect(ctx.shell(preparation)['returncode'] == 0, 'profile prepared catalog window geometry')
+    # Profile preparation also enables the live control probe. A first-launch
+    # Qt 6.4 helper may need a cooperative reopen to pick that up.
+    prepare_input(ctx)
+    ensure_accessible(ctx)
     ctx.use_catalog('settings', REFERENCES[section])
     live_click(ctx, 'settingsSection' + str(section))
     ctx.wait(lambda: state(ctx).get('settings', {}).get('section') == section,
