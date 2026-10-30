@@ -15,35 +15,64 @@ guest boot, compositor, physical hardware or release acceptance.
 
 ## Candidate builds
 
-The AppImage retry is still running; this interim packet does not yet accept
-the complete seven-artifact set. The six completed artifacts below passed
-identity/hash verification and worker cleanup.
+All seven artifact builds passed across the retained attempts. The final accepted
+set has **452 verified files**; every artifact has the requested clean
+commit and matching compiled CLI identity.
 
-| Artifact | Result | Build seconds | Collection seconds |
-| --- | --- | ---: | ---: |
-| debian13 | passed; worker absent | 488.946 | 124.922 |
-| fedora44 | passed; worker absent | 419.586 | 26.424 |
-| lab-fixture | passed; worker absent | 488.999 | 407.546 |
-| ubuntu24.04 | passed; worker absent | 1434.788 | 26.59 |
-| ubuntu26.04 | passed; worker absent | 552.157 | 17.698 |
-| ui-catalog | passed; worker absent | 718.307 | 9.234 |
-| appimage | retry in progress | — | — |
+| Artifact | Build/provision seconds | Collection seconds | Exported files |
+| --- | ---: | ---: | ---: |
+| appimage | 964.644 | 26.797 | 8 |
+| debian13 | 488.946 | 124.922 | 7 |
+| fedora44 | 419.586 | 26.424 | 7 |
+| lab-fixture | 488.999 | 407.546 | 8 |
+| ubuntu24.04 | 1434.788 | 26.59 | 9 |
+| ubuntu26.04 | 552.157 | 17.698 | 7 |
+| ui-catalog | 718.307 | 9.234 | 406 |
 
-[Structured interim results](candidate.json).
+[Structured results and product hashes](candidate.json) retain image digests,
+per-target identity, transport digests, CI differences and deletion receipts.
+All **14 sandboxes created by this task** are [verified absent](all-workers-gone.json)
+using `boat list --all`; unrelated workers and named snapshots were preserved.
+
+The test DEB is named `putgd-lab-fixture`. Its compiled update information has
+`packageTarget: null`, `supported: false`, and `reason: disabled_at_build`. Its
+production `native.py` audit is deliberately not run because that policy forbids
+fixture files and requires the package name `putgd`; the four production native
+packages passed their normal audits.
 
 The first seven-worker attempt retained an AppImage bootstrap failure: the
 minimal Ubuntu container lacked Python before the newly added mirror helper.
 The controller was corrected to provision distro Python first, and only
 AppImage was retried at the same frozen application SHA. All seven first-attempt
 workers were deleted; its complete failed manifest and 444 successful-file
-checksums were preserved and verified. The AppImage retry also retains its
-bounded package-install retry context. No failed attempt was relabeled passing.
+checksums were preserved and verified. The second AppImage attempt was
+deliberately cancelled mid-build after it
+became a measured storage outlier: more than half an hour in base dependencies,
+versus the earlier rehearsal's complete AppImage build in 899.018 seconds,
+with I/O full pressure averaging 37.58% over five minutes and 13,237 MiB memory
+available. Its package-install timeout/retry and mid-build cancellation remain
+failed receipts. One replacement worker then built the same source with the
+same pinned recipe; no worker-replacement loop was added. No failed attempt was
+relabeled passing. The [interrupted manifest](interrupted-appimage.json) and
+[byte-identical recipe/bootstrap hashes](replacement-recipes.json) retain that
+operational replacement context.
 
-After the AppImage retry finishes, the final accepted artifact set will be
-restored again from the original transport archives with the final extraction
-implementation and every file hash rechecked. The original attempt receipts
-remain immutable. Runner summary/env/output files and aqt scratch data stay
-outside the exported artifact inventory.
+The accepted artifact set is restored again from the original transport
+archives using the final extraction implementation. Archive digests, every
+restored file digest, build identity and package count are rechecked. Files keep
+private permissions and owner executability where applicable. The accepted
+manifest expands the CI difference metadata without changing the original
+attempt receipts or artifact bytes. Runner summary/env/output files and aqt
+scratch data are excluded from the exported artifact inventory.
+
+The [same-source AppImage CI comparison](ci-appimage-comparison.json) records the
+remaining audit difference precisely: Boat's
+`postDeploymentAudit.rootDesktopEntry.removedLinks` is
+`["putgd-record.desktop"]`, while [CI run 40978718771](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40978718771)
+has `[]`. Both keep `putgd.desktop` as the single root desktop entry. This is a
+recorded container/hosted-runner assembly difference, not an identical-byte CI
+claim. The guide and each target's manifest metadata list the remaining cold
+cache, image, Qt provisioning, installer policy and fixture audit boundaries.
 
 ## Controller, cancellation and transport
 
@@ -60,7 +89,9 @@ The [deliberate cancellation](cancellation.json) sent two terminal-process-group
 Ctrl-Cs while `bx_v695pu7v` was starting. Its initial pending deletion request
 is retained separately from the verified final absence from `boat list --all`.
 The controller exited 1 with a completed failed-run manifest, checksums and no
-owned workers remaining. [Signal timing](cancellation-signals.json) shows that
+owned workers remaining. The later deliberate mid-build cancellation of the
+I/O-outlier AppImage worker also deleted that worker and recorded final absence.
+[Signal timing](cancellation-signals.json) shows that
 the second Ctrl-C arrived during cleanup. The actual
 [`--cleanup SHA` recovery invocation](cleanup-mode.json) also verified all seven
 fixed candidate names absent without starting any new worker.

@@ -1,12 +1,49 @@
 {
-  "scope": "Interim campaign evidence; AppImage retry remains pending",
-  "commit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
-  "allArtifactsPassed": false,
+  "allArtifactsPassed": true,
   "artifacts": [
     {
-      "artifact": "debian13",
-      "sandboxId": "bx_mns2fsm6",
-      "containerImage": "debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5",
+      "artifact": "appimage",
+      "buildSeconds": 964.644,
+      "catalogPngCount": 0,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Pinned native Ubuntu 24.04 container instead of mutable GitHub ubuntu-24.04 hosted VM; package inventory retained. Hosted preinstalled desktop links can differ (appimage-build.json rootDesktopEntry.removedLinks).",
+        "Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.",
+        "Installer uses install-packages.sh defaults (4 attempts, 900s overall and 600s stall per attempt), rather than the AppImage CI dependency step environment (3 attempts, 300s overall, 120s stall). Installer labels default to distro/manager."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_2jts8sa3"
+        ],
+        "finalState": "absent",
+        "name": "putgd-573a11c831c2-appimage",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_61db957ca9644947a5c079a72f883285",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T01:56:45.008Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_2jts8sa3"
+            },
+            "sandboxId": "bx_2jts8sa3"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793325407.4228666
+      },
+      "collectionSeconds": 26.797,
+      "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+      "fileCount": 8,
       "identity": {
         "baseVersion": "26.1030.2322",
         "commitCount": 2322,
@@ -18,15 +55,32 @@
         "sourceProvenance": "git",
         "version": "26.1030.2322-dev+g573a11c831c2"
       },
-      "buildSeconds": 488.946,
-      "collectionSeconds": 124.922,
-      "legacyScpSeconds": null,
       "legacyScpBytesMatch": null,
+      "legacyScpSeconds": null,
+      "products": [
+        {
+          "bytes": 118704632,
+          "path": "putgd-26.1030.2322-dev+g573a11c831c2-x86_64.AppImage",
+          "sha256": "2097fc3fc73f64f48b392c821430a21db595ab4d73197aabec07f66f69358eb7"
+        }
+      ],
+      "sandboxId": "bx_2jts8sa3",
       "transport": {
-        "bytes": 59975680,
+        "bytes": 119111680,
         "kind": "tar",
-        "sha256": "cd17cd51c64e6eedc2b13be07142dbc7339b64729de62002f0295eb18cf7b267"
-      },
+        "sha256": "e1d5e82ce7576be3c95a8543f50ab081b8d5f3ecc680a881937b789ae6abf437"
+      }
+    },
+    {
+      "artifact": "debian13",
+      "buildSeconds": 488.946,
+      "catalogPngCount": 0,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
       "cleanup": {
         "deletedIds": [
           "bx_mns2fsm6"
@@ -53,12 +107,10 @@
         "verification": "boat list --all",
         "verified": true,
         "verifiedAt": 1793322401.5192292
-      }
-    },
-    {
-      "artifact": "fedora44",
-      "sandboxId": "bx_mgrzcdm7",
-      "containerImage": "fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+      },
+      "collectionSeconds": 124.922,
+      "containerImage": "debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5",
+      "fileCount": 7,
       "identity": {
         "baseVersion": "26.1030.2322",
         "commitCount": 2322,
@@ -70,15 +122,32 @@
         "sourceProvenance": "git",
         "version": "26.1030.2322-dev+g573a11c831c2"
       },
-      "buildSeconds": 419.586,
-      "collectionSeconds": 26.424,
-      "legacyScpSeconds": null,
       "legacyScpBytesMatch": null,
+      "legacyScpSeconds": null,
+      "products": [
+        {
+          "bytes": 59770504,
+          "path": "putgd_26.1030.2322~dev+g573a11c831c2_amd64.deb",
+          "sha256": "53cc4cf6608c92b582b965e559435e3fcb42aa82bc618d433783d1eb07471eda"
+        }
+      ],
+      "sandboxId": "bx_mns2fsm6",
       "transport": {
-        "bytes": 47339520,
+        "bytes": 59975680,
         "kind": "tar",
-        "sha256": "68ae9cb460e5bacd80e7b8ca36aec2e141b4111f172a0301cf9e0e096e20faf7"
-      },
+        "sha256": "cd17cd51c64e6eedc2b13be07142dbc7339b64729de62002f0295eb18cf7b267"
+      }
+    },
+    {
+      "artifact": "fedora44",
+      "buildSeconds": 419.586,
+      "catalogPngCount": 0,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
       "cleanup": {
         "deletedIds": [
           "bx_mgrzcdm7"
@@ -105,12 +174,10 @@
         "verification": "boat list --all",
         "verified": true,
         "verifiedAt": 1793322236.1710248
-      }
-    },
-    {
-      "artifact": "lab-fixture",
-      "sandboxId": "bx_veyd2y38",
-      "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+      },
+      "collectionSeconds": 26.424,
+      "containerImage": "fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+      "fileCount": 7,
       "identity": {
         "baseVersion": "26.1030.2322",
         "commitCount": 2322,
@@ -122,15 +189,34 @@
         "sourceProvenance": "git",
         "version": "26.1030.2322-dev+g573a11c831c2"
       },
-      "buildSeconds": 488.999,
-      "collectionSeconds": 407.546,
-      "legacyScpSeconds": null,
       "legacyScpBytesMatch": null,
+      "legacyScpSeconds": null,
+      "products": [
+        {
+          "bytes": 47135474,
+          "path": "putgd-26.1030.2322~dev+g573a11c831c2-1.fc44.x86_64.rpm",
+          "sha256": "2ccbb6afe8a33104bcf2908f1b76ec5bfe91506b945ad7d1aea037e852452977"
+        }
+      ],
+      "sandboxId": "bx_mgrzcdm7",
       "transport": {
-        "bytes": 61829120,
+        "bytes": 47339520,
         "kind": "tar",
-        "sha256": "2087bda03e82a76e3ab52de11b546a9e68da59e60240c69942776898e91f9dca"
-      },
+        "sha256": "68ae9cb460e5bacd80e7b8ca36aec2e141b4111f172a0301cf9e0e096e20faf7"
+      }
+    },
+    {
+      "artifact": "lab-fixture",
+      "buildSeconds": 488.999,
+      "catalogPngCount": 0,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Test-only DEB named putgd-lab-fixture; PUTGD_PACKAGE_TARGET empty and PUTGD_UPDATE_CHECK OFF. It must not enter production staging.",
+        "native.py audit intentionally not run: production audit forbids fixture files and requires package name putgd. CPack control metadata, binary/build identity and per-file hashes retained instead."
+      ],
       "cleanup": {
         "deletedIds": [
           "bx_veyd2y38"
@@ -157,12 +243,10 @@
         "verification": "boat list --all",
         "verified": true,
         "verifiedAt": 1793322680.7159917
-      }
-    },
-    {
-      "artifact": "ubuntu24.04",
-      "sandboxId": "bx_ta596w8d",
+      },
+      "collectionSeconds": 407.546,
       "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+      "fileCount": 8,
       "identity": {
         "baseVersion": "26.1030.2322",
         "commitCount": 2322,
@@ -174,15 +258,32 @@
         "sourceProvenance": "git",
         "version": "26.1030.2322-dev+g573a11c831c2"
       },
-      "buildSeconds": 1434.788,
-      "collectionSeconds": 26.59,
-      "legacyScpSeconds": null,
       "legacyScpBytesMatch": null,
+      "legacyScpSeconds": null,
+      "products": [
+        {
+          "bytes": 60410928,
+          "path": "putgd-lab-fixture_26.1030.2322~dev+g573a11c831c2_amd64.deb",
+          "sha256": "db10531efc67e516e8a0b520f81f60b8a035fcea688492929f195e55a9bf7141"
+        }
+      ],
+      "sandboxId": "bx_veyd2y38",
       "transport": {
-        "bytes": 64931840,
+        "bytes": 61829120,
         "kind": "tar",
-        "sha256": "b0b60f78de07cb55bea8eeeaee4b67eb24020407ad75acb29bfafdc6d6dc0833"
-      },
+        "sha256": "2087bda03e82a76e3ab52de11b546a9e68da59e60240c69942776898e91f9dca"
+      }
+    },
+    {
+      "artifact": "ubuntu24.04",
+      "buildSeconds": 1434.788,
+      "catalogPngCount": 0,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
       "cleanup": {
         "deletedIds": [
           "bx_ta596w8d"
@@ -209,12 +310,10 @@
         "verification": "boat list --all",
         "verified": true,
         "verifiedAt": 1793323280.3190117
-      }
-    },
-    {
-      "artifact": "ubuntu26.04",
-      "sandboxId": "bx_zk8g6pwh",
-      "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+      },
+      "collectionSeconds": 26.59,
+      "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+      "fileCount": 9,
       "identity": {
         "baseVersion": "26.1030.2322",
         "commitCount": 2322,
@@ -226,15 +325,37 @@
         "sourceProvenance": "git",
         "version": "26.1030.2322-dev+g573a11c831c2"
       },
-      "buildSeconds": 552.157,
-      "collectionSeconds": 17.698,
-      "legacyScpSeconds": null,
       "legacyScpBytesMatch": null,
+      "legacyScpSeconds": null,
+      "products": [
+        {
+          "bytes": 4690352,
+          "path": "putgd-26.1030.2322-dev+g573a11c831c2-source.tar.gz",
+          "sha256": "80c6b2fa2ab003cd674cc26f2a83a8509cd0b68cac516d110e77f3b40c8b02b1"
+        },
+        {
+          "bytes": 59931440,
+          "path": "putgd_26.1030.2322~dev+g573a11c831c2_amd64.deb",
+          "sha256": "110a7dc528ed34aee6a558eb15f343ba24c12d9611ac1f9e1b8c079966bccdaa"
+        }
+      ],
+      "sandboxId": "bx_ta596w8d",
       "transport": {
-        "bytes": 60538880,
+        "bytes": 64931840,
         "kind": "tar",
-        "sha256": "a7505221c8d732d242a24f05416e3aea90214574bebbaa96016808f3f3b0041c"
-      },
+        "sha256": "b0b60f78de07cb55bea8eeeaee4b67eb24020407ad75acb29bfafdc6d6dc0833"
+      }
+    },
+    {
+      "artifact": "ubuntu26.04",
+      "buildSeconds": 552.157,
+      "catalogPngCount": 0,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
       "cleanup": {
         "deletedIds": [
           "bx_zk8g6pwh"
@@ -261,12 +382,10 @@
         "verification": "boat list --all",
         "verified": true,
         "verifiedAt": 1793322366.0100265
-      }
-    },
-    {
-      "artifact": "ui-catalog",
-      "sandboxId": "bx_vbpp4vva",
+      },
+      "collectionSeconds": 17.698,
       "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+      "fileCount": 7,
       "identity": {
         "baseVersion": "26.1030.2322",
         "commitCount": 2322,
@@ -278,15 +397,33 @@
         "sourceProvenance": "git",
         "version": "26.1030.2322-dev+g573a11c831c2"
       },
-      "buildSeconds": 718.307,
-      "collectionSeconds": 9.234,
-      "legacyScpSeconds": 206.097,
-      "legacyScpBytesMatch": true,
+      "legacyScpBytesMatch": null,
+      "legacyScpSeconds": null,
+      "products": [
+        {
+          "bytes": 60326706,
+          "path": "putgd_26.1030.2322~dev+g573a11c831c2_amd64.deb",
+          "sha256": "a69a9ac53e437201c05d05ca0c26ec9682d210ae387ff6e6fbe90530f8f8827a"
+        }
+      ],
+      "sandboxId": "bx_zk8g6pwh",
       "transport": {
-        "bytes": 18821120,
+        "bytes": 60538880,
         "kind": "tar",
-        "sha256": "5be4b26d3fab2f603a155360d1f4ff5308e04c8281d307c424c0a1f16fcd3eec"
-      },
+        "sha256": "a7505221c8d732d242a24f05416e3aea90214574bebbaa96016808f3f3b0041c"
+      }
+    },
+    {
+      "artifact": "ui-catalog",
+      "buildSeconds": 718.307,
+      "catalogPngCount": 202,
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Pinned package-matrix Ubuntu 26.04 digest instead of CI linux floating ubuntu:26.04 tag; same dependency/build/catalog run blocks, no ctest. Compiler cache capped at 256M instead of CI linux 1G."
+      ],
       "cleanup": {
         "deletedIds": [
           "bx_vbpp4vva"
@@ -313,7 +450,76 @@
         "verification": "boat list --all",
         "verified": true,
         "verifiedAt": 1793322733.9638968
+      },
+      "collectionSeconds": 9.234,
+      "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+      "fileCount": 406,
+      "identity": {
+        "baseVersion": "26.1030.2322",
+        "commitCount": 2322,
+        "dirty": false,
+        "gitCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+        "gitTree": "54e5d22b410c22d078287e77240c335afa81a210",
+        "packageVersion": "26.1030.2322~dev+g573a11c831c2",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1030.2322-dev+g573a11c831c2"
+      },
+      "legacyScpBytesMatch": true,
+      "legacyScpSeconds": 206.097,
+      "products": [],
+      "sandboxId": "bx_vbpp4vva",
+      "transport": {
+        "bytes": 18821120,
+        "kind": "tar",
+        "sha256": "5be4b26d3fab2f603a155360d1f4ff5308e04c8281d307c424c0a1f16fcd3eec"
       }
     }
-  ]
+  ],
+  "attempts": [
+    {
+      "passed": false,
+      "path": "../nightly-573a-r1/manifest.json"
+    },
+    {
+      "passed": false,
+      "path": "../nightly-573a-appimage-r2/manifest.json",
+      "reason": "deliberately cancelled one I/O-outlier worker before one replacement"
+    },
+    {
+      "passed": true,
+      "path": "../nightly-573a-appimage-r3/manifest.json"
+    }
+  ],
+  "commit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+  "hostReplacement": {
+    "decision": "one measured replacement of anomalously slow AppImage worker",
+    "limitsHourRemaining": 31,
+    "reason": "Still in base dependencies after more than 30 minutes; prior AppImage build 899.018 seconds; I/O full avg300 37.58%, 13237 MiB memory available",
+    "sandboxId": "bx_g8yffq3n",
+    "time": 1793324248.7131732
+  },
+  "scope": "Candidate build campaign only; no desktop/hardware/release acceptance",
+  "controllerCommits": {
+    "appimageInterrupted": "6504f9ee5c75fda5285d8ae5cd03ee72a33deb94",
+    "appimageRetry": "78a067795ed25112806da51d9a8c8149d50eed91",
+    "finalExtraction": "78a067795ed25112806da51d9a8c8149d50eed91",
+    "first": "905a42d801f64f4e5fb46f5006852d1e04e21ac1"
+  },
+  "verifiedFileCount": 452,
+  "ciAuditComparison": {
+    "sourceCommit": "573a11c831c2649f4b81f5a8ae86a120446f2421",
+    "ciRun": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/40978718771",
+    "field": "postDeploymentAudit.rootDesktopEntry",
+    "boat": {
+      "file": "putgd.desktop",
+      "removedLinks": [
+        "putgd-record.desktop"
+      ]
+    },
+    "ci": {
+      "file": "putgd.desktop",
+      "removedLinks": []
+    }
+  }
 }
