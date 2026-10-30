@@ -718,11 +718,6 @@ def main(argv=None):
         physical = bool(args.host_profile)
         if blockers := secret_safe_evidence_blockers(args.placement, args.catalog, args.build, physical):
             raise SystemExit('live destination '+args.destination+' blocked by secret-safe evidence: '+', '.join(blockers))
-    else:
-        try:
-            require_host_ocr()
-        except RecipeBlocked as error:
-            raise SystemExit(str(error)) from None
     run=args.run or args.guest
     if not args.host_profile:
         if not run:
@@ -738,7 +733,7 @@ def main(argv=None):
     rows=[]
     recipes=[]
     exit_code=2
-    evidence=Evidence(args.out, require_ocr=args.destination!='local')
+    evidence=Evidence(args.out, require_ocr=args.destination!='local', local=args.destination=='local')
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)

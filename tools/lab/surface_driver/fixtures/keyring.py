@@ -7,6 +7,7 @@ with private storage and an exact PID/start-time cleanup lease.
 from ..api import RecipeBlocked
 
 OWNER = '''import json
+from pathlib import Path
 import gi
 gi.require_version('Gio','2.0')
 from gi.repository import Gio,GLib
@@ -17,7 +18,8 @@ def call(method,signature,args,reply):
 name='org.freedesktop.secrets'
 owner=call('GetNameOwner','(s)',(name,),'(s)') if call('NameHasOwner','(s)',(name,),'(b)') else None
 pid=call('GetConnectionUnixProcessID','(s)',(owner,),'(u)') if owner else None
-print(json.dumps({'owner':owner,'pid':pid}))
+provider=Path('/proc/%d/comm'%pid).read_text().strip() if pid else None
+print(json.dumps({'owner':owner,'pid':pid,'provider':provider}))
 '''
 
 
@@ -25,8 +27,14 @@ def isolated_service(scope):
     ctx=scope.ctx
     if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
         raise RecipeBlocked('isolated Secret Service requires a disposable nested guest',issue=919)
-    if scope.json(OWNER)['owner']:
-        raise RecipeBlocked('isolated Secret Service refuses an already owned bus name; existing wallets are preserved',issue=919)
+    owner = scope.json(OWNER)
+    if owner['owner']:
+        # Aurora already runs KWallet's Secret Service. Never replace it: a
+        # unique blank-password wallet can hold this guest's synthetic item.
+        if owner.get('provider') != 'ksecretd':
+            raise RecipeBlocked('isolated Secret Service refuses an already owned bus name; existing wallets are preserved',issue=919)
+        scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
+        return dict(owner, provider='ksecretd')
     if ctx.shell('command -v gnome-keyring-daemon >/dev/null')['returncode']:
         raise RecipeBlocked('KDE fixture needs profiles/provision-probes.sh --keyring-overlay in the disposable overlay',issue=919)
     scope.initialize()
@@ -50,3 +58,22 @@ def isolated_service(scope):
     # XDG_CURRENT_DESKTOP=KDE and the real Wayland/KWin adapter remain intact.
     scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
     return identity
+
+
+KWALLET_COLLECTION = '''
+import hashlib,pwd,time
+wallet=LABEL
+assert wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
+folder=Path(pwd.getpwuid(os.getuid()).pw_dir)/'.local/share/kwalletd'
+assert folder.resolve()==folder and folder.is_dir()
+salt_path=folder/(wallet+'.salt')
+with open(os.open(salt_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as f:f.write(os.urandom(56))
+digest=hashlib.pbkdf2_hmac('sha512',b'',salt_path.read_bytes(),50000,dklen=56)
+call('/ksecretd','org.kde.KWallet','pamOpen',GLib.Variant('(sayi)',(wallet,digest,0)),'()')
+collection='/org/freedesktop/secrets/collection/'+wallet
+deadline=time.monotonic()+15
+while collection not in call(service,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Service','Collections')),'(v)')[0]:
+ assert time.monotonic()<deadline,'synthetic KWallet did not appear'
+ time.sleep(.2)
+assert not call(collection,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Locked')),'(v)')[0]
+'''

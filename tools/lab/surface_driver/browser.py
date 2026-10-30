@@ -700,7 +700,8 @@ def _terminate(pid, start):
 def _write_transaction(state):
     stored = Path(state['directory']) / 'transaction.json'
     temporary = stored.with_name('.transaction.json')
-    temporary.write_text(json.dumps(state))
+    with open(os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w') as stream:
+        stream.write(json.dumps(state))
     os.replace(temporary, stored)
 
 
@@ -795,7 +796,8 @@ def _prepare(options):
     state = {'directory': str(directory), 'desktops': [str(p) for p in desktops], 'created': created,
              'browser_created': browser_created,
              'backups': backups, 'pid': None, 'since': _uptime_ticks(), 'boot': _boot_id(), 'foreign': [],
-             'helper': [os.getpid(), _start_ticks(os.getpid())], 'timeouts': timeouts}
+             'helper': [os.getpid(), _start_ticks(os.getpid())], 'timeouts': timeouts,
+             'runtime': os.environ.get('XDG_RUNTIME_DIR')}
     try:
         # Recorded before anything else changes, so recovery can undo any step.
         _write_transaction(state)
@@ -851,6 +853,12 @@ def _prepare(options):
                 if process.poll() is not None or time.monotonic() >= deadline:
                     raise _TargetError('Private Firefox did not become ready within %g s' % timeouts['ready']) from None
                 time.sleep(.25)
+        # Snap rewrites XDG_RUNTIME_DIR. Bind its actual parent process to
+        # this private transaction by profile, PID and Linux start time.
+        state['owners'] = [[pid, start] for pid, start, args in _firefox_mains() if str(directory).encode() in args]
+        if len(state['owners']) != 1:
+            state['owners'] = []  # No Snap ownership exception without one exact parent.
+        _write_transaction(state)
         for profile_config, profile_data in profiles:
             mime_env = _environment(profile_config, profile_data)
             for scheme in ('http', 'https'):

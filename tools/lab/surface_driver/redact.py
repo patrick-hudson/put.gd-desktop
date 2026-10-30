@@ -441,7 +441,7 @@ def require_host_ocr():
     return ocr
 
 
-def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=()):
+def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=(), audit_images=True):
     """Mask/crop in memory, strip metadata, then perform the first pixel write."""
     image = image.convert('RGB')
     masks = []
@@ -459,7 +459,9 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
         masks = [[max(0, mx-x), max(0, my-y), min(x+w, mx+mw)-max(x, mx), min(y+h, my+mh)-max(y, my)]
                  for mx, my, mw, mh in masks if mx < x+w and my < y+h and mx+mw > x and my+mh > y]
     guard, text = 'fully-masked', None
-    if image.getbbox():
+    if image.getbbox() and not audit_images:
+        guard = 'local-secret-fields-only'
+    if image.getbbox() and audit_images:
         try:
             text = ocr_text(image, ocr=ocr)
         except Exception:
@@ -653,7 +655,7 @@ def ocr_self_test(ocr=None, size=11):
                for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')))
 
 
-def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None):
+def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None, audit_images=True):
     """Never include a matched value, OCR text or an unsafe filename in findings.
 
     paths limits the audit to those files (relative to directory), for bytes
@@ -668,7 +670,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
     tesseract = shutil.which('tesseract') if ocr is None else ocr
     check = lambda text: detected(text, literals, hosts)
     findings, count, pngs = [], 0, 0
-    if not tesseract and (require_ocr or literals):
+    if audit_images and not tesseract and (require_ocr or literals):
         findings.append({'kind': 'ocr-required-unavailable', 'blocked': 'tesseract must be staged in the run sandbox/guest'})
     quarantined = []
     selected = sorted(root.rglob('*')) if paths is None else sorted(root/p for p in paths if (root/p).exists())
@@ -714,9 +716,9 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
                                 report('mask-outside-frame')
                             elif any(ImageStat.Stat(image.crop((x, y, x+w, y+h)).convert('RGB')).extrema[c][1] for c in range(3)):
                                 report('unmasked-sensitive-region')
-                    if not tesseract and image.convert('RGB').getbbox():
+                    if audit_images and not tesseract and image.convert('RGB').getbbox():
                         report('png-ocr-unavailable')
-                    if tesseract and image.convert('RGB').getbbox():
+                    if audit_images and tesseract and image.convert('RGB').getbbox():
                         try:
                             text = _OCR_CACHE.get(hashlib.sha256(data).hexdigest()) or ocr_text(image, ocr=tesseract)
                         except Exception:
@@ -732,7 +734,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
             quarantined.append((index, path))
     actions = quarantine_files(root, quarantined) if quarantined else []
     return {'quarantine': actions, 'passed': not findings, 'files': count, 'pngs': pngs,
-            'image_audit': 'ocr-and-known-regions' if tesseract else 'known-regions', 'findings': findings}
+            'image_audit': 'ocr-and-known-regions' if tesseract and audit_images else 'known-regions', 'findings': findings}
 
 
 def quarantine_files(root, files):

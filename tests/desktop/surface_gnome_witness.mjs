@@ -36,3 +36,25 @@ const description = vm.runInContext('actorDescription(labelActor)', fake);
 assert.equal(description.role, 28);
 assert.equal(description.accessible, 'Upload complete');
 console.log('GNOME witness signal lifecycle passed');
+
+// A selector belongs to the extension's exact request/actor, never its name.
+const child={}, foreign={};
+let picked=child, owner=':1.50';
+const selector={mapped:true,visible:true,_closed:false,_grab:{},
+    contains:actor=>actor===child,
+    get_transformed_position:()=>[0,0],get_transformed_size:()=>[1280,800],
+    get_accessible:()=>({objectName:'Capture region',objectRole:1})};
+const request={id:'request-1',sender:owner,selector,stage:'region-select',action:'region'};
+const extension={_enabled:true,_selector:selector,_requests:new Map([[request.id,request]])};
+fake.Main={sessionMode:{isLocked:false},extensionManager:{lookup:()=>({stateObj:extension})}};
+fake.GLib.Variant=class{};fake.GLib.VariantType=class{};
+fake.Gio.DBusCallFlags={NONE:0};fake.Clutter={PickMode:{REACTIVE:1}};
+fake.Gio.DBus.session.call_sync=(_bus,_path,_iface,method)=>({deep_unpack:()=>[method==='GetNameOwner'?owner:50]});
+fake.global.stage={get_actor_at_pos:()=>picked,get_key_focus:()=>child};
+let result=JSON.parse(w.Selector('{"point":[40,50]}'));
+assert.equal(result.client_pid,50);assert.equal(result.pointer,true);assert.equal(result.keyboard,true);
+picked=foreign;assert.equal(JSON.parse(w.Selector('{"point":[40,50]}')).pointer,false);
+request.selector=foreign;assert.deepEqual(JSON.parse(w.Selector('{}')),{});
+request.selector=selector;owner=':1.99';assert.deepEqual(JSON.parse(w.Selector('{}')),{});
+owner=request.sender;fake.Main.sessionMode.isLocked=true;assert.deepEqual(JSON.parse(w.Selector('{}')),{});
+console.log('GNOME owned selector reference, sender and occlusion refusals passed');

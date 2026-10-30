@@ -137,8 +137,38 @@ def id_object_name(identifier, role):
 def owned(pid):
     try:
         with open('/proc/' + str(pid) + '/environ', 'rb') as stream:
-            return ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in stream.read().split(b'\0')
+            if ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in stream.read().split(b'\0'):
+                return True
     except (OSError, KeyError):
+        return False
+    return private_firefox(pid)
+
+
+def private_firefox(pid):
+    """Snap's runtime differs: only #680's live, private profile lease owns it."""
+    from pathlib import Path
+    import stat
+    try:
+        process = Path('/proc') / str(pid)
+        if process.stat().st_uid != os.getuid() or (process/'exe').readlink().name not in ('firefox', 'firefox-bin', 'firefox-esr'):
+            return False
+        argv = (process/'cmdline').read_bytes().split(b'\0')
+        profile = Path(os.fsdecode(argv[argv.index(b'--profile')+1]))
+        if not profile.name.startswith('putgd-surface-') or profile.resolve() != profile:
+            return False
+        stored = profile/'transaction.json'
+        for path in (profile, stored):
+            info = path.lstat()
+            if info.st_uid != os.getuid() or info.st_mode & 0o077 or stat.S_ISLNK(info.st_mode):
+                return False
+        if not stored.is_file() or stored.stat().st_size > 1024*1024:
+            return False
+        state = json.loads(stored.read_text())
+        start = (process/'stat').read_text().rsplit(')', 1)[1].split()[19]
+        return (state.get('directory') == str(profile) and state.get('runtime') == os.environ['XDG_RUNTIME_DIR'] and
+                state.get('boot') == Path('/proc/sys/kernel/random/boot_id').read_text().strip() and
+                [pid, start] in state.get('owners', []))
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
         return False
 
 
@@ -506,6 +536,14 @@ def gnome_witness(method, *args):
         raise RuntimeError('compositor witness (gnome-shell) %s failed: %s' % (method, error.get_dbus_name())) from None
 
 
+def gnome_selector(point=None):
+    selector = json.loads(str(gnome_witness('Selector', json.dumps({'point': point}))))
+    if (selector.get('name') != 'Capture region' or not selector.get('request_id') or
+            not owned(selector.get('client_pid')) or not selector.get('rect') or min(selector['rect'][2:]) <= 0):
+        return None
+    return selector
+
+
 def compositor_windows(compositor):
     """The compositor's own window list: frame/buffer rects, pid, focus, stacking."""
     kind = (compositor or {}).get('kind')
@@ -686,7 +724,12 @@ class WaylandPlacement:
         x, y, width, height = rect
         deadline = time.monotonic() + self.MAP_SETTLE
         while True:
-            found = [w for w in self.windows() if w['pid'] == pid and w['title'] == title and
+            # Qt's frameless selector sets an accessible name, but no caption.
+            # This exception is only for the installed put.gd helper's exact,
+            # undecorated cover size; ordinary anonymous windows stay refused.
+            anonymous_selector = title in ('Capture region', 'Recording region') and owned(pid) and selector_process(pid)
+            found = [w for w in self.windows() if w['pid'] == pid and
+                     (w['title'] == title or (anonymous_selector and not w['title'] and w['frame'][2:] == [width, height])) and
                      w.get('type') not in POPUP_WINDOW_TYPES and
                      0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
             # Qt reports a new (modal) window as showing before Mutter maps it:
@@ -1135,10 +1178,16 @@ def x11_windows(query):
     options = ['--onlyvisible'] if not query.get('include_hidden') else []
     search = subprocess.run(['xdotool', 'search', *options, '--name', query.get('title', '.*')],
                             text=True, capture_output=True)
+    ids = search.stdout.split()
+    if query.get('selector_screens'):
+        # Native XCB covers have a PID but no WM_NAME, so xdotool's name
+        # search omits them. Enumerate root children only for selector queries.
+        children = run('xwininfo', '-root', '-children')
+        ids += [str(int(w, 16)) for w in re.findall(r'^\s+(0x[0-9a-fA-F]+)\s', children, re.M)]
     found = []
     active_ids = re.findall(r'0x[0-9a-fA-F]+', run('xprop','-root','_NET_ACTIVE_WINDOW'))
     active = str(int(active_ids[-1],16)) if active_ids else None
-    for wid in search.stdout.split():
+    for wid in dict.fromkeys(ids):
         try:
             try:
                 pid = int(run('xdotool', 'getwindowpid', wid))
@@ -1170,12 +1219,37 @@ def x11_windows(query):
 
 
 def geometry(query):
+    if (query.get('selector') and query.get('accessible', {}).get('name') == 'Capture region' and
+            (query.get('compositor') or {}).get('kind') == 'gnome-lab-witness'):
+        selector = gnome_selector()
+        if selector:
+            return dict(zip(('x','y','width','height'), selector['rect'])) | {
+                'pid': selector['client_pid'], 'window_id': selector['request_id'], 'gnome_selector': True,
+                'name': selector['name'], 'scale': 1, 'coordinate_space': 'logical'}
+        raise RuntimeError('live window match is missing or ambiguous (0 matches)')
     if query.get('backend') == 'x11' or os.environ.get('XDG_SESSION_TYPE') == 'x11':
+        if query.get('selector'):
+            # Independently measured output covers, not catalog rectangles or
+            # the accessible selection's changing extents.
+            monitors = re.findall(r'\s(\d+)/\d+x(\d+)/\d+([+-]\d+)([+-]\d+)', run('xrandr', '--listactivemonitors'))
+            query = dict(query, selector_screens=[[int(x),int(y),int(w),int(h)] for w,h,x,y in monitors])
+            if not query['selector_screens']:
+                raise RuntimeError('native selector output geometry is unavailable')
         found = x11_windows(query)
         if query.get('accessible'):
             nodes = accessible({'owned':True, 'visible':True, **query['accessible']})
-            found = [w for w in found if any(n['pid']==w['pid'] and n.get('rect') and
-                      n['rect']==[w[k] for k in ('x','y','width','height')] for n in nodes)]
+            def bound(w, n):
+                if n['pid'] != w['pid']:
+                    return False
+                box = [w[k] for k in ('x','y','width','height')]
+                if (query.get('accessible', {}).get('name') == 'Capture region' and
+                        query.get('selector_screens') and w.get('override_redirect') and
+                        native_capture_process(w['pid'])):
+                    # NativeRegionAccessible.rect() is the selection (initially
+                    # the output union), not any individual cover window.
+                    return box in query['selector_screens'] and n.get('name') == 'Capture region'
+                return n.get('rect') == box
+            found = [w for w in found if any(bound(w, n) for n in nodes)]
         # Native selector overlays can have one visible window per head. The
         # focused head (or explicitly selected head) disambiguates, never order.
         if query.get('point'):
@@ -1525,6 +1599,18 @@ def native_capture_process(pid):
         return False
 
 
+def selector_process(pid):
+    import shutil
+    for name in ('putgd-capture', 'putgd-ui'):
+        try:
+            expected = shutil.which(name)
+            if expected and os.path.samefile('/proc/'+str(pid)+'/exe', expected):
+                return True
+        except OSError:
+            pass
+    return False
+
+
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')
 
 
@@ -1857,6 +1943,14 @@ def witness_foreground(query):
     chrome or another client at the point refuses input and is named.
     """
     compositor, target, point = query['compositor'], query['geometry'], query.get('point')
+    if target.get('gnome_selector'):
+        selector = gnome_selector(point)
+        same = (selector and selector['request_id'] == target.get('window_id') and
+                selector['client_pid'] == target.get('pid') and
+                selector['rect'] == [target[k] for k in ('x','y','width','height')])
+        ok = same and selector['pointer' if point is not None else 'keyboard']
+        return {'ok': bool(ok), 'backend': 'gnome-owned-selector-pick',
+                'obscuring_window': None if ok else 'put.gd selector request changed or its actor is covered'}
     wid = target.get('window_id')
     if wid is None:
         raise RuntimeError('Wayland target has no compositor window identity')
