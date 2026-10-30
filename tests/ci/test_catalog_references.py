@@ -131,12 +131,14 @@ class Updating(Fixture):
                          manifest_with(images=['10-same.png', '00-icon-specimen.png']),
                          manifest_with(scope=dict(check.FULL_SCOPE, editorOnly=True)),
                          manifest_with(scope=dict(check.FULL_SCOPE, review=False)),
-                         manifest_with(scope=None), manifest_with(platform='xcb')):
+                         manifest_with(scope=None), manifest_with(platform='xcb'),
+                         manifest_with(skippedCaptures=[{'state': '01a-history-preview-focus', 'reason': 'inspector_hidden'}])):
             if document is not None:
                 manifest.write_text(json.dumps(document))
             with self.subTest(document=document), self.assertRaises(SystemExit):
                 run(self.refs)
         self.assertTrue((self.refs / '13-gone.png').exists(), 'a rejected render deleted a reference')
+        self.assertEqual(check.render_problem(source / 'dark', allow_skips=True), '')
         manifest.write_text(json.dumps(manifest_with()))
         refs = self.root / 'fresh'
         run(refs)

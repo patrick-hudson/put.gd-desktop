@@ -106,8 +106,10 @@ def render(binary, scheme, output, text_scale=None, log=sys.stderr):
         lock.close()
 
 
-def render_problem(directory):
+def render_problem(directory, allow_skips=False):
     """Why DIRECTORY is not a complete, clean catalog render, or '' when it is.
+
+    A skipped capture has no image, so only a layout-only run may have one.
 
     putgd-ui-catalog writes manifest.json last, with its scope and every image it saved.
     """
@@ -121,6 +123,9 @@ def render_problem(directory):
     if manifest.get('platform') != 'offscreen' or manifest.get('scope') != FULL_SCOPE:
         return 'not a full offscreen catalog run (platform %r, scope %r)' % (manifest.get('platform'),
                                                                              manifest.get('scope'))
+    skipped = [s.get('state') for s in manifest.get('skippedCaptures') or []]
+    if skipped and not allow_skips:
+        return 'the catalog skipped captures: ' + ', '.join(map(str, skipped))
     images = manifest.get('images') or []
     captures = [c.get('file') for c in manifest.get('captures') or []]
     if not captures or not images:
@@ -186,7 +191,7 @@ def main(argv=None):
                                                       if args.text_scale else '', seconds))
     if status != 0:
         return finish(False, 'putgd-ui-catalog failed its own checks (exit %d)' % status)
-    problem = render_problem(output)
+    problem = render_problem(output, allow_skips=args.layout_only)
     if problem:
         return finish(False, problem)
     report['qtVersion'] = json.loads((output / 'manifest.json').read_text()).get('qtVersion')
