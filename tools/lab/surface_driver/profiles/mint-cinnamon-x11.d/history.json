@@ -85,5 +85,6 @@
   "history_window_anchor": {
     "x": 24,
     "y": 72
-  }
+  },
+  "history_window_anchor_tolerance": 32
 }

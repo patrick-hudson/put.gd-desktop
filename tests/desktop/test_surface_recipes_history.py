@@ -558,6 +558,19 @@ class HistoryRecipeTests(unittest.TestCase):
             with self.subTest(function=function.__name__):
                 function(NoCatalogChrome(('history-row',)))
 
+    def test_chrome_setup_accepts_small_native_placement_adjustment(self):
+        class Adjusted(FakeContext):
+            def drag(self, start, end, button='left', steps=12):
+                super().drag(start, end, button, steps)
+                self.window['x'] += 2
+                self.window['y'] += 2
+        ctx = Adjusted()
+        ctx.profile = {'history_window_anchor': {'x': 24, 'y': 72}, 'history_window_anchor_tolerance': 32}
+        size = (ctx.window['width'], ctx.window['height'])
+        history._window_buttons_ready(ctx)
+        self.assertEqual((ctx.window['x'], ctx.window['y']), (26, 74))
+        self.assertEqual((ctx.window['width'], ctx.window['height']), size)
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))

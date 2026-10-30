@@ -711,7 +711,10 @@ def _window_buttons_ready(ctx):
     if not anchor:
         return
     box = ctx.geometry('history')
-    if all(box[k] == anchor[k] for k in ('x', 'y')):
+    tolerance = ctx.profile.get('history_window_anchor_tolerance', 0)
+    def in_pose(geometry):
+        return all(max(0, anchor[k] - tolerance) <= geometry[k] <= anchor[k] + tolerance for k in ('x', 'y'))
+    if in_pose(box):
         return
     # Keep chrome outside the desktop's right-aligned notification column.
     # Move by a live blank header point; every gesture retains the normal guard.
@@ -719,9 +722,10 @@ def _window_buttons_ready(ctx):
     scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
     end = tuple(round(start[i] + (anchor[k] - box[k]) * scale) for i, k in enumerate(('x', 'y')))
     ctx.drag(start, end)
-    moved = ctx.wait(lambda: (g if all((g := ctx.geometry('history'))[k] == anchor[k] for k in ('x', 'y')) else None),
+    moved = ctx.wait(lambda: (g if in_pose(g := ctx.geometry('history')) else None),
                      'main window moved clear of notification column')
     ctx.expect(all(moved[k] == box[k] for k in ('width', 'height')), 'placement preserves the exact window size')
+    ctx.note('History chrome setup pose: ' + json.dumps({k: moved[k] for k in ('x', 'y', 'width', 'height')}))
 
 
 
