@@ -52,7 +52,7 @@ and [systemd-run scope semantics](https://www.freedesktop.org/software/systemd/m
 | Overlay retirement | Both Cinnamon overlays ([initial](cinnamon-initial-cleanup.json), [final](cinnamon-final-cleanup.json)) and [Ubuntu](ubuntu-cleanup.json) retired through the unmodified guarded cleanup after export verification. Post-cleanup checks confirm no QEMU and free controller flocks ([Cinnamon](cinnamon-post-cleanup.json), [Ubuntu](ubuntu-post-cleanup.json)). |
 | Sandbox/local cleanup | Both sandbox deletion operations completed ([Cinnamon](cinnamon-deletion-final.json), [Ubuntu](ubuntu-deletion-final.json)). [Owned tunnels, wall tiles and forwarded agent removed](local-cleanup.json); all other tiles preserved. [Both named source snapshots retained](snapshots-retained.json). Exactly two sandboxes created, no physical/Proton locks taken. |
 
-The [current live driver](https://github.com/patrick-hudson/put.gd-desktop/blob/9a00d8281e69450f68f970219b2cc7e1b34c46f4/tools/lab/staging_acceptance.py) runs only on the QEMU host against an owned
+The [current live driver](https://github.com/patrick-hudson/put.gd-desktop/blob/ef64bfa5d37c17e9be7e5bcd5bfc1a880817e3d7/tools/lab/staging_acceptance.py) runs only on the QEMU host against an owned
 disposable overlay. Its root APT fixture uses empty source lists, no list cleanup
 and no package installation. The root-supervisor fixture installs a temporary
 fixture/rule only inside that overlay. Existing bases and user objects are not
@@ -85,9 +85,9 @@ pass. Neither PR is merged or watched.
 
 
 The maintained driver now lives with the lab tools in the code PR. It discovers
-the checkout root before importing the lab. This small reproduction adapter was
-checked without contacting a guest; the exact drivers executed in the campaign
-remain in the private hashed archives. Case bodies are unchanged. On the actual
+the checkout root before importing the lab. The exact historical drivers remain in the private hashed archives. The
+maintained driver has since been extended with the corrected system-scope and
+logout tests; see the B1 follow-up for accepted evidence. On the actual
 QEMU host, use the final implementation checkout, an authenticated running lab
 VM and a fresh output directory, for example:
 

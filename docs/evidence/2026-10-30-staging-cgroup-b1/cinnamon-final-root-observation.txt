@@ -1,0 +1,4 @@
+ActiveState=inactive
+564   0 root    -     - active no -
+ c6 113 lightdm seat0 - active no -
+install-active-absent

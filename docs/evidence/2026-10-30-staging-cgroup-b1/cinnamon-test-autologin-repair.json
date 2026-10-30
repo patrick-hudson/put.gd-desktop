@@ -1,0 +1,1 @@
+{"exitCode": 0, "changes": [{"path": "/etc/lightdm/lightdm.conf", "beforeSha256": "aef7b1cb9988e4bd91e8f425ec10acb23e7520aabbb585cbba4078a5609c1f6e", "afterSha256": "e1ae21f86fb52f554996e9b2242dc5f0883950d1294dfeba29ad90bb70477246", "reason": "Repair escaped backreference in failed test setup"}]}

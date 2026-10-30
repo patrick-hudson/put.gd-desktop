@@ -290,8 +290,10 @@ back to the invoking guest user's UID, GID and supplementary groups before
 executing the unprivileged wrapper. The system manager (PID 1) owns the scope;
 it is independent of the user's login sessions and `user@UID.service`. The identity then also records
 `tracking: "cgroup-v2"`, its cgroup path/device/inode, the cgroup mount identity
-and boot ID. It never uses the SSH connection's `session-N.scope`, whose sshd
-processes could outlive the controller. `staging-result.json` is
+and boot ID. The job's tracked scope is separate from the SSH connection's
+`session-N.scope`; the outer sudo launch client can remain in that login scope
+after the connection ends. Ending that login must leave the system-scope
+watchdog alive. `staging-result.json` is
 written only after the staging shell and all its descendants have exited. A
 lost SSH reply, timeout, or Ctrl-C therefore does not establish completion.
 Failed staging reconciles the same job for up to 30 seconds, independently of
@@ -408,7 +410,12 @@ blocked until they exit. Zombie or exited processes do not count as live.
 
 The launcher probes the cgroup v2 mount, `systemd-run`, `systemctl`, `sudo`,
 `setpriv`, system-manager bus access and passwordless sudo authority for
-`systemd-run`. It requires **systemd 254 or newer**, checks the version before
+`systemd-run` by actually executing `sudo -n -- systemd-run --version`
+(a successful sudo policy listing alone is insufficient). New guest bootstrap
+installs `setpriv` through `util-linux` and grants the disposable guest user
+passwordless `/usr/bin/systemd-run`. Older images without that authority use
+the explicit session fallback until reprovisioned or granted it in their owned
+overlay. The launcher requires **systemd 254 or newer**, checks the version before
 using `--expand-environment=no`, and falls back clearly on an older or
 unverifiable version. The user manager and user bus are not prerequisites;
 no linger setting is changed. Each failed prerequisite has its own
@@ -420,8 +427,11 @@ A scope-creation or scope-entry failure after selection fails the launch;
 it never retries the command outside the scope. The original user-manager
 mechanism was rejected after B1 reproduced watchdog loss when the last login
 ended. Its earlier SSH/bus checks did not prove logout survival. Corrected
-Mint/Ubuntu logout and controller-SIGKILL evidence is recorded with the new
-system-manager mechanism. Other guest profiles use the same runtime checks;
+Mint 22.3 and Ubuntu 26.04 logout/controller-SIGKILL evidence uses the new
+system-manager mechanism: both the graphical login and any closing SSH login
+were ended, `Linger=no` was retained, and `user@1000.service` was observed
+inactive while the root helper survived and then wrote `result.json`. See the
+[B1 evidence](evidence/2026-10-30-staging-cgroup-b1/README.md). Other guest profiles use the same runtime checks;
 Aurora/rpm-ostree's AppImage route does not run the APT path.
 
 Cgroup tracking covers normal inherited descendants, including `setsid()`.
