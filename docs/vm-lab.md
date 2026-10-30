@@ -353,8 +353,9 @@ An abrupt controller death or an interrupted receipt write can leave no host
 `staging-failed.json`. Once the controller has exited, recovery works from the
 guest's state under the same ownership, token, supervisor and lifetime guards.
 If the guest has `staging-process.json`, recovery reconciles that identity.
-If staging never recorded an identity, the controller died before staging
-started (for example, during the helper upload). Ordinary recovery then fences
+If staging never recorded an identity, the controller died before the
+wrapper took `staging.lock` and started its script. The wrapper may not have
+launched yet, or may be waiting for that lock. Ordinary recovery then fences
 a delayed wrapper launch under `staging.lock`, reports `staging-not-started`
 and releases the token. `--abandoned` refuses in that case, because it
 requires a recorded identity. The command saves `staging-recovery.json` in the
@@ -396,8 +397,9 @@ Cgroup-based tracking, whose `cgroup.events` `populated` flag is atomic, is
 [#780](https://github.com/patrick-hudson/put.gd-desktop/issues/780).
 
 A held flock, live matching leader,
-live session member, missing/malformed identity or uncertain inspection retains
-`install-active`. Older receipts without a session ID cannot prove abandonment;
+live session member, malformed identity or uncertain inspection retains
+`install-active`; so does a missing identity under `--abandoned`. Recovery
+writes `staging-recovery.json` only after the guarded release succeeds. Older receipts without a session ID cannot prove abandonment;
 preserve the run for investigation.
 
 On guests without Python 3.9's `os.pidfd_open`, or where the kernel returns
