@@ -1,0 +1,138 @@
+{
+  "artifact": "fedora44",
+  "buildSeconds": 661.432,
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_8sw9mgjx"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-fedora44-67399a311ac84036",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_7403b34a8e6f48eebf560ec6d6bb5525",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:18:31.741Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_8sw9mgjx"
+        },
+        "sandboxId": "bx_8sw9mgjx"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793333914.1332293
+  },
+  "cleanupVerified": true,
+  "collectionBudgetSeconds": 9731.745,
+  "collectionInput": {
+    "bytes": 47341808,
+    "diskAndPressure": [
+      "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+      "/dev/vda1      ext4   153470764 48987872  98187904      34% /home",
+      "some avg10=1.46 avg60=0.91 avg300=3.44 total=99786383",
+      "full avg10=1.45 avg60=0.77 avg300=2.51 total=71481933"
+    ],
+    "files": 7
+  },
+  "collectionPhases": {
+    "packSeconds": 2.005,
+    "probeSeconds": 2.629,
+    "restoreSeconds": 0.174,
+    "transferSeconds": 13.1
+  },
+  "collectionSeconds": 17.909,
+  "collectionTtlCapped": false,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "containerImage": "fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80",
+  "files": [
+    {
+      "bytes": 346,
+      "path": "binary-version.json",
+      "sha256": "2bdd9849526215e3d98fd9507cf106bba9f7350645d43a5f0d142ecc6e6af6f5"
+    },
+    {
+      "bytes": 345,
+      "path": "build-info.json",
+      "sha256": "995117a4c65e4caa59e7040ac75b1f98e24caf80a4e1efe4f2ddf48b2b0f06ee"
+    },
+    {
+      "bytes": 336,
+      "path": "cpack.log",
+      "sha256": "42bd92a70451af825cd477a7f457ae38ecf9c6d278e0bde2064b48556b220e97"
+    },
+    {
+      "bytes": 161790,
+      "path": "native-audit.json",
+      "sha256": "5666c7efd54b563d244724f447fcd6010d371826a1551fa8e36f617475c94565"
+    },
+    {
+      "bytes": 26819,
+      "path": "packages.txt",
+      "sha256": "a8d3f1ffa45ca699ce06b5df9181d79d45492133e9bab12cee80e8fd1bd3fe6c"
+    },
+    {
+      "bytes": 47152172,
+      "path": "putgd-26.1030.2473~dev+g0c329b0692ca-1.fc44.x86_64.rpm",
+      "sha256": "370bff6a6d33240cb48cec6d4bc367696dc9e9c98b1ae3a4e9c043f610edde1a"
+    },
+    {
+      "bytes": 0,
+      "path": "source-status.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "hydrationSeconds": 226.387,
+  "identity": {
+    "baseVersion": "26.1030.2473",
+    "commitCount": 2473,
+    "dirty": false,
+    "gitCommit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "gitTree": "038bc7af0456e1698a3e31ebeb9923a225bef876",
+    "packageVersion": "26.1030.2473~dev+g0c329b0692ca",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2473-dev+g0c329b0692ca"
+  },
+  "name": "putgd-0c329b0692ca-fedora44-67399a311ac84036",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:25.525Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:07:11.041Z",
+    "id": "bx_8sw9mgjx",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "51.255.76.140:19034",
+    "vcpu": 8
+  },
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "67399a311ac84036",
+  "sandboxId": "bx_8sw9mgjx",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [],
+    "verified": true
+  },
+  "state": "passed",
+  "totalSeconds": 909.191,
+  "transport": {
+    "bytes": 47349760,
+    "compression": "none",
+    "kind": "tar",
+    "sha256": "8708945b5c879b8d738f51bbb6e31e61aaedffdc81bd2efc0c02e8266bd50397"
+  },
+  "ttlSeconds": 10800,
+  "type": "large"
+}
