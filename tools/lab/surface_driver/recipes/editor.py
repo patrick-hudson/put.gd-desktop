@@ -325,17 +325,21 @@ def properties(ctx):
     with _session(ctx) as op:
         ctx.click('placeMark', window='editor')
         ctx.click('text:Position and size', window='editor')
-        ctx.expect(_inspect(ctx, op)['view']['geometryDetails']['open'], 'geometry disclosure opens')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['geometryDetails']['open'], 'geometry disclosure opens')
         for control, value in [('X position','30'), ('Y position','40'), ('Width','100'), ('Height','80')]:
             ctx.click('text:'+control+' in image pixels', window='editor')
             ctx.keys('Ctrl+A'); ctx.type_text(value); ctx.keys('Return')
-        ctx.expect(_inspect(ctx, op)['shapes'][0]['rect'] == [30,40,100,80], 'real steppers update selected geometry')
+        ctx.wait(lambda: _inspect(ctx, op)['shapes'][0]['rect'] == [30,40,100,80], 'real steppers update selected geometry')
         _frame(ctx, 'geometry', '26h-editor-geometry-expanded')
+        # Four expanded steppers can push Help below the scroll viewport.
+        # Collapse through real input before resolving/clicking Help (#789).
+        ctx.click('text:Position and size', window='editor')
+        ctx.wait(lambda: not _inspect(ctx, op)['view']['geometryDetails']['open'], 'geometry disclosure collapses')
         ctx.click('text:Keyboard help', window='editor')
-        ctx.expect(_inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help expands')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help expands')
         _frame(ctx, 'help', '26d-editor-keyboard-help')
         ctx.click('text:Keyboard help', window='editor')
-        ctx.expect(not _inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help collapses')
+        ctx.wait(lambda: not _inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help collapses')
         ctx.click('text:Save to the local archive', window='editor')
         ctx.expect(bool(_inspect(ctx, op)['view']['destination']['text']), 'destination identifies the isolated output')
         ctx.keys('Esc')
@@ -347,12 +351,16 @@ def zoom_pan(ctx):
     with _session(ctx) as op:
         ctx.click('text:Zoom', window='editor')
         _frame(ctx, 'menu', '26f-editor-zoom-menu')
-        ctx.keys('Esc','Ctrl+1')
-        ctx.expect(_inspect(ctx, op)['view']['zoomPercent'] == 100, 'actual size shortcut')
+        ctx.keys('Esc')
+        # Menu dismissal returns focus to the Zoom button. Select's real
+        # shortcut restores canvas focus before testing canvas/window keys.
+        _tool(ctx, op, 'select', 'V')
+        ctx.keys('Ctrl+1')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['zoomPercent'] == 100, 'actual size shortcut')
         ctx.keys('Ctrl+=')
-        ctx.expect(_inspect(ctx, op)['view']['zoomPercent'] > 100, 'zoom in shortcut')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['zoomPercent'] > 100, 'zoom in shortcut')
         ctx.keys('Ctrl+-','Ctrl+0')
-        ctx.expect(_inspect(ctx, op)['view']['fitted'], 'Fit shortcut')
+        ctx.wait(lambda: _inspect(ctx, op)['view']['fitted'], 'Fit shortcut')
         # Enlarge until pan has a measurable visible-rectangle effect.
         _view(ctx, op, action='zoom', percent=400)
         before = _inspect(ctx, op)['view']['visibleRect']
