@@ -31,7 +31,8 @@ class FakeContext(Context):
     profile = {}
 
     def __init__(self, heads=1):
-        self.env = {"screens": [[0, 0, 1280, 800], [1280, 0, 1024, 768]][:heads],
+        self.pattern_commands = []
+        self.env = {"command": self.pattern_commands.append, "screens": [[0, 0, 1280, 800], [1280, 0, 1024, 768]][:heads],
                     "output_dir": "/tmp/sel-artifacts", "record_helper": "/opt/test/putgd-record"}
         self.document = {"actions": {a: {"destination": "default", "profileId": None, "shortcut": ""} for a in ("region", "edit", "record")},
                          "archive": {"keepUploads": False, "root": "/tmp/original", "folders": {k: None for k in ("images", "videos", "text", "other")}},
@@ -517,6 +518,13 @@ class SelectorRecipes(unittest.TestCase):
         self.assertIn(("click", "record", "bar-ready"), ctx.inputs)
         self.assertIn(("click", "stop", "bar-recording"), ctx.inputs)
         self.assertFalse(any(kind == "drag" for kind, *rest in ctx.inputs))
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_core_pattern_callback_replaces_legacy_shell_glue(self):
+        ctx = FakeContext()
+        ctx.env["prepare_command"] = "invalid legacy command must never run"
+        selectors.recording_cancel(ctx)
+        self.assertEqual(ctx.pattern_commands, ["raise"])
         self.assertEqual(ctx.document, ctx.original)
 
     def test_unavailable_fixture_is_blocked(self):

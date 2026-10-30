@@ -81,9 +81,11 @@ def _local(ctx, mode="live"):
         ctx.expect(accepted["preferences"]["regionSelectionMode"] == mode, "selection mode accepted")
         # The resident can open Settings on its first start. Bring the synthetic
         # fixture back before opening a selector, never while a selector is live.
-        if env.get("prepare_command"):
-            prepared = ctx.shell(env["prepare_command"])
-            ctx.expect(prepared.get("returncode") == 0, "moving pattern fixture is visible")
+        command = env.get("command")
+        if not callable(command):
+            ctx.blocked("selector-desktop requires its core-owned pattern command callback (#664)", issue=664)
+        command("raise")
+        ctx.note("Core-owned moving pattern raised before selection")
         yield
     finally:
         # Restore only owned fields against a freshly read revision.
