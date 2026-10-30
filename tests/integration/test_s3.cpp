@@ -140,17 +140,58 @@ private slots:
     }
     void uploadProgressUsesBodyBytesAndFinishesBeforeReply() {
         S3Fixture f;
+        // Keep the held reply within the request/low-speed bounds, including
+        // scaled observation budgets on a contended CI worker.
+        f.destination.settings["requestTimeoutMs"] = scaled(15000);
+        f.destination.settings["lowSpeedTimeSeconds"] = scaled(15000) / 1000;
         auto request = f.request("progress.txt", QByteArray(1024 * 1024, 'p'));
-        // Keep the real SDK call active after it sends the body, allowing the
-        // production child timer to forward byte counters before completion.
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}}}}});
+        // Progress is coalesced by the child timer. Hold the reply until the
+        // full-body observation arrives; a fixed delay can expire before that
+        // timer runs and let "finalizing" replace the "uploading" value.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "progress"}}}}});
         std::mutex mutex;
         QList<UploadProgress> progress;
         request.progress = [&](const UploadProgress& value) {
             std::lock_guard lock(mutex);
             progress.append(value);
         };
-        const auto result = f.upload(request);
+        std::atomic_bool completed{false};
+        bool receivedBody = false, sentBeforeReply = false, finalizedBeforeReply = false, completedBeforeReply = false;
+        QJsonArray puts;
+        bool replyHeld = false;
+        const auto result = f.await<UploadResult>([&](auto callback) {
+            f.provider.upload(request, [&, callback](UploadResult value) {
+                completed.store(true);
+                callback(std::move(value));
+            });
+            receivedBody = waitFor([&] { puts = f.events("PUT"); return !puts.isEmpty(); });
+            sentBeforeReply = waitFor([&] {
+                std::lock_guard lock(mutex);
+                for (const auto& value : progress)
+                    if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) return true;
+                return false;
+            });
+            {
+                std::lock_guard lock(mutex);
+                for (const auto& value : progress)
+                    if (value.phase == "finalizing") finalizedBeforeReply = true;
+            }
+            completedBeforeReply = completed.load();
+            // The fixture stores the object only after leaving its barrier.
+            // Check that the bounded barrier has not expired independently.
+            replyHeld = f.state()["objects"].toObject().isEmpty();
+            // Always release before asserting, so a failed observation cannot
+            // strand the provider while the fixture is being destroyed.
+            f.control("/__release", {{"barrier", "progress"}}, true);
+        });
+        QVERIFY(receivedBody);
+        QCOMPARE(puts.size(), 1);
+        QVERIFY(puts[0].toObject()["signatureValid"].toBool());
+        QCOMPARE(QByteArray::fromBase64(puts[0].toObject()["body"].toString().toUtf8()), QByteArray(1024 * 1024, 'p'));
+        QVERIFY(sentBeforeReply);
+        QVERIFY(replyHeld);
+        QVERIFY(!finalizedBeforeReply);
+        QVERIFY(!completedBeforeReply);
         QCOMPARE(result.status, QString("uploaded"));
         qsizetype count;
         {

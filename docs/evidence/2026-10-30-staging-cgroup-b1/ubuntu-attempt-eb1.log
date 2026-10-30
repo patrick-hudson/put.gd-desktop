@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/user/b780/tools/lab/staging_acceptance.py", line 320, in <module>
+    else:raise TimeoutError('Lab user manager did not remain stopped')
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: Lab user manager did not remain stopped

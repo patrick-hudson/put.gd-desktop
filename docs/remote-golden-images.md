@@ -15,7 +15,9 @@ Public Access settings are on, ownership is `BucketOwnerEnforced` and SSE-S3
 encryption is the default. Disks are zstd-compressed and stored in Glacier
 Instant Retrieval (millisecond reads, per-GB retrieval fee, 90-day minimum);
 small metadata uses Standard. A lifecycle rule aborts incomplete multipart
-uploads after 7 days. The Kubuntu builder holds no golden.
+uploads after 7 days. Kubuntu (`k72`), Mint (`m74`) and Aurora (`aurora-amd`) hold
+extra copies of two goldens so they can lend their Proton sessions to guests; see
+[below](#copies-on-k72-m74-and-aurora-amd).
 
 All copies are ignored private artifacts; `git ls-files` will not list them.
 Treat every copy as an immutable source. Never boot, modify, move or overwrite
@@ -55,21 +57,184 @@ images. `cinnamon-x11` trusts only the workstation's `work/lab-bootstrap/identit
 All images were standalone qcow2 files with 32 GiB virtual disks when offloaded.
 That is not a permanent integrity guarantee, so recheck the hash before use.
 
+### Verified Boat snapshot copies
+
+These historical copies are preserved. New lanes use the [probe-equipped replacements](#probe-equipped-boat-copies) below.
+
+The Boat copies use profile directories below
+`/home/user/work/put.gd/work/lab-images/`. A directory's profile name is not the
+source image identity from the inventory above:
+
+| Saved snapshot | Canonical disk in a fresh fork | Source image identity | SHA-256 |
+| --- | --- | --- | --- |
+| `putgd-lab-ubuntu-gnome-v2` | `gnome-wayland/image.qcow2` | `gnome-provisioned-20261016` (provisioned Ubuntu GNOME/Wayland) | `563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb` |
+| `putgd-lab-cinnamon` | `cinnamon-x11/image.qcow2` | `cinnamon-x11` | `4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da` |
+| `putgd-build-base` | `cinnamon-x11/image.qcow2` | `cinnamon-x11` | `4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da` |
+
+In particular, the Boat `gnome-wayland/` directory contains a verified copy of
+**`gnome-provisioned-20261016`**, not the historical unprovisioned `gnome-wayland`
+image with digest `ffb4aecd…`. The v2 preparation copied the standalone disk into
+this canonical root without moving or deleting the source; both the copied bytes
+and the source inventory digest were checked. The older
+`putgd-lab-ubuntu-gnome` snapshot remains preserved with its original outside-root
+path and is superseded for new runs. See [Boat candidate builds](boat-candidates.md#lab-snapshots)
+for placement, receipts and the guarded cleanup root.
+
 The sealed Windows bundles are listed in [Windows lab](windows-vm-lab.md#base-storage-and-restore).
 
 The Aurora goldens are named directories rather than `transfer-<id>/`, and each
 holds `source.manifest.json`, `image-info.json`, the pinned guest `known_hosts`
 and the bootstrap inputs beside `image.qcow2`. They are described in
-[Aurora VM](aurora-vm.md). The S3 bucket holds none of them yet: the Fedora 44
-goldens are rebuildable evaluation images that exist only on `f44`, and the
-Fedora 45 golden's S3 copy is pending Patrick's decision (the session that made
-it could not use the AWS session; see [Aurora VM](aurora-vm.md#fedora-45-golden)).
+[Aurora VM](aurora-vm.md). The independently rebuilt Fedora 45 cloud golden
+below is verified on `f44`, `d69` and S3. It uses the same pinned Aurora OS as the
+older `-852d34e885c1` golden, with its own disk identity. The older disk still
+has no complete S3 image copy. The Fedora 44 evaluation goldens remain `f44`-only.
+
+**Which Fedora 45 golden counts for acceptance.** The Aurora Fedora 45 row in the
+[acceptance matrix](acceptance-matrix.md) stays on `-852d34e885c1`, booted as a VM
+on a physical builder (`f44` or `d69`). That disk is the one every recorded
+Aurora 45 result used. The cloud golden is a separate build of the same OS
+payload, with different bytes. It serves as the off-site restore copy and as the
+base of the `putgd-lab-aurora` Boat snapshot, for development, recipe debugging
+and flake reproduction. Boat runs never count as acceptance rows, whichever golden
+they use. To move acceptance to the cloud golden, a builder-hosted run must first
+show it gives the same results, and the matrix must then be updated.
 
 | Name (profile `aurora-kde-wayland`) | SHA-256 | Fedora `f44` | Debian `d69` |
 | --- | --- | --- | --- |
+| `aurora-testing-45.20261022.1-ec2-20261029-a1` (Fedora 45 cloud restore base) | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` | same name; verified 2026-10-30 | same name; verified 2026-10-30 |
 | `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, use for acceptance) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | same name | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-1d422e725efb`) |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
+
+### Probe-equipped Boat copies
+
+Use `putgd-lab-cinnamon-v3` and `putgd-lab-ubuntu-gnome-v4` for new development.
+The old names and the intermediate Cinnamon v2 / GNOME v3 remain intact but
+are superseded. All disks below are standalone qcow2 Boat derivatives under
+`/home/user/work/put.gd/work/lab-images/`; the physical-builder/S3 source
+inventory above is unchanged. Their adjacent manifests record both image
+hashes and provisioning packages. The repository manifests in
+`tools/lab/boat/manifests/` also bind the snapshot ID and cached build commit.
+
+| Snapshot | Golden folder | SHA-256 | App package target |
+| --- | --- | --- | --- |
+| `putgd-lab-cinnamon-v2` (superseded) | `cinnamon-x11-probes-v2` | `518e3e45034c459e91118f95e3987971e19ea346486ab8219970b8484a892e48` | `ubuntu24.04` |
+| `putgd-lab-cinnamon-v3` | `cinnamon-x11-probes-v3-session` | `23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7` | `ubuntu24.04` |
+| `putgd-lab-ubuntu-gnome-v3` (superseded) | `gnome-wayland-probes-v2` | `349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656` | `ubuntu26.04` |
+| `putgd-lab-ubuntu-gnome-v4` | `gnome-wayland-probes-v4` | `8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4` | `ubuntu26.04` |
+
+Append `/image.qcow2` to each folder. Cinnamon's original source is
+`4a21566d…5693da`; its retained compressed intermediate is
+`cinnamon-x11-probes-v3/image.qcow2`, SHA-256
+`218f91afeda30448d82de38ce127ba3a77f3fbb2e0a8c2fbcf8ac27dc277c1b9`.
+GNOME's original provisioned source is `563730cc…42bb`. Full parent chains are
+in the manifests. Build-base v3 preserves its inherited canonical Cinnamon
+image unchanged; it makes no guest-probe claim.
+
+The new images add the pinned surface-driver probe contract plus tesseract.
+GNOME retains the verified guest host pin and the lab idle policy. Cinnamon
+v3 adds a per-user XDG override disabling Mint Update autostart. Both
+recommended lab snapshots contain matching audited DEBs and the merged #787
+lab controller. GNOME's host is Ubuntu 24.04; its Qt 6.10 guest requires the
+Ubuntu 26.04 target container package, not a host-built Noble DEB.
+
+The final GNOME preparation also relocated its unused legacy outside-root
+copy into `gnome-legacy-source-563730cc/` only after a hash, complete backing
+reference and open-file inventory. Its bytes and SHA-256 stayed unchanged;
+no referenced base or original named snapshot was moved or changed.
+[The campaign record](evidence/2026-10-30-boat-snapshots/README.md) retains the
+inventory, failed attempts, fresh launch/reset/held-overlay-refusal/guarded-cleanup
+receipts and worker deletion proof. Follow the [recipe](boat-snapshots.md) to
+make another new version; never overwrite these images or snapshot names.
+
+### Aurora Fedora 45 cloud golden and Boat snapshot
+
+For [#665](https://github.com/patrick-hudson/put.gd-desktop/issues/665), Patrick
+approved using the EC2-built `aurora-testing-45.20261022.1-ec2-20261029-a1`
+instead of uploading the older builder disk over the home uplink. Both use
+Aurora `testing-45.20261022.1` from the same pinned OCI payload,
+`ghcr.io/ublue-os/aurora@sha256:969e4f6f164742b9f3f85e74b958faf88e357b65620e7c2f1cc28723948a9930`.
+They are separate immutable goldens; a different qcow2 hash is expected after
+independent provisioning. Existing builder disks were not replaced.
+
+| Item | Verified value |
+| --- | --- |
+| S3 image key | `linux/aurora-testing-45.20261022.1-ec2-20261029-a1/aurora-testing-45.20261022.1-ec2-20261029-a1.qcow2.zst` |
+| S3 manifest key | Same prefix, `aurora-testing-45.20261022.1-ec2-20261029-a1.manifest.json` |
+| Image SHA-256 | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` |
+| Compressed SHA-256 | `10cb310ce793cc3d3666bbb2b212d2f6db81392ec5c70bc24b27c64acf600be0` |
+| Image / compressed / virtual bytes | 10,503,323,648 / 4,311,949,729 / 50,994,348,032 |
+| Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
+| S3 composite SHA-256 | `UJFDDDU3KHt+Megzp2WwAIpSImrkPoPbZQLMcTutsMQ=-65` |
+| Host copies | Both builders: `~/work/put.gd/work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2` |
+| Boat snapshot | `putgd-lab-aurora`, ready; snapshot `23bc3677-0b0d-42eb-9930-3e29cc3c47b5` |
+
+The EC2 job verified manual standard login and plasmalogin autologin as `lab`,
+Fedora 45, KDE Plasma/Wayland, the masked `uupd.timer`, and the lab idle policy.
+It verified standalone qcow2 metadata and `qemu-img check`, then downloaded the
+S3 image back to EC2 and checked both hashes and `qemu-img compare`. The Fedora
+and Debian restores have matching image and sidecar hashes. The EC2 instance
+and its temporary volume, network interface, security group, keypair and IAM
+resources were deleted after verification. These are OS-provisioning receipts,
+not application desktop acceptance.
+
+The S3 prefix also holds the provisioning evidence and
+`sidecars/job-completion.json`. UEFI code, the blank VARS template and the
+provisioned VARS are under `sidecars/firmware/` as `OVMF_CODE_4M.fd`,
+`OVMF_VARS_4M.fd` and `provisioned-vars.fd`. Their SHA-256 values and server
+checksums are in the [verification receipt](evidence/2026-10-29-aurora-golden-s3-665/receipt.json).
+Future runs must use private writable copies of VARS, preserving the archived
+firmware and golden.
+
+`putgd-lab-aurora` was created by the EC2/Boat preparation session from
+`putgd-build-base`, with `--no-env`, finite TTLs and hydration checks. It contains
+the directly restored S3 golden, a built nightly tree and persistent build
+caches. Its clean built source is `6c09178f058f93eaba64f198c54151cd67f94a2e`,
+version `26.1030.2333-dev+g6c09178f058f`, at `/home/user/work/put.gd/src`.
+The golden is that source tree's
+`work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2`.
+The host uses Ubuntu 24.04, dynamic distro Qt 6.4.2 and official AWS SDK 1.11.907.
+The golden restore verified compressed/image hashes, virtual size, standalone
+metadata and `qemu-img check` in 199.63 seconds. Its preparation CTest run had
+113 tests: `gui_tray` recovered on retry; `gui_settings` and `proton_transport`
+failed both attempts. Both match known flakes, not defects in this image:
+`gui_settings` at `test_settings.cpp:2250` is
+[#707](https://github.com/patrick-hudson/put.gd-desktop/issues/707), and
+`proton_transport`'s cancellation reason mismatch is
+[#577](https://github.com/patrick-hudson/put.gd-desktop/issues/577). Run one at a
+time on the snapshot's own build, with the guest stopped, `proton_transport` passed
+8 of 8 and `gui_settings` 2 of 2 (independent check, 2026-10-30). The failed
+attempts are kept in the template receipt.
+
+Create a disposable worker with
+`boat new --from putgd-lab-aurora --type large --ttl 7200 --no-env --name YOUR_RUN_NAME`.
+Wait for `hydrated: true`, then source `/home/user/aurora-builder/env.sh` before
+building. The SDK prefix and `/home/user/putgd-cache` caches are retained.
+`/usr/bin/python3 /home/user/aurora-builder/start-aurora.py --name aYOURRUN`
+creates a fresh disposable public-key overlay and private guest key on the
+worker, preflights sockets and invokes the production lab launcher; it does
+not require the workstation's private key or agent forwarding. Follow
+[VM lab](vm-lab.md) and [Aurora](aurora-vm.md) display/overlay rules before
+launching a guest. Retire completed overlays through guarded cleanup and
+delete only your worker after exporting evidence. `start-aurora.py` also leaves
+its key-seed disk, `work/lab-images/keyseed-<run>/image.qcow2` (an overlay of
+the golden), which guarded cleanup does not remove. Deleting the worker removes
+it; if you keep a worker for several runs, delete each `keyseed-<run>`
+directory after that run's cleanup. An independent fresh fork on 2026-10-30
+booted the golden under UEFI into the `lab` Plasma Wayland autologin session,
+with the pinned image digest, sshd, the narrow sudo rule and a masked
+`uupd.timer`. Guarded cleanup then accepted its overlay.
+
+The separate older-disk upload was cancelled at 84 verified 64 MiB parts
+(5,637,144,576 bytes), and its incomplete multipart upload was aborted. No
+complete image object was created for `aurora-testing-45.20261022.1-852d34e885c1`.
+Its already-uploaded small metadata and OVMF copies remain under that old
+prefix; they do not constitute an S3 golden image. The old f44 image and sidecar
+hashes, sizes, modes and mtimes remained unchanged. The unused worker from
+that upload session was deleted, preserving other sessions' workers and the
+EC2-built named snapshot. The receipt distinguishes these two sessions and
+identities explicitly.
 
 The KDE neon goldens are named directories like the Aurora ones. Each is on
 both builders and in S3 (`linux/<name>/<name>.qcow2.zst` and
@@ -79,6 +244,27 @@ both builders and in S3 (`linux/<name>/<name>.qcow2.zst` and
 | --- | --- | --- | --- |
 | `neon-unstable-noble-20261023-d613510c07bd` (Plasma, Frameworks and Gear git master) | `9fef081035ca6691446672b2914c09ff4a7b4a4b359577a6087279b0d892e8f6` | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-7b9fb1191be6`) | same name (made here) |
 | `neon-user-6.8.1-20261023-9ef808278853` (released Plasma 6.8.1) | `191852a5b552492daa9eac1093acd7e15578b0cc5374f4c9a660037af5863238` | same name (made here) | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-6141be2a1211`) |
+
+### Copies on k72, m74 and aurora-amd
+
+On 2026-10-29 and 2026-10-30, two goldens were copied from `f44` to k72, m74 and
+aurora-amd, for Proton lending. These are extra copies: the three-copy rule above still counts Fedora,
+Debian and S3.
+
+| Name | Kubuntu `k72` | Mint `m74` | Aurora `aurora-amd` |
+| --- | --- | --- | --- |
+| `gnome-provisioned-20261016` | `transfer-eff2bd963713` | `transfer-659d95302859` | `transfer-000d35aedb8b` |
+| `cinnamon-x11` | `transfer-4ecf0e847901` | `transfer-1e7496436875` | `transfer-69d4d8858821` |
+
+- **How they were copied:** each image was streamed once from f44 through a pipe on the
+  workstation and written to no disk there. For m74 and aurora-amd, one stream was teed
+  to both.
+- **Verification:** before promotion, each copy matched the inventory SHA-256 and passed
+  `qemu-img info` (qcow2, no backing file, same virtual size) and `qemu-img check`. The
+  sidecars were copied and hash-checked too.
+- **Receipts:** under the workstation's `work/verification/golden-transfer-<id>/`.
+
+Aurora's paths are under `/var/home/patrick/`; pass them to `lab.py` in that form.
 
 ## Use a host copy in place
 

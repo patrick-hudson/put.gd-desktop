@@ -1,0 +1,219 @@
+{
+  "afterVisualInvocation": {
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "afterVisuals": {
+    "configurationHome": "/home/lab/.config",
+    "desktop": "Cinnamon",
+    "inhibitor": {
+      "mode": "block",
+      "pid": 923,
+      "uid": 1000,
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest"
+    },
+    "ok": true,
+    "policy": [
+      {
+        "key": "idle-delay",
+        "schema": "org.cinnamon.desktop.session",
+        "value": "uint32 0"
+      },
+      {
+        "key": "lock-enabled",
+        "schema": "org.cinnamon.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "idle-activation-enabled",
+        "schema": "org.cinnamon.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "sleep-inactive-ac-timeout",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-ac-type",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "sleep-inactive-battery-timeout",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-battery-type",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "idle-dim-ac",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "false"
+      },
+      {
+        "key": "sleep-display-ac",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "idle-dim-battery",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "false"
+      },
+      {
+        "key": "sleep-display-battery",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "lock-on-suspend",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "false"
+      }
+    ],
+    "session": {
+      "Active": "yes",
+      "LockedHint": "no",
+      "Seat": "seat0",
+      "State": "active",
+      "Type": "x11",
+      "User": "1000",
+      "id": "c1"
+    },
+    "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  600\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+  },
+  "apply": false,
+  "helperSha256": "1e074f7c34708af97a18a9949499942ec583804d510729619de0d966683959e6",
+  "ok": true,
+  "outputs": {
+    "errors": [],
+    "ok": true,
+    "outputs": [
+      {
+        "enabled": true,
+        "height": 800,
+        "name": "Virtual-1",
+        "primary": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      }
+    ]
+  },
+  "policy": {
+    "configurationHome": "/home/lab/.config",
+    "desktop": "Cinnamon",
+    "inhibitor": {
+      "mode": "block",
+      "pid": 923,
+      "uid": 1000,
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest"
+    },
+    "ok": true,
+    "policy": [
+      {
+        "key": "idle-delay",
+        "schema": "org.cinnamon.desktop.session",
+        "value": "uint32 0"
+      },
+      {
+        "key": "lock-enabled",
+        "schema": "org.cinnamon.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "idle-activation-enabled",
+        "schema": "org.cinnamon.desktop.screensaver",
+        "value": "false"
+      },
+      {
+        "key": "sleep-inactive-ac-timeout",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-ac-type",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "sleep-inactive-battery-timeout",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "sleep-inactive-battery-type",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "'nothing'"
+      },
+      {
+        "key": "idle-dim-ac",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "false"
+      },
+      {
+        "key": "sleep-display-ac",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "idle-dim-battery",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "false"
+      },
+      {
+        "key": "sleep-display-battery",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "0"
+      },
+      {
+        "key": "lock-on-suspend",
+        "schema": "org.cinnamon.settings-daemon.plugins.power",
+        "value": "false"
+      }
+    ],
+    "session": {
+      "Active": "yes",
+      "LockedHint": "no",
+      "Seat": "seat0",
+      "State": "active",
+      "Type": "x11",
+      "User": "1000",
+      "id": "c1"
+    },
+    "x11": "Keyboard Control:\n  auto repeat:  on    key click percent:  0    LED mask:  00000000\n  XKB indicators:\n    00: Caps Lock:   off    01: Num Lock:    off    02: Scroll Lock: off\n    03: Compose:     off    04: Kana:        off    05: Sleep:       off\n    06: Suspend:     off    07: Mute:        off    08: Misc:        off\n    09: Mail:        off    10: Charging:    off    11: Shift Lock:  off\n    12: Group 2:     off    13: Mouse Keys:  off\n  auto repeat delay:  500    repeat rate:  33\n  auto repeating keys:  00ffffffdffffbbf\n                        fadfffefffedffff\n                        9fffffffffffffff\n                        fff7ffffffffffff\n  bell percent:  50    bell pitch:  400    bell duration:  100\nPointer Control:\n  acceleration:  2/1    threshold:  4\nScreen Saver:\n  prefer blanking:  no    allow exposures:  yes\n  timeout:  0    cycle:  600\nColors:\n  default colormap:  0x20    BlackPixel:  0x0    WhitePixel:  0xffffff\nFont Path:\n  /usr/share/fonts/X11/misc,/usr/share/fonts/X11/Type1,built-ins\nDPMS (Display Power Management Signaling):\n  Standby: 0    Suspend: 0    Off: 0\n  DPMS is Disabled"
+  },
+  "policyInvocation": {
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "runId": "b82333d6-1a11-4954-82ae-91305f85f309",
+  "schemaVersion": 1,
+  "stage": "snapshot-check",
+  "timestampUtc": "2026-10-30T05:26:06.282901+00:00",
+  "visualAttempts": [
+    {
+      "head": 0,
+      "height": 800,
+      "path": "/home/user/lab-driver/work/lab-runs/pg3c/guest-preflight-fdde32d53df647e3aa7c1a58aa681b02-attempt0-head0.ppm",
+      "sha256": "7579c74b5f210d1fb6d3e11b59ce081be830fe09ac8fc13e600f4ac74b37846d",
+      "visible": true,
+      "width": 1280
+    }
+  ],
+  "visuals": [
+    {
+      "head": 0,
+      "height": 800,
+      "path": "/home/user/lab-driver/work/lab-runs/pg3c/guest-preflight-fdde32d53df647e3aa7c1a58aa681b02-attempt0-head0.ppm",
+      "sha256": "7579c74b5f210d1fb6d3e11b59ce081be830fe09ac8fc13e600f4ac74b37846d",
+      "width": 1280
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "gitCommit": "ac6e9bb2d15a9c60dbb9cac39a3a3236f8c0d7d6",
+  "placement": "boat",
+  "files": {
+    "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+    "tools/lab/package_staging.py": "7b23e6552e553d026bef188c0b0aa8498bf4dea5797aa7f692fa783a5fa24b53",
+    "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+    "tools/lab/bootstrap-guest.sh": "0098d3b9bafeaee5d2c12b635c59916f68aa8d54b3ee296f63340b2c6c793ed9",
+    "tools/lab/staging_acceptance.py": "c68ef8ed20eead3e17043697a0d6747586252b7e817f2661f051d46b58364a75"
+  },
+  "executedDriver": "c68ef8ed20eead3e17043697a0d6747586252b7e817f2661f051d46b58364a75"
+}

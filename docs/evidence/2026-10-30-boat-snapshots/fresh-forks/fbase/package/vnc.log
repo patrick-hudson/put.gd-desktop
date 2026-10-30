@@ -1,0 +1,121 @@
+30/10/2026 05:32:41 passing arg to libvncserver: -rfbport
+30/10/2026 05:32:41 passing arg to libvncserver: 5901
+30/10/2026 05:32:41 x11vnc version: 0.9.16 lastmod: 2019-01-05  pid: 56660
+30/10/2026 05:32:41 Using X display :0
+30/10/2026 05:32:41 rootwin: 0x25c reswin: 0x3600001 dpy: 0xeff90ee0
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 ------------------ USEFUL INFORMATION ------------------
+30/10/2026 05:32:41 X DAMAGE available on display, using it for polling hints.
+30/10/2026 05:32:41   To disable this behavior use: '-noxdamage'
+30/10/2026 05:32:41 
+30/10/2026 05:32:41   Most compositing window managers like 'compiz' or 'beryl'
+30/10/2026 05:32:41   cause X DAMAGE to fail, and so you may not see any screen
+30/10/2026 05:32:41   updates via VNC.  Either disable 'compiz' (recommended) or
+30/10/2026 05:32:41   supply the x11vnc '-noxdamage' command line option.
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 Wireframing: -wireframe mode is in effect for window moves.
+30/10/2026 05:32:41   If this yields undesired behavior (poor response, painting
+30/10/2026 05:32:41   errors, etc) it may be disabled:
+30/10/2026 05:32:41    - use '-nowf' to disable wireframing completely.
+30/10/2026 05:32:41    - use '-nowcr' to disable the Copy Rectangle after the
+30/10/2026 05:32:41      moved window is released in the new position.
+30/10/2026 05:32:41   Also see the -help entry for tuning parameters.
+30/10/2026 05:32:41   You can press 3 Alt_L's (Left "Alt" key) in a row to 
+30/10/2026 05:32:41   repaint the screen, also see the -fixscreen option for
+30/10/2026 05:32:41   periodic repaints.
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 XFIXES available on display, resetting cursor mode
+30/10/2026 05:32:41   to: '-cursor most'.
+30/10/2026 05:32:41   to disable this behavior use: '-cursor arrow'
+30/10/2026 05:32:41   or '-noxfixes'.
+30/10/2026 05:32:41 using XFIXES for cursor drawing.
+30/10/2026 05:32:41 GrabServer control via XTEST.
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 Scroll Detection: -scrollcopyrect mode is in effect to
+30/10/2026 05:32:41   use RECORD extension to try to detect scrolling windows
+30/10/2026 05:32:41   (induced by either user keystroke or mouse input).
+30/10/2026 05:32:41   If this yields undesired behavior (poor response, painting
+30/10/2026 05:32:41   errors, etc) it may be disabled via: '-noscr'
+30/10/2026 05:32:41   Also see the -help entry for tuning parameters.
+30/10/2026 05:32:41   You can press 3 Alt_L's (Left "Alt" key) in a row to 
+30/10/2026 05:32:41   repaint the screen, also see the -fixscreen option for
+30/10/2026 05:32:41   periodic repaints.
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 XKEYBOARD: number of keysyms per keycode 7 is greater
+30/10/2026 05:32:41   than 4 and 51 keysyms are mapped above 4.
+30/10/2026 05:32:41   Automatically switching to -xkb mode.
+30/10/2026 05:32:41   If this makes the key mapping worse you can
+30/10/2026 05:32:41   disable it with the "-noxkb" option.
+30/10/2026 05:32:41   Also, remember "-remap DEAD" for accenting characters.
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 X FBPM extension not supported.
+Xlib:  extension "DPMS" missing on display ":0".
+30/10/2026 05:32:41 X display is not capable of DPMS.
+30/10/2026 05:32:41 --------------------------------------------------------
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 Default visual ID: 0x21
+30/10/2026 05:32:41 Read initial data from X display into framebuffer.
+30/10/2026 05:32:41 initialize_screen: fb_depth/fb_bpp/fb_Bpl 24/32/7680
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 X display :0 is 32bpp depth=24 true color
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 Listening for VNC connections on TCP port 5901
+30/10/2026 05:32:41 Listening for VNC connections on TCP6 port 5900
+30/10/2026 05:32:41 Listening also on IPv6 port 5901 (socket 10)
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 Xinerama is present and active (e.g. multi-head).
+30/10/2026 05:32:41 Xinerama: number of sub-screens: 1
+30/10/2026 05:32:41 Xinerama: no blackouts needed (only one sub-screen)
+30/10/2026 05:32:41 
+30/10/2026 05:32:41 fb read rate: 2071 MB/sec
+30/10/2026 05:32:41 fast read: reset -wait  ms to: 10
+30/10/2026 05:32:41 fast read: reset -defer ms to: 10
+30/10/2026 05:32:41 The X server says there are 12 mouse buttons.
+30/10/2026 05:32:41 screen setup finished.
+30/10/2026 05:32:41 
+
+The VNC desktop is:      localhost:1
+PORT=5901
+
+******************************************************************************
+Have you tried the x11vnc '-ncache' VNC client-side pixel caching feature yet?
+
+The scheme stores pixel data offscreen on the VNC viewer side for faster
+retrieval.  It should work with any VNC viewer.  Try it by running:
+
+    x11vnc -ncache 10 ...
+
+One can also add -ncache_cr for smooth 'copyrect' window motion.
+More info: http://www.karlrunge.com/x11vnc/faq.html#faq-client-caching
+
+30/10/2026 05:32:45 Got connection from client 127.0.0.1
+30/10/2026 05:32:45   0 other clients
+30/10/2026 05:32:45 Normal socket connection
+30/10/2026 05:32:45 check_access: client 127.0.0.1 matches host 127.0.0.1
+30/10/2026 05:32:45 Disabled X server key autorepeat.
+30/10/2026 05:32:45   to force back on run: 'xset r on' (3 times)
+30/10/2026 05:32:45 incr accepted_client=1 for 127.0.0.1:58914  sock=11
+30/10/2026 05:32:45 Client Protocol Version 3.8
+30/10/2026 05:32:45 Protocol version sent 3.8, using 3.8
+30/10/2026 05:32:45 rfbProcessClientSecurityType: executing handler for type 1
+30/10/2026 05:32:45 rfbProcessClientSecurityType: returning securityResult for client rfb version >= 3.8
+30/10/2026 05:32:45 copy_tiles: allocating first_line at size 61
+30/10/2026 05:32:45 Pixel format for client 127.0.0.1:
+30/10/2026 05:32:45   32 bpp, depth 24, little endian
+30/10/2026 05:32:45   true colour: max r 255 g 255 b 255, shift r 16 g 8 b 0
+30/10/2026 05:32:45 no translation needed
+30/10/2026 05:32:45 Using raw encoding for client 127.0.0.1
+30/10/2026 05:32:45 client_count: 0
+30/10/2026 05:32:45 Restored X server key autorepeat to: 1
+30/10/2026 05:32:45 Client 127.0.0.1 gone
+30/10/2026 05:32:45 Statistics             events    Transmit/ RawEquiv ( saved)
+30/10/2026 05:32:45  FramebufferUpdate   :      1 |         0/        0 (  0.0%)
+30/10/2026 05:32:45  raw                 :      1 |   8294412/  8294412 (  0.0%)
+30/10/2026 05:32:45  TOTALS              :      2 |   8294412/  8294412 (  0.0%)
+30/10/2026 05:32:45 Statistics             events    Received/ RawEquiv ( saved)
+30/10/2026 05:32:45  FramebufferUpdate   :      1 |        10/       10 (  0.0%)
+30/10/2026 05:32:45  SetEncodings        :      1 |         8/        8 (  0.0%)
+30/10/2026 05:32:45  SetPixelFormat      :      1 |        20/       20 (  0.0%)
+30/10/2026 05:32:45  TOTALS              :      3 |        38/       38 (  0.0%)
+caught signal: 15
+30/10/2026 05:32:45 deleted 60 tile_row polling images.
