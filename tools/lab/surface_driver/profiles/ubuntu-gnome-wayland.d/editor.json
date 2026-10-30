@@ -2,6 +2,11 @@
   "windows": {
     "editorColour": {
       "title": "^Custom color$"
+    },
+    "editorSavedMenu": {
+      "title": ".*",
+      "owner": "editor",
+      "popup": true
     }
   },
   "control_names": {

@@ -741,8 +741,15 @@ def save_feedback(ctx):
         view=_inspect(ctx,op)['view']
         ctx.expect(view['saveFeedbackVisible'] and view['lastSave']['current'],'current saved copy banner appears')
         _frame(ctx,'saved','27-editor-saved')
-        ctx.click('copySavedPath',window='editor')
-        ctx.expect(ctx.clipboard_text()==path and _inspect(ctx,op)['view']['lastCopiedPath']==path,'Copy path uses exact saved path')
+        # The saved-path row uses its real overflow menu at compact widths.
+        # The run observer resolves its runtime QMenu; no catalog coordinates.
+        overflow = ctx.accessible({'owned':True,'name':'Saved copy actions','visible':True,'showing':True})
+        if overflow:
+            ctx.click('editorSavedMore',window='editor')
+            ctx.click('text:Copy path',window='editorSavedMenu')
+        else:
+            ctx.click('copySavedPath',window='editor')
+        ctx.wait(lambda: ctx.clipboard_text()==path and _inspect(ctx,op)['view']['lastCopiedPath']==path,'Copy path uses exact saved path')
         ctx.click('dismissEditorSavedCopy',window='editor')
         ctx.expect(not _inspect(ctx,op)['view']['saveFeedbackVisible'],'dismiss hides feedback')
         # A missing private subdirectory deterministically triggers save failure.
@@ -761,7 +768,7 @@ def save_feedback(ctx):
         ctx.focus('editor', raise_window=False)
         ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'recovery chooser cancelled')
         _frame(ctx,'after','28-editor-save-failed')
-        ctx.blocked('Saved banner/copy/dismiss/failure/details/recovery checked; Show in folder and compact overflow actions need bounded file-manager/window fixtures',issue=CORE_ISSUE)
+        ctx.blocked('Saved banner/copy/overflow/dismiss/failure/details/recovery checked; Show in folder needs a bounded file-manager/window fixture',issue=CORE_ISSUE)
 
 
 @recipe('editor.compact',needs=IMAGE)
