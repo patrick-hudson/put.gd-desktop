@@ -2,7 +2,7 @@
   "tray": {
     "icon": {
       "name": "put.gd",
-      "role": "label",
+      "role": "menu",
       "application": "gnome-shell*"
     },
     "notification_server": "gnome-shell",
