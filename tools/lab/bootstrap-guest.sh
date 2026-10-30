@@ -11,6 +11,7 @@ key=$(cat "$1")
 case "$key" in ssh-ed25519\ *) ;; *) echo 'Expected an Ed25519 public key.' >&2; exit 1 ;; esac
 id lab >/dev/null
 [ -f "$(dirname "$0")/guest_idle.py" ] || { echo 'Missing guest_idle.py companion.' >&2; exit 1; }
+[ -f "$(dirname "$0")/package_install.py" ] || { echo 'Missing package_install.py companion.' >&2; exit 1; }
 if command -v apt-get >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
@@ -34,7 +35,9 @@ if command -v restorecon >/dev/null; then
   restorecon -RF /home/lab/.ssh
 fi
 # Test package installation only; this rule is never installed on the host.
-printf 'lab ALL=(root) NOPASSWD: %s\n' "$package_manager" > /etc/sudoers.d/putgd-lab
+install -d -m 755 /usr/local/lib/putgd-lab
+install -m 755 "$(dirname "$0")/package_install.py" /usr/local/lib/putgd-lab/package_install.py
+printf 'lab ALL=(root) NOPASSWD: %s, /usr/local/lib/putgd-lab/package_install.py\n' "$package_manager" > /etc/sudoers.d/putgd-lab
 chmod 440 /etc/sudoers.d/putgd-lab
 visudo -cf /etc/sudoers.d/putgd-lab
 systemctl enable --now "$ssh_service"

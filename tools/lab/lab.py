@@ -745,6 +745,22 @@ def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity, 
 
 
 def launch(args):
+    # Match guarded retirement's direct-child, symlink-free layout before any
+    # bootstrap, hashing, key generation, mkdir or overlay allocation.
+    root = overlay_cleanup.ROOT / 'work/lab-runs'
+    try:
+        run = overlay_cleanup._no_symlinks(Path(args.run).absolute())
+    except overlay_cleanup.CleanupError as error:
+        raise LabError(str(error)) from error
+    if run.parent != root:
+        raise LabError(f'Run must be a direct child of canonical {root}; use --run {root}/c1. '
+                       'Keep the run name short; if needed use a checkout at a shorter real path '
+                       'and check resolved Unix socket paths against the 107-byte limit.')
+    sockets = [run / name for name in ('qmp.sock', 'vnc.sock')]
+    checked = command([sys.executable, HERE.parent / 'diagnostics/check_socket_paths.py',
+                       '--socket', *sockets], check=False)
+    if checked.returncode:
+        raise LabError('Run Unix socket paths exceed the 107-byte limit: ' + checked.stdout.strip())
     profile = load_profile(args.profile)
     golden = Path(args.golden).resolve()
     if not golden.is_file():
@@ -759,7 +775,6 @@ def launch(args):
         raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
     firmware = uefi_firmware(profile)
     heads, layout = head_plan(profile, getattr(args, 'heads', None), getattr(args, 'layout', None))
-    run = Path(args.run).resolve()
     before = golden.stat()
     golden_identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
     golden_sha256 = hash_file(golden)
@@ -1654,11 +1669,138 @@ def verify_installed_binaries(run, deb):
     return expected
 
 
-def install_package(run, deb):
-    put(run, str(Path(deb).resolve()), '/tmp/putgd-lab.deb')
-    ssh(run, 'sudo -n apt-get update\nsudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
-    installed = verify_installed_binaries(run, deb)
-    return {'sha256': hash_file(deb), 'filename': Path(deb).name, 'installedBinarySha256': installed}
+def stage_install_helper(run, remote, helper, digest):
+    # Old immutable goldens grant apt-get, not this new helper. Use that existing
+    # authority only in the disposable overlay. Staging uses no repositories
+    # and disables list cleanup; normal apt work belongs to the supervisor.
+    hook = (f'set -eu; install -d -m 755 /usr/local/lib/putgd-lab; '
+            f'install -o root -g root -m 755 "SOURCE" {helper}; '
+            f'echo "{digest}  {helper}" | sha256sum -c -; '
+            'printf "lab ALL=(root) NOPASSWD: /usr/local/lib/putgd-lab/package_install.py\\n" '
+            '> /etc/sudoers.d/putgd-lab-install; '
+            'chmod 440 /etc/sudoers.d/putgd-lab-install; '
+            'visudo -cf /etc/sudoers.d/putgd-lab-install; exit 1')
+    # sudo resets HOME on some guests, so expand the caller's path before sudo.
+    before, after = hook.split('SOURCE')
+    script = (f'set -eu\nsource="$HOME/{remote}/package_install.py"\n'
+              f'echo "{digest}  $source" | sha256sum -c -\n'
+              f'hook={shlex.quote(before)}"$source"{shlex.quote(after)}\n'
+              'sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
+              '-o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 '
+              '-o "APT::Update::Pre-Invoke::=$hook" update '
+              '> ~/putgd-lab/' + remote.split('/')[-1] + '/staging.log 2>&1 || true\n'
+              f'test -x {helper}\n'
+              f'echo "{digest}  {helper}" | sha256sum -c -\n'
+              f'test "$(stat -c %u:%a {helper})" = 0:755\n'
+              f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
+    ssh(run, script)
+
+
+def install_package(run, deb, install_timeout=None, install_recovery_timeout=None):
+    if Path(deb).suffix.lower() != '.deb':
+        raise LabError('Guest apt installation requires a .deb package; RPM/dnf installation uses physical.py')
+    profile = load_profile(state(run)['profile'])
+    timeout = install_timeout if install_timeout is not None else profile.get('install_timeout', 900)
+    recovery = (install_recovery_timeout if install_recovery_timeout is not None
+                else profile.get('install_recovery_timeout', 600))
+    if any(type(value) is not int or value <= 0 for value in (timeout, recovery)):
+        raise LabError('Install and recovery timeouts must be positive integer seconds')
+    helper = '/usr/local/lib/putgd-lab/package_install.py'
+    helper_sha256 = hash_file(HERE / 'package_install.py')
+    token = 'install-' + uuid.uuid4().hex
+    def release_lock():
+        # Do not clear a replacement job if an operator reconciled this one.
+        ssh(run, f'if [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then\n'
+                 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\nfi\n')
+    remote = 'putgd-lab/' + token
+    evidence = Path(run) / token
+    # Acquire before staging or creating host evidence. A refused retry reports
+    # the held job's durable state and leaves no empty host install directory.
+    held = ssh(run, f'set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
+        f'if mkdir ~/putgd-lab/install-active 2>/dev/null; then\n'
+        f'printf %s {token} > ~/putgd-lab/install-active/job\nmkdir ~/{remote}\n'
+        "else\npython3 - <<'PYLOCK'\n"
+        'import json, pathlib, re\n'
+        'root = pathlib.Path.home() / "putgd-lab"\n'
+        'try: job = (root / "install-active/job").read_text().strip()\n'
+        'except OSError: job = "unknown"\n'
+        'status = "lock acquired; job metadata not yet available"\n'
+        'if re.fullmatch(r"install-[0-9a-f]{32}", job):\n'
+        '    for name in ("result.json", "progress.json"):\n'
+        '        try: status = {"file": name, "report": json.loads((root / job / name).read_text())}; break\n'
+        '        except (OSError, ValueError): pass\n'
+        'print(json.dumps({"heldJob": job, "state": status}))\n'
+        'PYLOCK\nfi\n')
+    if held.strip():
+        raise LabError('Install retry refused: ' + held.strip() + '; inspect this job before recovery.')
+    try:
+        evidence.mkdir(mode=0o700)
+        write_json(evidence / 'request.json', {'timeoutSeconds': timeout, 'recoverySeconds': recovery,
+                                             'remoteDirectory': remote, 'helperSha256': helper_sha256})
+        put(run, str(HERE / 'package_install.py'), remote + '/package_install.py')
+        stage_install_helper(run, remote, helper, helper_sha256)
+        write_json(evidence / 'helper.json', {'sha256': helper_sha256, 'verified': True,
+                   'source': remote + '/package_install.py', 'installedPath': helper,
+                   'route': 'existing passwordless apt-get Pre-Invoke; no sources or list cleanup'})
+        put(run, str(Path(deb).resolve()), remote + '/package.deb')
+    except BaseException:
+        # The supervisor has not started. Staging has no repositories or dpkg work.
+        release_lock()
+        raise
+    try:
+        ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
+                 f'> ~/{remote}/supervisor.log 2>&1 < /dev/null &\n')
+    except (LabError, subprocess.TimeoutExpired):
+        # The remote launch may have happened even when its SSH reply was lost.
+        # Reconcile the same job below; never launch a replacement.
+        pass
+    # The detached guest watchdog survives a controller/SSH timeout. Never start
+    # a replacement. Its own pidfds bound package recovery independently of SSH.
+    startup_error = None
+    startup_deadline = time.monotonic() + 15
+    deadline = time.monotonic() + timeout + recovery + 120
+    while True:
+        try:
+            output = ssh(run, f'if test -f ~/{remote}/result.json; then cat ~/{remote}/result.json; '
+                         f'elif ! test -f ~/{remote}/progress.json; then '
+                         "printf '%s\\n' '{\"startupPending\":true}'; fi\n", timeout=10)
+            if output.strip():
+                report = json.loads(output)
+                if not report.get('startupPending'):
+                    break
+                if time.monotonic() >= startup_deadline:
+                    try:
+                        get(run, remote + '/supervisor.log', evidence / 'supervisor.log')
+                    except (LabError, subprocess.TimeoutExpired):
+                        pass
+                    startup_error = (f'Install supervisor did not start: no progress.json after 15 seconds; '
+                                   f'inspect {evidence}/supervisor.log (may be missing); '
+                                   f'job {token} retains install-active pending reconciliation.')
+                    break
+        except (LabError, subprocess.TimeoutExpired):
+            pass
+        if time.monotonic() >= deadline:
+            raise LabError(f'Install outcome unavailable; guest watchdog owns recovery in ~/{remote}; '
+                           'install-active blocks retries. Inspect result.json and dpkg state before recovery.')
+        time.sleep(1)
+    if startup_error:
+        raise LabError(startup_error)
+    write_json(evidence / 'result.json', report)
+    try:
+        for name in ('apt.log', 'progress.json', 'supervisor.log', 'staging.log'):
+            get(run, remote + '/' + name, evidence / name)
+        if not report.get('ok'):
+            raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '
+                           'install-active blocks retries pending recovery.')
+        installed = verify_installed_binaries(run, deb)
+    finally:
+        # A successful report proves apt stopped and dpkg is clean. Hold the
+        # lock through binary verification to prevent a concurrent replacement,
+        # but release it even if collection/verification fails afterward.
+        if report.get('ok'):
+            release_lock()
+    return {'sha256': hash_file(deb), 'filename': Path(deb).name, 'installedBinarySha256': installed,
+            'installEvidence': str(evidence), 'timedOut': report['timedOut']}
 
 
 APPIMAGE_SHIMS = {
@@ -1722,7 +1864,7 @@ def install_appimage(run, appimage):
             'installedBinarySha256': installed}
 
 
-def install(run, deb=None, appimage=None):
+def install(run, deb=None, appimage=None, install_timeout=None, install_recovery_timeout=None):
     # A failed new install must not certify the previous package.
     (Path(run) / 'package.json').unlink(missing_ok=True)
     wanted = install_format(load_profile(state(run)['profile']))
@@ -1730,9 +1872,11 @@ def install(run, deb=None, appimage=None):
         raise LabError('This profile installs a distro package; pass --deb')
     if deb is not None and wanted != 'deb':
         raise LabError('This profile installs an AppImage; pass --appimage')
-    receipt = install_appimage(run, appimage) if appimage is not None else install_package(run, deb)
+    receipt = (install_appimage(run, appimage) if appimage is not None else
+               install_package(run, deb, install_timeout, install_recovery_timeout))
     write_json(Path(run) / 'package.json', receipt)
-    return {'status': 'installed', 'format': receipt.get('format', 'deb'), 'sha256': receipt['sha256']}
+    return {'status': 'installed', 'format': receipt.get('format', 'deb'), 'sha256': receipt['sha256'],
+            **{key: receipt[key] for key in ('installEvidence', 'timedOut') if key in receipt}}
 
 
 def start(run, timeout=30):
@@ -1790,6 +1934,8 @@ def main():
             child.add_argument('--layout', help="WxH+X+Y list in head order; defaults to the run's launch layout")
             child.add_argument('--settle', type=int, default=30, help='Seconds to wait for the guest to report the outputs')
         if name == 'install':
+            child.add_argument('--install-timeout', type=int, help='Apt budget in seconds (profile install_timeout, default 900)')
+            child.add_argument('--install-recovery-timeout', type=int, help='Wait for owned processes after timeout (profile install_recovery_timeout, default 600)')
             package = child.add_mutually_exclusive_group(required=True)
             package.add_argument('--deb', help='Distro package for apt profiles')
             package.add_argument('--appimage', help='AppImage for image-based guests (profile install: appimage)')
@@ -1832,7 +1978,8 @@ def main():
         elif args.action == 'cli':
             value = cli(args.run, args.method, json.loads(args.params))
         elif args.action == 'install':
-            value = install(args.run, deb=args.deb, appimage=args.appimage)
+            value = install(args.run, deb=args.deb, appimage=args.appimage,
+                            install_timeout=args.install_timeout, install_recovery_timeout=args.install_recovery_timeout)
         elif args.action == 'start':
             value = start(args.run, timeout=args.timeout)
         elif args.action == 'preflight':
