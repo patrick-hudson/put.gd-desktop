@@ -1,0 +1,134 @@
+{
+  "completedAtUtc": "2026-10-30T03:35:50.326353+00:00",
+  "codePr": "https://github.com/patrick-hudson/put.gd-desktop/pull/736",
+  "fixedHead": "99b516fd761b07dd64dd0fbba230f9a7611d1cda",
+  "baselineHead": "37217c45b1db8d8e8500770d96cdd562e9ae1347",
+  "mergedCore": "2cb98478866d6453244a798e0272535faf9b961d",
+  "placement": "workstation; fake Python transports only; no app, VM, sandbox, network or physical desktop used",
+  "runtime": {
+    "python": "3.12.3 (system /usr/bin/python3)",
+    "pytest": "9.2.0 (private .venv)",
+    "Pillow": "10.2.0 (system package)"
+  },
+  "regressionTestSha256": "5cd30d390b3c1acb8ba559ff58a41ca5769dd107f919eab634ca84070daa957e",
+  "baselineSourceVerifiedAgainstGit": {
+    "tools/lab/surface_driver/context.py": "819f66245d153d80f4759e1213e892eb19f36feee17327999664dc5ab7161457",
+    "tools/lab/surface_driver/target.py": "abd5e0349362dcf365becf12dc4754906849fe4755d7d50ac3c0000e59d226e7"
+  },
+  "regressions": [
+    {
+      "test": "test_changed_endpoint_refuses_click_without_release",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_changed_endpoint_refuses_drag_without_release",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_deadline_after_physical_press_dispatch_still_releases_with_checks",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_endpoint_lost_mid_drag_withholds_release_and_names_host_and_button",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_expired_lock_refuses_click_without_release",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_expired_lock_refuses_drag_without_release",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_guest_completed_drag_releases_after_owned_endpoint_check",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_guest_interrupted_drag_always_releases_after_owned_endpoint_check",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_guest_uncertain_press_always_releases_after_owned_endpoint_check",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_held_lock_releases_dispatched_click_after_fresh_checks",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_held_lock_releases_dispatched_drag_after_fresh_checks",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_lock_lost_mid_drag_withholds_release_and_names_host_and_button",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_lost_lock_is_recorded_as_blocked_with_host_and_button",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_refused_press_never_opens_a_lazy_rfb_connection",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_release_endpoint_failure_never_opens_a_lazy_rfb_connection",
+      "baseline": "failed",
+      "fixed": "passed"
+    },
+    {
+      "test": "test_release_forces_a_heartbeat_even_with_a_cached_lease",
+      "baseline": "failed",
+      "fixed": "passed"
+    }
+  ],
+  "fullSuite": {
+    "command": "python3 -m pytest tests/desktop/test_surface_driver.py tests/desktop/test_surface_driver_geometry.py",
+    "passed": 114,
+    "failed": 0
+  },
+  "baselineMethod": "git archive 37217c45 tools exported beneath this worktree; copy the unchanged new geometry tests into that export, then run only PhysicalPointerSafety in a fresh Python process",
+  "baselineCommand": ".venv/bin/python -m pytest work/rv736/old-37217c45/tests/desktop/test_surface_driver_geometry.py::PhysicalPointerSafety -q --junitxml=work/rv736/baseline.xml",
+  "validator": {
+    "source": "/tmp/rv736-scripts/repro_release.py",
+    "sha256": "690d066f5a319b49922e806fccaba2980276aa5c7047393bab04154904471863",
+    "command": "python3 /tmp/rv736-scripts/repro_release.py \"$PWD\"",
+    "refusedPressPointerPackets": 0,
+    "newConnectionsAfterEndpointFailure": 0
+  },
+  "receipt": {
+    "source": "blocked-receipt.json",
+    "transport": "fake; no f44 desktop contacted",
+    "functional": "blocked",
+    "host": "f44",
+    "button": "right"
+  },
+  "privateEvidenceRoot": "/home/patrick/.t3/worktrees/put.gd/t3-85fd2492/work/rv736",
+  "files": {
+    "baseline-tests.txt": "f4ac24cae9f8610056f4c5cb0380f128c06749124cde4c6af3feab9ba88d9e4e",
+    "fixed-tests.txt": "c5a894368faa5f7fe4fec792bf1126916df30ab0d48fb7abc2d60330861d6ce1",
+    "repro-before.txt": "599a9bb51b43fc5a9c614e509a0511469ef8dcd0bb289de7d181e701556aecb7",
+    "repro-after.txt": "93e3c884394fbc124a9aefa663b80e226951142338d64417644dec9f19a15e88",
+    "blocked-receipt.json": "ba37cc07954e74ef5e0dbc92a11a78ea73f5673b45373fd4e0ad5a521dc49e9a"
+  },
+  "outOfScope": [
+    "raise-probe forced heartbeat: 2a-desktop",
+    "execute forced heartbeat: #749"
+  ],
+  "liveRerun": "not required by coordinator; none performed; no dependencies on the out-of-scope heartbeat changes"
+}

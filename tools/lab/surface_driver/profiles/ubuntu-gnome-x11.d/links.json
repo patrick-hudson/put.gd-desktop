@@ -1,0 +1,10 @@
+{
+  "browser": {
+    "command": ["snap", "run", "firefox"],
+    "profile_root": "~/snap/firefox/common"
+  },
+  "links": {
+    "notification_query": {"name": "Upload complete"},
+    "row_open_query": {"name": "Open in browser", "role": "menu item"}
+  }
+}

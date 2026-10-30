@@ -160,10 +160,18 @@ class Context:
         Results: name, role, text, description, states (bool map), rect
         [x,y,width,height] or null, bounds {x,y,width,height} or null, pid,
         application, window, owned, objectName, accelerator, attributes,
-        visible/showing/enabled, protected, popup and ancestors. Coordinates are
-        AT-SPI DESKTOP_COORDS as reported by the server. Profiles record
-        geometry gaps; pointer input requires an independent compositor witness.
-        Password text is never read. RecipeBlocked when unavailable, including profile gaps.
+        visible/showing/enabled, protected, popup and ancestors, plus
+        coordinate_space ('desktop' or 'window-relative'), coordinate_error and
+        window_id (compositor identity) where placement applies. rect is in
+        desktop coordinates. On X11 that is AT-SPI DESKTOP_COORDS. On Wayland,
+        client toolkits report extents relative to their own window; a profile
+        'compositor' witness (GNOME lab extension, KWin script) places them, and
+        without one (or when placement is implausible) rect/bounds are null with
+        coordinate_error, never a guess. Rows also include out-of-tree accessibles
+        seen by the run's observer: showing QMenu popups and the focused widget
+        (start_notifications starts it). role 'button' is normalized to
+        'push button'. Password text is never read. RecipeBlocked when
+        unavailable, including profile gaps.
         """
         raise NotImplementedError
 
@@ -180,8 +188,12 @@ class Context:
         """Select and verify an input target; optionally raise it using desktop policy.
 
         Every input rechecks focus/stacking. Obstruction is RecipeFailed naming
-        the window; unavailable witnesses are RecipeBlocked. Wayland requires
-        a profile compositor_script until a resident focus witness exists.
+        the window (including shell-drawn banners/panels); unavailable witnesses
+        are RecipeBlocked. X11 lets a just-mapped target settle (#750). Owned
+        override-redirect windows (bar, selector cover) are selected by a server
+        hit-test and refuse keyboard input unless they hold X input focus.
+        Wayland uses the profile compositor witness (pick/focus; raise through
+        its explicit activation where supported) or a compositor_script.
         """
         raise NotImplementedError
 
@@ -213,7 +225,12 @@ class Context:
         raise NotImplementedError
 
     def notification_action(self, identity: int, action: str = 'default') -> None:
-        """Real input to a drawn notification, correlated to ActionInvoked by ID."""
+        """Real input to a drawn notification, correlated to ActionInvoked by ID.
+
+        Waits briefly (profile notifications.draw_seconds) for the banner to be
+        drawn, hovers it, then clicks the title (default) or the action button,
+        each with a fresh compositor stage pick.
+        """
         raise NotImplementedError
 
     def tray(self) -> list[dict]:
@@ -229,19 +246,31 @@ class Context:
 
         Rows contain summary/body/actions/id, sender/server unique bus owners,
         timeout, hints/resident, replaces_id, at, action_events [{action,at}],
-        and closed (null or {reason,at}). IDs correlate with replies/signals.
+        and closed (null or {reason,at}). IDs correlate with replies/signals;
+        id is null until the server's reply is seen. Only put.gd Notify calls
+        from the private family, their replies and signals for their IDs are
+        recorded; other applications' traffic never reaches the log.
         """
         raise NotImplementedError
 
     def clipboard_text(self) -> str:
         raise NotImplementedError
 
-    def shell(self, script: str, timeout: float = 60.0) -> dict:
-        """Run a shell script on the target as the session user with the run's private XDG profile."""
+    def shell(self, script: str, timeout: float = 60.0, cleanup: bool = False) -> dict:
+        """Run a shell script on the target as the session user with the run's private XDG profile.
+
+        Ordinary calls fail after the recipe deadline and are clipped to the time
+        left. ``cleanup=True`` is for restoring what a recipe changed (default
+        browser, theme, dconf): it runs even after the deadline, with its own
+        timeout (30 s when none is given, at most 600 s), never the clipped
+        remainder, and the recipe alarm is deferred until it returns. The
+        target's safety checks still apply (desktop lock for physical targets,
+        an owned overlay for guests).
+        """
         raise NotImplementedError
 
     # Fixtures shared between recipes in one run (an upload, a recording, a history row)
-    def fixture(self, name: str) -> Any:
+    def fixture(self, name: str, **options: Any) -> Any:
         raise NotImplementedError
 
     # Evidence and verdicts
