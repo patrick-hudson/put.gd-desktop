@@ -1,0 +1,124 @@
+{
+  "command": "boat --no-update --json list --all",
+  "capturedAt": 1793333019.4346297,
+  "pageInfo": {
+    "hasMore": false,
+    "limit": 200,
+    "nextCursor": null
+  },
+  "sandboxes": [
+    {
+      "id": "bx_2mxrfaus",
+      "name": "putgd-0c329b0692ca-ubuntu26.04-02818a97bfa24edb",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:26.800Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_dgzpjwxg",
+      "name": "putgd-0c329b0692ca-lab-fixture-02818a97bfa24edb",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:26.384Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_8433k57e",
+      "name": "putgd-0c329b0692ca-ubuntu24.04-02818a97bfa24edb",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.994Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_pm48s29k",
+      "name": "putgd-0c329b0692ca-lab-fixture-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.907Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_jw76a9k5",
+      "name": "putgd-0c329b0692ca-ui-catalog-02818a97bfa24edb",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.765Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_v424zbpc",
+      "name": "putgd-0c329b0692ca-debian13-02818a97bfa24edb",
+      "state": "starting",
+      "createdAt": "2026-10-30T04:03:25.742Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_6pqd83aj",
+      "name": "putgd-0c329b0692ca-fedora44-02818a97bfa24edb",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.728Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_qhchvm59",
+      "name": "putgd-0c329b0692ca-appimage-02818a97bfa24edb",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.697Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_zpwdkszn",
+      "name": "putgd-0c329b0692ca-debian13-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.604Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_bdpqgcxs",
+      "name": "putgd-0c329b0692ca-ubuntu24.04-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.598Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_7c8htxrs",
+      "name": "putgd-0c329b0692ca-ui-catalog-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.597Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_hjn2tpdq",
+      "name": "putgd-0c329b0692ca-appimage-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.568Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_yxz2d7mn",
+      "name": "putgd-0c329b0692ca-ubuntu26.04-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.540Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    },
+    {
+      "id": "bx_8sw9mgjx",
+      "name": "putgd-0c329b0692ca-fedora44-67399a311ac84036",
+      "state": "idle",
+      "createdAt": "2026-10-30T04:03:25.525Z",
+      "ttlSeconds": 10800,
+      "hydrated": false
+    }
+  ],
+  "bothFieldsPresentOnAll14": true
+}

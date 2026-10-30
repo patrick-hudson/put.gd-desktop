@@ -1,0 +1,9 @@
+{
+  "kind": "preparation-summary",
+  "pid": 104639,
+  "startTicks": 595902,
+  "io": "rchar: 13300090605\nwchar: 402\nsyscr: 12857\nsyscw: 1\nread_bytes: 10824986624\nwrite_bytes: 4096\ncancelled_write_bytes: 0\n",
+  "signal": "SIGTERM",
+  "reason": "Cancel optional repeated post-test full golden hash; preserve authenticated completed launch digest and explicit post-test metadata instead",
+  "functionalTestsPassed": true
+}

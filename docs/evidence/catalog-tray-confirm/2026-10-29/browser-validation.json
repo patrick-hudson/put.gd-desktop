@@ -1,0 +1,19 @@
+{
+  "pageErrors": [],
+  "surfaces": {
+    "tray": {
+      "images": 5,
+      "hotspots": 26,
+      "viewportHeight": 2666,
+      "cardTop": 173.1875
+    },
+    "confirm": {
+      "images": 16,
+      "hotspots": 52,
+      "viewportHeight": 3124,
+      "cardTop": 223.53125
+    }
+  },
+  "lightboxes": "passed",
+  "hotspotClick": "passed"
+}

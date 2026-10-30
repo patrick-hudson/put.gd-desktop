@@ -1,0 +1,27 @@
+{
+  "name": null,
+  "requests": [
+    {
+      "sandboxId": "bx_kywgfsas",
+      "operation": {
+        "attemptCount": 0,
+        "completedAt": null,
+        "expectedBy": null,
+        "id": "bdop_6c8e533cc125484f84db549ba9740954",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-30T06:16:29.335Z",
+        "stage": "removing",
+        "status": "pending",
+        "targetId": "bx_kywgfsas"
+      }
+    }
+  ],
+  "verified": true,
+  "finalState": "absent",
+  "verification": "boat list --all",
+  "deletedIds": [
+    "bx_kywgfsas"
+  ],
+  "verifiedAt": 1793340991.7081535
+}

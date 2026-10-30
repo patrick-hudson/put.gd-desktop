@@ -130,7 +130,8 @@ jobs:
           apt-get update "${apt[@]}"
           DEBIAN_FRONTEND=noninteractive apt-get install -y "${apt[@]}" build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xinput-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libavcodec-dev libavformat-dev libavfilter-dev libavutil-dev libswscale-dev libswresample-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
           if [ '${{ matrix.distribution }}' = '26.04' ]; then
-            apt-get install -y "${apt[@]}" liblayershellqtinterface-dev
+            # faketime pins the UI catalog's clock; Pillow and numpy speed up its image comparison.
+            apt-get install -y "${apt[@]}" liblayershellqtinterface-dev faketime python3-pil python3-numpy
           fi
           useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -185,7 +186,9 @@ jobs:
         run: |
           echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
           ccache --zero-stats
+          # Only the 26.04 leg matches the UI catalog's reference images (tests/gui/catalog-references).
           cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON -DPUTGD_TEST_TIMEOUT_SCALE=3 \
+            -DPUTGD_UI_CATALOG_REFERENCES=${{ matrix.distribution == '26.04' && 'ON' || 'OFF' }} \
             -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           cmake --build --preset dev --parallel "$(nproc)"
@@ -238,24 +241,33 @@ jobs:
         with:
           path: build/dev/Testing/Temporary/CTestCostData.txt
           key: ctest-cost-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
-      - name: Render the UI catalog for the surface map
-        # Every window, menu, editor, review and overlay state, offscreen, with each
-        # capture's controls and key bindings (tools/lab/surface_map). The nightly
-        # workflow publishes the map rendered from this artifact to map.put.gd.
+      - name: Preserve the UI catalog's failed comparisons
+        # The ui_catalog_* tests (tools/ci/check_catalog_references.py) leave each
+        # render, its catalog-check.json and failures/ (expected, actual and diff
+        # images). tools/ci/update_catalog_references.py --run takes the renders.
+        if: failure() && matrix.distribution == '26.04' && hashFiles('build/dev/ui-catalog/*/catalog-check.json') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-catalog-check
+          path: build/dev/ui-catalog
+          retention-days: 30
+      - name: Check the surface map against the UI catalog
+        # ui_catalog_dark rendered every window, menu, editor, review and overlay
+        # state offscreen, with each capture's controls and key bindings
+        # (tools/lab/surface_map). The nightly workflow publishes the map
+        # rendered from this artifact to map.put.gd.
         if: matrix.distribution == '26.04'
         run: |
-          mkdir -p build/ui-catalog
-          QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$(mktemp -d)" build/dev/putgd-ui-catalog build/ui-catalog
-          python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog
+          python3 tools/lab/surface_map/surface_map.py check --catalog build/dev/ui-catalog/dark
           # The surface driver's live gate admits only catalogs whose secret-control
           # states equal this pin; a UI change must update it in the same commit.
-          python3 -m tools.lab.surface_driver.gate check-catalog build/ui-catalog
+          python3 -m tools.lab.surface_driver.gate check-catalog build/dev/ui-catalog/dark
       - name: Preserve the UI catalog
         if: matrix.distribution == '26.04'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ui-catalog
-          path: build/ui-catalog
+          path: build/dev/ui-catalog/dark
           if-no-files-found: error
           # As long as source-ci-provenance: a nightly that reuses this run reads it.
           retention-days: 90

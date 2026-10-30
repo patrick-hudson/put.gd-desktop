@@ -1,0 +1,1 @@
+{"passed": false, "reason": "Docker lacked --interactive, so bash -s received no script", "exitCode": 0, "logBytes": 0, "correction": "same existing worker and same packages; docker run --interactive, require saved sentinel output"}

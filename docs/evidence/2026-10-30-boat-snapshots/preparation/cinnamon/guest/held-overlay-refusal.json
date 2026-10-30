@@ -1,0 +1,12 @@
+{
+  "exitCode": 1,
+  "heldIdentity": {
+    "device": 64769,
+    "fd": 3,
+    "inode": 1464507
+  },
+  "holderPid": 161384,
+  "overlayStillExists": true,
+  "stderr": "",
+  "stdout": "{\"ok\": false, \"error\": \"Privileged host process inventory found a process using the overlay; cleanup refused\"}\n"
+}

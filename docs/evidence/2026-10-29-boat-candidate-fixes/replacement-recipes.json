@@ -1,0 +1,10 @@
+{
+  "recipe.sh": {
+    "identical": true,
+    "sha256": "bc81a9843b7fd151e1948f827245007401d129e02902b6bed7eb5425ec7a6fb7"
+  },
+  "bootstrap.sh": {
+    "identical": true,
+    "sha256": "ccbc2ce07794a0d3e7e8c59b23bfa01c60b0c7bad0a8ba735e1cca3a93813493"
+  }
+}

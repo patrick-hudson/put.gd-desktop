@@ -1,0 +1,145 @@
+{
+  "artifact": "lab-fixture",
+  "buildSeconds": 480.192,
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+    "Test-only DEB named putgd-lab-fixture; PUTGD_PACKAGE_TARGET empty and PUTGD_UPDATE_CHECK OFF. It must not enter production staging.",
+    "native.py audit intentionally not run: production audit forbids fixture files and requires package name putgd. CPack control metadata, binary/build identity and per-file hashes retained instead."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_dgzpjwxg"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-lab-fixture-02818a97bfa24edb",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_2bfb6ef4746a4568afd9272abcbf0421",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:38:39.510Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_dgzpjwxg"
+        },
+        "sandboxId": "bx_dgzpjwxg"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793335121.9129374
+  },
+  "cleanupVerified": true,
+  "collectionBudgetSeconds": 9945.12,
+  "collectionInput": {
+    "bytes": 61816953,
+    "diskAndPressure": [
+      "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+      "/dev/vda1      ext4   153470764 48123408  99052368      33% /home",
+      "some avg10=1.42 avg60=1.89 avg300=7.49 total=120644481",
+      "full avg10=1.40 avg60=1.66 avg300=5.97 total=92432130"
+    ],
+    "files": 8
+  },
+  "collectionPhases": {
+    "packSeconds": 1405.403,
+    "probeSeconds": 3.306,
+    "restoreSeconds": 0.91,
+    "transferSeconds": 29.338
+  },
+  "collectionSeconds": 1438.961,
+  "collectionTtlCapped": false,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+  "files": [
+    {
+      "bytes": 346,
+      "path": "binary-version.json",
+      "sha256": "2bdd9849526215e3d98fd9507cf106bba9f7350645d43a5f0d142ecc6e6af6f5"
+    },
+    {
+      "bytes": 345,
+      "path": "build-info.json",
+      "sha256": "995117a4c65e4caa59e7040ac75b1f98e24caf80a4e1efe4f2ddf48b2b0f06ee"
+    },
+    {
+      "bytes": 1409,
+      "path": "lab-package-control.txt",
+      "sha256": "8bace9800d03f77ced483946844de918e03eb68502be3b1a2aa1fa263c100df0"
+    },
+    {
+      "bytes": 36637,
+      "path": "packages.txt",
+      "sha256": "dff8032f827d7fb257aa74921d9bf04f901bca9b8a56fdfb6b61a2d3d3dcf789"
+    },
+    {
+      "bytes": 1366272,
+      "path": "putgd-desktop-fixture",
+      "sha256": "2dab781997bd8c4e0532b07dd5680e3c973796566ad8ecb46577b384245c938e"
+    },
+    {
+      "bytes": 60411802,
+      "path": "putgd-lab-fixture_26.1030.2473~dev+g0c329b0692ca_amd64.deb",
+      "sha256": "0f82b7a274d73ceb2841394a044bcd548ae74231c00b8d6587fd9938a5bce5ba"
+    },
+    {
+      "bytes": 0,
+      "path": "source-status.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 142,
+      "path": "update-info.json",
+      "sha256": "6dda09081fe2ba8a2cdcc224c78f05da3ac06685247073c745373b7f9d332069"
+    }
+  ],
+  "hydrationSeconds": 194.296,
+  "identity": {
+    "baseVersion": "26.1030.2473",
+    "commitCount": 2473,
+    "dirty": false,
+    "gitCommit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "gitTree": "038bc7af0456e1698a3e31ebeb9923a225bef876",
+    "packageVersion": "26.1030.2473~dev+g0c329b0692ca",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2473-dev+g0c329b0692ca"
+  },
+  "name": "putgd-0c329b0692ca-lab-fixture-02818a97bfa24edb",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:26.384Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:06:37.083Z",
+    "id": "bx_dgzpjwxg",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "5.196.81.183:19042",
+    "vcpu": 8
+  },
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "02818a97bfa24edb",
+  "sandboxId": "bx_dgzpjwxg",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [],
+    "verified": true
+  },
+  "state": "passed",
+  "totalSeconds": 2116.868,
+  "transport": {
+    "bytes": 61829120,
+    "compression": "none",
+    "kind": "tar",
+    "sha256": "65e69b2468d4710b0aef4f17018298e4499a46ba49f48e80dad4cbe97363adcd"
+  },
+  "ttlSeconds": 10800,
+  "type": "large"
+}

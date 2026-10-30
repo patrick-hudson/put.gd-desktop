@@ -22,6 +22,7 @@ VM borrowing the session through `lend`. The rules are in docs/proton-drive.md
   proton_lab.py check --session ID --owner NAME [--new-folder]
   proton_lab.py lend RUN --session ID --owner NAME --purpose TEXT -- COMMAND [ARG ...]
   proton_lab.py recover RECEIPTS --session ID --owner NAME
+  proton_lab.py register-guests --bootstrap-key KEY --golden PROFILE GOLDEN KNOWN_HOSTS [--golden ...]
   proton_lab.py keepalive | install-keepalive   # weekly check under the Proton lock
 
 No command prints, logs, hashes or writes session material. Snapshots move only
@@ -723,6 +724,12 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
         note(folder, step='cleaned')
         guest.remove_brokers()
     result['reference'] = borrowed
+    registry = require_registry(layout)
+    registry['lastLend'] = {'at': now_text(), 'by': owner, 'run': str(guest.run),
+                            'profile': getattr(guest, 'info', {}).get('profile'),
+                            'testExit': result['testExit'], 'rotated': result['rotated'],
+                            'carriedBack': Path(result['carriedBack']).name, 'receipts': str(folder)}
+    write_registry(layout, registry)
     return result
 
 
@@ -813,6 +820,34 @@ def install_keepalive(layout, libexec=Path.home() / '.local/libexec/putgd-proton
     return {'libexec': str(libexec), 'units': [str(units / name) for name in KEEPALIVE_UNITS]}
 
 
+def file_identity(path):
+    path = Path(path)
+    return {'path': str(path), 'bytes': path.stat().st_size, 'sha256': lab.hash_file(path)}
+
+
+def register_guests(layout, bootstrap_key, goldens, owner=None):
+    """Record what this builder lends its session to: the guest brokers, and each golden a lend
+    can boot an overlay from with its bootstrap key and host-key pins. Paths and hashes only."""
+    registry = require_registry(layout, signed_in=False)
+    endpoint = brokers(layout.guest_bridge)
+    key = Path(bootstrap_key).resolve()
+    if not key.is_file():
+        raise LabFailure(f'{key} is not a bootstrap key file')
+    entries = []
+    for profile, golden, known_hosts in goldens:
+        lab.load_profile(profile)
+        golden, known_hosts = Path(golden).resolve(), Path(known_hosts).resolve()
+        if not golden.is_file() or not known_hosts.is_file():
+            raise LabFailure(f'{golden} or {known_hosts} is missing')
+        entries.append(dict(file_identity(golden), profile=profile, knownHosts=str(known_hosts)))
+    registry['guests'] = {
+        'recorded': now_text(), 'by': owner, 'bootstrapKey': str(key),
+        'bridge': {name: file_identity(path) for name, path in zip(BROKERS, endpoint.values())},
+        'goldens': entries}
+    write_registry(layout, registry)
+    return registry['guests']
+
+
 def status(layout):
     registry = read_registry(layout)
     lock = proton_lock(layout, registry['host']).status() if registry and registry.get('host') else None
@@ -852,6 +887,12 @@ def main(argv=None):
                               'operations recorded under it, such as revoking its own test link')
     recovering = commands.add_parser('recover', help="finish an interrupted lend from its receipts folder")
     recovering.add_argument('receipts')
+    registering = commands.add_parser('register-guests', help='record the guest bridge and the goldens lends boot '
+                                                              'from in the registry (paths and hashes only)')
+    registering.add_argument('--bootstrap-key', required=True, help="the key the goldens' lab user accepts")
+    registering.add_argument('--golden', nargs=3, action='append', required=True,
+                             metavar=('PROFILE', 'GOLDEN', 'KNOWN_HOSTS'))
+    registering.add_argument('--owner', help='short session name')
     for sub in (opening, closing, checking, lending, recovering):
         sub.add_argument('--session', required=True, help='your session id')
     for sub in (checking, lending, recovering):
@@ -881,6 +922,8 @@ def main(argv=None):
             reply = keepalive(layout)
         elif args.action == 'check':
             reply = check(layout, args.session, args.owner, args.new_folder)
+        elif args.action == 'register-guests':
+            reply = register_guests(layout, args.bootstrap_key, args.golden, args.owner)
         elif args.action == 'lend':
             reply = lend(layout, args.run, args.session, args.owner, args.purpose, command,
                          guest_reference=args.guest_reference)
