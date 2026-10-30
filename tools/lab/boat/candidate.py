@@ -500,7 +500,7 @@ def build_worker(target, args, output, specification):
     started = time.monotonic()
     directory = output / target
     directory.mkdir(mode=0o700)
-    receipt = {'artifact': target, 'commit': args.commit, 'snapshot': 'putgd-build-base-v2',
+    receipt = {'artifact': target, 'commit': args.commit, 'snapshot': 'putgd-build-base-v3',
                'placementReason': 'parallel candidate packaging; preserve quiet physical acceptance hosts',
                'ciDifferences': ci_differences(target), 'runNonce': args.run_nonce,
                'name': worker_name(args.commit, target, args.run_nonce),
@@ -520,7 +520,7 @@ def build_worker(target, args, output, specification):
         creation_started = time.monotonic()
         try:
             with creation.open('w') as stream:
-                run(['boat', '--no-update', '--json', 'new', '--from', 'putgd-build-base-v2',
+                run(['boat', '--no-update', '--json', 'new', '--from', 'putgd-build-base-v3',
                      '--no-env', '--type', args.type, '--ttl', str(args.ttl), '--name',
                      receipt['name']], log=stream, timeout=CREATE_TIMEOUT)
         finally:
@@ -671,7 +671,7 @@ def main(argv=None):
     if not any(item['type'] == args.type and item['available'] for item in limits['machineTypes']):
         raise ValueError('Requested Boat machine type is unavailable')
     snapshots = boat('snapshots')['named']
-    snapshot = next(item for item in snapshots if item['name'] == 'putgd-build-base-v2')
+    snapshot = next(item for item in snapshots if item['name'] == 'putgd-build-base-v3')
     output = prepare_output(args.output)
     args.run_nonce = uuid.uuid4().hex[:16]
     started = time.monotonic()

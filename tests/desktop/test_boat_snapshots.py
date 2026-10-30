@@ -37,6 +37,51 @@ class SnapshotContracts(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     snapshots.parser().parse_args(['host-script', '--checkout', '/tmp/source', *extra])
 
+    def test_package_targets_distinguish_host_and_gnome_guest(self):
+        for name in ('putgd-build-base-v3', 'putgd-lab-cinnamon-v3'):
+            self.assertEqual(snapshots.package_metadata(name)['packageTarget'], 'ubuntu24.04')
+        metadata = snapshots.package_metadata('putgd-lab-ubuntu-gnome-v4')
+        self.assertEqual(metadata['packageTarget'], 'ubuntu26.04')
+        self.assertEqual(metadata['hostPackageTarget'], 'ubuntu24.04')
+        self.assertEqual(metadata['packageBuild']['method'], 'candidate-native-target')
+        self.assertIn('--artifact ubuntu26.04', metadata['packageBuild']['command'])
+        with self.assertRaises(ValueError):
+            snapshots.package_metadata('putgd-lab-ubuntu-gnome-v4', 'ubuntu24.04')
+
+    def test_package_validation_rejects_noble_deb_for_gnome_and_wrong_version(self):
+        package = {'packageTarget': 'ubuntu24.04', 'buildInfo': {'gitCommit': SHA, 'dirty': False}}
+        snapshots.validate_package(package, 'ubuntu24.04', SHA)
+        with self.assertRaises(ValueError):
+            snapshots.validate_package(package, 'ubuntu26.04', SHA)
+        with self.assertRaises(ValueError):
+            snapshots.validate_package(package, 'ubuntu24.04', 'b' * 40)
+        package['buildInfo']['dirty'] = True
+        with self.assertRaises(ValueError):
+            snapshots.validate_package(package, 'ubuntu24.04', SHA)
+
+    def test_wrong_target_is_rejected_before_sealing_writes_any_image(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            destination = Path(temporary) / 'work/lab-images/new/image.qcow2'
+            with patch.object(snapshots, 'run') as run, self.assertRaises(ValueError):
+                snapshots.seal('/source', '/overlay', destination, 'b' * 64, SHA,
+                               'putgd-lab-ubuntu-gnome-v4', ['python3'], 'ubuntu24.04')
+            run.assert_not_called()
+            self.assertFalse(destination.parent.exists())
+
+    def test_manifest_arguments_reject_unsupported_package_targets(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            snapshots.parser().parse_args(['manifest', '--checkout', '/source', '--name',
+                'putgd-lab-ubuntu-gnome-v4', '--golden', '/golden', '--source', '/base',
+                '--source-sha256', 'b' * 64, '--output', '/manifest', '--package-target', 'noble'])
+
+    def test_host_smoke_requires_package_identity_and_valid_vnc_port(self):
+        args = snapshots.parser().parse_args(['host-package', '--checkout', '/source', '--deb',
+            '/package.deb', '--commit', SHA, '--evidence', '/new-evidence'])
+        self.assertEqual(args.vnc_port, 5901)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            snapshots.parser().parse_args(['host-package', '--checkout', '/source', '--deb',
+                '/package.deb', '--commit', SHA, '--evidence', '/new-evidence', '--vnc-port', '0'])
+
     def test_current_ci_packages_include_missing_xinput(self):
         packages = snapshots.ci_packages(ROOT)
         self.assertIn('libxcb-xinput-dev', packages)
@@ -103,6 +148,8 @@ class SnapshotContracts(unittest.TestCase):
         self.assertEqual(result['golden']['sha256'], 'c' * 64)
         self.assertTrue(result['golden']['standalone'])
         self.assertIn('tesseract-ocr', result['probePackages'])
+        self.assertEqual(result['packageTarget'], 'ubuntu24.04')
+        self.assertEqual(result['packageBuild']['artifact'], 'ubuntu24.04')
 
     def test_manifest_refuses_unchanged_golden_or_duplicate_packages(self):
         for image_hash, packages in (('b' * 64, ['python3']), ('c' * 64, ['python3', 'python3'])):

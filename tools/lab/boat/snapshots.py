@@ -10,6 +10,7 @@ import shlex
 import subprocess
 import sys
 import time
+import tempfile
 
 OLD_NAMES = frozenset(('putgd-build-base', 'putgd-lab-cinnamon',
                        'putgd-lab-ubuntu-gnome', 'putgd-lab-ubuntu-gnome-v2',
@@ -44,6 +45,44 @@ def snapshot_name(value):
     return value
 
 
+
+def package_metadata(name, target=None):
+    role = re.sub(r'-v[0-9]+$', '', name)
+    supported = {'putgd-build-base': 'ubuntu24.04', 'putgd-lab-cinnamon': 'ubuntu24.04',
+                 'putgd-lab-ubuntu-gnome': 'ubuntu26.04'}
+    expected = supported.get(role)
+    if expected is None or (target is not None and target != expected):
+        raise ValueError('package target does not match the snapshot profile')
+    return {'packageTarget': expected, 'hostPackageTarget': 'ubuntu24.04',
+            'packageBuild': {'method': 'candidate-native-target', 'artifact': expected,
+                'command': f'python3 tools/lab/boat/candidate.py COMMIT --artifact {expected} --output NEW_PRIVATE_OUTPUT',
+                'environment': 'the target distro container from the exact commit package.yml'}}
+
+
+def deb_identity(path):
+    """Read packaged identity without executing a foreign-distro binary."""
+    path = Path(path).resolve()
+    with tempfile.TemporaryDirectory(prefix='pgdeb-') as temporary:
+        run(['dpkg-deb', '-x', path, temporary])
+        root = Path(temporary) / 'usr/share/putgd'
+        identity = json.loads((root / 'build-info.json').read_text())
+    audit_path = path.parent / 'native-audit.json'
+    audit = json.loads(audit_path.read_text())
+    package_hash = digest(path)
+    if audit.get('package', {}).get('sha256') != package_hash or audit.get('manifest') != identity:
+        raise ValueError('native audit does not match the DEB bytes and packaged build identity')
+    return {'filename': path.name, 'path': str(path), 'sha256': package_hash,
+            'packageTarget': audit['updateCheck']['packageTarget'], 'nativeAuditSha256': digest(audit_path),
+            'version': run(['dpkg-deb', '-f', path, 'Version']).strip(),
+            'depends': run(['dpkg-deb', '-f', path, 'Depends']).strip(), 'buildInfo': identity}
+
+
+def validate_package(package, target, commit):
+    if (package.get('packageTarget') != target or package['buildInfo'].get('gitCommit') != commit
+            or package['buildInfo'].get('dirty') is not False):
+        raise ValueError('package must match the guest target and expected clean nightly commit')
+
+
 def run_name(value):
     if not re.fullmatch('[a-z][a-z0-9]{1,10}', value):
         raise argparse.ArgumentTypeError('short alphanumeric run name required')
@@ -54,6 +93,14 @@ def jobs(value):
     number = int(value)
     if not 1 <= number <= 8:
         raise argparse.ArgumentTypeError('jobs must be between 1 and 8')
+    return number
+
+
+
+def tcp_port(value):
+    number = int(value)
+    if not 1 <= number <= 65535:
+        raise argparse.ArgumentTypeError('TCP port must be between 1 and 65535')
     return number
 
 
@@ -135,7 +182,8 @@ def canonical_image(path):
     return path
 
 
-def seal(source, overlay, destination, expected, commit, name, host_packages):
+def seal(source, overlay, destination, expected, commit, name, host_packages, target=None):
+    target_metadata = package_metadata(name, target)
     source, overlay = Path(source).resolve(), Path(overlay).resolve()
     destination = canonical_image(destination)
     if destination.exists() or destination.parent.exists():
@@ -157,6 +205,12 @@ def seal(source, overlay, destination, expected, commit, name, host_packages):
     destination.chmod(0o444)
     manifest = make_manifest(name, commit, source, expected, destination, digest(destination),
                              host_packages, result['virtual-size'])
+    manifest.update(target_metadata)
+    parent_manifest = source.parent / 'manifest.json'
+    if parent_manifest.is_file():
+        parent = json.loads(parent_manifest.read_text())
+        if parent.get('golden', {}).get('sha256') == expected:
+            manifest['sourceChain'] = [parent['sourceGolden'], *parent.get('sourceChain', [])]
     exclusive_json(destination.parent / 'manifest.json', manifest)
     return manifest
 
@@ -176,12 +230,13 @@ def make_manifest(name, commit, source, source_hash, image, image_hash, packages
             'probeContract': PROBE_CONTRACT,
             'sourceGolden': {'path': str(source), 'sha256': source_hash},
             'golden': {'path': str(canonical_image(image)), 'sha256': image_hash,
-                       'standalone': True, 'virtualBytes': virtual_bytes}}
+                       'standalone': True, 'virtualBytes': virtual_bytes}, **package_metadata(name)}
 
 
 
-def build_manifest(checkout, name, golden, source, expected, output):
+def build_manifest(checkout, name, golden, source, expected, output, target=None, deb=None):
     snapshot_name(name)
+    target_metadata = package_metadata(name, target)
     checkout = checkout.resolve()
     identity_path = checkout / 'build/dev/build-identity/build-info.json'
     identity = json.loads(identity_path.read_text())
@@ -199,7 +254,7 @@ def build_manifest(checkout, name, golden, source, expected, output):
     info = json.loads(run(['qemu-img', 'info', '--output=json', golden]))
     if info.get('backing-filename') or info['format'] != 'qcow2':
         raise ValueError('golden must be standalone qcow2')
-    data = {'schemaVersion': 1, 'placement': 'boat', 'snapshotName': name,
+    data = {'schemaVersion': 1, 'placement': 'boat', 'snapshotName': name, **target_metadata,
             'builtTreeCommit': commit, 'builtTree': str(checkout), 'buildInfo': identity,
             'hostPackages': packages, 'hostPackageVersions': run(['dpkg-query', '-W',
                 '-f=${binary:Package}=${Version}\n', *packages]).splitlines(),
@@ -228,6 +283,15 @@ def build_manifest(checkout, name, golden, source, expected, output):
     runtime = checkout / 'build/dependencies/proton-runtime'
     data['protonRuntime'] = {'sha256': digest(runtime / 'putgd-proton-runtime'),
                              'manifestSha256': digest(runtime / 'manifest.json')}
+    workflow = (checkout / '.github/workflows/package.yml').read_text()
+    images = re.findall(r'- name: ' + re.escape(data['packageTarget']) + r'\n\s+format: DEB\n\s+image: ([^\s]+)', workflow)
+    if len(images) != 1 or not re.fullmatch(r'ubuntu:[0-9.]+@sha256:[0-9a-f]{64}', images[0]):
+        raise ValueError('package target container must be pinned in the exact source workflow')
+    data['packageBuild']['containerImage'] = images[0]
+    if deb is not None:
+        package = deb_identity(deb)
+        validate_package(package, data['packageTarget'], commit)
+        data['packageArtifact'] = package
     exclusive_json(output, data)
     return data
 
@@ -289,6 +353,9 @@ def publish(worker, name, manifest, output):
 
 def guest(args):
     """Operate only fresh lab overlays; the caller supplies an authenticated pin."""
+    target = 'ubuntu26.04' if args.profile == 'gnome-wayland' else 'ubuntu24.04'
+    if args.package_target is not None and args.package_target != target:
+        raise ValueError('DEB target does not match the guest profile')
     checkout = args.checkout.resolve()
     sys.path.insert(0, str(checkout / 'tools/lab'))
     import lab
@@ -309,10 +376,14 @@ def guest(args):
         'placement': 'boat', 'filesystem': run(['stat', '-f', '-c', '%T:%t', checkout]).strip(),
         'availableBytes': capacity.f_bavail * capacity.f_frsize,
         'availableInodes': capacity.f_favail, 'requiredReserveBytes': 10 * 1024**3})
-    if capacity.f_bavail * capacity.f_frsize < 10 * 1024**3 or capacity.f_favail <= 1024:
+    expected_growth = args.source.stat().st_size + 2 * 1024**3 if args.install else 0
+    if capacity.f_bavail * capacity.f_frsize < 10 * 1024**3 + expected_growth or capacity.f_favail <= 1024:
         raise ValueError('Boat host capacity below reserve')
     if not os.access('/dev/kvm', os.R_OK | os.W_OK):
         raise ValueError('KVM must be accessible before guest provisioning')
+    package = deb_identity(args.deb) if args.deb else None
+    if package:
+        validate_package(package, target, args.package_commit or args.commit)
     launched = False
     try:
         result = run(['python3', checkout / 'tools/lab/lab.py', 'launch', '--profile', args.profile,
@@ -329,6 +400,26 @@ def guest(args):
         (evidence / 'probes.log').write_text(checked.stdout + checked.stderr)
         if checked.returncode:
             raise ValueError('probe installation/check failed; evidence preserved')
+        exclusive_json(evidence / 'idle-policy.json', lab.guest_preflight(run_dir, apply=False, stage='snapshot-check'))
+        if package:
+            exclusive_json(evidence / 'package-artifact.json', {**package, 'packageTarget': target})
+            exclusive_json(evidence / 'install.json', lab.install(run_dir, deb=args.deb))
+            started = lab.start(run_dir, timeout=60)
+            exclusive_json(evidence / 'start.json', started)
+            observed = json.loads(lab.guest_session(run_dir, 'putgd-cli --version-json\n'))
+            if observed.get('version') != package['buildInfo']['version'] or observed.get('gitCommit') != package['buildInfo']['gitCommit']:
+                raise ValueError('installed version does not match the package build')
+            exclusive_json(evidence / 'installed-version.json', observed)
+            # The new golden must not autostart a private smoke profile on its next boot.
+            with lab.QMP(run_dir / 'qmp.sock') as qmp:
+                qmp.execute('screendump', {'filename': str(evidence / 'app-started.ppm')})
+            lab.cli(run_dir, 'ui.quit')
+            deadline = time.monotonic() + 15
+            while lab.ssh(run_dir, f"if test -d /proc/{started['resident']['pid']}; then echo running; else echo stopped; fi\n").strip() != 'stopped':
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('installed app did not finish its graceful shutdown')
+                time.sleep(.25)
+
         with lab.QMP(run_dir / 'qmp.sock') as qmp:
             qmp.execute('screendump', {'filename': str(evidence / 'desktop-after.ppm')})
         lab.ssh(run_dir, 'sync\n')
@@ -342,7 +433,7 @@ def guest(args):
                                                      'reset', '--run', run_dir]))
     if args.install:
         result = seal(args.source, run_dir / 'disk.qcow2', args.destination, args.source_sha256,
-                      args.commit, args.name, ci_packages(checkout))
+                      args.commit, args.name, ci_packages(checkout), target)
         exclusive_json(evidence / 'golden.json', result)
     state = json.loads((run_dir / 'state.json').read_text())
     completion = {'run': str(run_dir), 'runId': state['id'], 'completed': True, 'outcome': 'passed'}
@@ -355,6 +446,91 @@ def guest(args):
     (evidence / 'cleanup-preview.json').write_text(run([*cleanup_args, '--dry-run']))
     (evidence / 'cleanup.json').write_text(run(cleanup_args))
     return {'run': str(run_dir), 'evidence': str(evidence), 'placement': 'boat', 'ok': True}
+
+
+
+def host_package(args):
+    """Install and start the matching package on an owned Ubuntu 24.04 Boat head."""
+    release = dict(line.split('=', 1) for line in Path('/etc/os-release').read_text().splitlines() if '=' in line)
+    if release.get('ID', '').strip('"') != 'ubuntu' or release.get('VERSION_ID', '').strip('"') != '24.04':
+        raise ValueError('host smoke requires the Ubuntu 24.04 Boat host')
+    package = deb_identity(args.deb)
+    validate_package(package, 'ubuntu24.04', args.commit)
+    output = args.evidence.absolute()
+    output.mkdir(mode=0o700, parents=True, exist_ok=False)
+    exclusive_json(output / 'package.json', package)
+    with (output / 'install.log').open('w') as log:
+        subprocess.run(['sudo', '-n', 'env', 'DEBIAN_FRONTEND=noninteractive', 'NEEDRESTART_MODE=l',
+                        'apt-get', 'install', '--reinstall', '-y', str(args.deb.resolve())],
+                       stdout=log, stderr=subprocess.STDOUT, check=True, timeout=900)
+    sys.path.insert(0, str(args.checkout.resolve() / 'tools/lab'))
+    from rfb import RFB
+    app, vnc = None, None
+    with tempfile.TemporaryDirectory(prefix='pgh-', dir='/tmp') as temporary:
+        runtime = Path(temporary)
+        env = dict(os.environ, DISPLAY=args.display, XAUTHORITY='/home/user/.Xauthority', QT_QPA_PLATFORM='xcb')
+        for name in ('CONFIG', 'DATA', 'STATE', 'CACHE', 'RUNTIME'):
+            directory = runtime / name.lower()
+            directory.mkdir(mode=0o700)
+            env['XDG_' + name + ('_DIR' if name == 'RUNTIME' else '_HOME')] = str(directory)
+        socket_check = run(['python3', args.checkout / 'tools/diagnostics/check_socket_paths.py',
+                            '--socket', runtime / 'runtime/putgd/session.sock'])
+        (output / 'socket-preflight.json').write_text(socket_check)
+        try:
+            with (output / 'vnc.log').open('w') as vnc_log, (output / 'app.log').open('w') as app_log:
+                vnc = subprocess.Popen(['x11vnc', '-display', args.display, '-auth', '/home/user/.Xauthority',
+                                        '-localhost', '-nopw', '-rfbport', str(args.vnc_port), '-forever', '-shared'],
+                                       stdout=vnc_log, stderr=subprocess.STDOUT)
+                app = subprocess.Popen(['/usr/bin/putgd-launcher', '--background'], env=env,
+                                       stdout=app_log, stderr=subprocess.STDOUT)
+                exclusive_json(output / 'owned-processes.json', {'appPid': app.pid, 'vncPid': vnc.pid})
+                deadline = time.monotonic() + 60
+                while True:
+                    if app.poll() is not None:
+                        raise RuntimeError('installed app exited before CLI readiness')
+                    result = subprocess.run(['/usr/bin/putgd-cli', 'capabilities'], env=env,
+                                            capture_output=True, text=True, timeout=10)
+                    if result.returncode == 0:
+                        capabilities = json.loads(result.stdout)
+                        if capabilities.get('ok'):
+                            break
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError('installed app did not answer capabilities')
+                    time.sleep(.5)
+                version = json.loads(subprocess.check_output(['/usr/bin/putgd-cli', '--version-json'], env=env, text=True))
+                if version != package['buildInfo']:
+                    raise ValueError('installed version does not match the build')
+                exclusive_json(output / 'installed-version.json', version)
+                exclusive_json(output / 'capabilities.json', capabilities)
+                # Give the wall its normal three-second discovery interval.
+                time.sleep(3)
+                client = RFB(args.vnc_port)
+                try:
+                    client.screenshot(output / 'app-started.png')
+                finally:
+                    client.close()
+                subprocess.run(['/usr/bin/putgd-cli', 'ui.quit'], env=env, check=True,
+                               stdout=subprocess.DEVNULL, timeout=15)
+                app.wait(timeout=15)
+                exclusive_json(output / 'result.json', {'ok': True, 'placement': 'boat',
+                    'packageTarget': 'ubuntu24.04', 'packageSha256': package['sha256'], 'version': version})
+        except BaseException as error:
+            exclusive_json(output / 'failure.json', {'ok': False, 'errorType': type(error).__name__, 'detail': str(error)[:2000]})
+            try:
+                client = RFB(args.vnc_port)
+                try:
+                    client.screenshot(output / 'failure.png')
+                finally:
+                    client.close()
+            except (OSError, RuntimeError):
+                pass
+            raise
+        finally:
+            for process in (app, vnc):
+                if process is not None and process.poll() is None:
+                    process.terminate()
+                    process.wait(timeout=15)
+    return {'ok': True, 'evidence': str(output)}
 
 
 def parser():
@@ -373,6 +549,7 @@ def parser():
     seal_p.add_argument('--source-sha256', type=lambda x: sha(x, 64), required=True)
     seal_p.add_argument('--commit', type=sha, required=True)
     seal_p.add_argument('--name', type=snapshot_name, required=True)
+    seal_p.add_argument('--package-target', choices=('ubuntu24.04', 'ubuntu26.04'))
     guest_p = sub.add_parser('guest', help='launch a fresh overlay, install/check probes, stop and retire it')
     for flag in ('checkout', 'source', 'bootstrap-key', 'known-hosts', 'evidence'):
         guest_p.add_argument('--' + flag, type=Path, required=True)
@@ -383,12 +560,23 @@ def parser():
     guest_p.add_argument('--install', action='store_true')
     guest_p.add_argument('--name', type=snapshot_name)
     guest_p.add_argument('--destination', type=Path)
+    guest_p.add_argument('--package-target', choices=('ubuntu24.04', 'ubuntu26.04'))
+    guest_p.add_argument('--deb', type=Path)
+    guest_p.add_argument('--package-commit', type=sha)
     manifest_p = sub.add_parser('manifest', help='bind built identity, package versions and golden chain')
     for flag in ('checkout', 'golden', 'source', 'output'):
         manifest_p.add_argument('--' + flag, type=Path, required=True)
     manifest_p.add_argument('--name', type=snapshot_name, required=True)
+    manifest_p.add_argument('--package-target', choices=('ubuntu24.04', 'ubuntu26.04'))
+    manifest_p.add_argument('--deb', type=Path)
     manifest_p.add_argument('--source-sha256', type=lambda x: sha(x, 64), required=True)
     save = sub.add_parser('publish', help='save only a new name and retain its API receipt')
+    host_smoke = sub.add_parser('host-package', help='install/start a matching DEB on an owned Boat Ubuntu 24.04 head')
+    for flag in ('checkout', 'deb', 'evidence'):
+        host_smoke.add_argument('--' + flag, type=Path, required=True)
+    host_smoke.add_argument('--commit', type=sha, required=True)
+    host_smoke.add_argument('--display', default=':0')
+    host_smoke.add_argument('--vnc-port', type=tcp_port, default=5901)
     receipt = sub.add_parser('receipt', help='read back an existing owned snapshot without saving again')
     for command in (save, receipt):
         command.add_argument('--worker', required=True)
@@ -406,13 +594,15 @@ def main():
         print(probe_script(a.install), end='')
     elif a.command == 'seal':
         print(json.dumps(seal(a.source, a.overlay, a.destination, a.source_sha256,
-                              a.commit, a.name, ci_packages(a.checkout)), indent=2))
+                              a.commit, a.name, ci_packages(a.checkout), a.package_target), indent=2))
     elif a.command == 'guest':
         if a.install and (not a.destination or not a.name):
             raise ValueError('--install requires --destination and --name')
         print(json.dumps(guest(a), indent=2))
     elif a.command == 'manifest':
-        print(json.dumps(build_manifest(a.checkout, a.name, a.golden, a.source, a.source_sha256, a.output), indent=2))
+        print(json.dumps(build_manifest(a.checkout, a.name, a.golden, a.source, a.source_sha256, a.output, a.package_target, a.deb), indent=2))
+    elif a.command == 'host-package':
+        print(json.dumps(host_package(a), indent=2))
     elif a.command in ('publish', 'receipt'):
         function = publish if a.command == 'publish' else publication_receipt
         print(json.dumps(function(a.worker, a.name, a.manifest, a.output), indent=2))
