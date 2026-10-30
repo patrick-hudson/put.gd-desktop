@@ -808,13 +808,16 @@ def _drawn_notice(ctx, notice, *, by_body=False):
         name = (glob.escape(__import__('html').unescape(notice.get('body', ''))) if by_body else
                 ctx.profile.get('notifications', {}).get('title_name_glob', '{summary}').replace('{summary}', glob.escape(notice['summary'])))
         ctx.expect(bool(name), 'notification has an observable body or title')
-        nodes = ctx.accessible({**policy, ('text' if by_body else 'name'): name, 'visible': True, 'showing': True})
         def on_screen(node):
             rect = node.get('rect')
             if isinstance(rect, dict):
                 rect = [rect[k] for k in ('x', 'y', 'width', 'height')]
             return rect and min(rect[:2]) >= 0 and min(rect[2:]) > 0
-        return any(on_screen(n) for n in nodes)
+        for field in ('text', 'name') if by_body else ('name',):
+            nodes = ctx.accessible({**policy, field: name, 'visible': True, 'showing': True})
+            if any(on_screen(n) for n in nodes):
+                return True
+        return False
     ctx.wait(drawn, 'drawn shell popup: ' + notice['summary'],
              timeout=ctx.profile.get('notifications', {}).get('draw_seconds', 3))
 

@@ -392,6 +392,16 @@ class TrayRecipesTest(unittest.TestCase):
         patches = [e[2]['patch'] for e in ctx.events if e[:2] == ('call', 'settings.patch')]
         self.assertEqual(patches[-1], {'actions': {name: {'shortcut': chord} for name, chord in tray.CHORDS.items()}})
 
+    def test_rejection_body_accepts_a_named_label_without_a_text_interface(self):
+        ctx = FakeContext()
+        queries = []
+        def body(query):
+            queries.append(query)
+            return [{'rect': [900, 60, 200, 80]}] if query.get('name') == 'No output configured' else []
+        ctx.accessible = body
+        tray._drawn_notice(ctx, {'summary': 'put.gd', 'body': 'No output configured'}, by_body=True)
+        self.assertEqual([next(k for k in ('text', 'name') if k in q) for q in queries], ['text', 'name'])
+
     def test_available_scenarios_resolve_the_core_fixture(self):
         cases = [(tray.recording_icon, 'tray-active-recording'), (tray.cancel_uploads, 'tray-two-uploads'),
                  (tray.update_available, 'tray-update-available'), (tray.quit_resident, 'resident-lifecycle'),
