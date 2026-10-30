@@ -248,6 +248,9 @@ class FakeContext(Context):
         self.assert_event('accessible', query)
         self.expect(query.get('owned') is True, 'accessible reads are owned')
         if query.get('role') == 'list item':
+            if 'name' in query:
+                expected = self.document['profiles'][0]['label'] + '\nConnected'
+                return [{'name': expected}] if self.tested and query['name'] == expected else []
             return [{'bounds': {'x': 10, 'y': i*60, 'width': 200, 'height': 60}}
                     for i in range(len(self.document['profiles']))]
         if 'name' in query:
@@ -432,6 +435,14 @@ class DestinationsContracts(unittest.TestCase):
         ctx.accessible = lambda query: [{'text': '', 'name': 'Enter only the bucket name',
                                          'visible': False}]
         self.assertEqual(lane._state(ctx, 's3BucketError', 'text'), '')
+
+    def test_connection_requires_a_new_rendered_connected_state(self):
+        ctx = self.context()
+        click = ctx.click
+        ctx.click = lambda control, window, **kw: (None if control == 'testDestination'
+                                                   else click(control, window, **kw))
+        with self.assertRaises(RecipeFailed):
+            lane.test_connection(ctx)
 
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()

@@ -618,8 +618,14 @@ def test_connection(ctx):
                'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available'],
                'loopback fixture supplied cached fake credentials')
     _click(ctx, 'testDestination', window='destinations')
-    ctx.wait(lambda: 'Connection successful.' in _state(ctx, 'destinationStatus', 'text'),
-             'loopback test upload, link and cleanup succeeded', timeout=45)
+    # The status QLabel has an explicit accessible name; older Qt exposes no
+    # Text interface for its message. The rendered rail's Connected state is
+    # set only after this exact destination passes the GUI-initiated test.
+    connected = ctx.wait(lambda: ctx.accessible({'owned': True, 'role': 'list item',
+                         'name': profiles[0]['label'] + '\nConnected',
+                         'visible': True, 'showing': True}),
+                         'loopback test upload, link and cleanup succeeded', timeout=45)
+    ctx.expect(len(connected) == 1, 'one rendered destination records the successful test')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'test preserves destination settings')
     _frame(ctx, 'after')
 
