@@ -654,25 +654,23 @@ class StagingRecoveryContracts(unittest.TestCase):
             cwd=self.remote, stdout=subprocess.PIPE, text=True, start_new_session=True)
         try:
             self.assertEqual(leader.stdout.readline().strip(), 'released')
-            reconcile = subprocess.Popen([sys.executable, str(STAGING), 'reconcile', str(self.remote), '5'],
-                                         stdout=subprocess.PIPE, text=True)
-            def reconcile_holds_flock():
-                with open(self.remote / 'staging.lock', 'a') as probe:
-                    try:
-                        fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    except BlockingIOError:
-                        return True
-                    return False
-            # Handshake: reconcile holds the flock, so it inspects the leader,
-            # which cannot exit before the gate below. It must keep waiting.
-            wait_for(reconcile_holds_flock)
-            time.sleep(.3)
-            self.assertIsNone(reconcile.poll())
-            self.assertTrue(reconcile_holds_flock())
-            self.assertIsNone(leader.poll())
+            # Handshake: the real reconciler reports each inspection. Release the
+            # leader only after reconcile has seen it live, then require a later
+            # inspection (the retry) before it may finish.
+            reconcile = subprocess.Popen([sys.executable, '-c',
+                'import importlib.util, sys; spec = importlib.util.spec_from_file_location("staging", sys.argv[1]); '
+                'staging = importlib.util.module_from_spec(spec); spec.loader.exec_module(staging); '
+                'inspect = staging.process_status; '
+                'staging.process_status = lambda: (lambda status: (print("inspected", status["exactProcessAlive"], '
+                'file=sys.stderr, flush=True), status)[1])(inspect()); '
+                'sys.argv = sys.argv[1:]; sys.exit(staging.main())',
+                str(STAGING), 'reconcile', str(self.remote), '5'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            self.assertEqual(reconcile.stderr.readline().strip(), 'inspected True')
             (self.remote / 'exit').touch()
             leader.wait(timeout=3)
-            report = json.loads(reconcile.communicate(timeout=10)[0])
+            output, inspections = reconcile.communicate(timeout=10)
+            self.assertIn('inspected False', inspections)
+            report = json.loads(output)
             self.assertEqual(report['state'], 'staging-finished')
             self.assertTrue(report['finished'])
         finally:

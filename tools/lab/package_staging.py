@@ -50,8 +50,9 @@ def run(script):
 # no sources start none, but a guest's own APT Pre-Invoke hook could.
 ABANDONED_LIMIT = ('Abandonment proves only that no process remains in the staging session. A '
                    'descendant that called setsid() (for example a daemonizing guest APT Pre-Invoke '
-                   'hook) left that session and is not checked; inspect the guest process list if '
-                   'its hooks can daemonize.')
+                   'hook) left that session and is not checked, and the /proc scan is not atomic: '
+                   'a member that keeps forking and exiting could evade both passes. Inspect the '
+                   'guest process list if its hooks can daemonize.')
 
 
 def proc_fields(pid):
@@ -82,7 +83,8 @@ def session_status(session):
             return sorted(live)
         # A member can fork and exit while one pass runs; after a PID wrap its
         # child can land behind the scan position and be missed. Any live member
-        # refuses at once; an empty session must be empty on two passes.
+        # refuses at once; an empty session must be empty on two passes. Without
+        # freezing the session (signals, or a cgroup: #780) no scan is atomic.
         live = scan() or scan()
         return {'sessionAlive': bool(live), 'sessionPids': live}
     except (OSError, ValueError, IndexError) as error:
