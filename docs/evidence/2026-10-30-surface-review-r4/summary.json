@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "campaign": "surface-driver-review-r4",
+  "completed": false,
+  "acceptance": false,
+  "gateIssue": 943,
+  "classification": "All current coverage rows are blocked by the incomplete core receipt-publication gate. These are not 31 executed tests per guest. Raw interrupted checkpoints stay private because the final secret scan did not finish.",
+  "guests": {
+    "mint-cinnamon-x11": {
+      "beforeRound2": {
+        "passed": 2,
+        "failed": 0,
+        "blocked": 29
+      },
+      "currentGateCoverage": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 31
+      },
+      "rawCheckpointRows": 15,
+      "rawCheckpointCounts": {
+        "passed": 0,
+        "failed": 13,
+        "blocked": 2
+      },
+      "runComplete": false,
+      "publicationCertified": false,
+      "gateIssue": 943,
+      "privateExport": {
+        "archiveSha256": "ff275416ab5c7f3657b8adfdde8a64252fc44c8782f0343bf712ea71d3be8c94",
+        "archiveBytes": 5876400,
+        "members": 49,
+        "createdAt": "2026-10-30T20:36:02.302276+00:00",
+        "verified": true,
+        "verifiedFiles": 49
+      },
+      "mediaFilesRetained": 3,
+      "mediaFilesListed": 3,
+      "rawNotes": {
+        "deadline": 5,
+        "controlledInterruption": 8,
+        "consent": 0
+      }
+    },
+    "kubuntu-kde-wayland": {
+      "beforeRound2": null,
+      "currentGateCoverage": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 31
+      },
+      "rawCheckpointRows": 16,
+      "rawCheckpointCounts": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 16
+      },
+      "runComplete": false,
+      "publicationCertified": false,
+      "gateIssue": 943,
+      "privateExport": {
+        "archiveSha256": "72deff1e637e54b75f7f2dffc3580d59ce1441f4ae4c084020b1fbfdd9c55e1c",
+        "archiveBytes": 5303649,
+        "members": 41,
+        "createdAt": "2026-10-30T20:36:24.324145+00:00",
+        "verified": true,
+        "verifiedFiles": 41
+      },
+      "mediaFilesRetained": 0,
+      "mediaFilesListed": 0,
+      "rawNotes": {
+        "deadline": 0,
+        "controlledInterruption": 0,
+        "consent": 16
+      }
+    },
+    "ubuntu-gnome-wayland": {
+      "beforeRound2": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 31
+      },
+      "currentGateCoverage": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 31
+      },
+      "rawCheckpointRows": 31,
+      "rawCheckpointCounts": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 31
+      },
+      "runComplete": false,
+      "publicationCertified": false,
+      "gateIssue": 943,
+      "privateExport": {
+        "archiveSha256": "9713c8a68573d12d0c1e1ee50200d862facb98d5f1c31b5b7c7f1beabef1ee7c",
+        "archiveBytes": 6943947,
+        "members": 40,
+        "createdAt": "2026-10-30T20:36:24.181386+00:00",
+        "verified": true,
+        "verifiedFiles": 40
+      },
+      "mediaFilesRetained": 0,
+      "mediaFilesListed": 0,
+      "rawNotes": {
+        "deadline": 0,
+        "controlledInterruption": 31,
+        "consent": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+{"registerSeconds": 0.012988010000299255, "registeredCount": 1, "registeredBytes": 87384, "maxRegisteredBytes": 87384}
+{"safeSeconds": 1.6616662169999472, "fields": 20}

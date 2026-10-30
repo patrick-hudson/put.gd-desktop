@@ -1,0 +1,43 @@
+node /org/putgd/LabWitness {
+  interface org.freedesktop.DBus.Properties {
+    methods:
+      Get(in  s interface_name,
+          in  s property_name,
+          out v value);
+      GetAll(in  s interface_name,
+             out a{sv} properties);
+      Set(in  s interface_name,
+          in  s property_name,
+          in  v value);
+    signals:
+      PropertiesChanged(s interface_name,
+                        a{sv} changed_properties,
+                        as invalidated_properties);
+    properties:
+  };
+  interface org.freedesktop.DBus.Introspectable {
+    methods:
+      Introspect(out s xml_data);
+    signals:
+    properties:
+  };
+  interface org.freedesktop.DBus.Peer {
+    methods:
+      Ping();
+      GetMachineId(out s machine_uuid);
+    signals:
+    properties:
+  };
+  interface org.putgd.LabWitness {
+    methods:
+      Grabs(out s arg_0);
+      Windows(out s arg_0);
+      Pick(in  i arg_0,
+           in  i arg_1,
+           out s arg_2);
+      Activate(in  t arg_0,
+               out b arg_1);
+    signals:
+    properties:
+  };
+};
