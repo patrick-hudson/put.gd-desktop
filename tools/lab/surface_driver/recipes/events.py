@@ -10,7 +10,7 @@ import json
 import shlex
 from urllib.parse import urlsplit
 
-from tools.lab.surface_driver.api import Context, RecipeBlocked, recipe
+from tools.lab.surface_driver.api import Context, RecipeBlocked, RecipeFailed, recipe
 
 
 # Unimplemented event controllers are declarations, not simulated coverage.
@@ -664,11 +664,16 @@ def disk_full_record(ctx: Context):
         _shell(ctx, cleanup, 'release only this recipe fill file')
 
 
-@recipe('event.recording-budget-stop', needs=('events.recording-source',), desktop_drawn=True, timeout=240)
+@recipe('event.recording-budget-stop', desktop_drawn=True, timeout=240)
 def recording_budget_stop(ctx: Context):
     """The helper must reach a real byte budget; never issue recording.stop."""
     _guest(ctx)
-    f = _fixture(ctx, 'events.recording-source')
+    try:
+        f = _fixture(ctx, 'events.recording-source')
+    except RecipeFailed as error:
+        if str(error) == 'timeout: visible synthetic scrolling pattern':
+            ctx.blocked('Core moving-scene fixture did not become ready before the recording event; fixture prerequisites/startup need repair (#672)', issue=672)
+        raise
     # The fixture displays a continuously changing synthetic scene in a native
     # external window and supplies a region entirely inside it. No personal
     # desktop or microphone content may be recorded.

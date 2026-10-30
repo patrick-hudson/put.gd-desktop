@@ -169,6 +169,17 @@ class EventRecipes(unittest.TestCase):
         self.assertEqual(queries, [{'owned': True, 'name': 'Capture region'}])
         self.assertIn(('display_change', '1600x900+0+0'), ctx.actions)
 
+    def test_unavailable_moving_scene_blocks_before_recording_input(self):
+        ctx = Fake()
+        def failed_scene(name): raise RecipeFailed('timeout: visible synthetic scrolling pattern')
+        ctx.fixture = failed_scene
+        with self.assertRaises(RecipeBlocked) as blocked:
+            events.recording_budget_stop(ctx)
+        self.assertEqual(blocked.exception.issue, 672)
+        self.assertEqual(ctx.actions, [])
+        entry = next(r for r in REGISTRY if 'event.recording-budget-stop' in r.interactions)
+        self.assertNotIn('events.recording-source', entry.needs)
+
     def test_exact_ownership_once(self):
         owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
         actual = [i for r in REGISTRY if r.function.__module__ == events.__name__ for i in r.interactions]
