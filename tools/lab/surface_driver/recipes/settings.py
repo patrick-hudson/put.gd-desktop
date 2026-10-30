@@ -995,13 +995,20 @@ def shortcut_refresh(ctx):
                  'external contender prevents native region binding')
         fixture.release()
     else:
-        ctx.blocked('Native unavailable state observed; this desktop fixture cannot reversibly restore the shortcut channel for a refresh effect assertion.', issue=681)
+        ctx.expect(fixture.observe().get('available') is False, 'native shortcut channel is actually unavailable')
     live_click(ctx, 'refreshShortcutSupport')
     if fixture.state == 'conflict':
         ctx.wait(lambda: fixture.observe().get('bindings', {}).get('region', {}).get('bound') is True,
                  'refresh acquires the released native shortcut')
+    else:
+        ctx.wait(lambda: fixture.observe().get('available') is False,
+                 'checking again does not report an absent native helper as available')
     ctx.expect(get(ctx)['document']['actions'] == before, 'refresh preserves configured shortcuts')
     frame(ctx, 'shortcuts-refreshed', 2)
+    if fixture.state == 'unavailable' and callable(fixture.get('release')):
+        fixture.release()
+        ctx.wait(lambda: fixture.observe().get('available') is True, 'owned native helper is restored')
+        ctx.expect(get(ctx)['document']['actions'] == before, 'restoring the helper preserves shortcuts')
 
 
 @recipe('capture.browse', timeout=120)
