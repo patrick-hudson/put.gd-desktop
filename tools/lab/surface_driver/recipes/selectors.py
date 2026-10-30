@@ -15,6 +15,8 @@ from contextlib import contextmanager
 from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
+from tools.lab.surface_driver.fixtures import consent
+from tools.lab.surface_driver.fixtures.base import Scope
 
 # Fixture setup/cleanup belongs to the core; profile fragments hold only desktop differences.
 NEEDS = ("selector-desktop",)
@@ -54,6 +56,23 @@ def _half(screen):
 
 
 @contextmanager
+def _portal_scope(ctx):
+    """Reuse core's request ownership and one-click consent, never guess a point."""
+    if ctx.profile.get("session") != "wayland":
+        yield
+        return
+    scope = Scope(ctx)
+    previous = getattr(ctx, "_selectors_consent", None)
+    ctx._selectors_consent = (scope, {})
+    try:
+        yield
+    finally:
+        ctx._selectors_consent = previous
+        errors = scope.close()
+        ctx.expect(not errors, "selector consent monitor cleanup: " + str(errors))
+
+
+@contextmanager
 def _local(ctx, mode="live"):
     """Setup only: retain/rebase configuration; never publish from this lane."""
     env = _env(ctx)
@@ -86,7 +105,8 @@ def _local(ctx, mode="live"):
             ctx.blocked("selector-desktop requires its core-owned pattern command callback (#664)", issue=664)
         command("raise")
         ctx.note("Core-owned moving pattern raised before selection")
-        yield
+        with _portal_scope(ctx):
+            yield
     finally:
         # Restore only owned fields against a freshly read revision.
         now = _call(ctx, "settings.get")
@@ -180,9 +200,13 @@ def _open_record(ctx, entire=False, rect=None):
     target = {"kind": "region"}
     if entire or rect is not None:
         target["rect"] = _screen(ctx) if entire else rect
+    portal = getattr(ctx, "_selectors_consent", None)
+    watch = consent.start(portal[0]) if portal else None
     opened = _result(ctx.view("recording.prepare", {"target": target, "format": "mp4", "codec": "h264", "fps": 15, "audio": {"system": False}}))
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]
+    if portal:
+        portal[1][rid] = watch
     ctx.note("Recording operation " + rid)
     if "rect" in target:
         _state(ctx, rid, "ready")
@@ -204,6 +228,9 @@ def _inspect(ctx, rid):
 
 
 def _state(ctx, rid, wanted):
+    portal = getattr(ctx, "_selectors_consent", None)
+    if wanted == "ready" and portal and rid in portal[1]:
+        return consent.await_ready(portal[0], rid, portal[1][rid], timeout=45)
     if wanted == "cancelled":
         # Cancel retires the active recording session. Its durable operation is
         # the inspectable result, not recording.inspect (which is now unavailable).
@@ -460,9 +487,27 @@ def _heads(ctx, recording):
         ctx.review("Completed output proves Tab/Shift+Tab monitor choice. Selected-rectangle transfer/clamping and both covers still require live readback/full two-head visual review (#664/#701).")
 
 
-@recipe("region.to-upload", destinations=("local", "s3", "b2", "proton"))
+@recipe("region.to-upload", needs=NEEDS, destinations=("local",))
 def region_upload(ctx):
-    ctx.blocked("Selectors campaign authorizes local synthetic output only; isolated provider upload belongs to the live lane. No S3 or Proton on boat.")
+    with _local(ctx):
+        service = ctx.fixture("loopback-s3")
+        ctx.expect(service.get("isolated") and service.get("loopback") and service.get("address") == "127.0.0.1",
+                   "capture upload uses the isolated guest loopback service")
+        current = _call(ctx, "settings.get")
+        _call(ctx, "settings.patch", {"expectedRevision": current["metadata"]["acceptedRevision"],
+                                     "patch": {"actions": {"region": {"destination": "upload", "profileId": service["profile_id"]}}}})
+        oid = _open_region(ctx, accessible=False)
+        try:
+            ctx.frame("before-upload", reference="46-region-entire-display")
+            ctx.keys("Return")
+            result = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] in ("completed", "failed", "partial") else None),
+                              "synthetic region upload completed", timeout=40)
+            ctx.expect(result["state"] == "completed" and bool(result["items"]), "capture upload completes")
+            ctx.expect(all(item["uploadStatus"] == "uploaded" for item in result["items"]), "every captured item was uploaded")
+            ctx.frame("after-upload")
+        finally:
+            if _op(ctx, oid)["state"] in ("accepted", "acquiring"):
+                _call(ctx, "operation.cancel", {"id": oid})
 
 
 @recipe("recsel.drag", "recsel.key-enter", "recsel.to-bar", needs=NEEDS)

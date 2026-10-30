@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -58,6 +59,8 @@ class FakeContext(Context):
         self.last_size = None
 
     def fixture(self, name):
+        if name == "loopback-s3":
+            return {"isolated": True, "loopback": True, "address": "127.0.0.1", "profile_id": "synthetic-loopback"}
         assert name == "selector-desktop"
         return self.env
 
@@ -86,8 +89,10 @@ class FakeContext(Context):
         if method == "settings.patch":
             assert params["expectedRevision"] == str(self.revision), "stale configuration write"
             for route in params["patch"].get("actions", {}).values():
-                if "profileId" in route:
+                if "profileId" in route and route.get("destination") == "local":
                     assert route["profileId"] is None, "local profile reference must be JSON null"
+                if route.get("destination") == "upload":
+                    assert route.get("profileId") == "synthetic-loopback", "only the isolated fixture may upload"
             merge(self.document, copy.deepcopy(params["patch"]))
             self.revision += 1
             return {"acceptedRevision": str(self.revision)}
@@ -250,7 +255,8 @@ class FakeContext(Context):
             op = self.operations[self.active]
             op["state"] = "editing" if op["action"] == "edit" else "completed"
             self.last_size = rect[2:]
-            op["items"] = [{"local": {"status": "saved", "path": "/tmp/synthetic.png"}, "uploadStatus": "not_requested"}]
+            uploaded = self.document["actions"]["region"]["destination"] == "upload"
+            op["items"] = [{"local": {"status": "saved", "path": "/tmp/synthetic.png"}, "uploadStatus": "uploaded" if uploaded else "not_requested"}]
             self.surface = "editor" if op["action"] == "edit" else "history"
 
     def keys(self, *sequence):
@@ -343,7 +349,7 @@ class SelectorRecipes(unittest.TestCase):
             with self.subTest(recipe=item.name):
                 heads = 2 if item.function in (selectors.region_heads, selectors.recording_keyboard) else 1
                 ctx = FakeContext(heads)
-                if item.function in (selectors.region_upload, selectors.bar_hidden):
+                if item.function == selectors.bar_hidden:
                     with self.assertRaises(RecipeBlocked):
                         item.function(ctx)
                 else:
@@ -353,6 +359,42 @@ class SelectorRecipes(unittest.TestCase):
                 self.assertEqual(ctx.document, ctx.original)
                 forbidden = {"recording.start", "recording.pause", "recording.resume", "recording.stop", "recording.select", "recording.overlay", "action.invoke", "editor.open"}
                 self.assertFalse(forbidden & {m for m, _ in ctx.calls})
+
+    def test_upload_requires_isolated_loopback_before_selector_input(self):
+        ctx = FakeContext()
+        original = ctx.fixture
+        ctx.fixture = lambda name: ({"isolated": True, "loopback": True, "address": "example.test"}
+                                    if name == "loopback-s3" else original(name))
+        with self.assertRaisesRegex(RecipeFailed, "isolated guest loopback"):
+            selectors.region_upload(ctx)
+        self.assertFalse(ctx.inputs)
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_wayland_preparation_uses_core_consent_and_closes_monitor(self):
+        ctx = FakeContext()
+        ctx.profile = {"session": "wayland"}
+        events = []
+        class OwnedScope:
+            def __init__(self, target):
+                self.ctx = target
+            def close(self):
+                events.append("cleanup")
+                return []
+        def start(scope):
+            events.append("monitor-before-prepare")
+            return object()
+        def ready(scope, rid, watch, timeout):
+            self.assertEqual(timeout, 45)
+            self.assertTrue(any(m == "recording.prepare" for m, _ in ctx.calls))
+            events.append("core-consent-ready")
+            return scope.ctx.recordings[rid]
+        with patch.object(selectors, "Scope", OwnedScope), patch.object(selectors.consent, "start", start), patch.object(selectors.consent, "await_ready", ready):
+            with selectors._local(ctx):
+                rid = selectors._open_record(ctx, rect=[320, 200, 640, 400])
+                selectors._cancel_record(ctx, rid)
+        self.assertEqual(events, ["monitor-before-prepare", "core-consent-ready", "cleanup"])
+        self.assertIsNone(ctx._selectors_consent)
+        self.assertFalse(ctx.inputs)
 
     def test_all_references_exist_in_catalog_source(self):
         source = (ROOT / "tests/gui/ui_catalog.cpp").read_text()
