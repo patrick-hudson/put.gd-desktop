@@ -1033,7 +1033,7 @@ else:print('{}')
     _frame(ctx, 'after')
 
 
-@recipe('history.local-copy-settings', needs=('history_retry_local',))
+@recipe('history.local-copy-settings', needs=('history_retry_local',), timeout=240)
 def local_copy_settings(ctx):
     row = _row(ctx, 'history_retry_local')
     detail = _result(ctx.call('history.detail', {'id': row['id']}))
@@ -1095,7 +1095,7 @@ def _capture_settings(ctx):
              'resident reports Settings Capture section')
 
 
-@recipe('shell.nav', needs=('app-profile',))
+@recipe('shell.nav', needs=('app-profile',), timeout=240)
 def navigation(ctx):
     _open(ctx)
     _frame(ctx, 'before')
@@ -1148,7 +1148,7 @@ def output_summary(ctx):
     _frame(ctx, 'after', None)
 
 
-@recipe('shell.output-warning', needs=('settings-no-output',))
+@recipe('shell.output-warning', needs=('settings-no-output',), timeout=240)
 def output_warning(ctx):
     ctx.fixture('settings-no-output')
     _open(ctx)
@@ -1161,7 +1161,7 @@ def output_warning(ctx):
     _frame(ctx, 'after', None)
 
 
-@recipe('shell.first-launch')
+@recipe('shell.first-launch', timeout=240)
 def first_launch(ctx):
     profile = ctx.fixture('app-profile', first_launch=True)
     ctx.expect(profile.first_launch, 'core restarted without a configuration file')
