@@ -222,6 +222,15 @@ class Fixtures(unittest.TestCase):
                 with self.subTest(destination=destination,name=name),self.assertRaises(RecipeBlocked):
                     self.ctx.fixture(name)
 
+    def test_b2_template_uses_https_loopback_and_is_configuration_only(self):
+        service=Fixture(profile={'id':'synthetic','provider':'s3','settings':{}},port=12345,endpoint='http://127.0.0.1:12345')
+        with patch.dict(FACTORIES,{'loopback-s3':lambda scope:service}):
+            value=self.ctx.fixture('destinations-b2')
+        self.assertTrue(value.configuration_only)
+        self.assertEqual(value.profile['provider'],'backblaze-b2')
+        self.assertEqual(value.profile['settings']['apiUrl'],'https://127.0.0.1:12345')
+        self.assertTrue(value.profile['settings']['publicUrlBase'].startswith('https://127.0.0.1:'))
+
     def test_recipe_contract_names(self):
         names={'image','upload','history','history-row','local-history','recording','recording-review','review-controls','destination','mcp','live','release','notification_upload','destinations','selector-desktop','diagnostics-upload','file-dialog-portal','file-dialog-fallback','history_rows','history_pair','history_paging','history_retry_upload','history_retry_local','history_active_uploads','history_delete','history_saved_copy','history_window','launcher','recording-export-failure','recording-budget-stop','recording-preview-error','events.slow-upload','events.update-feed','events.older-update-feed','events.update-notification','events.record-storage','events.import-storage','events.recording-source','events.incomplete-multipart','events.browser-handler','events.software-updates-handler'}
         self.assertFalse(names-FACTORIES.keys())

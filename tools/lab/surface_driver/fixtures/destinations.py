@@ -109,10 +109,13 @@ def destinations(scope, kind='s3'):
     # B2/generic are configuration fixtures only; never contact their APIs.
     if kind=='b2':
         profile['provider']='backblaze-b2'
-        profile['settings']={'apiUrl':fixture.endpoint,'bucket':'surface-fixture','objectPrefix':'campaign-'+scope.token[:12],
-                             'linkMode':'public','linkValidityDays':7,'publicUrlBase':fixture.endpoint+'/surface-fixture',
+        # B2 accepts HTTPS settings only. This template has no B2/TLS service;
+        # uploads remain guarded to the S3 adapter above.
+        endpoint='https://127.0.0.1:'+str(fixture.port)
+        profile['settings']={'apiUrl':endpoint,'bucket':'surface-fixture','objectPrefix':'campaign-'+scope.token[:12],
+                             'linkMode':'public','linkValidityDays':7,'publicUrlBase':endpoint+'/surface-fixture',
                              'connectTimeoutMs':1000,'requestTimeoutMs':15000}
-    return Fixture(fixture,profile=profile,kind=kind)
+    return Fixture(fixture,profile=profile,kind=kind,configuration_only=kind=='b2')
 
 
 def destination(scope):
