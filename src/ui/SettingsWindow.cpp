@@ -129,7 +129,11 @@ protected:
  bool event(QEvent* event)override{const bool handled=QWidget::event(event);if(layout()&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show)){const int floor=property("preferenceRow").toBool()&&!property("preferenceNaturalHeight").toBool()?Ui::scaled(Ui::Metric::control)+2*space(Space::s):0;const int height=std::max({floor,layout()->totalMinimumSize().height(),layout()->totalHeightForWidth(width())});if(minimumHeight()!=height)setMinimumHeight(height);
  // Child layout changes can alter height-for-width without changing the minimum.
  // Notify the parent form so it discards the previous row-height cache.
- if(event->type()==QEvent::LayoutRequest)updateGeometry();}return handled;}
+ if(event->type()==QEvent::LayoutRequest){updateGeometry();
+  // The containing form can be nested below the parent's outer box layout.
+  // QWidget::updateGeometry does not invalidate that nested height cache.
+  if(auto* owner=parentWidget())for(auto* form:owner->findChildren<QFormLayout*>())if(form->indexOf(this)>=0)form->invalidate();
+ }}return handled;}
 };
 // Endpoint display wraps long host names without changing selectable text.
 class EndpointLabel final:public QLabel {
