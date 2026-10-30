@@ -1,0 +1,12 @@
+{
+  "runId": "4b2b58a9-b0c6-4c0b-89bd-a83821e2b114",
+  "campaign_apps_stopped": true,
+  "update_manager_closed": true,
+  "scan": {
+    "passed": true,
+    "files": 2,
+    "pngs": 1,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

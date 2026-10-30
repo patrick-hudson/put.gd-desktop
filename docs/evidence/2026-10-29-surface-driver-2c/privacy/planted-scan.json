@@ -1,0 +1,12 @@
+{
+  "passed": false,
+  "files": 1,
+  "pngs": 0,
+  "image_audit": "ocr-and-known-regions",
+  "findings": [
+    {
+      "file_index": 0,
+      "kind": "url"
+    }
+  ]
+}

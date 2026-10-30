@@ -1,0 +1,88 @@
+{
+  "driver_source": "efc64c8c0d04e8d6ba8838a3e3360e994a70bb93",
+  "guest_tested_artifact": {
+    "baseVersion": "26.1030.2323",
+    "commitCount": 2323,
+    "dirty": false,
+    "gitCommit": "0348fc368e62b9367b71f79a58e8bba95cfaf932",
+    "gitTree": "c953d40d074d2b52c4bdc95b3f62a78bf257f988",
+    "packageVersion": "26.1030.2323~dev+g0348fc368e62",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2323-dev+g0348fc368e62"
+  },
+  "host": "bx_qtz97pf4",
+  "guest_run_id": "b4654b96-382d-4359-bf72-9cc18b3163e0",
+  "guest": {
+    "hostname": "putgd-lab",
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "linuxmint",
+      "VERSION_ID": "22.3",
+      "VARIANT_ID": null
+    },
+    "session_type": "x11",
+    "desktop": "X-Cinnamon",
+    "qt_platform": "xcb"
+  },
+  "privacy": {
+    "passed": true,
+    "frames": 4,
+    "scan": {
+      "passed": true,
+      "files": 14,
+      "pngs": 4,
+      "image_audit": "ocr-and-known-regions",
+      "findings": []
+    },
+    "fixture_url": {
+      "host": "127.0.0.1",
+      "hash": "24978cb59ab27682b9592979b0939c51835c6824f5830ccb10efab91cc3a1036",
+      "length": 94,
+      "present": true
+    },
+    "rectangle_source": "measured X11 window and explicit synthetic fixture CSS band",
+    "synthetic_row_excluded_from_map": true
+  },
+  "core_demo": {
+    "passed": true,
+    "recipes": 3,
+    "rows": 4,
+    "scan": {
+      "passed": true,
+      "files": 12,
+      "pngs": 9,
+      "image_audit": "ocr-and-known-regions",
+      "findings": []
+    },
+    "review_rows": []
+  },
+  "unit_tests": {
+    "passed": true,
+    "count": 61
+  },
+  "negative_control": {
+    "returncode": 1,
+    "scan": {
+      "passed": false,
+      "files": 2,
+      "pngs": 0,
+      "image_audit": "ocr-and-known-regions",
+      "findings": [
+        {
+          "file_index": 0,
+          "kind": "url"
+        }
+      ]
+    },
+    "stderr_empty": true
+  },
+  "retention": {
+    "prior_archive_sha256": "8378126af8dcf630c3e9859dc6fd970b987d7731da66d389cc1b59a8cbfb6d02",
+    "raw_planted_leaks_excluded": true,
+    "runtime_profiles_disks_and_keys_excluded": true,
+    "original_failed_receipts_retained": true
+  },
+  "product_cpp_changes_since_guest_artifact": []
+}

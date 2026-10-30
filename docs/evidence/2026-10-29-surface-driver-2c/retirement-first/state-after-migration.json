@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "b4654b96-382d-4359-bf72-9cc18b3163e0",
+  "profile": "cinnamon-x11",
+  "guest_user": "lab",
+  "ssh_port": 22220,
+  "vnc_display": 20,
+  "acceleration": "kvm",
+  "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2",
+  "golden_sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "bootstrap_key": "/home/user/work/put.gd/work/lab-bootstrap/identity.pub",
+  "known_hosts": "/home/user/s2c/src/work/lab-runs/core2c/known_hosts",
+  "overlay": "/home/user/s2c/src/work/lab-runs/core2c/disk.qcow2",
+  "pid": 56307
+}
