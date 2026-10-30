@@ -494,9 +494,16 @@ service elsewhere. The required session scan remains as a second guard for
 out-of-cgroup processes that retain the recorded session ID. Leaving needs no
 root, either: while the lab user's manager runs, any of the job's processes
 running as that user can start `systemd-run --user --scope` and move into
-`user@1000.service`, which its own user manager owns. The same session scan
-applies to it. A process that both leaves the cgroup and changes session
-(root or not) can escape both checks.
+`user@1000.service`, which its own user manager owns. The lab user's own
+`sudo` grant for `package_scope.py` likewise lets a job process start a
+lab-UID process in a new system scope that outlives logins. The same session
+scan applies to both. A process that both leaves the cgroup and changes
+session (root or not) can escape both checks.
+
+Recovery trusts only the job's own scope: the recorded unit must be
+`putgd-staging-<job>.scope` or `putgd-supervisor-<job>.scope` under
+`/system.slice`. Any other unit or path, including a legacy user-manager
+scope, reads as unknown and keeps `install-active`.
 Tracking is a lifetime fence for the staged command tree, not a security
 boundary against a deliberately privileged migrator.
 
