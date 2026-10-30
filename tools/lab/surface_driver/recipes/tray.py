@@ -113,11 +113,16 @@ def _press(ctx, name, role=None, button='left'):
     return node
 
 
+def _ready(ctx):
+    return ctx.wait(lambda: (s if (s := ctx.call('ui.snapshot')).get('operationsReady') else None),
+                    'resident journal is ready', timeout=30)
+
+
 def _begin(ctx):
+    _ready(ctx)
     ctx.fixture('app-profile')
     ctx.view('ui.show', {'view': 'settings'})
-    snapshot = ctx.call('ui.snapshot')
-    ctx.expect(snapshot.get('operationsReady'), 'resident journal is ready')
+    snapshot = _ready(ctx)
     if not snapshot['diagnostics'].get('trayAvailable'):
         ctx.blocked('Resident reports no desktop tray host', 670)
     return snapshot
