@@ -280,8 +280,21 @@ public:
 protected:
  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize||event->type()==QEvent::Show)apply();return false;}
 private:
- void apply(){const auto margins=field_->layout()->contentsMargins();const int available=qMax(0,field_->width()-margins.left()-margins.right());const bool stacked=!compact_&&stacked_;const auto direction=stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight;if(line_->direction()!=direction)line_->setDirection(direction);auto* captions=line_->itemAt(0)->widget();captions->setMinimumWidth(stacked||compact_?0:gutter_-space(Space::l));captions->setMaximumWidth(stacked||compact_?QWIDGETSIZE_MAX:gutter_-space(Space::l));if(auto* label=qobject_cast<QWidget*>(field_->property("preferenceLabel").value<QObject*>()))label->setMinimumHeight(stacked?0:Ui::scaled(Ui::Metric::control));value_->setMinimumWidth(0);value_->setMaximumWidth(compact_?qMin(width_,available):QWIDGETSIZE_MAX);if(compact_)value_->setMinimumWidth(qMin(width_,available));line_->setStretch(0,compact_?1:0);line_->setStretch(1,compact_?0:1);field_->setProperty("stacked",stacked);// A read-only value sits under its label when stacked, at the row's end inline.
- for(auto* text:value_->findChildren<QLabel*>())if(text->property("preferenceReadoutText").toBool())text->setAlignment((stacked?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);line_->setSpacing(space(stacked?Space::s:Space::l));line_->setAlignment(value_,compact_?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop);}
+ void apply(){
+  const auto margins=field_->layout()->contentsMargins();const int available=qMax(0,field_->width()-margins.left()-margins.right());const bool stacked=!compact_&&stacked_;const auto direction=stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight;if(line_->direction()!=direction)line_->setDirection(direction);
+  auto* captions=line_->itemAt(0)->widget();captions->setMinimumWidth(stacked||compact_?0:gutter_-space(Space::l));captions->setMaximumWidth(stacked||compact_?QWIDGETSIZE_MAX:gutter_-space(Space::l));if(auto* label=qobject_cast<QWidget*>(field_->property("preferenceLabel").value<QObject*>()))label->setMinimumHeight(stacked?0:Ui::scaled(Ui::Metric::control));
+  // Keep constraint updates idempotent: clearing and restoring a shortcut's
+  // minimum width invalidates its layout even when its final width is unchanged.
+  value_->setMinimumWidth(compact_?qMin(width_,available):0);value_->setMaximumWidth(compact_?qMin(width_,available):QWIDGETSIZE_MAX);
+  line_->setStretch(0,compact_?1:0);line_->setStretch(1,compact_?0:1);
+  field_->setProperty("stacked",stacked);
+  // A read-only value sits under its label when stacked, at the row's end inline.
+  for(auto* text:value_->findChildren<QLabel*>())if(text->property("preferenceReadoutText").toBool())text->setAlignment((stacked?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);
+  // Spacing and alignment setters invalidate even for the same value. Family observes
+  // LayoutRequest, so an unconditional write schedules another sizing pass forever.
+  const int spacing=space(stacked?Space::s:Space::l);if(line_->spacing()!=spacing)line_->setSpacing(spacing);
+  const Qt::Alignment alignment=compact_?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop;if(line_->itemAt(1)->alignment()!=alignment)line_->setAlignment(value_,alignment);
+ }
  QWidget* value_;QWidget* field_;QBoxLayout* line_;bool compact_;bool stacked_=false;int width_=0,gutter_=0;
 };
 // Keep half the row for the captions and permit two helper lines before stacking.
