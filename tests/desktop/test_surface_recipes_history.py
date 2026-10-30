@@ -35,6 +35,8 @@ class FakeContext(Context):
         self.clipboard = ''
         self.category_index = 0
         self.window = dict(x=100, y=80, width=1400, height=950, scale=1)
+        self.minimized = False
+        self.closed = False
         self.saved_window = None
         self.preview = False
         self.receipt = False
@@ -105,6 +107,7 @@ class FakeContext(Context):
         if method == 'ui.show':
             if params != {'view': 'history'}:
                 raise AssertionError('invalid ui.show params')
+            self.minimized = self.closed = False
             return {'shown': 'history'}
         if method != 'ui.history':
             raise AssertionError('unexpected setup mutation: ' + method)
@@ -212,6 +215,10 @@ class FakeContext(Context):
         elif control == 'confirmDiscard':
             if self.question == 'clear':
                 self.total = 0
+        elif control == 'windowMinimize':
+            self.minimized = True
+        elif control == 'windowClose':
+            self.closed = True
         elif control == 'windowMaximize':
             if self.saved_window:
                 self.window, self.saved_window = self.saved_window, None
@@ -272,6 +279,11 @@ class FakeContext(Context):
 
     def clipboard_text(self):
         return self.clipboard
+
+    def windows(self, query=None):
+        if self.closed or (self.minimized and not (query or {}).get('include_hidden')):
+            return []
+        return [{'title': 'put.gd', 'states': {'minimized': self.minimized}}]
 
     def geometry(self, window):
         return copy.deepcopy(self.window)
@@ -437,13 +449,17 @@ class HistoryRecipeTests(unittest.TestCase):
 
         history._open(BusyContext())
 
-    def test_catalog_normalization_uses_real_edge_drag_from_profile(self):
+    def test_setup_preserves_live_window_size(self):
         ctx = FakeContext()
-        ctx.profile = {'history_catalog_size': [1440, 960]}
+        original = copy.deepcopy(ctx.window)
         history._open(ctx)
-        self.assertEqual([ctx.window['width'], ctx.window['height']], [1440, 960])
-        self.assertTrue(any(e[0] == 'drag' for e in ctx.events))
-        self.assertTrue({'setup-before-resize', 'setup-after-resize'} <= {f[0] for f in ctx.frames})
+        self.assertEqual(ctx.window, original)
+        self.assertFalse(any(e[0] == 'drag' for e in ctx.events))
+
+    def test_loopback_mutations_allow_local_destination(self):
+        for name in ('active_banner', 'cancel_all', 'delete_remote'):
+            entry = next(r for r in LANE if r.function.__name__ == name)
+            self.assertIn('local', entry.destinations)
 
     def test_no_mutation_calls_used_as_input(self):
         ctx = FakeContext()

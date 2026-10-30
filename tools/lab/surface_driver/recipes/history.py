@@ -56,17 +56,6 @@ def _open(ctx):
     ctx.view('ui.history', {'action': 'closeDetails'})
     ctx.view('ui.history', {'action': 'clearSelection'})
     ctx.wait(lambda: not _state(ctx)['busy'], 'History query settles')
-    target = ctx.profile.get('history_catalog_size')
-    if target:
-        box = ctx.geometry('history')
-        if [box['width'], box['height']] != target:
-            ctx.frame('setup-before-resize', window='history')
-            scale = box.get('scale', 1)
-            start = tuple(round(v * scale) for v in (box['x'] + box['width'] - 1, box['y'] + box['height'] - 1))
-            end = tuple(round(v * scale) for v in (box['x'] + target[0] - 1, box['y'] + target[1] - 1))
-            ctx.drag(start, end)
-            ctx.wait(lambda: [(g := ctx.geometry('history'))['width'], g['height']] == target, 'shell fits current catalog through a real edge drag')
-            ctx.frame('setup-after-resize', window='history')
     ctx.click('historyListMode', window='history')
     ctx.expect(not _state(ctx)['gridMode'], 'known list view')
 
@@ -357,7 +346,7 @@ def retry_upload(ctx):
     _retry(ctx, 'history_retry_local', 'retryOperation', local=True)
 
 
-@recipe('history.active-banner', needs=('history_active_uploads',), destinations=('s3',))
+@recipe('history.active-banner', needs=('history_active_uploads',), destinations=('local', 's3'))
 def active_banner(ctx):
     data = ctx.fixture('history_active_uploads')
     _open(ctx)
@@ -372,7 +361,7 @@ def active_banner(ctx):
     _frame(ctx, 'after', 'history-many-active')
 
 
-@recipe('history.cancel-all-dialog', 'confirm.history-cancel-all', needs=('history_active_uploads',), destinations=('s3',))
+@recipe('history.cancel-all-dialog', 'confirm.history-cancel-all', needs=('history_active_uploads',), destinations=('local', 's3'))
 def cancel_all(ctx):
     ids = ctx.fixture('history_active_uploads')['operation_ids']
     _open(ctx)
@@ -393,10 +382,9 @@ def cancel_all(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('history.delete-remote', 'confirm.history-delete', needs=('history_delete',), destinations=('s3',))
+@recipe('history.delete-remote', 'confirm.history-delete', needs=('history_delete',), destinations=('local', 's3'))
 def delete_remote(ctx):
     row = _row(ctx, 'history_delete')
-    ctx.expect(ctx.destination == 's3', 'deletion recipe uses isolated moto destination')
     original = _result(ctx.call('history.detail', {'id': row['id']}))
     _frame(ctx, 'before')
     ctx.click('deleteHistoryRemote', window='history')
@@ -479,10 +467,9 @@ def edge_resize(ctx):
     ctx.drag(new_edge, edge)
 
 
-@recipe('shell.window-maximize', needs=('history-row', 'history_window'))
+@recipe('shell.window-maximize', needs=('history-row',))
 def maximize(ctx):
     _row(ctx)
-    ctx.fixture('history_window')
     original = ctx.geometry('history')
     _frame(ctx, 'before')
     ctx.click('windowMaximize', window='history')
@@ -492,6 +479,47 @@ def maximize(ctx):
     _frame(ctx, 'maximized')
     ctx.click('windowMaximize', window='history')
     ctx.wait(lambda: ctx.geometry('history') == original, 'Restore returns exact original geometry')
+    _frame(ctx, 'after')
+
+
+def _main_windows(ctx, include_hidden=False):
+    """Inspect only the private family's exact main-window title."""
+    return ctx.windows({'title': r'^put\.gd$', 'include_hidden': include_hidden})
+
+
+@recipe('shell.window-minimize', needs=('history-row',))
+def minimize(ctx):
+    """Minimize with the chrome button and observe the compositor state."""
+    row = _row(ctx)
+    _frame(ctx, 'before')
+    ctx.click('windowMinimize', window='history')
+    try:
+        ctx.wait(lambda: any(w.get('states', {}).get('minimized') for w in _main_windows(ctx, True)),
+                 'window manager confirms minimized shell')
+        ctx.frame('minimized')
+    finally:
+        ctx.view('ui.show', {'view': 'history'})
+    ctx.wait(lambda: any(not w.get('states', {}).get('minimized') for w in _main_windows(ctx)),
+             'resident restores the minimized window')
+    ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
+               'resident and history survive minimize')
+    _frame(ctx, 'after')
+
+
+@recipe('shell.window-close', needs=('history-row',))
+def close_window(ctx):
+    """Close the shell and prove the resident still serves its original row."""
+    row = _row(ctx)
+    _frame(ctx, 'before')
+    ctx.click('windowClose', window='history')
+    try:
+        ctx.wait(lambda: not _main_windows(ctx), 'closed shell has no visible main window')
+        ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
+                   'resident remains available after window Close')
+        ctx.frame('closed')
+    finally:
+        ctx.view('ui.show', {'view': 'history'})
+    ctx.wait(lambda: _main_windows(ctx), 'resident reopens the closed shell')
     _frame(ctx, 'after')
 
 
@@ -536,7 +564,7 @@ def mcp_inspect(ctx):
 # remain functional=blocked until the named setup/oracle exists. Each reason is
 # independently included in the per-ID acceptance table generated from REGISTRY.
 BLOCKED = {
-    'history.list': 'Context has no double-click primitive for the row double-click path; key-enter and multi-select recipes cover the other row navigation paths.',
+    'history.list': 'Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.',
     'history.filters': 'Needs full date/MIME/destination/state fixture matrix and dynamic + Filter menu capture; clear-filters recipe exercises one upload filter only.',
     'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; baseline catalog alone cannot resolve all states.',
     'history.row-menu': 'Needs fresh cancel/retry/local-copy/deletion row variants and dynamic menu inventory; key-menu proves only Copy details, links lane owns link actions.',
@@ -550,8 +578,6 @@ BLOCKED = {
     'shell.app-menu-capture-help': 'Needs capture-help dialog control inventory and close oracle.',
     'shell.app-menu-quit': 'Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.',
     'shell.nav': 'Needs mainNavigation tab hit rectangles and active main.page oracle; ui.viewState currently exposes state/appearance/captureRouting only.',
-    'shell.window-minimize': 'Needs WM minimized-state oracle plus real restore gesture; ui.viewState does not distinguish minimized from visible.',
-    'shell.window-close': 'Needs helper-lifecycle fixture and resident-alive oracle; ui.viewState alone cannot prove close-with-resident behavior.',
     'shell.header-context-menu': 'Needs safe header hit target and custom system menu capture; menu is absent from baseline catalog.',
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
     'shell.command-capture-region': 'Needs capture selector fixture, selection bounds and artifact oracle; must complete/cancel real selector before next recipe.',
@@ -562,13 +588,13 @@ BLOCKED = {
     'shell.command-upload-clipboard': 'Needs independent native clipboard fixture with payload/hash oracle, reused from tray_progress.py.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
-    'shell.command-tooltips': 'Context has no pointer hover primitive; click_at would activate commands rather than reveal tooltips.',
+    'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness (#675).',
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
     'shell.output-summary': 'Needs output-summary popup capture and Settings Capture navigation oracle.',
-    'shell.output-warning': 'Needs no-output configuration fixture and current warning-strip capture.',
+    'shell.output-warning': 'settings-no-output now supplies configuration; current warning-strip controls and Settings Capture navigation still need live shell projection (#675).',
     'shell.action-recovery-banner': 'Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.',
     'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
-    'shell.edit-chooser-failure': 'Needs portal/chooser failure injection fixture, retry inventory and dismissal oracle.',
+    'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
     'shell.first-launch': 'Needs new resident with no configuration under private XDG roots; cannot reset a shared Context resident.',
     'cli.launcher-background': 'Needs stopped-resident fixture, tray-absent variant and lifecycle reset; Context.cli currently documents putgd ARGS only.',
     'cli.action-invoke': 'Needs native source and six action completion fixtures; capture/record selectors cannot be left active.',
