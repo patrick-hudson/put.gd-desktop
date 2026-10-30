@@ -2,7 +2,7 @@
 import json
 import shlex
 
-from tools.lab.surface_driver.api import RecipeBlocked
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 
 
 # SD_SETTINGS_CONTROLS: inspect only the verified helper. The generic desktop
@@ -61,6 +61,20 @@ def controls(ctx, query, pid):
     return json.loads(reply['stdout'])
 
 
+def live_geometry(ctx):
+    def ready():
+        try:
+            return ctx.geometry('settings')
+        except RecipeBlocked:
+            return None
+    try:
+        return ctx.wait(ready, 'owned Settings window has live geometry')
+    except RecipeFailed as error:
+        if 'deadline exceeded' in str(error):
+            raise
+        ctx.blocked('Owned Settings window geometry did not become ready; input withheld.', issue=699)
+
+
 def observe(ctx, geometry, *, foreground=False):
     key = 'foreground_script' if foreground else 'input_state_script'
     script = ctx.profile.get('settings', {}).get(key)
@@ -78,7 +92,7 @@ def observe(ctx, geometry, *, foreground=False):
 
 def prepare(ctx):
     script = ctx.profile.get('settings', {}).get('prepare_script')
-    geometry = ctx.geometry('settings')
+    geometry = live_geometry(ctx)
     if script:
         reply = ctx.shell('settings_window=' + shlex.quote(str(geometry['window_id'])) + '\n' + script)
         ctx.expect(reply['returncode'] == 0, 'profile prepared Settings window and accessibility')
@@ -86,7 +100,7 @@ def prepare(ctx):
 
 
 def ensure_accessible(ctx):
-    geometry = ctx.geometry('settings')
+    geometry = live_geometry(ctx)
     owner = observe(ctx, geometry, foreground=True)
     query = ctx.profile['settings']['live_controls']['settingsSection0']
     if any(row.get('pid') == owner['pid'] for row in controls(ctx, query, owner['pid'])):
@@ -104,7 +118,7 @@ def ensure_accessible(ctx):
     ctx.view('ui.show', {'view': 'settings'})
     def ready():
         try:
-            return ctx.geometry('settings')
+            return live_geometry(ctx)
         except RecipeBlocked:
             return None
     ctx.wait(ready, 'reopened private Settings window is visible')
@@ -118,11 +132,11 @@ def click(ctx, control):
     query = options.get('live_controls', {}).get(control)
     if not query:
         ctx.blocked('Settings live control query missing: ' + control)
-    geometry = ctx.geometry('settings')
+    geometry = live_geometry(ctx)
     owner = observe(ctx, geometry, foreground=True)
     top, bottom = options['viewport_insets']
     for attempt in range(12):
-        geometry = ctx.geometry('settings')
+        geometry = live_geometry(ctx)
         rows = controls(ctx, query, owner['pid'])
         if any(row.get('pid') != owner['pid'] for row in rows):
             ctx.blocked('Settings live control is missing or ambiguous: ' + control)
@@ -169,7 +183,7 @@ def click(ctx, control):
 
 def collapse(ctx, control):
     query = ctx.profile['settings']['live_controls'][control]
-    owner = observe(ctx, ctx.geometry('settings'), foreground=True)
+    owner = observe(ctx, live_geometry(ctx), foreground=True)
     def checked():
         rows = controls(ctx, query, owner['pid'])
         ctx.expect(len(rows) == 1, 'one owned Settings disclosure: ' + control)

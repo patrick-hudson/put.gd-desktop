@@ -390,6 +390,20 @@ class Contracts(unittest.TestCase):
         self.assertEqual(scrolled, [(1536, 520, -3)])
         self.assertEqual(ctx.focus, 'archiveRoot')
 
+    def test_transient_geometry_gap_is_observed_before_input(self):
+        ctx = Fake()
+        geometry, calls = ctx.geometry, []
+        def remapping(window):
+            calls.append(window)
+            if len(calls) == 1:
+                raise RecipeBlocked('window is remapping')
+            return geometry(window)
+        ctx.geometry = remapping
+        from tools.lab.surface_driver.recipes.settings_input import click
+        click(ctx, 'archiveRoot')
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertEqual(ctx.focus, 'archiveRoot')
+
     def test_zero_height_control_cannot_receive_a_click(self):
         ctx = Fake()
         ctx.accessible = lambda query: [{'pid': 123, 'rect': [700, 240, 180, 0]}]
