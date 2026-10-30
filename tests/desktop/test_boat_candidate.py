@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import tarfile
+import signal
 import unittest
 from unittest.mock import patch
 
@@ -127,27 +129,14 @@ class CandidateContracts(unittest.TestCase):
         with self.assertRaises(ValueError):
             candidate.step(job, 'missing')
 
-    def test_fixture_collection_exports_package_and_helper_without_cpack_scratch(self):
+    def test_fixture_is_unmistakably_test_only(self):
         import yaml
         packages = yaml.safe_load((ROOT / '.github/workflows/package.yml').read_text())
         _, script, _ = candidate.recipe('lab-fixture', packages, {})
-        staging = script.split('-B build/lab-packages\n', 1)[1]
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            packages = root / 'build/lab-packages'
-            packages.mkdir(parents=True)
-            (packages / 'candidate.deb').write_bytes(b'fixture package')
-            (packages / '_CPack_Packages').mkdir()
-            (packages / '_CPack_Packages/scratch').write_text('excluded')
-            binary = root / 'build/release/packaging/linux/putgd-desktop-fixture'
-            binary.parent.mkdir(parents=True)
-            binary.write_bytes(b'fixture binary')
-            output = root / 'output'
-            output.mkdir()
-            subprocess.run(['bash', '-eu', '-c', staging.replace('/out/', str(output) + '/')],
-                           cwd=root, check=True)
-            self.assertEqual(sorted(p.name for p in output.iterdir()), ['candidate.deb', 'putgd-desktop-fixture'])
-            self.assertEqual((output / 'putgd-desktop-fixture').read_bytes(), b'fixture binary')
+        self.assertIn('CPACK_DEBIAN_PACKAGE_NAME=putgd-lab-fixture', script)
+        self.assertIn('-DPUTGD_PACKAGE_TARGET= -DPUTGD_UPDATE_CHECK=OFF', script)
+        self.assertIn('dpkg-deb -f', script)
+        self.assertIn('native.py audit intentionally not run', ' '.join(candidate.ci_differences('lab-fixture')))
 
     def test_inline_ci_steps_cannot_join_into_one_shell_token(self):
         job = {'steps': [{'name': 'proton', 'run': 'python3 provision.py'}]}
@@ -174,7 +163,11 @@ class CandidateContracts(unittest.TestCase):
                 if target == 'appimage':
                     self.assertLess(script.index('LOG_CFG=$PWD/tools/ci/aqt-logging.ini'),
                                     script.index('/opt/aqt/bin/aqt install-qt'))
-                    self.assertIn('RUNNER_TEMP=/out/aqt', script)
+                    self.assertIn('RUNNER_TEMP=$runner_state', script)
+                    self.assertIn('tools/ci/hosted_apt_mirrors.py', script)
+                    self.assertIn('QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml', script)
+                self.assertNotIn('/out/summary', script)
+                self.assertNotIn('/out/aqt', script)
 
     def test_duplicate_artifacts_are_rejected_before_provider_calls(self):
         with patch.object(candidate, 'boat') as boat, contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -201,8 +194,10 @@ class CandidateContracts(unittest.TestCase):
                  patch.object(candidate, 'load_workflows', return_value=({}, {})), \
                  patch.object(candidate, 'recipe', return_value=('image', 'script', 'release')), \
                  patch.object(candidate, 'build_worker', side_effect=worker), \
-                 patch.object(candidate.signal, 'signal'), contextlib.redirect_stdout(io.StringIO()):
+                 patch.object(candidate.signal, 'signal'), \
+                 patch('builtins.print', side_effect=BrokenPipeError('closed pipe')) as printer:
                 code = candidate.main([SHA, '--output', str(output), '--artifact', 'appimage', '--artifact', 'fedora44'])
+            self.assertTrue(printer.called)
             manifest = json.loads((output / 'manifest.json').read_text())
             self.assertEqual(code, 0)
             self.assertEqual(manifest['commit'], SHA)
@@ -216,56 +211,147 @@ class CandidateContracts(unittest.TestCase):
                 digest, path = line.split('  ')
                 self.assertEqual(candidate.sha256(output / path), digest)
 
-    def test_collection_has_its_own_reserved_deadline(self):
-        receipt = {}
-        with patch.object(candidate, 'run', return_value='') as run:
-            candidate.collect_artifacts(['scp', 'source', 'destination'], receipt, None)
-        run.assert_called_once_with(['scp', 'source', 'destination'], timeout=150)
-        self.assertIn('collectionSeconds', receipt)
+    def make_archive(self, path, entries):
+        with tarfile.open(path, 'w') as stream:
+            for name, kind in entries:
+                member = tarfile.TarInfo(name)
+                if kind == 'file':
+                    member.size = 4
+                    stream.addfile(member, io.BytesIO(b'data'))
+                else:
+                    member.type = kind
+                    member.linkname = '/etc/passwd'
+                    stream.addfile(member)
 
-    def test_collection_keeps_unused_build_budget_but_never_loses_its_reserve(self):
-        for remaining, expected in ((1, 150), (600, 600)):
-            with self.subTest(remaining=remaining), patch.object(candidate, 'run', return_value='') as run:
-                candidate.collect_artifacts(['scp'], {}, None, timeout=remaining)
-            run.assert_called_once_with(['scp'], timeout=expected)
+    def test_archive_restores_nested_catalog_after_hash_verification(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = root / 'artifact.tar'
+            self.make_archive(archive, [('ui-catalog/window.png', 'file')])
+            candidate.restore_archive(archive, root / 'artifacts', candidate.sha256(archive))
+            self.assertEqual((root / 'artifacts/ui-catalog/window.png').read_bytes(), b'data')
+            with self.assertRaisesRegex(ValueError, 'SHA-256'):
+                candidate.restore_archive(archive, root / 'bad', 'a' * 64)
+            self.assertFalse((root / 'bad').exists())
 
-    def test_build_failure_remains_primary_when_collection_also_fails(self):
+    def test_archive_rejects_traversal_links_devices_and_duplicates_before_extracting(self):
+        bad_entries = [('../escape', 'file'), ('/absolute', 'file'),
+                       ('symlink', tarfile.SYMTYPE), ('hardlink', tarfile.LNKTYPE),
+                       ('device', tarfile.CHRTYPE), ('pipe', tarfile.FIFOTYPE)]
+        for entry in bad_entries + [('safe', 'file')]:
+            with self.subTest(entry=entry), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive = root / 'artifact.tar'
+                self.make_archive(archive, [('safe', 'file'), entry])
+                with self.assertRaises(ValueError):
+                    candidate.restore_archive(archive, root / 'out', candidate.sha256(archive))
+                self.assertFalse((root / 'out').exists())
+
+    def test_collection_uses_one_archive_and_keeps_reserve_and_failure_evidence(self):
+        for budget in (1, 600):
+            with self.subTest(budget=budget), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive = root / 'artifacts.tar'
+                self.make_archive(archive, [('catalog/window.png', 'file')])
+                digest = candidate.sha256(archive)
+                receipt = {}
+                with patch.object(candidate, 'run', side_effect=[digest + '  artifacts.tar', '']) as run:
+                    candidate.collect_artifacts(['ssh'], ['-F', '/dev/null'], 'host', '22', root, receipt, None, timeout=budget)
+                self.assertEqual(run.call_count, 2)
+                self.assertIn('tar -cf', run.call_args_list[0].args[0][-1])
+                scp = run.call_args_list[1].args[0]
+                self.assertEqual(scp[0], 'scp')
+                self.assertNotIn('-r', scp)
+                self.assertAlmostEqual(run.call_args_list[0].kwargs['timeout'], max(150, budget), delta=1)
+                self.assertEqual(receipt['transport']['sha256'], digest)
+                self.assertIn('collectionSeconds', receipt)
         receipt = {}
         with patch.object(candidate, 'run', side_effect=TimeoutError('copy failed')), \
              self.assertRaisesRegex(RuntimeError, 'build failed'):
-            candidate.collect_artifacts(['scp'], receipt, RuntimeError('build failed'))
-        self.assertEqual(receipt['collectionError'], 'copy failed')
-        self.assertIn('collectionSeconds', receipt)
-
-    def test_collection_failure_after_successful_build_is_not_a_pass(self):
-        receipt = {}
-        with patch.object(candidate, 'run', side_effect=TimeoutError('copy failed')), \
-             self.assertRaisesRegex(TimeoutError, 'copy failed'):
-            candidate.collect_artifacts(['scp'], receipt, None)
+            candidate.collect_artifacts([], [], 'host', '22', Path('/unused'), receipt, RuntimeError('build failed'))
         self.assertEqual(receipt['collectionError'], 'copy failed')
 
-    def test_failed_creation_after_created_event_still_deletes_owned_worker(self):
+    def test_ssh_is_independent_of_user_config_and_disables_forwarding(self):
+        options = candidate.ssh_options(Path('/private/pin'))
+        self.assertEqual(options[:2], ['-F', '/dev/null'])
+        for option in ('ForwardAgent=no', 'ClearAllForwardings=yes', 'ForwardX11=no',
+                       'ControlPath=none', 'ProxyCommand=none', 'GlobalKnownHostsFile=/dev/null',
+                       'StrictHostKeyChecking=yes', 'UserKnownHostsFile=/private/pin'):
+            self.assertIn(option, options)
+
+    def test_children_are_in_a_new_session_and_cancel_kills_them(self):
+        with patch.object(candidate.subprocess, 'Popen') as popen:
+            process = popen.return_value
+            process.communicate.side_effect = [subprocess.TimeoutExpired('boat', 1), ('', '')]
+            candidate.CANCEL.set()
+            try:
+                with self.assertRaises(TimeoutError):
+                    candidate.run(['boat'])
+            finally:
+                candidate.CANCEL.clear()
+            self.assertTrue(popen.call_args.kwargs['start_new_session'])
+            process.kill.assert_called_once()
+
+    def test_cleanup_polls_all_states_and_keeps_pending_request_distinct_from_absence(self):
+        name = candidate.worker_name(SHA, 'appimage')
+        unrelated = {'id': 'other', 'name': 'another-worker'}
+        owned = {'id': 'bx_owned', 'name': name, 'state': 'stopped'}
+        def boat(*args, **kwargs):
+            self.assertTrue(kwargs['cleanup'])
+            if args[0] == 'delete':
+                self.assertEqual(args, ('delete', 'bx_owned', '--yes'))
+                return {'operation': {'id': 'op', 'status': 'pending'}}
+            self.assertEqual(args, ('list', '--all'))
+            return {'sandboxes': listings.pop(0)}
+        listings = [[owned, unrelated], [owned, unrelated], [unrelated]]
+        candidate.CANCEL.set()
+        try:
+            with patch.object(candidate, 'boat', side_effect=boat), patch.object(candidate.time, 'sleep'):
+                result = candidate.cleanup_workers(name)
+        finally:
+            candidate.CANCEL.clear()
+        self.assertTrue(result['verified'])
+        self.assertEqual(result['finalState'], 'absent')
+        self.assertEqual(result['requests'][0]['operation']['status'], 'pending')
+        self.assertEqual(result['deletedIds'], ['bx_owned'])
+
+    def test_cleanup_never_claims_success_when_stopped_sandbox_remains(self):
+        with patch.object(candidate, 'all_sandboxes', return_value=[{'id': 'owned', 'name': 'exact'}]), \
+             patch.object(candidate, 'boat', return_value={'operation': {'status': 'pending'}}), \
+             self.assertRaisesRegex(RuntimeError, 'not complete'):
+            candidate.cleanup_workers('exact', timeout=0)
+
+    def test_creation_without_an_id_still_recovers_by_fixed_name(self):
         with tempfile.TemporaryDirectory() as temporary:
             def create(argv, **kwargs):
-                kwargs['log'].write('{"event":"created","id":"bx_owned"}\n')
-                kwargs['log'].flush()
-                raise RuntimeError('startup failed')
-            def boat(*args, **kwargs):
-                if args[0] == 'delete':
-                    self.assertEqual(args[1], 'bx_owned')
-                    return {'operation': {'id': 'bdop_owned', 'targetId': 'bx_owned',
-                                          'kind': 'sandbox', 'status': 'pending', 'stage': 'removing'}}
-                self.assertEqual(args, ('list',))
-                return {'sandboxes': [{'id': 'bx_unrelated'}]}
+                raise TimeoutError('interrupted before first ID')
+            cleanup = {'verified': True, 'finalState': 'absent', 'deletedIds': ['bx_orphan']}
             args = argparse.Namespace(commit=SHA, type='large', ttl=10800)
-            with patch.object(candidate, 'run', side_effect=create), patch.object(candidate, 'boat', side_effect=boat), contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(candidate, 'run', side_effect=create), \
+                 patch.object(candidate, 'cleanup_workers', side_effect=[{'verified': True}, cleanup]) as cleaner:
                 result = candidate.build_worker('appimage', args, Path(temporary), ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
             self.assertTrue(result['cleanupVerified'])
-            self.assertEqual(result['sandboxId'], 'bx_owned')
-            self.assertEqual(result['deletion']['id'], 'bdop_owned')
-            self.assertEqual(result['deletion']['targetId'], 'bx_owned')
-            self.assertEqual(result['deletion']['status'], 'pending')
+            self.assertEqual(result['cleanup']['deletedIds'], ['bx_orphan'])
+            self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage', None))
+            self.assertEqual(cleaner.call_args.kwargs['recovery_seconds'], 10)
+
+    def test_cleanup_mode_requires_no_recipes_capacity_or_new_workers_and_handles_all_signals(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            with patch.object(candidate, 'cleanup_workers', return_value={'verified': True}) as cleaner, \
+                 patch.object(candidate, 'load_workflows') as load, \
+                 patch.object(candidate.signal, 'signal') as signals:
+                code = candidate.main(['--cleanup', SHA, '--output', str(Path(temporary) / 'out')])
+            self.assertEqual(code, 0)
+            self.assertEqual(cleaner.call_count, 7)
+            load.assert_not_called()
+            self.assertEqual({call.args[0] for call in signals.call_args_list},
+                             {signal.SIGINT, signal.SIGTERM, signal.SIGHUP})
+            for call in signals.call_args_list:
+                call.args[1]()
+                call.args[1]()  # second Ctrl-C cannot raise during cleanup
+            self.assertTrue(candidate.CANCEL.is_set())
+            candidate.CANCEL.clear()
 
 
 if __name__ == '__main__':
