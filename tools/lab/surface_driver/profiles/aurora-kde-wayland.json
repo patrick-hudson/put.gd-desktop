@@ -126,7 +126,7 @@
     }
   },
   "evidence": {
-    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; browser chrome is masked from live window geometry; window-list panels only when a window title carries a link or registered value.",
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
     "notification_areas": [
       {
         "anchor": "bottom-right",
@@ -143,6 +143,11 @@
     "browser": {
       "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
       "chrome_height": 170
-    }
+    },
+    "shell_processes": [
+      "plasmashell",
+      "kwin_wayland",
+      "kwin_x11"
+    ]
   }
 }

@@ -953,15 +953,24 @@ asyncio.run(main())
                         regions.append(self._to_head(other['rect'], head, geometry))
                 regions += self._secret_regions(head, role, geometry)
             else:
+                # Declared desktop: the shell (panels, tray), owned windows and
+                # browser windows may stay; every other non-owned window is
+                # masked except where an allowed window is stacked above it.
                 browser = config.get('browser', {})
-                for other in windows:
-                    if other.get('owned') or other.get('minimized'):
-                        continue
-                    x, y, w, h = other['rect']
-                    if browser.get('title') and re.search(browser['title'], other.get('title') or ''):
+                shell = set(config.get('shell_processes', []))
+                shown = [w for w in windows if not w.get('minimized')]
+                is_browser = lambda w: bool(browser.get('title') and re.search(browser['title'], w.get('title') or ''))
+                allowed = [w for w in shown if w.get('owned') or is_browser(w)]
+                for other in shown:
+                    if is_browser(other) and not other.get('owned'):
+                        x, y, w, h = other['rect']
                         regions.append(self._to_head([x, y, w, min(h, browser.get('chrome_height', 160))], head))
-                    elif self._leaks(other.get('title')):
-                        regions.append(self._to_head(other['rect'], head))
+                    elif other.get('owned') or other.get('process') in shell:
+                        continue
+                    else:
+                        above = [a['rect'] for a in allowed if a.get('stack') is not None and other.get('stack') is not None
+                                 and a['stack'] > other['stack']]
+                        regions += [self._to_head(piece, head) for piece in subtract(other['rect'], above)]
                 if any(self._leaks(other.get('title')) for other in windows):
                     regions += self._areas(config.get('window_list_panels', [{'anchor': 'bottom', 'height': 1}]), image, head)
                 regions += self._secret_regions(head)
@@ -1033,6 +1042,28 @@ asyncio.run(main())
 
     def review(self,reason):
         self.reviews.append(self.evidence.redactor.text(reason))
+
+
+def subtract(box, holes):
+    """Axis-aligned rectangle minus rectangles: the uncovered pieces of box."""
+    pieces = [list(box)]
+    for hx, hy, hw, hh in holes:
+        remaining = []
+        for x, y, w, h in pieces:
+            if hx >= x+w or hx+hw <= x or hy >= y+h or hy+hh <= y:
+                remaining.append([x, y, w, h])
+                continue
+            top, bottom = max(y, hy), min(y+h, hy+hh)
+            if hy > y:
+                remaining.append([x, y, w, hy-y])
+            if hy+hh < y+h:
+                remaining.append([x, hy+hh, w, y+h-hy-hh])
+            if hx > x:
+                remaining.append([x, top, hx-x, bottom-top])
+            if hx+hw < x+w:
+                remaining.append([hx+hw, top, x+w-hx-hw, bottom-top])
+        pieces = remaining
+    return [piece for piece in pieces if piece[2] > 0 and piece[3] > 0]
 
 
 # Admission checks that frames still pass through the live evidence policy.

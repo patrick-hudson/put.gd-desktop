@@ -1187,6 +1187,14 @@ def foreground(query):
     raise RuntimeError('Wayland compositor focus/stacking witness unavailable; configure focus.compositor_script')
 
 
+def process_name(pid):
+    try:
+        with open('/proc/%d/comm' % int(pid)) as stream:
+            return stream.read().strip()
+    except (OSError, TypeError, ValueError):
+        return None
+
+
 def layout(query):
     """Every visible desktop window: frame rectangle, pid, ownership, title, stacking.
 
@@ -1209,13 +1217,13 @@ def layout(query):
             if len(chain) == 1 and w['window_id'] not in rank:
                 continue  # the root window itself (xdotool search matches it)
             top = chain[-2] if len(chain) > 1 else chain[-1]
-            rows.append({'id': w['window_id'], 'title': w['name'], 'pid': w['pid'],
+            rows.append({'id': w['window_id'], 'title': w['name'], 'pid': w['pid'], 'process': process_name(w['pid']),
                          'owned': bool(w['pid'] and owned(w['pid'])),
                          'rect': [frame['x'], frame['y'], frame['width'], frame['height']],
                          'stack': rank.get(top), 'minimized': w['states']['minimized']})
         return {'windows': rows, 'coordinate_space': 'framebuffer'}
     for w in compositor_windows(query.get('compositor'))['windows']:
-        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'),
+        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'), 'process': process_name(w.get('pid')),
                      'owned': bool(w.get('pid') and owned(w['pid'])), 'rect': list(w['frame']),
                      'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden'))})
     return {'windows': rows, 'coordinate_space': 'logical'}

@@ -158,6 +158,31 @@ class F1OwnedWindowOnly(Base):
         self.assertEqual(image.getpixel((5, 78)), (0, 0, 0))      # window list shows a leaking title
         self.assertEqual(image.getpixel((5, 5)), (255, 255, 255))
 
+    def test_declared_desktop_masks_foreign_windows_except_under_allowed_ones(self):
+        # A foreign app window carrying links (the GNOME live case), partly
+        # under an owned window; the shell's own window and the desktop stay.
+        ctx = self.context(evidence=dict(EVIDENCE, shell_processes=['gnome-shell']))
+        ctx.sensitive(SHARE)
+        ctx._probe = FakeDesktop([
+            {'id': '5', 'title': '', 'pid': 3, 'process': 'gnome-shell', 'owned': False, 'rect': [0, 0, 120, 8], 'stack': 9},
+            {'id': '20', 'title': 'sd726 foreign window', 'pid': 99, 'process': 'python3', 'owned': False,
+             'rect': [10, 20, 80, 40], 'stack': 1},
+            owned_window((50, 30, 60, 40), stack=2)])
+        frame = ctx.frame('desktop', desktop_safe='synthetic desktop')
+        image = self.pixels(ctx, frame)
+        self.assertEqual(image.getpixel((20, 30)), (0, 0, 0))          # foreign window masked
+        self.assertEqual(image.getpixel((60, 50)), (255, 255, 255))    # owned window above it kept
+        self.assertEqual(image.getpixel((40, 4)), (255, 255, 255))     # shell-drawn top bar kept
+        self.assertEqual(image.getpixel((5, 70)), (255, 255, 255))     # desktop background kept
+
+    def test_rectangle_subtraction(self):
+        from tools.lab.surface_driver.context import subtract
+        area = lambda pieces: sum(w*h for _, _, w, h in pieces)
+        self.assertEqual(subtract([0, 0, 10, 10], []), [[0, 0, 10, 10]])
+        self.assertEqual(area(subtract([0, 0, 10, 10], [[2, 2, 3, 3]])), 91)
+        self.assertEqual(subtract([0, 0, 10, 10], [[-5, -5, 30, 30]]), [])
+        self.assertEqual(area(subtract([0, 0, 10, 10], [[5, 0, 10, 10], [0, 5, 10, 10]])), 25)
+
     def test_ocr_matching_normalizes_whitespace_and_glyphs(self):
         # Tesseract split the link and read 5 as S and 0 as O (validator frames).
         self.assertIn('url', ocr_detected('Link copied https: //put.gd/ Fk4Rw8Lq2Zn7Hc5T.png'))
