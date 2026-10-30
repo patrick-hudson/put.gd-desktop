@@ -313,7 +313,7 @@ def archive_root(ctx):
         saved(ctx, 'archive.root', original, 1)
 
 
-@recipe('capture.category-folders')
+@recipe('capture.category-folders', timeout=240)
 def category_folders(ctx):
     opened(ctx, 1)
     original = get(ctx)['document']['archive']['folders']
