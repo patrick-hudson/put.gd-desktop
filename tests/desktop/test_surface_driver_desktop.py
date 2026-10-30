@@ -164,5 +164,55 @@ class WithheldInput(unittest.TestCase):
         self.assertEqual(ctx.target.sent,[])
 
 
+def notify(sender,serial,app='put.gd',summary='Done'):
+    return (f'method call time=1.0 sender={sender} -> destination=:1.10 serial={serial} path=/org/freedesktop/Notifications; '
+            f'interface=org.freedesktop.Notifications; member=Notify\n   string "{app}"\n   uint32 0\n   string "putgd"\n'
+            f'   string "{summary}"\n   string "Body"\n')
+
+
+def reply(destination,serial,identity):
+    return f'method return time=1.1 sender=:1.10 -> destination={destination} serial=90 reply_serial={serial}\n   uint32 {identity}\n'
+
+
+def signal(member,identity,sender=':1.10'):
+    return (f'signal time=1.2 sender={sender} -> destination=(null destination) serial=91 path=/org/freedesktop/Notifications; '
+            f'interface=org.freedesktop.Notifications; member={member}\n   uint32 {identity}\n   string "default"\n')
+
+
+class NotificationPrivacy(unittest.TestCase):
+    def setUp(self):
+        self.filter=probe.NotificationFilter(':1.10',lambda sender:sender==':1.42')
+
+    def test_only_private_family_traffic_is_kept(self):
+        kept=[b for b in (notify(':1.42',7),reply(':1.42',7,5),signal('ActionInvoked',5),signal('NotificationClosed',5))
+              if self.filter.keep(b)]
+        self.assertEqual(len(kept),4)
+
+    def test_other_applications_never_reach_the_log(self):
+        # Another client's Notify (even if it calls itself put.gd), its reply,
+        # and the server's broadcast signals for its ID are all dropped.
+        for block in (notify(':1.77',3),notify(':1.77',4,app='Software Updater'),reply(':1.77',3,9),
+                      signal('ActionInvoked',9),signal('NotificationClosed',9),
+                      reply(':1.42',99,6),signal('ActionInvoked',5,sender=':1.55')):
+            self.assertFalse(self.filter.keep(block),block)
+
+    def test_closed_ids_stop_matching(self):
+        self.filter.keep(notify(':1.42',7));self.filter.keep(reply(':1.42',7,5))
+        self.assertTrue(self.filter.keep(signal('NotificationClosed',5)))
+        self.assertFalse(self.filter.keep(signal('ActionInvoked',5)))
+
+    def test_parsed_log_still_correlates(self):
+        from tools.lab.surface_driver.context import parse_notifications
+        text=''.join(b for b in (notify(':1.42',7),reply(':1.42',7,5),signal('ActionInvoked',5)) if self.filter.keep(b))
+        rows=parse_notifications(text)
+        self.assertEqual([(r['id'],r['summary'],[e['action'] for e in r['action_events']]) for r in rows],[(5,'Done',['default'])])
+
+    def test_reader_reports_a_dead_monitor(self):
+        with tempfile.NamedTemporaryFile() as log:
+            self.assertFalse(probe.notification_log({'log':log.name,'pid':2**22+7})['alive'])
+            import os
+            self.assertTrue(probe.notification_log({'log':log.name,'pid':os.getpid()})['alive'])
+
+
 if __name__=='__main__':
     unittest.main()
