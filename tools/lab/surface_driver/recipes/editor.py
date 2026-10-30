@@ -452,13 +452,17 @@ def mouse_pan(ctx):
         _frame(ctx, 'after', '26-editor-selected')
 
 
-def _discard_ready(ctx):
+def _mapped_window(ctx, role, description):
     def mapped():
         try:
-            return ctx.geometry('editorDiscard')
+            return ctx.geometry(role)
         except RecipeBlocked:
             return None
-    ctx.wait(mapped, 'discard confirmation mapped by the window manager')
+    return ctx.wait(mapped, description)
+
+
+def _discard_ready(ctx):
+    _mapped_window(ctx, 'editorDiscard', 'discard confirmation mapped by the window manager')
     ctx.focus('editorDiscard', raise_window=False)
 
 
@@ -839,7 +843,7 @@ def window_chrome(ctx):
             return state.get('minimized') or state.get('iconified')
         ctx.wait(minimized,'minimize hides live editor window')
         ctx.call('editor.raise',{'id':op})
-        ctx.wait(lambda: ctx.geometry('editor'),'raise restores minimized editor')
+        _mapped_window(ctx, 'editor', 'raise restores minimized editor')
         ctx.click('placeMark',window='editor')
         ctx.click('windowClose',window='editor')
         ctx.expect(_inspect(ctx,op)['view']['discardConfirmation']['open'],'window Close asks before discarding')

@@ -24,6 +24,12 @@
     "textFont": [
       "Font"
     ],
+    "blurStrengthValue": [
+      "Blur radius"
+    ],
+    "textSize": [
+      "Text size in image pixels"
+    ],
     "colorSwatchRed": [
       "Color Red"
     ],
