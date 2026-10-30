@@ -1,0 +1,229 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11-probes-v2",
+    "package": "deb",
+    "destination": "local",
+    "build": "e003bc7983e0",
+    "placement_details": {
+      "boat_sandbox_id": "bx_wj5ckzft",
+      "run_id": "82f1b682-7f67-4001-905c-4ab550f4153d",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/editor/work/lab-runs/c4",
+      "session_root": "/tmp/sd-c6d53050",
+      "socket": "/tmp/sd-c6d53050/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2461",
+      "commitCount": 2461,
+      "dirty": false,
+      "gitCommit": "e003bc7983e0a567611121cda65fc1670395bebf",
+      "gitTree": "10d9553fe0bdcf7abefde2c238c71e8eed099ea2",
+      "packageVersion": "26.1030.2461~dev+ge003bc7983e0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2461-dev+ge003bc7983e0"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.keyboard-help",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3c4/receipt.json",
+      "note": "operationId=5c0730cf-fcba-410b-8a9e-372d0f5389d6; editor operationId=5c0730cf-fcba-410b-8a9e-372d0f5389d6",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c4/frames/editor.keyboard_help/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.630307, tolerance=0.025): actual=/home/user/e3c4/frames/editor.keyboard_help/02-geometry-expanded.png reference=/home/user/editor-catalog/26h-editor-geometry-expanded.png; catalog mismatch (distance=0.626657, tolerance=0.025): actual=/home/user/e3c4/frames/editor.keyboard_help/03-help.png reference=/home/user/editor-catalog/26d-editor-keyboard-help.png; catalog mismatch (distance=0.630540, tolerance=0.025): actual=/home/user/e3c4/frames/editor.keyboard_help/04-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.keyboard_help/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.keyboard_help/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "geometry-expanded",
+          "path": "frames/editor.keyboard_help/02-geometry-expanded.png",
+          "window": "editor",
+          "reference": "26h-editor-geometry-expanded",
+          "distance": 0.6303072574788577,
+          "tolerance": 0.025
+        },
+        {
+          "label": "help",
+          "path": "frames/editor.keyboard_help/03-help.png",
+          "window": "editor",
+          "reference": "26d-editor-keyboard-help",
+          "distance": 0.626656504322159,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.keyboard_help/04-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6305399793848244,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.keyboard_help/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.keyboard_help",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T06:15:13Z"
+    },
+    {
+      "interaction": "editor.destination",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3c4/receipt.json",
+      "issue": 663,
+      "note": "operationId=37cb0131-c93a-44fe-bb4c-b3f2f9ce5961; editor operationId=37cb0131-c93a-44fe-bb4c-b3f2f9ce5961; Editor control Save to the local archive needs one owned enabled ('label',) node, without tooltip duplicates",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c4/frames/editor.destination/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.destination/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.destination/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.destination/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.destination",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T06:15:24Z"
+    },
+    {
+      "interaction": "editor.save-feedback",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3c4/receipt.json",
+      "note": "operationId=1aabe43c-f33b-4c6d-a65e-0cf09b89e2f7; editor operationId=1aabe43c-f33b-4c6d-a65e-0cf09b89e2f7; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c4/frames/editor.save_feedback/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.636658, tolerance=0.025): actual=/home/user/e3c4/frames/editor.save_feedback/02-saved.png reference=/home/user/editor-catalog/27-editor-saved.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "saved",
+          "path": "frames/editor.save_feedback/02-saved.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.6366576686110526,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_feedback/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_feedback/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_feedback",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T06:15:38Z"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+putgd@put.gd
+  Name: put.gd native capture
+  Description: Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.
+  Path: /home/lab/.local/share/gnome-shell/extensions/putgd@put.gd
+  URL: https://put.gd
+  Version: 15
+  Enabled: Yes
+  State: ACTIVE
+putgd-lab-witness@put.gd
+  Name: put.gd lab compositor witness
+  Description: Lab-only, for disposable guests: window geometry, focus, stacking, stage hit-tests and explicit activation for the surface driver. Never ship or install on a real desktop.
+  Path: /home/lab/.local/share/gnome-shell/extensions/putgd-lab-witness@put.gd
+  Version: 2
+  Enabled: Yes
+  State: ACTIVE

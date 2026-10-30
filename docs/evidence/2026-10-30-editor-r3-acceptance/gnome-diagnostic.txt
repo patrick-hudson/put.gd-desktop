@@ -1,0 +1,9 @@
+    PID    PPID     ELAPSED COMMAND         COMMAND
+   3645       1       08:29 python3         python3 /tmp/sd-64f808ef/clipboard-keeper.py /tmp/sd-64f808ef/clipboard-state
+  27006   27002       02:21 apport-gtk      /usr/bin/python3 /usr/share/apport/apport-gtk
+crash-file _usr_bin_gjs-console.1000.crash
+ProblemType: Crash
+Date: Fri Oct 30 01:28:06 2026
+ExecutablePath: /usr/bin/gjs-console
+Signal: 5
+

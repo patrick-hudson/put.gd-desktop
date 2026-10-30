@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11-probes-v2",
+    "package": "deb",
+    "destination": "local",
+    "build": "e003bc7983e0",
+    "placement_details": {
+      "boat_sandbox_id": "bx_wj5ckzft",
+      "run_id": "d0270029-7c3b-4afe-b89f-d1d37412d12f",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/editor/work/lab-runs/c5",
+      "session_root": "/tmp/sd-d6f184ab",
+      "socket": "/tmp/sd-d6f184ab/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2461",
+      "commitCount": 2461,
+      "dirty": false,
+      "gitCommit": "e003bc7983e0a567611121cda65fc1670395bebf",
+      "gitTree": "10d9553fe0bdcf7abefde2c238c71e8eed099ea2",
+      "packageVersion": "26.1030.2461~dev+ge003bc7983e0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2461-dev+ge003bc7983e0"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.destination",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3c5/receipt.json",
+      "note": "operationId=7dbae316-44a9-42d3-a43b-9f41d552cad5; editor operationId=7dbae316-44a9-42d3-a43b-9f41d552cad5",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c5/frames/editor.destination/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.646342, tolerance=0.025): actual=/home/user/e3c5/frames/editor.destination/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.destination/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.destination/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6463421791177641,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.destination",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T06:19:55Z"
+    },
+    {
+      "interaction": "editor.save-feedback",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3c5/receipt.json",
+      "note": "operationId=6ca3d2ad-b868-4a35-ab70-8d4b66103d90; editor operationId=6ca3d2ad-b868-4a35-ab70-8d4b66103d90; geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645658, tolerance=0.025): actual=/home/user/e3c5/frames/editor.save_feedback/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.636658, tolerance=0.025): actual=/home/user/e3c5/frames/editor.save_feedback/02-saved.png reference=/home/user/editor-catalog/27-editor-saved.png; catalog mismatch (distance=0.632788, tolerance=0.025): actual=/home/user/e3c5/frames/editor.save_feedback/03-write-failure.png reference=/home/user/editor-catalog/28-editor-save-failed.png; catalog mismatch (distance=0.672742, tolerance=0.025): actual=/home/user/e3c5/frames/editor.save_feedback/04-details.png reference=/home/user/editor-catalog/28a-editor-save-path.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456584651064727,
+          "tolerance": 0.025
+        },
+        {
+          "label": "saved",
+          "path": "frames/editor.save_feedback/02-saved.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.6366576686110526,
+          "tolerance": 0.025
+        },
+        {
+          "label": "write-failure",
+          "path": "frames/editor.save_feedback/03-write-failure.png",
+          "window": "editor",
+          "reference": "28-editor-save-failed",
+          "distance": 0.6327878019069036,
+          "tolerance": 0.025
+        },
+        {
+          "label": "details",
+          "path": "frames/editor.save_feedback/04-details.png",
+          "window": "editor",
+          "reference": "28a-editor-save-path",
+          "distance": 0.6727418113242908,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_feedback/05-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_feedback/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_feedback",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T06:20:08Z"
+    }
+  ]
+}

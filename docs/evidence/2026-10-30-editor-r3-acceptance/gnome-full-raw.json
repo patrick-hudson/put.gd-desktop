@@ -1,0 +1,2651 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "ubuntu-gnome-v3",
+    "package": "source",
+    "destination": "local",
+    "build": "b5613bfc3a6c",
+    "placement_details": {
+      "boat_sandbox_id": "bx_rbbq5jv9",
+      "run_id": "2e040898-e526-40e5-9ba6-ddb0ead1fd27",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/editor/work/lab-runs/g1",
+      "session_root": "/tmp/sd-64f808ef",
+      "socket": "/tmp/sd-64f808ef/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2516",
+      "commitCount": 2516,
+      "dirty": false,
+      "gitCommit": "b5613bfc3a6c8f85310a698e495ce1c2134f1cf2",
+      "gitTree": "84b21e70d801a7e161e8c63931ac088ef6363bcc",
+      "packageVersion": "26.1030.2516~dev+gb5613bfc3a6c",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2516-dev+gb5613bfc3a6c"
+    },
+    "cleanup_errors": [
+      "previous clipboard restoration unavailable; private session retained"
+    ]
+  },
+  "interactions": [
+    {
+      "interaction": "editor.opens-fit",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=c6c6debd-7620-4102-bc44-2332c97a33a8; editor operationId=c6c6debd-7620-4102-bc44-2332c97a33a8",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.redact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.641804, tolerance=0.025): actual=/home/user/e3g1/frames/editor.redact/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6418044299201162,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:22:47Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=c6c6debd-7620-4102-bc44-2332c97a33a8; editor operationId=c6c6debd-7620-4102-bc44-2332c97a33a8",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.redact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.641804, tolerance=0.025): actual=/home/user/e3g1/frames/editor.redact/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6418044299201162,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:22:47Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=c6c6debd-7620-4102-bc44-2332c97a33a8; editor operationId=c6c6debd-7620-4102-bc44-2332c97a33a8",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.redact/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.641804, tolerance=0.025): actual=/home/user/e3g1/frames/editor.redact/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6418044299201162,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:22:47Z"
+    },
+    {
+      "interaction": "editor.tool-arrow",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=87b91718-549e-4614-88a0-634943930f4f; editor operationId=87b91718-549e-4614-88a0-634943930f4f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642739, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642362, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645915, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647265, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427392273994424,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423619860847565,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459154449832502,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472645582964368,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:23:59Z"
+    },
+    {
+      "interaction": "editor.tool-rectangle",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=87b91718-549e-4614-88a0-634943930f4f; editor operationId=87b91718-549e-4614-88a0-634943930f4f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642739, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642362, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645915, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647265, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427392273994424,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423619860847565,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459154449832502,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472645582964368,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:23:59Z"
+    },
+    {
+      "interaction": "editor.tool-highlight",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=87b91718-549e-4614-88a0-634943930f4f; editor operationId=87b91718-549e-4614-88a0-634943930f4f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642739, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642362, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645915, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647265, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427392273994424,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423619860847565,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459154449832502,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472645582964368,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:23:59Z"
+    },
+    {
+      "interaction": "editor.tool-select",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=87b91718-549e-4614-88a0-634943930f4f; editor operationId=87b91718-549e-4614-88a0-634943930f4f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.642739, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/02-arrow.png reference=/home/user/editor-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642362, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.645915, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/04-highlight.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.647265, tolerance=0.025): actual=/home/user/e3g1/frames/editor.annotation_tools/05-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6427392273994424,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423619860847565,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459154449832502,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472645582964368,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:23:59Z"
+    },
+    {
+      "interaction": "editor.tool-blur",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=cea2de22-f8b0-4fb2-87da-44950972d86f; editor operationId=cea2de22-f8b0-4fb2-87da-44950972d86f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645635, tolerance=0.025): actual=/home/user/e3g1/frames/editor.blur/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645168, tolerance=0.025): actual=/home/user/e3g1/frames/editor.blur/02-warning.png reference=/home/user/editor-catalog/21-editor-blur-warning.png; catalog mismatch (distance=0.645663, tolerance=0.025): actual=/home/user/e3g1/frames/editor.blur/03-after.png reference=/home/user/editor-catalog/21-editor-blur-warning.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.blur/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.blur/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456347061166162,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.blur/02-warning.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6451679902546442,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/03-after.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6456625904842223,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.blur",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:24:34Z"
+    },
+    {
+      "interaction": "editor.blur-warning",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=cea2de22-f8b0-4fb2-87da-44950972d86f; editor operationId=cea2de22-f8b0-4fb2-87da-44950972d86f",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645635, tolerance=0.025): actual=/home/user/e3g1/frames/editor.blur/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645168, tolerance=0.025): actual=/home/user/e3g1/frames/editor.blur/02-warning.png reference=/home/user/editor-catalog/21-editor-blur-warning.png; catalog mismatch (distance=0.645663, tolerance=0.025): actual=/home/user/e3g1/frames/editor.blur/03-after.png reference=/home/user/editor-catalog/21-editor-blur-warning.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.blur/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.blur/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456347061166162,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.blur/02-warning.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6451679902546442,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/03-after.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6456625904842223,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.blur",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:24:34Z"
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=7e527d0f-edfa-462b-b4e7-f18f0dfd6aaf; editor operationId=7e527d0f-edfa-462b-b4e7-f18f0dfd6aaf",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.650062, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/02-text-anchor.png reference=/home/user/editor-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.641257, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/03-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.6500616136060159,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6412570478131515,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:16Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=7e527d0f-edfa-462b-b4e7-f18f0dfd6aaf; editor operationId=7e527d0f-edfa-462b-b4e7-f18f0dfd6aaf",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.650062, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/02-text-anchor.png reference=/home/user/editor-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.641257, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/03-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.6500616136060159,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6412570478131515,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:16Z"
+    },
+    {
+      "interaction": "editor.key-edit-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=7e527d0f-edfa-462b-b4e7-f18f0dfd6aaf; editor operationId=7e527d0f-edfa-462b-b4e7-f18f0dfd6aaf",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.650062, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/02-text-anchor.png reference=/home/user/editor-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.641257, tolerance=0.025): actual=/home/user/e3g1/frames/editor.text_entry/03-after.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.6500616136060159,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6412570478131515,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:16Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=0787a102-01be-4630-8ca2-33e38979a924; editor operationId=0787a102-01be-4630-8ca2-33e38979a924",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645620, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456201771030993,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:52Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=0787a102-01be-4630-8ca2-33e38979a924; editor operationId=0787a102-01be-4630-8ca2-33e38979a924",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645620, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456201771030993,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:52Z"
+    },
+    {
+      "interaction": "editor.place-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=0787a102-01be-4630-8ca2-33e38979a924; editor operationId=0787a102-01be-4630-8ca2-33e38979a924",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645620, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456201771030993,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:52Z"
+    },
+    {
+      "interaction": "editor.remove-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=0787a102-01be-4630-8ca2-33e38979a924; editor operationId=0787a102-01be-4630-8ca2-33e38979a924",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.645620, tolerance=0.025): actual=/home/user/e3g1/frames/editor.mark_history/02-after.png reference=/home/user/editor-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456201771030993,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:25:52Z"
+    },
+    {
+      "interaction": "editor.mouse-move-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707; editor operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.637376, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/02-after.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.637593, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6373758544756014,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6375929229039285,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:27:26Z"
+    },
+    {
+      "interaction": "editor.key-nudge",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707; editor operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.637376, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/02-after.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.637593, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6373758544756014,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6375929229039285,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:27:26Z"
+    },
+    {
+      "interaction": "editor.key-resize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707; editor operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.637376, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/02-after.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.637593, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6373758544756014,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6375929229039285,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:27:26Z"
+    },
+    {
+      "interaction": "editor.key-next-mark",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707; editor operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.637376, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/02-after.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.637593, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6373758544756014,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6375929229039285,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:27:26Z"
+    },
+    {
+      "interaction": "editor.key-deselect",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707; editor operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.637376, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/02-after.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.637593, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6373758544756014,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6375929229039285,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:27:26Z"
+    },
+    {
+      "interaction": "editor.marks-stay-on-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707; editor operationId=a05960ae-32fe-4378-8a6a-10ea3d07d707",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.637376, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/02-after.png reference=/home/user/editor-catalog/26-editor-selected.png; catalog mismatch (distance=0.637593, tolerance=0.025): actual=/home/user/e3g1/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/editor-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6373758544756014,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6375929229039285,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:27:26Z"
+    },
+    {
+      "interaction": "editor.tool-crop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=3b0c6849-90e5-4a60-9570-cb0aaf956b69; editor operationId=3b0c6849-90e5-4a60-9570-cb0aaf956b69; control: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.crop/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.627935, tolerance=0.025): actual=/home/user/e3g1/frames/editor.crop/02-draft.png reference=/home/user/editor-catalog/23-editor-crop.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.crop/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draft",
+          "path": "frames/editor.crop/02-draft.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.6279346709771124,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.crop/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:28:21Z"
+    },
+    {
+      "interaction": "editor.apply-crop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=3b0c6849-90e5-4a60-9570-cb0aaf956b69; editor operationId=3b0c6849-90e5-4a60-9570-cb0aaf956b69; control: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.crop/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.627935, tolerance=0.025): actual=/home/user/e3g1/frames/editor.crop/02-draft.png reference=/home/user/editor-catalog/23-editor-crop.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.crop/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draft",
+          "path": "frames/editor.crop/02-draft.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.6279346709771124,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.crop/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:28:21Z"
+    },
+    {
+      "interaction": "editor.cancel-crop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=3b0c6849-90e5-4a60-9570-cb0aaf956b69; editor operationId=3b0c6849-90e5-4a60-9570-cb0aaf956b69; control: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645654, tolerance=0.025): actual=/home/user/e3g1/frames/editor.crop/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.627935, tolerance=0.025): actual=/home/user/e3g1/frames/editor.crop/02-draft.png reference=/home/user/editor-catalog/23-editor-crop.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.crop/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456541429475016,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draft",
+          "path": "frames/editor.crop/02-draft.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.6279346709771124,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.crop/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:28:21Z"
+    },
+    {
+      "interaction": "editor.geometry",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=d69d75b1-178f-48e6-a1e0-fa788d361aea; editor operationId=d69d75b1-178f-48e6-a1e0-fa788d361aea; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.properties/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.properties/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.properties/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.properties",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:28:41Z"
+    },
+    {
+      "interaction": "editor.keyboard-help",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=610aad06-f356-4b25-89c2-0053288bdadd; editor operationId=610aad06-f356-4b25-89c2-0053288bdadd; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.keyboard_help/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.keyboard_help/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.keyboard_help/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.keyboard_help",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:29:03Z"
+    },
+    {
+      "interaction": "editor.destination",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=0ffe6189-b048-4121-81d4-731e6c28b5bb; editor operationId=0ffe6189-b048-4121-81d4-731e6c28b5bb; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.destination/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.destination/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.destination",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:29:25Z"
+    },
+    {
+      "interaction": "editor.zoom",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=b164925f-2ab3-4385-8f9b-4ffadc4e02f9; editor operationId=b164925f-2ab3-4385-8f9b-4ffadc4e02f9; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.zoom_pan/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.zoom_pan",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:29:48Z"
+    },
+    {
+      "interaction": "editor.key-pan-alt",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=458495b9-1ae8-41d1-ab3b-61b7eac8b931; editor operationId=458495b9-1ae8-41d1-ab3b-61b7eac8b931; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.key_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.key_pan/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.key_pan/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.key_pan",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:30:10Z"
+    },
+    {
+      "interaction": "editor.mouse-pan",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=fa54fe11-fb1a-404c-9cb0-c33d7a6645dc; editor operationId=fa54fe11-fb1a-404c-9cb0-c33d7a6645dc; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mouse_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.mouse_pan/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mouse_pan/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mouse_pan",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:30:34Z"
+    },
+    {
+      "interaction": "editor.cancel",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=5824dd90-b1f2-42e3-9628-343dead88ceb; editor operationId=5824dd90-b1f2-42e3-9628-343dead88ceb; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.discard/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:30:59Z"
+    },
+    {
+      "interaction": "confirm.editor-discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=5824dd90-b1f2-42e3-9628-343dead88ceb; editor operationId=5824dd90-b1f2-42e3-9628-343dead88ceb; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.discard/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:30:59Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=b1613824-d712-4655-a067-c19fa121a553; editor operationId=b1613824-d712-4655-a067-c19fa121a553; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.upload/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.upload",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:31:22Z"
+    },
+    {
+      "interaction": "cli.editor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "editor operationId=b4742265-0804-4b8c-92c2-b006b7e4ac8c; operationId=b4742265-0804-4b8c-92c2-b006b7e4ac8c; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.cli_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.cli_editor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.cli_editor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.cli_editor",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:31:45Z"
+    },
+    {
+      "interaction": "editor.double-click-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=1bd433a3-f999-491b-ae61-862a69f02c8a; editor operationId=1bd433a3-f999-491b-ae61-862a69f02c8a; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.double_click/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.double_click/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.double_click/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.double_click",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:32:08Z"
+    },
+    {
+      "interaction": "editor.preparation-failed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=91b02b66-3337-4a21-9358-c528215d623e; editor operationId=91b02b66-3337-4a21-9358-c528215d623e; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.preparation_failure/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.preparation_failure/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.preparation_failure/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.preparation_failure",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:32:31Z"
+    },
+    {
+      "interaction": "editor.colours",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=fa755074-68ad-411f-96f5-202a36d2f64f; editor operationId=fa755074-68ad-411f-96f5-202a36d2f64f; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.palette/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.palette/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.palette/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.palette",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:32:55Z"
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=c03e419f-42eb-49c0-b7a5-085f4208b767; editor operationId=c03e419f-42eb-49c0-b7a5-085f4208b767; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.style_controls/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:33:18Z"
+    },
+    {
+      "interaction": "editor.custom-colour",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=2c1a474e-663e-4235-8eba-91d6ea973578; editor operationId=2c1a474e-663e-4235-8eba-91d6ea973578; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.custom_colour/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.custom_colour/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.custom_colour/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.custom_colour",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:33:44Z"
+    },
+    {
+      "interaction": "editor.affected-text",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=584841a7-12d6-4fbd-ba83-bb0970497262; editor operationId=584841a7-12d6-4fbd-ba83-bb0970497262; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.affected_text/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.affected_text/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.affected_text/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.affected_text",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:34:16Z"
+    },
+    {
+      "interaction": "mcp.editor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "editor operationId=5fcecc50-4b20-4144-a15c-ba0fe1dbf198; operationId=5fcecc50-4b20-4144-a15c-ba0fe1dbf198; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.mcp_editor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:34:50Z"
+    },
+    {
+      "interaction": "mcp.editor-output",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "editor operationId=5fcecc50-4b20-4144-a15c-ba0fe1dbf198; operationId=5fcecc50-4b20-4144-a15c-ba0fe1dbf198; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.mcp_editor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:34:50Z"
+    },
+    {
+      "interaction": "editor.save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=2ce1ae99-e126-458a-ac87-3c6964b5673a; editor operationId=2ce1ae99-e126-458a-ac87-3c6964b5673a; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_copy/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_copy/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_copy",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:35:17Z"
+    },
+    {
+      "interaction": "editor.save-feedback",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=9dd4c0be-ec3e-4a32-b270-a115cb033060; editor operationId=9dd4c0be-ec3e-4a32-b270-a115cb033060; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_feedback/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_feedback/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_feedback",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:35:47Z"
+    },
+    {
+      "interaction": "editor.compact",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=00873737-eaa7-4f01-b840-4ce0f35601f4; editor operationId=00873737-eaa7-4f01-b840-4ce0f35601f4; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.compact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.compact/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.compact/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.compact",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:36:17Z"
+    },
+    {
+      "interaction": "editor.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=d41164d3-c45b-4090-a293-6862a77de72f; editor operationId=d41164d3-c45b-4090-a293-6862a77de72f; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.window_chrome/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.window_chrome",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:36:42Z"
+    },
+    {
+      "interaction": "editor.mouse-square",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=d37a5d0a-162c-4a69-baac-d9a7451ae63d; editor operationId=d37a5d0a-162c-4a69-baac-d9a7451ae63d; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.held_modifiers/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:37:08Z"
+    },
+    {
+      "interaction": "editor.key-pan-space",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=d37a5d0a-162c-4a69-baac-d9a7451ae63d; editor operationId=d37a5d0a-162c-4a69-baac-d9a7451ae63d; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.held_modifiers/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:37:08Z"
+    },
+    {
+      "interaction": "editor.mouse-zoom",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=d37a5d0a-162c-4a69-baac-d9a7451ae63d; editor operationId=d37a5d0a-162c-4a69-baac-d9a7451ae63d; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.held_modifiers/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:37:08Z"
+    },
+    {
+      "interaction": "editor.key-ctrl-cursor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "source",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/e3g1/receipt.json",
+      "note": "operationId=e42bc6a9-90c0-4edd-a9bc-4d06bdc78dd9; editor operationId=e42bc6a9-90c0-4edd-a9bc-4d06bdc78dd9; geometry: RuntimeError: fresh accessibility probe timed out",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v3",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.ctrl_cursor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.ctrl_cursor/01-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.ctrl_cursor/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.ctrl_cursor",
+      "build": "b5613bfc3a6c",
+      "at": "2026-10-30T06:37:34Z"
+    }
+  ]
+}
