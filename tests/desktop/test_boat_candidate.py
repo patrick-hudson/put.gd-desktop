@@ -5,6 +5,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -12,6 +13,7 @@ import tarfile
 import signal
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -445,6 +447,86 @@ class CandidateContracts(unittest.TestCase):
         self.assertGreater(candidate.collection_budget(65 * 1024 * 1024, 9), 650)
         self.assertGreater(candidate.collection_budget(0, 10000), 600)
         self.assertEqual(candidate.collection_budget(0, 0), 150)
+
+    @contextlib.contextmanager
+    def fake_boat_cli(self, root):
+        """Real subprocess boundary, fake service; no Boat credentials/network."""
+        executable = root / 'boat'
+        executable.write_text('''#!/usr/bin/env python3
+import fcntl,json,os,sys
+from pathlib import Path
+root=Path(os.environ['FAKE_BOAT_ROOT'])
+with (root/'lock').open('a') as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ path=root/'service.json'
+ state=json.loads(path.read_text()) if path.exists() else {'sandboxes':[], 'events':[], 'lists':0}
+ args=sys.argv[1:]
+ args=[a for a in args if a not in ('--no-update','--json')]
+ command=args[0]
+ if command=='new':
+  name=args[args.index('--name')+1]
+  item={'id':'bx_'+str(len(state['events'])), 'name':name, 'visibleAfter':state['lists']+(9 if os.environ.get('FAKE_BOAT_LATE') else 0)}
+  state['sandboxes'].append(item)
+  state['events'].append({'create':item['id'],'name':name})
+  result={} if os.environ.get('FAKE_BOAT_LATE') else {'id':item['id']}
+ elif command=='list':
+  state['lists']+=1
+  result={'sandboxes':[s for s in state['sandboxes'] if s['visibleAfter']<=state['lists']]}
+ elif command=='delete':
+  state['events'].append({'delete':args[1]})
+  state['sandboxes']=[s for s in state['sandboxes'] if s['id']!=args[1]]
+  result={'operation':{'status':'pending'}}
+ else:
+  raise SystemExit('unsupported fake command '+command)
+ path.write_text(json.dumps(state))
+ print(json.dumps(result))
+''')
+        executable.chmod(0o700)
+        with patch.dict(os.environ, {'PATH': str(root) + os.pathsep + os.environ['PATH'],
+                                    'FAKE_BOAT_ROOT': str(root)}), \
+             patch.object(candidate, 'LEASE_ROOT', root / 'leases'):
+            yield
+
+    def test_fake_cli_same_sha_live_runs_never_delete_each_others_workers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with self.fake_boat_cli(root), candidate.run_lease('a' * 16), candidate.run_lease('b' * 16):
+                a = candidate.boat('new', '--name', candidate.worker_name(SHA, 'appimage', 'a' * 16))['id']
+                b = candidate.boat('new', '--name', candidate.worker_name(SHA, 'appimage', 'b' * 16))['id']
+                result = candidate.cleanup_orphans(SHA, 'appimage')
+                self.assertEqual(result['preserved'], [a, b])
+                with patch.object(candidate.time, 'sleep'):
+                    candidate.cleanup_workers(candidate.worker_name(SHA, 'appimage', 'a' * 16), a)
+                self.assertEqual([s['id'] for s in candidate.all_sandboxes()], [b])
+                with patch.object(candidate.time, 'sleep'):
+                    candidate.cleanup_workers(candidate.worker_name(SHA, 'appimage', 'b' * 16), b)
+            service = json.loads((root / 'service.json').read_text())
+            self.assertEqual([e['delete'] for e in service['events'] if 'delete' in e], [a, b])
+            self.assertEqual(service['sandboxes'], [])
+
+    def test_fake_cli_interrupted_create_without_id_recovers_late_worker(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            clock = [0]
+            def sleep(seconds):
+                clock[0] += seconds
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='c' * 16)
+            with self.fake_boat_cli(root), candidate.run_lease(args.run_nonce), \
+                 patch.dict(os.environ, {'FAKE_BOAT_LATE': '1'}), \
+                 patch.object(candidate, 'CREATE_TIMEOUT', 30), \
+                 patch.object(candidate, 'time', SimpleNamespace(
+                     monotonic=lambda: clock[0], sleep=sleep, time=lambda: 0)):
+                result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
+            self.assertEqual(result['state'], 'failed')
+            self.assertIn('did not return a sandbox ID', result['error'])
+            self.assertTrue(result['cleanupVerified'])
+            self.assertGreaterEqual(clock[0], 30)
+            service = json.loads((root / 'service.json').read_text())
+            created = [e['create'] for e in service['events'] if 'create' in e]
+            deleted = [e['delete'] for e in service['events'] if 'delete' in e]
+            self.assertEqual(len(created), 1)
+            self.assertEqual(created, deleted, (result, service))
+            self.assertEqual(service['sandboxes'], [])
 
     def test_closed_output_stream_is_nonfatal_and_is_replaced_for_shutdown(self):
         closed = io.StringIO()

@@ -598,7 +598,7 @@ sudo -n chown -R user:user /home/user/candidate/output
         try:
             # The server may finish creating after the CLI is killed, even if an
             # initial ID was printed. Observe the entire original create window.
-            recovery = max(0, creation_started + CREATE_TIMEOUT - time.monotonic()) if creation_started else 0
+            recovery = max(0, creation_started + CREATE_TIMEOUT - time.monotonic()) if creation_started is not None else 0
             receipt['cleanup'] = cleanup_workers(receipt['name'], sandbox_id,
                                                  recovery_seconds=recovery,
                                                  timeout=recovery + 120)
