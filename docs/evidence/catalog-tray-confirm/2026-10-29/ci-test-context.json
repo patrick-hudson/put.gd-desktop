@@ -1,0 +1,10 @@
+{
+  "configuredUser": "putgd-ci",
+  "configuredUid": 1001,
+  "observedUidFile": "ctest-observed-uid",
+  "locale": "en_US.UTF-8",
+  "temporaryDirectory": "/tmp/pfc.hNC6f9",
+  "registeredTests": 113,
+  "socketPreflight": "Conservative length-preserving normal socket templates; intentional rejection cases unchanged",
+  "scope": "Hosted contract tests; no native desktop or physical memory acceptance"
+}

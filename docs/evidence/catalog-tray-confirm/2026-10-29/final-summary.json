@@ -1,0 +1,11 @@
+{
+  "registeredTests": 113,
+  "firstPassFailed": [
+    "gui_tray"
+  ],
+  "ctestExit": 0,
+  "sourceHead": "90d1134e3c9264f5cd82080a5f1077dd95538e06",
+  "outerTimeoutScale": 10,
+  "asyncWaitScale": 3,
+  "parallelTests": 1
+}

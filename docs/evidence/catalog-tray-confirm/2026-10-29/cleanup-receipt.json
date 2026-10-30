@@ -1,0 +1,30 @@
+{
+  "request": {
+    "operation": {
+      "attemptCount": 0,
+      "completedAt": null,
+      "expectedBy": null,
+      "id": "bdop_e7b8818a7e2c483c8299f4c6d47ccd7a",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-30T02:22:52.892Z",
+      "stage": "removing",
+      "status": "pending",
+      "targetId": "bx_4vhusf6d"
+    }
+  },
+  "verification": {
+    "operation": {
+      "attemptCount": 1,
+      "completedAt": null,
+      "expectedBy": null,
+      "id": "bdop_e7b8818a7e2c483c8299f4c6d47ccd7a",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-30T02:22:52.892Z",
+      "stage": "removing",
+      "status": "processing",
+      "targetId": "bx_4vhusf6d"
+    }
+  }
+}

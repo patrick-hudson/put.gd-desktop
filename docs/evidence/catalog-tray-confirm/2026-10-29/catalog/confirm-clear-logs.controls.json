@@ -1,0 +1,52 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                38
+            ],
+            "text": "Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay."
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                352,
+                74,
+                92,
+                36
+            ],
+            "text": "Clear logs"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                273,
+                74,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        }
+    ],
+    "height": 126,
+    "keys": [
+    ],
+    "width": 468
+}
