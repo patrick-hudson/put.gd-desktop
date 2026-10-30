@@ -48,7 +48,7 @@ os.execvp('python3',['python3',COVER,'play','--pattern','--media-now','--video-s
                    prepare_command="python3 -c "+shlex.quote('import os;f=os.open('+repr(fifo)+',os.O_WRONLY|os.O_NONBLOCK);os.write(f,b"raise\n");os.close(f)'))
 
 
-def capture(scope, scene, *, seconds=4.5):
+def capture(scope, scene, *, seconds=4.5, automatic=False):
     ctx=scope.ctx
     scene.command('raise')
     prepared=ctx.call('recording.prepare',scene.prepare)
@@ -57,20 +57,29 @@ def capture(scope, scene, *, seconds=4.5):
     track(scope,'recording.cancel',identity)
     ctx.wait(lambda:ctx.call('recording.inspect',{'id':identity})['state']=='ready','synthetic recording ready',timeout=40)
     ctx.call('recording.start',{'id':identity})
-    # Keep wall output live and honor the recipe deadline while recording.
-    until=time.monotonic()+seconds
-    ctx.wait(lambda:time.monotonic()>=until,'four-second synthetic capture',timeout=seconds+2,interval=.2)
-    ctx.call('recording.stop',{'id':identity})
+    if automatic:
+        ctx.wait(lambda:ctx.call('recording.inspect',{'id':identity})['state']=='reviewing',
+                 'authentic recording byte-budget stop',timeout=75)
+    else:
+        # Keep wall output live and honor the recipe deadline while recording.
+        until=time.monotonic()+seconds
+        ctx.wait(lambda:time.monotonic()>=until,'four-second synthetic capture',timeout=seconds+2,interval=.2)
+        ctx.call('recording.stop',{'id':identity})
     state=ctx.wait(lambda:(r if (r:=ctx.call('recording.inspect',{'id':identity}))['state']=='reviewing' else None),'private recording review',timeout=40)
     if state.get('durationUs',0)<4_000_000:
         raise RecipeFailed('synthetic recording is shorter than four seconds')
     path=scope.root+'/working/'+identity+'.mkv'
+    if automatic:
+        if state.get('stopReason')!='budget':
+            raise RecipeFailed('recording stopped without the required byte-budget reason')
+        source=ctx.target.root+'/data/putgd/recording/'+identity+'/working.mkv'
+        scope.python('import shutil\nshutil.copyfile('+repr(source)+','+repr(path)+')')
     if ctx.shell('test -s '+shlex.quote(path))['returncode']:
         raise RecipeBlocked('recording did not retain its actual working clip',issue=672)
     return identity,path
 
 
-def recording(scope):
+def recording(scope, *, automatic=False):
     ctx=scope.ctx
     ctx.fixture('destination') # route/settings snapshot must precede prepare
     scene=ctx.fixture('events.recording-source')
@@ -78,7 +87,9 @@ def recording(scope):
     frozen,frozen_path=capture(scope,scene)
     ctx.call('recording.cancel',{'id':frozen})
     scene.command('resume')
-    identity,working_path=capture(scope,scene)
+    if automatic:
+        scope.patch({'limits':{'maxFileBytes':72*1024**2}})
+    identity,working_path=capture(scope,scene,automatic=automatic)
     ctx._ids['review']=identity
     ctx.call('recording.review',{'id':identity,'action':'pause'})
     ctx.call('recording.review',{'id':identity,'action':'seek','time':0})
@@ -126,3 +137,14 @@ if backup.exists():
                    'genuine decoder preview failure',timeout=20)
     restore()
     return Fixture(value,decoder_fault_restored=True)
+
+
+def export_failure(scope):
+    value=scope.ctx.fixture('recording')
+    blocker=scope.root+'/blocked-export'
+    scope.write(blocker,b'synthetic export blocker')
+    scope.ctx.call('recording.saveCopy',{'id':value.id,'path':blocker+'/retry.mp4'})
+    scope.ctx.wait(lambda:(state if (state:=scope.ctx.call('recording.inspect',{'id':value.id})).get('lastExport',{}).get('status')=='failed' else None),
+                   'authentic recoverable export failure',timeout=30)
+    scope.python('from pathlib import Path\np=Path('+repr(blocker)+');p.unlink();p.mkdir(mode=0o700)')
+    return Fixture(value,export_fault_removed=True,retry_path=blocker+'/retry.mp4')

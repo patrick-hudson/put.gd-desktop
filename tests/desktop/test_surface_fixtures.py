@@ -36,7 +36,7 @@ class Context:
         self.profile={'guest':'cinnamon-x11','session':'x11'}
         self.calls=[];self.rows=[];self.operations={}
         self.document=seeded_config(root)
-        self.target=SimpleNamespace(root=root,app_executable='putgd',started=True,close=lambda:[])
+        self.target=SimpleNamespace(root=root,socket=root+'/runtime/putgd/session.sock',app_executable='putgd',started=True,close=lambda:[])
         self.target.execute=self.shell
         self.manager=FixtureManager(self)
         self.target.cli=lambda *args,**kw:self.cli(*args,**kw)
@@ -166,6 +166,23 @@ class Fixtures(unittest.TestCase):
         # The test's mount is mocked; remove its owned empty directory explicitly.
         Path(descriptor.mountPath).rmdir()
 
+    def test_feed_family_serves_and_cleans_up_after_failure(self):
+        import ast
+        scope=self.ctx.manager.scope;original=scope.json
+        def metadata(code,**kwargs):
+            ast.parse(code)
+            if 'SO_PEERCRED' in code:return 42
+            return original(code,**kwargs)
+        with patch.object(scope,'json',metadata):
+            value=self.ctx.fixture('events.update-feed')
+        with urlopen(value.url+'stable.json',timeout=2) as response:
+            self.assertEqual(json.load(response)['release']['version'],value.version)
+        self.assertEqual(value.residentPid,42)
+        self.assertEqual(self.ctx.manager.close(),[])
+        self.assertFalse(Path(value.root).exists())
+        from urllib.error import URLError
+        with self.assertRaises(URLError):urlopen(value.url,timeout=1)
+
     def test_recipe_contract_names(self):
         names={'image','upload','history','history-row','local-history','recording','recording-review','review-controls','destination','mcp','live','release','notification_upload','destinations','selector-desktop','diagnostics-upload','file-dialog-portal','file-dialog-fallback','history_rows','history_pair','history_paging','history_retry_upload','history_retry_local','history_active_uploads','history_delete','history_saved_copy','history_window','launcher','recording-export-failure','recording-budget-stop','recording-preview-error','events.slow-upload','events.update-feed','events.older-update-feed','events.update-notification','events.record-storage','events.import-storage','events.recording-source','events.incomplete-multipart','events.browser-handler','events.software-updates-handler'}
         self.assertFalse(names-FACTORIES.keys())
@@ -196,6 +213,8 @@ class Fixtures(unittest.TestCase):
         baseline=copy.deepcopy(self.ctx.document)
         row=self.ctx.fixture('history-row')
         self.assertEqual(row.row['id'],row.history_id)
+        self.assertIs(row,self.ctx.fixture('history'))
+        self.assertIs(row,self.ctx.fixture('local-history'))
         self.assertTrue(Path(row.path).exists())
         self.assertEqual(self.ctx.manager.close(),[])
         self.assertEqual(self.ctx.rows,[])
@@ -203,6 +222,7 @@ class Fixtures(unittest.TestCase):
     def test_two_independent_operations_and_paging(self):
         pair=self.ctx.fixture('history_pair')
         self.assertEqual(len(set(pair.ids)),2)
+        self.assertEqual(len({row['name'] for row in self.ctx.rows}),2)
         self.assertEqual(pair.bytes,600)
         self.ctx.manager.close()
         def grow(scope,total):

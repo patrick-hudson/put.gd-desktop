@@ -34,18 +34,17 @@ s.serve_forever()
     url='http://127.0.0.1:'+str(port)+'/'
     scope.restart({'PUTGD_UPDATE_FEED_URL':url,'PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'})
     snapshot=ctx.call('ui.snapshot')
-    # Public snapshot does not promise a resident PID; find it by exact socket
-    # env and executable and retain its start identity, never pgrep -f.
+    # Identify the authenticated private socket peer, without a process-name scan.
     pid=scope.json('''import json,os,socket,struct
 from pathlib import Path
 with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as peer:
- peer.connect(SOCKET)
+ peer.connect(__SOCKET__)
  pid,uid,gid=struct.unpack('3i',peer.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,struct.calcsize('3i')))
 assert uid==os.getuid() and pid>1
 p=Path('/proc')/str(pid)
 assert p.stat().st_uid==os.getuid() and Path(os.readlink(p/'exe')).name=='putgd'
 print(json.dumps(pid))
-'''.replace('SOCKET',repr(ctx.target.socket)))
+'''.replace('__SOCKET__',repr(ctx.target.socket)))
     status=ctx.call('update.status')
     channel=status.get('channel') or 'stable'
     version='26.101.1' if older else '99.1231.999'
@@ -104,7 +103,7 @@ def clipboard(scope):
 
 def controllers(scope):
     ctx=scope.ctx
-    if ctx.placement not in ('boat','guest'):
+    if ctx.placement not in ('boat','guest') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('disruptive controllers require a disposable guest',issue=682)
     def stall(address,port):
         if address!='127.0.0.1' or not isinstance(port,int) or not 0<port<65536:
