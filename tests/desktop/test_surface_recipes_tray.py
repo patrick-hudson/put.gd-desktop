@@ -341,6 +341,14 @@ class TrayRecipesTest(unittest.TestCase):
             tray._focus(ctx, 'settings')
             self.assertEqual(calls, [('settings', {'raise_window': raises})])
 
+    def test_main_page_uses_live_nested_selection_states(self):
+        for states in ({'selected': True, 'checked': False}, {'selected': False, 'checked': True}):
+            with self.subTest(states=states):
+                ctx = FakeContext()
+                ctx.accessible = lambda query: [{'name': 'History', 'role': 'page tab',
+                                                'states': states, 'rect': [10, 10, 80, 24]}]
+                tray._page(ctx, 'History')
+
     def test_available_scenarios_resolve_the_core_fixture(self):
         cases = [(tray.recording_icon, 'tray-active-recording'), (tray.cancel_uploads, 'tray-two-uploads'),
                  (tray.update_available, 'tray-update-available'), (tray.quit_resident, 'resident-lifecycle'),

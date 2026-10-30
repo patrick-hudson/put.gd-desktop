@@ -164,9 +164,12 @@ def _begin(ctx, *, show_ui=True):
 def _page(ctx, name):
     def selected():
         node = _node(ctx, name, 'page tab')
-        if 'selected' not in node:
+        states = node.get('states', {})
+        if 'selected' in node:
+            return node['selected']
+        if 'selected' not in states and 'checked' not in states:
             ctx.blocked('AT-SPI needs the selected state to prove page navigation', 670)
-        return node['selected']
+        return bool(states.get('selected') or states.get('checked'))
     ctx.wait(selected, 'selected main page: ' + name)
 
 
@@ -427,6 +430,7 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                                 _profile(ctx).get('shortcut_reason', 'desktop channel unavailable'),
                                 _profile(ctx).get('shortcut_issue'))
                 binding = status.get('bindings', {}).get(action, {})
+                ctx.note('native shortcut channel=' + str(status.get('channel')) + ' binding=' + json.dumps(binding, sort_keys=True))
                 if not binding.get('bound'):
                     helper = diagnostics.get('capabilities', {}).get('source', {}).get('helper', {})
                     ctx.note('native binding=' + json.dumps(binding))
