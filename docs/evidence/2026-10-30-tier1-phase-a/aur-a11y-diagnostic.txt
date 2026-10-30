@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "<stdin>", line 4, in <module>
+  File "/usr/lib64/python3.15/site-packages/dbus/proxies.py", line 141, in __call__
+    return self._connection.call_blocking(self._named_service,
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+                                          self._object_path,
+                                          ^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+                                          args,
+                                          ^^^^^
+                                          **keywords)
+                                          ^^^^^^^^^^^
+  File "/usr/lib64/python3.15/site-packages/dbus/connection.py", line 696, in call_blocking
+    reply_message = self.send_message_with_reply_and_block(
+        message, timeout)
+dbus.exceptions.DBusException: org.freedesktop.DBus.Error.InvalidArgs: No such property “ScreenReaderEnabled”

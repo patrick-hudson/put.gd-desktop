@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "tier1-gnome-a3",
+    "package": "deb",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_kxvb6jg8",
+      "run_id": "177b75ab-dc33-45e3-8ef0-e6881cf11828",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/t1/work/lab-runs/a3",
+      "session_root": "/tmp/sd-cbb29d33",
+      "socket": "/tmp/sd-cbb29d33/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "x11-selection-bridge",
+      "pid": 3644,
+      "start": "14931",
+      "boot": "943c6c9b-bcc7-419a-8891-db6ddf1bd4a9",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "operation_ids": [
+      {
+        "operationId": "b6171017-2275-4874-a7d8-872f6d254441"
+      },
+      {
+        "operationId": "97184d60-373f-48b9-a62a-5ca3e8e92e28"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "review.upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/gno-a3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=b6171017-2275-4874-a7d8-872f6d254441; Recording operation b6171017-2275-4874-a7d8-872f6d254441; screencast consent not yet driven: waiting for the consent dialog to settle; desktop frame screencast-consent-before masked by live evidence policy; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request (app id 'putgd-record'); desktop frame screencast-consent-after masked by live evidence policy; Retained synthetic mp4 sha256=6dc2d74115fc3f78ea231d1cd0f0c7ad7905bf6a16c97abb359d88fac6a22569; frozen clip motion=0.017, durationMs=7400; operationId=97184d60-373f-48b9-a62a-5ca3e8e92e28; Recording operation 97184d60-373f-48b9-a62a-5ca3e8e92e28; Retained synthetic mp4 sha256=48eb6af3a1d100b8d5fcc4847c0d7c05939f9306ab5affbba96e39a26fe64751; moving clip motion=64.18, durationMs=6866; operationId=97184d60-373f-48b9-a62a-5ca3e8e92e28; historyId=35f4bdc9-d34b-4e2f-9806-cbfcaf1e304d; uploaded/local sha256=48eb6af3a1d100b8d5fcc4847c0d7c05939f9306ab5affbba96e39a26fe64751; Retained synthetic mp4 sha256=48eb6af3a1d100b8d5fcc4847c0d7c05939f9306ab5affbba96e39a26fe64751; uploaded clip motion=64.18, durationMs=6866, frozen=0.017; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-gnome-a3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-before",
+          "path": "frames/outcomes.recording_upload/01-screencast-consent-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "screencast-consent-after",
+          "path": "frames/outcomes.recording_upload/02-screencast-consent-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recording-private-review",
+          "path": "frames/outcomes.recording_upload/03-recording-private-review.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.recording_upload/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:40:35Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 11,
+    "pngs": 6,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

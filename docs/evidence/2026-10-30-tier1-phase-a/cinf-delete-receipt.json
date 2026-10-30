@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "tier1-cinnamon-delete",
+    "package": "deb",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_stxfcnha",
+      "run_id": "0c24c5fc-e29d-4492-b619-d875dc92b9f5",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/t1/work/lab-runs/a1",
+      "session_root": "/tmp/sd-2708cb67",
+      "socket": "/tmp/sd-2708cb67/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 13267,
+      "start": "41755",
+      "boot": "7e564264-193b-4503-8253-081493d7ea40",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1280,
+      "start": 1340,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "4a8866f8-946e-4cbc-8586-784861b3d738"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cinf-delete/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=4a8866f8-946e-4cbc-8586-784861b3d738; operationId=4a8866f8-946e-4cbc-8586-784861b3d738; historyId=c83eeb1a-33c8-4d8b-a9fc-ae6d02f01522; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=5ecd330b-fcff-485b-a2b7-4cefcbb88ca9; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-delete",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:03:44Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cinf-delete/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=4a8866f8-946e-4cbc-8586-784861b3d738; operationId=4a8866f8-946e-4cbc-8586-784861b3d738; historyId=c83eeb1a-33c8-4d8b-a9fc-ae6d02f01522; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=5ecd330b-fcff-485b-a2b7-4cefcbb88ca9; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-delete",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:03:44Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 11,
+    "pngs": 6,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

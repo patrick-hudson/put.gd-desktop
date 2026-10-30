@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "tier1-kde-a2",
+    "package": "deb",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_zqavuhdv",
+      "run_id": "d32e813a-15d4-40ec-a467-b8792a313c76",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/user/t1/work/lab-runs/a2",
+      "session_root": "/tmp/sd-ec0db663",
+      "socket": "/tmp/sd-ec0db663/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "wayland",
+      "pid": 4451,
+      "start": "13404",
+      "boot": "88470c4a-1d35-47d6-bce0-6ce2f8fa6bf3",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "plasmashell",
+      "pid": 1289,
+      "start": 1387,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "dc6d3422-b9fd-42ab-b17e-c91d4d426a22"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "review.upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/kde-a2/receipt.json",
+      "issue": 791,
+      "note": "desktop frame before masked by live evidence policy; operationId=dc6d3422-b9fd-42ab-b17e-c91d4d426a22; Recording operation dc6d3422-b9fd-42ab-b17e-c91d4d426a22; screencast consent not yet driven: ScreenCast consent accept button 'Share' is not uniquely drawn in the backend dialog (0); desktop frame after masked by live evidence policy; ScreenCast consent/ready not reached in 45s: ScreenCast consent accept button 'Share' is not uniquely drawn in the backend dialog (0)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-kde-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:43:10Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 7,
+    "pngs": 2,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

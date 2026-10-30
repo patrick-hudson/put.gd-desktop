@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "completed",
+  "run": "/home/user/work/put.gd/src/work/lab-runs/t1a",
+  "disk": "/home/user/work/put.gd/src/work/lab-runs/t1a/disk.qcow2",
+  "diskIdentity": {
+    "device": 64769,
+    "inode": 2082773,
+    "size": 6875709440,
+    "mtimeNs": 1793401961678618083,
+    "ctimeNs": 1793401961678618083,
+    "allocatedBytes": 6875787264
+  },
+  "base": "/home/user/work/put.gd/src/work/lab-images/keyseed-t1a/image.qcow2",
+  "stateSha256": "233424265ae86a6f55205c22cb6eb2a2292201bc015123b9f63b33874bf0d823",
+  "evidence": {
+    "manifest": "/home/user/t1ev/aur-export-a1/manifest.json",
+    "sha256": "3c5ac464fbf9adb8aa292bbc2568dcf83d9c517f598b8cd02b68fff0f0f18043",
+    "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+    "mode": "explicit"
+  },
+  "preparedUtc": "2026-10-30T23:13:16.962371+00:00",
+  "completedUtc": "2026-10-30T23:13:17.145488+00:00"
+}

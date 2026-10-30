@@ -1,0 +1,579 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "tier1-cinnamon-a2",
+    "package": "deb",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_sqcpxkxn",
+      "run_id": "b45f2b6c-76ce-4563-8004-9b087568bc05",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/t1/work/lab-runs/a2",
+      "session_root": "/tmp/sd-21f73668",
+      "socket": "/tmp/sd-21f73668/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 3233,
+      "start": "7630",
+      "boot": "fb8e1d40-a5c6-484f-9fd8-a05b814fb678",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1252,
+      "start": 697,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "2dedb984-478a-4937-9d87-e873d3178efb"
+      },
+      {
+        "operationId": "fb33f398-b1cb-4ef8-a728-6dfea3d6f45e"
+      },
+      {
+        "operationId": "e6cc4e77-9bee-4121-97ab-bff73bde98bc"
+      },
+      {
+        "operationId": "1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9"
+      },
+      {
+        "operationId": "23303cdd-85a5-4334-abf9-438e7d2ae580"
+      },
+      {
+        "operationId": "c2235da0-8b8f-4b87-9a68-167a23fe16d0"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=2dedb984-478a-4937-9d87-e873d3178efb; operationId=2dedb984-478a-4937-9d87-e873d3178efb; historyId=22477e7b-f115-427f-9df4-5aaaf9c8240d; uploaded/local sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; Retained synthetic png sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; pixel oracle: (1280, 800), tolerance=0; operationId=fb33f398-b1cb-4ef8-a728-6dfea3d6f45e; operationId=fb33f398-b1cb-4ef8-a728-6dfea3d6f45e; historyId=2ea266ae-254f-423f-bd9d-043aefdea4ba; uploaded/local sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; Retained synthetic png sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; pixel oracle: (1280, 800), tolerance=0; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:08:59Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=2dedb984-478a-4937-9d87-e873d3178efb; operationId=2dedb984-478a-4937-9d87-e873d3178efb; historyId=22477e7b-f115-427f-9df4-5aaaf9c8240d; uploaded/local sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; Retained synthetic png sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; pixel oracle: (1280, 800), tolerance=0; operationId=fb33f398-b1cb-4ef8-a728-6dfea3d6f45e; operationId=fb33f398-b1cb-4ef8-a728-6dfea3d6f45e; historyId=2ea266ae-254f-423f-bd9d-043aefdea4ba; uploaded/local sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; Retained synthetic png sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; pixel oracle: (1280, 800), tolerance=0; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:08:59Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=e6cc4e77-9bee-4121-97ab-bff73bde98bc; Recording operation e6cc4e77-9bee-4121-97ab-bff73bde98bc; Observed recording target {'kind': 'region', 'rect': [320, 240, 640, 320]}; Inspected recording target [320, 240, 640, 320]; Retained synthetic mp4 sha256=20ea6774df4413e10a7ed63113f2bf879aec1edb9d2ab545286aacc09a842438; frozen clip motion=0.018, durationMs=6133; operationId=1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; Recording operation 1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; Observed recording target {'kind': 'region', 'rect': [320, 240, 640, 320]}; Inspected recording target [320, 240, 640, 320]; Retained synthetic mp4 sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; moving clip motion=60.322, durationMs=6200; operationId=1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; historyId=82190f6d-5593-40bf-bc4d-59bc6e54f7ca; uploaded/local sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; Retained synthetic mp4 sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; uploaded clip motion=60.322, durationMs=6200, frozen=0.018; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "chosen-recording-area",
+          "path": "frames/outcomes.recording_upload/01-chosen-recording-area.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "chosen-recording-area",
+          "path": "frames/outcomes.recording_upload/02-chosen-recording-area.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recording-private-review",
+          "path": "frames/outcomes.recording_upload/03-recording-private-review.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.recording_upload/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:10:25Z"
+    },
+    {
+      "interaction": "recsel.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=e6cc4e77-9bee-4121-97ab-bff73bde98bc; Recording operation e6cc4e77-9bee-4121-97ab-bff73bde98bc; Observed recording target {'kind': 'region', 'rect': [320, 240, 640, 320]}; Inspected recording target [320, 240, 640, 320]; Retained synthetic mp4 sha256=20ea6774df4413e10a7ed63113f2bf879aec1edb9d2ab545286aacc09a842438; frozen clip motion=0.018, durationMs=6133; operationId=1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; Recording operation 1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; Observed recording target {'kind': 'region', 'rect': [320, 240, 640, 320]}; Inspected recording target [320, 240, 640, 320]; Retained synthetic mp4 sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; moving clip motion=60.322, durationMs=6200; operationId=1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; historyId=82190f6d-5593-40bf-bc4d-59bc6e54f7ca; uploaded/local sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; Retained synthetic mp4 sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; uploaded clip motion=60.322, durationMs=6200, frozen=0.018; desktop frame after masked by live evidence policy",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "chosen-recording-area",
+          "path": "frames/outcomes.recording_upload/01-chosen-recording-area.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "chosen-recording-area",
+          "path": "frames/outcomes.recording_upload/02-chosen-recording-area.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recording-private-review",
+          "path": "frames/outcomes.recording_upload/03-recording-private-review.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.recording_upload/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:10:25Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=23303cdd-85a5-4334-abf9-438e7d2ae580; operationId=23303cdd-85a5-4334-abf9-438e7d2ae580; historyId=5921ca0d-6585-4d6b-9972-f0d8283a4f0f; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; input target 'outcome-browser' is obscured by 'put.gd' (window 75497478)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes.link_browser/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:11:10Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=23303cdd-85a5-4334-abf9-438e7d2ae580; operationId=23303cdd-85a5-4334-abf9-438e7d2ae580; historyId=5921ca0d-6585-4d6b-9972-f0d8283a4f0f; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; input target 'outcome-browser' is obscured by 'put.gd' (window 75497478)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-safe-desktop",
+          "path": "frames/outcomes.link_browser/02-browser-failure-safe-desktop.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:11:10Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=c2235da0-8b8f-4b87-9a68-167a23fe16d0; operationId=c2235da0-8b8f-4b87-9a68-167a23fe16d0; historyId=05d027c7-09f7-401a-ac1e-0a468cce2bc7; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is clipped by ancestor 'frame' at [0, 0, 1280, 760]",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:11:52Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/t1ev/cin-a2/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=c2235da0-8b8f-4b87-9a68-167a23fe16d0; operationId=c2235da0-8b8f-4b87-9a68-167a23fe16d0; historyId=05d027c7-09f7-401a-ac1e-0a468cce2bc7; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is clipped by ancestor 'frame' at [0, 0, 1280, 760]",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "tier1-cinnamon-a2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T22:11:52Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 25,
+    "pngs": 20,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}
