@@ -386,7 +386,7 @@ def _bar_input(ctx):
                 witness = ctx.shell("xdotool getmouselocation --shell; xprop -root _NET_ACTIVE_WINDOW")
                 if witness.get("returncode") == 0:
                     ctx.note("X11 cursor/focus witness: " + witness.get("stdout", "").strip())
-            ctx.blocked("Recording bar foreground authorization unavailable (#705): " + str(error), issue=705)
+            ctx.blocked("Recording bar foreground authorization unavailable (#664): " + str(error), issue=664)
         raise
 
 
@@ -748,29 +748,20 @@ def bar_recording(ctx):
             _cancel_record(ctx, rid)
 
 
-@recipe("bar.cancel", "bar.key-esc", "bar.discard-question", needs=NEEDS, timeout=240)
+@recipe("bar.cancel", "bar.discard-question", needs=NEEDS, timeout=240)
 def bar_discard(ctx):
     with _local(ctx):
-        for gesture in ("cancel", "Esc"):
-            rid = _ready(ctx)
-            try:
-                _frame(ctx, "before-ready-" + gesture, window="bar", reference=BAR)
-                if gesture == "cancel":
-                    _bar_click(ctx, "cancel", window="bar-ready")
-                else:
-                    # Give the ready bar keyboard focus through a real control.
-                    _bar_click(ctx, "format", window="bar-ready")
-                    ctx.keys("Esc", "Esc")
-                _state(ctx, rid, "cancelled")
-                _frame(ctx, "after-ready-" + gesture)
-            finally:
-                _cancel_record(ctx, rid)
+        rid = _ready(ctx)
+        try:
+            _frame(ctx, "before-ready-cancel", window="bar", reference=BAR)
+            _bar_click(ctx, "cancel", window="bar-ready")
+            _state(ctx, rid, "cancelled")
+            _frame(ctx, "after-ready-cancel")
+        finally:
+            _cancel_record(ctx, rid)
         rid = _ready(ctx)
         try:
             _start(ctx, rid)
-            _frame(ctx, "before", window="bar", reference="34-record-recording-bar")
-            ctx.keys("Esc")
-            ctx.expect(_inspect(ctx, rid)["state"] == "recording", "Esc while recording does nothing")
             for phase in ("recording", "paused"):
                 if phase == "paused":
                     _bar_click(ctx, "text:Pause", window="bar-recording")
@@ -778,11 +769,8 @@ def bar_discard(ctx):
                 _bar_click(ctx, "cancel", window="bar-" + phase)
                 _frame(ctx, "question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
                 ctx.expect(_visible(ctx, "Discard this recording?"), "inline discard question visible")
-                ctx.keys("Esc")
-                ctx.expect(not _visible(ctx, "Discard this recording?"), "Esc answers Keep")
-                ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep preserves phase")
-                _bar_click(ctx, "cancel", window="bar-" + phase)
                 _bar_click(ctx, "keepRecording", window="bar-question-" + phase)
+                ctx.expect(not _visible(ctx, "Discard this recording?"), "Keep button closes the question")
                 ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep button preserves phase")
             _bar_click(ctx, "cancel", window="bar-paused")
             _bar_click(ctx, "discardRecording", window="bar-question-paused")
@@ -792,10 +780,43 @@ def bar_discard(ctx):
             _cancel_record(ctx, rid)
 
 
-@recipe("bar.drag", "bar.placement", needs=NEEDS)
+@recipe("bar.key-esc", needs=NEEDS, timeout=240)
+def bar_escape(ctx):
+    with _local(ctx):
+        rid = _ready(ctx)
+        try:
+            _frame(ctx, "before-ready", window="bar", reference=BAR)
+            _format(ctx, "mp4", "h264")
+            with _bar_input(ctx):
+                ctx.keys("Esc")
+            _state(ctx, rid, "cancelled")
+            _frame(ctx, "after-ready")
+        finally:
+            _cancel_record(ctx, rid)
+        rid = _ready(ctx)
+        try:
+            _start(ctx, rid)
+            with _bar_input(ctx):
+                ctx.keys("Esc")
+            ctx.expect(_inspect(ctx, rid)["state"] == "recording", "Esc while recording does nothing")
+            for phase in ("recording", "paused"):
+                if phase == "paused":
+                    _bar_click(ctx, "text:Pause", window="bar-recording")
+                    _state(ctx, rid, "paused")
+                _bar_click(ctx, "cancel", window="bar-" + phase)
+                _frame(ctx, "question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
+                with _bar_input(ctx):
+                    ctx.keys("Esc")
+                ctx.expect(not _visible(ctx, "Discard this recording?"), "Esc answers Keep")
+                ctx.expect(_inspect(ctx, rid)["state"] == phase, "Esc preserves phase")
+        finally:
+            _cancel_record(ctx, rid)
+
+
+@recipe("bar.drag", "bar.placement")
 def bar_drag(ctx):
     if ctx.profile.get("selectors", {}).get("bar_drag") is False:
-        ctx.blocked("Compositor places this recording bar; X11 dragging is unavailable")
+        ctx.blocked("Compositor places this recording bar; X11 dragging is unavailable (#664)", issue=664)
     with _local(ctx):
         rid = _ready(ctx)
         try:
@@ -816,7 +837,7 @@ def bar_drag(ctx):
             screen = _env(ctx)["screens"][after.get("head", 0)]
             sx, sy, sw, sh = screen
             if not (sx <= inside[0] < sx + sw and sy <= inside[1] < sy + sh):
-                ctx.blocked("Capture exclusion target is on another head; public drag() accepts one head per gesture (#714)", issue=714)
+                ctx.blocked("Capture exclusion target is on another head; public drag() accepts one head per gesture (#664)", issue=664)
             _bar_drag(ctx, _bar_point(after, (int(after["x"] + after["width"] / 2), int(after["y"] + 2))), _bar_point(after, inside))
             rejected = ctx.geometry("bar")
             ctx.expect(rejected["x"] + rejected["width"] <= x or rejected["x"] >= x + w or rejected["y"] + rejected["height"] <= y or rejected["y"] >= y + h, "dragging an outside bar cannot overlap the capture")
@@ -829,7 +850,7 @@ def bar_drag(ctx):
 @recipe("bar.handle", needs=NEEDS, timeout=240)
 def bar_handle(ctx):
     if len(_env(ctx)["screens"]) != 1:
-        ctx.blocked("Handle requires a single-head full-screen target; other head may fit the full bar")
+        ctx.blocked("Handle requires a single-head full-screen target; another head may fit the full bar (#664)", issue=664)
     with _local(ctx):
         rid = _ready(ctx, entire=True)
         try:
@@ -847,15 +868,6 @@ def bar_handle(ctx):
             _cancel_record(ctx, rid)
 
 
-@recipe("bar.hidden-overlay", needs=NEEDS, timeout=240)
+@recipe("bar.hidden-overlay")
 def bar_hidden(ctx):
-    # No user gesture exists for this API capability. Do not substitute a CLI
-    # state transition for real-input evidence.
-    with _local(ctx):
-        rid = _ready(ctx, entire=True)
-        try:
-            _frame(ctx, "before", window="bar", reference=BAR)
-            _frame(ctx, "after")
-            ctx.blocked("Hidden overlay is API-only (recording.overlay); no public key or control exists to exercise it with real input. API-lane lifecycle/occlusion coverage is required.")
-        finally:
-            _cancel_record(ctx, rid)
+    ctx.blocked("Hidden overlay is API-only (recording.overlay); no public key or control exists for real-input coverage (#664). API-lane lifecycle/occlusion coverage is required.", issue=664)

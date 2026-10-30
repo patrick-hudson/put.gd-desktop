@@ -486,6 +486,23 @@ class SelectorRecipes(unittest.TestCase):
         self.assertFalse(any(i[0] == "key" for i in ctx.inputs))
         self.assertEqual(ctx.document, ctx.original)
 
+    def test_discard_buttons_do_not_depend_on_keyboard_focus(self):
+        ctx = FakeContext()
+        ctx.keys = lambda *a: self.fail("pointer discard coverage must not depend on Escape")
+        selectors.bar_discard(ctx)
+        self.assertTrue(any(i[:2] == ("click", "keepRecording") for i in ctx.inputs))
+        self.assertTrue(any(i[:2] == ("click", "discardRecording") for i in ctx.inputs))
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_api_only_overlay_block_does_not_prepare_a_capture(self):
+        ctx = FakeContext()
+        ctx.fixture = lambda *a: self.fail("an API-only declaration needs no capture fixture")
+        with self.assertRaises(RecipeBlocked) as caught:
+            selectors.bar_hidden(ctx)
+        self.assertEqual(caught.exception.issue, 664)
+        self.assertFalse(ctx.inputs)
+        self.assertFalse(ctx.calls)
+
     def test_return_capture_is_independent_of_drag_transport(self):
         ctx = FakeContext()
         ctx.drag = lambda *a, **k: self.fail("Return capture must not depend on a drag")
@@ -676,7 +693,7 @@ class SelectorRecipes(unittest.TestCase):
             ctx.click = ctx.drag = refused
             with self.assertRaises(RecipeBlocked) as caught:
                 function(ctx)
-            self.assertEqual(caught.exception.issue, 705)
+            self.assertEqual(caught.exception.issue, 664)
             self.assertIn("bar-input-refused", [f[0] for f in ctx.frames])
             self.assertFalse(ctx.inputs)
 
@@ -696,7 +713,7 @@ class SelectorRecipes(unittest.TestCase):
         ctx.focus = refused
         with self.assertRaises(RecipeBlocked) as caught:
             selectors.bar_drag(ctx)
-        self.assertEqual(caught.exception.issue, 705)
+        self.assertEqual(caught.exception.issue, 664)
         self.assertFalse(ctx.inputs)
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
 
@@ -715,7 +732,7 @@ class SelectorRecipes(unittest.TestCase):
         ctx.call, ctx.drag = call, drag
         with self.assertRaises(RecipeBlocked) as caught:
             selectors.bar_drag(ctx)
-        self.assertEqual(caught.exception.issue, 714)
+        self.assertEqual(caught.exception.issue, 664)
         self.assertEqual([row for row in ctx.inputs if row[0] == "drag"], [("drag", (512, 102), (542, 102))])
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
         self.assertEqual(ctx.document, ctx.original)
