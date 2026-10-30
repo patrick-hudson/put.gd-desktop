@@ -296,6 +296,7 @@ def link_browser(ctx):
             _history(ctx, detail)
             ctx.click('copyHistoryLink', window='history')
             ctx.wait(lambda: ctx.clipboard_text() == detail['receipt']['directUrl'], 'copied link equals uploaded object URL')
+            ctx.click('windowClose', window='history')
             def paste():
                 # The helper proves the private blank kiosk's foreground first;
                 # bind keyboard input through the normal owned-window guard.
@@ -310,9 +311,12 @@ def link_browser(ctx):
 def history_delete(ctx):
     with _lane(ctx) as (scope, service):
         detail, _ = _complete(scope, service, ctx.fixture('upload').operation_id)
-        _history(ctx, detail)
+        row = history._row(ctx, 'upload')
+        ctx.expect(row['id'] == detail['id'], 'real History row selection names the uploaded object')
         _frame(ctx, 'owned-history-row')
-        ctx.click('text:Delete from destination…', window='history')
+        ctx.keys('Shift+F10')
+        history._wait_menu(ctx, 'Delete from destination…')
+        ctx.click('text:Delete from destination…', window='historyRowMenu')
         history._wait_window(ctx, 'confirmAction')
         ctx.call('ui.history', {'action': 'copyDeletionDetails'})
         prepared = json.loads(ctx.clipboard_text())
