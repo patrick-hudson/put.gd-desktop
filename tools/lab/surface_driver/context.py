@@ -5,10 +5,20 @@ from pathlib import Path
 import re
 import shlex
 import time
-from types import SimpleNamespace
+from tools.lab import lab
+from tools.lab.surface_map.surface_map import plain_label
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, control_point, image_modules
 from .target import qcodes
+
+
+class Fixture(dict):
+    """Descriptors support both the contract's attributes and mapping recipes."""
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as error:
+            raise AttributeError(name) from error
 
 
 class DriverContext(Context):
@@ -17,6 +27,7 @@ class DriverContext(Context):
         for key in ('desktop','host','placement','package','destination'):
             setattr(self,key,environment[key])
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
+        self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
         self._captures = {}
         self._current_window = None
@@ -27,6 +38,7 @@ class DriverContext(Context):
     def begin(self, recipe):
         self.recipe = recipe
         self.frames, self.notes, self.reviews = [], [], []
+        self._noted_ids=set()
         self._notifications_since = time.time()
         self._deadline = time.monotonic() + (recipe.timeout if recipe else 120)
 
@@ -36,15 +48,29 @@ class DriverContext(Context):
 
     def call(self, method, params=None):
         self._check_time()
-        response = self.cli(method,json.dumps(params or {}))
-        try:
-            envelope = json.loads(response['stdout'])
-        except ValueError as error:
-            raise RecipeBlocked('production CLI returned no JSON envelope') from error
-        if not envelope.get('ok'):
-            code = envelope.get('error',{}).get('code','unknown')
+        deadline=min(self._deadline,time.monotonic()+15)
+        while True:
+            response=self.cli(method,json.dumps(params or {}))
+            try:
+                envelope=json.loads(response['stdout'])
+            except ValueError as error:
+                raise RecipeBlocked('production CLI returned no JSON envelope') from error
+            if envelope.get('ok'):
+                result=envelope['result']
+                for field in ('operationId','recordingId','shareOperationId'):
+                    identity=result.get(field)
+                    if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
+                        self.note(field+'='+identity)
+                        self._noted_ids.add(identity)
+                return result
+            code=envelope.get('error',{}).get('code','unknown')
+            # Startup acknowledgement precedes helper construction. Retry only
+            # observational commands, never a mutation whose effect is uncertain.
+            observational=method.endswith('.inspect') or method in ('ui.viewState','history.list')
+            if observational and code in ('editor_starting','initializing') and time.monotonic()<deadline:
+                time.sleep(.2)
+                continue
             raise RecipeFailed('resident '+method+': '+code)
-        return envelope['result']
 
     def view(self, method, params=None):
         params = dict(params or {})
@@ -115,7 +141,21 @@ class DriverContext(Context):
     def click(self, control, window, button='left', offset=None):
         name, inventory, row = self.catalog.resolve(control,window,self._captures.get(window))
         geometry = self.geometry(window)
-        x,y = control_point(inventory,row,geometry,offset)
+        # Resizing a Qt layout moves anchors nonlinearly. A ratio alone can
+        # hit a neighbouring control, so obtain an independently live rectangle
+        # when the window's logical size differs from the capture.
+        if (geometry['width'],geometry['height']) != (inventory['width'],inventory['height']):
+            if not self.profile.get('at_spi',{}).get('available'):
+                raise RecipeBlocked('resized catalog control needs live AT-SPI geometry')
+            x,y,w,h=self._probe('control',{'name':row.get('name'),'label':plain_label(row.get('text')),
+                                             'title':self.profile.get('window_titles',{}).get(window,window),
+                                             'pid':geometry.get('pid'),'bounds':[geometry[k] for k in ('x','y','width','height')]})
+            dx,dy=offset if offset is not None else (row['rect'][2]/2,row['rect'][3]/2)
+            scale=geometry.get('scale',1)
+            x=round((x-geometry.get('screen_x',0)+dx*w/row['rect'][2])*scale)
+            y=round((y-geometry.get('screen_y',0)+dy*h/row['rect'][3])*scale)
+        else:
+            x,y = control_point(inventory,row,geometry,offset)
         self._pointer_click(x,y,button,geometry.get('head',0))
 
     def _dimensions(self, head=0):
@@ -177,12 +217,7 @@ class DriverContext(Context):
     def scroll(self,x,y,clicks):
         w,h = self._dimensions()
         if self.target.physical:
-            from tools.lab.rfb import RFB
-            client = RFB(self.target.physical.config['vnc_port'])
-            try:
-                client.scroll(x,y,clicks)
-            finally:
-                client.close()
+            self.target.scroll_vnc(x,y,clicks)
         else:
             self.target.pointer(x,y,w,h)
             for _ in range(abs(clicks)):
@@ -203,16 +238,13 @@ class DriverContext(Context):
         # executable is configurable for a locked tools/mcp/.venv installation.
         python = self.profile.get('mcp_python','python3')
         helper = self.profile.get('mcp_helper','putgd-mcp')
-        code = '''import asyncio,json
-from mcp import ClientSession,StdioServerParameters
-from mcp.client.stdio import stdio_client
+        import inspect
+        from tools.lab.mcp_client import helper_session
+        code='import asyncio,json\nfrom contextlib import asynccontextmanager\n'+inspect.getsource(helper_session)+'''
 async def main():
-    p=StdioServerParameters(command=HELPER,args=['--cli','putgd-cli','--socket',SOCKET,'--timeout','60'])
-    async with stdio_client(p) as (read,write):
-        async with ClientSession(read,write) as session:
-            await session.initialize()
-            reply=await session.call_tool(TOOL,ARGS)
-            print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
+    async with helper_session(HELPER,['--cli','putgd-cli','--socket',SOCKET,'--timeout','60']) as session:
+        reply=await session.call_tool(TOOL,ARGS)
+        print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
 asyncio.run(main())
 '''
         code = 'HELPER='+repr(helper)+'\nSOCKET='+repr(self.target.socket)+'\nTOOL='+repr(tool)+'\nARGS='+repr(arguments or {})+'\n'+code
@@ -250,22 +282,28 @@ asyncio.run(main())
     def fixture(self,name):
         if name in self._fixtures:
             return self._fixtures[name]
-        if name in ('upload','history','history-row'):
-            if self.destination != 'local':
-                raise RecipeBlocked('remote upload fixture requires the live lane isolated destination/credential bridge; core never provisions credentials')
-            settings = self.call('settings.get')
-            self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                       'patch':{'archive':{'root':self.target.root+'/files'},'actions':{'desktop':{'destination':'local','profileId':None}}}})
-            # Synthetic pixels go through the production editor/import pipeline;
-            # no desktop content is captured to manufacture a history fixture.
+        if name == 'image':
             import base64, io
             Image,_,_=image_modules()
-            image=Image.new('RGB',(640,320),'#336699')
+            image=Image.new('RGB',(640,320))
+            for i,color in enumerate(lab.FIXTURE_RGB):
+                x,y=(i%2)*320,(i//2)*160
+                image.paste(color,(x,y,x+320,y+160))
             stream=io.BytesIO();image.save(stream,format='PNG')
             path=self.target.root+'/files/synthetic.png'
             result=self.shell("python3 - <<'SD_FIXTURE'\nimport base64\nfrom pathlib import Path\nPath("+repr(path)+").write_bytes(base64.b64decode("+repr(base64.b64encode(stream.getvalue()).decode())+"))\nSD_FIXTURE\n")
             if result['returncode']:
                 raise RecipeBlocked('cannot write synthetic image on target')
+            value=Fixture(path=path,width=640,height=320)
+            self._fixtures[name]=value
+            return value
+        if name in ('upload','history','history-row'):
+            if self.destination != 'local':
+                raise RecipeBlocked('remote upload fixture requires the live lane isolated destination/credential bridge; core never provisions credentials')
+            settings = self.call('settings.get')
+            self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
+                                       'patch':{'archive':{'root':self.target.root+'/files','keepUploads':True},'actions':{'desktop':{'destination':'local','profileId':None}}}})
+            path=self.fixture('image')['path']
             settings=self.call('settings.get')
             self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
                                        'patch':{'actions':{'edit':{'destination':'local','profileId':None}}}})
@@ -281,8 +319,8 @@ asyncio.run(main())
             row = next((r for r in rows if r.get('operationId')==operation),None)
             if not row:
                 raise RecipeBlocked('resident completed fixture but did not expose its history row')
-            value = SimpleNamespace(id=row['id'],history_id=row['id'],operation_id=operation,
-                                    link=row.get('link',''),path=row.get('local',{}).get('path'),state=state,row=row)
+            value = Fixture(id=row['id'],history_id=row['id'],operation_id=operation,
+                                    name=row.get('name'),link=row.get('receipt',{}).get('directUrl') or None,path=row.get('local',{}).get('path'),state=state,row=row)
             self._fixtures[name] = value
             return value
         if name == 'recording':
@@ -298,7 +336,7 @@ asyncio.run(main())
             self.call('recording.start',{'id':rid}); time.sleep(1)
             self.call('recording.stop',{'id':rid})
             self.wait(lambda:self.call('recording.inspect',{'id':rid}).get('state')=='reviewing','recording fixture review',45)
-            value = SimpleNamespace(id=rid,recording_id=rid)
+            value = Fixture(id=rid,recording_id=rid)
             self._fixtures[name] = value
             return value
         raise RecipeBlocked('unknown fixture: '+name)
@@ -360,13 +398,17 @@ def parse_notifications(text,since=0):
             strings = re.findall(r'^\s*string "(.*)"\s*$',block,re.M)
             integers = re.findall(r'^\s*uint32 (\d+)',block,re.M)
             serial = re.search(r'\bserial=(\d+)',block)
-            if len(strings)>=4 and serial:
-                row={'summary':strings[2],'body':strings[3],'actions':strings[4:],'id':None,
+            sender = re.search(r'\bsender=(\S+)',block)
+            if len(strings)>=4 and strings[0]=='put.gd' and serial and sender:
+                actions=re.search(r'array \[\s*(.*?)\s*\]',block,re.S)
+                action_strings=re.findall(r'string "(.*?)"',actions[1]) if actions else []
+                row={'summary':strings[2],'body':strings[3],'actions':action_strings,'id':None,
                      'replaces_id':int(integers[0]) if integers else 0,'at':float(timestamp[1])}
-                rows.append(row);pending[serial[1]]=row
+                rows.append(row);pending[(sender[1],serial[1])]=row
         elif 'method return' in block:
             serial = re.search(r'\breply_serial=(\d+)',block)
             identity = re.search(r'uint32 (\d+)',block)
-            if serial and identity and serial[1] in pending:
-                pending[serial[1]]['id']=int(identity[1])
+            destination=re.search(r'\bdestination=(\S+)',block)
+            if serial and identity and destination and (destination[1],serial[1]) in pending:
+                pending[(destination[1],serial[1])]['id']=int(identity[1])
     return rows

@@ -16,13 +16,16 @@
     "Catalogs are synthetic content; desktop drawn surfaces require human review"
   ],
   "window_titles": {
-    "history": "put.gd",
-    "settings": "put.gd",
-    "main": "put.gd",
-    "editor": "Edit",
+    "history": "^put\\.gd$",
+    "settings": "^put\\.gd$",
+    "main": "^put\\.gd$",
+    "editor": "^Edit (image|& upload)",
     "review": "Review",
     "diagnostics": "Diagnostics",
-    "about": "About"
+    "about": "About",
+    "destinations": "^put\\.gd$",
+    "updates": "^put\\.gd$",
+    "bar": "^put\\.gd recording controls$"
   },
   "catalog_windows": {}
 }

@@ -457,7 +457,7 @@
   "edit_acceptance": {
    "checks.editShortcutBound": ["shortcut.edit"],
    "checks.editorOpenedWithSelection": ["region.drag", "region.to-editor"],
-   "checks.editorShowsImageAt100Percent": ["editor.opens-fit"],
+   "checks.editorFitsWholeImage": ["editor.opens-fit"],
    "checks.mouseDrawnRedaction": ["editor.tool-redact", "editor.mouse-draw"],
    "checks.mouseRedactionGeometry": ["editor.mouse-draw"],
    "checks.keyboardText": ["editor.tool-text", "editor.text-typing"],
