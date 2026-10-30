@@ -1191,20 +1191,26 @@ def layout(query):
     """Every visible desktop window: frame rectangle, pid, ownership, title, stacking.
 
     Evidence masking reads this to find non-owned windows over an owned
-    window. X11: EWMH stacking (bottom to top); named override-redirect
-    windows have no EWMH position and count as topmost. Wayland: the
-    compositor witness's own stacking; without one this raises (fail closed).
+    window; a larger stack is higher, None is unknown (treated as above).
+    X11: the server's root-child order. Wayland: the compositor witness's own
+    stacking; without one this raises (fail closed).
     """
     rows = []
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
-        stack = [str(int(v, 16)) for v in re.findall(r'0x[0-9a-fA-F]+', run('xprop', '-root', '_NET_CLIENT_LIST_STACKING'))]
+        # The X server's own stacking of the root's children (xwininfo prints
+        # the top-most first). Each client is ranked by its top-level ancestor,
+        # which covers WM frames, override-redirect windows and helper windows
+        # the WM keeps below every client (e.g. Muffin's guard window).
+        tops = [str(int(v, 16)) for v in re.findall(r'^\s+(0x[0-9a-fA-F]+)', run('xwininfo', '-root', '-children'), re.M)]
+        rank = {wid: len(tops)-index for index, wid in enumerate(tops)}
         for w in x11_windows({'title': '.*', 'owned': False}):
             frame = w.get('frame') or {k: w[k] for k in ('x', 'y', 'width', 'height')}
+            chain = x11_ancestors(w['window_id'])
+            top = chain[-2] if len(chain) > 1 else chain[-1]
             rows.append({'id': w['window_id'], 'title': w['name'], 'pid': w['pid'],
                          'owned': bool(w['pid'] and owned(w['pid'])),
                          'rect': [frame['x'], frame['y'], frame['width'], frame['height']],
-                         'stack': stack.index(w['window_id']) if w['window_id'] in stack else None,
-                         'minimized': w['states']['minimized'] or (w['window_id'] not in stack and not w['override_redirect'])})
+                         'stack': rank.get(top), 'minimized': w['states']['minimized']})
         return {'windows': rows, 'coordinate_space': 'framebuffer'}
     for w in compositor_windows(query.get('compositor'))['windows']:
         rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'),

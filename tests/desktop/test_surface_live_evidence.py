@@ -326,8 +326,48 @@ class F6VisiblePageOnly(Base):
         self.assertFalse(ctx.evidence.frames[ctx.frame('destinations', window='history').path]['fallback'])
         rows[0], rows[1] = tab('History', True), tab('Destinations', False)
         self.assertTrue(ctx.evidence.frames[ctx.frame('history', window='history').path]['fallback'])
+        # Unknown page: no page requirement, every showing editable field masked.
         ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [control('credentialSecretKey', [30, 20, 30, 6])])
-        self.assertTrue(ctx.evidence.frames[ctx.frame('unknown-page', window='history').path]['fallback'])
+        frame = ctx.frame('unknown-page', window='history')
+        self.assertFalse(ctx.evidence.frames[frame.path]['fallback'])
+        self.assertEqual(self.pixels(ctx, frame).getpixel((20, 13)), (0, 0, 0))
+
+    def test_qt64_rows_without_object_names_still_mask_every_editable_field(self):
+        # Qt 6.4 exports neither objectNames nor a selected tab (Mint guest).
+        ctx = self.context()
+        ctx.sensitive(SHARE)
+        self.window(ctx, page=None)
+        unnamed = lambda rect, role='text', name='': dict(control('', rect, role=role), name=name)
+        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [
+            unnamed([30, 20, 30, 6]), unnamed([30, 40, 30, 6], 'password text'),
+            unnamed([30, 60, 30, 6], 'label', 'All items'), unnamed([60, 60, 30, 6], 'list item', SHARE_TOKEN+'.png')])
+        frame = ctx.frame('history', window='history')
+        image = self.pixels(ctx, frame)
+        self.assertFalse(ctx.evidence.frames[frame.path]['fallback'])
+        self.assertEqual(image.getpixel((20, 13)), (0, 0, 0))      # editable field
+        self.assertEqual(image.getpixel((20, 33)), (0, 0, 0))      # password field
+        self.assertEqual(image.getpixel((15, 53)), (255, 255, 255))  # plain label kept
+        self.assertEqual(image.getpixel((45, 53)), (0, 0, 0))      # item naming a registered value
+
+    def test_declared_state_requires_as_many_showing_fields_without_object_names(self):
+        ctx = self.context()
+        ctx.sensitive(SHARE)
+        self.window(ctx)
+        ctx._captures['history'] = '01-history-list'   # requires historyLink
+        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [dict(control('', [30, 20, 30, 6]), name='Link')])
+        self.assertFalse(ctx.evidence.frames[ctx.frame('one-field', window='history').path]['fallback'])
+        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [dict(control('', [30, 20, 30, 6], role='label'), name='Link')])
+        self.assertTrue(ctx.evidence.frames[ctx.frame('no-field', window='history').path]['fallback'])
+
+    def test_page_witness_from_catalog_only_labels(self):
+        ctx = self.context()
+        rows = [{'role': 'label', 'name': 'pageAnchordestinations'}]  # fixture: label only on the destinations capture
+        ctx.call = lambda method, params=None: {}
+        for inventory in ctx.catalog.inventories.values():
+            for c in inventory['controls']:
+                c.setdefault('text', c['name'])
+        self.assertEqual(ctx._visible_page(rows), 'destinations')
+        self.assertIsNone(ctx._visible_page([{'role': 'label', 'name': 'shared'}]))
 
     def test_main_window_roles_follow_the_view_state_page(self):
         # The fixture's destinations page always shows credentialSecretKey and
@@ -370,6 +410,28 @@ class F6VisiblePageOnly(Base):
         self.assertEqual(self.pixels(ctx, frame).getpixel((75, 5)), (255, 255, 255))
         desktop = ctx.frame('desktop')
         self.assertIsNotNone(self.pixels(ctx, desktop).getbbox())
+
+
+class LayoutProbe(unittest.TestCase):
+    def test_x11_stacking_follows_the_server_root_order(self):
+        from tools.lab.surface_driver import probe
+        tree = '''  Root window id: 0x21d (the root window) (has no name)
+     3 children:
+     0x500 "put.gd": ("putgd-ui" "putgd-ui")  1280x760+0+0  +0+0
+     0x300 "Desktop": ("nemo-desktop" "Nemo-desktop")  1280x760+0+0  +0+0
+     0x210 (has no name): ()  1280x800+0+0  +0+0
+'''
+        windows = [{'window_id': str(i), 'name': n, 'pid': pid, 'x': 0, 'y': 0, 'width': 1280, 'height': 760,
+                    'frame': None, 'states': {'minimized': False}} for i, n, pid in
+                   ((0x500, 'put.gd', 7), (0x300, 'Desktop', 8), (0x210, 'mutter guard window', 9))]
+        with patch.dict(probe.os.environ, {'XDG_SESSION_TYPE': 'x11'}), \
+             patch.object(probe, 'run', return_value=tree), patch.object(probe, 'x11_windows', return_value=windows), \
+             patch.object(probe, 'x11_ancestors', side_effect=lambda wid: [wid, str(0x21d)]), \
+             patch.object(probe, 'owned', side_effect=lambda pid: pid == 7):
+            rows = {r['title']: r for r in probe.layout({})['windows']}
+        self.assertGreater(rows['put.gd']['stack'], rows['Desktop']['stack'])
+        self.assertGreater(rows['Desktop']['stack'], rows['mutter guard window']['stack'])
+        self.assertTrue(rows['put.gd']['owned'])
 
 
 class NaFinalBytes(Base):

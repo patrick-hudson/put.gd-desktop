@@ -781,18 +781,38 @@ asyncio.run(main())
                     names.add(row['name'])
         return names
 
+    EDITABLE_ROLES = ('text', 'entry', 'password text', 'terminal')
+
+    def _page_labels(self):
+        """Catalog labels that occur on exactly one main page (a page witness)."""
+        from .catalog import control_labels
+        stems = {'history': ('history',), 'destinations': ('destination',), 'settings': ('settings',)}
+        labels = {page: set() for page in stems}
+        for name, inventory in self.catalog.inventories.items():
+            pages = [page for page, words in stems.items() if any(w in name for w in words)]
+            if len(pages) == 1:
+                for control in inventory.get('controls', []):
+                    labels[pages[0]].update(control_labels(control))
+        return {page: values - set().union(*(v for p, v in labels.items() if p != page)) for page, values in labels.items()}
+
     def _visible_page(self, rows):
-        tabs = [r for r in rows if r.get('role') == 'page tab' and r.get('states', {}).get('selected')
-                and str(r.get('name', '')).lower() in self.MAIN_PAGES]
+        """The main window's showing page: its selected navigation tab, a view-state
+        page, or the page whose catalog-only labels are showing (else None)."""
+        tabs = [r for r in rows if r.get('role') == 'page tab' and str(r.get('name', '')).lower() in self.MAIN_PAGES
+                and (r.get('states', {}).get('selected') or r.get('states', {}).get('checked'))]
         if len(tabs) == 1:
             return tabs[0]['name'].lower()
         page = self.call('ui.viewState').get('main', {}).get('page')
-        return next((name for name, index in self.MAIN_PAGES.items() if index == page), None)
+        if page is not None:
+            return next((name for name, index in self.MAIN_PAGES.items() if index == page), None)
+        showing = {r.get('name') for r in rows if r.get('name') and r.get('role') != 'page tab'}
+        pages = [page for page, labels in self._page_labels().items() if labels & showing]
+        return pages[0] if len(pages) == 1 else None
 
     def _required_controls(self, role, rows=()):
-        """Secret controls the visible page/state must show: the declared catalog
+        """Secret fields the visible page/state must show: the declared catalog
         capture's visible secret controls, else those on every capture of the
-        view-state's current page. Other pages' controls are never required."""
+        visible page. Other pages' controls are never required."""
         names = self._secret_names()
         capture = self._captures.get(role)
         if capture:
@@ -801,7 +821,9 @@ asyncio.run(main())
             if role in self.MAIN_PAGES or role == 'main':
                 role = self._visible_page(rows)
                 if role is None:
-                    raise RecipeBlocked('main window page unknown')
+                    # Unknown page: no page-level requirement. Every showing
+                    # editable field is masked regardless of page.
+                    return set(), None
             stems = {'destinations': 'destination'}
             inventories = [v for k, v in self.catalog.inventories.items() if stems.get(role, role or '\0') in k]
         if not inventories:
@@ -814,7 +836,14 @@ asyncio.run(main())
         return required, role
 
     def _secret_regions(self, head, role=None, geometry=None):
-        """Showing owned controls that hold or display secrets; raises when unknown."""
+        """Showing owned controls that hold or display secrets; raises when unknown.
+
+        Every showing editable text field is treated as secret (AT-SPI names
+        are labels, and objectNames are absent on older Qt), as is any row
+        whose name/text carries a link or registered value. A required
+        control resolves by objectName where Qt exports one; otherwise the
+        page must show at least as many editable fields as it requires.
+        """
         if not self.profile.get('at_spi', {}).get('available'):
             raise RecipeBlocked('secret control geometry needs AT-SPI')
         names = self._secret_names()
@@ -824,21 +853,25 @@ asyncio.run(main())
         rows = self._probe('accessible', query)
         if geometry and not any(r.get('rect') and r.get('window') and r['role'] not in ('application',) for r in rows):
             raise RecipeBlocked('owned window has no readable accessible tree')
-        regions, found = [], set()
+        regions, found, fields = [], set(), 0
         for row in rows:
-            secret = (row.get('objectName') in names or SECRET_FIELD.search(row.get('objectName') or '')
-                      or row.get('role') == 'password text' or row.get('protected')
-                      or self._leaks(row.get('name'), row.get('text'), row.get('description')))
+            editable = row.get('role') in self.EDITABLE_ROLES
+            secret = (editable or row.get('objectName') in names or SECRET_FIELD.search(row.get('objectName') or '')
+                      or row.get('protected') or self._leaks(row.get('name'), row.get('text'), row.get('description')))
             if not secret:
                 continue
             if not row.get('rect') or min(row['rect'][2:]) <= 0:
+                if editable and not self._leaks(row.get('name'), row.get('text'), row.get('description')) and row.get('rect') is not None:
+                    continue  # a collapsed, empty field draws nothing
                 raise RecipeBlocked('showing secret control has no placement')
             found.add(row.get('objectName'))
+            fields += editable
             x, y, w, h = row['rect']
             regions.append(self._to_head([x-2, y-2, w+4, h+4], head, geometry))
         if role is not None:
             required, page = self._required_controls(role, rows)
-            if required - found:
+            missing = required - found
+            if missing and (any(r.get('objectName') for r in rows) or fields < len(required)):
                 raise RecipeBlocked('visible page secret controls did not resolve')
         return regions
 
@@ -908,7 +941,9 @@ asyncio.run(main())
                 if any(self._leaks(other.get('title')) for other in windows):
                     regions += self._areas(config.get('window_list_panels', [{'anchor': 'bottom', 'height': 1}]), image, head)
                 regions += self._secret_regions(head)
-        except (RecipeBlocked, ValueError, KeyError, TypeError):
+        except (RecipeBlocked, ValueError, KeyError, TypeError) as error:
+            # Redacted, bounded reason for the fail-closed frame's review.
+            self._policy_reason = type(error).__name__+': '+self.evidence.redactor.text(str(error))[:160]
             return full, True, 'live-geometry-unknown-fully-masked'
         finally:
             self._input_head = input_head
@@ -934,6 +969,7 @@ asyncio.run(main())
         head = geometry.get('head',0) if geometry else 0
         image = self.target.capture_image(head)
         owner = self.profile.get('windows', {}).get(role, {}).get('owner', role) if role else None
+        self._policy_reason = None
         regions, fallback, policy = self._frame_regions(image, head, geometry, owner, desktop_safe)
         crop = None
         if geometry:
@@ -944,6 +980,8 @@ asyncio.run(main())
         metadata = self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
         if policy:
             metadata['policy'] = policy
+            if self._policy_reason:
+                metadata['policy_reason'] = self._policy_reason
         if policy == 'live-desktop-masked' and metadata['guard'] == 'fully-masked':
             # Deliberate: a live desktop frame without a declaration is not evidence.
             self.note('desktop frame '+safe+' masked by live evidence policy')
@@ -951,7 +989,8 @@ asyncio.run(main())
             if not metadata['visible_pixels']:
                 self.review('frame has no visible pixels; visual approval withheld')
             if metadata['fallback']:
-                self.review('frame fully masked: '+(policy or metadata.get('guard', 'sensitive geometry unavailable')))
+                self.review('frame fully masked: '+(policy or metadata.get('guard', 'sensitive geometry unavailable'))
+                            +(' ('+self._policy_reason+')' if self._policy_reason else ''))
         frame = Frame(label,str(path.relative_to(self.out)),role,reference)
         self.frames.append(frame)
         if reference and not (self.recipe and self.recipe.desktop_drawn):
