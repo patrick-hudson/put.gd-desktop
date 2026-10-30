@@ -51,10 +51,10 @@ PY"""))
 def _backend(ctx, backend):
     fixture = ctx.fixture('file-dialog-' + backend)
     if not fixture['available']:
-        ctx.blocked(backend + ' chooser unavailable: ' + fixture['reason'])
+        ctx.blocked(backend + ' chooser unavailable: ' + fixture['reason'], issue=671)
     settings = ctx.profile['dialogs']['backends'][backend]
     if not settings['available']:
-        ctx.blocked(settings['reason'])
+        ctx.blocked(settings['reason'], issue=671)
     ctx.note('Requested chooser backend: ' + backend)
     return settings
 
@@ -75,7 +75,7 @@ def _ready(ctx, inspect, backend, mode):
                      if (s := inspect()) else None, 'chooser prepared', timeout=12)
     if state['backend'] != backend:
         ctx.blocked('Requested ' + backend + ', got ' + state['backend'] +
-                    '; fallbackReason=' + str(state.get('fallbackReason')))
+                    '; fallbackReason=' + str(state.get('fallbackReason')), issue=671)
     if backend == 'fallback':
         expected = ctx.profile['dialogs']['backends'][backend]['expected_reason']
         if state.get('fallbackReason') != expected:
@@ -87,7 +87,7 @@ def _ready(ctx, inspect, backend, mode):
             current = inspect()
             if current.get('backend') != backend:
                 ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
-                            str(current.get('fallbackReason')))
+                            str(current.get('fallbackReason')), issue=671)
             return ctx.accessible({'name': current['title'], 'visible': True, 'showing': True})
         nodes = ctx.wait(drawn, 'desktop chooser is accessible and drawn')
         # Desktop-owned portal windows are outside the private app family.
@@ -185,7 +185,10 @@ def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
         ctx.expect(chosen['last']['backend'] == backend, 'resident confirms the actual backend')
         ctx.expect(_same_path(chosen['last']['path'], path, mode), 'resident received the exact typed path')
     except Exception:
-        ctx.note('Chooser state at failure: ' + json.dumps(command('inspect'), sort_keys=True))
+        try:
+            ctx.note('Chooser state at failure: ' + json.dumps(command('inspect'), sort_keys=True))
+        except Exception as observation:
+            ctx.note('Chooser failure state unavailable: ' + type(observation).__name__)
         _frame(ctx, 'dialog-failure', backend)
         raise
     finally:
@@ -247,7 +250,7 @@ def _run(ctx, backend, scenario):
         ctx.blocked('Chooser failure fixture did not provide a production Failed result', issue=671)
     _backend(ctx, backend)
     if scenario in BACKENDS and scenario != backend:
-        ctx.blocked(scenario + ' backend state does not exist in a ' + backend + ' run')
+        ctx.blocked(scenario + ' backend state does not exist in a ' + backend + ' run', issue=671)
     files = _files(ctx)
     if scenario in ('output-folder', 'portal', 'fallback', 'cancel', 'mcp.file-dialogs'):
         _output(ctx, backend, files, mcp=scenario == 'mcp.file-dialogs', cancel_only=scenario == 'cancel')
