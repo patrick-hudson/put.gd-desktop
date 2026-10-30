@@ -96,6 +96,10 @@ class FakeContext(Context):
             return {"operations": list(copy.deepcopy(self.operations).values())}
         if method == "operation.inspect":
             return copy.deepcopy(self.operations[params["id"]])
+        if method == "operation.cancel":
+            self.operations[params["id"]].update(state="cancelled", cancelled=True)
+            self.surface = "history"
+            return {}
         if method == "recording.capabilities":
             return {"active": self.active if self.active in self.recordings and self._record()["state"] != "cancelled" else None,
                     "formats": ["mp4", "webm", "gif", "webp"], "codecs": {"mp4": ["h264", "h265"], "webm": ["vp9"]}, "audio": {"system": True}}
@@ -162,6 +166,9 @@ class FakeContext(Context):
 
     def review(self, reason):
         self.reviews.append(reason)
+
+    def focus(self, window, raise_window=True):
+        assert window in ("region", "recsel")
 
     def geometry(self, window):
         assert window == "bar"
@@ -299,7 +306,7 @@ class FakeContext(Context):
         assert script in ("sleep 2", "sleep 2.2")
         return {"returncode": 0, "stdout": ""}
 
-    def scroll(self, x, y, clicks):
+    def scroll(self, x, y, clicks, head=None):
         self.inputs.append(("scroll", x, y, clicks))
 
 
@@ -487,6 +494,19 @@ class SelectorRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, "motion probe export succeeded"):
             selectors.bar_recording(ctx)
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
+
+    def test_refused_selector_focus_cleans_up_without_gestures(self):
+        for function in (selectors.region_capture, selectors.recording_selection):
+            with self.subTest(recipe=function.__name__):
+                ctx = FakeContext()
+                def refused(*args, **kwargs):
+                    raise RecipeBlocked("live window match is missing or ambiguous")
+                ctx.focus = refused
+                with self.assertRaisesRegex(RecipeBlocked, "#701"):
+                    function(ctx)
+                self.assertFalse(ctx.inputs)
+                self.assertTrue(all(op["state"] == "cancelled" for op in ctx.operations.values()))
+                self.assertEqual(ctx.document, ctx.original)
 
     def test_unavailable_fixture_is_blocked(self):
         ctx = FakeContext()

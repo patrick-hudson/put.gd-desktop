@@ -130,19 +130,21 @@ def _open_region(ctx, edit=False, accessible=True):
     ctx.expect(bool(opened.get("operationId")), "capture action returns a durable operation identity")
     oid = opened["operationId"]
     ctx.note("Capture operation " + oid)
-    if not accessible:
-        ctx.wait(lambda: _op(ctx, oid)["state"] == "acquiring", "capture selector acquiring")
-        return oid
     try:
-        ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
-    except Exception as error:
+        if accessible:
+            ctx.wait(lambda: ctx.accessible({"name": "Capture region"}), "screenshot selector opened")
+        else:
+            ctx.wait(lambda: _op(ctx, oid)["state"] == "acquiring", "capture selector acquiring")
+        # view(action.invoke) has no shell-window role. Select the actual overlay
+        # through the public focus contract before guarded keyboard/pointer input.
+        ctx.focus("region", raise_window=False)
+    except (RecipeBlocked, RecipeFailed) as error:
         ctx.frame("selector-readback-unavailable")
         observed = _op(ctx, oid)
-        if observed["state"] == "failed":
-            ctx.expect(False, "capture failed before selector readback: " + observed.get("error", {}).get("code", "unknown"))
-        _cancel_region(ctx, oid)
-        if isinstance(error, RecipeFailed) and observed["state"] in ("accepted", "acquiring"):
-            ctx.blocked("Capture selector has no live AT-SPI node in this session; resident has no selection inspect fallback (#701)", issue=701)
+        if observed["state"] in ("accepted", "acquiring"):
+            # Cleanup only; a blocked input is never represented as a cancel pass.
+            _call(ctx, "operation.cancel", {"id": oid})
+            ctx.blocked("Capture selector has no live AT-SPI node or authorized geometry in this session (#701): " + str(error), issue=701)
         raise
     return oid
 
@@ -178,10 +180,16 @@ def _open_record(ctx, entire=False):
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]
     ctx.note("Recording operation " + rid)
-    if entire:
-        _state(ctx, rid, "ready")
-    else:
-        ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
+    try:
+        if entire:
+            _state(ctx, rid, "ready")
+        else:
+            ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
+            ctx.focus("recsel", raise_window=False)
+    except (RecipeBlocked, RecipeFailed) as error:
+        ctx.frame("recording-selector-readback-unavailable")
+        _cancel_record(ctx, rid)
+        ctx.blocked("Recording selector input/readback unavailable (#701/#705): " + str(error), issue=701)
     return rid
 
 
@@ -383,10 +391,10 @@ def _heads(ctx, recording):
         # the native selector has no accessible node. No selection is injected.
         for number, (keys, wanted) in enumerate(((('Tab',), screens[1]), (('Tab', 'Shift+Tab'), screens[0]), (('Shift+Tab',), screens[1]))):
             x, y, w, h = screens[0]
-            ctx.scroll(int(x + w / 2), int(y + h / 2), 0)  # position the real pointer on head 0
             oid = _open_record(ctx) if recording else _open_region(ctx, accessible=False)
             accepted = False
             try:
+                ctx.scroll(int(x + w / 2), int(y + h / 2), 0, head=0)  # guarded pointer on head 0
                 ref = "47-record-entire-display" if recording else "46-region-entire-display"
                 ctx.frame("before-" + str(number), reference=ref)
                 ctx.keys(*keys)
