@@ -383,12 +383,18 @@ def key_menu(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
     for key in ('Shift+F10', 'Menu'):
-        ctx.view('ui.history', {'action': 'clearSelection'})
-        ctx.expect(not _state(ctx)['selectedIds'], 'selection cleared before keyboard delivery proof')
+        # A real delegate click establishes both selection and currentIndex.
+        # Home on an already-current row need not restore a cleared selection.
+        box = ctx.geometry('history')
+        lists = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
+                                'name': 'History items and upload activity'})
+        ctx.expect(len(lists) == 1 and bool(lists[0].get('rect')), 'one live History list before keyboard row binding')
+        query = {'role': 'list item', 'within': lists[0]['rect']}
+        _click_history_node(ctx, query)
         _focus_items(ctx)
-        # A selection does not establish QListView.currentIndex(). Home does.
-        ctx.keys('Home')
-        ctx.wait(lambda: _state(ctx)['selectedIds'] == [row['id']], 'current keyboard row has exact receipt identity')
+        ctx.wait(lambda: _state(ctx)['selectedIds'] == [row['id']] and len(ctx.accessible(dict(
+            query, owned=True, pid=box['pid'], visible=True, showing=True, states={'focused': True}))) == 1,
+            'real delegate click establishes the exact selected current keyboard row')
         _frame(ctx, 'selected-' + key)
         ctx.keys(key)
         _wait_menu(ctx, 'Copy details')

@@ -356,7 +356,7 @@ class FakeContext(Context):
             if not query.get('owned') or query.get('pid') != 123 or query.get('within') != [320, 200, 800, 650]:
                 raise AssertionError('row input requires the owned live list bounds')
             self.last_delegate_query = query
-            return [{'rect': [320, 200, 800, 40]}]
+            return [{'rect': [320, 200, 800, 40], 'states': {'focused': self.focused_control == 'historyList'}}]
         if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
             return [{'rect': [1200, 200, 40, 40]}]
         if query.get('name') == 'Expand preview':
@@ -500,6 +500,19 @@ class HistoryRecipeTests(unittest.TestCase):
             for _, _, reference in ctx.frames:
                 if reference:
                     self.assertIn('"' + reference, source, reference)
+
+    def test_row_menu_does_not_rely_on_home_reselecting_current_row(self):
+        class CurrentButUnselected(FakeContext):
+            def keys(self, *keys):
+                if 'Home' in keys:
+                    self.selected = []
+                    return
+                return super().keys(*keys)
+        ctx = CurrentButUnselected(('history-row',))
+        history.key_menu(ctx)
+        self.assertIn(('keys', ('Shift+F10',)), ctx.events)
+        self.assertIn(('keys', ('Menu',)), ctx.events)
+        self.assertTrue(ctx.clipboard)
 
     def test_clear_filter_uses_reflowed_native_button_not_catalog_point(self):
         class Reflowed(FakeContext):
