@@ -1,0 +1,1348 @@
+{
+  "frames": {
+    "frames/setup/00-history-list.png": {
+      "sha256": "c482ed512ce4d61376da56de63bb04467f47192a4a2f5a2ff0cbd1236a5499b0",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          230,
+          426,
+          977,
+          80
+        ],
+        [
+          230,
+          350,
+          977,
+          80
+        ],
+        [
+          230,
+          274,
+          977,
+          80
+        ],
+        [
+          230,
+          166,
+          977,
+          112
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/01-history-selected-custom.png": {
+      "sha256": "57006c52031f101b64548d059cd96bfcb79ea52d625812de3e2b43832fbf6a59",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          230,
+          426,
+          589,
+          80
+        ],
+        [
+          230,
+          350,
+          589,
+          80
+        ],
+        [
+          230,
+          274,
+          589,
+          80
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          528,
+          352,
+          154
+        ],
+        [
+          955,
+          556,
+          244,
+          42
+        ],
+        [
+          855,
+          441,
+          227,
+          28
+        ],
+        [
+          847,
+          372,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/02-destinations.png": {
+      "sha256": "ad383040efb93cf9d3b3424bb9705083ac46a856f7c6b30c63273818c5408517",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          535,
+          735,
+          476,
+          21
+        ],
+        [
+          476,
+          695,
+          535,
+          40
+        ],
+        [
+          476,
+          431,
+          535,
+          40
+        ],
+        [
+          488,
+          380,
+          493,
+          38
+        ],
+        [
+          476,
+          346,
+          535,
+          21
+        ],
+        [
+          476,
+          306,
+          535,
+          40
+        ],
+        [
+          263,
+          122,
+          239,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/03-destinations-credentials-typed.png": {
+      "sha256": "db91800130868d209680e974bc472907534d71c45e83a905049bfb78b01688b0",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          476,
+          489,
+          535,
+          40
+        ],
+        [
+          476,
+          437,
+          535,
+          40
+        ],
+        [
+          476,
+          385,
+          535,
+          40
+        ],
+        [
+          535,
+          214,
+          476,
+          21
+        ],
+        [
+          476,
+          174,
+          535,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/04-settings.png": {
+      "sha256": "4e3c5a34f40a9828ec7d96d35a5736955cfd3ca07303ff85ad064a5317bfd91e",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/05-history-under-foreign-window.png": {
+      "sha256": "8db2f259bc60c321adf3438c517d4a52c642e0b3f45fbce1259559c0d9ac8acd",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          212,
+          256,
+          788,
+          257
+        ],
+        [
+          230,
+          426,
+          589,
+          80
+        ],
+        [
+          230,
+          350,
+          589,
+          80
+        ],
+        [
+          230,
+          274,
+          589,
+          80
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          528,
+          352,
+          154
+        ],
+        [
+          955,
+          556,
+          244,
+          42
+        ],
+        [
+          855,
+          441,
+          227,
+          28
+        ],
+        [
+          847,
+          372,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/06-desktop-foreign-window.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/setup/07-desktop-foreign-window-declared.png": {
+      "sha256": "3ab61b8eece5ba1c82362a8927ce3718ef8ff5213a95084f79a476cc465e340e",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          279,
+          288,
+          788,
+          257
+        ],
+        [
+          297,
+          458,
+          589,
+          80
+        ],
+        [
+          297,
+          382,
+          589,
+          80
+        ],
+        [
+          297,
+          306,
+          589,
+          80
+        ],
+        [
+          297,
+          198,
+          589,
+          112
+        ],
+        [
+          914,
+          560,
+          352,
+          154
+        ],
+        [
+          1022,
+          588,
+          244,
+          42
+        ],
+        [
+          922,
+          473,
+          227,
+          28
+        ],
+        [
+          914,
+          404,
+          352,
+          25
+        ],
+        [
+          620,
+          154,
+          304,
+          40
+        ],
+        [
+          1100,
+          94,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/08-top-share-desktop.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/setup/09-top-share-desktop-declared.png": {
+      "sha256": "6040ef310d55f2545f3801cb3fc2dad9463d56709f97f4f1388c815327ff8393",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          297,
+          458,
+          589,
+          80
+        ],
+        [
+          297,
+          382,
+          589,
+          80
+        ],
+        [
+          297,
+          306,
+          589,
+          80
+        ],
+        [
+          297,
+          198,
+          589,
+          112
+        ],
+        [
+          914,
+          560,
+          352,
+          154
+        ],
+        [
+          1022,
+          588,
+          244,
+          42
+        ],
+        [
+          922,
+          473,
+          227,
+          28
+        ],
+        [
+          914,
+          404,
+          352,
+          25
+        ],
+        [
+          620,
+          154,
+          304,
+          40
+        ],
+        [
+          1100,
+          94,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/10-top-share-history.png": {
+      "sha256": "57113dac31389b027516b28f2f8496f3ae475f8d8b026de8b5e6ec12c4816c0f",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          230,
+          426,
+          589,
+          80
+        ],
+        [
+          230,
+          350,
+          589,
+          80
+        ],
+        [
+          230,
+          274,
+          589,
+          80
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          528,
+          352,
+          154
+        ],
+        [
+          955,
+          556,
+          244,
+          42
+        ],
+        [
+          855,
+          441,
+          227,
+          28
+        ],
+        [
+          847,
+          372,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/11-top-b2-desktop.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/setup/12-top-b2-desktop-declared.png": {
+      "sha256": "6040ef310d55f2545f3801cb3fc2dad9463d56709f97f4f1388c815327ff8393",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          297,
+          458,
+          589,
+          80
+        ],
+        [
+          297,
+          382,
+          589,
+          80
+        ],
+        [
+          297,
+          306,
+          589,
+          80
+        ],
+        [
+          297,
+          198,
+          589,
+          112
+        ],
+        [
+          914,
+          560,
+          352,
+          154
+        ],
+        [
+          1022,
+          588,
+          244,
+          42
+        ],
+        [
+          922,
+          473,
+          227,
+          28
+        ],
+        [
+          914,
+          404,
+          352,
+          25
+        ],
+        [
+          620,
+          154,
+          304,
+          40
+        ],
+        [
+          1100,
+          94,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/13-top-b2-history.png": {
+      "sha256": "57113dac31389b027516b28f2f8496f3ae475f8d8b026de8b5e6ec12c4816c0f",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          230,
+          426,
+          589,
+          80
+        ],
+        [
+          230,
+          350,
+          589,
+          80
+        ],
+        [
+          230,
+          274,
+          589,
+          80
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          528,
+          352,
+          154
+        ],
+        [
+          955,
+          556,
+          244,
+          42
+        ],
+        [
+          855,
+          441,
+          227,
+          28
+        ],
+        [
+          847,
+          372,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/14-top-presigned-desktop.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/setup/15-top-presigned-desktop-declared.png": {
+      "sha256": "6040ef310d55f2545f3801cb3fc2dad9463d56709f97f4f1388c815327ff8393",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          297,
+          458,
+          589,
+          80
+        ],
+        [
+          297,
+          382,
+          589,
+          80
+        ],
+        [
+          297,
+          306,
+          589,
+          80
+        ],
+        [
+          297,
+          198,
+          589,
+          112
+        ],
+        [
+          914,
+          560,
+          352,
+          154
+        ],
+        [
+          1022,
+          588,
+          244,
+          42
+        ],
+        [
+          922,
+          473,
+          227,
+          28
+        ],
+        [
+          914,
+          404,
+          352,
+          25
+        ],
+        [
+          620,
+          154,
+          304,
+          40
+        ],
+        [
+          1100,
+          94,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/16-top-presigned-history.png": {
+      "sha256": "57113dac31389b027516b28f2f8496f3ae475f8d8b026de8b5e6ec12c4816c0f",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          230,
+          426,
+          589,
+          80
+        ],
+        [
+          230,
+          350,
+          589,
+          80
+        ],
+        [
+          230,
+          274,
+          589,
+          80
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          528,
+          352,
+          154
+        ],
+        [
+          955,
+          556,
+          244,
+          42
+        ],
+        [
+          855,
+          441,
+          227,
+          28
+        ],
+        [
+          847,
+          372,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/17-top-custom-desktop.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/setup/18-top-custom-desktop-declared.png": {
+      "sha256": "6040ef310d55f2545f3801cb3fc2dad9463d56709f97f4f1388c815327ff8393",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          360,
+          0,
+          560,
+          360
+        ],
+        [
+          297,
+          458,
+          589,
+          80
+        ],
+        [
+          297,
+          382,
+          589,
+          80
+        ],
+        [
+          297,
+          306,
+          589,
+          80
+        ],
+        [
+          297,
+          198,
+          589,
+          112
+        ],
+        [
+          914,
+          560,
+          352,
+          154
+        ],
+        [
+          1022,
+          588,
+          244,
+          42
+        ],
+        [
+          922,
+          473,
+          227,
+          28
+        ],
+        [
+          914,
+          404,
+          352,
+          25
+        ],
+        [
+          620,
+          154,
+          304,
+          40
+        ],
+        [
+          1100,
+          94,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/setup/19-top-custom-history.png": {
+      "sha256": "57113dac31389b027516b28f2f8496f3ae475f8d8b026de8b5e6ec12c4816c0f",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          230,
+          426,
+          589,
+          80
+        ],
+        [
+          230,
+          350,
+          589,
+          80
+        ],
+        [
+          230,
+          274,
+          589,
+          80
+        ],
+        [
+          230,
+          166,
+          589,
+          112
+        ],
+        [
+          847,
+          528,
+          352,
+          154
+        ],
+        [
+          955,
+          556,
+          244,
+          42
+        ],
+        [
+          855,
+          441,
+          227,
+          28
+        ],
+        [
+          847,
+          372,
+          352,
+          25
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.registered/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.registered/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.schemeless/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.schemeless/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.raw/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.raw/01-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.framed/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.framed/01-recipe-history.png": {
+      "sha256": "c26aff9d59619a80a83633999eaae44a40e591d80b5cd6334a9449911305bbf6",
+      "size": [
+        1213,
+        768
+      ],
+      "regions": [
+        [
+          293,
+          0,
+          560,
+          328
+        ],
+        [
+          553,
+          122,
+          304,
+          40
+        ],
+        [
+          1033,
+          62,
+          170,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.framed/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false
+    }
+  }
+}

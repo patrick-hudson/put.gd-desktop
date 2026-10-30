@@ -1,0 +1,21 @@
+............F........                                                    [100%]
+=================================== FAILURES ===================================
+____________ B3Prewrite.test_b3_small_notification_text_link_masked ____________
+
+self = <test_val726.B3Prewrite testMethod=test_b3_small_notification_text_link_masked>
+
+    @real_ocr
+    def test_b3_small_notification_text_link_masked(self):
+        # Notification-banner shape: 11-13 px light text on a dark background.
+        results = {}
+        for size in (11, 12, 13):
+            for fg, bg in (('white', '#2b2b2b'), ('black', 'white')):
+                meta, black = self.frame(text_image('Link copied: '+SHARE, size, fg, bg, 520, 40))
+                results[(size, fg)] = (black, meta['guard'])
+>       self.assertTrue(all(v[0] for v in results.values()), results)
+E       AssertionError: False is not true : {(11, 'white'): (False, 'ocr-checked'), (11, 'black'): (False, 'ocr-checked'), (12, 'white'): (False, 'ocr-checked'), (12, 'black'): (False, 'ocr-checked'), (13, 'white'): (False, 'ocr-checked'), (13, 'black'): (False, 'ocr-checked')}
+
+../../../sd726/val/test_val726.py:157: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../sd726/val/test_val726.py::B3Prewrite::test_b3_small_notification_text_link_masked
+1 failed, 20 passed in 3.05s
