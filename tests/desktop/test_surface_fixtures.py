@@ -246,6 +246,29 @@ class Fixtures(unittest.TestCase):
         self.assertEqual(scope.close(),['broken: RecipeFailed'])
         self.assertFalse(Path(scope.root).exists())
 
+    def test_fake_input_is_erased_even_if_collection_and_directory_cleanup_fail(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        path=scope.root+'/fake-input.json'
+        def create(code):
+            scope.write(path,b'synthetic input')
+            return {'collection':'/owned','reference':'owned'}
+        with patch.object(scope,'json',create):self.ctx.fixture('fake-keyring')
+        original=scope.python
+        def python(code,**kwargs):
+            if "'Delete'" in code or 'shutil.rmtree' in code:raise RecipeBlocked('forced cleanup refusal')
+            return original(code,**kwargs)
+        with patch.object(scope,'python',python):errors=scope.close()
+        self.assertEqual(len(errors),2)
+        self.assertFalse(Path(path).exists())
+
+    def test_recording_working_path_follows_the_isolated_data_directory(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        data=scope.root+'/data';scope._environment['XDG_DATA_HOME']=data
+        with patch.object(self.ctx,'call',return_value={'locations':{'data':{'path':data+'/putgd'}}}):
+            self.assertEqual(recordings.actual_working(scope,'owned'),data+'/putgd/recording/owned/working.mkv')
+        with patch.object(self.ctx,'call',return_value={'locations':{'data':{'path':str(self.root/'data/putgd')}}}):
+            with self.assertRaises(RecipeBlocked):recordings.actual_working(scope,'owned')
+
     def test_sigterm_and_sighup_run_finalizers_and_stop_the_recipe_sequence(self):
         for sig in (signal.SIGTERM,signal.SIGHUP):
             with self.subTest(signal=sig),tempfile.TemporaryDirectory() as directory:

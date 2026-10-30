@@ -122,7 +122,13 @@ def controllers(scope):
         table='sd_'+scope.token[:12]
         # Register before mutation: termination after nft commits must still
         # remove exactly this table. An absent owned table is already clean.
-        scope.defer('owned nft table',lambda:checked(ctx.shell('if sudo -n /usr/sbin/nft list table inet '+table+' >/dev/null 2>&1; then sudo -n /usr/sbin/nft delete table inet '+table+'; fi')),priority=250)
+        def remove_table():
+            exists=ctx.shell('sudo -n /usr/sbin/nft list table inet '+table+' >/dev/null 2>&1')
+            if exists['returncode']==0:
+                checked(ctx.shell('sudo -n /usr/sbin/nft delete table inet '+table))
+            else:
+                checked(ctx.shell('sudo -n /usr/sbin/nft list tables >/dev/null'))
+        scope.defer('owned nft table',remove_table,priority=250)
         result=ctx.shell("sudo -n /usr/sbin/nft -f - <<'SD_NFT'\ncreate table inet "+table+'\nadd chain inet '+table+' output { type filter hook output priority -10; policy accept; }\nadd rule inet '+table+' output ip daddr 127.0.0.1 tcp dport '+str(port)+' counter drop\nSD_NFT\n')
         if result['returncode']:raise RecipeBlocked('guest nft controller unavailable',issue=682)
         return table

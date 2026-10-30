@@ -82,7 +82,9 @@ def review_catalog(scope, name):
 def actual_working(scope, identity):
     from pathlib import PurePosixPath
     root=scope.ctx.call('diagnostics').get('locations',{}).get('data',{}).get('path')
-    if not isinstance(root,str) or not PurePosixPath(root).is_relative_to(PurePosixPath(scope.ctx.target.root)/'data'):
+    data=scope._environment.get('XDG_DATA_HOME',scope.ctx.target.root+'/data')
+    if (not isinstance(root,str) or not PurePosixPath(data).is_relative_to(PurePosixPath(scope.ctx.target.root))
+            or not PurePosixPath(root).is_relative_to(PurePosixPath(data))):
         raise RecipeBlocked('recording fixture needs the exact owned data root',issue=672)
     return root+'/recording/'+identity+'/working.mkv'
 
