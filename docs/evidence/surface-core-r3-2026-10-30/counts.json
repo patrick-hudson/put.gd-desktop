@@ -1,0 +1,595 @@
+{
+  "cin": {
+    "desktop": "mint-cinnamon-x11",
+    "rows": 74,
+    "lanes": {
+      "settings": {
+        "before": {
+          "blocked": 18
+        },
+        "after": {
+          "blocked": 18
+        }
+      },
+      "destinations": {
+        "before": {
+          "blocked": 4
+        },
+        "after": {
+          "blocked": 4
+        }
+      },
+      "events": {
+        "before": {
+          "blocked": 2
+        },
+        "after": {
+          "blocked": 2
+        }
+      },
+      "review": {
+        "before": {
+          "failed": 2
+        },
+        "after": {
+          "blocked": 1,
+          "passed": 1
+        }
+      },
+      "editor": {
+        "before": {
+          "blocked": 2
+        },
+        "after": {
+          "failed": 2
+        }
+      },
+      "tray": {
+        "before": {
+          "blocked": 40,
+          "failed": 2
+        },
+        "after": {
+          "blocked": 39,
+          "failed": 3
+        }
+      },
+      "dialogs": {
+        "before": {
+          "blocked": 4
+        },
+        "after": {
+          "blocked": 4
+        }
+      }
+    },
+    "transitions": [
+      {
+        "recipe": "editor.palette",
+        "interaction": "editor.colours",
+        "before": "blocked",
+        "after": "failed",
+        "afterNote": "operationId=6c5d5bd9-c4d2-4429-a0e0-12d34b3fd3ee; editor operationId=6c5d5bd9-c4d2-4429-a0e0-12d34b3fd3ee; driver error: IndexError"
+      },
+      {
+        "recipe": "editor.style_controls",
+        "interaction": "editor.line-width",
+        "before": "blocked",
+        "after": "failed",
+        "afterNote": "operationId=c1023082-22bb-4c6f-a49a-455735d18cf1; editor operationId=c1023082-22bb-4c6f-a49a-455735d18cf1; driver error: IndexError"
+      },
+      {
+        "recipe": "review.cli_recording",
+        "interaction": "cli.recording",
+        "before": "failed",
+        "after": "blocked",
+        "afterNote": "operationId=2fc0a4ad-1442-4c31-992f-d8a6d6b40853; operationId=64844d5a-23ee-454e-a4df-0363b14e7f7a; Capture motion metrics: {\"movingMotion\": 47.67936197916667, \"frozenMotion\": 3.255208333333333e-05}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.67936197916667, \"frozenMotion\": 3.255208333333333e-05, \"exportMotion\": 46.02690972222222, \"masked\": 1}; CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)"
+      },
+      {
+        "recipe": "review.mcp_recording_review",
+        "interaction": "mcp.recording-review",
+        "before": "failed",
+        "after": "passed",
+        "afterNote": "operationId=dcc73102-6791-4ee9-904e-2bd9102db376; operationId=05091b3c-782b-4501-a7c3-102caff7e0ed; Capture motion metrics: {\"movingMotion\": 47.64283854166667, \"frozenMotion\": 0.0}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.64283854166667, \"frozenMotion\": 0.0, \"exportMotion\": 42.76068793402778, \"masked\": 1}; Decoded export metrics: {\"duration\": 2.0, \"codec\": \"h264\", \"container\": \"mov,mp4,m4a,3gp,3g2,mj2\", \"movingMotion\": 47.64283854166667, \"frozenMotion\": 0.0, \"exportMotion\": 42.76068793402778, \"masked\": 1}"
+      },
+      {
+        "recipe": "tray.local_failure_attention",
+        "interaction": "notification.local-save-failed",
+        "before": "blocked",
+        "after": "failed",
+        "afterNote": "operation=05d8f360-3180-4663-9517-3574f0867a22 action=clipboard; operation=05d8f360-3180-4663-9517-3574f0867a22 state=failed artifacts=9a1a5987-3bfd-46ee-91d9-eb5ee2bd1236; timeout: drawn shell popup: Local save failed"
+      },
+      {
+        "recipe": "tray.local_failure_attention",
+        "interaction": "tray.icon-attention",
+        "before": "blocked",
+        "after": "failed",
+        "afterNote": "operation=05d8f360-3180-4663-9517-3574f0867a22 action=clipboard; operation=05d8f360-3180-4663-9517-3574f0867a22 state=failed artifacts=9a1a5987-3bfd-46ee-91d9-eb5ee2bd1236; timeout: drawn shell popup: Local save failed"
+      },
+      {
+        "recipe": "tray.resident_close",
+        "interaction": "notification.resident-close",
+        "before": "failed",
+        "after": "blocked",
+        "afterNote": "notification is not uniquely drawn in the desktop accessibility tree"
+      }
+    ],
+    "receipts": {
+      "before": {
+        "sha256": "1fc25ddea4227b2f35e267ed8126d0067aa6698b4651ed77a7cee070bfb47afb",
+        "environment": {
+          "desktop": "mint-cinnamon-x11",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "cinnamon-x11",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_42saka4g",
+            "run_id": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+            "lab_profile": "cinnamon-x11",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-e895baf7",
+            "socket": "/tmp/sd-e895baf7/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-lab",
+            "kernel": "6.14.0-37-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "linuxmint",
+              "VERSION_ID": "22.3",
+              "VARIANT_ID": null
+            },
+            "session_type": "x11",
+            "desktop": "X-Cinnamon",
+            "qt_platform": "xcb"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": null,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "supplied",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      },
+      "tray-before": {
+        "sha256": "ed0e6398336682513eb79239876f98e2f2cfe1f7436a1514ad057b8f7968c00c",
+        "environment": {
+          "desktop": "mint-cinnamon-x11",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "cinnamon-x11",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_42saka4g",
+            "run_id": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+            "lab_profile": "cinnamon-x11",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-80981d7a",
+            "socket": "/tmp/sd-80981d7a/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-lab",
+            "kernel": "6.14.0-37-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "linuxmint",
+              "VERSION_ID": "22.3",
+              "VARIANT_ID": null
+            },
+            "session_type": "x11",
+            "desktop": "X-Cinnamon",
+            "qt_platform": "xcb"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": null,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "supplied",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      },
+      "dialogs-before": {
+        "sha256": "2d42143399aacbc04877ee90ec872eda370935b6440965ea28960147d0568676",
+        "environment": {
+          "desktop": "mint-cinnamon-x11",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "cinnamon-x11",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_42saka4g",
+            "run_id": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+            "lab_profile": "cinnamon-x11",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-bbc23e6b",
+            "socket": "/tmp/sd-bbc23e6b/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-lab",
+            "kernel": "6.14.0-37-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "linuxmint",
+              "VERSION_ID": "22.3",
+              "VARIANT_ID": null
+            },
+            "session_type": "x11",
+            "desktop": "X-Cinnamon",
+            "qt_platform": "xcb"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": null,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "supplied",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      },
+      "after": {
+        "sha256": "76e86584ead406d5c4c5de253644e41288263f1da8e72b4b3e3c2f0c93a3e307",
+        "environment": {
+          "desktop": "mint-cinnamon-x11",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "cinnamon-x11",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_42saka4g",
+            "run_id": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+            "lab_profile": "cinnamon-x11",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-3e091ef7",
+            "socket": "/tmp/sd-3e091ef7/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-lab",
+            "kernel": "6.14.0-37-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "linuxmint",
+              "VERSION_ID": "22.3",
+              "VARIANT_ID": null
+            },
+            "session_type": "x11",
+            "desktop": "X-Cinnamon",
+            "qt_platform": "xcb"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": null,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "supplied",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      },
+      "selectors-dialogs-after": {
+        "sha256": "93f3f0f6a958a7dab896b1a719460244f7bbf6627f4c755ada82ebf51816ded4",
+        "environment": {
+          "desktop": "mint-cinnamon-x11",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "cinnamon-x11",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_42saka4g",
+            "run_id": "0d66503c-ff03-4e8f-be4c-a72f4a140136",
+            "lab_profile": "cinnamon-x11",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-e0bde841",
+            "socket": "/tmp/sd-e0bde841/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-lab",
+            "kernel": "6.14.0-37-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "linuxmint",
+              "VERSION_ID": "22.3",
+              "VARIANT_ID": null
+            },
+            "session_type": "x11",
+            "desktop": "X-Cinnamon",
+            "qt_platform": "xcb"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": null,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "supplied",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      }
+    }
+  },
+  "gno": {
+    "desktop": "ubuntu-gnome-wayland",
+    "rows": 55,
+    "lanes": {
+      "settings": {
+        "before": {
+          "blocked": 18
+        },
+        "after": {
+          "blocked": 18
+        }
+      },
+      "destinations": {
+        "before": {
+          "blocked": 4
+        },
+        "after": {
+          "blocked": 4
+        }
+      },
+      "events": {
+        "before": {
+          "blocked": 2
+        },
+        "after": {
+          "blocked": 2
+        }
+      },
+      "review": {
+        "before": {
+          "failed": 2
+        },
+        "after": {
+          "failed": 2
+        }
+      },
+      "editor": {
+        "before": {
+          "blocked": 2
+        },
+        "after": {
+          "passed": 1,
+          "blocked": 1
+        }
+      },
+      "tray": {
+        "before": {
+          "failed": 2,
+          "blocked": 21
+        },
+        "after": {
+          "blocked": 21,
+          "failed": 2
+        }
+      },
+      "dialogs": {
+        "before": {
+          "blocked": 4
+        },
+        "after": {
+          "blocked": 4
+        }
+      }
+    },
+    "transitions": [
+      {
+        "recipe": "editor.palette",
+        "interaction": "editor.colours",
+        "before": "blocked",
+        "after": "passed",
+        "afterNote": "operationId=ed1a5e02-dfb9-4383-80d2-e01665410ad2; editor operationId=ed1a5e02-dfb9-4383-80d2-e01665410ad2"
+      },
+      {
+        "recipe": "tray.tray_menu_capture_window",
+        "interaction": "tray.menu-capture-window",
+        "before": "failed",
+        "after": "blocked",
+        "afterNote": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle"
+      },
+      {
+        "recipe": "tray.incomplete_uploads",
+        "interaction": "notification.incomplete-uploads",
+        "before": "failed",
+        "after": "blocked",
+        "afterNote": "operationId=909696b6-e291-4458-bfcd-dc80bddaf18e; accessible: RuntimeError: fresh accessibility probe timed out"
+      },
+      {
+        "recipe": "tray.uploading",
+        "interaction": "tray.icon-uploading",
+        "before": "blocked",
+        "after": "failed",
+        "afterNote": "operationId=940125b3-307a-4585-965b-2cd94181b8b5; upload operation=940125b3-307a-4585-965b-2cd94181b8b5 icon=[{\"width\": 24, \"height\": 24, \"bytes\": 2304, \"sha256\": \"da4ea0ead667f3e03c61dd52fbfae0e64a21ba01df8b5b636cad598bca3b97fd\"}, {\"width\": 48, \"height\": 48, \"bytes\": 9216, \"sha256\": \"644917fd2ad9ec6647940f0c75c3be66344be1e211802b96c68614bbda12c0ad\"}, {\"width\": 72, \"height\": 72, \"bytes\": 20736, \"sha256\": \"17488a78f8bd6eac255be17e26a528024957ac1431d4421edffd0f22e6eb3ecc\"}]; accessible: RuntimeError: fresh accessibility probe timed out; fixture cleanup failed: owned directory: RecipeBlocked"
+      },
+      {
+        "recipe": "tray.uploading",
+        "interaction": "tray.menu-upload-status",
+        "before": "blocked",
+        "after": "failed",
+        "afterNote": "operationId=940125b3-307a-4585-965b-2cd94181b8b5; upload operation=940125b3-307a-4585-965b-2cd94181b8b5 icon=[{\"width\": 24, \"height\": 24, \"bytes\": 2304, \"sha256\": \"da4ea0ead667f3e03c61dd52fbfae0e64a21ba01df8b5b636cad598bca3b97fd\"}, {\"width\": 48, \"height\": 48, \"bytes\": 9216, \"sha256\": \"644917fd2ad9ec6647940f0c75c3be66344be1e211802b96c68614bbda12c0ad\"}, {\"width\": 72, \"height\": 72, \"bytes\": 20736, \"sha256\": \"17488a78f8bd6eac255be17e26a528024957ac1431d4421edffd0f22e6eb3ecc\"}]; accessible: RuntimeError: fresh accessibility probe timed out; fixture cleanup failed: owned directory: RecipeBlocked"
+      }
+    ],
+    "receipts": {
+      "before": {
+        "sha256": "8ea8b45ae183a53074f23c2d33ea6bbec8527e8f014292bd883d96ae62ff682d",
+        "environment": {
+          "desktop": "ubuntu-gnome-wayland",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "gnome-wayland",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_wzh5dxjk",
+            "run_id": "d925aa26-3ddd-4f49-818f-7f36cc58b963",
+            "lab_profile": "gnome-wayland",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-87457e5c",
+            "socket": "/tmp/sd-87457e5c/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-ubuntu-lab",
+            "kernel": "7.0.0-38-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "ubuntu",
+              "VERSION_ID": "26.04",
+              "VARIANT_ID": null
+            },
+            "session_type": "wayland",
+            "desktop": "ubuntu:GNOME",
+            "qt_platform": "wayland"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": false,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      },
+      "tray-before": {
+        "sha256": "c710d4f02e51587c2768325a7e67ec7cb763e6053dd381a378076073697b1045",
+        "environment": {
+          "desktop": "ubuntu-gnome-wayland",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "gnome-wayland",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_wzh5dxjk",
+            "run_id": "d925aa26-3ddd-4f49-818f-7f36cc58b963",
+            "lab_profile": "gnome-wayland",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-b0e0294f",
+            "socket": "/tmp/sd-b0e0294f/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-ubuntu-lab",
+            "kernel": "7.0.0-38-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "ubuntu",
+              "VERSION_ID": "26.04",
+              "VARIANT_ID": null
+            },
+            "session_type": "wayland",
+            "desktop": "ubuntu:GNOME",
+            "qt_platform": "wayland"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": false,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          }
+        }
+      },
+      "after": {
+        "sha256": "a6bf1ee632c033950399faa342842f4acbb61896588dd142ddbbf30d85135284",
+        "environment": {
+          "desktop": "ubuntu-gnome-wayland",
+          "host": "boat",
+          "placement": "boat",
+          "guest": "gnome-wayland",
+          "package": "deb",
+          "destination": "local",
+          "build": "88928c0b59f3",
+          "placement_details": {
+            "boat_sandbox_id": "bx_wzh5dxjk",
+            "run_id": "d925aa26-3ddd-4f49-818f-7f36cc58b963",
+            "lab_profile": "gnome-wayland",
+            "run_directory": "/home/user/work/r3/work/lab-runs/r1",
+            "session_root": "/tmp/sd-f4fc8a4f",
+            "socket": "/tmp/sd-f4fc8a4f/runtime/putgd/session.sock",
+            "input_backend": "qmp",
+            "frame_backend": "qmp"
+          },
+          "target": {
+            "hostname": "putgd-ubuntu-lab",
+            "kernel": "7.0.0-38-generic",
+            "machine": "x86_64",
+            "os": {
+              "ID": "ubuntu",
+              "VERSION_ID": "26.04",
+              "VARIANT_ID": null
+            },
+            "session_type": "wayland",
+            "desktop": "ubuntu:GNOME",
+            "qt_platform": "wayland"
+          },
+          "observed_build": {
+            "baseVersion": "26.1030.2582",
+            "commitCount": 2582,
+            "dirty": false,
+            "gitCommit": "88928c0b59f3938098067e88913bc077b1e46d89",
+            "gitTree": "59017513d373a0053268a5c13dc020ec6a53eecc",
+            "packageVersion": "26.1030.2582~dev+g88928c0b59f3",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "26.1030.2582-dev+g88928c0b59f3"
+          },
+          "cleanup_errors": [
+            "private session root cleanup refused"
+          ]
+        }
+      }
+    }
+  }
+}
