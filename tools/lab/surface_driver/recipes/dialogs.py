@@ -119,7 +119,9 @@ def _input(ctx, backend, path, mode, inspect):
         # A title-only AT-SPI witness is insufficient: inspect the typed path
         # before Return can navigate, accept, or trigger an overwrite prompt.
         def contains_path():
-            nodes = ctx.accessible({'text': path})
+            identity = ctx.profile['windows']['portalFileDialog']['accessible']
+            nodes = ctx.accessible({'text': path, 'window': identity['name'],
+                                    'pid': identity['pid'], 'visible': True, 'showing': True})
             matches = [node for node in nodes if path in
                        (node.get('text'), node.get('value'))]
             if nodes and not matches and not any('text' in node or 'value' in node for node in nodes):
@@ -135,7 +137,9 @@ def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
     def command(action):
         method, params = request
         if mcp:
-            return ctx.mcp('drive_file_dialog', dict(params, action=action))
+            envelope = ctx.mcp('drive_file_dialog', dict(params, action=action))
+            ctx.expect(envelope.get('ok') is True, 'MCP file-dialog request succeeded')
+            return envelope['result']
         return ctx.call(method, dict(params, action=action))
 
     before = consumer()

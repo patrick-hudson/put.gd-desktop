@@ -27,7 +27,7 @@
   "windows": {
     "putgdFileDialog": {
       "accessible": {
-        "role": "*",
+        "role": "dialog",
         "objectName": "putgdFileDialog",
         "application": "putgd*"
       }

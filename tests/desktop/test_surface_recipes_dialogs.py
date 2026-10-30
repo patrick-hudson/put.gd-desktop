@@ -41,6 +41,7 @@ class FakeContext(Context):
         self.witness_fails = False
         self.fallback_during_prepare = False
         self.names_only_accessibility = False
+        self.path_name_only = False
 
     def fixture(self, name):
         if name == 'chooser-failure':
@@ -132,7 +133,7 @@ class FakeContext(Context):
     def mcp(self, tool, arguments=None):
         self.calls.append(('mcp', tool, arguments))
         assert tool == 'drive_file_dialog'
-        return self._chooser('ui.fileDialog', arguments)
+        return {'ok': True, 'result': self._chooser('ui.fileDialog', arguments)}
 
     def cli(self, *args, timeout=60):
         return {'returncode': 0, 'stdout': json.dumps({'ok': True, 'result': self.call(args[0], json.loads(args[1]))})}
@@ -154,6 +155,8 @@ class FakeContext(Context):
 
     def accessible(self, query):
         self.calls.append(('accessible', query))
+        if self.path_name_only and 'text' in query:
+            return [{'name': query['text'], 'role': 'text', 'pid': 123}]
         if self.names_only_accessibility:
             return [{'name': 'Synthetic chooser', 'role': 'dialog', 'pid': 123}]
         return [] if self.no_accessibility else [{'name': query.get('name'), 'text': query.get('text'), 'role': 'file chooser', 'pid': 123}]
@@ -260,6 +263,34 @@ class DialogRecipes(unittest.TestCase):
             dialogs.output_folder_portal(ctx)
         self.assertEqual(blocked.exception.issue, 671)
         self.assertFalse(ctx.dialog['open'])
+
+    def test_path_as_accessible_name_is_not_content_evidence(self):
+        ctx = FakeContext('portal')
+        ctx.path_name_only = True
+        with self.assertRaisesRegex(RecipeBlocked, 'exposes names only'):
+            dialogs.output_folder_portal(ctx)
+        self.assertFalse(ctx.dialog['open'])
+
+    def test_chooser_identity_is_selected_before_any_keys(self):
+        for backend in dialogs.BACKENDS:
+            ctx = FakeContext(backend)
+            dialogs.cancel_fallback(ctx) if backend == 'fallback' else dialogs.cancel_portal(ctx)
+            role = 'portalFileDialog' if backend == 'portal' else 'putgdFileDialog'
+            self.assertIn(('focus', role, False), ctx.calls)
+            if backend == 'portal':
+                identity = ctx.profile['windows'][role]['accessible']
+                self.assertEqual(identity['pid'], 123)
+                self.assertFalse(identity['owned'])
+
+    def test_failure_recipe_uses_core_fixture_before_backend_launch(self):
+        for backend in dialogs.BACKENDS:
+            row = next(r for r in REGISTRY if r.function is getattr(dialogs, 'failure_strip_' + backend))
+            self.assertEqual(row.needs, ('chooser-failure',))
+            ctx = FakeContext(backend)
+            with self.assertRaises(RecipeBlocked) as error:
+                row.function(ctx)
+            self.assertEqual(error.exception.issue, 671)
+            self.assertEqual(ctx.inputs, [])
 
     def test_independent_file_witness_is_required(self):
         ctx = FakeContext('fallback')
