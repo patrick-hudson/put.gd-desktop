@@ -1,4 +1,4 @@
-"""Independent production rows; no cloned IDs or fabricated SQLite journals."""
+"""Production seed rows and guarded, explicitly labelled local paging clones."""
 from .base import Fixture
 from .uploads import submit
 
@@ -8,16 +8,37 @@ def pair(scope):
     return Fixture(ids=[r.id for r in rows],bytes=sum(i['artifact'].get('bytes',0) for r in rows for i in r.state.get('items',[])))
 
 
+def grow_history(scope, total):
+    """Reuse the guarded local-only terminal-fixture cloner, with app stopped."""
+    from pathlib import Path
+    import json
+    helper=scope.root+'/native_acceptance.py'
+    scope.write(helper,(Path(__file__).resolve().parents[2]/'native_acceptance.py').read_bytes())
+    argv=['python3',helper,'--output',scope.root+'/paging-growth.json','grow',
+          '--fixture-root',scope.ctx.target.root,'--db',scope.ctx.target.root+'/data/putgd/history.sqlite',
+          '--runtime',scope.ctx.target.root+'/runtime','--to',str(total)]
+    result={}
+    def grow():
+        raw=scope.python('import subprocess\np=subprocess.run('+repr(argv)+',capture_output=True,text=True,timeout=30)\nassert p.returncode==0\nprint(p.stdout)')
+        result.update(json.loads(raw)['result'])
+    scope.restart({'PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'},before=grow)
+    return result
+
+
 def paging(scope):
-    rows=[submit(scope) for _ in range(51)]
-    return Fixture(total=len(rows),ids=[r.id for r in rows])
+    submit(scope)
+    growth=grow_history(scope,51)
+    if growth.get('historyRows')!=51 or growth.get('independentOperations')!=51:
+        from ..api import RecipeFailed
+        raise RecipeFailed('guarded history growth did not create independent rows')
+    return Fixture(total=51,synthetic_clones=True,growth=growth)
 
 
 def rows(scope):
     image=submit(scope)
     # Seed only truthful categories. Empty categories exercise their empty UI;
     # media/text import support can add their own real operations later.
-    failed=submit(scope,local_failure=True)
+    failed=submit(scope,remote=True,failure=True)
     return Fixture(image={'id':image.id,'name':image.name},category_counts={'':2,'images':2,'videos':0,'text+other':0,'failed':1},
                    ids=[image.id,failed.id])
 

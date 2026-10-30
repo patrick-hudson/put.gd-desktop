@@ -36,19 +36,16 @@ s.serve_forever()
     snapshot=ctx.call('ui.snapshot')
     # Public snapshot does not promise a resident PID; find it by exact socket
     # env and executable and retain its start identity, never pgrep -f.
-    pid=scope.json('''import json,os
+    pid=scope.json('''import json,os,socket,struct
 from pathlib import Path
-found=[]
-for p in Path('/proc').iterdir():
- if not p.name.isdigit():continue
- try:
-  if p.stat().st_uid!=os.getuid() or Path(os.readlink(p/'exe')).name!='putgd':continue
-  env=dict(v.split(b'=',1) for v in (p/'environ').read_bytes().split(b'\\0') if b'=' in v)
-  if env.get(b'XDG_RUNTIME_DIR',b'').decode()==RUNTIME:found.append(int(p.name))
- except (FileNotFoundError,PermissionError,ProcessLookupError):continue
-assert len(found)==1
-print(json.dumps(found[0]))
-'''.replace('RUNTIME',repr(ctx.target.root+'/runtime')))
+with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as peer:
+ peer.connect(SOCKET)
+ pid,uid,gid=struct.unpack('3i',peer.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,struct.calcsize('3i')))
+assert uid==os.getuid() and pid>1
+p=Path('/proc')/str(pid)
+assert p.stat().st_uid==os.getuid() and Path(os.readlink(p/'exe')).name=='putgd'
+print(json.dumps(pid))
+'''.replace('SOCKET',repr(ctx.target.socket)))
     status=ctx.call('update.status')
     channel=status.get('channel') or 'stable'
     version='26.101.1' if older else '99.1231.999'

@@ -205,7 +205,13 @@ class Fixtures(unittest.TestCase):
         self.assertEqual(len(set(pair.ids)),2)
         self.assertEqual(pair.bytes,600)
         self.ctx.manager.close()
-        self.assertEqual(self.ctx.fixture('history_paging').total,51)
+        def grow(scope,total):
+            for _ in range(total-1):
+                from tools.lab.surface_driver.fixtures.uploads import submit
+                submit(scope)
+            return {'historyRows':total,'independentOperations':total}
+        with patch.object(history,'grow_history',grow):
+            self.assertEqual(self.ctx.fixture('history_paging').total,51)
         self.assertEqual(len({r['operationId'] for r in self.ctx.rows}),51)
     def test_retry_local_fault_is_removed_before_recipe(self):
         row=self.ctx.fixture('history_retry_local')

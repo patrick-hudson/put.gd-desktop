@@ -32,7 +32,9 @@ def submit(scope, *, remote=False, local_failure=False, active=False, failure=Fa
         scope.write(scope.root+'/blocked',b'synthetic local-save blocker')
         scope.patch({'archive':{'root':scope.root+'/blocked','keepUploads':True}})
     source=ctx.fixture('image')
-    operation=ctx.call('editor.open',{'source':'file','path':source.path})['operationId']
+    source_path=scope.root+'/source-'+__import__('uuid').uuid4().hex[:8]+'.png'
+    scope.python('import shutil\nshutil.copyfile('+repr(source.path)+','+repr(source_path)+')')
+    operation=ctx.call('editor.open',{'source':'file','path':source_path})['operationId']
     track(scope,'editor.cancel',operation)
     ctx.wait(lambda:ctx.call('editor.inspect',{'id':operation}),'fixture editor ready',timeout=30)
     ctx.call('editor.submit',{'id':operation})

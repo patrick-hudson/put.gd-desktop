@@ -36,7 +36,13 @@ class Scope:
         result = self.ctx.shell("python3 - <<'SD_FIXTURE_PY'\n" + code + '\nSD_FIXTURE_PY\n', timeout=timeout)
         if result['returncode']:
             # Neither stderr nor command payloads cross the evidence boundary.
-            raise RecipeBlocked('fixture target command failed')
+            import inspect
+            caller = inspect.currentframe().f_back
+            while caller and caller.f_code.co_filename == __file__:
+                caller = caller.f_back
+            location = Path(caller.f_code.co_filename).name + ':' + str(caller.f_lineno) if caller else 'fixture'
+            del caller
+            raise RecipeBlocked('fixture target command failed at ' + location)
         return result['stdout']
 
     def json(self, code, **kwargs):

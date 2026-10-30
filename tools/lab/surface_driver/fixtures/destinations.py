@@ -100,10 +100,11 @@ os.replace(name,p)
 
 
 def destinations(scope, kind='s3'):
-    fixture=scope.ctx.fixture('loopback-s3')
     if kind=='empty':
+        profile=scope.ctx.fixture('app-profile')
         scope.patch({'profiles':[],'captureDefaults':{'destination':'local','profileId':None,'publicationMode':'default'}})
-        return Fixture(private=True,config_path=fixture.config_path,profiles=[])
+        return Fixture(private=True,config_path=profile.config_path,profiles=[])
+    fixture=scope.ctx.fixture('loopback-s3')
     profile=json.loads(json.dumps(fixture.profile))
     # B2/generic are configuration fixtures only; never contact their APIs.
     if kind=='b2':
