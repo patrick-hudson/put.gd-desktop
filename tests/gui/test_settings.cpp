@@ -2146,7 +2146,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
 
  }
  void advancedCompactValuesEndInTheSharedColumn(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* field=window.findChild<QLineEdit*>("failedArtifactDays");auto* count=window.findChild<QLineEdit*>("recentActivityLimit");auto* choice=window.findChild<QComboBox*>("historyRetentionChoice");QVERIFY(field&&count&&choice);putgd::test::settle(50);auto* retry=window.findChild<QComboBox*>("failedArtifactChoice");QVERIFY(retry);QCOMPARE(retry->parentWidget()->width(),choice->parentWidget()->width());QCOMPARE(count->width(),Ui::scaled(120));QCOMPARE(count->alignment(),Qt::AlignRight);QCOMPARE(count->mapTo(&window,QPoint(count->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());QVERIFY(!window.findChild<QLabel*>("failedArtifactDaysUnit"));QCOMPARE(retry->mapTo(&window,QPoint(retry->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* field=window.findChild<QLineEdit*>("failedArtifactDays");auto* count=window.findChild<QLineEdit*>("recentActivityLimit");auto* choice=window.findChild<QComboBox*>("historyRetentionChoice");QVERIFY(field&&count&&choice);auto* retry=window.findChild<QComboBox*>("failedArtifactChoice");QVERIFY(retry);PUTGD_TRY_COMPARE(retry->parentWidget()->width(),choice->parentWidget()->width());PUTGD_TRY_COMPARE(count->width(),Ui::scaled(120));QCOMPARE(count->alignment(),Qt::AlignRight);PUTGD_TRY_COMPARE(count->mapTo(&window,QPoint(count->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());QVERIFY(!window.findChild<QLabel*>("failedArtifactDaysUnit"));PUTGD_TRY_COMPARE(retry->mapTo(&window,QPoint(retry->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());
  }
  void checkboxCaptionsUseTheirAvailableWidthBeforeWrapping(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1440,960);window.show();auto* check=window.findChild<QCheckBox*>("unlockCredentialsAtStartup");QLabel* caption=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==check)caption=label;auto* help=window.findChild<QToolButton*>("unlockCredentialsAtStartupHelp");QVERIFY(caption&&help);PUTGD_TRY_VERIFY(caption->width()>=caption->fontMetrics().horizontalAdvance(caption->text()));QCOMPARE(help->mapTo(caption->parentWidget(),QPoint()).x(),caption->width()+Ui::space(Ui::Space::xs));
@@ -2174,7 +2174,37 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  void familyLabelGuttersAreCappedAndFieldsUseTheRemainder(){
   QFETCH(int,pixels);Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1100);window.showCaptureSettings();window.show();
   int familyGutter=-1;const auto check=[&](QComboBox* combo){QVERIFY(combo);auto* value=combo->parentWidget();while(value&&!value->property("preferenceChoiceValue").toBool())value=value->parentWidget();QVERIFY(value);auto* row=value->parentWidget();auto* caption=qobject_cast<QWidget*>(row->property("preferenceLabel").value<QObject*>());QVERIFY(caption);if(row->property("stacked").toBool()){QVERIFY(value->width()>=Ui::scaled(280)||value->width()==row->width()-2*Ui::space(Ui::Space::l));return;}const int gutter=value->mapTo(row,QPoint()).x()-caption->parentWidget()->mapTo(row,QPoint()).x();QVERIFY(gutter<=220+Ui::scaled(24)+Ui::space(Ui::Space::xs)+Ui::space(Ui::Space::l));if(familyGutter<0)familyGutter=gutter;QCOMPARE(gutter,familyGutter);QCOMPARE(value->mapTo(row,QPoint(value->width(),0)).x(),row->width()-Ui::space(Ui::Space::l));QVERIFY(caption->width()<=220+Ui::scaled(24)+Ui::space(Ui::Space::xs));for(auto* hint:row->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(hint->isVisible()&&hint->objectName().endsWith("Hint")){QCOMPARE(hint->width(),row->width()-2*Ui::space(Ui::Space::l));QVERIFY(hint->height()>=hint->heightForWidth(hint->width()));}};
-  auto* tabs=window.findChild<QTabWidget*>("settingsTabs");for(int page:{0,1,3}){tabs->setCurrentIndex(page);putgd::test::settle(50);for(auto* combo:tabs->currentWidget()->findChildren<QComboBox*>())if(combo->isVisible()&&combo->property("preferenceChoice").toBool())check(combo);}familyGutter=-1;window.navigate("destinations");window.findChild<QToolButton*>("advancedSettings")->setChecked(true);putgd::test::settle(50);for(auto* combo:window.findChild<QScrollArea*>("destinationScroll")->findChildren<QComboBox*>())if(combo->isVisible()&&combo->property("preferenceChoice").toBool())check(combo);
+  // The shared family sizer runs in a queued callback; all visible rows must
+  // agree before the first row's gutter becomes the family's reference.
+  const auto checkFamily=[&](QWidget* page){
+   QList<QComboBox*> choices;
+   for(auto* combo:page->findChildren<QComboBox*>())if(combo->isVisible()&&combo->property("preferenceChoice").toBool())choices.append(combo);
+   QVERIFY(!choices.isEmpty());
+   const auto ready=[&]{
+    int gutter=familyGutter;
+    for(auto* combo:choices){
+     auto* value=combo->parentWidget();while(value&&!value->property("preferenceChoiceValue").toBool())value=value->parentWidget();if(!value)return false;
+     auto* row=value->parentWidget();auto* caption=qobject_cast<QWidget*>(row->property("preferenceLabel").value<QObject*>());
+     if(!caption||!value->property("preferenceChoiceSizer").isValid())return false;
+     if(row->property("stacked").toBool()){
+      if(value->width()<Ui::scaled(280)&&value->width()!=row->width()-2*Ui::space(Ui::Space::l))return false;
+      continue;
+     }
+     const int current=value->mapTo(row,QPoint()).x()-caption->parentWidget()->mapTo(row,QPoint()).x();
+     if(current>220+Ui::scaled(24)+Ui::space(Ui::Space::xs)+Ui::space(Ui::Space::l))return false;
+     if(gutter<0)gutter=current;if(current!=gutter)return false;
+     if(value->mapTo(row,QPoint(value->width(),0)).x()!=row->width()-Ui::space(Ui::Space::l))return false;
+     if(caption->width()>220+Ui::scaled(24)+Ui::space(Ui::Space::xs))return false;
+     for(auto* hint:row->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(hint->isVisible()&&hint->objectName().endsWith("Hint"))
+      if(hint->width()!=row->width()-2*Ui::space(Ui::Space::l)||hint->height()<hint->heightForWidth(hint->width()))return false;
+    }
+    return true;
+   };
+   PUTGD_TRY_VERIFY(ready());
+   for(auto* combo:choices)check(combo);
+  };
+  auto* tabs=window.findChild<QTabWidget*>("settingsTabs");for(int page:{0,1,3}){tabs->setCurrentIndex(page);checkFamily(tabs->currentWidget());}
+  familyGutter=-1;window.navigate("destinations");window.findChild<QToolButton*>("advancedSettings")->setChecked(true);checkFamily(window.findChild<QScrollArea*>("destinationScroll"));
  }
  void formChoicesShareWidthsAndTextFieldsKeepTheirColumn(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1200);window.showCaptureSettings();window.show();
