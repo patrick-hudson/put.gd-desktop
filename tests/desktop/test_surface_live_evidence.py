@@ -5,6 +5,7 @@ everything else runs anywhere in seconds.
 """
 import hashlib
 import json
+from types import SimpleNamespace
 import re
 from pathlib import Path
 import shutil
@@ -424,8 +425,11 @@ class GateCatalogPin(Base):
     def test_a_self_consistent_but_reduced_catalog_fails_the_real_pin(self):
         # The validator's shape: three inventories, one per page, all present.
         from tools.lab.surface_driver import gate
-        with patch.object(gate, 'expected_secret_states', wraps=lambda: json.loads(gate.PIN.read_text())['states']):
-            self.assertIn('catalog-secret-states-differ-from-pin', self.blockers(self.catalog))
+        real = json.loads(gate.PIN.read_text())['states']
+        with patch.object(gate, 'build_classifier', return_value=(real, redact.SECRET_FIELD.pattern, redact.SECRET_FIELD.flags,
+                                                                  gate.NOT_SECRET_CLASSES)), \
+                patch.object(gate, 'checkout_pin', return_value=real):
+            self.assertEqual(self.blockers(self.catalog), ['catalog-secret-states-differ-from-pin'])
 
     def test_ci_check_catalog_command(self):
         from tools.lab.surface_driver import gate
@@ -490,12 +494,13 @@ class GateEnforcement(Base):
         self.assertFalse(self.out.exists())
 
     def test_admitted_live_context_needs_the_complete_gate(self):
-        with patch.object(redact, 'ocr_self_test', return_value=True):
+        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(runner, 'prove_disposable'):
             ctx = self.context()
         self.assertTrue(ctx._live_admitted)
         self.env['build'] = 'abcdef01'
         from tools.lab.surface_driver.gate import LiveEvidenceRefused
-        with patch.object(redact, 'ocr_self_test', return_value=True), self.assertRaises(LiveEvidenceRefused):
+        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(runner, 'prove_disposable'), \
+                self.assertRaises(LiveEvidenceRefused):
             self.context()
 
     def test_run_recipes_refuses_contexts_the_gate_did_not_admit(self):
@@ -544,6 +549,130 @@ class SmallTrackedFixes(Base):
         frames = json.loads((self.out/'frame-masks.json').read_text())['frames']
         self.assertEqual(frames[declared.path]['desktop_safe'], 'reviewer-visible declaration')
         self.assertEqual(frames[undeclared.path]['policy'], 'live-desktop-masked')
+
+
+def head_commit():
+    import subprocess
+    from tools.lab.surface_driver import gate
+    commit = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
+    dirty = subprocess.run(['git', '-C', str(ROOT), 'status', '--porcelain', '--', gate.PIN_PATH, gate.REDACT_PATH, gate.GATE_PATH],
+                           capture_output=True, text=True).stdout.strip()
+    return commit, dirty
+
+
+class GatePinProvenance(unittest.TestCase):
+    """Fourth validation: the pin and classifier come from the build commit."""
+    def setUp(self):
+        from tools.lab.surface_driver import gate
+        self.gate = gate
+        self.commit, dirty = head_commit()
+        if not gate.COMMIT.fullmatch(self.commit) or dirty:
+            self.skipTest('needs a clean git checkout whose HEAD holds the pin and classifier')
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+
+    def edited_pin(self, change):
+        value = json.loads(self.gate.PIN.read_text())
+        change(value['states'])
+        path = Path(self.temp.name)/'secret-states.json'
+        path.write_text(json.dumps(value))
+        return patch.object(self.gate, 'PIN', path)
+
+    def test_the_build_commits_own_pin_and_classifier_are_read(self):
+        pin, pattern, flags, classes = self.gate.build_classifier(self.commit)
+        self.assertEqual(pin, json.loads(self.gate.PIN.read_text())['states'])
+        self.assertEqual((pattern, flags, classes), (redact.SECRET_FIELD.pattern, redact.SECRET_FIELD.flags, self.gate.NOT_SECRET_CLASSES))
+        self.assertEqual(self.gate.classifier_blockers(self.commit), (pin, []))
+
+    def test_an_edited_local_pin_is_refused(self):
+        # write-pin on a reduced catalog rewrites only the checkout's copy.
+        with self.edited_pin(lambda states: [states.pop(k) for k in [k for k in states if 'credential' in k]]):
+            self.assertIn('driver-pin-differs-from-build', self.gate.classifier_blockers(self.commit)[1])
+
+    def test_one_control_removed_from_one_state_is_refused(self):
+        with self.edited_pin(lambda states: states['04-destinations-s3'].remove('credentialAccessKey')):
+            pin, blockers = self.gate.classifier_blockers(self.commit)
+        self.assertIn('driver-pin-differs-from-build', blockers)
+        self.assertIn('credentialAccessKey', pin['04-destinations-s3'])  # the comparison uses the build's pin
+
+    def test_a_loaded_classifier_that_differs_from_the_build_is_refused(self):
+        import re as _re
+        with patch.object(redact, 'SECRET_FIELD', _re.compile('password', _re.I)):
+            self.assertIn('driver-classifier-differs-from-build', self.gate.classifier_blockers(self.commit)[1])
+        with patch.object(self.gate, 'NOT_SECRET_CLASSES', self.gate.NOT_SECRET_CLASSES+('QLineEdit',)):
+            self.assertIn('driver-classifier-differs-from-build', self.gate.classifier_blockers(self.commit)[1])
+
+    def test_an_unknown_build_commit_has_no_pin(self):
+        self.assertEqual(self.gate.classifier_blockers('f'*40), (None, ['catalog-pin-unavailable']))
+
+
+class GatePinChangesSelectTheCatalogBuild(unittest.TestCase):
+    def test_pin_or_classifier_only_changes_select_the_build_matrix(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('ci_changes', ROOT/'tools/ci/changes.py')
+        changes = importlib.util.module_from_spec(spec); spec.loader.exec_module(changes)
+        for path in ('tools/lab/surface_driver/secret-states.json', 'tools/lab/surface_driver/redact.py',
+                     'tools/lab/surface_driver/gate.py'):
+            self.assertTrue(changes.select([path])['build'], path)
+        self.assertFalse(changes.select(['tools/lab/surface_driver/context.py'])['build'])
+
+
+class GatePlacementProof(Base):
+    """Fourth validation finding 4: the placement label must be proven."""
+    admit = False
+
+    def admitted_otherwise(self):
+        return patch.object(redact, 'ocr_self_test', return_value=True)
+
+    def test_a_boat_or_guest_label_on_an_unproven_target_is_refused(self):
+        from tools.lab.surface_driver.gate import LiveEvidenceRefused
+        for placement in ('boat', 'guest'):
+            self.env['placement'] = placement
+            with self.admitted_otherwise(), self.assertRaises(LiveEvidenceRefused) as raised:
+                self.context()
+            self.assertIn('placement-unproven', str(raised.exception))
+            self.assertFalse(self.out.exists())
+
+    def test_a_physical_target_needs_a_proven_boat_head(self):
+        from tools.lab.surface_driver.gate import LiveEvidenceRefused
+        target = Target(); target.physical = SimpleNamespace(config={'host': '192.168.68.74', 'user': 'patrick'})
+        for placement, details in (('boat', {}), ('boat', {'boat_sandbox_id': 'bx_abc', 'boat_cli': '/bin/false'}), ('guest', {})):
+            self.env['placement'] = placement; self.env['placement_details'] = details
+            with self.admitted_otherwise(), self.assertRaises(LiveEvidenceRefused) as raised:
+                self.context(target)
+            self.assertTrue({'placement-unproven', 'physical-desktop-refused'} & set(str(raised.exception).split(': ', 1)[1].split(', ')))
+
+    def test_proof_receives_the_target_and_details(self):
+        seen = []
+        self.env['placement_details'] = {'boat_sandbox_id': 'bx_abc'}
+        with self.admitted_otherwise(), patch.object(runner, 'prove_disposable', side_effect=lambda *a: seen.append(a)):
+            ctx = self.context()
+        self.assertTrue(ctx._live_admitted)
+        self.assertEqual(seen[0][1:], ('boat', {'boat_sandbox_id': 'bx_abc'}))
+
+
+class ResidentMustReportClean(Base):
+    """Fourth validation finding 2: a resident that omits dirty is refused."""
+    destination = 'local'
+
+    def test_resident_without_a_dirty_flag_is_refused(self):
+        source = Path(runner.__file__).read_text()
+        self.assertIn("if observed.get('dirty') is not False:", source)
+        target = Target(); target.info = {'id': 'r', 'profile': 'p'}; target.run = self.path
+        target.identity = lambda: {'session_type': 'x11'}; target.start = lambda: None; target.close = lambda: []
+        calls, ran = [], []
+        def cli(method, *a, **k):
+            calls.append(method)
+            result = {'ui.snapshot': {'build': {'gitCommit': COMMIT}}}.get(method, {})
+            return {'returncode': 0, 'stdout': json.dumps({'ok': True, 'result': result}), 'stderr': ''}
+        target.cli = cli
+        out = self.path/'resident'
+        args = ['--desktop', 'mint-cinnamon-x11', '--host', 'boat', '--placement', 'guest', '--run', str(self.path),
+                '--package', 'deb', '--destination', 'local', '--recipes', 'core_demo', '--catalog', str(self.catalog),
+                '--build', BUILD, '--out', str(out), '--coverage', str(out/'c.json')]
+        with patch.object(runner, 'Target', return_value=target), patch.object(runner, 'guard_target'), \
+                patch.object(runner, 'discover', return_value=[Recipe(('editor.undo',), lambda c: ran.append(1))]):
+            self.assertEqual(runner.main(args), 2)
+        self.assertEqual((calls, ran), (['ui.snapshot'], []))
 
 
 class F6VisiblePageOnly(Base):

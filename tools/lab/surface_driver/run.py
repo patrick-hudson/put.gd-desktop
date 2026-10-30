@@ -244,33 +244,51 @@ def guard_target(args, target):
             target.require_lock(builder, args.lock_session)
             guard_physical_endpoints(target)
             return
-        # A label, profile name or supplied sandbox id is not identity evidence.
-        # Permit a boat head only on that sandbox's own runner, over local SSH.
-        if (args.host == 'boat' and args.placement == 'boat' and args.boat_id
-                and re.fullmatch(r'bx_[a-z0-9]{1,64}', args.boat_id)
-                and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]*', config.get('user', ''))):
-            if config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22:
-                try:
-                    reply = subprocess.run([args.boat_cli, 'info', args.boat_id, '--json'], check=True,
-                                           capture_output=True, text=True, timeout=15)
-                    info = json.loads(reply.stdout)['sandbox']
-                    if info.get('id') == args.boat_id and info.get('hydrated') is True:
-                        witness = subprocess.run([args.boat_cli, 'exec', args.boat_id, '--json', '--',
-                                                  'cat', '/proc/sys/kernel/random/boot_id'], check=True,
-                                                 capture_output=True, text=True, timeout=20)
-                        proof = json.loads(witness.stdout)
-                        boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
-                        observed = target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip()
-                        if boot and proof.get('exitCode') == 0 and proof.get('stdout', '').strip() == boot == observed:
-                            guard_physical_endpoints(target)
-                            return
-                except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError, lab.LabError):
-                    pass
+        if args.host == 'boat' and args.placement == 'boat':
+            prove_boat_head(target, args.boat_id, args.boat_cli)
+            return
         raise RecipeBlocked('unverified host-profile is a physical target; no matching builder desktop lock')
     if args.placement == 'native':
         raise RecipeBlocked('native input requires a builder --host-profile and held --lock-session')
-    # physical.py also writes state.json and uses a QMP-compatible host-input
-    # socket. Prove this is an owned QEMU overlay, including its exact QMP path.
+    prove_owned_guest(target)
+
+
+def prove_boat_head(target, boat_id, boat_cli):
+    """A physical target is a boat sandbox's own desktop, proven, or this raises.
+
+    A label, profile name or supplied sandbox id is not identity evidence: the
+    head must be that sandbox's own runner over local SSH, with the same boot
+    id seen through the authenticated boat CLI and the pinned SSH channel.
+    """
+    config = target.physical.config
+    if (boat_id and boat_cli and re.fullmatch(r'bx_[a-z0-9]{1,64}', boat_id)
+            and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]*', config.get('user', ''))
+            and config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22):
+        try:
+            reply = subprocess.run([boat_cli, 'info', boat_id, '--json'], check=True,
+                                   capture_output=True, text=True, timeout=15)
+            info = json.loads(reply.stdout)['sandbox']
+            if info.get('id') == boat_id and info.get('hydrated') is True:
+                witness = subprocess.run([boat_cli, 'exec', boat_id, '--json', '--',
+                                          'cat', '/proc/sys/kernel/random/boot_id'], check=True,
+                                         capture_output=True, text=True, timeout=20)
+                proof = json.loads(witness.stdout)
+                boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+                observed = target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip()
+                if boot and proof.get('exitCode') == 0 and proof.get('stdout', '').strip() == boot == observed:
+                    guard_physical_endpoints(target)
+                    return
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError, lab.LabError):
+            pass
+    raise RecipeBlocked('unverified host-profile is a physical target; no matching builder desktop lock')
+
+
+def prove_owned_guest(target):
+    """The target is an owned QEMU overlay with its exact QMP endpoint, or this raises.
+
+    physical.py also writes state.json and uses a QMP-compatible host-input
+    socket, so the run directory alone is not proof.
+    """
     try:
         info = lab.verify_owned_guest(target.run)
         command = (Path('/proc') / str(info['pid']) / 'cmdline').read_bytes()
@@ -280,8 +298,25 @@ def guard_target(args, target):
             raise ValueError('QMP endpoint does not belong to the owned guest')
         verify_guest_endpoint(target, info['pid'], command)
         target._verify_endpoints = lambda: verify_guest_endpoint(target, info['pid'], command)
-    except (lab.LabError, OSError, ValueError, KeyError, RuntimeError) as error:
+    except (lab.LabError, OSError, ValueError, KeyError, RuntimeError, TypeError, AttributeError) as error:
         raise RecipeBlocked('unverified input target is physical; an owned QMP guest or builder desktop lock is required') from error
+
+
+def prove_disposable(target, placement, details=None):
+    """The live gate's placement proof: the label must match the proven target.
+
+    placement 'guest' or 'boat' without a physical target: an owned QEMU guest.
+    A physical target: only a proven boat sandbox head (placement 'boat').
+    """
+    details = details if isinstance(details, dict) else {}
+    if getattr(target, 'physical', None):
+        if placement != 'boat':
+            raise RecipeBlocked('physical target is not a boat sandbox head')
+        prove_boat_head(target, details.get('boat_sandbox_id'), details.get('boat_cli'))
+    elif placement in ('boat', 'guest'):
+        prove_owned_guest(target)
+    else:
+        raise RecipeBlocked('placement is not disposable')
 
 
 def discover(pattern, recipe_dir=None):
@@ -659,8 +694,9 @@ def main(argv=None):
         # The same exact-commit rule as the catalog: never a version string.
         if not build_matches(args.build, observed.get('gitCommit') or observed.get('commit')):
             raise RecipeBlocked('resident build does not match --build; observed identity retained in receipt')
-        if observed.get('dirty'):
-            raise RecipeBlocked('resident reports a dirty build; use an identified clean artifact')
+        # As for the catalog: the resident must positively report a clean build.
+        if observed.get('dirty') is not False:
+            raise RecipeBlocked('resident does not report a clean build (dirty must be false); use an identified clean artifact')
         settings=context.call('settings.get')
         # Scheme-less links on the configured endpoints are links too (F3).
         context.evidence.redactor.add_link_hosts(endpoint_hosts(settings))

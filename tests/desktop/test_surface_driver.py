@@ -313,7 +313,7 @@ class Running(unittest.TestCase):
                       '--recipes','core_demo','--catalog',str(write_catalog(self.path/'catalog')),'--build','abcdef012345','--out',str(out),
                       '--coverage',str(out/'coverage.json')]
                 with patch.object(runner,'Target',return_value=target),patch.object(runner,'guard_target'),patch.object(runner,'discover',return_value=[recipe]), \
-                        pinned(self.path/'catalog'):
+                        patch.object(runner,'prove_disposable'),pinned(self.path/'catalog'):
                     self.assertEqual(runner.main(args),0)
                 self.assertEqual(touched,[destination])
                 self.assertTrue(json.loads((out/'receipt.json').read_text())['secret_scan']['passed'])

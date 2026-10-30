@@ -31,7 +31,8 @@ class DriverContext(Context):
         if self.destination != 'local':
             from .gate import LiveEvidenceRefused
             blockers = self.live_gate(environment.get('placement'), catalog, environment.get('build'),
-                                      bool(getattr(target, 'physical', None)))
+                                      bool(getattr(target, 'physical', None)), target=target,
+                                      details=environment.get('placement_details'))
             if blockers:
                 raise LiveEvidenceRefused('live destination '+str(self.destination)+' blocked by secret-safe evidence: '
                                           +', '.join(blockers))

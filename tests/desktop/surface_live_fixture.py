@@ -64,10 +64,28 @@ def write_catalog(directory, build=COMMIT, dirty=False, pages=tuple(SECRETS), se
 def pinned(directory):
     """Pin a synthetic catalog's secret-control states (tests only; the real pin
     is tools/lab/surface_driver/secret-states.json)."""
+    from contextlib import ExitStack
     from unittest.mock import patch
-    from tools.lab.surface_driver import gate
+    from tools.lab.surface_driver import gate, redact
     states = gate.catalog_states(directory)[1]
-    return patch.object(gate, 'expected_secret_states', return_value=states)
+    # The fixture's commit has no git objects: stand in for the build
+    # commit's own pin and (unchanged) classifier, and the checkout's pin.
+    classifier = (states, redact.SECRET_FIELD.pattern, redact.SECRET_FIELD.flags, gate.NOT_SECRET_CLASSES)
+
+    class Pinned(ExitStack):
+        def start(self):
+            for item in (patch.object(gate, 'expected_secret_states', return_value=states),
+                         patch.object(gate, 'build_classifier', return_value=classifier),
+                         patch.object(gate, 'checkout_pin', return_value=states)):
+                self.enter_context(item)
+            return self
+
+        def stop(self):
+            self.close()
+
+        def __enter__(self):
+            return self.start()
+    return Pinned()
 
 
 def admitted():
