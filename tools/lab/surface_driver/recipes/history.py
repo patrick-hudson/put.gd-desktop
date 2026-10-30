@@ -1285,7 +1285,9 @@ def _shell_command_recipe(interaction, action):
         _window_buttons_ready(ctx)
         _frame(ctx, 'before')
         _exercise_command(ctx, action, lambda _: _click_history_node(ctx, _command_control(action)), external_focus=False)
-        _open(ctx)
+        # The initial query is already known. Reopen only for the saved result
+        # frame; resetting every browsing control adds unrelated native input.
+        ctx.view('ui.show', {'view': 'history'})
         _frame(ctx, 'after')
     command.__name__ = 'command_' + action
     recipe(interaction, needs=('app-profile', 'events.clipboard') if action == 'clipboard'
@@ -1306,7 +1308,7 @@ def _action_matrix(ctx, dispatch):
     # text source first, before any completed screenshot changes it.
     for action in ('clipboard', 'region', 'window', 'desktop', 'edit', 'record'):
         _exercise_command(ctx, action, dispatch)
-    _open(ctx)
+    ctx.view('ui.show', {'view': 'history'})
     _frame(ctx, 'after')
 
 
