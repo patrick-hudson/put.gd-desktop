@@ -27,7 +27,7 @@ class FakeContext(Context):
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
         self.events = []
-        self.focus = None
+        self.focused_control = None
         self.selection = 0
         self.pending = ''
         self.index = 0
@@ -58,6 +58,9 @@ class FakeContext(Context):
             raise RecipeBlocked('missing fixture')
         self.available = name != 'destinations-uncached'
         return deepcopy(self.f)
+
+    def focus(self, window, **kwargs):
+        self.assert_event('focus', window)
 
     def assert_event(self, *values):
         self.events.append(values)
@@ -136,19 +139,19 @@ class FakeContext(Context):
 
     def click(self, control, window, **kwargs):
         self.assert_event('click', control, window)
-        self.focus = control
+        self.focused_control = control
         self.pending = ''
         if control == 'text:Rename destination':
-            self.focus = 'destinationLabel'
+            self.focused_control = 'destinationLabel'
         if control == 'text:Remove destination…':
             self.dialog = 'remove'
         if control in ('text:Amazon S3 / S3-compatible', 'text:Backblaze B2'):
             self.dialog = 'add-b2' if control.endswith('Backblaze B2') else 'add-s3'
-            self.focus = 'nameDialog'
+            self.focused_control = 'nameDialog'
         if control == 'text:Cancel':
             self.dialog = None
         if control == 'class:QLineEdit':
-            self.focus = 'nameDialog'
+            self.focused_control = 'nameDialog'
         if control == 'confirmDiscard':
             if self.dialog == 'default':
                 self.document['captureDefaults'] = {
@@ -192,13 +195,13 @@ class FakeContext(Context):
         for key in sequence:
             if key == 'Home':
                 self.index = 0
-                if self.focus == 'destinationList':
+                if self.focused_control == 'destinationList':
                     self.selection = 0
             elif key == 'Down':
                 self.index += 1
-                if self.focus == 'destinationList':
+                if self.focused_control == 'destinationList':
                     self.selection += 1
-            elif key in ('Alt+Up', 'Alt+Down') and self.focus == 'destinationList':
+            elif key in ('Alt+Up', 'Alt+Down') and self.focused_control == 'destinationList':
                 new = self.selection + (-1 if key == 'Alt+Up' else 1)
                 p = self.document['profiles'].pop(self.selection)
                 self.document['profiles'].insert(new, p)
@@ -206,15 +209,15 @@ class FakeContext(Context):
             elif key == 'Escape':
                 self.dialog = None
             elif key == 'Return':
-                if self.focus == 'destinationActions':
+                if self.focused_control == 'destinationActions':
                     if self.index == 0:
-                        self.focus = 'destinationLabel'
+                        self.focused_control = 'destinationLabel'
                     elif self.index == 2:
                         self.dialog = 'remove'
-                elif self.focus == 'addS3Destination':
+                elif self.focused_control == 'addS3Destination':
                     self.dialog = 'add-b2' if self.index == 2 else 'add-s3'
-                    self.focus = 'nameDialog'
-                elif self.focus == 'nameDialog':
+                    self.focused_control = 'nameDialog'
+                elif self.focused_control == 'nameDialog':
                     p = deepcopy(self.f['profile'])
                     p.update(label=self.pending, id=self.pending.lower().replace(' ', '-'),
                              provider='backblaze-b2' if self.dialog == 'add-b2' else 's3')
@@ -228,21 +231,21 @@ class FakeContext(Context):
         if not self.document['profiles']:
             return
         p = self.document['profiles'][self.selection]
-        if self.focus == 'destinationLabel':
+        if self.focused_control == 'destinationLabel':
             p['label'] = self.pending
-        if self.focus == 'credentialMode':
+        if self.focused_control == 'credentialMode':
             p['credentials'] = {'mode': 'session' if self.index else 'keychain',
                                 'reference': None if self.index else 'putgd/' + p['id']}
-        if self.focus == 's3AclMode':
+        if self.focused_control == 's3AclMode':
             p['settings']['aclMode'] = 'public-read' if self.index else 'omit'
         controls = {'s3Bucket': 'bucket', 's3RegionChoices': 'region', 's3Endpoint': 'endpoint',
                     's3ObjectPrefix': 'objectPrefix', 's3PublicUrlBase': 'publicUrlBase',
                     's3StorageClass': 'storageClass', 's3ConnectTimeoutMsControl': 'connectTimeoutMs'}
-        if self.focus in controls:
-            self.invalid = self.focus == 's3Bucket' and ' ' in self.pending
+        if self.focused_control in controls:
+            self.invalid = self.focused_control == 's3Bucket' and ' ' in self.pending
             if not self.invalid:
-                value = int(self.pending)*1000 if self.focus == 's3ConnectTimeoutMsControl' else self.pending
-                p['settings'][controls[self.focus]] = value
+                value = int(self.pending)*1000 if self.focused_control == 's3ConnectTimeoutMsControl' else self.pending
+                p['settings'][controls[self.focused_control]] = value
 
     def accessible(self, query):
         self.assert_event('accessible', query)
@@ -268,7 +271,7 @@ class FakeContext(Context):
         if control == 'addDestinationCredentials':
             return [{'visible': True}]
         if control in ('credentialAccessKey', 'credentialSecretKey', 'credentialSessionToken'):
-            return [{'states': {'focused': self.focus == control or (control == 'credentialAccessKey' and self.focus == 'addDestinationCredentials')}}]
+            return [{'states': {'focused': self.focused_control == control or (control == 'credentialAccessKey' and self.focused_control == 'addDestinationCredentials')}}]
         if control == 'destinationsEmpty':
             return [{'visible': not self.document['profiles']}]
         if control == 's3AclModeHelp':

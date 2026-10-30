@@ -410,6 +410,9 @@ def add(ctx):
         ctx.keys('Ctrl+A')
         ctx.type_text(label)
         ctx.keys('Return')
+        # The name dialog is gone; the X11 field helper's guarded point must
+        # target the main window rather than the last modal selected by click.
+        ctx.focus('destinations')
         # A new destination stays provisional until its required bucket is valid.
         _edit(ctx, 's3Bucket', 'surface-added-bucket')
         if ctx.call('ui.viewState')['settings'].get('autosaveBlocked'):
