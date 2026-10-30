@@ -78,6 +78,10 @@ or portal package.
 `prepare-scratch` persists `PUTGD_CI_TMPDIR=/dev/shm` and `TMPDIR=/dev/shm` in
 `/etc/environment`, preserving other settings. `/dev/shm` is the existing
 bounded tmpfs; no mount over `/tmp` or manual setup on fresh forks is needed.
+The variables reach login shells, including ssh, through `/etc/environment`;
+the recipe's `host-script` uses them, and docs/ci.md's plain procedure does not
+read `PUTGD_CI_TMPDIR`. Boat's own snapshot capture also stages in `/dev/shm`,
+so CTest scratch shares that 7.9 GiB tmpfs with a capture in progress.
 The generated runner verifies the filesystem identity and creates a new private
 short directory there. CI preflight checks all socket paths and records the
 registered tests and test-user context. It runs as the unprivileged `putgd-ci`
@@ -131,7 +135,10 @@ python3 /home/user/snapshot_recipe.py guest \
   --destination /home/user/work/put.gd/work/lab-images/NEW_GOLDEN/image.qcow2
 ```
 
-For GNOME select `gnome-wayland`, `ubuntu26.04` and its audited DEB. The separate
+For GNOME select `gnome-wayland`, `ubuntu26.04` and its audited DEB. The GNOME
+golden does not include the lab compositor witness: surface-driver runs on
+Wayland block until each overlay stages it with `stage-gnome-witness.sh`, then
+`guest_reboot.py`, then enables it (see the surface driver prerequisites). The separate
 controller checkout allows a documented lab lifecycle fix to be tested while
 preserving the exact built/package source; record both commits. The final lab
 snapshots use #787's merged controller commit, recorded in their manifests.
