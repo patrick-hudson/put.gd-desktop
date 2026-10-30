@@ -1,0 +1,5 @@
+{
+  "placement": "boat",
+  "versionCommand": "systemctl --version",
+  "text": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n7.0.0-38-generic\nsystemd 259 (259.5-0ubuntu3.4)\nLinger=no\nruntime=/run/user/1000 bus=unix:path=/run/user/1000/bus\n0::/user.slice/user-1000.slice/session-56.scope\ncgroup2fs\ncinnamon=\ngnome-shell=50.1-0ubuntu1.2\nmutter-common=50.1-0ubuntu2.2\n"
+}

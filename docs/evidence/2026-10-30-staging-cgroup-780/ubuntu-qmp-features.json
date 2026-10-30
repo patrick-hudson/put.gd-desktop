@@ -1,0 +1,700 @@
+{
+  "version": {
+    "qemu": {
+      "micro": 2,
+      "minor": 2,
+      "major": 8
+    },
+    "package": "Debian 1:8.2.2+ds-0ubuntu1.18"
+  },
+  "commands": [
+    {
+      "name": "device_add"
+    },
+    {
+      "name": "cxl-inject-correctable-error"
+    },
+    {
+      "name": "cxl-inject-uncorrectable-errors"
+    },
+    {
+      "name": "cxl-inject-poison"
+    },
+    {
+      "name": "cxl-inject-memory-module-event"
+    },
+    {
+      "name": "cxl-inject-dram-event"
+    },
+    {
+      "name": "cxl-inject-general-media-event"
+    },
+    {
+      "name": "query-cryptodev"
+    },
+    {
+      "name": "x-query-virtio-queue-element"
+    },
+    {
+      "name": "x-query-virtio-vhost-queue-status"
+    },
+    {
+      "name": "x-query-virtio-queue-status"
+    },
+    {
+      "name": "x-query-virtio-status"
+    },
+    {
+      "name": "x-query-virtio"
+    },
+    {
+      "name": "query-stats-schemas"
+    },
+    {
+      "name": "query-stats"
+    },
+    {
+      "name": "query-pci"
+    },
+    {
+      "name": "query-acpi-ospm-status"
+    },
+    {
+      "name": "query-audiodevs"
+    },
+    {
+      "name": "xen-event-inject"
+    },
+    {
+      "name": "xen-event-list"
+    },
+    {
+      "name": "query-sgx-capabilities"
+    },
+    {
+      "name": "query-sgx"
+    },
+    {
+      "name": "query-sev-attestation-report"
+    },
+    {
+      "name": "sev-inject-launch-secret"
+    },
+    {
+      "name": "query-sev-capabilities"
+    },
+    {
+      "name": "query-sev-launch-measure"
+    },
+    {
+      "name": "query-sev"
+    },
+    {
+      "name": "rtc-reset-reinjection"
+    },
+    {
+      "name": "query-command-line-options"
+    },
+    {
+      "name": "query-fdsets"
+    },
+    {
+      "name": "remove-fd"
+    },
+    {
+      "name": "add-fd"
+    },
+    {
+      "name": "closefd"
+    },
+    {
+      "name": "getfd"
+    },
+    {
+      "name": "human-monitor-command"
+    },
+    {
+      "name": "x-exit-preconfig"
+    },
+    {
+      "name": "cont"
+    },
+    {
+      "name": "stop"
+    },
+    {
+      "name": "query-iothreads"
+    },
+    {
+      "name": "query-name"
+    },
+    {
+      "name": "add_client"
+    },
+    {
+      "name": "query-yank"
+    },
+    {
+      "name": "yank"
+    },
+    {
+      "name": "replay-seek"
+    },
+    {
+      "name": "replay-delete-break"
+    },
+    {
+      "name": "replay-break"
+    },
+    {
+      "name": "query-replay"
+    },
+    {
+      "name": "query-cpu-definitions"
+    },
+    {
+      "name": "query-cpu-model-expansion"
+    },
+    {
+      "name": "dumpdtb"
+    },
+    {
+      "name": "x-query-usb"
+    },
+    {
+      "name": "x-query-roms"
+    },
+    {
+      "name": "x-query-rdma"
+    },
+    {
+      "name": "x-query-ramblock"
+    },
+    {
+      "name": "x-query-opcount"
+    },
+    {
+      "name": "x-query-numa"
+    },
+    {
+      "name": "x-query-jit"
+    },
+    {
+      "name": "x-query-irq"
+    },
+    {
+      "name": "query-memory-devices"
+    },
+    {
+      "name": "query-memory-size-summary"
+    },
+    {
+      "name": "query-hv-balloon-status-report"
+    },
+    {
+      "name": "query-balloon"
+    },
+    {
+      "name": "balloon"
+    },
+    {
+      "name": "set-numa-node"
+    },
+    {
+      "name": "query-hotpluggable-cpus"
+    },
+    {
+      "name": "query-memdev"
+    },
+    {
+      "name": "pmemsave"
+    },
+    {
+      "name": "memsave"
+    },
+    {
+      "name": "query-kvm"
+    },
+    {
+      "name": "inject-nmi"
+    },
+    {
+      "name": "system_wakeup"
+    },
+    {
+      "name": "system_powerdown"
+    },
+    {
+      "name": "system_reset"
+    },
+    {
+      "name": "query-vm-generation-id"
+    },
+    {
+      "name": "query-uuid"
+    },
+    {
+      "name": "query-target"
+    },
+    {
+      "name": "query-current-machine"
+    },
+    {
+      "name": "query-machines"
+    },
+    {
+      "name": "query-cpus-fast"
+    },
+    {
+      "name": "device_del"
+    },
+    {
+      "name": "device-list-properties"
+    },
+    {
+      "name": "object-del"
+    },
+    {
+      "name": "object-add"
+    },
+    {
+      "name": "qom-list-properties"
+    },
+    {
+      "name": "qom-list-types"
+    },
+    {
+      "name": "qom-set"
+    },
+    {
+      "name": "qom-get"
+    },
+    {
+      "name": "qom-list"
+    },
+    {
+      "name": "query-qmp-schema"
+    },
+    {
+      "name": "quit"
+    },
+    {
+      "name": "query-commands"
+    },
+    {
+      "name": "query-version"
+    },
+    {
+      "name": "qmp_capabilities"
+    },
+    {
+      "name": "trace-event-set-state"
+    },
+    {
+      "name": "trace-event-get-state"
+    },
+    {
+      "name": "transaction"
+    },
+    {
+      "name": "snapshot-delete"
+    },
+    {
+      "name": "snapshot-load"
+    },
+    {
+      "name": "snapshot-save"
+    },
+    {
+      "name": "query-migrationthreads"
+    },
+    {
+      "name": "query-vcpu-dirty-limit"
+    },
+    {
+      "name": "cancel-vcpu-dirty-limit"
+    },
+    {
+      "name": "set-vcpu-dirty-limit"
+    },
+    {
+      "name": "query-dirty-rate"
+    },
+    {
+      "name": "calc-dirty-rate"
+    },
+    {
+      "name": "migrate-pause"
+    },
+    {
+      "name": "migrate-recover"
+    },
+    {
+      "name": "query-colo-status"
+    },
+    {
+      "name": "xen-colo-do-checkpoint"
+    },
+    {
+      "name": "query-xen-replication-status"
+    },
+    {
+      "name": "xen-set-replication"
+    },
+    {
+      "name": "xen-load-devices-state"
+    },
+    {
+      "name": "xen-set-global-dirty-log"
+    },
+    {
+      "name": "xen-save-devices-state"
+    },
+    {
+      "name": "migrate-incoming"
+    },
+    {
+      "name": "migrate"
+    },
+    {
+      "name": "migrate-continue"
+    },
+    {
+      "name": "migrate_cancel"
+    },
+    {
+      "name": "x-colo-lost-heartbeat"
+    },
+    {
+      "name": "migrate-start-postcopy"
+    },
+    {
+      "name": "query-migrate-parameters"
+    },
+    {
+      "name": "migrate-set-parameters"
+    },
+    {
+      "name": "query-migrate-capabilities"
+    },
+    {
+      "name": "migrate-set-capabilities"
+    },
+    {
+      "name": "query-migrate"
+    },
+    {
+      "name": "client_migrate_info"
+    },
+    {
+      "name": "display-update"
+    },
+    {
+      "name": "display-reload"
+    },
+    {
+      "name": "query-display-options"
+    },
+    {
+      "name": "input-send-event"
+    },
+    {
+      "name": "send-key"
+    },
+    {
+      "name": "query-mice"
+    },
+    {
+      "name": "change-vnc-password"
+    },
+    {
+      "name": "query-vnc-servers"
+    },
+    {
+      "name": "query-vnc"
+    },
+    {
+      "name": "query-spice"
+    },
+    {
+      "name": "screendump"
+    },
+    {
+      "name": "expire_password"
+    },
+    {
+      "name": "set_password"
+    },
+    {
+      "name": "query-tpm"
+    },
+    {
+      "name": "query-tpm-types"
+    },
+    {
+      "name": "query-tpm-models"
+    },
+    {
+      "name": "query-rocker-of-dpa-groups"
+    },
+    {
+      "name": "query-rocker-of-dpa-flows"
+    },
+    {
+      "name": "query-rocker-ports"
+    },
+    {
+      "name": "query-rocker"
+    },
+    {
+      "name": "announce-self"
+    },
+    {
+      "name": "query-rx-filter"
+    },
+    {
+      "name": "netdev_del"
+    },
+    {
+      "name": "netdev_add"
+    },
+    {
+      "name": "set_link"
+    },
+    {
+      "name": "query-dump-guest-memory-capability"
+    },
+    {
+      "name": "query-dump"
+    },
+    {
+      "name": "dump-guest-memory"
+    },
+    {
+      "name": "chardev-send-break"
+    },
+    {
+      "name": "chardev-remove"
+    },
+    {
+      "name": "chardev-change"
+    },
+    {
+      "name": "chardev-add"
+    },
+    {
+      "name": "ringbuf-read"
+    },
+    {
+      "name": "ringbuf-write"
+    },
+    {
+      "name": "query-chardev-backends"
+    },
+    {
+      "name": "query-chardev"
+    },
+    {
+      "name": "query-block-exports"
+    },
+    {
+      "name": "block-export-del"
+    },
+    {
+      "name": "block-export-add"
+    },
+    {
+      "name": "nbd-server-stop"
+    },
+    {
+      "name": "nbd-server-remove"
+    },
+    {
+      "name": "nbd-server-add"
+    },
+    {
+      "name": "nbd-server-start"
+    },
+    {
+      "name": "blockdev-snapshot-delete-internal-sync"
+    },
+    {
+      "name": "blockdev-snapshot-internal-sync"
+    },
+    {
+      "name": "x-blockdev-set-iothread"
+    },
+    {
+      "name": "x-blockdev-change"
+    },
+    {
+      "name": "block-set-write-threshold"
+    },
+    {
+      "name": "x-blockdev-amend"
+    },
+    {
+      "name": "blockdev-create"
+    },
+    {
+      "name": "blockdev-del"
+    },
+    {
+      "name": "blockdev-reopen"
+    },
+    {
+      "name": "blockdev-add"
+    },
+    {
+      "name": "block-job-change"
+    },
+    {
+      "name": "block-job-finalize"
+    },
+    {
+      "name": "block-job-dismiss"
+    },
+    {
+      "name": "block-job-complete"
+    },
+    {
+      "name": "block-job-resume"
+    },
+    {
+      "name": "block-job-pause"
+    },
+    {
+      "name": "block-job-cancel"
+    },
+    {
+      "name": "block-job-set-speed"
+    },
+    {
+      "name": "block-stream"
+    },
+    {
+      "name": "blockdev-mirror"
+    },
+    {
+      "name": "x-debug-block-dirty-bitmap-sha256"
+    },
+    {
+      "name": "block-dirty-bitmap-merge"
+    },
+    {
+      "name": "block-dirty-bitmap-disable"
+    },
+    {
+      "name": "block-dirty-bitmap-enable"
+    },
+    {
+      "name": "block-dirty-bitmap-clear"
+    },
+    {
+      "name": "block-dirty-bitmap-remove"
+    },
+    {
+      "name": "block-dirty-bitmap-add"
+    },
+    {
+      "name": "drive-mirror"
+    },
+    {
+      "name": "x-debug-query-block-graph"
+    },
+    {
+      "name": "query-named-block-nodes"
+    },
+    {
+      "name": "blockdev-backup"
+    },
+    {
+      "name": "drive-backup"
+    },
+    {
+      "name": "block-commit"
+    },
+    {
+      "name": "change-backing-file"
+    },
+    {
+      "name": "blockdev-snapshot"
+    },
+    {
+      "name": "blockdev-snapshot-sync"
+    },
+    {
+      "name": "block_resize"
+    },
+    {
+      "name": "query-block-jobs"
+    },
+    {
+      "name": "query-blockstats"
+    },
+    {
+      "name": "query-block"
+    },
+    {
+      "name": "block-latency-histogram-set"
+    },
+    {
+      "name": "block_set_io_throttle"
+    },
+    {
+      "name": "blockdev-change-medium"
+    },
+    {
+      "name": "blockdev-insert-medium"
+    },
+    {
+      "name": "blockdev-remove-medium"
+    },
+    {
+      "name": "blockdev-close-tray"
+    },
+    {
+      "name": "blockdev-open-tray"
+    },
+    {
+      "name": "eject"
+    },
+    {
+      "name": "query-pr-managers"
+    },
+    {
+      "name": "query-jobs"
+    },
+    {
+      "name": "job-finalize"
+    },
+    {
+      "name": "job-dismiss"
+    },
+    {
+      "name": "job-complete"
+    },
+    {
+      "name": "job-cancel"
+    },
+    {
+      "name": "job-resume"
+    },
+    {
+      "name": "job-pause"
+    },
+    {
+      "name": "set-action"
+    },
+    {
+      "name": "watchdog-set-action"
+    },
+    {
+      "name": "query-status"
+    }
+  ],
+  "kvm": {
+    "enabled": true,
+    "present": true
+  }
+}

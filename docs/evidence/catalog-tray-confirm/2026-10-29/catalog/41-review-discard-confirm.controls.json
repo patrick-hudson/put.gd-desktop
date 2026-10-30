@@ -1,0 +1,65 @@
+{
+    "class": "QMessageBox",
+    "controls": [
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_label",
+            "rect": [
+                24,
+                20,
+                420,
+                19
+            ],
+            "text": "Discard this recording and its edits?"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "confirmDiscard",
+            "rect": [
+                303,
+                101,
+                141,
+                36
+            ],
+            "text": "Discard recording"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "keepReviewing",
+            "rect": [
+                171,
+                101,
+                126,
+                36
+            ],
+            "text": "Keep reviewing"
+        },
+        {
+            "class": "QLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "qt_msgbox_informativelabel",
+            "rect": [
+                24,
+                51,
+                420,
+                34
+            ],
+            "text": "The recording, its trim and its masks are deleted. Nothing has been uploaded; copies you saved stay."
+        }
+    ],
+    "height": 153,
+    "keys": [
+    ],
+    "width": 468
+}

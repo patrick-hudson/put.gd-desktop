@@ -1,0 +1,86 @@
+{
+  "codeCommit": "44455848595f65d09ce6bf1365307d3b9ad3452a",
+  "recipeCommit": "ef303b202936260ec1d61b1a1014cde785ba4f4e",
+  "samples": 444,
+  "recordingSegments": 18,
+  "postSecondClick": [
+    {
+      "action": "region",
+      "afterClickFrame": "13-input-after-recordRegionShortcut.png",
+      "afterClickFrameSha256": "6e5909efe49f3aee593aed23e2921d1fae5817e564085e588d2c4214dd5a348e",
+      "frameEpoch": 1793331286.729985,
+      "sampleEpoch": 1793331286.794036,
+      "native": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      },
+      "anyNativeRecording": false
+    },
+    {
+      "action": "window",
+      "afterClickFrame": "22-input-after-recordWindowShortcut.png",
+      "afterClickFrameSha256": "9c632e7d0637b3ef071c0b8bdfa4bec5852bf9ac9e394170c4e06e4ba6764ae0",
+      "frameEpoch": 1793331301.122994,
+      "sampleEpoch": 1793331301.1775565,
+      "native": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      },
+      "anyNativeRecording": false
+    },
+    {
+      "action": "desktop",
+      "afterClickFrame": "31-input-after-recordDesktopShortcut.png",
+      "afterClickFrameSha256": "dc2a963cd1f3cc2aa53ff9010ecff67453e44a19fb093fd4baa692d37bd96283",
+      "frameEpoch": 1793331314.2150033,
+      "sampleEpoch": 1793331314.2567194,
+      "native": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      },
+      "anyNativeRecording": false
+    },
+    {
+      "action": "clipboard",
+      "afterClickFrame": "40-input-after-recordClipboardShortcut.png",
+      "afterClickFrameSha256": "ec5d47f0ceea104e56b48edaf9b4c6db1b3776976d2faa0590e846aacbaa6905",
+      "frameEpoch": 1793331327.640014,
+      "sampleEpoch": 1793331327.5788782,
+      "native": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      },
+      "anyNativeRecording": false
+    },
+    {
+      "action": "edit",
+      "afterClickFrame": "49-input-after-recordEditShortcut.png",
+      "afterClickFrameSha256": "23cac421ded3fceb4084b49be7b5ab33122a79b52dd1f529025c50384a9f65c0",
+      "frameEpoch": 1793331340.9960256,
+      "sampleEpoch": 1793331341.0946443,
+      "native": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      },
+      "anyNativeRecording": false
+    },
+    {
+      "action": "record",
+      "afterClickFrame": "58-input-after-recordRecordShortcut.png",
+      "afterClickFrameSha256": "f38ba508172a60d22bf349da5424d38cc63834a1d232b316089f6ec78aa823a4",
+      "frameEpoch": 1793331356.0810401,
+      "sampleEpoch": 1793331356.130849,
+      "native": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      },
+      "anyNativeRecording": false
+    }
+  ]
+}

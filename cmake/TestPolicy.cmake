@@ -67,7 +67,7 @@ endif()
 foreach(test b2_integration collision_policy_integration diagnostics_bundle_contract
     edit_operations_integration editor_contract history_contract image_job_integration
     poster_job_integration s3_delete_integration s3_integration s3_multipart_integration
-    ui_native_lifecycle_integration version_contract)
+    ui_catalog_dark ui_catalog_light ui_catalog_text_150 ui_native_lifecycle_integration version_contract)
   if(TEST ${test})
     set_tests_properties(${test} PROPERTIES RESOURCE_GROUPS "cpu:1")
   endif()

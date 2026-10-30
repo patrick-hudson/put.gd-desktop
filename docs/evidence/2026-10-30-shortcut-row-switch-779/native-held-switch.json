@@ -1,0 +1,345 @@
+{
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "c779",
+    "package": "deb",
+    "destination": "local",
+    "build": "3907e2ebc069ffe0acf024f6eeccd18342185b5b"
+  },
+  "sandbox": "bx_w4wz6wub",
+  "passed": true,
+  "target": {
+    "hostname": "putgd-lab",
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "linuxmint",
+      "VERSION_ID": "22.3",
+      "VARIANT_ID": null
+    },
+    "session_type": "x11",
+    "desktop": "X-Cinnamon",
+    "qt_platform": "xcb"
+  },
+  "build": {
+    "baseVersion": "26.1030.2479",
+    "commitCount": 2479,
+    "dirty": false,
+    "gitCommit": "3907e2ebc069ffe0acf024f6eeccd18342185b5b",
+    "gitTree": "b663fdb8638d7a6c0095eb7cbce13749042340bc",
+    "packageVersion": "26.1030.2479~dev+g3907e2ebc069",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2479-dev+g3907e2ebc069"
+  },
+  "held_geometry": {
+    "x": 120,
+    "y": 40,
+    "width": 1440,
+    "height": 960,
+    "scale": 1,
+    "pid": 19797,
+    "window_id": "77594630",
+    "name": "put.gd",
+    "coordinate_space": "framebuffer",
+    "frame": null,
+    "states": {
+      "active": true,
+      "minimized": false,
+      "maximized": false
+    },
+    "head": 0
+  },
+  "held_target": [
+    961,
+    419,
+    151,
+    36
+  ],
+  "during_hold": {
+    "clipboard": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": ""
+    },
+    "desktop": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": ""
+    },
+    "edit": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": ""
+    },
+    "record": {
+      "shortcut": ""
+    },
+    "region": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": "Ctrl+Alt+Shift+7"
+    },
+    "window": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": "Ctrl+Alt+Shift+6"
+    }
+  },
+  "bindings_during_hold": {
+    "available": true,
+    "bindings": {
+      "clipboard": {
+        "bound": false,
+        "requested": "",
+        "state": "recording"
+      },
+      "desktop": {
+        "bound": false,
+        "requested": "",
+        "state": "recording"
+      },
+      "edit": {
+        "bound": false,
+        "requested": "",
+        "state": "recording"
+      },
+      "record": {
+        "bound": false,
+        "requested": "",
+        "state": "recording"
+      },
+      "region": {
+        "bound": false,
+        "requested": "Ctrl+Alt+Shift+7",
+        "state": "recording"
+      },
+      "window": {
+        "bound": false,
+        "requested": "Ctrl+Alt+Shift+6",
+        "state": "recording"
+      }
+    },
+    "keyPaths": {
+      "lastActivation": {},
+      "passive": true,
+      "raw": {
+        "available": true,
+        "xinput": "2.2"
+      }
+    }
+  },
+  "accessible_window": [
+    {
+      "pid": 19797,
+      "name": "Change capture window shortcut",
+      "role": "push button",
+      "rect": [
+        961,
+        419,
+        151,
+        36
+      ],
+      "checked": false,
+      "focused": true,
+      "description": "Recording Capture window shortcut. Press one key with optional modifiers, then release all keys. Escape cancels."
+    }
+  ],
+  "after": {
+    "clipboard": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": ""
+    },
+    "desktop": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": ""
+    },
+    "edit": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": ""
+    },
+    "record": {
+      "shortcut": ""
+    },
+    "region": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": "Ctrl+Alt+Shift+7"
+    },
+    "window": {
+      "destination": "local",
+      "profileId": null,
+      "shortcut": "Ctrl+Alt+Shift+9"
+    }
+  },
+  "bindings_after": {
+    "available": true,
+    "bindings": {
+      "clipboard": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+      },
+      "desktop": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+      },
+      "edit": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+      },
+      "record": {
+        "bound": false,
+        "error": "disabled",
+        "requested": ""
+      },
+      "region": {
+        "actual": "Ctrl+Alt+Shift+7",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+7"
+      },
+      "window": {
+        "actual": "Ctrl+Alt+Shift+9",
+        "bound": true,
+        "requested": "Ctrl+Alt+Shift+9"
+      }
+    },
+    "keyPaths": {
+      "lastActivation": {},
+      "passive": true,
+      "raw": {
+        "available": true,
+        "xinput": "2.2"
+      }
+    }
+  },
+  "saved_geometry": {
+    "x": 120,
+    "y": 40,
+    "width": 1440,
+    "height": 960,
+    "scale": 1,
+    "pid": 19797,
+    "window_id": "77594630",
+    "name": "put.gd",
+    "coordinate_space": "framebuffer",
+    "frame": null,
+    "states": {
+      "active": true,
+      "minimized": false,
+      "maximized": false
+    },
+    "head": 0
+  },
+  "saved_controls": {
+    "region": [
+      {
+        "pid": 19797,
+        "name": "Change capture region shortcut",
+        "role": "push button",
+        "rect": [
+          961,
+          308,
+          151,
+          36
+        ],
+        "checked": false,
+        "focused": false
+      }
+    ],
+    "window": [
+      {
+        "pid": 19797,
+        "name": "Change capture window shortcut",
+        "role": "push button",
+        "rect": [
+          961,
+          360,
+          151,
+          36
+        ],
+        "checked": false,
+        "focused": true
+      }
+    ]
+  },
+  "notes": [
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 1011, \"y\": 770}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 1011, \"y\": 770}",
+    "settings live target: {\"accessible_name\": \"Shortcuts\", \"control\": \"settingsSection2\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 19797, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [197, 259], \"rect\": [136, 240, 184, 38]}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 1011, \"y\": 770}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 197, \"y\": 259}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 197, \"y\": 259}",
+    "settings live target: {\"accessible_name\": \"Change capture region shortcut\", \"control\": \"recordRegionShortcut\", \"geometry\": {\"coordinate_space\": \"framebuffer\", \"frame\": null, \"head\": 0, \"height\": 960, \"name\": \"put.gd\", \"pid\": 19797, \"scale\": 1, \"states\": {\"active\": true, \"maximized\": false, \"minimized\": false}, \"width\": 1440, \"window_id\": \"77594630\", \"x\": 120, \"y\": 40}, \"point\": [1011, 275], \"rect\": [961, 257, 151, 36]}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 197, \"y\": 259}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 1011, \"y\": 275}",
+    "settings input witness: {\"active\": \"77594630\", \"focus\": \"77594630\", \"pid\": 19797, \"window\": \"77594630\", \"x\": 1011, \"y\": 275}"
+  ],
+  "frames": [
+    {
+      "label": "input-before-settingsSection2",
+      "path": "frames/setup/00-input-before-settingsSection2.png",
+      "window": null,
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    },
+    {
+      "label": "input-after-settingsSection2",
+      "path": "frames/setup/01-input-after-settingsSection2.png",
+      "window": null,
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    },
+    {
+      "label": "input-before-recordRegionShortcut",
+      "path": "frames/setup/02-input-before-recordRegionShortcut.png",
+      "window": null,
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    },
+    {
+      "label": "input-after-recordRegionShortcut",
+      "path": "frames/setup/03-input-after-recordRegionShortcut.png",
+      "window": null,
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    },
+    {
+      "label": "held-row-switch",
+      "path": "frames/setup/04-held-row-switch.png",
+      "window": "settings",
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    },
+    {
+      "label": "window-recording-accessible",
+      "path": "frames/setup/05-window-recording-accessible.png",
+      "window": "settings",
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    },
+    {
+      "label": "window-saved-correct-action",
+      "path": "frames/setup/06-window-saved-correct-action.png",
+      "window": "settings",
+      "reference": null,
+      "distance": null,
+      "tolerance": null
+    }
+  ],
+  "fixture_cleanup": [],
+  "target_cleanup": []
+}
