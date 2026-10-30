@@ -1,0 +1,92 @@
+{
+  "codeHeadTested": {
+    "ee128aebcdef50e62ce322233c2e70a9b7b62c80": {
+      "tools/lab/lab.py": "ae6e98b7527102088b59d71d27f07d720762a11da082fbcc2d1beecdb1fb4e70",
+      "tools/lab/package_staging.py": "0d8fb816393c5aa0d99d7c0f13ecded17055aaae494e85153627b720a42037ac",
+      "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+      "tools/lab/package_scope.py": "0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8",
+      "tools/lab/staging_acceptance.py": "743d8d20ae7d4ed0e40b8e909bd88d60db14557b6efd510a9a12d7066d27b79f"
+    },
+    "05481f0f1476a59d51be5296769dc4808b0491eb": {
+      "tools/lab/lab.py": "ae6e98b7527102088b59d71d27f07d720762a11da082fbcc2d1beecdb1fb4e70",
+      "tools/lab/package_staging.py": "0d8fb816393c5aa0d99d7c0f13ecded17055aaae494e85153627b720a42037ac",
+      "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+      "tools/lab/package_scope.py": "0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8",
+      "tools/lab/staging_acceptance.py": "3309002851e2949057cc0e75ac835a5db3c029ea73137ae05e6bf63b852e4bbc"
+    }
+  },
+  "guests": {
+    "cinnamon": {
+      "tools/lab/package_install.py": {
+        "sha256": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/package_scope.py": {
+        "sha256": "0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/package_staging.py": {
+        "sha256": "0d8fb816393c5aa0d99d7c0f13ecded17055aaae494e85153627b720a42037ac",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/lab.py": {
+        "sha256": "ae6e98b7527102088b59d71d27f07d720762a11da082fbcc2d1beecdb1fb4e70",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/staging_acceptance.py": {
+        "sha256": "3309002851e2949057cc0e75ac835a5db3c029ea73137ae05e6bf63b852e4bbc",
+        "matches": [
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      }
+    },
+    "ubuntu": {
+      "tools/lab/package_install.py": {
+        "sha256": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/package_scope.py": {
+        "sha256": "0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/package_staging.py": {
+        "sha256": "0d8fb816393c5aa0d99d7c0f13ecded17055aaae494e85153627b720a42037ac",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/lab.py": {
+        "sha256": "ae6e98b7527102088b59d71d27f07d720762a11da082fbcc2d1beecdb1fb4e70",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80",
+          "05481f0f1476a59d51be5296769dc4808b0491eb"
+        ]
+      },
+      "tools/lab/staging_acceptance.py": {
+        "sha256": "743d8d20ae7d4ed0e40b8e909bd88d60db14557b6efd510a9a12d7066d27b79f",
+        "matches": [
+          "ee128aebcdef50e62ce322233c2e70a9b7b62c80"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,308 @@
+{
+  "placement": "boat",
+  "sourceCommit": "ac6e9bb2d15a9c60dbb9cac39a3a3236f8c0d7d6",
+  "profiles": {
+    "cinnamon": {
+      "snapshot": "putgd-lab-cinnamon-v3",
+      "sandbox": "bx_4ed6k7h2",
+      "runId": "d2694597-20e8-46db-84b5-19aba16e927d",
+      "output": "eb4",
+      "casesPassed": 5,
+      "inactiveObservationSecondsAfterControllerKill": [
+        13.9866293770001,
+        26.44074330400008
+      ],
+      "rootSupervisor": {
+        "pid": 12576,
+        "startTicks": 195388,
+        "cgroup": "0::/system.slice/putgd-supervisor-install-b9a639e5ee674799ad11b29cf6a2827a.scope"
+      },
+      "resultOk": true,
+      "remainingPids": [],
+      "managerAfterResult": "inactive",
+      "archivedAttempts": [
+        {
+          "output": "e780",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7af48a8c144687a943eaadb1a76a628204fb3985c30d51f4fb814d49b7f2eb1d",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "783f6b463a393cb0d5779336b38de0f8f8dd3d1d7c62b2a4f1e39933f925e144"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "d2694597-20e8-46db-84b5-19aba16e927d",
+              "profile": "cinnamon-x11",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+              "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 37954
+            }
+          }
+        },
+        {
+          "output": "eb1",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7b23e6552e553d026bef188c0b0aa8498bf4dea5797aa7f692fa783a5fa24b53",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "d722388b54a0c4eb26a2482679772c8e72f3aab63de1a904abea3694ee8c92f1"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "d2694597-20e8-46db-84b5-19aba16e927d",
+              "profile": "cinnamon-x11",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+              "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 37954
+            }
+          },
+          "failureLogSha256": "2693cca2c5a6cc3844a9c76859585ba40a2cd8432d4400630cb99ab72b301d6b"
+        },
+        {
+          "output": "eb2",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7b23e6552e553d026bef188c0b0aa8498bf4dea5797aa7f692fa783a5fa24b53",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "83ca6116cd10037b328f32a2d46a34d890e5c68ce4d305b97d379f8b490e919e"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "d2694597-20e8-46db-84b5-19aba16e927d",
+              "profile": "cinnamon-x11",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+              "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 37954
+            }
+          },
+          "failureLogSha256": "566f422bb8d9536140704ec6e61524d035d9de285b1f4ce5a83a775e2488de1a"
+        },
+        {
+          "output": "eb3",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7b23e6552e553d026bef188c0b0aa8498bf4dea5797aa7f692fa783a5fa24b53",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "a9f3313143b9ec904a1522654256d3ef4c1529901dfb47702e881272be9971b2"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "d2694597-20e8-46db-84b5-19aba16e927d",
+              "profile": "cinnamon-x11",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+              "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 37954
+            }
+          },
+          "failureLogSha256": "53f9d1465dd6a862605d9d50788fe04b23268cffab52c164b95ad1299a982afc",
+          "logout-failure.json": {
+            "errorType": "LabError",
+            "message": "ssh failed (exit 1)"
+          },
+          "restored-for-retest.json": {
+            "endedOwnedSessions": [],
+            "autologinRestored": [
+              {
+                "path": "/etc/lightdm/lightdm.conf",
+                "beforeSha256": "86d0c56c9c2d0c9cb57a171234ab5c893c5d893dee08a0256488edf09eca913f",
+                "afterSha256": "e1ae21f86fb52f554996e9b2242dc5f0883950d1294dfeba29ad90bb70477246"
+              }
+            ],
+            "displayManagerRestarted": true
+          }
+        },
+        {
+          "output": "failed-permission-9a00d828",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7af48a8c144687a943eaadb1a76a628204fb3985c30d51f4fb814d49b7f2eb1d",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "783f6b463a393cb0d5779336b38de0f8f8dd3d1d7c62b2a4f1e39933f925e144"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "d2694597-20e8-46db-84b5-19aba16e927d",
+              "profile": "cinnamon-x11",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+              "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 37954
+            }
+          },
+          "failureLogSha256": "26f36cf858415e3521409fdf32ed963e30860b63032c11aa5f2f39dfd92bdf19"
+        }
+      ],
+      "aptTimersStopped": [],
+      "retainedSnapshot": {
+        "createdAt": "2026-10-30T05:38:47.569Z",
+        "name": "putgd-lab-cinnamon-v3",
+        "sizeBytes": 49384345600,
+        "snapshotId": "849cde13-4322-4f89-a08e-86fa427564c9",
+        "sourceSandboxId": "bx_enwtrazx",
+        "status": "ready",
+        "type": "large"
+      }
+    },
+    "ubuntu": {
+      "snapshot": "putgd-lab-ubuntu-gnome-v4",
+      "sandbox": "bx_gc3kvcd7",
+      "runId": "bbf33eba-48c2-4918-b38b-143007e16fc3",
+      "output": "eb3",
+      "casesPassed": 5,
+      "inactiveObservationSecondsAfterControllerKill": [
+        68.72842884600004,
+        81.50213492800003
+      ],
+      "rootSupervisor": {
+        "pid": 25413,
+        "startTicks": 109236,
+        "cgroup": "0::/system.slice/putgd-supervisor-install-ad03f6419cad47069aec34f05e72cfd4.scope"
+      },
+      "resultOk": true,
+      "remainingPids": [],
+      "managerAfterResult": "inactive",
+      "archivedAttempts": [
+        {
+          "output": "eb1",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7b23e6552e553d026bef188c0b0aa8498bf4dea5797aa7f692fa783a5fa24b53",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "83ca6116cd10037b328f32a2d46a34d890e5c68ce4d305b97d379f8b490e919e"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "bbf33eba-48c2-4918-b38b-143007e16fc3",
+              "profile": "gnome-wayland",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+              "golden_sha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 71779
+            }
+          },
+          "failureLogSha256": "566f422bb8d9536140704ec6e61524d035d9de285b1f4ce5a83a775e2488de1a",
+          "restored-for-retest.json": {
+            "endedOwnedSessions": [],
+            "autologinRestored": [],
+            "displayManagerRestarted": true
+          }
+        },
+        {
+          "output": "eb2",
+          "succeeded": false,
+          "sourceIdentity": {
+            "placement": "boat",
+            "files": {
+              "tools/lab/lab.py": "303a49d521d86e28dce0778890aa3dc9a5457e875db3bf6a2b64133bd96936fb",
+              "tools/lab/package_staging.py": "7b23e6552e553d026bef188c0b0aa8498bf4dea5797aa7f692fa783a5fa24b53",
+              "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+              "tools/lab/staging_acceptance.py": "8b9961e36571cec5260476f42e7f1ef1963a9d6fe1a33c2b4366ae67c7e1d22b"
+            },
+            "state": {
+              "schemaVersion": 1,
+              "id": "bbf33eba-48c2-4918-b38b-143007e16fc3",
+              "profile": "gnome-wayland",
+              "guest_user": "lab",
+              "ssh_port": 22220,
+              "vnc_display": 20,
+              "acceleration": "kvm",
+              "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+              "golden_sha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+              "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+              "known_hosts": "/home/user/b780/work/lab-runs/c1/known_hosts",
+              "overlay": "/home/user/b780/work/lab-runs/c1/disk.qcow2",
+              "pid": 71779
+            }
+          },
+          "failureLogSha256": "53f9d1465dd6a862605d9d50788fe04b23268cffab52c164b95ad1299a982afc",
+          "logout-failure.json": {
+            "errorType": "LabError",
+            "message": "ssh failed (exit 1)"
+          },
+          "restored-for-retest.json": {
+            "endedOwnedSessions": [],
+            "autologinRestored": [
+              {
+                "path": "/etc/gdm3/custom.conf",
+                "beforeSha256": "f0321632d4a444354610ed43b60525ae7dd046f675e62049dc422639de54f5f5",
+                "afterSha256": "a1257eecfdf2c51a830f6664e7e7e749a1d92bee6257a96919db27640f652cef"
+              }
+            ],
+            "displayManagerRestarted": true
+          }
+        }
+      ],
+      "aptTimersStopped": [],
+      "retainedSnapshot": {
+        "createdAt": "2026-10-30T05:31:49.764Z",
+        "name": "putgd-lab-ubuntu-gnome-v4",
+        "sizeBytes": 106208931840,
+        "snapshotId": "e27763c5-50e2-4ece-b27f-412345fb796f",
+        "sourceSandboxId": "bx_zpyhj8nd",
+        "status": "ready",
+        "type": "large"
+      }
+    }
+  },
+  "sandboxesCreated": 2,
+  "physicalOrProtonLocks": [],
+  "aptOnWorkstation": false
+}

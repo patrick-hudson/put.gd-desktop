@@ -1,0 +1,36 @@
+{
+  "finished": true,
+  "state": "supervisor-finished",
+  "exactProcessAlive": false,
+  "sessionAlive": false,
+  "process": {
+    "pid": 3078,
+    "sessionId": 3078,
+    "startTicks": 8170,
+    "tracking": "cgroup-v2",
+    "cgroup": {
+      "path": "/system.slice/putgd-supervisor-install-44e4e1d280eb48dbafa10a6a2b76d8f0.scope",
+      "unit": "putgd-supervisor-install-44e4e1d280eb48dbafa10a6a2b76d8f0.scope",
+      "device": 30,
+      "inode": 14725,
+      "mountDevice": 30,
+      "mountInode": 1,
+      "bootId": "fc2b8d3c-d257-4dde-a10f-78bf47b8cdcd"
+    }
+  },
+  "sessionPids": [],
+  "tracking": "cgroup-v2",
+  "cgroupPopulated": false,
+  "cgroupGone": true,
+  "result": {
+    "ok": true,
+    "aborted": false,
+    "timedOut": false,
+    "exitCodes": [
+      0,
+      0
+    ],
+    "remainingPids": [],
+    "error": null
+  }
+}

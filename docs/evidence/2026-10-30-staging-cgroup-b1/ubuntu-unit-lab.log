@@ -1,0 +1,7 @@
+...........................Guest staging uses session-only tracking: system manager bus probe failed. Session-scan limits apply.
+.Guest staging uses session-only tracking: system manager bus probe failed. Session-scan limits apply.
+......................................
+----------------------------------------------------------------------
+Ran 66 tests in 5.121s
+
+OK

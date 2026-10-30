@@ -1,0 +1,13 @@
+{
+  "path": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+  "launchSha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+  "expectedSnapshotSha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+  "digestVerificationStage": "launch",
+  "postTestIdentity": {
+    "device": 64769,
+    "inode": 2064640,
+    "size": 4844814336,
+    "mtimeNs": 1793338665101928722
+  },
+  "postTestFullHashCompleted": false
+}
