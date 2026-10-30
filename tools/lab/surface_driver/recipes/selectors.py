@@ -290,6 +290,10 @@ def _bar_click(ctx, control, window):
         ctx.click(control, window=window)
 
 
+def _bar_point(box, point):
+    return tuple(round((point[i] - box.get(("screen_x", "screen_y")[i], 0)) * box.get("scale", 1)) for i in (0, 1))
+
+
 def _bar_drag(ctx, start, end):
     with _bar_input(ctx):
         ctx.drag(start, end)
@@ -645,16 +649,23 @@ def bar_drag(ctx):
         try:
             ctx.frame("before", window="bar", reference=BAR)
             before = ctx.geometry("bar")
+            with _bar_input(ctx):
+                ctx.focus("bar", raise_window=False)
             ctx.expect(_inspect(ctx, rid)["overlayPlacement"] == "outside", "half-screen target keeps bar outside")
             # Top border is a safe non-control drag target.
             start = (int(before["x"] + before["width"] / 2), int(before["y"] + 2))
-            _bar_drag(ctx, start, (start[0] + 30, start[1]))
+            _bar_drag(ctx, _bar_point(before, start), _bar_point(before, (start[0] + 30, start[1])))
             after = ctx.geometry("bar")
             ctx.expect(after["x"] != before["x"] or after["y"] != before["y"], "bar moved under pointer drag")
             x, y, w, h = _inspect(ctx, rid)["target"]["rect"]
             ctx.expect(after["x"] + after["width"] <= x or after["x"] >= x + w or after["y"] + after["height"] <= y or after["y"] >= y + h, "bar stays outside captured pixels")
             ctx.frame("after", window="bar", reference=BAR)
-            _bar_drag(ctx, (int(after["x"] + after["width"] / 2), int(after["y"] + 2)), (int(x + w / 2), int(y + h / 2)))
+            inside = (int(x + w / 2), int(y + h / 2))
+            screen = _env(ctx)["screens"][after.get("head", 0)]
+            sx, sy, sw, sh = screen
+            if not (sx <= inside[0] < sx + sw and sy <= inside[1] < sy + sh):
+                ctx.blocked("Capture exclusion target is on another head; public drag() accepts one head per gesture (#714)", issue=714)
+            _bar_drag(ctx, _bar_point(after, (int(after["x"] + after["width"] / 2), int(after["y"] + 2))), _bar_point(after, inside))
             rejected = ctx.geometry("bar")
             ctx.expect(rejected["x"] + rejected["width"] <= x or rejected["x"] >= x + w or rejected["y"] + rejected["height"] <= y or rejected["y"] >= y + h, "dragging an outside bar cannot overlap the capture")
             ctx.frame("rejected-inside", window="bar", reference=BAR)

@@ -169,7 +169,7 @@ class FakeContext(Context):
         self.reviews.append(reason)
 
     def focus(self, window, raise_window=True):
-        assert window in ("region", "recsel")
+        assert window in ("region", "recsel", "bar")
 
     def geometry(self, window):
         assert window == "bar"
@@ -548,6 +548,37 @@ class SelectorRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, "timeout: recording"):
             selectors._bar_click(ctx, "record", "bar-ready")
         self.assertFalse(ctx.frames)
+
+    def test_bar_drag_refused_focus_is_blocked_before_pointer_input(self):
+        ctx = FakeContext()
+        def refused(*args, **kwargs):
+            raise RecipeFailed("input target 'bar' is obscured by 'putgd synthetic fixture' (window 123)")
+        ctx.focus = refused
+        with self.assertRaises(RecipeBlocked) as caught:
+            selectors.bar_drag(ctx)
+        self.assertEqual(caught.exception.issue, 705)
+        self.assertFalse(ctx.inputs)
+        self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
+
+    def test_bar_drag_maps_second_head_and_refuses_cross_head_endpoint(self):
+        ctx = FakeContext(2)
+        original_call, original_drag = ctx.call, ctx.drag
+        def call(method, params=None):
+            value = original_call(method, params)
+            if method == "recording.prepare":
+                ctx.bar.update(x=1367, y=100, screen_x=1280, screen_y=0, head=1)
+            return value
+        def drag(start, end):
+            for x, y in (start, end):
+                self.assertTrue(0 <= x < 1024 and 0 <= y < 768)
+            return original_drag(start, end)
+        ctx.call, ctx.drag = call, drag
+        with self.assertRaises(RecipeBlocked) as caught:
+            selectors.bar_drag(ctx)
+        self.assertEqual(caught.exception.issue, 714)
+        self.assertEqual([row for row in ctx.inputs if row[0] == "drag"], [("drag", (512, 102), (542, 102))])
+        self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
+        self.assertEqual(ctx.document, ctx.original)
 
     def test_unavailable_fixture_is_blocked(self):
         ctx = FakeContext()
