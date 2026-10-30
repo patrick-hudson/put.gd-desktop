@@ -271,6 +271,62 @@ class Context:
 
     # Fixtures shared between recipes in one run (an upload, a recording, a history row)
     def fixture(self, name: str, **options: Any) -> Any:
+        """Resolve a per-recipe owned descriptor (mapping and attribute access).
+
+        Additive round-3 contracts, restricted to private profiles/synthetic
+        loopback destinations. Finalizers restore faults before restoring the
+        accepted configuration, and run outside the recipe deadline:
+
+        * settings-multi-profile / settings-destinations / settings-share-destination:
+          profiles, profile_ids, share_profile_id, publication_modes and
+          private_supported. S3 supports default/share; it cannot prove private
+          Proton publication. No live provider is enabled.
+        * settings-no-output: accepted inherited routes with no profile/local
+          copy, recovery_actions; assertions/input remain the recipe's job.
+        * settings-action-routes: add(action, profile_id, publication_mode),
+          remove(action), observe(). Removes recording's optional overrides by
+          full settings.save, preserving shortcuts.
+        * settings-save-failure: restore()/retry() remove an actual directory
+          write fault before UI Retry; observe() reads real footer/draft nodes;
+          external_change(patch) uses the existing atomic revision guard. It
+          never manufactures a successful save, conflict or footer error.
+        * settings-observations: observe(), disclosure(id, window='settings')
+          returns control, expanded and visible accessible text; recording_status()
+          reads the live accessible shortcut-recording label (None if absent).
+          Missing/ambiguous exports block.
+        * settings-focus-loss: focus()/deactivate()/hide()/restore(), process,
+          role, observe(). Native minimize is X11-only; Wayland focus uses the
+          existing compositor witness. settings-input-events provides
+          overlap(first, second, modifiers), altgr(key), shifted_digit(digit)
+          through Context.held_keys/keys, with their unchanged input guards.
+        * settings-binding-{conflict,unavailable,pending,unsupported}: state,
+          controlled, observe(), release() for an owned X11 conflict. Other
+          states must actually exist in the native channel or block; desktop
+          environment labels and diagnostics replies are never substituted.
+        * locked-keyring: unique blank-password synthetic collection,
+          lock()/unlock(); no personal item/default alias is read or changed.
+        * events.update-feed / settings-update-feed: url/root/residentPid,
+          resident() (authenticated peer PID/start), channel/version/supported,
+          publish(schema-1 feed), ledger() (sequence/method/route/channel/status/
+          bytes). Requests contain no headers, queries or raw URL logging.
+          Feed, release and mirror overrides are literal loopback endpoints.
+        * settings-update-lifecycle / events.update-lifecycle: updates.bundle
+          in the profile must point to authentic tagged AppImage releases and
+          signed checksum files (see updates.lifecycle). Returns image, build,
+          releases, install(**params), restart(**params) plus feed contract.
+          Production signature verification stays enabled. Missing bundles
+          block before switching; development bytes are never relabelled.
+        * recording-lifecycle: fresh synthetic scene, prepare parameters,
+          prepare_recording(**overrides), recording_ids, output_dir, destination
+          and capabilities. Callers exercise the production CLI/MCP lifecycle;
+          native recording consent is supplied separately, never bypassed.
+        * events.expired-multipart: real failed SDK operation/journal,
+          operationId/itemId, listing()/requests() independent loopback S3
+          evidence; automatic_cleanup() ages only that stopped owned journal
+          and restarts once for the genuine 60-second startup cleanup. No
+          manual cache.clear is counted as an automatic notice. Recipe timeout
+          must cover fixture setup plus automatic_delay_seconds (60).
+        """
         raise NotImplementedError
 
     # Evidence and verdicts

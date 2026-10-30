@@ -642,7 +642,12 @@ def selector_matches(row, selector, candidates):
         return 1
     if selector.startswith('text-glob:') and fnmatch.fnmatchcase(live, selector[10:]):
         return 1
-    return 1 if any(live in candidate_labels(c) for c in candidates) else None
+    # A label's text can equal a named combo's accessibleName on Qt 6.4.
+    # Apply each matching candidate's class semantics; coordinates never break
+    # ties. Unknown catalog classes retain the existing label-only contract.
+    return 1 if any(live in candidate_labels(c) and
+                    (c.get('class') not in CLASS_ROLES or row['role'] in CLASS_ROLES[c['class']])
+                    for c in candidates) else None
 
 
 def control_geometry(query):

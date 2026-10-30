@@ -4,7 +4,7 @@ import time
 
 from ..api import RecipeBlocked
 from .base import Fixture, Scope
-from . import destinations, dialogs, events, history, images, live, notifications, profile, recordings, settings, uploads
+from . import desktop, destinations, dialogs, events, history, images, lifecycle, live, multipart, notifications, profile, recordings, settings, updates, uploads
 from .geometry import history_window
 
 
@@ -18,6 +18,7 @@ FACTORIES={
     'profile':lambda scope,**options:scope.ctx.fixture('app-profile',**options),
     'image':images.image,
     'fake-keyring':destinations.fake_keyring,
+    'locked-keyring':destinations.locked_keyring,
     'loopback-s3':destinations.loopback,
     'upload':uploads.upload,
     'linked-upload':lambda scope:scope.ctx.fixture('upload'),
@@ -48,6 +49,7 @@ FACTORIES={
     'destination':destinations.destination,
     'recording':recordings.recording,
     'recording-review':lambda scope:scope.ctx.fixture('recording'),
+    'recording-lifecycle':lifecycle.recording,
     'review-controls':recordings.controls,
     'recording-export-failure':recordings.export_failure,
     'recording-budget-stop':partial(recordings.recording,automatic=True),
@@ -58,16 +60,31 @@ FACTORIES={
     'settings':settings.settings,
     'settings-no-output':partial(settings.settings,state='no-output'),
     'settings-multi-profile':partial(settings.settings,state='multi-profile'),
+    'settings-destinations':partial(settings.settings,state='multi-profile'),
+    'settings-share-destination':partial(settings.settings,state='multi-profile'),
+    'settings-action-routes':settings.action_routes,
+    'settings-save-failure':settings.save_failure,
+    'settings-observations':settings.observations,
+    'settings-focus-loss':desktop.focus_loss,
+    'settings-input-events':desktop.input_events,
+    'settings-binding-conflict':desktop.binding,
+    'settings-binding-unavailable':partial(desktop.binding,state='unavailable'),
+    'settings-binding-pending':partial(desktop.binding,state='pending'),
+    'settings-binding-unsupported':partial(desktop.binding,state='unsupported'),
+    'settings-update-feed':updates.feed,
+    'settings-update-lifecycle':updates.lifecycle,
     'diagnostics-upload':settings.diagnostics_upload,
     'events.slow-upload':events.slow_upload,
-    'events.update-feed':events.feed,
-    'events.older-update-feed':partial(events.feed,older=True),
-    'events.update-notification':events.feed,
-    'events.recording-source':recordings.pattern,
+    'events.update-feed':updates.feed,
+    'events.older-update-feed':partial(updates.feed,older=True),
+    'events.update-notification':updates.feed,
+    'events.update-lifecycle':lambda scope:scope.ctx.fixture('settings-update-lifecycle'),
+    'events.recording-source':lifecycle.source,
     'selector-desktop':recordings.pattern,
     'events.record-storage':events.storage,
     'events.import-storage':events.storage,
     'events.incomplete-multipart':events.incomplete,
+    'events.expired-multipart':multipart.expired,
     'events.clipboard':events.clipboard,
     'events.controllers':events.controllers,
     'events.browser-handler':blocked('browser handler needs links lane guarded browser lifecycle',682),

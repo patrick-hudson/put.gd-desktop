@@ -128,3 +128,21 @@ def destination(scope):
     value=scope.ctx.fixture('loopback-s3')
     scope.patch({'actions':{'record':{'destination':'upload','profileId':value.profile_id}}})
     return Fixture(id=value.profile_id,label=value.profile['label'])
+
+
+def locked_keyring(scope):
+    """Lock only the unique synthetic collection; never change a default alias."""
+    value=scope.ctx.fixture('fake-keyring')
+    def lock():
+        scope.python(KEYRING+'''
+locked,prompt=call(service,'org.freedesktop.Secret.Service','Lock',GLib.Variant('(ao)',([COLLECTION],)),'(aoo)')
+assert COLLECTION in locked and prompt=='/'
+'''.replace('COLLECTION',repr(value.collection)))
+    def unlock():
+        scope.python(KEYRING+'''
+unlocked,prompt=call(service,'org.freedesktop.Secret.Service','Unlock',GLib.Variant('(ao)',([COLLECTION],)),'(aoo)')
+assert prompt=='/' and COLLECTION in unlocked
+'''.replace('COLLECTION',repr(value.collection)))
+    scope.defer('unlock owned blank-password collection',unlock,priority=60)
+    lock()
+    return Fixture(value,locked=True,lock=lock,unlock=unlock)
