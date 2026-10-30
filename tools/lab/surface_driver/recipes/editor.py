@@ -619,11 +619,14 @@ def style_controls(ctx):
         _tool(ctx,op,'rectangle')
         mark = _place(ctx, op, 'rectangle')
         ctx.use_catalog('editor', '22-editor-arrow-style')
-        for key, width in [('Home',2),('Down',4),('End',8)]:
-            ctx.click('lineWidth', window='editor')
-            ctx.keys(key,'Return')
+        ctx.click('lineWidth', window='editor')
+        # Return closes the popup with focus on the combo. Continue through
+        # its native keyboard controls instead of resolving a closing popup.
+        for keys, width in [(('Home','Return'),2),(('Down',),4),(('End',),8)]:
+            ctx.keys(*keys)
             state = _inspect(ctx,op)
             ctx.expect(state['view']['style']['width']==width and _shape(ctx, op, mark)['width']==width, 'line width updates style and shape')
+        ctx.note('line width 2/4/8 read back on the placed mark')
         _frame(ctx,'width','22-editor-arrow-style')
         _tool(ctx, op, 'blur')
         blur = _place(ctx, op, 'blur')
