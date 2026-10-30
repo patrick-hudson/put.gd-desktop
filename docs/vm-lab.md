@@ -279,17 +279,23 @@ the controller does not stop it. Failed staging also attempts to copy
 `staging.log` into the host attempt directory, with a 10-second collection
 timeout. A missing log or disconnected guest does not replace the original error.
 
-Staging runs under a detached, unprivileged guest subreaper in that job's private
-`~/putgd-lab/install-<id>` directory. `staging-process.json` records its exact PID
-and `/proc` start ticks before any privileged work. `staging-result.json` is
+Staging runs under a detached, unprivileged guest subreaper in a new Linux
+session (`setsid`), in that job's private `~/putgd-lab/install-<id>` directory.
+`staging-process.json` records the session ID, session leader PID and `/proc`
+start ticks before any privileged work. `staging-result.json` is
 written only after the staging shell and all its descendants have exited. A
 lost SSH reply, timeout, or Ctrl-C therefore does not establish completion.
 Failed staging reconciles the same job for up to 30 seconds, independently of
 best-effort log collection. It records `staging-reconciliation.json` on the host
 when available and releases `install-active` only after proving completion (or
-fencing a launch that never started). Interrupting reconciliation itself, including
-a second Ctrl-C, retains the lock and prints the exact `recover-staging` command.
-The cancellation fence also prevents a delayed SSH command from starting after recovery. The controller never stops
+fencing a launch that never started). A second Ctrl-C while writing the failure
+receipt or reconciling staging prints recovery guidance even if the host failure
+receipt could not be saved. Guidance checks the actual `install-active` state:
+held, released, owned by a replacement job, or unknown if the guest cannot be
+inspected. An interruption after release therefore does not claim the token is
+still held. Held or unknown state includes the exact `recover-staging` command.
+The cancellation fence also prevents a delayed SSH command from starting after
+recovery. The controller never stops
 staging by process name or kills a privileged apt process through its
 unprivileged wrapper.
 
@@ -307,11 +313,21 @@ python3 tools/lab/lab.py recover-staging --run "$lab_run" \
   --job install-0123456789abcdef0123456789abcdef
 ```
 
-This command requires the host job's `staging-failed.json`, authenticates the
-owned running overlay, rejects a changed lock token and any package-supervisor
-progress/result, and repeats the bounded guest lifetime check before releasing
-that token. It refuses a running or uncertain job. It does not resume the failed
-install; run `install` again after recovery succeeds.
+This command authenticates the owned running overlay, rejects a changed lock
+token and any package-supervisor progress/result, and repeats the bounded guest
+lifetime check before releasing that token. Both ordinary and abandoned recovery
+require a verifiable session leader identity and no live process in the recorded
+session. They enumerate `/proc/<pid>/stat` session IDs (field 6), including
+root-owned staging descendants. Missing identity, unreadable process information
+or incomplete enumeration (including restricted procfs mounts) refuses recovery.
+
+If an abrupt controller death or interrupted receipt write left no host
+`staging-failed.json`, recovery reconstructs the staging identity from the guest's
+`staging-process.json` under the same ownership, token, supervisor and lifetime
+guards. Missing guest metadata cannot authorize recovery. The command saves
+`staging-recovery.json` in the host job directory and preserves the install-time
+`staging-reconciliation.json`. It refuses a running or uncertain job. It does not
+resume the failed install; run `install` again after recovery succeeds.
 
 If the wrapper died without writing `staging-result.json`, ordinary recovery
 continues to refuse. Inspect the recorded PID/start ticks, logs and descendants
@@ -322,22 +338,25 @@ python3 tools/lab/lab.py recover-staging --run "$lab_run" \
   --job install-0123456789abcdef0123456789abcdef --abandoned
 ```
 
-`--abandoned` requires every existing recovery guard above, an unheld guest
-`staging.lock` flock, and a valid recorded PID that is dead or has different
-`/proc` start ticks. A held flock, a live matching wrapper, or a missing,
-malformed or unreadable identity refuses recovery and retains `install-active`.
-On guests without Python 3.9's `os.pidfd_open`, identity checks fall back to
-`/proc` start ticks and process state; unreadable process information remains
-unknown and cannot authorize abandonment. The command never signals a process.
-It fences delayed starts, records a `staging-abandoned` reconciliation receipt
-on the host, and clears only the matching install token. This is explicit
-operator abandonment, not a terminal receipt proving all privileged descendants
-exited; do not use it while such staging work may still be running. Preserve
-the run when uncertain.
+`--abandoned` requires every recovery guard above, an unheld guest
+`staging.lock` flock, a valid recorded session leader PID that is dead or has
+different `/proc` start ticks, and a complete scan proving no live process has
+the recorded session ID. Killing the wrapper can free its flock while privileged
+children still run; those children keep recovery blocked until they exit. Zombie
+or exited processes do not count as live. A held flock, live matching leader,
+live session member, missing/malformed identity or uncertain inspection retains
+`install-active`. Older receipts without a session ID cannot prove abandonment;
+preserve the run for investigation.
 
-An abrupt controller death without a host `staging-failed.json` still requires
-manual investigation; `--abandoned` does not bypass that guard. These rules apply
-only to disposable overlays; immutable goldens and the separate package supervisor's recovery remain unchanged.
+On guests without Python 3.9's `os.pidfd_open`, or where the kernel returns
+`ENOSYS` for that API, leader identity checks fall back to `/proc` start ticks
+and process state. Other inspection failures remain unknown and cannot authorize
+abandonment. The command never signals a process. It fences delayed starts,
+records a `staging-abandoned` report in the host's `staging-recovery.json`, and
+clears only the matching install token. The missing terminal receipt remains
+missing; recovery proves session quiescence rather than a successful helper
+installation. These rules apply only to disposable overlays; immutable goldens
+and the separate package supervisor's recovery remain unchanged.
 See the [Cinnamon cancellation proof](evidence/2026-10-30-lab-staging-748/README.md)
 for the exact identities, refused retries, later successful install and cleanup.
 
