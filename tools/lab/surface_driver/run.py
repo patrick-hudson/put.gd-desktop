@@ -360,6 +360,8 @@ def _run_recipes(context, recipes, environment, out, campaign, coverage, interru
             print(json.dumps({'recipe':recipe.name,'functional':'blocked','shell':'crashed'}),flush=True)
             continue
         context.begin(recipe)
+        for note in getattr(getattr(context, 'target', None), 'clipboard_report', {}).get('reviews', []):
+            context.review(note)
         functional, issue, failure = 'passed',None,None
         def deadline(_signum,_frame):
             raise RecipeFailed('recipe deadline exceeded: '+recipe.name)
@@ -503,7 +505,7 @@ def main(argv=None):
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
         target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
-                      app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
+                      app_executable='putgd-launcher' if args.package=='appimage' else 'putgd', placement=args.placement)
         # Only the boat native-head proof invokes this CLI. Owned guests do
         # not acquire a new host-tool dependency merely by naming their boat id.
         args.boat_cli = resolve_boat_cli() if target.physical and args.placement == 'boat' else None
@@ -519,6 +521,9 @@ def main(argv=None):
         if environment['target'].get('session_type')!=profile['session']:
             raise RecipeBlocked('native session type does not match the selected desktop profile')
         target.start()
+        clipboard_report = getattr(target, 'clipboard_report', None)
+        if isinstance(clipboard_report, dict):
+            environment['clipboard_preservation'] = clipboard_report
         context=DriverContext(target,environment,profile,args.catalog,args.out)
         snapshot=context.call('ui.snapshot')
         observed=snapshot.get('build',{})
@@ -559,6 +564,10 @@ def main(argv=None):
     finally:
         if target:
             cleanup=target.close()
+            clipboard_report = getattr(target, 'clipboard_report', None)
+            if isinstance(clipboard_report, dict) and clipboard_report:
+                environment['clipboard_preservation'] = clipboard_report
+                write_receipts(args.out,environment,rows,args.campaign,coverage)
             if cleanup:
                 environment['cleanup_errors']=cleanup
                 write_receipts(args.out,environment,rows,args.campaign,coverage)
