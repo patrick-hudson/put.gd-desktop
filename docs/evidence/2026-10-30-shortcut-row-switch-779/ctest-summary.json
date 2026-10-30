@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "placement": "boat",
+  "sandbox": "bx_w4wz6wub",
+  "snapshot": "putgd-build-base-v2",
+  "head": "3907e2ebc069ffe0acf024f6eeccd18342185b5b",
+  "tree": "b663fdb8638d7a6c0095eb7cbce13749042340bc",
+  "summary": {
+    "blocking": [],
+    "failed": [],
+    "failedFirst": [],
+    "ok": true,
+    "passedOnRetry": [],
+    "retried": [],
+    "tests": 114,
+    "unexplainedCtestFailure": false
+  },
+  "passes": [
+    {
+      "command": [
+        "ctest",
+        "--preset",
+        "dev",
+        "--parallel",
+        "12",
+        "--resource-spec-file",
+        "/home/user/work/put.gd/src/tools/ci/ctest-resources.json",
+        "--output-junit",
+        "/home/user/779/ci-ram/ctest.xml"
+      ],
+      "exitCode": 0,
+      "kind": "first",
+      "seconds": 122.79
+    }
+  ],
+  "scratchFilesystem": "tmpfs, bounded 4 GiB, uid/gid 1001, private 0700 directories",
+  "context": {
+    "configuredUser": "putgd-ci",
+    "configuredUid": 1001,
+    "observedUidFile": "ctest-observed-uid",
+    "locale": "en_US.UTF-8",
+    "temporaryDirectory": "/tmp/p7m.UwYZp7/r.JBRcYN/tmp",
+    "registeredTests": 114,
+    "socketPreflight": "Conservative length-preserving normal socket templates; intentional rejection cases unchanged",
+    "scope": "Hosted contract tests; no native desktop or physical memory acceptance"
+  },
+  "scope": "Functional CTest only; no physical desktop, latency, memory or storage performance acceptance"
+}
