@@ -61,7 +61,7 @@ label=Gtk.Label();label.set_markup('<span font_desc="DejaVu Sans Mono 24">'+LINK
 window.connect('destroy',Gtk.main_quit);signal.signal(signal.SIGTERM,lambda *_:GLib.idle_add(Gtk.main_quit))
 window.show_all();Gtk.main()
 '''
-        script = "python3 - <<'PRIVACY_FIXTURE' >/dev/null 2>&1 &\nLINK="+repr(LINK)+'\n'+fixture+'PRIVACY_FIXTURE\necho $!\n'
+        script = "nohup python3 - <<'PRIVACY_FIXTURE' >/dev/null 2>&1 &\nLINK="+repr(LINK)+'\n'+fixture+'PRIVACY_FIXTURE\necho $!\n'
         result = ctx.shell(script)
         pid = int(result['stdout'].strip())
         ctx.wait(lambda: ctx.windows({'title':'^Synthetic privacy fixture$'}), 'privacy fixture visible', 20)
