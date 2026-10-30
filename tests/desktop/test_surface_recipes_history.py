@@ -526,6 +526,26 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(ctx.query['search'], ctx.fixture_row['name'])
         self.assertIn(('click', 'historyClearFilters', 'history', 'left'), ctx.events)
 
+    def test_window_inventory_waits_for_clean_read_after_departed_client(self):
+        ctx = FakeContext()
+        calls = []
+        def windows(query):
+            calls.append(query)
+            if len(calls) == 1:
+                raise RecipeBlocked('accessibility walk incomplete: Message recipient disconnected from message bus without replying')
+            return []
+        ctx.windows = windows
+        self.assertEqual(history._main_windows(ctx), [])
+        self.assertEqual(len(calls), 2)
+
+    def test_refused_window_inventory_never_counts_as_absence(self):
+        ctx = FakeContext()
+        def windows(query):
+            raise RecipeBlocked('accessibility walk incomplete: Message recipient disconnected from message bus without replying')
+        ctx.windows = windows
+        with self.assertRaises(RecipeBlocked):
+            history._main_windows(ctx)
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))

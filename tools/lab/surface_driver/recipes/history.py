@@ -743,7 +743,27 @@ def maximize(ctx):
 def _main_windows(ctx, include_hidden=False):
     """Inspect only the private family's exact main-window title."""
     key = 'history_hidden_window_query' if include_hidden else 'history_window_query'
-    return ctx.windows(ctx.profile.get(key, {'title': r'^put\.gd$', 'include_hidden': include_hidden}))
+    query = ctx.profile.get(key, {'title': r'^put\.gd$', 'include_hidden': include_hidden})
+    observed, departed = {}, []
+    def inventory():
+        try:
+            observed['rows'] = ctx.windows(query)
+            return True  # A successfully read empty inventory is meaningful.
+        except RecipeBlocked as error:
+            if ('accessibility walk incomplete' not in error.reason
+                    or 'Message recipient disconnected from message bus' not in error.reason):
+                raise
+            departed.append(error)
+            return False
+    try:
+        ctx.wait(inventory, 'native window inventory settles after departed AT-SPI client', timeout=10)
+    except RecipeFailed:
+        if departed:
+            raise departed[-1]
+        raise
+    if departed:
+        ctx.note('Native window inventory was re-read successfully after a departed AT-SPI client; no absence inferred from the refused query.')
+    return observed['rows']
 
 
 def _minimized(window):
