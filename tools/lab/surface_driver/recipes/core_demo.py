@@ -10,9 +10,13 @@ def opened(ctx):
         import json
         envelope=json.loads(reply['stdout'])
         return envelope['result'] if envelope.get('ok') else None
-    ctx.wait(ready,'editor opened',30)
-    ctx.call('editor.raise',{'id':identity})
-    ctx.view('editor.view',{'id':identity,'action':'inspect'})
+    try:
+        ctx.wait(ready,'editor opened',30)
+        ctx.call('editor.raise',{'id':identity})
+        ctx.view('editor.view',{'id':identity,'action':'inspect'})
+    except Exception:
+        ctx.call('editor.cancel',{'id':identity})
+        raise
     return identity
 
 
@@ -31,9 +35,11 @@ def text_tool(ctx):
 def redact_tool(ctx):
     identity=opened(ctx)
     try:
-        ctx.keys('T','R')
-        ctx.wait(lambda:ctx.call('editor.view',{'id':identity}).get('tool')=='redact','real keyboard selected redact')
-        ctx.frame('redact-tool',window='editor')
+        ctx.keys('T')
+        ctx.use_catalog('editor','20-editor-redact')
+        ctx.click('text:Redact',window='editor')
+        ctx.wait(lambda:ctx.call('editor.view',{'id':identity}).get('tool')=='redact','real catalog click selected redact')
+        ctx.frame('redact-tool',window='editor',reference='20-editor-redact')
     finally:
         ctx.call('editor.cancel',{'id':identity})
 
