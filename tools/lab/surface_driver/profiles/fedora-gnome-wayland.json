@@ -132,7 +132,7 @@
   "recording": {
     "consent": {
       "kind": "portal-dialog",
-      "reason": "Portal acquisition on GNOME Wayland: xdg-desktop-portal-gnome draws Share Screen for each new ScreenCast Start until the stored restore token is accepted (#791)",
+      "reason": "Portal acquisition on GNOME Wayland: xdg-desktop-portal-gnome (GTK4) draws Share Screen for each new ScreenCast Start until the stored restore token is accepted (#791). GTK4 answers screen extents as (0,0); its window-relative extents omit the header bar padding (measured 7,6 px on GNOME 50.1), within the declared 8 px tolerance",
       "backends": [
         "xdg-desktop-portal-gnome"
       ],
@@ -145,7 +145,9 @@
       },
       "accept": {
         "role": "push button",
-        "name": "Share"
+        "name": "Share",
+        "coordinates": "window",
+        "placement_tolerance": 8
       }
     }
   }

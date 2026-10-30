@@ -140,7 +140,7 @@ def start(scope):
         token = uuid.uuid4().hex
         def marked():
             ctx.shell('gdbus emit --session --object-path /org/putgd/LabPortalMonitor --signal '
-                      'org.putgd.LabPortalMonitor.Marker ' + shlex.quote(token))
+                      'org.putgd.LabPortalMonitor.Marker ' + shlex.quote(repr(token)))
             text = ctx.shell('head -c 1048577 ' + shlex.quote(log))['stdout']
             return any(r['kind'] == 'marker' and r.get('token') == token for r in records(text))
         try:
@@ -172,16 +172,25 @@ def _accept_node(ctx, watch, request, window):
     accept = watch.consent.get('accept') or {}
     query = {'pid': request['backend_pid'], 'role': accept.get('role', 'push button'),
              'name': accept.get('name', 'Share'), 'visible': True, 'showing': True}
+    if accept.get('coordinates'):
+        query['coordinates'] = accept['coordinates']
     nodes = [n for n in ctx.accessible(query) if n.get('rect') and min(n['rect'][2:]) > 0 and
              (window is None or n.get('window_id') == window['id'])]
     if len(nodes) != 1:
         return None, 'ScreenCast consent accept button %r is not uniquely drawn in the backend dialog (%d)' % (query['name'], len(nodes))
     node = nodes[0]
-    if not node.get('enabled'):
+    # GTK4 exposes sensitivity, Qt enabled: either is the toolkit's "can activate".
+    if not (node.get('enabled') or node.get('states', {}).get('sensitive')):
         return None, 'ScreenCast consent accept button is disabled (no source selected)'
+    # A declared placement error must keep the centre inside the button.
+    tolerance = accept.get('placement_tolerance', 0)
+    if min(node['rect'][2:]) <= 2 * tolerance:
+        return None, ('ScreenCast consent accept button (%dx%d) is too small for the declared %d px placement tolerance'
+                      % (node['rect'][2], node['rect'][3], tolerance))
     prompt = (watch.consent.get('dialog') or {}).get('prompt')
     if prompt:
-        labels = [n for n in ctx.accessible({'pid': request['backend_pid'], 'name': prompt, 'visible': True, 'showing': True})
+        labels = [n for n in ctx.accessible({'pid': request['backend_pid'], 'name': prompt, 'visible': True, 'showing': True,
+                                             **({'coordinates': accept['coordinates']} if accept.get('coordinates') else {})})
                   if window is None or n.get('window_id') == window['id']]
         if not labels:
             return None, 'ScreenCast consent dialog does not show the declared prompt ' + repr(prompt)

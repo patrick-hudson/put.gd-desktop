@@ -77,8 +77,8 @@ class Filter(unittest.TestCase):
         self.assertEqual(self.filter.record(signal)['code'], 0)
         marker = ('signal time=1 sender=:1.99 -> destination=(null destination) serial=2 path=/org/putgd/LabPortalMonitor; '
                   'interface=org.putgd.LabPortalMonitor; member=Marker\n   string "abc"\n')
-        self.assertIsNone(self.filter.record(marker))
-        self.assertEqual(self.filter.record(marker.replace(':1.99', OURS))['token'], 'abc')
+        # gdbus emit exits before its pid is readable: the random token is the proof.
+        self.assertEqual(self.filter.record(marker)['token'], 'abc')
 
 
 class Ownership(unittest.TestCase):
@@ -125,6 +125,12 @@ class Ownership(unittest.TestCase):
             declared = profile['recording']['consent']
             self.assertEqual(declared['kind'], 'none' if profile['session'] == 'x11' else 'portal-dialog', path.stem)
             self.assertTrue(declared['reason'])
+
+
+class ProbeQuery(unittest.TestCase):
+    def test_coordinates_is_a_placement_input_not_a_row_filter(self):
+        from tools.lab.surface_driver.probe import matches
+        self.assertTrue(matches({'name': 'Share'}, {'name': 'Share', 'coordinates': 'window', 'compositor': {}}))
 
 
 class FakeTarget:
@@ -206,8 +212,19 @@ class Drive(unittest.TestCase):
             consent.drive(self.watch, self.request)
         self.assertEqual(self.target.pointer_events, [])
 
+    def test_gtk4_sensitive_button_with_window_coordinates_is_driven(self):
+        self.nodes['Share'] = [dict(SHARE, enabled=False, states={'sensitive': True})]
+        self.assertIsNone(consent.drive(self.watch, self.request))
+        query = [q for n, q in self.probes if n == 'accessible' and q.get('name') == 'Share'][0]
+        self.assertEqual(query['coordinates'], 'window')  # declared by the GNOME profile
+
+    def test_button_too_small_for_declared_tolerance_is_refused(self):
+        self.nodes['Share'] = [dict(SHARE, rect=[923, 172, 74, 16])]
+        self.assertIn('placement tolerance', consent.drive(self.watch, self.request))
+        self.assertEqual(self.target.pointer_events, [])
+
     def test_disabled_share_or_missing_prompt_is_refused(self):
-        self.nodes['Share'] = [dict(SHARE, enabled=False)]
+        self.nodes['Share'] = [dict(SHARE, enabled=False, states={'sensitive': False})]
         self.assertIn('disabled', consent.drive(self.watch, self.request))
         self.nodes['Share'] = [SHARE]; self.nodes['prompt'] = []
         self.assertIn('declared prompt', consent.drive(self.watch, self.request))

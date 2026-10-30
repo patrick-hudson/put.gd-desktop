@@ -21,7 +21,7 @@ import time
 WINDOW_ROLES = ('frame', 'dialog', 'window', 'file chooser', 'alert')
 POPUP_ROLES = ('menu', 'popup menu', 'tool tip')
 QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'window',
-              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor'}
+              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor', 'coordinates'}
 
 
 def owned(pid):
@@ -46,8 +46,8 @@ def matches(row, query):
     for key, value in query.items():
         if key not in QUERY_KEYS:
             raise ValueError('unknown accessibility query key: ' + key)
-        if key == 'compositor':
-            continue  # placement input, not a row filter
+        if key in ('compositor', 'coordinates'):
+            continue  # placement inputs, not row filters
         if key in ('name', 'text', 'description', 'application', 'window'):
             if not fnmatch.fnmatchcase(row.get(key, ''), value):
                 return False
@@ -450,10 +450,10 @@ def shift(rect, placement):
     return [rect[0] + placement['dx'], rect[1] + placement['dy'], rect[2], rect[3]] if rect else rect
 
 
-def extents(node):
+def extents(node, kind=None):
     import pyatspi
     try:
-        value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
+        value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS if kind is None else kind)
     except (NotImplementedError, RuntimeError):
         return None
     return list(value) if value is not None else None
@@ -471,6 +471,15 @@ def accessible(query):
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
     wayland = os.environ.get('XDG_SESSION_TYPE') == 'wayland'
     placement = WaylandPlacement(query['compositor']) if wayland and query.get('compositor') else None
+    # GTK4 on Wayland answers screen extents as (0,0) for every node; its
+    # window-relative extents are real. Only a query that asks reads them.
+    kind = None
+    if query.get('coordinates') == 'window':
+        if not wayland or placement is None:
+            raise RuntimeError('window-relative extents need a Wayland compositor witness')
+        kind = pyatspi.WINDOW_COORDS
+    elif query.get('coordinates') not in (None, 'screen'):
+        raise ValueError('coordinates must be screen or window')
     tops = {}
     def place(row):
         """Desktop coordinates for a Wayland client row, or None with a reason."""
@@ -531,7 +540,7 @@ def accessible(query):
             if role in WINDOW_ROLES or (ancestors and ancestors[-1]['role']=='application' and role not in POPUP_ROLES):
                 window, popup = name, None
                 if placement is not None and not placement.absolute(application):
-                    tops[(pid, name)] = extents(node)
+                    tops[(pid, name)] = extents(node, kind)
             state_set = node.getState()
             states = {}
             for key in ('visible', 'showing', 'enabled', 'sensitive', 'active', 'focused', 'focusable',
@@ -546,7 +555,7 @@ def accessible(query):
             # Extents/attributes/text are one D-Bus round trip each: fetch them
             # only for rows that can match and for popups. Ancestor rectangles
             # are filled in for matched rows only (a shell tree has ~2000 nodes).
-            rect = extents(node) if potential or role in POPUP_ROLES else UNREAD
+            rect = extents(node, kind) if potential or role in POPUP_ROLES else UNREAD
             if role in POPUP_ROLES and states['showing']:
                 popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid}
             if potential:
@@ -578,7 +587,7 @@ def accessible(query):
                     # Translate before matching: 'within' is in desktop coordinates.
                     for ancestor in ancestors:
                         if ancestor['rect'] is UNREAD:
-                            ancestor['rect'] = extents(ancestor['_node'])
+                            ancestor['rect'] = extents(ancestor['_node'], kind)
                     row['ancestors'] = [dict(a) for a in ancestors]  # shifted copies; children keep originals
                     row['coordinate_space'], reason = place(row)
                     if reason:
@@ -589,7 +598,7 @@ def accessible(query):
                 if matches(row, query):
                     for ancestor in row['ancestors']:
                         if ancestor['rect'] is UNREAD:
-                            ancestor['rect'] = extents(ancestor['_node'])
+                            ancestor['rect'] = extents(ancestor['_node'], kind)
                     matches_.append(row)
             if depth < 50:
                 ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid,'_node':node}]
@@ -1415,7 +1424,9 @@ class PortalFilter:
             code = re.search(r'^\s*uint32 (\d+)', block, re.M)
             return {'kind': 'response', 'sender': sender, 'destination': destination, 'handle': path,
                     'code': int(code[1]) if code else None, 'at': at}
-        if header.startswith('signal') and interface == PORTAL_MARKER_INTERFACE and self.sender_owned(sender):
+        if header.startswith('signal') and interface == PORTAL_MARKER_INTERFACE:
+            # Attachment proof only: the sender (gdbus emit) has exited before
+            # its pid could be read; the fixture matches a random token instead.
             return {'kind': 'marker', 'token': strings[0] if strings else '', 'at': at}
         return None
 
