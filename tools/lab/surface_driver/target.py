@@ -221,6 +221,7 @@ class Target:
         self._probe_buffer = b''
         self._probe_source = None
         self._probe_failed = False
+        self._probe_failure = None
 
     def require_lock(self, host, session):
         self._lock = (host, session)
@@ -385,7 +386,9 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         started = time.monotonic()
         self.heartbeat(force=probe_mutates(name, query))
         if self._probe_failed:
-            raise RecipeBlocked('persistent desktop probe failed; start a new run before further input')
+            detail = getattr(self,'_probe_failure',None)
+            raise RecipeBlocked('persistent desktop probe failed; '+(detail+'; ' if detail else '')+
+                                'start a new run before further input')
         if self._probe_process is None:
             # Discover through the same native-session adapter as one-shot
             # probes. Only desktop connection variables cross this boundary.
@@ -431,21 +434,35 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                                             '; further input withheld; start a new run')
                     data = os.read(process.stdout.fileno(),65536)
                     if not data:
-                        raise RecipeBlocked('persistent desktop probe closed; further input withheld')
+                        raise RecipeBlocked('persistent desktop probe closed during '+name+
+                                            '; SSH exit '+str(process.poll())+'; further input withheld')
                     self._probe_buffer += data
                     if len(self._probe_buffer) > 16 * 1024 * 1024:
                         raise RecipeBlocked('desktop probe response exceeded 16 MiB')
             line, self._probe_buffer = self._probe_buffer.split(b'\n',1)
             return json.loads(line)
-        except RecipeBlocked:
+        except RecipeBlocked as error:
             self._probe_failed = True
+            self._probe_failure_note(name,started,timeout,error.reason)
             raise
         except (OSError, ValueError) as error:
             self._probe_failed = True
-            raise RecipeBlocked('persistent desktop probe transport unavailable') from error
-        except BaseException:
+            self._probe_failure_note(name,started,timeout,type(error).__name__)
+            raise RecipeBlocked('persistent desktop probe transport unavailable; '+self._probe_failure) from error
+        except BaseException as error:
             self._probe_failed = True
+            self._probe_failure_note(name,started,timeout,'interrupted by '+type(error).__name__)
             raise
+
+    def _probe_failure_note(self,name,started,timeout,reason):
+        # Record transport state without request values or stderr. The failure
+        # flag is set before this diagnostic, including on recipe alarms.
+        try:
+            status = self._probe_process.poll()
+        except OSError:
+            status = 'unknown'
+        state = 'SSH process still running; reply outstanding' if status is None else 'SSH exit '+str(status)
+        self._probe_failure = name+'; '+reason+'; elapsed %.3fs, budget %.3fs; '%(time.monotonic()-started,timeout)+state
 
     def _close_probe(self):
         process = getattr(self, '_probe_process', None)

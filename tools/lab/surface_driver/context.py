@@ -129,6 +129,12 @@ class DriverContext(Context):
                 if remaining < 15 and time.monotonic() >= self._deadline:
                     raise RecipeBlocked('recipe deadline exhausted during '+name+' probe; '+error.reason) from error
                 raise
+            except RecipeFailed:
+                # SIGALRM can beat the transport's own deadline. Keep the
+                # original verdict, with the outstanding request's state.
+                if detail := getattr(self.target,'_probe_failure',None):
+                    self.note('probe interruption: '+detail)
+                raise
         else:
             result = self.shell(script)
             if result['returncode']:

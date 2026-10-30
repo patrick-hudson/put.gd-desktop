@@ -238,6 +238,32 @@ if __name__=='__main__':
         with self.assertRaisesRegex(RecipeBlocked,'recipe deadline exhausted during geometry probe'):
             ctx._probe('geometry',{})
 
+    def test_recipe_alarm_keeps_the_outstanding_request_cause(self):
+        from test_surface_driver_geometry import Hygiene
+        target=Hygiene().probe_target()
+        source='import time\ndef geometry(query):\n time.sleep(.08)\n return {}\n'
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']),\
+                 patch('tools.lab.surface_driver.target.selectors.DefaultSelector.select',side_effect=RecipeFailed('recipe deadline exceeded')):
+                with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+                    target.probe('geometry',{},source)
+            with self.assertRaisesRegex(RecipeBlocked,'geometry; interrupted by RecipeFailed.*SSH process still running.*start a new run'):
+                target.probe('geometry',{},source)
+        finally:
+            target._close_probe()
+
+    def test_closed_channel_names_request_and_child_exit(self):
+        from test_surface_driver_geometry import Hygiene
+        target=Hygiene().probe_target()
+        source='import os\ndef geometry(query): os._exit(9)\n'
+        try:
+            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
+                with self.assertRaisesRegex(RecipeBlocked,'closed during geometry; SSH exit'):
+                    target.probe('geometry',{},source)
+                self.assertIn('geometry',target._probe_failure)
+        finally:
+            target._close_probe()
+
 
 class GrabEvidence(unittest.TestCase):
     target={'window_id':11,'pid':50}
