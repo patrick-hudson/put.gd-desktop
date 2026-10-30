@@ -65,6 +65,16 @@ below is verified on `f44`, `d69` and S3. It uses the same pinned Aurora OS as t
 older `-852d34e885c1` golden, with its own disk identity. The older disk still
 has no complete S3 image copy. The Fedora 44 evaluation goldens remain `f44`-only.
 
+**Which Fedora 45 golden counts for acceptance.** The Aurora Fedora 45 row in the
+[acceptance matrix](acceptance-matrix.md) stays on `-852d34e885c1`, booted as a VM
+on a physical builder (`f44` or `d69`). That disk is the one every recorded
+Aurora 45 result used. The cloud golden is a separate build of the same OS
+payload, with different bytes. It serves as the off-site restore copy and as the
+base of the `putgd-lab-aurora` Boat snapshot, for development, recipe debugging
+and flake reproduction. Boat runs never count as acceptance rows, whichever golden
+they use. To move acceptance to the cloud golden, a builder-hosted run must first
+show it gives the same results, and the matrix must then be updated.
+
 | Name (profile `aurora-kde-wayland`) | SHA-256 | Fedora `f44` | Debian `d69` |
 | --- | --- | --- | --- |
 | `aurora-testing-45.20261022.1-ec2-20261029-a1` (Fedora 45 cloud restore base) | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` | same name; verified 2026-10-30 | same name; verified 2026-10-30 |
@@ -122,8 +132,14 @@ The host uses Ubuntu 24.04, dynamic distro Qt 6.4.2 and official AWS SDK 1.11.90
 The golden restore verified compressed/image hashes, virtual size, standalone
 metadata and `qemu-img check` in 199.63 seconds. Its preparation CTest run had
 113 tests: `gui_tray` recovered on retry; `gui_settings` and `proton_transport`
-remained failed. These unresolved tests prevent claiming application acceptance
-from that preparation; their failures are retained in the template receipt.
+failed both attempts. Both match known flakes, not defects in this image:
+`gui_settings` at `test_settings.cpp:2250` is
+[#707](https://github.com/patrick-hudson/put.gd-desktop/issues/707), and
+`proton_transport`'s cancellation reason mismatch is
+[#577](https://github.com/patrick-hudson/put.gd-desktop/issues/577). Run one at a
+time on the snapshot's own build, with the guest stopped, `proton_transport` passed
+8 of 8 and `gui_settings` 2 of 2 (independent check, 2026-10-30). The failed
+attempts are kept in the template receipt.
 
 Create a disposable worker with
 `boat new --from putgd-lab-aurora --type large --ttl 7200 --no-env --name YOUR_RUN_NAME`.
@@ -135,9 +151,14 @@ worker, preflights sockets and invokes the production lab launcher; it does
 not require the workstation's private key or agent forwarding. Follow
 [VM lab](vm-lab.md) and [Aurora](aurora-vm.md) display/overlay rules before
 launching a guest. Retire completed overlays through guarded cleanup and
-delete only your worker after exporting evidence. The snapshot's separate
-fresh-fork validation belongs to its preparation session; this inventory
-receipt records the saved snapshot and makes no new graphical acceptance claim.
+delete only your worker after exporting evidence. `start-aurora.py` also leaves
+its key-seed disk, `work/lab-images/keyseed-<run>/image.qcow2` (an overlay of
+the golden), which guarded cleanup does not remove. Deleting the worker removes
+it; if you keep a worker for several runs, delete each `keyseed-<run>`
+directory after that run's cleanup. An independent fresh fork on 2026-10-30
+booted the golden under UEFI into the `lab` Plasma Wayland autologin session,
+with the pinned image digest, sshd, the narrow sudo rule and a masked
+`uupd.timer`. Guarded cleanup then accepted its overlay.
 
 The separate older-disk upload was cancelled at 84 verified 64 MiB parts
 (5,637,144,576 bytes), and its incomplete multipart upload was aborted. No
