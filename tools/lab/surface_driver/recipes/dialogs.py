@@ -374,7 +374,11 @@ def _register(scenario, backend):
         needs.append('recording')
     interaction = scenario if scenario.startswith('mcp.') else 'dialog.' + scenario
 
-    @recipe(interaction, needs=needs, destinations=('local',), desktop_drawn=backend == 'portal', timeout=300)
+    # Five independent folder fields require ten guarded chooser lifecycles.
+    # AT-SPI ownership checks run before every typed character, so give this
+    # composite row its measured workload budget without changing core limits.
+    @recipe(interaction, needs=needs, destinations=('local',), desktop_drawn=backend == 'portal',
+            timeout=900 if scenario == 'output-folder' else 300)
     def run(ctx):
         _run(ctx, backend, scenario)
     run.__name__ = scenario.replace('.', '_').replace('-', '_') + '_' + backend
