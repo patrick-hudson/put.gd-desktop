@@ -1,0 +1,15 @@
+{
+ "schemaVersion": 1,
+ "kind": "vm-overlay-cleanup-evidence",
+ "run": "/home/user/rc791/src/work/lab-runs/c1",
+ "runId": "48954386-0062-4dde-a739-5453259db85e",
+ "completed": true,
+ "outcome": "failed",
+ "files": {
+  "c1-install2.json": "ce750499f469a01856e520a7186f7c818095c0a548b65a3e1429d2501df92d40",
+  "c1-launch.json": "275fb8396478b40fd55b8eaae26f6fcd759f067a00bb3631c2e3f08be4c6d262",
+  "c1-r5-redecode.json": "a67fe12427efc74200ae028bcccdadb836e1c623361cc5df3e8ec03ab0a4fb68",
+  "completion.json": "4773436db4636d49b3842ee4e73b92809aec1d99d11ea1516e57f7d4e0dcd031",
+  "receipt.json": "32fd1ed5b9dcd832ec8d21c835225a473364f2dcac7b9efa070951674edac5e4"
+ }
+}

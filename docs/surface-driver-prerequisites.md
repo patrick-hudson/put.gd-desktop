@@ -137,3 +137,37 @@ Cinnamon it is the private family's `Capture region` pane, found through its
 focus event. On GNOME it is the put.gd Shell extension's St actor in
 gnome-shell's tree. The release's `putgd@put.gd` extension must be enabled in
 the GNOME golden overlay.
+
+## Recording fixture: consent, retained media and the GTK sink
+
+**ScreenCast consent (#791).** Each profile declares `recording.consent`:
+
+- **`portal-dialog`.** Used by GNOME and KDE Wayland. The portal backend draws a dialog for each new ScreenCast `Start` until a stored restore token is accepted.
+- **`none`.** Used by X11. Capture reads the X server, and any portal dialog request blocks.
+
+Before `recording.prepare`, the fixture starts an owned `dbus-monitor` filter. It writes JSON records only: no options or restore tokens. The fixture clicks the backend's accept button once with the real pointer, and only when all of these hold:
+
+- exactly one impl ScreenCast/RemoteDesktop `Start` is pending;
+- its request handle comes from a `putgd_record_*` `Start` sent by a private-family process;
+- its destination is a declared backend executable;
+- the dialog window belongs to that process and is new since prepare;
+- the compositor witness picks that window at the click point.
+
+The step needs `Response 0` for that handle. It saves `screencast-consent-before` and `-after` frames. Anything it cannot prove or drive raises `RecipeBlocked` (#791) with the reason; a ready timeout names the last consent state. The step never pre-grants through the permission store.
+
+On GNOME 50, xdg-desktop-portal-gnome is GTK4. GTK4 reports screen extents as (0,0) and exposes `sensitive` instead of `enabled`. The GNOME profiles therefore query window-relative extents. Those extents leave out the header bar padding (7,6 px measured). The profiles declare an 8 px `placement_tolerance`, and the accept button's centre must stay inside the button under that tolerance. KDE's native zkde_screencast path needs no consent. Its xdg-desktop-portal-kde fallback is declared but has not been observed in the lab yet. Profiles without a compositor witness block if a dialog appears. [Evidence](evidence/2026-10-30-recording-consent-791/README.md).
+
+**Retained media (#796).** Before scope cleanup, the recording fixture copies the regular `.mkv`, `.mp4`, `.webm`, `.gif` and `.webp` files under its owned root to `<run out>/private-media/<recipe>/<scope>/`. These are the working and frozen clips and the exports that recipes verified there. Each copy:
+
+- has mode 0600, in directories with mode 0700;
+- is verified against the guest's SHA-256 and listed in `manifest.json`.
+
+Limits:
+
+- **Size caps.** 32 MiB per file and 128 MiB per run. A file over a cap is hashed and listed as not retained.
+- **Scope.** Nothing outside the fixture root is read.
+- **Location.** A run directory inside the checkout must be git-ignored. The media stays private run evidence: never repository content, receipts or coverage. That holds until secret-safe evidence export (#726) handles it.
+
+Export the run directory, including `private-media/`, before deleting a sandbox.
+
+**GTK sink (#784).** The visible pattern plays through GStreamer's `gtksink`. The fixture checks for it first and blocks (#784) when it is missing. In a disposable run overlay only (never a golden or snapshot), stage it with `sh profiles/provision-probes.sh --recording-overlay`. The script installs `gstreamer1.0-gtk3` and fails if the element is still missing.
