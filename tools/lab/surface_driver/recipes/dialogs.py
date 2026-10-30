@@ -229,9 +229,9 @@ def _editor_ready(ctx, identity):
     return ctx.wait(inspect, 'editor helper is ready', timeout=30)
 
 
-def _output(ctx, backend, files, *, mcp=False, cancel_only=False):
+def _output(ctx, backend, files, *, mcp=False, cancel_only=False, single=False):
     ctx.view('ui.show', {'view': 'settings'})
-    fields = ('root',) if mcp or cancel_only else ('root', 'images', 'videos', 'text', 'other')
+    fields = ('root',) if mcp or cancel_only or single else ('root', 'images', 'videos', 'text', 'other')
     for field in fields:
         if cancel_only:
             before = _settings(ctx)
@@ -268,7 +268,8 @@ def _run(ctx, backend, scenario):
         ctx.blocked(scenario + ' backend state does not exist in a ' + backend + ' run', issue=671)
     files = _files(ctx)
     if scenario in ('output-folder', 'portal', 'fallback', 'cancel', 'mcp.file-dialogs'):
-        _output(ctx, backend, files, mcp=scenario == 'mcp.file-dialogs', cancel_only=scenario == 'cancel')
+        _output(ctx, backend, files, mcp=scenario == 'mcp.file-dialogs', cancel_only=scenario == 'cancel',
+                single=scenario in BACKENDS)
     elif scenario == 'diagnostics-folder':
         ctx.view('ui.show', {'view': 'settings'})
         ctx.call('ui.diagnostics', {'action': 'openPackage', 'includeNames': False})

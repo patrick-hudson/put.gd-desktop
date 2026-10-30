@@ -357,6 +357,16 @@ class DialogRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeBlocked, 'geometry:'):
             dialogs.output_folder_portal(ctx)
 
+    def test_output_row_covers_all_fields_backend_witness_only_needs_root(self):
+        ctx = FakeContext('portal')
+        dialogs.output_folder_portal(ctx)
+        fields = {c[2]['field'] for c in ctx.calls if c[0] == 'call' and c[1] == 'ui.fileDialog'}
+        self.assertEqual(fields, {'root', 'images', 'videos', 'text', 'other'})
+        ctx = FakeContext('portal')
+        dialogs.portal_portal(ctx)
+        fields = {c[2]['field'] for c in ctx.calls if c[0] == 'call' and c[1] == 'ui.fileDialog'}
+        self.assertEqual(fields, {'root'})
+
     def test_independent_file_witness_is_required(self):
         ctx = FakeContext('fallback')
         ctx.witness_fails = True
