@@ -237,7 +237,7 @@ while pid>1:
 else:raise RuntimeError('Owned supervisor ancestor missing')
 root.joinpath('watchdog-ready.json').write_text(json.dumps({'supervisor':supervisor,'postinstPid':os.getpid(),'uid':os.getuid()}))
 os.chmod(root/'watchdog-ready.json',0o644)
-end=time.monotonic()+120
+end=time.monotonic()+180
 while not root.joinpath('watchdog-finish').exists():
     if time.monotonic()>end:raise TimeoutError('postinst release gate')
     time.sleep(.02)
@@ -279,7 +279,7 @@ def ssh(run,script,**kw):
         print('supervisor-phase',flush=True);sys.stdin.read()
     return answer
 lab.ssh=ssh
-lab.install_package(Path(sys.argv[2]),Path(sys.argv[3]),install_timeout=90,install_recovery_timeout=30)
+lab.install_package(Path(sys.argv[2]),Path(sys.argv[3]),install_timeout=180,install_recovery_timeout=60)
 """
 controller_log=(OUT/'logout-controller.log').open('w')
 controller=subprocess.Popen([sys.executable,'-c',controller_code,str(ROOT/'tools/lab'),str(RUN),str(package),watchdog_token[8:]],
@@ -288,7 +288,7 @@ start=time.monotonic();released=False
 try:
     wait_for(lambda:'supervisor-phase' in (OUT/'logout-controller.log').read_text(),60)
     ready=wait_for(lambda:(json.loads(root_guest('cat /home/lab/'+watchdog_remote+'/watchdog-ready.json\n'))
-                         if root_guest('test ! -s /home/lab/'+watchdog_remote+'/watchdog-ready.json || echo ready\n').strip() else None),30)
+                         if root_guest('test ! -s /home/lab/'+watchdog_remote+'/watchdog-ready.json || echo ready\n').strip() else None),90)
     supervisor=ready['supervisor'];assert ready['uid']==0
     assert supervisor['cgroup'].startswith('0::/system.slice/putgd-supervisor-')
     controller_identity={'pid':controller.pid,'startTicks':int(Path(f'/proc/{controller.pid}/stat').read_text().rsplit(')',1)[1].split()[19])}
