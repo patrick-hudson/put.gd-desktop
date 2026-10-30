@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "8b08a7e3-0aa2-4258-90b0-9f0e2f7e21c0",
+  "profile": "gnome-wayland",
+  "guest_user": "lab",
+  "ssh_port": 22220,
+  "vnc_display": 20,
+  "acceleration": "kvm",
+  "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2",
+  "golden_sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+  "bootstrap_key": "/home/user/work/put.gd/work/lab-bootstrap/identity.pub",
+  "known_hosts": "/home/user/work/put.gd/src/work/lab-runs/rr2g2/known_hosts",
+  "overlay": "/home/user/work/put.gd/src/work/lab-runs/rr2g2/disk.qcow2",
+  "pid": 97197
+}

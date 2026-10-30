@@ -1,0 +1,1102 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "gnome-wayland",
+    "package": "deb",
+    "destination": "local",
+    "build": "a18d79e762df",
+    "placement_details": {
+      "boat_sandbox_id": "bx_erv42c5d",
+      "run_id": "8b08a7e3-0aa2-4258-90b0-9f0e2f7e21c0",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/work/put.gd/src/work/lab-runs/rr2g2",
+      "session_root": "/tmp/sd-5ea83985",
+      "socket": "/tmp/sd-5ea83985/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1029.2302",
+      "commitCount": 2302,
+      "dirty": false,
+      "gitCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+      "gitTree": "579a24085c0c869d1fa8fc3c58fca623d60d8e2d",
+      "packageVersion": "26.1029.2302~dev+ga18d79e762df",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1029.2302-dev+ga18d79e762df"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "review.play",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=3c8d1dfa-24f2-45d7-8a69-03e6fa6f920b; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.playback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:51:42Z"
+    },
+    {
+      "interaction": "review.speed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=3c8d1dfa-24f2-45d7-8a69-03e6fa6f920b; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.playback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.playback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.playback",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:51:42Z"
+    },
+    {
+      "interaction": "review.timeline",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z"
+    },
+    {
+      "interaction": "review.trim-in",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z"
+    },
+    {
+      "interaction": "review.trim-out",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z"
+    },
+    {
+      "interaction": "review.trim-reset",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z"
+    },
+    {
+      "interaction": "review.key-timeline",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=b39bddc6-d2bd-4e32-846a-df066275101d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.trim/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.trim/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.trim",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:52:36Z"
+    },
+    {
+      "interaction": "review.add-mask",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.frame",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.masks",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.mask-in-out",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.mask-delete",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.mask-place",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.mask-disarm",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.key-frame-nudge",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=10508d95-ff93-45c2-8d64-774a9446e3c2; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.masks/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.masks/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.masks",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:53:31Z"
+    },
+    {
+      "interaction": "review.mask-options",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=1e46fe83-7375-47c4-b0e1-9a7f845bb13d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mask_options/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mask_options/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mask_options",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:54:23Z"
+    },
+    {
+      "interaction": "review.wheel-lanes",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=342c21bd-6b16-485a-8ffb-4ff49bc96b3d; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.wheel_lanes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.wheel_lanes/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.wheel_lanes",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:55:17Z"
+    },
+    {
+      "interaction": "review.format",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=a03c3ced-30f7-462f-89fa-695771135dab; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.formats/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.formats/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.formats",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:56:09Z"
+    },
+    {
+      "interaction": "review.save-copy",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=ec59f254-6806-43ba-acfd-7c7fa93838e3; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.save_copy/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.save_copy",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:57:03Z"
+    },
+    {
+      "interaction": "review.status-actions",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=e0c457ce-7539-4911-8e0d-ecf2789384a0; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.status_actions/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.status_actions/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.status_actions",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:58:00Z"
+    },
+    {
+      "interaction": "review.destination-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=62eb0df4-0fa0-4fc1-b3cf-c7525e406667; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:58:50Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=62eb0df4-0fa0-4fc1-b3cf-c7525e406667; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.upload",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:58:50Z"
+    },
+    {
+      "interaction": "confirm.review-discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=2458756a-eaf4-4c07-9c06-64c9e58bbf9c; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.discard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:59:39Z"
+    },
+    {
+      "interaction": "review.discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=2458756a-eaf4-4c07-9c06-64c9e58bbf9c; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.discard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.discard",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T04:59:39Z"
+    },
+    {
+      "interaction": "review.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=46190a4c-ac7f-48e2-a627-f14dd115f504; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.window_close/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.window_close/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.window_close",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:00:32Z"
+    },
+    {
+      "interaction": "review.advice",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=81aaa74a-d579-4860-b6f2-2846b51ae9c7; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.advice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.advice/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.advice",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:01:25Z"
+    },
+    {
+      "interaction": "review.notice",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=722c8177-2caa-4fee-be0b-70ba37db2708; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.stop_notice/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.stop_notice/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.stop_notice",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:02:19Z"
+    },
+    {
+      "interaction": "review.preview-error",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=c87d4512-07d2-49d7-8e9c-0726ed773a88; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.preview_error/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.preview_error/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.preview_error",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:03:13Z"
+    },
+    {
+      "interaction": "cli.recording",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=fccdf9b3-f593-4c71-9833-243bf0fde67f; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.cli_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.cli_recording/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.cli_recording",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:04:07Z"
+    },
+    {
+      "interaction": "mcp.recording",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=442855da-17db-4c58-8c28-b25d65967d44; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:04:59Z"
+    },
+    {
+      "interaction": "mcp.recording-review",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/rr2/g2/receipt.json",
+      "note": "operationId=9af94d99-5864-485b-8cea-075e2e43a034; timeout: synthetic recording ready",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/review.mcp_recording_review/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/review.mcp_recording_review/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "review.mcp_recording_review",
+      "build": "a18d79e762df",
+      "at": "2026-10-30T05:05:52Z"
+    }
+  ]
+}

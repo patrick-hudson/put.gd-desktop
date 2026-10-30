@@ -1,0 +1,6 @@
+{
+  "removedName": "review-r2-gnome-boat",
+  "removedPort": 5937,
+  "tunnelUnit": "putgd-review-r2-gnome.service",
+  "stopped": true
+}

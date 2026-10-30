@@ -1,0 +1,15 @@
+{
+  "sha256": "7e866c3a20f728721f9982a8e40a4d10c302d87361c3b51deb0e623dcee79223",
+  "filename": "putgd_26.1029.2302~dev+ga18d79e762df_amd64.deb",
+  "installedBinarySha256": {
+    "/usr/bin/putgd-ui": "af0f36c772c929191289b068222ec2bfa698758a29c8cdf166ef5d1529d89c0e",
+    "/usr/bin/putgd-kde-region": "a3e3a1989bb163bce126d5008f758c7015d4f56849b226c0d3a571ab3338e992",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd": "f1b4e2aa19ab307cdd6644d6a270376e772ca3a71198d7677039af06a42281f6",
+    "/usr/bin/putgd-cli": "85deeabbd33dd4692907468cd30b9f92ce941dd61309bf7fbe382568d6236ac6",
+    "/usr/bin/putgd-s3-worker": "fa75107fefcef16d9e5c55c7e3821ac0a9f792fb175ec0b758b4745941fbe4be",
+    "/usr/bin/putgd-record": "22ef4850996c3976ec6093c6efa744819793b8cfef95a653eeb3dc2fa7fc53f5",
+    "/usr/bin/putgd-capture": "0c1d21811330ae354f7b84efef451e8c29de79ac8cb6322f1082c039163ac64a",
+    "/usr/bin/putgd-b2-worker": "4d3253c434a3fc23377aa321d8f8c8b8553063387450f0ef49a20b0d9fb421e2"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "recipeCommit": "b6b3749ac9797d70920a08226522d6692dc82597",
+  "host": "boat",
+  "placement": "boat",
+  "destination": "local",
+  "cinnamon": {
+    "sandbox": "bx_c75g6w46",
+    "snapshot": "putgd-lab-cinnamon",
+    "appCommit": "b19a915b70ea2edef69a01be0bafd97cb0cbfa7d",
+    "packageSha256": "b68727fe12d2382153247a82e28b15be70a5aaa627da7c9b059d3f94c1fdd865",
+    "initialRun": "01f10fa2-87ab-4fde-8836-b937b28e96c1",
+    "finalRun": "2321f202-6803-48d6-bebe-90817ec29595"
+  },
+  "gnome": {
+    "sandbox": "bx_erv42c5d",
+    "snapshot": "putgd-lab-ubuntu-gnome-v2",
+    "appCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+    "packageSha256": "7e866c3a20f728721f9982a8e40a4d10c302d87361c3b51deb0e623dcee79223",
+    "ciRun": 40969927486,
+    "ciArtifact": "release-native-ubuntu26.04",
+    "initialRun": "b0d8b0f4-223b-4077-a504-10c940158970",
+    "finalRun": "8b08a7e3-0aa2-4258-90b0-9f0e2f7e21c0"
+  },
+  "limits": "Functional development only. No physical desktops, workstation builds, A/V sync, latency or memory gates. Two sandboxes reused with fresh immutable-base overlays.",
+  "coreBase": "4b5e185ff9df2ae7dd578ae535da1202c58deb68",
+  "postRunRecipeFix": "baf18f7564ad6b149877da05232408206422cbac",
+  "postRunRecipeFixScope": "Destination popup accessibility query; recorded desktop runs block before this query. Unit verified; no graphical pass claimed."
+}
