@@ -438,8 +438,10 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         if (!monitor)
             return;
         const selected = this._region?.width > 0 && this._region?.height > 0;
-        if (!selected)
-            this._outline(monitor);
+        if (!selected) {
+            this._rectangle.hide();
+            this._contrast.hide();
+        }
         const hintMonitor = this._hintMonitor || monitor;
         this._hint.set_position(...RegionSelection.hintPosition(hintMonitor, this._hint.get_preferred_width(-1)[1],
             this._hint.get_preferred_height(-1)[1], selected ? this._region : null));

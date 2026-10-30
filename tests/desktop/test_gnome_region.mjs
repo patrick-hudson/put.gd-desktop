@@ -90,7 +90,7 @@ function closed(actor) {equal([actor.destroyed, grabs], [true, 0]);}
     const {actor, result} = begin();
     equal(actor._instructionText.includes('Enter to capture'), true);
     equal(actor._instructionText.includes('Display 2 · Entire display · 1280 × 720 px'), true);
-    equal([actor._rectangle.x, actor._rectangle.y, actor._rectangle.width, actor._rectangle.height], [1920, -100, 1280, 720]);
+    equal([actor._rectangle.visible, actor._contrast.visible], [false, false]); // No outline until a region exists.
     key(actor, 'Left', 3);
     equal(actor._instructionText.includes('Enter to capture'), true);
     equal(actor._instructionText.includes('640 × 360'), true);

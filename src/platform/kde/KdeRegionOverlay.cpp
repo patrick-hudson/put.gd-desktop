@@ -42,7 +42,7 @@ protected:
   const int own=ownScreen();
   if(owner_.frozen_&&!owner_.frames_[own].pixels.isNull())p.drawImage(rect(),owner_.frames_[own].pixels);
   // No scrim on any display (#629): the outline, a fading hint and the size.
-  const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));
+  const auto clipped=owner_.selection_.intersected(logicalRect_);
   if(!clipped.isEmpty())paintSelectionOutline(p,clipped.translated(-logicalRect_.topLeft()));
   QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);
   paintRegionChrome(p,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);

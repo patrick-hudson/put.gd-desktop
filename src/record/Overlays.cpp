@@ -147,7 +147,7 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         // No scrim on any display (#629): the outline, a fading hint and the size.
-        const auto clipped = owner_.selection_.isEmpty() && screen() == QGuiApplication::screens()[activeScreen()] ? logical_ : owner_.selection_.intersected(logical_);
+        const auto clipped = owner_.selection_.intersected(logical_);
         if (!clipped.isEmpty()) paintSelectionOutline(painter, clipped.translated(-logical_.topLeft()));
         const int own = std::max(0, int(QGuiApplication::screens().indexOf(screen())));
         QList<QRectF> displays;

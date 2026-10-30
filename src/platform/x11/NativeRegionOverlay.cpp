@@ -310,7 +310,7 @@ void NativeRegionOverlay::draw(Surface& surface){
  xcb_clear_area(connection_,false,surface.window,0,0,0,0);
  // A frozen selection stays transparent until it owns input (#629).
  if(!presenting())return;
- const auto clipped=selection_.isEmpty()&&surface.frame.identity==frames_[std::max(0,keyboardScreen_)].identity?surface.frame.logicalRect:selection_.intersected(surface.frame.logicalRect);
+ const auto clipped=selection_.intersected(surface.frame.logicalRect);
  const auto local=clipped.translated(-surface.frame.logicalRect.topLeft());const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
  const QRect bounds(QPoint{},surface.frame.nativeRect.size());
  surface.outline=clipped.isEmpty()?QRect{}:QRectF(local.x()*sx,local.y()*sy,local.width()*sx,local.height()*sy).toAlignedRect().intersected(bounds);
