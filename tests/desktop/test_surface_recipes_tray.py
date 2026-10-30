@@ -402,6 +402,23 @@ class TrayRecipesTest(unittest.TestCase):
         tray._drawn_notice(ctx, {'summary': 'put.gd', 'body': 'No output configured'}, by_body=True)
         self.assertEqual([next(k for k in ('text', 'name') if k in q) for q in queries], ['text', 'name'])
 
+    def test_recording_badges_follow_public_recording_state(self):
+        from types import SimpleNamespace
+        ctx = FakeContext()
+        state = ['recording']
+        transitions = []
+        def change(value):
+            state[0] = value
+            transitions.append(value)
+        active = SimpleNamespace(inspect=lambda: {'state': state[0]},
+                                 pause=lambda: change('paused'),
+                                 resume=lambda: change('recording'),
+                                 stop=lambda: change('reviewing'))
+        ctx.fixture = lambda name: active
+        ctx.tray = lambda: [{'icon_pixmaps': [{'sha256': state[0]}]}]
+        tray.recording_icon(ctx)
+        self.assertEqual(transitions, ['paused', 'recording', 'reviewing'])
+
     def test_available_scenarios_resolve_the_core_fixture(self):
         cases = [(tray.recording_icon, 'tray-active-recording'), (tray.cancel_uploads, 'tray-two-uploads'),
                  (tray.update_available, 'tray-update-available'), (tray.quit_resident, 'resident-lifecycle'),
