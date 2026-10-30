@@ -148,6 +148,29 @@ def _expect_rect(ctx, wanted, recording=False):
     ctx.note("Inspected selector rectangle " + str(wanted))
 
 
+def _focus_selector(ctx, role):
+    # The helper advertises its accessible before the native window is mapped.
+    # Retry only an absent window; ambiguous geometry and input refusals remain
+    # immediate blockers. focus(..., False) observes and never raises a cover.
+    missing = None
+    def mapped():
+        nonlocal missing
+        try:
+            ctx.focus(role, raise_window=False)
+            return True
+        except RecipeBlocked as error:
+            if "live window match is missing or ambiguous (0 matches)" not in str(error):
+                raise
+            missing = error
+            return False
+    try:
+        ctx.wait(mapped, role + " selector mapped", timeout=10)
+    except RecipeFailed:
+        if missing is not None:
+            raise missing
+        raise
+
+
 def _open_region(ctx, edit=False, accessible=True):
     # action.invoke durably acknowledges before interactive acquisition finishes.
     # Surface setup therefore does not depend on the shell window's layout.
@@ -162,7 +185,7 @@ def _open_region(ctx, edit=False, accessible=True):
             ctx.wait(lambda: _op(ctx, oid)["state"] == "acquiring", "capture selector acquiring")
         # view(action.invoke) has no shell-window role. Select the actual overlay
         # through the public focus contract before guarded keyboard/pointer input.
-        ctx.focus("region", raise_window=False)
+        _focus_selector(ctx, "region")
     except (RecipeBlocked, RecipeFailed) as error:
         ctx.frame("selector-readback-unavailable")
         observed = _op(ctx, oid)
@@ -247,7 +270,7 @@ def _open_record(ctx, entire=False, rect=None):
     else:
         ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
         try:
-            ctx.focus("recsel", raise_window=False)
+            _focus_selector(ctx, "recsel")
         except (RecipeBlocked, RecipeFailed) as error:
             ctx.frame("recording-selector-readback-unavailable")
             observed = _inspect(ctx, rid)

@@ -414,6 +414,26 @@ class SelectorRecipes(unittest.TestCase):
         self.assertIsNone(ctx._selectors_consent)
         self.assertFalse(ctx.inputs)
 
+    def test_selector_mapping_wait_retries_only_absent_windows(self):
+        ctx = FakeContext()
+        calls = []
+        def focus(*args, **kwargs):
+            calls.append(args[0])
+            if len(calls) == 1:
+                raise RecipeBlocked("geometry: RuntimeError: live window match is missing or ambiguous (0 matches)")
+        ctx.focus = focus
+        ctx.wait = lambda predicate, *a, **k: predicate() or predicate()
+        selectors._focus_selector(ctx, "region")
+        self.assertEqual(calls, ["region", "region"])
+        calls.clear()
+        def ambiguous(*args, **kwargs):
+            calls.append(args[0])
+            raise RecipeBlocked("geometry: RuntimeError: live window match is missing or ambiguous (2 matches)")
+        ctx.focus = ambiguous
+        with self.assertRaisesRegex(RecipeBlocked, "2 matches"):
+            selectors._focus_selector(ctx, "recsel")
+        self.assertEqual(calls, ["recsel"])
+
     def test_all_references_exist_in_catalog_source(self):
         source = (ROOT / "tests/gui/ui_catalog.cpp").read_text()
         for item in self.recipes():
