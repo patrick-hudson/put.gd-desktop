@@ -777,6 +777,10 @@ class TargetSafety(unittest.TestCase):
         for malformed in ('not-json', '[]', '{}', '{"sandbox":null}'):
             with patch('tools.lab.surface_driver.run.subprocess.run',return_value=SimpleNamespace(stdout=malformed)):
                 with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        args.boat_id='--api-url=https://untrusted.invalid'
+        with patch('tools.lab.surface_driver.run.subprocess.run') as command:
+            with self.assertRaises(RecipeBlocked):guard_target(args,target)
+            command.assert_not_called()
 
     def test_bypass_and_missing_native_lock_refuse_before_start_input_or_capture(self):
         with tempfile.TemporaryDirectory() as td:
@@ -809,7 +813,7 @@ class TargetSafety(unittest.TestCase):
         for method,arguments in (('key',(['t'],)),('pointer',(1,1,100,100)),('events',([],)),('scroll_vnc',(1,1,1))):
             target=Target.__new__(Target)
             target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=1000
-            target.run=Path('/tmp/sd-guard');target._rfb=Mock()
+            target.run=Path('/tmp/sd-guard');target.info={};target._rfb=Mock()
             target.physical=SimpleNamespace(ssh=Mock(side_effect=[
                 json.dumps({'ok':True,'state':'held','expiresInSeconds':30}),
                 json.dumps({'ok':False,'state':'held','expiresInSeconds':29})]))
@@ -829,7 +833,8 @@ class TargetSafety(unittest.TestCase):
             with self.assertRaises(RecipeBlocked):target.require_lock('f44','owned-session')
 
     def test_endpoint_rebinding_blocks_the_next_input(self):
-        target=Target.__new__(Target);target.run=Path('/tmp/sd-guard');target.info={}
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        target=Target.__new__(Target);target.run=Path(private.name);target.info={}
         target.physical=SimpleNamespace(config={'host':'192.168.68.70','user':'patrick'})
         target.heartbeat=Mock();target._rfb=Mock()
         guard_target(self.arguments(),target)

@@ -116,7 +116,8 @@ def guard_target(args, target):
             return
         # A label, profile name or supplied sandbox id is not identity evidence.
         # Permit a boat head only on that sandbox's own runner, over local SSH.
-        if args.host == 'boat' and args.placement == 'boat' and args.boat_id:
+        if (args.host == 'boat' and args.placement == 'boat' and args.boat_id
+                and re.fullmatch(r'bx_[a-z0-9]{1,64}', args.boat_id)):
             if config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22:
                 try:
                     reply = subprocess.run(['boat', 'info', args.boat_id, '--json'], check=True,
