@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11-probes-v2",
+    "package": "deb",
+    "destination": "local",
+    "build": "e003bc7983e0",
+    "placement_details": {
+      "boat_sandbox_id": "bx_wj5ckzft",
+      "run_id": "0ed53e7d-23ea-4c4f-a194-72127dfde611",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/editor/work/lab-runs/c2",
+      "session_root": "/tmp/sd-12c19efc",
+      "socket": "/tmp/sd-12c19efc/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2461",
+      "commitCount": 2461,
+      "dirty": false,
+      "gitCommit": "e003bc7983e0a567611121cda65fc1670395bebf",
+      "gitTree": "10d9553fe0bdcf7abefde2c238c71e8eed099ea2",
+      "packageVersion": "26.1030.2461~dev+ge003bc7983e0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2461-dev+ge003bc7983e0"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.zoom",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/e3c2/receipt.json",
+      "note": "operationId=78973df2-921f-41f8-a209-2e90a7292f09; editor operationId=78973df2-921f-41f8-a209-2e90a7292f09; timeout: actual size shortcut",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11-probes-v2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645341, tolerance=0.025): actual=/home/user/e3c2/frames/editor.zoom_pan/01-before.png reference=/home/user/editor-catalog/20-editor-redact.png; catalog mismatch (distance=0.600250, tolerance=0.025): actual=/home/user/e3c2/frames/editor.zoom_pan/02-menu.png reference=/home/user/editor-catalog/26f-editor-zoom-menu.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6453413638812753,
+          "tolerance": 0.025
+        },
+        {
+          "label": "menu",
+          "path": "frames/editor.zoom_pan/02-menu.png",
+          "window": "editor",
+          "reference": "26f-editor-zoom-menu",
+          "distance": 0.6002499548245659,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.zoom_pan/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.zoom_pan",
+      "build": "e003bc7983e0",
+      "at": "2026-10-30T05:53:01Z"
+    }
+  ]
+}
