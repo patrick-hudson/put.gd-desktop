@@ -179,7 +179,7 @@ class DriverContext(Context):
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
         if self._input_poisoned:
-            raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
         role = window or self._current_window
         if not role:
             raise RecipeBlocked('real input has no target window; use view(), focus(), or click(window=...)')
@@ -266,11 +266,18 @@ class DriverContext(Context):
         if not guarded:
             self._guard(point=self._global_point(x,y,head))
         for index in range(self._click_count):
+            dispatched = False
             try:
-                self.target.pointer(x,y,w,h,True,button,head)
+                # A refused physical press must never cause a release packet.
+                # Defer alarms until dispatch is recorded, so an alarm just
+                # after a successful send cannot hide the matching press.
+                with input_release():
+                    self.target.pointer(x,y,w,h,True,button,head)
+                    dispatched = True
                 time.sleep(.04)
             finally:
-                self._release_pointer((x,y),w,h,button,head)
+                if dispatched or not self.target.physical:
+                    self._release_pointer((x,y),w,h,button,head)
             if index+1 < self._click_count:
                 time.sleep(.06)
 
@@ -304,8 +311,11 @@ class DriverContext(Context):
         witness = self._guard(point=self._global_point(*start,head))
         unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
         last = start
+        dispatched = False
         try:
-            self.target.pointer(*start,w,h,True,button,head)
+            with input_release():
+                self.target.pointer(*start,w,h,True,button,head)
+                dispatched = True
             # Managed header/resize grabs can leave the client. Unmanaged
             # selector covers/bars need pointer witnesses, not keyboard focus:
             # WA_ShowWithoutActivating deliberately leaves that elsewhere.
@@ -317,7 +327,8 @@ class DriverContext(Context):
                 last = (x,y)
                 time.sleep(.025)
         finally:
-            self._release_pointer(last,w,h,button,head)
+            if dispatched or not self.target.physical:
+                self._release_pointer(last,w,h,button,head)
 
     def _release_pointer(self, point, width, height, button, head):
         with input_release():

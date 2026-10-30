@@ -440,6 +440,17 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         self._probe_process = None
 
     def release_pointer(self, x, y, width, height, button='left', head=0):
+        try:
+            self._release_pointer(x,y,width,height,button,head)
+        except RecipeBlocked as error:
+            if not self.physical:
+                raise
+            host = self._lock[0] if self._lock else self.physical.config['name']
+            raise RecipeBlocked('physical desktop '+host+': '+button+' button may still be pressed; '
+                                'release withheld or unconfirmed; check the desktop ('+error.reason+')') from error
+
+    @desktop_transport
+    def _release_pointer(self, x, y, width, height, button='left', head=0):
         """Release at the current guest position, without another absolute move."""
         if self.physical and not (self.run / 'qmp.sock').exists():
             # RFB requires coordinates in every pointer packet. Reuse the last
