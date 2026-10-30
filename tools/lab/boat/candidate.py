@@ -231,10 +231,13 @@ def recipe(target, packages, ci):
         script = common + step(linux, 'Install distro dependencies', {'matrix.distribution': '26.04'})
         script += 'bash tools/ci/provision-linux-sdk.sh\n'
         script += step(linux, 'Provision pinned Proton helper')
-        script += step(linux, 'Build')
+        script += step(linux, 'Build', {"matrix.distribution == '26.04' && 'ON' || 'OFF'": 'ON'})
         script += 'catalog_runtime=$(mktemp -d /tmp/pgc.XXXXXX)\n'
         script += 'python3 tools/diagnostics/check_socket_paths.py --socket "$catalog_runtime/putgd/session.sock" > /out/socket-preflight.json\n'
-        script += step(linux, 'Render the UI catalog for the surface map').replace('$(mktemp -d)', '$catalog_runtime')
+        # CI renders the catalog inside CTest (ui_catalog_dark); a worker renders it directly.
+        script += ('mkdir -p build/ui-catalog\n'
+                   'QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$catalog_runtime" build/dev/putgd-ui-catalog build/ui-catalog\n'
+                   'python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog\n')
         script += 'cp -a build/ui-catalog /out/\n'
         return matrix['ubuntu26.04']['image'], script, 'dev'
     # Disposable VM drivers need putgd-desktop-fixture in a separately labeled DEB.
@@ -634,6 +637,16 @@ sudo -n chown -R user:user /home/user/candidate/output
                                                  recovery_seconds=recovery,
                                                  timeout=recovery + 120)
             receipt['cleanupVerified'] = receipt['cleanup']['verified']
+            if creation_started is not None and sandbox_id is None:
+                # Absence during a finite observation window cannot exclude a
+                # server-side create that completes after that window.
+                receipt['lateCreateRuledOut'] = False
+                receipt['cleanupVerified'] = 'qualified'
+                receipt['cleanupQualification'] = (
+                    'Boat new returned no sandbox ID; absence was observed only '
+                    'during the bounded recovery window. A later create cannot '
+                    'be ruled out; TTL bounds compute and an orphan sweep or '
+                    '--cleanup must reconcile any worker that appears later.')
         except Exception as error:
             receipt['cleanupError'] = str(error)
             receipt['state'] = 'failed'
@@ -689,10 +702,10 @@ def main(argv=None):
             write_json(output / 'manifest.json', manifest)
     manifest['totalSeconds'] = round(time.monotonic() - started, 3)
     manifest['artifacts'].sort(key=lambda item: item['artifact'])
-    manifest['passed'] = all(item['state'] == 'passed' and item.get('cleanupVerified')
+    manifest['passed'] = all(item['state'] == 'passed' and item.get('cleanupVerified') is True
                              for item in manifest['artifacts'])
     manifest['ownedSandboxesRemaining'] = [item.get('sandboxId', item.get('name')) for item in manifest['artifacts']
-                                          if not item.get('cleanupVerified')]
+                                          if item.get('cleanupVerified') is not True]
     write_json(output / 'manifest.json', manifest)
     checksums = [f'{item["sha256"]}  {entry["artifact"]}/artifacts/{item["path"]}'
                  for entry in manifest['artifacts'] for item in entry.get('files', [])]

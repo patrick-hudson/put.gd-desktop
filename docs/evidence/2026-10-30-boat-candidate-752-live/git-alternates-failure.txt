@@ -1,0 +1,32 @@
+CMake Error at cmake/GenerateBuildInfo.cmake:35 (message):
+  Cannot inspect Git build identity (tree): error: unable to normalize
+  alternate object path: /home/user/candidate/source/.git/objects
+
+  error: unable to normalize alternate object path:
+  /home/user/candidate/source/.git/objects
+
+  error: unable to normalize alternate object path:
+  /home/user/candidate/source/.git/objects
+
+  error: unable to normalize alternate object path:
+  /home/user/candidate/source/.git/objects
+
+  error: unable to normalize alternate object path:
+  /home/user/candidate/source/.git/objects
+
+  fatal: ambiguous argument 'HEAD^{tree}': unknown revision or path not in
+  the working tree.
+
+  Use '--' to separate paths from revisions, like this:
+
+  'git <command> [<revision>...] -- [<file>...]'
+
+
+
+-- Configuring incomplete, errors occurred!
+CMake Error at cmake/BuildVersion.cmake:20 (message):
+  Cannot generate build identity
+Call Stack (most recent call first):
+  CMakeLists.txt:18 (include)
+
+

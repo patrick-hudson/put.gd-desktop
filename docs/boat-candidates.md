@@ -5,9 +5,10 @@ UI catalog rendering run in disposable Boat workers. This is an opt-in build
 placement that keeps physical acceptance hosts quiet. It provides package and
 offscreen catalog evidence, not desktop, hardware or release acceptance.
 
-Prerequisite: merge companion [code PR #753](https://github.com/patrick-hudson/put.gd-desktop/pull/753)
-before using this guide's nonce leases and size-scaled collection behavior. The
-original controller arrived in [#685](https://github.com/patrick-hudson/put.gd-desktop/pull/685).
+Nonce leases and size-scaled collection arrived in
+[code PR #753](https://github.com/patrick-hudson/put.gd-desktop/pull/753).
+The original controller arrived in
+[#685](https://github.com/patrick-hudson/put.gd-desktop/pull/685).
 Also require authenticated `boat`, OpenSSH (the Boat CLI's local
 `~/.ssh/ascii_box_ed25519` identity), Git, Python 3 and the distro's
 `python3-yaml` package. The public candidate commit must be pushed and available
@@ -81,8 +82,10 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
   The AppImage CI dependency step instead sets three attempts, 300 seconds
   overall and 120 seconds stalled, with an AppImage label.
 - UI catalog uses the package matrix's pinned Ubuntu 26.04 digest; CI's linux
-  job uses the floating `ubuntu:26.04` tag. Dependency/build/render run blocks
-  are reused; the full CTest suite is separate. The private compiler cache is
+  job uses the floating `ubuntu:26.04` tag. The dependency and build run blocks
+  are reused (`PUTGD_UI_CATALOG_REFERENCES` resolved for 26.04); CI renders the
+  catalog inside CTest, so the worker renders it directly and runs the surface
+  map check. Reference-image comparison is CI's (see [the UI catalog](ui-catalog.md)). The private compiler cache is
   capped at 256 MiB rather than CI linux's 1 GiB.
 - The fixture package's Debian **Package** field and filename are
   `putgd-lab-fixture`, not `putgd`. Its package target is empty and
@@ -167,7 +170,11 @@ Startup cleanup deletes workers with dead local nonce leases, or workers with
 unknown leases and expired Boat creation-time TTLs. A held local lease always
 wins over TTL expiry. Unknown leases (including controllers on another
 workstation) are preserved until TTL expiry. Legacy
-fixed names have no lease and are preserved until TTL expiry. Orphan sweeps
+fixed names have no lease and are preserved until TTL expiry. If `createdAt` or
+`ttlSeconds` is missing or invalid, unknown and legacy workers are kept; missing
+metadata never authorizes deletion. The real API returned both fields in the
+[issue #752 live campaign](evidence/2026-10-30-boat-candidate-752-live/README.md).
+Orphan sweeps
 always delete by the exact eligible ID, preserving a fresh legacy worker even
 when it shares an expired worker's name. Each run’s final cleanup uses its own
 exact nonce name/ID. When creation reported an ID, deletion starts immediately
@@ -175,7 +182,16 @@ without waiting out the create timeout. Without an ID, cleanup observes the long
 of the remaining original 120-second `boat new` window and 30 seconds after the
 CLI stops, including a timeout kill, plus up to 120 seconds for deletion. This is
 a bounded observation window for late creates; it cannot prove that the service
-will never create a worker afterward. Cleanup failures leave
+will never create a worker afterward. With the F1 fix in
+[code PR #766](https://github.com/patrick-hudson/put.gd-desktop/pull/766), a create
+that never printed an ID records `cleanupVerified: "qualified"`,
+`lateCreateRuledOut: false`, and a `cleanupQualification` reason, even when
+name-based recovery found and deleted a worker. `cleanup.verified: true` then
+means absence was observed during that bounded window. A passing manifest
+requires literal `cleanupVerified: true`; qualified names remain in
+`ownedSandboxesRemaining` as unresolved possibilities, rather than proof that
+a worker is still present. A later sweep or `--cleanup` reconciles any worker
+that appears after the observation window. Cleanup failures leave
 `cleanupVerified: false` and a `cleanupError` reason.
 
 Deletion receipts retain the API's initial operation status (which can be
