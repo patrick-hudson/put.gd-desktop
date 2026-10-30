@@ -1,0 +1,1030 @@
+{
+  "cin": {
+    "latest": {
+      "routes": {
+        "fixture": "routes",
+        "status": "passed",
+        "facts": {
+          "profileIds": [
+            "synthetic-0",
+            "synthetic-1",
+            "synthetic-2"
+          ],
+          "publicationModes": [
+            "default",
+            "share"
+          ],
+          "privateSupported": false
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      "no-output": {
+        "fixture": "no-output",
+        "status": "passed",
+        "facts": {
+          "refusal": "output_required",
+          "historyRows": 0
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      "save-failure": {
+        "fixture": "save-failure",
+        "status": "failed",
+        "reason": "timeout: real save failure footer",
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      "uncached": {
+        "fixture": "uncached",
+        "status": "passed",
+        "facts": {
+          "cachedBefore": false,
+          "cachedAfter": true,
+          "loopback": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      "binding-conflict": {
+        "fixture": "binding-conflict",
+        "status": "passed",
+        "facts": {
+          "nativeState": "shortcut_conflict",
+          "restartAfterRelease": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes4/receipt.json",
+        "receiptSha256": "32b4597bd9676e6756ecae6eaf85faa4b9b4841744fcab1f7d3c25f9378888be"
+      },
+      "locked-keyring": {
+        "fixture": "locked-keyring",
+        "status": "passed",
+        "facts": {
+          "ownedCollectionOnly": true,
+          "blankPassword": true,
+          "restored": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      "focus-loss": {
+        "fixture": "focus-loss",
+        "status": "failed",
+        "reason": "timeout: shortcut recorder ready",
+        "cleanupErrors": [],
+        "lastStatus": {
+          "window": "",
+          "application": "putgd-ui",
+          "name": "Shortcut recording status",
+          "role": "label",
+          "text": "",
+          "description": "",
+          "states": {
+            "visible": true,
+            "showing": true,
+            "enabled": true,
+            "sensitive": true,
+            "active": false,
+            "focused": false,
+            "focusable": false,
+            "selected": false,
+            "expanded": false,
+            "checked": false,
+            "editable": false,
+            "modal": false,
+            "iconified": false
+          },
+          "rect": [
+            368,
+            249,
+            760,
+            35
+          ],
+          "attributes": {},
+          "pid": 109305,
+          "owned": true,
+          "objectName": "",
+          "accelerator": "",
+          "visible": true,
+          "showing": true,
+          "enabled": true,
+          "protected": false,
+          "popup": null,
+          "ancestors": [
+            {
+              "name": "main",
+              "role": "desktop frame",
+              "rect": [
+                0,
+                0,
+                1024,
+                768
+              ],
+              "pid": 1122
+            },
+            {
+              "name": "putgd-ui",
+              "role": "application",
+              "rect": null,
+              "pid": 109305
+            },
+            {
+              "name": "put.gd",
+              "role": "frame",
+              "rect": [
+                120,
+                40,
+                1440,
+                960
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                120,
+                40,
+                1440,
+                920
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "layered pane",
+              "rect": [
+                120,
+                148,
+                1440,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                120,
+                148,
+                1440,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                336,
+                148,
+                1224,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "Settings categories",
+              "role": "filler",
+              "rect": [
+                336,
+                148,
+                1224,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "layered pane",
+              "rect": [
+                336,
+                148,
+                1224,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                336,
+                148,
+                1224,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                336,
+                148,
+                1212,
+                812
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                336,
+                148,
+                1212,
+                894
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                368,
+                164,
+                760,
+                854
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "frame",
+              "rect": [
+                368,
+                249,
+                760,
+                769
+              ],
+              "pid": 109305
+            },
+            {
+              "name": "",
+              "role": "filler",
+              "rect": [
+                368,
+                249,
+                760,
+                769
+              ],
+              "pid": 109305
+            }
+          ],
+          "bounds": {
+            "x": 368,
+            "y": 249,
+            "width": 760,
+            "height": 35
+          },
+          "coordinate_space": "desktop"
+        },
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      "multipart": {
+        "fixture": "multipart",
+        "status": "passed",
+        "facts": {
+          "operationId": "1bb84b55-fe32-4af2-8302-f9343b6c73c5",
+          "itemId": "012bb279-a9e8-4832-965f-e77a02eb92f1",
+          "trigger": "automatic",
+          "retainedUploads": 1,
+          "abortRequests": 2,
+          "notified": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      "updates": {
+        "fixture": "updates",
+        "status": "passed",
+        "facts": {
+          "previousVersion": "26.1026.1416-nightly",
+          "installedVersion": "26.1029.2229-nightly",
+          "signature": {
+            "trustedComment": "put.gd v26.1029.2229-nightly nightly"
+          },
+          "residentBefore": {
+            "pid": 111569,
+            "start": "313745"
+          },
+          "residentAfter": {
+            "pid": 112676,
+            "start": "315902"
+          },
+          "requestLedger": [
+            {
+              "sequence": 1,
+              "method": "GET",
+              "route": "feed",
+              "channel": "nightly",
+              "status": 200,
+              "bytes": 434,
+              "privacy": {
+                "queryEmpty": true,
+                "authorizationAbsent": true,
+                "cookieAbsent": true,
+                "bodyEmpty": true,
+                "genericAgent": true,
+                "unexpectedHeaderCount": 2
+              }
+            },
+            {
+              "sequence": 2,
+              "method": "GET",
+              "route": "feed",
+              "channel": "nightly",
+              "status": 200,
+              "bytes": 434,
+              "privacy": {
+                "queryEmpty": true,
+                "authorizationAbsent": true,
+                "cookieAbsent": true,
+                "bodyEmpty": true,
+                "genericAgent": true,
+                "unexpectedHeaderCount": 2
+              }
+            },
+            {
+              "sequence": 3,
+              "method": "GET",
+              "route": "release",
+              "channel": null,
+              "status": 200,
+              "bytes": 1509,
+              "privacy": {
+                "queryEmpty": true,
+                "authorizationAbsent": true,
+                "cookieAbsent": true,
+                "bodyEmpty": true,
+                "genericAgent": true,
+                "unexpectedHeaderCount": 2
+              }
+            },
+            {
+              "sequence": 4,
+              "method": "GET",
+              "route": "mirror",
+              "channel": null,
+              "status": 200,
+              "bytes": 298,
+              "privacy": {
+                "queryEmpty": true,
+                "authorizationAbsent": true,
+                "cookieAbsent": true,
+                "bodyEmpty": true,
+                "genericAgent": true,
+                "unexpectedHeaderCount": 2
+              }
+            },
+            {
+              "sequence": 5,
+              "method": "GET",
+              "route": "release",
+              "channel": null,
+              "status": 200,
+              "bytes": 118618616,
+              "privacy": {
+                "queryEmpty": true,
+                "authorizationAbsent": true,
+                "cookieAbsent": true,
+                "bodyEmpty": true,
+                "genericAgent": true,
+                "unexpectedHeaderCount": 2
+              }
+            }
+          ]
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      "capture-lifecycle": {
+        "fixture": "capture-lifecycle",
+        "status": "passed",
+        "facts": {
+          "recordingId": "428ee496-fab2-4a66-b748-bc7d4fdb4642",
+          "state": "reviewing",
+          "controls": [
+            "prepare",
+            "start",
+            "pause",
+            "resume",
+            "overlay",
+            "stop"
+          ]
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      "write-fault": {
+        "fixture": "write-fault",
+        "status": "passed",
+        "facts": {
+          "faultCode": "config_unwritable",
+          "restoredWriter": true,
+          "acceptedPreserved": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "selectors": {
+        "fixture": "selectors",
+        "status": "passed",
+        "facts": {
+          "controls": [
+            {
+              "name": "Color #654321",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                771,
+                507,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color #123456",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                735,
+                507,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color Black",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                807,
+                467,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color White",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                771,
+                467,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color Blue",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                735,
+                467,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color Green",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                843,
+                431,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color Yellow",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                807,
+                431,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color Orange",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                771,
+                431,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color Red",
+              "role": "check box",
+              "objectName": "",
+              "rect": [
+                735,
+                431,
+                32,
+                32
+              ],
+              "pid": 199633
+            },
+            {
+              "name": "Color",
+              "role": "label",
+              "objectName": "",
+              "rect": [
+                735,
+                403,
+                208,
+                20
+              ],
+              "pid": 199633
+            }
+          ],
+          "lineWidth": 2,
+          "recentColor": "#123456"
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "qt-fallback": {
+        "fixture": "qt-fallback",
+        "status": "passed",
+        "facts": {
+          "startup": {
+            "platform": "xcb",
+            "resident": "graphical",
+            "trayAvailable": true
+          },
+          "nativeSession": "x11",
+          "resident": {
+            "pid": 201541,
+            "start": "476284"
+          }
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "resident-lifecycle": {
+        "fixture": "resident-lifecycle",
+        "status": "passed",
+        "facts": {
+          "before": {
+            "pid": 202801,
+            "start": "477901"
+          },
+          "after": {
+            "pid": 203148,
+            "start": "478332"
+          }
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "tray-uploads": {
+        "fixture": "tray-uploads",
+        "status": "passed",
+        "facts": {
+          "operationIds": [
+            "ea2e4cb0-4381-44a4-86b5-538f0b1c2cb5",
+            "2f853951-4c09-4334-9ff3-f21d4c30bcfe"
+          ],
+          "twoActive": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "tray-attention": {
+        "fixture": "tray-attention",
+        "status": "passed",
+        "facts": {
+          "operationId": "c5870988-1891-416c-81ac-4067446ff3ae",
+          "durableState": "failed",
+          "localSaved": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes4/receipt.json",
+        "receiptSha256": "32b4597bd9676e6756ecae6eaf85faa4b9b4841744fcab1f7d3c25f9378888be"
+      },
+      "dialog-portal": {
+        "fixture": "dialog-portal",
+        "status": "passed",
+        "facts": {
+          "resident": {
+            "pid": 210220,
+            "start": "488143"
+          },
+          "backend": "portal",
+          "mode": "folder",
+          "fallbackReason": null
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "dialog-fallback": {
+        "fixture": "dialog-fallback",
+        "status": "passed",
+        "facts": {
+          "resident": {
+            "pid": 211716,
+            "start": "490141"
+          },
+          "backend": "fallback",
+          "mode": "folder",
+          "fallbackReason": "disabled"
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      "capture-select": {
+        "fixture": "capture-select",
+        "status": "passed",
+        "facts": {
+          "recordingId": "ec946472-1751-4e0f-b0cf-da6f9002414d",
+          "state": "reviewing",
+          "controls": [
+            "prepare",
+            "select",
+            "start",
+            "pause",
+            "resume",
+            "overlay",
+            "stop"
+          ]
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/cin/fixture-probes5/receipt.json",
+        "receiptSha256": "22a9d6fbf0f68d78cfed0411d06edb9ccd5e7a940bc07d9d155affd65bd8558f"
+      }
+    },
+    "attempts": [
+      {
+        "fixture": "routes",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "no-output",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "save-failure",
+        "status": "failed",
+        "reason": "KeyError",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "uncached",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "binding-conflict",
+        "status": "failed",
+        "reason": "timeout: native XGrabKey conflict",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "locked-keyring",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "focus-loss",
+        "status": "failed",
+        "reason": "timeout: shortcut recorder ready",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "multipart",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "updates",
+        "status": "blocked",
+        "reason": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "capture-lifecycle",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes1/receipt.json",
+        "receiptSha256": "0c432c9fe8cc60304f44d8c4f327bdc42ba8e1c93ac447d8f069f00a8a749b76"
+      },
+      {
+        "fixture": "save-failure",
+        "status": "failed",
+        "reason": "timeout: real save failure footer",
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      {
+        "fixture": "binding-conflict",
+        "status": "blocked",
+        "reason": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      {
+        "fixture": "focus-loss",
+        "status": "failed",
+        "reason": "timeout: shortcut recorder ready",
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      {
+        "fixture": "updates",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes2/receipt.json",
+        "receiptSha256": "a3f4dad6c644f4e006fcdcfeb89ffd91fc6a7df5edbd04b68f2201da3331bb01"
+      },
+      {
+        "fixture": "write-fault",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "binding-conflict",
+        "status": "failed",
+        "reason": "timeout: native shortcut refresh after contender released",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "selectors",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "qt-fallback",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "resident-lifecycle",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "tray-uploads",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "tray-attention",
+        "status": "failed",
+        "reason": "timeout: same operation local-save retry succeeds",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "dialog-portal",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "dialog-fallback",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes3/receipt.json",
+        "receiptSha256": "b1e03fcc2140d2765066b36224624a6fe230fe5869e13f31b7706dad030632f0"
+      },
+      {
+        "fixture": "binding-conflict",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes4/receipt.json",
+        "receiptSha256": "32b4597bd9676e6756ecae6eaf85faa4b9b4841744fcab1f7d3c25f9378888be"
+      },
+      {
+        "fixture": "tray-attention",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes4/receipt.json",
+        "receiptSha256": "32b4597bd9676e6756ecae6eaf85faa4b9b4841744fcab1f7d3c25f9378888be"
+      },
+      {
+        "fixture": "capture-select",
+        "status": "failed",
+        "reason": "timeout: native region selector open",
+        "receipt": "receipts/cin/fixture-probes4/receipt.json",
+        "receiptSha256": "32b4597bd9676e6756ecae6eaf85faa4b9b4841744fcab1f7d3c25f9378888be"
+      },
+      {
+        "fixture": "capture-select",
+        "status": "passed",
+        "receipt": "receipts/cin/fixture-probes5/receipt.json",
+        "receiptSha256": "22a9d6fbf0f68d78cfed0411d06edb9ccd5e7a940bc07d9d155affd65bd8558f"
+      }
+    ]
+  },
+  "gno": {
+    "latest": {
+      "unavailable": {
+        "fixture": "unavailable",
+        "status": "passed",
+        "facts": {
+          "helperUuid": "putgd@put.gd",
+          "controlled": true,
+          "restored": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/gno/fixture-probes2/receipt.json",
+        "receiptSha256": "27f7a4e748815ad6472b44cdfafd0ea89c645a11f7e3db8ec9b73d0cdeb4d8fa"
+      },
+      "notifier": {
+        "fixture": "notifier",
+        "status": "passed",
+        "facts": {
+          "items": [
+            {
+              "pid": 192460,
+              "start": "353168",
+              "owner": ":1.1070",
+              "service": "org.kde.StatusNotifierItem.putgd_04bc85c0a45f4ae5a41d900c0cd34059",
+              "path": "/StatusNotifierItem",
+              "id": "putgd",
+              "title": "put.gd",
+              "status": "Active",
+              "icon_name": "",
+              "icon_pixmaps": [
+                {
+                  "width": 24,
+                  "height": 24,
+                  "bytes": 2304,
+                  "sha256": "6bddee200787d1a1afe5202c050534d6066ac58997adfd1d1e95a6bf89065520"
+                },
+                {
+                  "width": 48,
+                  "height": 48,
+                  "bytes": 9216,
+                  "sha256": "cb393f208bf43ee299f189436aaf209a67f281a0ea518c7621f93a11ac540860"
+                },
+                {
+                  "width": 72,
+                  "height": 72,
+                  "bytes": 20736,
+                  "sha256": "624983297b85bb5b3d3ddfafee0b098f096c7752d11af7cc827d0d03ad7e5772"
+                }
+              ],
+              "tooltip": {
+                "title": "put.gd",
+                "text": ""
+              },
+              "menu": "/Menu"
+            }
+          ]
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      "dialog-portal": {
+        "fixture": "dialog-portal",
+        "status": "passed",
+        "facts": {
+          "resident": {
+            "pid": 193877,
+            "start": "354488"
+          },
+          "backend": "portal",
+          "mode": "folder",
+          "fallbackReason": null
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      "dialog-fallback": {
+        "fixture": "dialog-fallback",
+        "status": "passed",
+        "facts": {
+          "resident": {
+            "pid": 196343,
+            "start": "356577"
+          },
+          "backend": "fallback",
+          "mode": "folder",
+          "fallbackReason": "disabled"
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      "write-fault": {
+        "fixture": "write-fault",
+        "status": "passed",
+        "facts": {
+          "faultCode": "config_unwritable",
+          "restoredWriter": true,
+          "acceptedPreserved": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      "uncached": {
+        "fixture": "uncached",
+        "status": "passed",
+        "facts": {
+          "cachedBefore": false,
+          "cachedAfter": true,
+          "loopback": true
+        },
+        "cleanupErrors": [],
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      }
+    },
+    "attempts": [
+      {
+        "fixture": "unavailable",
+        "status": "blocked",
+        "reason": "native app helper is not enabled; existing extension state preserved",
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      {
+        "fixture": "notifier",
+        "status": "passed",
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      {
+        "fixture": "dialog-portal",
+        "status": "passed",
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      {
+        "fixture": "dialog-fallback",
+        "status": "passed",
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      {
+        "fixture": "write-fault",
+        "status": "passed",
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      {
+        "fixture": "uncached",
+        "status": "passed",
+        "receipt": "receipts/gno/fixture-probes1/receipt.json",
+        "receiptSha256": "75eeb5a1cda7cd85404b59311beb69b57283622535cf6a50fc612c2f598e97fe"
+      },
+      {
+        "fixture": "unavailable",
+        "status": "passed",
+        "receipt": "receipts/gno/fixture-probes2/receipt.json",
+        "receiptSha256": "27f7a4e748815ad6472b44cdfafd0ea89c645a11f7e3db8ec9b73d0cdeb4d8fa"
+      }
+    ]
+  }
+}
