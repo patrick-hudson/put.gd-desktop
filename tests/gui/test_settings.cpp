@@ -100,6 +100,59 @@ class SettingsGui:public QObject {
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void idleSettingsLayoutSettles_data(){
+  QTest::addColumn<int>("page");QTest::addColumn<QSize>("size");
+  for(int page=0;page<4;++page)for(const auto size:{QSize(1440,960),QSize(1060,680)})QTest::newRow(qPrintable(QString("page%1-%2").arg(page).arg(size.width())))<<page<<size;
+ }
+ void idleSettingsLayoutSettles(){
+  QFETCH(int,page);QFETCH(QSize,size);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(size);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(page);
+  class Events final:public QObject {
+  public:
+   explicit Events(QWidget* root):root_(root){quiet.start();qApp->installEventFilter(this);}
+   ~Events()override{qApp->removeEventFilter(this);}
+   int layouts=0,paints=0;QElapsedTimer quiet;QHash<QString,int> sources;
+  protected:
+   bool eventFilter(QObject* object,QEvent* event)override{
+    if(event->type()!=QEvent::LayoutRequest&&event->type()!=QEvent::Paint)return false;
+    auto* widget=qobject_cast<QWidget*>(object);if(!widget||(widget!=root_&&!root_->isAncestorOf(widget)))return false;
+    if(event->type()==QEvent::Paint)++paints;else{++layouts;quiet.restart();++sources[widget->objectName()+":"+widget->metaObject()->className()];}return false;
+   }
+  private:QWidget* root_;
+  } events(&window);
+  window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  // Include retained, hidden pages: they must settle too. A layout feedback
+  // loop never reaches this quiet interval, regardless of machine speed.
+  const bool settled=putgd::test::waitFor([&]{return events.quiet.elapsed()>=100;});
+  if(!settled)qWarning()<<"Unsettled Settings layouts:"<<events.layouts<<events.sources;
+  QVERIFY(settled);events.layouts=events.paints=0;
+  PUTGD_VERIFY_STEADY(events.layouts<64&&events.paints<64,1000);
+  qInfo()<<"Idle Settings layout/paint events:"<<events.layouts<<events.paints;
+ }
+ void emptyShortcutRecordingPromptFitsAndSettles(){
+  QWidget window;window.setFixedSize(760,900);auto* layout=new QVBoxLayout(&window);auto* editor=new ShortcutEditor;layout->addWidget(editor);
+  // Hold the surrounding geometry steady: the placeholder must be a sizing input itself.
+  editor->findChild<QWidget*>("shortcutPreferenceCard")->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+  auto* status=editor->findChild<QLabel*>("shortcutRecordingStatus");status->setText("Ready to record");status->setFixedHeight(status->fontMetrics().height());auto policy=status->sizePolicy();policy.setRetainSizeWhenHidden(true);status->setSizePolicy(policy);
+  auto actions=Settings::defaults()["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="";actions[name]=action;}
+  editor->setActions(actions);editor->setRecordingControl([](bool,auto reply){reply({});});PreferenceRows::alignChoices(&window);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* input=editor->editors().value("region");auto* record=editor->findChild<QPushButton*>("recordRegionShortcut");QVERIFY(input&&record);PUTGD_VERIFY_STEADY(input->placeholderText()=="Not set",100);const int idleWidth=input->width();QSignalSpy changed(input,&QLineEdit::textChanged);
+  record->click();QCOMPARE(input->placeholderText(),QString("Press shortcut…"));QCOMPARE(changed.count(),0);
+  PUTGD_TRY_VERIFY(input->contentsRect().width()>=input->fontMetrics().horizontalAdvance(input->placeholderText())+4);
+  editor->cancelRecording();PUTGD_TRY_COMPARE(input->width(),idleWidth);PUTGD_VERIFY_STEADY(input->width()==idleWidth,100);
+ }
+ void updateChannelHelpReservesItsHeightAfterItAppears(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");QVERIFY(channel&&source);
+  for(int pass=0;pass<2;++pass){
+   update={{"supported",true},{"check",true},{"channelSource","repository"},{"channel","nightly"},{"build",QJsonObject{{"version","26.1026.1-nightly"},{"channel","nightly"},{"supported",true}}},{"action",QJsonObject{{"kind","software-updates"},{"repository","managed"},{"file","/etc/yum.repos.d/putgd.repo"}}}};fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(source->isVisibleTo(window.settings()));
+   const auto fits=[&]{return source->mapTo(&window,QPoint()).y()>=channel->mapTo(&window,QPoint(0,channel->height())).y()&&source->parentWidget()->rect().contains(source->geometry())&&source->height()>=source->heightForWidth(source->width());};
+   PUTGD_VERIFY_STEADY(fits(),200);
+   update["channelSource"]="setting";fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(!source->isVisibleTo(window.settings()));
+  }
+ }
  void stackedLabelsStayCloseToTheirNextWidget_data(){QTest::addColumn<int>("pixels");QTest::newRow("100")<<14;QTest::newRow("125")<<18;QTest::newRow("150")<<21;}
  void stackedLabelsStayCloseToTheirNextWidget(){
   QFETCH(int,pixels);Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,900);window.show();int checked=0;
