@@ -115,7 +115,10 @@ private slots:
   X11CompositorFixture compositor;const auto inside=compositor.scene({40,40,10,10},0x000000),outside=compositor.scene({300,300,10,10},0x000000);
   auto repaints=[&](xcb_window_t window,int count,QElapsedTimer& last,QObject& scope){auto* timer=new QTimer(&scope);timer->setInterval(20);connect(timer,&QTimer::timeout,this,[&compositor,&last,timer,window,count,done=0]()mutable{compositor.repaint(window);last.start();if(++done==count)timer->deleteLater();});timer->start();return QPointer<QTimer>(timer);};
   {// Repaints over the selection hold the read until they have been quiet.
-   X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;qint64 quiet=-1;QElapsedTimer last;connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;quiet=last.isValid()?last.elapsed():-1;});
+   // The quiet period is long against the wait's 50 ms poll step, so a stalled
+   // test loop between observing a repaint and asserting cannot itself make a
+   // legitimate quiet period elapse.
+   X11CompositorSettle settle({selected},nullptr,{250,5000});bool settled=false;qint64 quiet=-1;QElapsedTimer last;connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;quiet=last.isValid()?last.elapsed():-1;});
    settle.start();QVERIFY(settle.composited());
    // Advance the scene only after the previous repaint was observed. A fixed
    // wait can overshoot the entire animation on a contended event loop.
@@ -123,7 +126,7 @@ private slots:
     const auto before=settle.repaints();compositor.repaint(inside);last.start();
     PUTGD_TRY_VERIFY_WITH_TIMEOUT(settle.repaints()>before||settled,3000);QVERIFY(!settled);
    }
-   PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY2(quiet>=70,qPrintable(QString::number(quiet)));QVERIFY(settle.repaints()>=8);}
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY2(quiet>=235,qPrintable(QString::number(quiet)));QVERIFY(settle.repaints()>=8);}
   {// Damage can arrive just before an overdue quiet timer is delivered, before
    // Qt gets another opportunity to dispatch the X11 socket notifier.
    X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;qint64 quiet=-1;int before=-1;QElapsedTimer last;

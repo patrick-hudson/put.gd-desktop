@@ -1,5 +1,6 @@
 #include "X11CompositorSettle.h"
 #include "X11Reply.h"
+#include <QPointer>
 #include <QSocketNotifier>
 #include <xcb/damage.h>
 namespace putgd {
@@ -8,7 +9,11 @@ X11CompositorSettle::X11CompositorSettle(QList<QRect> nativeAreas,QObject* paren
  connect(&quiet_,&QTimer::timeout,this,[this]{
   // A delayed event loop can deliver this timer before the socket notifier.
   // Consume pending Damage first; a repaint starts a fresh quiet period.
+  // events() can emit settled() on a connection error, and a handler may
+  // destroy this object synchronously.
+  const QPointer<X11CompositorSettle> self(this);
   events();
+  if(!self)return;
   if(!finished_&&!quiet_.isActive())finish();
  });
  connect(&limit_,&QTimer::timeout,this,&X11CompositorSettle::finish);
