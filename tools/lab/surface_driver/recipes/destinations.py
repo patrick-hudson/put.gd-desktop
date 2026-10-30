@@ -97,7 +97,10 @@ def _open(ctx, count=1, *, saved_credentials=False, fixture='destinations'):
     profiles = []
     for index in range(count):
         item = deepcopy(p)
-        item['id'] = 'surface-destination-' + str(index + 1)
+        # The fixture's resident cache is keyed by profile ID and reference.
+        # Keep that identity when exercising its pre-unlocked credentials.
+        if not (saved_credentials and index == 0):
+            item['id'] = 'surface-destination-' + str(index + 1)
         item['label'] = 'Surface destination ' + str(index + 1)
         if not saved_credentials:
             item['credentials'] = {'mode': 'session', 'reference': None}

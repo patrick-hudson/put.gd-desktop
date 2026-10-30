@@ -398,6 +398,12 @@ class DestinationsContracts(unittest.TestCase):
         self.assertIn(('click', 'text:Unlock saved credentials', 'destinations'), ctx.events)
         self.assertTrue(ctx.available)
 
+    def test_saved_credential_recipe_keeps_the_fixture_cache_identity(self):
+        ctx = self.context()
+        _, profiles = lane._open(ctx, saved_credentials=True)
+        self.assertEqual(profiles[0]['id'], ctx.f['profile']['id'])
+        self.assertEqual(profiles[0]['credentials'], ctx.f['profile']['credentials'])
+
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()
         ctx.f['credentials_file'] = '/tmp/foreign-input.json'
