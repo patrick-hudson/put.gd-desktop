@@ -1165,6 +1165,18 @@ def output_summary(ctx):
     rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
                            'pid': pid, 'within': menus[-1]['rect']})
     labels = [n.get('name', '') for n in rows]
+    if not any(n.startswith('Default: ') for n in labels):
+        # Fixed synthetic captions only: distinguish missing popup descendants
+        # from an incorrectly scoped menu rectangle without dumping a tree.
+        public = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid})
+        public = [node for node in public if node.get('name', '').startswith(('Default: ', 'Upload clipboard: '))
+                  or node.get('name') in ('Exceptions', 'Change output')]
+        ctx.note('Output popup witness=' + json.dumps({
+            'menuBounds': menus[-1]['rect'],
+            'scopedLabels': [name for name in labels if name.startswith(('Default: ', 'Upload clipboard: '))],
+            'publicNodes': [{key: node.get(key) for key in (
+                'name', 'role', 'rect', 'popup', 'coordinate_space', 'coordinate_error', 'objectName')}
+                for node in public]}, sort_keys=True))
     ctx.expect(any(n.startswith('Default: ') for n in labels), 'popup exposes inherited output')
     ctx.expect(any(n.startswith('Upload clipboard: ') and 'Synthetic 1' in n for n in labels),
                'popup exposes the exact clipboard exception destination')
