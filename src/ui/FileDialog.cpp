@@ -41,9 +41,10 @@ const QString requestInterface=QStringLiteral("org.freedesktop.portal.Request");
 int portalCallTimeoutMs=8000;
 // Response 2 is "ended in some other way" (#781). The GTK and GNOME backends
 // answer it when the person presses Escape or closes the chooser's window; the
-// portal answers it when its backend fails. A chooser cannot be drawn, seen and
-// dismissed this soon after the request is accepted, so an earlier 2 is a failure.
-int portalFailureWindowMs=500;
+// portal answers it when a running backend fails (a backend that fails to start
+// makes the call itself error). The chooser takes about 300 ms to get focus after
+// the request is accepted, so a 2 this soon is a failure, not a person.
+int portalFailureWindowMs=250;
 QString modeName(FileDialog::Mode mode){return mode==FileDialog::Mode::Save?"save":mode==FileDialog::Mode::Folder?"folder":"open";}
 QJsonValue text(const QString& value){return value.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(value);}
 // Qt's widget dialog in the Theme tokens: the generic platform theme gives it
@@ -189,7 +190,8 @@ void FileDialog::portalResponse(uint response,const QVariantMap& results){
  ++attempt_;unsubscribe();handle_.clear();
  if(gone_){gone_->deleteLater();gone_=nullptr;}
  const auto elapsed=asked_.isValid()?asked_.elapsed():0;
- qCInfo(lcFileDialog).noquote()<<"portal response"<<response<<"after"<<elapsed<<"ms";
+ qCInfo(lcFileDialog).noquote()<<"portal response"<<response<<"after"<<elapsed<<"ms since accepted"
+     <<(response==2?(elapsed>=portalFailureWindowMs?"(closed by the person, or the backend failed late)":"(backend failed early)"):"");
  if(response==1||(response==2&&elapsed>=portalFailureWindowMs)){finish("cancelled",{});return;}
  if(response!=0){openFallback("portal_failed");return;}
  const auto uris=results.value("uris").toStringList();

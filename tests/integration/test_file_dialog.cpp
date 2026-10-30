@@ -116,7 +116,7 @@ private slots:
   FileDialog::setPortalCallTimeoutMs(400);
  }
  void cleanupTestCase(){delete window_;unregisterPortal();}
- void init(){qunsetenv("PUTGD_FILE_DIALOG");chooser_->answer=FakeChooser::Answer::Choose;chooser_->versionValue=4;chooser_->calls=0;chooser_->delayMs=20;chooser_->uri.clear();FileDialog::setPortalFailureWindowMs(500);registerPortal();}
+ void init(){qunsetenv("PUTGD_FILE_DIALOG");chooser_->answer=FakeChooser::Answer::Choose;chooser_->versionValue=4;chooser_->calls=0;chooser_->delayMs=20;chooser_->uri.clear();FileDialog::setPortalFailureWindowMs(250);registerPortal();}
  void cleanup(){for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QFileDialog*>(widget))dialog->reject();QApplication::processEvents();}
 
  void saveAsksThePortalAndReturnsTheLocalPath(){
