@@ -35,12 +35,14 @@ class DriverContext(Context):
         self._screen_dimensions = {}
         self._input_head = 0
         self._held_codes = []
+        self._input_poisoned = False
         self._popup = None
         self._click_count = 1
         self.begin(None)
 
     def begin(self, recipe):
         self.recipe = recipe
+        self._current_window, self._popup, self._input_head = None, None, 0
         self.frames, self.notes, self.reviews = [], [], []
         self._noted_ids=set()
         self._notifications_since = time.time()
@@ -171,6 +173,8 @@ class DriverContext(Context):
 
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
+        if self._input_poisoned:
+            raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
         role = window or self._current_window
         if not role:
             raise RecipeBlocked('real input has no target window; use view(), focus(), or click(window=...)')
@@ -220,8 +224,11 @@ class DriverContext(Context):
             scale = mapped.get('scale', 1)
             px,py = (round((point[i]-mapped.get(('screen_x','screen_y')[i],0))*scale) for i in (0,1))
             self._popup = row.get('popup')
-            self._guard(window=owner, point=point, geometry=geometry, popup=self._popup)
-            self._pointer_click(px,py,button,mapped['head'], guarded=True)
+            try:
+                self._guard(window=owner, point=point, geometry=geometry, popup=self._popup)
+                self._pointer_click(px,py,button,mapped['head'], guarded=True)
+            finally:
+                self._popup = None
         else:
             if popup_role:
                 raise RecipeBlocked('dynamic menu control needs live AT-SPI geometry')
@@ -325,14 +332,30 @@ class DriverContext(Context):
         codes = [code for key in keys for code in qcodes(key)]
         if len(set(codes)) != len(codes) or set(codes) & set(self._held_codes):
             raise ValueError('held keys must be distinct and not already held')
+        if self.target.physical:
+            raise RecipeBlocked('physical held keys require input-agent scoped cleanup across lock loss; guest QMP only')
         self._guard()
-        self.target.key_state(codes,True)
         self._held_codes.extend(codes)
+        def release():
+            try:
+                self.target.key_state(list(reversed(codes)),False)
+            except BaseException:
+                self._input_poisoned = True
+                raise
         try:
+            # Dispatch can succeed before a reply/deadline failure. Acquisition
+            # belongs inside the cleanup scope too.
+            self.target.key_state(codes,True)
             yield
+        except BaseException:
+            try:
+                release()
+            except Exception:
+                self.note('held-key release unavailable after interrupted input')
+            raise
+        else:
+            release()
         finally:
-            # Releases are mandatory cleanup, even after focus/deadline failure.
-            self.target.key_state(list(reversed(codes)),False)
             self._held_codes = [c for c in self._held_codes if c not in codes]
 
     def type_text(self,text):

@@ -40,7 +40,9 @@
     "accessible": {
       "application": "gnome-shell*"
     },
-    "title_name_glob": "*{summary}*"
+    "title_name_glob": "*{summary}*",
+    "actions_available": false,
+    "reason": "Two Ubuntu GNOME guest attempts could not uniquely observe the drawn notification through AT-SPI (#670)"
   },
   "windows": {
     "editor.canvas": {
@@ -52,25 +54,29 @@
     "fileDialog": {
       "title": ".*",
       "accessible": {
-        "role": "file chooser"
+        "role": "file chooser",
+        "application": "putgd*"
       }
     },
     "putgdFileDialog": {
       "title": ".*",
       "accessible": {
-        "role": "file chooser"
+        "role": "file chooser",
+        "application": "putgd*"
       }
     },
     "region": {
       "title": ".*",
       "accessible": {
-        "name": "Capture region"
+        "name": "Capture region",
+        "application": "putgd*"
       }
     },
     "recsel": {
       "title": ".*",
       "accessible": {
-        "name": "Recording region"
+        "name": "Recording region",
+        "application": "putgd*"
       }
     },
     "historyContextMenu": {
@@ -88,31 +94,36 @@
     "confirmAction": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirm": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirmDestinationDefault": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirmDestinationReload": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirmDestinationRemove": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     }
   }

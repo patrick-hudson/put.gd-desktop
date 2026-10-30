@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
@@ -411,6 +411,56 @@ class InputFoundations(unittest.TestCase):
         self.assertEqual(rows[0]['icon_pixmaps'][0]['bytes'],4)
         self.assertEqual(len(rows[0]['icon_pixmaps'][0]['sha256']),64)
 
+    def test_uncertain_key_down_attempts_release_before_propagating(self):
+        self.ctx._probe=lambda *a:{'ok':True}
+        sent=[]
+        def state(codes,down):
+            sent.append((codes,down))
+            if down:raise RecipeFailed('reply lost after dispatch')
+        self.ctx.target.key_state=state
+        with self.assertRaisesRegex(RecipeFailed,'reply lost'):
+            with self.ctx.held_keys('Ctrl'):
+                self.fail('acquisition did not complete')
+        self.assertEqual(sent,[(['ctrl'],True),(['ctrl'],False)])
+        self.assertEqual(self.ctx._held_codes,[])
+
+    def test_unconfirmed_key_release_blocks_subsequent_input(self):
+        def state(codes,down):
+            if not down:raise RecipeBlocked('transport lost')
+        self.ctx.target.key_state=state
+        self.ctx._probe=lambda *a:{'ok':True}
+        with self.assertRaisesRegex(RecipeBlocked,'transport lost'):
+            with self.ctx.held_keys('Ctrl'):
+                pass
+        with self.assertRaisesRegex(RecipeBlocked,'release was not confirmed'):
+            self.ctx.keys('T')
+
+    def test_physical_held_keys_and_vnc_altgr_block_before_dispatch(self):
+        target=Target.__new__(Target);target.physical=object();target.run=self.path
+        target.heartbeat=lambda:None
+        target.events=lambda *a:self.fail('physical held input must not dispatch')
+        target.vnc=lambda:self.fail('unsupported VNC chord must not dispatch')
+        with self.assertRaisesRegex(RecipeBlocked,'scoped cleanup'):
+            target.key_state(['ctrl'],True)
+        with self.assertRaisesRegex(RecipeBlocked,'AltGr requires'):
+            target.key(['alt_r','e'])
+
+    def test_x11_error_handler_is_restored_when_display_open_fails(self):
+        from tools.lab.surface_driver import probe
+        library=MagicMock();library.XSetErrorHandler.side_effect=[321,None]
+        library.XOpenDisplay.return_value=None
+        with patch.object(probe.ctypes.util,'find_library',return_value='libX11.so'),patch.object(probe.ctypes,'CDLL',return_value=library):
+            with self.assertRaisesRegex(RuntimeError,'cannot open X11 display'):
+                probe.x11_hit((20,20))
+        self.assertEqual(library.XSetErrorHandler.call_count,2)
+        self.assertEqual(library.XSetErrorHandler.call_args.args,(321,))
+
+    def test_broad_role_profiles_have_putgd_application_scope(self):
+        for desktop in ('mint-cinnamon-x11','ubuntu-gnome-wayland','kubuntu-kde-wayland'):
+            profile=load_profile(desktop)
+            for role in ('fileDialog','putgdFileDialog','region','recsel','confirm','confirmAction'):
+                self.assertEqual(profile['windows'][role]['accessible']['application'],'putgd*')
+
     def test_live_menus_without_catalog_context_and_row(self):
         events=[];self.ctx.target.pointer=lambda *args:events.append(args)
         requests=[]
@@ -422,6 +472,7 @@ class InputFoundations(unittest.TestCase):
         self.ctx._probe=probe
         for role in ('historyContextMenu','historyRowMenu'):
             self.ctx.click('text:Copy path',role)
+            self.assertIsNone(self.ctx._popup)
         self.assertEqual(events[0][:2],(35,26))
         self.assertTrue(all(q['popup'] for name,q in requests if name=='control'))
         self.assertTrue(all(q['geometry']['pid']==7 for name,q in requests if name=='foreground'))
@@ -510,6 +561,7 @@ class InputFoundations(unittest.TestCase):
         launch=next(i for i,s in enumerate(calls) if 'nohup' in s)
         self.assertLess(seed,launch)
         self.assertNotIn('development-s3',calls[seed]);self.assertIn("'profiles': []",calls[seed])
+        self.assertIn("'updates': {'check': False}",calls[seed])
         calls.clear();target.start(first_launch=True)
         self.assertFalse(any('SD_SEED' in s for s in calls))
 

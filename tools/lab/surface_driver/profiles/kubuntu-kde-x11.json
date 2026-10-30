@@ -51,25 +51,29 @@
     "fileDialog": {
       "title": ".*",
       "accessible": {
-        "role": "file chooser"
+        "role": "file chooser",
+        "application": "putgd*"
       }
     },
     "putgdFileDialog": {
       "title": ".*",
       "accessible": {
-        "role": "file chooser"
+        "role": "file chooser",
+        "application": "putgd*"
       }
     },
     "region": {
       "title": ".*",
       "accessible": {
-        "name": "Capture region"
+        "name": "Capture region",
+        "application": "putgd*"
       }
     },
     "recsel": {
       "title": ".*",
       "accessible": {
-        "name": "Recording region"
+        "name": "Recording region",
+        "application": "putgd*"
       }
     },
     "historyContextMenu": {
@@ -87,31 +91,36 @@
     "confirmAction": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirm": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirmDestinationDefault": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirmDestinationReload": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     },
     "confirmDestinationRemove": {
       "title": ".*",
       "accessible": {
-        "role": "dialog"
+        "role": "dialog",
+        "application": "putgd*"
       }
     }
   }

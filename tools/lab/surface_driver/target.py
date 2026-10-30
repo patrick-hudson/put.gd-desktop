@@ -167,6 +167,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             document['actions']['record'] = {'shortcut':''}
             document['archive'].update(root=self.root+'/files', keepUploads=True)
             document['preferences']['launchAtLogin'] = False
+            document['preferences']['updates'] = {'check':False}
             code = 'import os,json\nfrom pathlib import Path\np=Path(os.environ["XDG_CONFIG_HOME"])/"putgd"\np.mkdir(mode=0o700)\nwith (p/"config.json").open("x") as f: json.dump('+repr(document)+',f)\n'
             seeded = self.execute("python3 - <<'SD_SEED'\n"+code+'SD_SEED\n')
             if seeded['returncode']:
@@ -196,6 +197,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
     @desktop_transport
     def key(self, codes):
         if self.physical and not (self.run / 'qmp.sock').exists():
+            if 'alt_r' in codes:
+                raise RecipeBlocked('AltGr requires QMP-compatible input; the VNC keysym backend does not support it')
             aliases={'meta_l':'super','spc':' ','pgup':'pageup','pgdn':'pagedown', **{v:k for k,v in PUNCTUATION.items()}}
             self.vnc().key(*(aliases.get(c,c) for c in codes))
         else:
@@ -203,8 +206,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
 
     @desktop_transport
     def key_state(self, codes, down):
-        if self.physical and not (self.run / 'qmp.sock').exists():
-            raise RecipeBlocked('held keys require the QMP-compatible host-input transport')
+        if self.physical:
+            raise RecipeBlocked('physical held keys require input-agent scoped cleanup across lock loss; guest QMP only')
         self.events([{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for code in codes])
 
     @desktop_transport

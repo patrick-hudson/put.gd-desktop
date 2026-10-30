@@ -194,7 +194,10 @@ class Context:
         raise NotImplementedError
 
     def held_keys(self, *keys: str):
-        """Context manager holding physical keys across drag/scroll; always releases."""
+        """Context manager holding guest QMP keys across drag/scroll; always releases.
+
+        Physical held keys are blocked pending input-agent scoped cleanup.
+        VNC-only AltGr chords are blocked before dispatch."""
         raise NotImplementedError
 
     def click_accessible(self, query: dict, button: str = 'left') -> dict:

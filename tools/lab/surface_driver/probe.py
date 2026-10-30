@@ -303,8 +303,14 @@ def x11_hit(point):
     xlib.XGetWindowAttributes.argtypes = [ctypes.c_void_p,window_t,ctypes.POINTER(Attributes)]
     xlib.XTranslateCoordinates.argtypes = [ctypes.c_void_p,window_t,window_t,ctypes.c_int,ctypes.c_int,ctypes.POINTER(ctypes.c_int),ctypes.POINTER(ctypes.c_int),ctypes.POINTER(window_t)]
     xlib.XFree.argtypes = [ctypes.c_void_p]; xlib.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    error_handler_t = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p)
+    ignore_errors = error_handler_t(lambda display,event:0)
+    xlib.XSetErrorHandler.argtypes = [ctypes.c_void_p]
+    xlib.XSetErrorHandler.restype = ctypes.c_void_p
+    previous_handler = xlib.XSetErrorHandler(ctypes.cast(ignore_errors,ctypes.c_void_p))
     display = xlib.XOpenDisplay(None)
     if not display:
+        xlib.XSetErrorHandler(previous_handler)
         raise RuntimeError('cannot open X11 display for stacking hit-test')
     try:
         root = xlib.XDefaultRootWindow(display)
@@ -324,7 +330,8 @@ def x11_hit(point):
                 attrs, gx, gy = Attributes(), ctypes.c_int(), ctypes.c_int()
                 if not xlib.XGetWindowAttributes(display,wid,ctypes.byref(attrs)) or attrs.map_state != 2 or attrs.class_ != 1:
                     continue
-                xlib.XTranslateCoordinates(display,wid,root,0,0,ctypes.byref(gx),ctypes.byref(gy),ctypes.byref(child))
+                if not xlib.XTranslateCoordinates(display,wid,root,0,0,ctypes.byref(gx),ctypes.byref(gy),ctypes.byref(child)):
+                    continue
                 if gx.value <= point[0] < gx.value+attrs.width and gy.value <= point[1] < gy.value+attrs.height:
                     found = wid
                     break
@@ -345,7 +352,10 @@ def x11_hit(point):
                     pass
         return {'path':path,'pid':pid,'name':name or 'unnamed X11 window'}
     finally:
-        xlib.XCloseDisplay(display)
+        try:
+            xlib.XCloseDisplay(display)
+        finally:
+            xlib.XSetErrorHandler(previous_handler)
 
 
 def x11_foreground(query):
