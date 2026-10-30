@@ -1,0 +1,16 @@
+[
+  {
+    "artifact": "release-native-ubuntu24.04",
+    "zipMember": "putgd_26.1030.3075~dev+g8d06f9947ea0_amd64.deb",
+    "sha256": "296f6c75a57262a104285a49090a2c5827837d293ba1776066ab28b58fd3b974",
+    "auditMatched": true,
+    "installedInputMatched": true
+  },
+  {
+    "artifact": "release-native-ubuntu26.04",
+    "zipMember": "putgd_26.1030.3075~dev+g8d06f9947ea0_amd64.deb",
+    "sha256": "2e4c295422e319212b10fdf4f795803b75b6be720684c352de5d40cbc6f08876",
+    "auditMatched": true,
+    "installedInputMatched": true
+  }
+]

@@ -1,0 +1,89 @@
+[
+  {
+    "desktop": "kde",
+    "attempt": "k1",
+    "classification": "invalid setup: CLI rejects --params-stdin",
+    "issue": "#896",
+    "rawCounts": {
+      "passed": 0,
+      "failed": 0,
+      "blocked": 51
+    },
+    "runId": "cc3454da-e662-4df6-b2e2-eef0608f3caa"
+  },
+  {
+    "desktop": "cin",
+    "attempt": "c1",
+    "classification": "invalid setup evidence",
+    "issue": "#902",
+    "runId": "3384d1cf-dafc-465e-a884-fbae07b83773",
+    "run": "/home/user/e4/work/lab-runs/c1",
+    "placement": "boat",
+    "app": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "counts": {
+      "passed": 0,
+      "failed": 35,
+      "blocked": 0
+    }
+  },
+  {
+    "desktop": "gno",
+    "attempt": "g1",
+    "classification": "invalid setup evidence",
+    "issue": "#902",
+    "runId": "ca69a5b4-8e71-4c68-9c03-155dc4eb73c1",
+    "run": "/home/user/e4/work/lab-runs/g1",
+    "placement": "boat",
+    "app": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "counts": {
+      "passed": 0,
+      "failed": 31,
+      "blocked": 0
+    }
+  },
+  {
+    "desktop": "kde",
+    "attempt": "k2",
+    "classification": "invalid setup evidence",
+    "issue": "#902",
+    "runId": "92c768ab-5db0-41be-80ce-c3fab266f3c8",
+    "run": "/home/user/e4/work/lab-runs/k2",
+    "placement": "boat",
+    "app": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "counts": {
+      "passed": 0,
+      "failed": 34,
+      "blocked": 0
+    }
+  }
+]
