@@ -231,7 +231,10 @@ class FakeContext(Context):
         return self.clipboard
 
     def accessible(self, query):
-        return [{'name': 'Isolated local copies'}]
+        self.trace.append(('accessible', query))
+        if query.get('window') == 'review':
+            return []
+        return [{'name': 'Isolated local copies', 'popup': {'role':'menu'}}]
 
 
 class ReviewRecipes(unittest.TestCase):
@@ -467,6 +470,14 @@ class ReviewRecipes(unittest.TestCase):
         review.upload(ctx)
         self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
         self.assertEqual(ctx.frames[-1]['reference'], '01-history-list')
+        self.assertIn(('accessible', {'owned':True,'visible':True,'showing':True}), ctx.trace)
+
+    def test_upload_does_not_accept_an_unrelated_destination_label(self):
+        ctx = FakeContext()
+        ctx.accessible = lambda query: [{'name':'Isolated local copies','popup':None}]
+        with self.assertRaisesRegex(RecipeBlocked, 'destination popup'):
+            review.upload(ctx)
+        self.assertEqual(ctx.operation['state'], 'reviewing')
 
     def test_live_destinations_never_run_on_boat(self):
         for destination in ('s3', 'proton'):

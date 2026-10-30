@@ -499,7 +499,9 @@ def upload(ctx):
     destination = ctx.fixture('destination')
     ctx.click('uploadDestinationMenu', window='review')
     # This menu describes the immutable destination snapshot, rather than selecting another one.
-    entries = ctx.accessible({'window': 'review'})
+    entries = [e for e in ctx.accessible({'owned': True, 'visible': True, 'showing': True}) if e.get('popup')]
+    if not entries:
+        ctx.blocked('Review destination popup is not exposed by the live accessibility resolver (#672)', issue=672)
     ctx.expect(any(destination['label'] in e.get('name', '') for e in entries), 'destination menu names configured destination')
     ctx.keys('Esc')
     before = _inspect(ctx, rid)
