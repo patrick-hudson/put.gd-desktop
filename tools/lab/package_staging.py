@@ -41,21 +41,36 @@ def run(script):
 
 
 def process_status():
+    handle = None
     try:
         identity = json.loads(Path('staging-process.json').read_text())
         pid = identity['pid']
-        handle = os.pidfd_open(pid)
+        if (type(pid) is not int or pid <= 0 or
+                type(identity['startTicks']) is not int or identity['startTicks'] <= 0):
+            return {'exactProcessAlive': None}
         try:
-            ticks = int(Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()[19])
-            alive = ticks == identity['startTicks'] and not select.select([handle], [], [], 0)[0]
+            # Python < 3.9 has no pidfd_open. /proc still lets us distinguish
+            # this exact wrapper from a reused PID without ever signalling it.
+            pidfd_open = getattr(os, 'pidfd_open', None)
+            if pidfd_open is not None:
+                handle = pidfd_open(pid)
+            fields = Path(f'/proc/{pid}/stat').read_text().rsplit(')', 1)[1].split()
+            alive = int(fields[19]) == identity['startTicks'] and fields[0] not in ('Z', 'X')
+            if handle is not None:
+                alive = alive and not select.select([handle], [], [], 0)[0]
             return {'process': identity, 'exactProcessAlive': alive}
-        finally:
-            os.close(handle)
-    except (OSError, ValueError, KeyError, TypeError):
+        except ProcessLookupError:
+            return {'process': identity, 'exactProcessAlive': False}
+        except FileNotFoundError:
+            return {'process': identity, 'exactProcessAlive': False}
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
         return {'exactProcessAlive': None}
+    finally:
+        if handle is not None:
+            os.close(handle)
 
 
-def reconcile(seconds):
+def reconcile(seconds, abandoned=False):
     deadline = time.monotonic() + seconds
     with open('staging.lock', 'a') as fence:
         while True:
@@ -69,6 +84,13 @@ def reconcile(seconds):
         # Fence a delayed launch, too: lack of a PID file alone cannot prove
         # that an SSH command has not started (or will not start later).
         Path('staging-cancelled').touch(mode=0o600, exist_ok=True)
+        if abandoned:
+            # Explicit operator recovery only: the flock is free and the recorded
+            # exact wrapper is gone. Unreadable/missing identity is not death proof.
+            status = process_status()
+            if status['exactProcessAlive'] is False:
+                return {'finished': True, 'state': 'staging-abandoned', **status}
+            return {'finished': False, 'state': 'staging-outcome-unknown', **status}
         if Path('staging-result.json').exists():
             result = json.loads(Path('staging-result.json').read_text())
             identity = json.loads(Path('staging-process.json').read_text())
@@ -86,7 +108,7 @@ def main():
     os.chdir(sys.argv[2])
     if sys.argv[1] == 'run':
         return run(sys.argv[3])
-    print(json.dumps(reconcile(float(sys.argv[3]))))
+    print(json.dumps(reconcile(float(sys.argv[3]), abandoned='--abandoned' in sys.argv[4:])))
     return 0
 
 

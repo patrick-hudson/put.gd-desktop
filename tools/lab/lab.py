@@ -1726,16 +1726,17 @@ INSTALL_LOCK_PREFIX = ('set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
                        'exec 9> ~/putgd-lab/install-guard\nflock -x -w 5 9\n')
 
 
-def reconcile_staging(run, remote, wait=30):
+def reconcile_staging(run, remote, wait=30, abandoned=False):
     lifetime = (HERE / 'package_staging.py').read_text()
-    script = ('python3 -c ' + shlex.quote(lifetime) + ' reconcile "$HOME/' + remote + '" ' + str(wait) + '\n')
+    script = ('python3 -c ' + shlex.quote(lifetime) + ' reconcile "$HOME/' + remote + '" ' + str(wait)
+              + (' --abandoned' if abandoned else '') + '\n')
     report = json.loads(ssh(run, script, timeout=wait + 10))
     if not isinstance(report, dict) or type(report.get('finished')) is not bool:
         raise LabError('Invalid staging reconciliation receipt')
     return report
 
 
-def recover_staging(run, job):
+def recover_staging(run, job, abandoned=False):
     if not re.fullmatch(r'install-[0-9a-f]{32}', job):
         raise LabError('Recovery requires the exact held install job ID')
     remote = 'putgd-lab/' + job
@@ -1746,11 +1747,12 @@ def recover_staging(run, job):
     # install supervisor's lock or a replacement job's token.
     ssh(run, f'set -eu\ntest "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
              f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n')
-    report = reconcile_staging(run, remote)
+    report = reconcile_staging(run, remote, abandoned=abandoned)
     if report['finished'] is not True:
         raise LabError(f'Staging {job} remains held ({report["state"]}); install-active blocks retries. '
                        f'Inspect ~/{remote}/staging-process.json and staging-result.json; '
                        'do not remove the lock while staging may still be running.')
+    write_json(Path(run) / job / 'staging-reconciliation.json', report)
     ssh(run, INSTALL_LOCK_PREFIX + f'test "$(cat ~/putgd-lab/install-active/job)" = {job}\n'
              f'test ! -e ~/{remote}/progress.json && test ! -e ~/{remote}/result.json\n'
              'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
@@ -1840,15 +1842,18 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
                 if report['finished'] is not True:
                     raise LabError('Staging exit is unconfirmed (' + report['state'] + ')')
                 release_lock()
-            except (LabError, OSError, ValueError, subprocess.TimeoutExpired) as error:
+            except BaseException as error:
                 message = (f'Install staging job {token} retains install-active; retries are blocked. '
                            f'Inspect ~/{remote}/staging-process.json and staging-result.json. '
                            f'When reachable, run tools/lab/lab.py recover-staging --run {run} --job {token}. '
                            f'Reconciliation: {type(error).__name__}.')
+                if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                    print(message, file=sys.stderr)
+                    raise
                 if isinstance(interrupted, (KeyboardInterrupt, SystemExit)):
                     print(message, file=sys.stderr)
                 else:
-                    raise LabError(message) from interrupted
+                    raise LabError(message) from error
         raise
     try:
         ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
@@ -2039,6 +2044,8 @@ def main():
             child.add_argument('--settle', type=int, default=30, help='Seconds to wait for the guest to report the outputs')
         if name == 'recover-staging':
             child.add_argument('--job', required=True, help='Exact held staging job ID')
+            child.add_argument('--abandoned', action='store_true',
+                               help='Recover without a terminal receipt only if the staging flock is free and the recorded PID is dead or reused; never signal processes')
         if name == 'install':
             child.add_argument('--install-timeout', type=int, help='Apt budget in seconds (profile install_timeout, default 900)')
             child.add_argument('--install-recovery-timeout', type=int, help='Wait for owned processes after timeout (profile install_recovery_timeout, default 600)')
@@ -2084,7 +2091,7 @@ def main():
         elif args.action == 'cli':
             value = cli(args.run, args.method, json.loads(args.params))
         elif args.action == 'recover-staging':
-            value = recover_staging(args.run, args.job)
+            value = recover_staging(args.run, args.job, abandoned=args.abandoned)
         elif args.action == 'install':
             value = install(args.run, deb=args.deb, appimage=args.appimage,
                             install_timeout=args.install_timeout, install_recovery_timeout=args.install_recovery_timeout)

@@ -1,6 +1,7 @@
 """Host contracts only: these tests never establish compositor acceptance."""
 import importlib.util
 import contextlib
+import fcntl
 import io
 import json
 import hashlib
@@ -564,6 +565,22 @@ class LabContracts(unittest.TestCase):
                         self.assertFalse(any('rmdir' in c.args[1] for c in ssh.call_args_list))
                         self.assertTrue(next(run.glob('install-*/staging-failed.json')).is_file())
 
+    def test_second_interrupt_and_unexpected_failure_during_staging_reconciliation_print_recovery(self):
+        for error in (KeyboardInterrupt(), SystemExit(2), RuntimeError('unexpected failure')):
+            with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+                warning = io.StringIO()
+                with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put'), \
+                        patch.object(lab, 'get'), patch.object(lab, 'stage_install_helper', side_effect=KeyboardInterrupt()), \
+                        patch.object(lab, 'reconcile_staging', side_effect=error), contextlib.redirect_stderr(warning):
+                    with self.assertRaises(type(error) if isinstance(error, (KeyboardInterrupt, SystemExit)) else KeyboardInterrupt):
+                        lab.install_package(run, 'synthetic.deb')
+                job = next(run.glob('install-*')).name
+                self.assertIn('retains install-active', warning.getvalue())
+                self.assertIn(f'recover-staging --run {run} --job {job}', warning.getvalue())
+                self.assertFalse(any('rmdir' in c.args[1] for c in ssh.call_args_list))
+
     def test_staging_lifetime_fence_finished_wait_exit_and_stopped(self):
         for finish in ('already-finished', 'exits', 'stopped', 'adopted'):
             with self.subTest(finish=finish), tempfile.TemporaryDirectory() as directory:
@@ -690,6 +707,150 @@ class LabContracts(unittest.TestCase):
                     for c in ssh.call_args_list:
                         self.assertIn('test ! -e', c.args[1])
                         self.assertIn('install-active/job', c.args[1])
+
+    def test_abandoned_recovery_requires_free_flock_and_dead_or_reused_identity(self):
+        # A real live process proves that PID reuse checks never signal it.
+        process = lab.subprocess.Popen([sys.executable, '-c', 'import sys; sys.stdin.read()'],
+                                       stdin=lab.subprocess.PIPE)
+        self.addCleanup(lambda: process.wait(timeout=3))
+        self.addCleanup(process.stdin.close)
+        ticks = int(Path(f'/proc/{process.pid}/stat').read_text().rsplit(')', 1)[1].split()[19])
+        dead = json.loads(lab.subprocess.run([sys.executable, '-c',
+            'import json, os; from pathlib import Path; '
+            'print(json.dumps({"pid": os.getpid(), "startTicks": '
+            'int(Path("/proc/self/stat").read_text().rsplit(")", 1)[1].split()[19])}))'],
+            capture_output=True, text=True, check=True, timeout=3).stdout)
+        original_reconcile = lab.reconcile_staging
+        for case in ('flock-held', 'alive', 'terminal-but-alive', 'missing-identity', 'invalid-identity', 'unknown', 'dead', 'reused'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                job = 'install-' + 'b' * 32
+                remote = run / 'putgd-lab' / job
+                remote.mkdir(parents=True)
+                active = run / 'putgd-lab/install-active'
+                active.mkdir()
+                (active / 'job').write_text(job)
+                (run / job).mkdir()
+                lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
+                identity = (dead if case in ('dead', 'flock-held') else
+                            {'pid': process.pid, 'startTicks': ticks + (case == 'reused')})
+                if case == 'invalid-identity':
+                    identity = {'pid': -1, 'startTicks': ticks}
+                if case == 'unknown':
+                    identity = {'pid': process.pid, 'startTicks': 'unreadable'}
+                if case == 'terminal-but-alive':
+                    lab.write_json(remote / 'staging-result.json', {**identity, 'finished': True, 'exitCode': 0})
+                if case != 'missing-identity':
+                    lab.write_json(remote / 'staging-process.json', identity)
+                def ssh(_run, script, **kwargs):
+                    return lab.subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+                        env={**os.environ, 'HOME': directory}, timeout=3, check=True).stdout
+                with open(remote / 'staging.lock', 'a') as fence:
+                    if case == 'flock-held':
+                        fcntl.flock(fence, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', side_effect=ssh), \
+                            patch.object(lab, 'reconcile_staging', side_effect=lambda run, remote, **kw:
+                                original_reconcile(run, remote, wait=0, **kw)):
+                        if case in ('dead', 'reused'):
+                            report = lab.recover_staging(run, job, abandoned=True)
+                            self.assertEqual(report['state'], 'staging-abandoned')
+                            self.assertFalse(report['exactProcessAlive'])
+                            self.assertEqual(report['process'], identity)
+                            self.assertFalse(active.exists())
+                            self.assertEqual(lab.read_json(run / job / 'staging-reconciliation.json'), report)
+                            delayed = lab.subprocess.run([sys.executable, str(lab.HERE / 'package_staging.py'),
+                                'run', str(remote), 'touch must-not-run'], timeout=3)
+                            self.assertEqual(delayed.returncode, 125)
+                            self.assertFalse((remote / 'must-not-run').exists())
+                        else:
+                            with self.assertRaisesRegex(lab.LabError, 'remains held.*blocks retries'):
+                                lab.recover_staging(run, job, abandoned=True)
+                            self.assertEqual((active / 'job').read_text(), job)
+                self.assertIsNone(process.poll())
+
+    def test_abandoned_recovery_keeps_controller_ownership_and_supervisor_guards(self):
+        for case in ('no-failure-receipt', 'unowned', 'replacement-token', 'progress.json', 'result.json'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                job = 'install-' + 'b' * 32
+                remote = run / 'putgd-lab' / job
+                remote.mkdir(parents=True)
+                active = run / 'putgd-lab/install-active'
+                active.mkdir()
+                held = 'install-' + 'c' * 32 if case == 'replacement-token' else job
+                (active / 'job').write_text(held)
+                if case != 'no-failure-receipt':
+                    (run / job).mkdir()
+                    lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
+                if case in ('progress.json', 'result.json'):
+                    lab.write_json(remote / case, {'synthetic': True})
+                def ssh(_run, script, **kwargs):
+                    result = lab.subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+                        env={**os.environ, 'HOME': directory}, timeout=3)
+                    if result.returncode:
+                        raise lab.LabError('guest guard refused recovery')
+                    return result.stdout
+                with patch.object(lab, 'verify_owned_guest', side_effect=(
+                        lab.LabError('unowned overlay') if case == 'unowned' else None)), \
+                        patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'reconcile_staging') as reconcile:
+                    with self.assertRaises(lab.LabError):
+                        lab.recover_staging(run, job, abandoned=True)
+                    reconcile.assert_not_called()
+                self.assertEqual((active / 'job').read_text(), held)
+
+    def test_staging_reconciliation_without_pidfd_open_uses_proc_and_keeps_lock(self):
+        identity = {'pid': os.getpid(), 'startTicks': int(
+            Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19])}
+        for reused in (False, True):
+            with self.subTest(reused=reused), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                lab.write_json(root / 'staging-process.json', {
+                    **identity, 'startTicks': identity['startTicks'] + reused})
+                # Simulate the actual older guest API in a separate interpreter.
+                script = ('import os, runpy; '
+                          'os.__dict__.pop("pidfd_open", None); '
+                          'runpy.run_path(' + repr(str(lab.HERE / 'package_staging.py')) + ', run_name="__main__")')
+                for held in (False, True):
+                    with self.subTest(held=held), open(root / 'staging.lock', 'a') as fence:
+                        if held:
+                            fcntl.flock(fence, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        result = lab.subprocess.run([sys.executable, '-c', script, 'reconcile', directory, '0'],
+                            capture_output=True, text=True, check=True, timeout=3)
+                        report = json.loads(result.stdout)
+                        self.assertFalse(report['finished'])
+                        self.assertEqual(report['exactProcessAlive'], not reused)
+                        self.assertEqual(report['state'], 'staging-running' if held else 'staging-outcome-unknown')
+                        self.assertEqual(result.stderr, '')
+                        if held:
+                            with open(root / 'staging.lock', 'a') as probe:
+                                with self.assertRaises(BlockingIOError):
+                                    fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def test_abandoned_recovery_refuses_unreadable_proc_identity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lab.write_json(root / 'staging-process.json', {'pid': os.getpid(), 'startTicks': 1})
+            # Only /proc reads fail; reading the saved job identity still works.
+            script = ("import os, runpy; from pathlib import Path; from unittest.mock import patch; "
+                      "os.__dict__.pop('pidfd_open', None); original = Path.read_text; "
+                      "read = lambda p, *a, **kw: (_ for _ in ()).throw(PermissionError()) "
+                      "if str(p).startswith('/proc/') else original(p, *a, **kw); "
+                      "patch.object(Path, 'read_text', read).start(); "
+                      "runpy.run_path(" + repr(str(lab.HERE / 'package_staging.py')) + ", run_name='__main__')")
+            result = lab.subprocess.run([sys.executable, '-c', script, 'reconcile', directory, '0', '--abandoned'],
+                capture_output=True, text=True, check=True, timeout=3)
+            report = json.loads(result.stdout)
+            self.assertFalse(report['finished'])
+            self.assertIsNone(report['exactProcessAlive'])
+            self.assertEqual(result.stderr, '')
+
+    def test_recover_staging_cli_passes_abandoned_option(self):
+        with patch('sys.argv', ['lab.py', 'recover-staging', '--run', '/tmp/run',
+                               '--job', 'install-' + 'b' * 32, '--abandoned']), \
+                patch.object(lab, 'recover_staging', return_value={'finished': True}) as recover, \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(lab.main(), 0)
+        recover.assert_called_once_with('/tmp/run', 'install-' + 'b' * 32, abandoned=True)
 
     def test_concurrent_release_and_recovery_cannot_remove_replacement_lock(self):
         with tempfile.TemporaryDirectory() as directory:
