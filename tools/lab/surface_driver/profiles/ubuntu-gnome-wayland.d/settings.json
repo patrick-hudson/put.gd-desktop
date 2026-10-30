@@ -124,14 +124,6 @@
       "name": "Clear upload clipboard shortcut",
       "role": "push button"
     },
-    "recordEditShortcut": {
-      "name": "Change capture region & edit shortcut",
-      "role": "push button"
-    },
-    "clearEditShortcut": {
-      "name": "Clear capture region & edit shortcut",
-      "role": "push button"
-    },
     "recordRecordShortcut": {
       "name": "Change record screen shortcut",
       "role": "push button"
