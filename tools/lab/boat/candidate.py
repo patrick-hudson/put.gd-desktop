@@ -374,16 +374,17 @@ def ci_differences(target):
 def safe_print(message, **kwargs):
     try:
         print(message, flush=True, **kwargs)
-    except BrokenPipeError:
-        # Prevent Python shutdown from flushing the same closed stdout again.
-        if kwargs.get('file', sys.stdout) is sys.stdout:
-            try:
-                with open(os.devnull, 'w') as sink:
-                    os.dup2(sink.fileno(), sys.stdout.fileno())
-            except (OSError, ValueError, AttributeError):
-                pass
-    except OSError:
-        pass
+    except (OSError, ValueError):
+        # Prevent Python shutdown from flushing the failed stream a second time.
+        stream = kwargs.get('file') or sys.stdout
+        try:
+            with open(os.devnull, 'w') as sink:
+                os.dup2(sink.fileno(), stream.fileno())
+        except (OSError, ValueError, AttributeError):
+            if stream is sys.stdout:
+                sys.stdout = open(os.devnull, 'w')
+            elif stream is sys.stderr:
+                sys.stderr = open(os.devnull, 'w')
 
 
 def build_worker(target, args, output, specification):

@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import tarfile
 import signal
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -370,6 +371,15 @@ class CandidateContracts(unittest.TestCase):
             self.assertEqual(result['cleanup']['deletedIds'], ['bx_orphan'])
             self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage', None))
             self.assertEqual(cleaner.call_args.kwargs['recovery_seconds'], 10)
+
+    def test_closed_output_stream_is_nonfatal_and_is_replaced_for_shutdown(self):
+        closed = io.StringIO()
+        closed.close()
+        with patch.object(sys, 'stdout', closed):
+            candidate.safe_print('completed')
+            self.assertIsNot(sys.stdout, closed)
+            self.assertTrue(sys.stdout.writable())
+            sys.stdout.close()
 
     def test_cleanup_mode_requires_no_recipes_capacity_or_new_workers_and_handles_all_signals(self):
         with tempfile.TemporaryDirectory() as temporary:
