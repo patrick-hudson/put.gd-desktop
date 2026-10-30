@@ -13,7 +13,7 @@ from unittest.mock import Mock, call, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.catalog import Catalog, compare, control_point
-from tools.lab.surface_driver.target import Target, input_release
+from tools.lab.surface_driver.target import RELEASE_TIMEOUT, Target, input_release
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.run import run_recipes
 
@@ -56,7 +56,10 @@ class Geometry(unittest.TestCase):
         target._outputs = [{'width': 1280, 'height': 800, 'x': 0, 'y': 0},
                            {'width': 1024, 'height': 768, 'x': 1280, 'y': 0}]
         sent = []
-        target.events = lambda *args: sent.append(args)
+        target.run = Path('/owned/run')
+        sending = patch('tools.lab.surface_driver.target.lab.input_events', side_effect=lambda run,*args:sent.append(args))
+        sending.start()
+        self.addCleanup(sending.stop)
         target.pointer(320, 200, 1280, 800, head=0)
         self.assertEqual(len(sent[0]), 1)  # no display/head-bound tablet
         self.assertEqual([e['data']['value'] for e in sent[0][0]], [math.ceil(320*32768/2304), 8192])
@@ -205,8 +208,11 @@ class PhysicalPointerSafety(unittest.TestCase):
                     self.drag()
             else:
                 self.drag()
-        send.assert_called_once_with(self.target.run,
-            [{'type': 'btn', 'data': {'button': 'right', 'down': False}}])
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args, (self.target.run,
+            [{'type': 'btn', 'data': {'button': 'right', 'down': False}}]))
+        # Its own short budget: a deferred deadline is not held for long (#815).
+        self.assertLessEqual(send.call_args.kwargs['timeout'], RELEASE_TIMEOUT)
         # One press, zero/two move attempts, then a fresh owned-endpoint
         # check before the button-up-only QMP packet.
         self.assertEqual(self.target._verify_endpoints.call_count,

@@ -16,7 +16,8 @@ def seeded_config(root):
                       for name, value in doc['actions'].items()}
     doc['actions']['edit'] = {'destination':'local', 'profileId':None, 'shortcut':''}
     doc['archive'].update(root=root+'/files', keepUploads=True)
-    doc['preferences'].update(launchAtLogin=False, unlockCredentialsAtStartup=False)
+    doc['preferences'].update(launchAtLogin=False, unlockCredentialsAtStartup=False,
+                              updates={'check':False,'channel':'build'})
     return doc
 
 
@@ -62,7 +63,8 @@ def app_profile(scope, *, first_launch=False):
     scope.defer('owned history and cache',clean_history,priority=50)
     scope.patch({'archive':{'root':scope.root+'/out','keepUploads':True},
                  'actions':{name:{'destination':'local','profileId':None} for name in ('region','window','desktop','clipboard','edit')},
-                 'preferences':{'launchAtLogin':False,'unlockCredentialsAtStartup':False}})
+                 'preferences':{'launchAtLogin':False,'unlockCredentialsAtStartup':False,
+                                'updates':{'check':False,'channel':'build'}}})
     # Each recipe gets its own journals, artifact store and session-only
     # credential cache. Restoring the resident environment retires them all;
     # existing journals in the target's baseline are never rewritten/deleted.

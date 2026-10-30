@@ -39,6 +39,12 @@ const QString requestInterface=QStringLiteral("org.freedesktop.portal.Request");
 // Accepting a request is quick once the portal runs; the chooser itself then
 // stays open as long as the person needs. A first use may start the portal.
 int portalCallTimeoutMs=8000;
+// Response 2 is "ended in some other way" (#781). The GTK and GNOME backends
+// answer it when the person presses Escape or closes the chooser's window; the
+// portal answers it when a running backend fails (a backend that fails to start
+// makes the call itself error). The chooser takes about 300 ms to get focus after
+// the request is accepted, so a 2 this soon is a failure, not a person.
+int portalFailureWindowMs=250;
 QString modeName(FileDialog::Mode mode){return mode==FileDialog::Mode::Save?"save":mode==FileDialog::Mode::Folder?"folder":"open";}
 QJsonValue text(const QString& value){return value.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(value);}
 // Qt's widget dialog in the Theme tokens: the generic platform theme gives it
@@ -99,6 +105,7 @@ FileDialog::~FileDialog(){
 }
 QFileDialog* FileDialog::fallbackDialog()const{return fallback_.data();}
 void FileDialog::setPortalCallTimeoutMs(int milliseconds){portalCallTimeoutMs=qMax(1,milliseconds);}
+void FileDialog::setPortalFailureWindowMs(int milliseconds){portalFailureWindowMs=qMax(0,milliseconds);}
 QString FileDialog::parentWindow(const QWidget* owner){
  if(!owner||QGuiApplication::platformName()!="xcb")return {};
  const auto* window=owner->window();
@@ -151,6 +158,7 @@ void FileDialog::requestPortal(){
  auto call=QDBusMessage::createMethodCall(portalService,portalPath,chooserInterface,options_.mode==Mode::Save?"SaveFile":"OpenFile");
  call<<parent_<<options_.title<<options;
  qCInfo(lcFileDialog).noquote()<<"portal"<<call.member()<<"parent"<<(parent_.isEmpty()?QStringLiteral("none"):parent_);
+ asked_.start();
  auto* watcher=new QDBusPendingCallWatcher(bus.asyncCall(call,portalCallTimeoutMs),this);
  connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,attempt=attempt_,expected]{
   watcher->deleteLater();
@@ -160,6 +168,8 @@ void FileDialog::requestPortal(){
   // was closed then; close one an old portal named differently too.
   if(attempt!=attempt_){if(!handle.isEmpty()&&handle!=expected)closeRequest(handle);return;}
   if(reply.isError()){openFallback(reply.error().name());return;}
+  // The chooser can only show once the request is accepted.
+  if(phase_==Phase::Portal)asked_.start();
   if(handle!=handle_){unsubscribe();subscribe(handle);}
  });
  // A portal that goes away while its chooser is open never answers.
@@ -179,7 +189,10 @@ void FileDialog::portalResponse(uint response,const QVariantMap& results){
  if(phase_!=Phase::Portal)return;
  ++attempt_;unsubscribe();handle_.clear();
  if(gone_){gone_->deleteLater();gone_=nullptr;}
- if(response==1){finish("cancelled",{});return;}
+ const auto elapsed=asked_.isValid()?asked_.elapsed():0;
+ qCInfo(lcFileDialog).noquote()<<"portal response"<<response<<"after"<<elapsed<<"ms since accepted"
+     <<(response==2?(elapsed>=portalFailureWindowMs?"(closed by the person, or the backend failed late)":"(backend failed early)"):"");
+ if(response==1||(response==2&&elapsed>=portalFailureWindowMs)){finish("cancelled",{});return;}
  if(response!=0){openFallback("portal_failed");return;}
  const auto uris=results.value("uris").toStringList();
  const QUrl url(uris.value(0));

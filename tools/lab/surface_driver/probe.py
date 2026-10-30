@@ -33,7 +33,8 @@ def owned(pid):
 
 
 # at-spi2-core renamed ATSPI_ROLE_PUSH_BUTTON's name to "button" (Qt 6.10 on
-# GNOME 50 reports it); older servers say "push button". One canonical name.
+# GNOME 50 reports it); older servers say "push button". Normalize for matching
+# only; observations retain the server's spelling.
 ROLE_SYNONYMS = {'button': 'push button'}
 
 
@@ -52,7 +53,7 @@ def matches(row, query):
             if not fnmatch.fnmatchcase(row.get(key, ''), value):
                 return False
         elif key == 'role':
-            if row['role'] != normalize_role(value):
+            if normalize_role(row['role']) != normalize_role(value):
                 return False
         elif key == 'within':
             rect = row.get('rect')
@@ -67,6 +68,61 @@ def matches(row, query):
     return True
 
 
+ROOT_PATH = '/org/a11y/atspi/accessible/root'
+NULL_PATH = '/org/a11y/atspi/null'
+REGISTRY = 'org.a11y.atspi.Registry'
+
+# Reads go over raw D-Bus, never through libatspi (#814). libatspi sends
+# org.a11y.atspi.Cache.GetItems to every application it first meets, and a
+# probe meets the whole desktop: getDesktop(0) adds every registered app, an
+# event from an app adds it too. Each fresh probe process therefore asked the
+# shell to serialise its whole bridge cache. On Cinnamon (at-spi2-core 2.52)
+# that cache can hold a freed AtkObject; GetItems refs every entry first and
+# crashes the shell ("Cinnamon just crashed", impl_GetItems ->
+# g_hash_table_foreach -> g_object_ref). Plain Accessible/Component/Text/
+# Action calls never walk that cache.
+_A11Y = {}
+
+
+def a11y_bus():
+    """This process's private connection to the accessibility bus."""
+    import dbus
+    connection = _A11Y.get('connection')
+    if connection is None or not connection.get_is_connected():
+        session = dbus.SessionBus()
+        address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
+        connection = dbus.bus.BusConnection(str(address))
+        _A11Y.clear()
+        _A11Y.update(connection=connection, pids={})
+    return connection
+
+
+def bus_pid(connection, bus):
+    """Owner PID of an a11y-bus name, from the bus daemon (never the app itself)."""
+    import dbus
+    pids = _A11Y.setdefault('pids', {})
+    if bus not in pids:
+        daemon = dbus.Interface(connection.get_object('org.freedesktop.DBus', '/org/freedesktop/DBus'), 'org.freedesktop.DBus')
+        try:
+            pids[bus] = int(daemon.GetConnectionUnixProcessID(bus, timeout=3))
+        except dbus.DBusException as error:
+            raise NotImplementedError(str(error)) from error
+    return pids[bus]
+
+
+def role_name(role, fallback):
+    """libatspi's own name for a role number (as pyatspi reported it), else the server's."""
+    try:
+        import gi
+        gi.require_version('Atspi', '2.0')
+        from gi.repository import Atspi
+        if 0 <= role < int(Atspi.Role.LAST_DEFINED) and role != int(Atspi.Role.EXTENDED):
+            return Atspi.role_get_name(Atspi.Role(role))
+    except (ImportError, ValueError, AttributeError):
+        pass
+    return fallback()
+
+
 def popup_file():
     runtime = os.environ.get('XDG_RUNTIME_DIR')
     return runtime + '/putgd-lab-popups.json' if runtime else None
@@ -78,12 +134,16 @@ def popup_watch(query):
     Qt lists only non-Qt::Popup top-level windows as application children, so a
     context or row menu opened with QMenu::exec() is unreachable by a tree walk.
     Qt does emit object:state-changed:showing for it (ObjectShow) once a
-    listener is registered. This process listens for the whole run and keeps
-    {bus, path, pid} of owned showing popups in a private runtime file; every
-    (fresh) accessible() walks those popups live over the a11y bus.
+    listener is registered. This process registers that listener with the
+    registry itself and reads the signals off the a11y bus (no libatspi, so no
+    GetItems on the shell, #814). It keeps {bus, path, pid} of owned showing
+    popups in a private runtime file; every (fresh) accessible() walks those
+    popups live over the a11y bus.
     """
-    import pyatspi
+    import dbus
+    import dbus.mainloop.glib
     import signal
+    from gi.repository import GLib
     path, current, focus = popup_file(), {}, {}
     def write():
         temporary = path + '.tmp'
@@ -93,53 +153,71 @@ def popup_watch(query):
         finally:
             os.close(descriptor)
         os.replace(temporary, path)
-    def changed(event):
+    session = dbus.SessionBus()
+    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
+    connection = dbus.bus.BusConnection(str(address), mainloop=dbus.mainloop.glib.DBusGMainLoop())
+    _A11Y.update(connection=connection, pids={})
+    def changed(minor, detail1, detail2, value, properties, sender=None, path=None):
         try:
-            node = event.source
-            pid = node.get_process_id()
+            if str(minor) not in ('showing', 'focused') or not sender or not path:
+                return
+            pid = bus_pid(connection, str(sender))
             if not owned(pid):
                 return
-            bus = node.app.bus_name
-            key = bus + node.path
-            if event.type.endswith(':focused'):
+            bus, node_path = str(sender), str(path)
+            key = bus + node_path
+            if str(minor) == 'focused':
                 # Widgets parented to a view's viewport (History's row "More
                 # actions" button) are outside Qt's accessible tree too; the
                 # focused one is found here.
-                if not event.detail1:
+                if not detail1:
                     if key not in focus:
                         return
                     focus.clear()
                 else:
                     focus.clear()
-                    focus[key] = {'bus': bus, 'path': node.path, 'pid': pid, 'focus': True}
-            elif normalize_role(node.getRoleName()) not in POPUP_ROLES:
+                    focus[key] = {'bus': bus, 'path': node_path, 'pid': pid, 'focus': True}
+            elif normalize_role(RawNode(connection, bus, node_path, pid).getRoleName()) not in POPUP_ROLES:
                 return
-            elif event.detail1:
-                current[key] = {'bus': bus, 'path': node.path, 'pid': pid}
+            elif detail1:
+                current[key] = {'bus': bus, 'path': node_path, 'pid': pid}
             elif current.pop(key, None) is None:
                 return
             write()
         except Exception:
             pass
     write()
-    pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing', 'object:state-changed:focused')
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-    pyatspi.Registry.start()
+    connection.add_signal_receiver(changed, signal_name='StateChanged', dbus_interface='org.a11y.atspi.Event.Object',
+                                   sender_keyword='sender', path_keyword='path')
+    registry = dbus.Interface(connection.get_object(REGISTRY, '/org/a11y/atspi/registry'), 'org.a11y.atspi.Registry')
+    for event in ('object:state-changed:showing', 'object:state-changed:focused'):
+        registry.RegisterEvent(event, dbus.Array([], signature='s'), '', timeout=5)
+    loop = GLib.MainLoop()
+    signal.signal(signal.SIGTERM, lambda *_: loop.quit())
+    loop.run()
     return {}
 
 
 class RawNode:
     """A live accessible addressed by (bus name, path) on the a11y bus.
 
-    Implements just the pyatspi node surface accessible() uses, so a popup
-    known only from the watcher's file is walked with the same code. Every
-    property is a direct D-Bus call: nothing is cached across probes.
+    Implements just the pyatspi node surface the probes use, so the desktop,
+    applications and popups known only from the watcher's file are walked with
+    the same code. Every property is a direct D-Bus call: nothing is cached
+    across probes, and the Cache interface is never called (#814).
     """
     ACCESSIBLE = 'org.a11y.atspi.Accessible'
 
-    def __init__(self, connection, bus, path, pid):
-        self.connection, self.bus, self.path, self.pid = connection, bus, path, pid
-        self._object = connection.get_object(bus, path, introspect=False)
+    def __init__(self, connection, bus, path, pid=None):
+        self.connection, self.bus, self.path, self.pid = connection, str(bus), str(path), pid
+        self._object = connection.get_object(self.bus, self.path, introspect=False)
+        self._interfaces = None
+
+    def __eq__(self, other):
+        return isinstance(other, RawNode) and (self.bus, self.path) == (other.bus, other.path)
+
+    def __hash__(self):
+        return hash((self.bus, self.path))
 
     def _call(self, interface, method, *args):
         import dbus
@@ -148,21 +226,33 @@ class RawNode:
         except dbus.DBusException as error:
             raise NotImplementedError(str(error)) from error
 
-    def _property(self, name):
-        return str(self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, name))
+    def _property(self, name, interface=ACCESSIBLE):
+        return self._call('org.freedesktop.DBus.Properties', 'Get', interface, name)
+
+    def _node(self, reference):
+        bus, path = str(reference[0]), str(reference[1])
+        if path == NULL_PATH:
+            return None
+        return RawNode(self.connection, bus, path, self.pid if bus == self.bus else None)
 
     @property
     def name(self):
-        return self._property('Name')
+        return str(self._property('Name'))
 
     @property
     def description(self):
-        return self._property('Description')
+        return str(self._property('Description'))
+
+    @property
+    def childCount(self):
+        return int(self._property('ChildCount'))
 
     def getRoleName(self):
-        return str(self._call(self.ACCESSIBLE, 'GetRoleName'))
+        return role_name(int(self._call(self.ACCESSIBLE, 'GetRole')), lambda: str(self._call(self.ACCESSIBLE, 'GetRoleName')))
 
     def get_process_id(self):
+        if self.pid is None:
+            self.pid = bus_pid(self.connection, self.bus)
         return self.pid
 
     def getAttributes(self):
@@ -176,6 +266,12 @@ class RawNode:
                 return bool(index // 32 < len(words) and words[index // 32] >> (index % 32) & 1)
         return States()
 
+    def _require(self, interface):
+        if self._interfaces is None:
+            self._interfaces = {str(i) for i in self._call(self.ACCESSIBLE, 'GetInterfaces')}
+        if interface not in self._interfaces:
+            raise NotImplementedError(interface)
+
     def queryComponent(self):
         return self
 
@@ -183,19 +279,36 @@ class RawNode:
         import dbus
         return tuple(int(v) for v in self._call('org.a11y.atspi.Component', 'GetExtents', dbus.UInt32(int(coordinates))))
 
+    def getAccessibleAtPoint(self, x, y, coordinates):
+        import dbus
+        return self._node(self._call('org.a11y.atspi.Component', 'GetAccessibleAtPoint',
+                                     dbus.Int32(int(x)), dbus.Int32(int(y)), dbus.UInt32(int(coordinates))))
+
     def queryText(self):
-        raise NotImplementedError
+        self._require('org.a11y.atspi.Text')
+        node = self
+        class Text:
+            characterCount = int(node._property('CharacterCount', 'org.a11y.atspi.Text'))
+            def getText(self, start, end):
+                import dbus
+                return str(node._call('org.a11y.atspi.Text', 'GetText', dbus.Int32(start), dbus.Int32(end)))
+        return Text()
 
     def queryAction(self):
-        raise NotImplementedError
+        self._require('org.a11y.atspi.Action')
+        node = self
+        class Action:
+            nActions = int(node._property('NActions', 'org.a11y.atspi.Action'))
+            def getKeyBinding(self, index):
+                import dbus
+                return str(node._call('org.a11y.atspi.Action', 'GetKeyBinding', dbus.Int32(index)))
+        return Action()
 
     def __iter__(self):
-        return iter([RawNode(self.connection, str(bus), str(path), self.pid)
-                     for bus, path in self._call(self.ACCESSIBLE, 'GetChildren')])
+        return iter([self._node(child) for child in self._call(self.ACCESSIBLE, 'GetChildren')])
 
     def parent(self):
-        bus, path = self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, 'Parent')
-        return RawNode(self.connection, str(bus), str(path), self.pid) if str(path) != '/org/a11y/atspi/null' else None
+        return self._node(self._property('Parent'))
 
     def window(self):
         """Name of the top-level accessible (child of the application root) above this node."""
@@ -210,6 +323,11 @@ class RawNode:
         return ''
 
 
+def desktop_root():
+    """The registry's desktop; its children are the application roots."""
+    return RawNode(a11y_bus(), REGISTRY, ROOT_PATH)
+
+
 def popup_roots(query):
     """Extra walk roots for the watcher's showing popups, with the same app scoping."""
     path = popup_file()
@@ -220,11 +338,8 @@ def popup_roots(query):
         return []
     if not entries:
         return []
-    import dbus
     import pyatspi
-    session = dbus.SessionBus()
-    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
-    connection = dbus.bus.BusConnection(str(address))
+    connection = a11y_bus()
     roots = []
     for entry in entries:
         pid = entry['pid']
@@ -235,7 +350,7 @@ def popup_roots(query):
             states = node.getState()
             if not states.contains(pyatspi.STATE_SHOWING) or (entry.get('focus') and not states.contains(pyatspi.STATE_FOCUSED)):
                 continue
-            name = RawNode(connection, entry['bus'], '/org/a11y/atspi/accessible/root', pid).name
+            name = RawNode(connection, entry['bus'], ROOT_PATH, pid).name
             window = node.window() if entry.get('focus') else ''
         except NotImplementedError:
             continue
@@ -275,6 +390,28 @@ def compositor_activate(compositor, window_id):
         witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
         return bool(witness.Activate(dbus.UInt64(window_id), dbus_interface='org.putgd.LabWitness', timeout=3))
     raise RuntimeError('this compositor witness cannot raise windows')
+
+
+def resize_witness(query):
+    """Read Mutter grab signals; geometry changes alone never prove resize start."""
+    compositor = query.get('compositor') or {}
+    if compositor.get('kind') != 'gnome-lab-witness':
+        raise RuntimeError('resize-start witness unavailable for this compositor')
+    import dbus
+    witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+    return json.loads(str(witness.Grabs(dbus_interface='org.putgd.LabWitness', timeout=3)))
+
+
+def resize_started(before, after, target):
+    """Bind a new begin event to this extension instance and this owned client."""
+    if not before.get('epoch') or after.get('epoch') != before['epoch']:
+        raise RuntimeError('resize-start witness restarted during the gesture')
+    if after['serial'] < before['serial'] or (after['events'] and after['events'][0]['serial'] > before['serial'] + 1):
+        raise RuntimeError('resize-start witness lost events during the gesture')
+    return next((event for event in after['events']
+                 if before['serial'] < event['serial'] <= after['serial'] and event['phase'] == 'begin'
+                 and event['window_id'] == target['window_id'] and event['pid'] == target['pid']
+                 and event['kind'] == 'resize' and event['operation'].startswith('RESIZING_')), None)
 
 
 def compositor_pick(compositor, point):
@@ -509,7 +646,7 @@ def accessible(query):
                 ancestor['rect'] = shift(ancestor['rect'], where)
         return 'desktop', None
     matches_ = []
-    stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
+    stack = [(desktop_root(), 0, '', '', None, [])]
     # LIFO: popup roots go first so the ordinary tree is walked before them;
     # a popup already reached there (a button's own menu) is not walked twice.
     extra = popup_roots(query)
@@ -526,7 +663,15 @@ def accessible(query):
                     continue
             elif extra_keys:
                 seen.add((node.get_process_id(), node.path))
-            role, name = normalize_role(node.getRoleName()), node.name or ''
+            if depth == 1 and (query.get('pid') is not None or query.get('owned')):
+                # Scope by the bus daemon's PID before any call reaches the
+                # application: unrelated apps (the shell, a hung screen
+                # reader) are never queried for owned-control walks.
+                pid = node.get_process_id()
+                if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
+                    continue
+            server_role = node.getRoleName()
+            role, name = normalize_role(server_role), node.name or ''
             pid = node.get_process_id()
             # Do not walk unrelated applications for owned-control queries.
             if role == 'application':
@@ -575,7 +720,7 @@ def accessible(query):
                 except (NotImplementedError, RuntimeError):
                     pass
                 object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
-                row = {'window': window, 'application': application, 'name': name, 'role': role,
+                row = {'window': window, 'application': application, 'name': name, 'role': server_role,
                        'text': text, 'description': '' if protected else (node.description or ''),
                        'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
                        'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
@@ -601,7 +746,7 @@ def accessible(query):
                             ancestor['rect'] = extents(ancestor['_node'], kind)
                     matches_.append(row)
             if depth < 50:
-                ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid,'_node':node}]
+                ancestry = ancestors + [{'name':name,'role':server_role,'rect':rect,'pid':pid,'_node':node}]
                 stack.extend((child, depth + 1, window, application, popup, ancestry) for child in node if child is not None)
             elif getattr(node,'childCount',0):
                 truncated = True
@@ -618,7 +763,9 @@ def label(value):
     return (value or '').split('\t')[0].replace('&&', '\0').replace('&', '').replace('\0', '&')
 
 
-CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', 'toggle button', 'menu'),
+# Qt 6.4 QAccessibleToolButton::role returns CheckBox for a checkable
+# toolbutton without a menu (including the editor's recent-color swatches).
+CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', 'toggle button', 'check box', 'menu'),
                'QLineEdit': ('text', 'entry'), 'QSpinBox': ('spin button',),
                'QComboBox': ('combo box',), 'QMenu': ('menu', 'popup menu'),
                'QCheckBox': ('check box',), 'QAction': ('menu item', 'check menu item', 'radio menu item')}
@@ -641,7 +788,7 @@ def selector_matches(row, selector, candidates):
     """
     name, live = row.get('objectName'), label(row.get('name'))
     if selector.startswith('class:'):
-        return 1 if row['role'] in CLASS_ROLES.get(selector[6:], ()) else None
+        return 1 if normalize_role(row['role']) in CLASS_ROLES.get(selector[6:], ()) else None
     if name and (selector == name or (selector.startswith('glob:') and fnmatch.fnmatchcase(name, selector[5:])) or
                  any(c.get('name') == name for c in candidates)):
         return 0
@@ -651,7 +798,12 @@ def selector_matches(row, selector, candidates):
         return 1
     if selector.startswith('text-glob:') and fnmatch.fnmatchcase(live, selector[10:]):
         return 1
-    return 1 if any(live in candidate_labels(c) for c in candidates) else None
+    # A label's text can equal a named combo's accessibleName on Qt 6.4.
+    # Apply each matching candidate's class semantics; coordinates never break
+    # ties. Unknown catalog classes retain the existing label-only contract.
+    return 1 if any(live in candidate_labels(c) and
+                    (c.get('class') not in CLASS_ROLES or row['role'] in CLASS_ROLES[c['class']])
+                    for c in candidates) else None
 
 
 def control_geometry(query):
@@ -863,24 +1015,47 @@ def x11_hit(point):
             if found is None:
                 break
             path.append(str(found)); current = found
-        pid, name = None, ''
-        for wid in reversed(path):
-            if not name:
-                try:
-                    name = run('xdotool','getwindowname',wid)
-                except subprocess.CalledProcessError:
-                    pass
-            if pid is None:
-                try:
-                    pid = int(run('xdotool','getwindowpid',wid))
-                except (subprocess.CalledProcessError,ValueError):
-                    pass
-        return {'path':path,'pid':pid,'name':name or 'unnamed X11 window'}
+        return x11_hit_identity(path)
+
     finally:
         try:
             xlib.XCloseDisplay(display)
         finally:
             xlib.XSetErrorHandler(previous_handler)
+
+
+def x11_hit_identity(path):
+    """Resolve a WM decoration hit to its unique EWMH client, not the WM frame."""
+    pid, name, client = None, '', None
+    for wid in reversed(path):
+        if not name:
+            try:
+                name = run('xdotool','getwindowname',wid)
+            except subprocess.CalledProcessError:
+                pass
+        if pid is None:
+            try:
+                pid = int(run('xdotool','getwindowpid',wid))
+            except (subprocess.CalledProcessError,ValueError):
+                pass
+    if path and (not name or pid is None):
+        clients = [str(int(value,16)) for value in re.findall(
+            r'0x[0-9a-fA-F]+', run('xprop','-root','_NET_CLIENT_LIST'))]
+        candidates = []
+        for wid in clients:
+            try:
+                if set(x11_ancestors(wid)) & set(path):
+                    candidates.append(wid)
+            except subprocess.CalledProcessError:
+                continue  # A client closed during observation.
+        if len(candidates) == 1:
+            client = candidates[0]
+            try:
+                name = run('xdotool','getwindowname',client) or name
+                pid = int(run('xdotool','getwindowpid',client))
+            except (subprocess.CalledProcessError,ValueError):
+                pass
+    return {'path':path,'pid':pid,'name':name or 'unnamed X11 window','client':client}
 
 
 def x11_active():
@@ -914,6 +1089,11 @@ def x11_settle(target, bound=2.5):
         if time.monotonic() >= deadline:
             return False
         if not activated:
+            # PID lookup and the deadline check can let a new foreground land.
+            # Repeat the complete eligibility check immediately before sending
+            # activation; a changed foreground is evaluated on the next pass.
+            if x11_active() != active:
+                continue
             subprocess.run(['xdotool', 'windowactivate', '--sync', wid], timeout=2,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             activated = True
@@ -1047,6 +1227,9 @@ def x11_unmanaged_foreground(query):
         if mask & (0x1f << 8):  # Button1Mask..Button5Mask
             point = (px, py)
     if point is not None:
+        cover = shell_cover(point,query['shell_cover']) if query.get('shell_cover') else None
+        if cover:
+            return {'ok':False,'backend':'shell-at-spi-cover','target':wid,'obscuring_window':cover}
         hit = x11_hit(point)
         ok = wid in hit['path']
         return {'ok': ok, 'backend': 'x11-unmanaged-hit-test', 'target': wid,
@@ -1054,6 +1237,19 @@ def x11_unmanaged_foreground(query):
                 'obscuring_window_id': None if ok else (hit['path'][-1] if hit['path'] else None)}
     focus = x11_focus_owner()
     ok = focus not in ('0', '1') and wid in x11_ancestors(focus)
+    if not ok and query.get('keyboard_grab') and native_capture_process(target['pid']):
+        # The native helper reports focused iff xcb_grab_keyboard succeeded
+        # and selection has not finished. Arbitrary Qt focus and another
+        # process's override-redirect window cannot establish this contract.
+        rows = accessible({'owned':True,'pid':target['pid'],'name':'Capture region','role':'panel',
+                           'visible':True,'showing':True,'states':{'focused':True}})
+        rows = [r for r in rows if r.get('pid') == target['pid'] and r.get('states',{}).get('focused')
+                and r.get('rect') and intersect(dict(zip(('x','y','width','height'),r['rect'])),target)]
+        centre = (target['x']+target['width']/2,target['y']+target['height']/2)
+        cover = shell_cover(centre,query['shell_cover']) if query.get('shell_cover') else None
+        hit = x11_hit(centre)
+        if len(rows) == 1 and wid in hit['path'] and not cover:
+            return {'ok':True,'backend':'native-selector-keyboard-grab','target':wid,'obscuring_window':None}
     name = ''
     if not ok and focus not in ('0', '1'):
         try:
@@ -1064,6 +1260,15 @@ def x11_unmanaged_foreground(query):
             'obscuring_window': None if ok else 'keyboard focus ' + repr(name or 'unnamed window') +
                 ' (override-redirect target does not take keyboard focus)',
             'obscuring_window_id': None if ok else focus}
+
+
+def native_capture_process(pid):
+    import shutil
+    try:
+        expected = shutil.which('putgd-capture')
+        return bool(expected) and os.path.samefile('/proc/'+str(pid)+'/exe',expected)
+    except OSError:
+        return False
 
 
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
@@ -1079,7 +1284,7 @@ def shell_cover(point, application):
     """
     import pyatspi
     x, y = int(point[0]), int(point[1])
-    for app in pyatspi.Registry.getDesktop(0):
+    for app in desktop_root():
         try:
             if not app or not fnmatch.fnmatchcase(app.name or '', application):
                 continue
@@ -1099,8 +1304,49 @@ def shell_cover(point, application):
                     kind = next((role for role, _, _ in chain if role in ('notification', 'alert') + POPUP_ROLES), chain[-1][0])
                     named = next((name for _, name, _ in reversed(chain) if name), '')
                     return (app.name or 'shell') + ' ' + kind + (' ' + repr(named) if named else '') + ' at ' + str(chain[-1][2])
-        except (RuntimeError, NotImplementedError, AttributeError):
+                cover = shell_tree_cover(window, (x,y), app.name or 'shell', pyatspi)
+                if cover:
+                    return cover
+        except (NotImplementedError, AttributeError) as error:
+            raise RuntimeError('shell cover observation unavailable: '+type(error).__name__) from error
+    return None
+
+
+def shell_tree_cover(window, point, application, api):
+    """Fallback when Cinnamon's stage pick stops at a full-stage container.
+
+    A showing notification can be a non-reactive actor: AT-SPI's point pick
+    misses it, though the exported tree still witnesses its drawn rectangle.
+    Only semantic shell covers containing the point qualify, never a label or
+    a full-stage container. Read names inside that cover to identify it.
+    """
+    stack, visited = [window], set()
+    while stack:
+        node = stack.pop()
+        key = getattr(node,'path',id(node))
+        if key in visited:
             continue
+        visited.add(key)
+        if len(visited) > 5000:
+            raise RuntimeError('shell cover tree exceeded 5000 nodes; occlusion unverified')
+        if not node.getState().contains(api.STATE_SHOWING):
+            continue
+        role = normalize_role(node.getRoleName())
+        if role in ('notification','alert') + POPUP_ROLES:
+            rect = list(node.queryComponent().getExtents(api.DESKTOP_COORDS))
+            if rect[0] <= point[0] < rect[0]+rect[2] and rect[1] <= point[1] < rect[1]+rect[3]:
+                names, pending = [], [node]
+                for _ in range(80):
+                    if not pending:
+                        break
+                    child = pending.pop()
+                    if not child.getState().contains(api.STATE_SHOWING):
+                        continue
+                    if normalize_role(child.getRoleName()) != 'password text' and child.name:
+                        names.append(child.name)
+                    pending.extend(c for c in child if c is not None)
+                return application+' '+role+(' '+repr(' / '.join(names)) if names else '')+' at '+str(rect)
+        stack.extend(child for child in node if child is not None)
     return None
 
 
@@ -1111,8 +1357,7 @@ def shell_hit(query):
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
         raise RuntimeError('desktop hit-test requires the profile compositor application')
     point = query['point']
-    desktop = pyatspi.Registry.getDesktop(0)
-    roots = [app for app in desktop if app and app.get_process_id()==expected['pid']]
+    roots = [app for app in desktop_root() if app and app.get_process_id()==expected['pid']]
     for app in roots:
         for window in app:
             try:
@@ -1120,7 +1365,7 @@ def shell_hit(query):
                 for _ in range(50):
                     if node is None:
                         break
-                    if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==expected['role']:
+                    if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==normalize_role(expected['role']):
                         return {'ok':True,'backend':'shell-at-spi-pick','obscuring_window':None}
                     child = node.queryComponent().getAccessibleAtPoint(int(point[0]),int(point[1]),pyatspi.DESKTOP_COORDS)
                     if child == node:
@@ -1129,6 +1374,104 @@ def shell_hit(query):
             except (RuntimeError,NotImplementedError,AttributeError):
                 continue
     return {'ok':False,'backend':'shell-at-spi-pick','obscuring_window':'compositor shell stage did not pick the expected notification control'}
+
+
+def native_shell_role(value):
+    """Shell actors use ATK roles; AT-SPI role enum numbers are different.
+
+    Resolve the native ABI's canonical name rather than guessing an offset.
+    atk_role_get_name is non-localized; button aliases use the query matcher.
+    """
+    library = ctypes.util.find_library('atk-1.0')
+    if not library:
+        raise RuntimeError('native shell role names require the distro ATK library')
+    atk = ctypes.CDLL(library)
+    atk.atk_role_get_name.argtypes = [ctypes.c_int]
+    atk.atk_role_get_name.restype = ctypes.c_char_p
+    name = atk.atk_role_get_name(value)
+    if not name:
+        raise RuntimeError('native shell reported an unknown ATK role')
+    return normalize_role(name.decode('utf-8'))
+
+
+def shell_witness_hit(query):
+    """Bind the live AT-SPI node to the shell's actual picked actor and PID."""
+    expected = query['desktop_node']
+    pick = compositor_pick(query['compositor'],query['point'])
+    ok = (bool(query['shell_application']) and type(expected.get('pid')) is int and expected['pid'] > 0
+          and fnmatch.fnmatchcase(expected.get('application',''),query['shell_application'])
+          and expected.get('pid') == pick.get('pid') and pick.get('window') is None)
+    role = normalize_role(expected['role'])
+    rect = expected.get('rect')
+    ok = ok and bool(expected.get('name')) and bool(rect) and len(rect) == 4 and any(
+        expected['name'] in (actor.get('accessible'),actor.get('text'))
+        and type(actor.get('role')) is int and native_shell_role(actor['role']) == role
+        and actor.get('rect') and len(actor['rect']) == 4 and all(abs(a-b)<=1 for a,b in zip(actor['rect'],rect))
+        for actor in pick.get('shell_nodes',[]))
+    window = pick.get('window')
+    return {'ok':bool(ok),'backend':'gnome-native-shell-pick',
+            'obscuring_window':None if ok else (window.get('title') if window else
+                'native shell actor identity, role or bounds did not match the live desktop node')}
+
+
+def shell_state(query):
+    """The desktop shell process this run started on, and signs that it crashed.
+
+    query: {'process': comm name, 'crash_windows': [title regexes],
+    'since': epoch seconds for core dumps, 'full': also read windows/cores}.
+    A crashed Cinnamon is restarted by cinnamon-launcher under a new PID and
+    shows "Cinnamon just crashed" in fallback mode (#814); input on that
+    desktop proves nothing. Only processes of this user are considered.
+    """
+    import pwd
+    name, uid = query['process'], os.getuid()
+    found = []
+    for entry in os.listdir('/proc'):
+        if not entry.isdigit():
+            continue
+        try:
+            with open('/proc/' + entry + '/comm') as stream:
+                if stream.read().strip() != name or os.stat('/proc/' + entry).st_uid != uid:
+                    continue
+            with open('/proc/' + entry + '/stat') as stream:
+                start = int(stream.read().rsplit(')', 1)[1].split()[19])  # field 22, starttime
+            # A crashing shell keeps its PID while the kernel writes its core
+            # (a minute or more for Cinnamon); CoreDumping marks that window.
+            with open('/proc/' + entry + '/status') as stream:
+                dumping = any(line.split() == ['CoreDumping:', '1'] for line in stream)
+            found.append({'pid': int(entry), 'start': start, 'dumping': dumping})
+        except (OSError, ValueError, IndexError):
+            continue
+    state = {'process': name, 'instances': sorted(found, key=lambda p: p['pid'])}
+    if not query.get('full'):
+        return state
+    windows = []
+    if os.environ.get('XDG_SESSION_TYPE') == 'x11':
+        for pattern in query.get('crash_windows', []):
+            search = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', pattern],
+                                    text=True, capture_output=True, timeout=5)
+            for wid in search.stdout.split():
+                try:
+                    windows.append({'window_id': wid, 'name': run('xdotool', 'getwindowname', wid)})
+                except subprocess.CalledProcessError:
+                    windows.append({'window_id': wid, 'name': pattern})
+    state['crash_windows'] = windows
+    cores = None
+    if query.get('since') is not None:
+        try:
+            listing = subprocess.run(['coredumpctl', '--no-pager', '--json=short', 'list',
+                                      '--since=@' + str(int(query['since'])), 'COREDUMP_COMM=' + name],
+                                     text=True, capture_output=True, timeout=10)
+            if listing.returncode == 0:
+                cores = [{'pid': int(c.get('pid', 0)), 'time': c.get('time'), 'signal': c.get('sig')}
+                         for c in json.loads(listing.stdout or '[]') if int(c.get('uid', -1)) == uid]
+            elif 'No coredumps found' in listing.stderr:
+                cores = []
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            cores = None  # no systemd-coredump on this host: the PID witness still applies
+    state['cores'] = cores
+    state['user'] = pwd.getpwuid(uid).pw_name
+    return state
 
 
 def witness_foreground(query):
@@ -1175,6 +1518,8 @@ def foreground(query):
     # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
     # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
     if query.get('desktop_node') and query.get('desktop_hit_test') in SHELL_PICKS:
+        if (query.get('compositor') or {}).get('kind') == 'gnome-lab-witness':
+            return shell_witness_hit(query)
         return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_foreground(query)
@@ -1203,6 +1548,28 @@ def windows(query):
             (row.get('ancestors') and row['ancestors'][-1]['role']=='application')]
 
 
+def notifier_item(item):
+    """Watcher identity: bus/path (KDE), bus@/path (GNOME), or just bus."""
+    service, separator, suffix = str(item).partition('/')
+    if separator and service.endswith('@'):
+        service = service[:-1]
+    path = '/'+suffix if separator else '/StatusNotifierItem'
+    unique = r':[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+'
+    named = r'[A-Za-z_-][A-Za-z0-9_-]*(?:\.[A-Za-z_-][A-Za-z0-9_-]*)+'
+    if not re.fullmatch('(?:'+unique+'|'+named+')',service) or not re.fullmatch(r'/(?:[A-Za-z0-9_]+(?:/[A-Za-z0-9_]+)*)?',path):
+        raise ValueError('invalid StatusNotifierWatcher item identity')
+    return service,path
+
+
+def notifier_process(pid):
+    """Pin the same-user process start across an SNI property request."""
+    directory='/proc/'+str(pid)
+    if os.stat(directory).st_uid!=os.getuid():
+        raise ValueError('notifier belongs to another account')
+    with open(directory+'/stat') as stream:
+        return stream.read().split(') ',1)[1].split()[19]
+
+
 def tray(query):
     """Read-only SNI properties belonging to the private resident family."""
     import dbus
@@ -1213,18 +1580,29 @@ def tray(query):
     daemon = dbus.Interface(bus.get_object('org.freedesktop.DBus','/org/freedesktop/DBus'),'org.freedesktop.DBus')
     rows = []
     for item in items:
-        service, separator, suffix = str(item).partition('/')
-        path = '/'+suffix if separator else '/StatusNotifierItem'
-        pid = int(daemon.GetConnectionUnixProcessID(service))
-        if not owned(pid) or query.get('pid') not in (None,pid):
+        try:
+            service,path = notifier_item(item)
+            owner = str(daemon.GetNameOwner(service))
+            pid = int(daemon.GetConnectionUnixProcessID(owner))
+            if not owned(pid) or query.get('pid') not in (None,pid):
+                continue
+            start = notifier_process(pid)
+            properties = dbus.Interface(bus.get_object(owner,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
+            # A stale item or an owner change during the property request must
+            # never contaminate the private-family observation.
+            if (str(daemon.GetNameOwner(service))!=owner or int(daemon.GetConnectionUnixProcessID(owner))!=pid
+                    or notifier_process(pid)!=start or not owned(pid)):
+                continue
+        except (dbus.DBusException,OSError,ValueError):
+            # A watcher can retain an item after its owner exited. Continue to
+            # the actual private resident; outer watcher failures still fail.
             continue
-        properties = dbus.Interface(bus.get_object(service,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
         pixmaps = []
         for width,height,data in properties.get('IconPixmap',[]):
             payload = bytes(data)
             pixmaps.append({'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()})
         tooltip = properties.get('ToolTip',('',[],'',''))
-        rows.append({'pid':pid,'service':service,'path':path,'id':str(properties.get('Id','')),
+        rows.append({'pid':pid,'start':start,'owner':owner,'service':service,'path':path,'id':str(properties.get('Id','')),
                      'title':str(properties.get('Title','')),'status':str(properties.get('Status','')),
                      'icon_name':str(properties.get('IconName','')),'icon_pixmaps':pixmaps,
                      'tooltip':{'title':str(tooltip[2]),'text':str(tooltip[3])},'menu':str(properties.get('Menu',''))})
@@ -1526,9 +1904,10 @@ def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
-                    'foreground': foreground, 'windows': windows, 'tray':tray,
+                    'foreground': foreground, 'windows': windows, 'tray':tray, 'resize':resize_witness,
                     'notification_monitor': notification_monitor, 'notification_log': notification_log,
                     'popup_watch': popup_watch, 'portal_monitor': portal_monitor, 'server_pid': server_pid,
+                    'shell_state': shell_state,
                     'compositor_windows': lambda query: compositor_windows(query['compositor'])}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:

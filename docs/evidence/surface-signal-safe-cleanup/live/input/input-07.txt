@@ -1,0 +1,26 @@
+== QEMU QEMU USB Tablet
+	button[1]=up
+	button[2]=up
+	button[3]=up
+	button[4]=up
+	button[5]=up
+== Virtual core pointer
+== Virtual core XTEST pointer
+	button[1]=up
+	button[2]=up
+	button[3]=up
+	button[4]=up
+	button[5]=up
+== Virtual core keyboard
+== AT Translated Set 2 keyboard
+	key[37]=up
+	key[50]=up
+	key[62]=up
+	key[64]=up
+	key[105]=up
+== Virtual core XTEST keyboard
+	key[37]=up
+	key[50]=up
+	key[62]=up
+	key[64]=up
+	key[105]=up

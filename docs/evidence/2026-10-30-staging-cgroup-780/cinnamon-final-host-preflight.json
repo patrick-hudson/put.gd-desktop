@@ -1,0 +1,30 @@
+{
+  "placement": "boat",
+  "host": {
+    "path": "/home/user",
+    "device": 64769,
+    "filesystemType": "ext2/ext3",
+    "filesystemMagic": "ef53",
+    "identificationErrorType": null,
+    "statvfs": {
+      "f_bavail": 22959696,
+      "f_bfree": 24533443,
+      "f_blocks": 38367691,
+      "f_bsize": 4096,
+      "f_favail": 8943921,
+      "f_ffree": 8943921,
+      "f_files": 9623280,
+      "f_flag": 4096,
+      "f_frsize": 4096,
+      "f_fsid": 1680253000807562931,
+      "f_namemax": 255
+    },
+    "availableBytes": 94042914816,
+    "totalBytes": 157154062336,
+    "availableInodes": 8943921,
+    "inodeAccounting": "reported",
+    "inodeCheckPassed": true
+  },
+  "passed": true,
+  "kvm": true
+}

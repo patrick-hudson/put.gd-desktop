@@ -1,0 +1,12 @@
+{
+  "exitCode": 1,
+  "heldIdentity": {
+    "device": 64769,
+    "fd": 3,
+    "inode": 1055517
+  },
+  "holderPid": 159563,
+  "overlayStillExists": true,
+  "stderr": "",
+  "stdout": "{\"ok\": false, \"error\": \"Another VM lifecycle operation is in progress\"}\n"
+}

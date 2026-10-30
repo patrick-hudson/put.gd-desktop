@@ -1,0 +1,212 @@
+[
+  {
+    "run": "run-a",
+    "artifact": "appimage",
+    "id": "bx_qhchvm59",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793335132.8405735,
+    "absenceVerifiedAt": 1793335135.3381336,
+    "secondsToVerifiedAbsence": 2.498,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-a",
+    "artifact": "debian13",
+    "id": "bx_v424zbpc",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793335108.1579432,
+    "absenceVerifiedAt": 1793335110.6993573,
+    "secondsToVerifiedAbsence": 2.541,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-a",
+    "artifact": "fedora44",
+    "id": "bx_6pqd83aj",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333662.1045094,
+    "absenceVerifiedAt": 1793333664.7121387,
+    "secondsToVerifiedAbsence": 2.608,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-a",
+    "artifact": "lab-fixture",
+    "id": "bx_dgzpjwxg",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793335119.3894787,
+    "absenceVerifiedAt": 1793335121.9129374,
+    "secondsToVerifiedAbsence": 2.523,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-a",
+    "artifact": "ubuntu24.04",
+    "id": "bx_8433k57e",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793335116.0175014,
+    "absenceVerifiedAt": 1793335118.5221288,
+    "secondsToVerifiedAbsence": 2.505,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-a",
+    "artifact": "ubuntu26.04",
+    "id": "bx_2mxrfaus",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333670.0211315,
+    "absenceVerifiedAt": 1793333672.5269845,
+    "secondsToVerifiedAbsence": 2.506,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-a",
+    "artifact": "ui-catalog",
+    "id": "bx_jw76a9k5",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793335110.7506661,
+    "absenceVerifiedAt": 1793335113.298209,
+    "secondsToVerifiedAbsence": 2.548,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "appimage",
+    "id": "bx_hjn2tpdq",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793334172.5798273,
+    "absenceVerifiedAt": 1793334175.1709116,
+    "secondsToVerifiedAbsence": 2.591,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "debian13",
+    "id": "bx_zpwdkszn",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333581.5466576,
+    "absenceVerifiedAt": 1793333584.1042173,
+    "secondsToVerifiedAbsence": 2.558,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "fedora44",
+    "id": "bx_8sw9mgjx",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333911.5769815,
+    "absenceVerifiedAt": 1793333914.1332293,
+    "secondsToVerifiedAbsence": 2.556,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "lab-fixture",
+    "id": "bx_pm48s29k",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333887.030252,
+    "absenceVerifiedAt": 1793333889.6603787,
+    "secondsToVerifiedAbsence": 2.63,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "ubuntu24.04",
+    "id": "bx_bdpqgcxs",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333722.4204986,
+    "absenceVerifiedAt": 1793333725.0048392,
+    "secondsToVerifiedAbsence": 2.584,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "ubuntu26.04",
+    "id": "bx_yxz2d7mn",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333650.9851117,
+    "absenceVerifiedAt": 1793333653.611129,
+    "secondsToVerifiedAbsence": 2.626,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "run-b",
+    "artifact": "ui-catalog",
+    "id": "bx_7c8htxrs",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333796.9617157,
+    "absenceVerifiedAt": 1793333799.5904837,
+    "secondsToVerifiedAbsence": 2.629,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "interrupted",
+    "artifact": "appimage",
+    "id": "bx_p924fy6j",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333029.157494,
+    "absenceVerifiedAt": 1793333031.7488635,
+    "secondsToVerifiedAbsence": 2.591,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "interrupted",
+    "artifact": "debian13",
+    "id": "bx_h8r5kvwp",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333029.192906,
+    "absenceVerifiedAt": 1793333148.1459146,
+    "secondsToVerifiedAbsence": 118.953,
+    "noIdRecoveryWindowIncluded": true
+  },
+  {
+    "run": "interrupted",
+    "artifact": "fedora44",
+    "id": "bx_uwncq6e9",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333029.165592,
+    "absenceVerifiedAt": 1793333031.7398314,
+    "secondsToVerifiedAbsence": 2.574,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "interrupted",
+    "artifact": "lab-fixture",
+    "id": "bx_bbz3c2up",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333029.1708672,
+    "absenceVerifiedAt": 1793333031.7227685,
+    "secondsToVerifiedAbsence": 2.552,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "interrupted",
+    "artifact": "ubuntu24.04",
+    "id": "bx_8td92cd8",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333029.1788032,
+    "absenceVerifiedAt": 1793333031.7614467,
+    "secondsToVerifiedAbsence": 2.583,
+    "noIdRecoveryWindowIncluded": false
+  },
+  {
+    "run": "interrupted",
+    "artifact": "ubuntu26.04",
+    "id": "bx_vjg77375",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333031.4430642,
+    "absenceVerifiedAt": 1793333148.1383073,
+    "secondsToVerifiedAbsence": 116.695,
+    "noIdRecoveryWindowIncluded": true
+  },
+  {
+    "run": "interrupted",
+    "artifact": "ui-catalog",
+    "id": "bx_8fj78ujy",
+    "initialStatus": "pending",
+    "deleteInvokedAt": 1793333029.1769795,
+    "absenceVerifiedAt": 1793333031.732154,
+    "secondsToVerifiedAbsence": 2.555,
+    "noIdRecoveryWindowIncluded": false
+  }
+]

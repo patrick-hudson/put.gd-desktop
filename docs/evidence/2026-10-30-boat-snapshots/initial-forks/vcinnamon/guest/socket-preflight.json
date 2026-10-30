@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/home/user/work/put.gd/src/work/lab-runs/sv1/qmp.sock", "utf8Bytes": 53, "passed": true}, {"path": "/home/user/work/put.gd/src/work/lab-runs/sv1/vnc.sock", "utf8Bytes": 53, "passed": true}]}

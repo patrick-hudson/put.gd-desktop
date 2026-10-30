@@ -1,0 +1,59 @@
+{
+  "artifact": "appimage",
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+    "Pinned native Ubuntu 24.04 container instead of mutable GitHub ubuntu-24.04 hosted VM; package inventory retained. Hosted preinstalled desktop links can differ (appimage-build.json rootDesktopEntry.removedLinks).",
+    "Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH/PKG_CONFIG_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.",
+    "Installer uses install-packages.sh defaults (4 attempts, 900s overall and 600s stall per attempt), rather than the AppImage CI dependency step environment (3 attempts, 300s overall, 120s stall). Installer labels default to distro/manager."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_p924fy6j"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-appimage-eda9d5e1835a48ad",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_3bcb257e1f224c41a0b85efe5c41d711",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:03:49.378Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_p924fy6j"
+        },
+        "sandboxId": "bx_p924fy6j"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793333031.7488635
+  },
+  "cleanupVerified": true,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "error": "Controller cancelled or deadline exceeded: boat",
+  "name": "putgd-0c329b0692ca-appimage-eda9d5e1835a48ad",
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "eda9d5e1835a48ad",
+  "sandboxId": "bx_p924fy6j",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [
+      "bx_qhchvm59",
+      "bx_hjn2tpdq"
+    ],
+    "verified": true
+  },
+  "state": "failed",
+  "totalSeconds": 4.193,
+  "ttlSeconds": 10800,
+  "type": "large"
+}

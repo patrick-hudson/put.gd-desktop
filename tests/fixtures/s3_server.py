@@ -128,7 +128,9 @@ class Handler(BaseHTTPRequestHandler):
             if rule and rule.get('barrier'):
                 barrier = barriers.setdefault(rule['barrier'], threading.Event())
                 lock.release()
-                barrier.wait(10 * TIME_SCALE)
+                # Outlasts the test's two consecutive 5 s observation waits and
+                # stays below its 15 s request timeout (both scaled).
+                barrier.wait(12 * TIME_SCALE)
                 lock.acquire()
             if rule and rule.get('delay'):
                 lock.release()

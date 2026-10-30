@@ -1,0 +1,3192 @@
+{
+ "schemaVersion": 2,
+ "campaign": "surface-driver-selectors-r2",
+ "entries": [
+  {
+   "interaction": "region.key-arrows",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e860266d-f776-47b5-a7ad-ce4da9265cbc; Capture operation e860266d-f776-47b5-a7ad-ce4da9265cbc; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_keyboard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_keyboard/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_keyboard/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_keyboard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:23Z"
+  },
+  {
+   "interaction": "region.key-resize",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e860266d-f776-47b5-a7ad-ce4da9265cbc; Capture operation e860266d-f776-47b5-a7ad-ce4da9265cbc; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_keyboard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_keyboard/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_keyboard/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_keyboard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:23Z"
+  },
+  {
+   "interaction": "region.key-esc",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=9e8dc6cd-b3e9-4c42-8f32-936019d8b865; Capture operation 9e8dc6cd-b3e9-4c42-8f32-936019d8b865; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_cancel/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_cancel/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:36Z"
+  },
+  {
+   "interaction": "region.right-click",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=9e8dc6cd-b3e9-4c42-8f32-936019d8b865; Capture operation 9e8dc6cd-b3e9-4c42-8f32-936019d8b865; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_cancel/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_cancel/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:36Z"
+  },
+  {
+   "interaction": "region.drag",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=dbe6d128-588e-4574-adfc-59a9e02ba5e5; Capture operation dbe6d128-588e-4574-adfc-59a9e02ba5e5; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_capture/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_capture/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_capture/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_capture",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:50Z"
+  },
+  {
+   "interaction": "region.to-local",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=dbe6d128-588e-4574-adfc-59a9e02ba5e5; Capture operation dbe6d128-588e-4574-adfc-59a9e02ba5e5; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_capture/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_capture/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_capture/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_capture",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:50Z"
+  },
+  {
+   "interaction": "region.key-enter",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=dbe6d128-588e-4574-adfc-59a9e02ba5e5; Capture operation dbe6d128-588e-4574-adfc-59a9e02ba5e5; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_capture/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_capture/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_capture/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_capture",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:51:50Z"
+  },
+  {
+   "interaction": "region.to-editor",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=7818b694-5c1b-41a6-a302-419c6746b252; Capture operation 7818b694-5c1b-41a6-a302-419c6746b252; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_editor/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_editor/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_editor/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_editor",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:11Z"
+  },
+  {
+   "interaction": "region.outcome-line",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=7818b694-5c1b-41a6-a302-419c6746b252; Capture operation 7818b694-5c1b-41a6-a302-419c6746b252; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_editor/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_editor/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_editor/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_editor",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:11Z"
+  },
+  {
+   "interaction": "region.live-mode",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=d740d843-d361-4fa4-aa75-127f0b0b0220; Capture operation d740d843-d361-4fa4-aa75-127f0b0b0220; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:33Z"
+  },
+  {
+   "interaction": "region.screenshot-first",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=d740d843-d361-4fa4-aa75-127f0b0b0220; Capture operation d740d843-d361-4fa4-aa75-127f0b0b0220; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:33Z"
+  },
+  {
+   "interaction": "region.hint-pill",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=d740d843-d361-4fa4-aa75-127f0b0b0220; Capture operation d740d843-d361-4fa4-aa75-127f0b0b0220; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:33Z"
+  },
+  {
+   "interaction": "region.backends",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=d740d843-d361-4fa4-aa75-127f0b0b0220; Capture operation d740d843-d361-4fa4-aa75-127f0b0b0220; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): timeout: screenshot selector opened; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:33Z"
+  },
+  {
+   "interaction": "region.key-tab",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=2f28c99f-be54-432e-b81f-f28453cd8ae2; Capture operation 2f28c99f-be54-432e-b81f-f28453cd8ae2; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_heads/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_heads/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_heads/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_heads",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:44Z"
+  },
+  {
+   "interaction": "region.multi-display",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=2f28c99f-be54-432e-b81f-f28453cd8ae2; Capture operation 2f28c99f-be54-432e-b81f-f28453cd8ae2; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_heads/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_heads/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_heads/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_heads",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:44Z"
+  },
+  {
+   "interaction": "region.to-upload",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "note": "Selectors campaign authorizes local synthetic output only; isolated provider upload belongs to the live lane. No S3 or Proton on boat.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_upload/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_upload/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_upload",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:45Z"
+  },
+  {
+   "interaction": "recsel.drag",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=0758ce77-a438-4baf-a4d4-fb277ec7deee; Recording operation 0758ce77-a438-4baf-a4d4-fb277ec7deee; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_selection/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_selection/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_selection/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_selection",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:56Z"
+  },
+  {
+   "interaction": "recsel.key-enter",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=0758ce77-a438-4baf-a4d4-fb277ec7deee; Recording operation 0758ce77-a438-4baf-a4d4-fb277ec7deee; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_selection/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_selection/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_selection/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_selection",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:56Z"
+  },
+  {
+   "interaction": "recsel.to-bar",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=0758ce77-a438-4baf-a4d4-fb277ec7deee; Recording operation 0758ce77-a438-4baf-a4d4-fb277ec7deee; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_selection/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_selection/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_selection/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_selection",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:52:56Z"
+  },
+  {
+   "interaction": "recsel.key-esc",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=0fb20092-3472-42cf-a188-5bfcf8f31bf9; Recording operation 0fb20092-3472-42cf-a188-5bfcf8f31bf9; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_cancel/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_cancel/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:08Z"
+  },
+  {
+   "interaction": "recsel.right-click",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=0fb20092-3472-42cf-a188-5bfcf8f31bf9; Recording operation 0fb20092-3472-42cf-a188-5bfcf8f31bf9; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_cancel/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_cancel/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:08Z"
+  },
+  {
+   "interaction": "recsel.key-arrows",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=42d79fad-7ca8-4dfb-bc77-cbe3fbf6ad32; Recording operation 42d79fad-7ca8-4dfb-bc77-cbe3fbf6ad32; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_keyboard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_keyboard/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_keyboard/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_keyboard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:19Z"
+  },
+  {
+   "interaction": "recsel.inherits-region-output",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=ab0be342-3487-4fd9-9a22-2ece2dcfc972; Recording operation ab0be342-3487-4fd9-9a22-2ece2dcfc972; Recording selector input/readback unavailable (#701/#705): geometry: RuntimeError: live window match is missing or ambiguous (2 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_output/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "recording-selector-readback-unavailable",
+     "path": "frames/selectors.recording_output/01-recording-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_output/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_output",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:32Z"
+  },
+  {
+   "interaction": "bar.format",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=693dc1fe-7201-4396-9116-3172775d0ed9; Recording operation 693dc1fe-7201-4396-9116-3172775d0ed9; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_options/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_options/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_options/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_options/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_options/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_options",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:45Z"
+  },
+  {
+   "interaction": "bar.system-audio",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=693dc1fe-7201-4396-9116-3172775d0ed9; Recording operation 693dc1fe-7201-4396-9116-3172775d0ed9; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_options/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_options/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_options/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_options/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_options/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_options",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:45Z"
+  },
+  {
+   "interaction": "bar.record",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; Recording operation de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_recording/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_recording/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:57Z"
+  },
+  {
+   "interaction": "bar.pause",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; Recording operation de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_recording/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_recording/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:57Z"
+  },
+  {
+   "interaction": "bar.stop",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; Recording operation de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_recording/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_recording/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:57Z"
+  },
+  {
+   "interaction": "bar.state-text",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; Recording operation de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_recording/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_recording/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:57Z"
+  },
+  {
+   "interaction": "recsel.bounds",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; Recording operation de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_recording/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_recording/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:57Z"
+  },
+  {
+   "interaction": "recsel.backends",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; Recording operation de4d00ed-b27c-4a2b-9da7-33e4ef16ce1c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_recording/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_recording/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:53:57Z"
+  },
+  {
+   "interaction": "bar.cancel",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=23655fd6-d5fa-4b89-a421-d72b4a876279; Recording operation 23655fd6-d5fa-4b89-a421-d72b4a876279; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_discard/01-before-ready-cancel.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_discard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before-ready-cancel",
+     "path": "frames/selectors.bar_discard/01-before-ready-cancel.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_discard/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_discard/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_discard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:08Z"
+  },
+  {
+   "interaction": "bar.key-esc",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=23655fd6-d5fa-4b89-a421-d72b4a876279; Recording operation 23655fd6-d5fa-4b89-a421-d72b4a876279; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_discard/01-before-ready-cancel.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_discard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before-ready-cancel",
+     "path": "frames/selectors.bar_discard/01-before-ready-cancel.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_discard/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_discard/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_discard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:08Z"
+  },
+  {
+   "interaction": "bar.discard-question",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=23655fd6-d5fa-4b89-a421-d72b4a876279; Recording operation 23655fd6-d5fa-4b89-a421-d72b4a876279; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_discard/01-before-ready-cancel.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_discard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before-ready-cancel",
+     "path": "frames/selectors.bar_discard/01-before-ready-cancel.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_discard/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_discard/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_discard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:08Z"
+  },
+  {
+   "interaction": "bar.drag",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=03b5b90e-a2a8-4fa7-9c75-8a7493c7744c; Recording operation 03b5b90e-a2a8-4fa7-9c75-8a7493c7744c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_drag/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_drag/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_drag/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_drag/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_drag/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_drag",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:19Z"
+  },
+  {
+   "interaction": "bar.placement",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "issue": 705,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=03b5b90e-a2a8-4fa7-9c75-8a7493c7744c; Recording operation 03b5b90e-a2a8-4fa7-9c75-8a7493c7744c; X11 cursor/focus witness: X=640\nY=400\nSCREEN=0\nWINDOW=73400323\n_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4600003; Recording bar foreground authorization unavailable (#705): input target 'bar' is obscured by 'putgd synthetic fixture' (window 73400323); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.762936, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_drag/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_drag/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_drag/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7629360007570448,
+     "tolerance": 0.025
+    },
+    {
+     "label": "bar-input-refused",
+     "path": "frames/selectors.bar_drag/02-bar-input-refused.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_drag/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_drag",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:19Z"
+  },
+  {
+   "interaction": "bar.handle",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "note": "Handle requires a single-head full-screen target; other head may fit the full bar; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_handle/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_handle/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_handle",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:27Z"
+  },
+  {
+   "interaction": "bar.hidden-overlay",
+   "desktop": "mint-cinnamon-x11",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sc4/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=ac391e9f-9a86-4e76-b131-1df4e010cd7f; Recording operation ac391e9f-9a86-4e76-b131-1df4e010cd7f; Hidden overlay is API-only (recording.overlay); no public key or control exists to exercise it with real input. API-lane lifecycle/occlusion coverage is required.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-cinnamon-2head",
+   "destination": "local",
+   "review": true,
+   "review_reason": "catalog mismatch (distance=0.771238, tolerance=0.025): actual=/home/user/sc4/frames/selectors.bar_hidden/01-before.png reference=/home/user/selectors-catalog/33-record-ready-bar.png",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_hidden/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_hidden/01-before.png",
+     "window": "bar",
+     "reference": "33-record-ready-bar",
+     "distance": 0.7712379111730486,
+     "tolerance": 0.025
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_hidden/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_hidden/03-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_hidden",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T04:54:38Z"
+  },
+  {
+   "interaction": "region.key-arrows",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=c643b8fd-ae41-420e-afb1-08bf291966ce; Capture operation c643b8fd-ae41-420e-afb1-08bf291966ce; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_keyboard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_keyboard/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_keyboard/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_keyboard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:06:33Z"
+  },
+  {
+   "interaction": "region.key-resize",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=c643b8fd-ae41-420e-afb1-08bf291966ce; Capture operation c643b8fd-ae41-420e-afb1-08bf291966ce; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_keyboard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_keyboard/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_keyboard/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_keyboard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:06:33Z"
+  },
+  {
+   "interaction": "region.key-esc",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=024c76a5-c314-4d37-b2ab-50b58539d2d0; Capture operation 024c76a5-c314-4d37-b2ab-50b58539d2d0; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_cancel/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_cancel/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:06:46Z"
+  },
+  {
+   "interaction": "region.right-click",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=024c76a5-c314-4d37-b2ab-50b58539d2d0; Capture operation 024c76a5-c314-4d37-b2ab-50b58539d2d0; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_cancel/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_cancel/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:06:46Z"
+  },
+  {
+   "interaction": "region.drag",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=b03b53fe-02bc-450f-ada5-0a08a88aa267; Capture operation b03b53fe-02bc-450f-ada5-0a08a88aa267; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_capture/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_capture/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_capture/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_capture",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:00Z"
+  },
+  {
+   "interaction": "region.to-local",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=b03b53fe-02bc-450f-ada5-0a08a88aa267; Capture operation b03b53fe-02bc-450f-ada5-0a08a88aa267; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_capture/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_capture/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_capture/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_capture",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:00Z"
+  },
+  {
+   "interaction": "region.key-enter",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=b03b53fe-02bc-450f-ada5-0a08a88aa267; Capture operation b03b53fe-02bc-450f-ada5-0a08a88aa267; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_capture/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_capture/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_capture/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_capture",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:00Z"
+  },
+  {
+   "interaction": "region.to-editor",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=861ffcf6-a7c0-4b24-bf7c-ca60379c95fd; Capture operation 861ffcf6-a7c0-4b24-bf7c-ca60379c95fd; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_editor/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_editor/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_editor/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_editor",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:17Z"
+  },
+  {
+   "interaction": "region.outcome-line",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=861ffcf6-a7c0-4b24-bf7c-ca60379c95fd; Capture operation 861ffcf6-a7c0-4b24-bf7c-ca60379c95fd; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_editor/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_editor/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_editor/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_editor",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:17Z"
+  },
+  {
+   "interaction": "region.live-mode",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture operation 850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:32Z"
+  },
+  {
+   "interaction": "region.screenshot-first",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture operation 850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:32Z"
+  },
+  {
+   "interaction": "region.hint-pill",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture operation 850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:32Z"
+  },
+  {
+   "interaction": "region.backends",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 701,
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture operation 850fb22c-b4d1-4f68-93b7-5ee2a53bbab2; Capture selector has no live AT-SPI node or authorized geometry in this session (#701): geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_modes/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "selector-readback-unavailable",
+     "path": "frames/selectors.region_modes/01-selector-readback-unavailable.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_modes/02-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_modes",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:32Z"
+  },
+  {
+   "interaction": "region.key-tab",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 664,
+   "note": "Tab across heads requires exactly two independently sized guest heads (#664); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_heads/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_heads/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_heads",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:45Z"
+  },
+  {
+   "interaction": "region.multi-display",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "issue": 664,
+   "note": "Tab across heads requires exactly two independently sized guest heads (#664); Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_heads/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_heads/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_heads",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:45Z"
+  },
+  {
+   "interaction": "region.to-upload",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Selectors campaign authorizes local synthetic output only; isolated provider upload belongs to the live lane. No S3 or Proton on boat.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.region_upload/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.region_upload/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.region_upload",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:07:46Z"
+  },
+  {
+   "interaction": "recsel.drag",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=c020e845-5a27-4da8-a008-5deee762cda4; Recording operation c020e845-5a27-4da8-a008-5deee762cda4; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_selection/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_selection/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_selection",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:01Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.key-enter",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=c020e845-5a27-4da8-a008-5deee762cda4; Recording operation c020e845-5a27-4da8-a008-5deee762cda4; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_selection/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_selection/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_selection",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:01Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.to-bar",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=c020e845-5a27-4da8-a008-5deee762cda4; Recording operation c020e845-5a27-4da8-a008-5deee762cda4; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_selection/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_selection/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_selection",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:01Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.key-esc",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=5b057ac9-741b-4cc0-ace3-bc442bf60237; Recording operation 5b057ac9-741b-4cc0-ace3-bc442bf60237; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_cancel/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:16Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.right-click",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=5b057ac9-741b-4cc0-ace3-bc442bf60237; Recording operation 5b057ac9-741b-4cc0-ace3-bc442bf60237; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_cancel/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_cancel/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_cancel",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:16Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.key-arrows",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=aabe8495-ced2-4696-9d90-9ac9053d02d1; Recording operation aabe8495-ced2-4696-9d90-9ac9053d02d1; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_keyboard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_keyboard/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_keyboard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:31Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.inherits-region-output",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=8f7a5e39-2dd6-4041-b645-05e8ef6047a6; Recording operation 8f7a5e39-2dd6-4041-b645-05e8ef6047a6; resident recording.inspect: recording_unavailable; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: loaded GNOME Shell helper 1 versus packaged 15 (durable helper_outdated in bounded diagnostic). Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.recording_output/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.recording_output/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.recording_output",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:08:45Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.format",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=19d246a8-ab89-4d8b-b440-6c812fee0828; Recording operation 19d246a8-ab89-4d8b-b440-6c812fee0828; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_options/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_options/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_options",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:09:44Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.system-audio",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=19d246a8-ab89-4d8b-b440-6c812fee0828; Recording operation 19d246a8-ab89-4d8b-b440-6c812fee0828; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_options/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_options/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_options",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:09:44Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.record",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e2b082f9-6bb7-473a-943f-26b50a4ea51f; Recording operation e2b082f9-6bb7-473a-943f-26b50a4ea51f; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:10:43Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.pause",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e2b082f9-6bb7-473a-943f-26b50a4ea51f; Recording operation e2b082f9-6bb7-473a-943f-26b50a4ea51f; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:10:43Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.stop",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e2b082f9-6bb7-473a-943f-26b50a4ea51f; Recording operation e2b082f9-6bb7-473a-943f-26b50a4ea51f; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:10:43Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.state-text",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e2b082f9-6bb7-473a-943f-26b50a4ea51f; Recording operation e2b082f9-6bb7-473a-943f-26b50a4ea51f; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:10:43Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.bounds",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e2b082f9-6bb7-473a-943f-26b50a4ea51f; Recording operation e2b082f9-6bb7-473a-943f-26b50a4ea51f; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:10:43Z",
+   "issue": 795
+  },
+  {
+   "interaction": "recsel.backends",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=e2b082f9-6bb7-473a-943f-26b50a4ea51f; Recording operation e2b082f9-6bb7-473a-943f-26b50a4ea51f; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_recording/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_recording/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_recording",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:10:43Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.cancel",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=7baa1e16-6d17-4bca-908d-d3cfc5210dc9; Recording operation 7baa1e16-6d17-4bca-908d-d3cfc5210dc9; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_discard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_discard/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_discard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:11:41Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.key-esc",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=7baa1e16-6d17-4bca-908d-d3cfc5210dc9; Recording operation 7baa1e16-6d17-4bca-908d-d3cfc5210dc9; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_discard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_discard/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_discard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:11:41Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.discard-question",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=7baa1e16-6d17-4bca-908d-d3cfc5210dc9; Recording operation 7baa1e16-6d17-4bca-908d-d3cfc5210dc9; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_discard/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_discard/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_discard",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:11:41Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.drag",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Compositor places this recording bar; X11 dragging is unavailable; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_drag/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_drag/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_drag",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:11:49Z"
+  },
+  {
+   "interaction": "bar.placement",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Compositor places this recording bar; X11 dragging is unavailable; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_drag/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_drag/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_drag",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:11:49Z"
+  },
+  {
+   "interaction": "bar.handle",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=fac71fe4-86a4-4032-a3b2-04b9b19a7cac; Recording operation fac71fe4-86a4-4032-a3b2-04b9b19a7cac; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_handle/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_handle/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_handle",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:12:46Z",
+   "issue": 795
+  },
+  {
+   "interaction": "bar.hidden-overlay",
+   "desktop": "ubuntu-gnome-wayland",
+   "package": "deb",
+   "functional": "blocked",
+   "visual": "frames",
+   "receipt": "/home/user/sg2/receipt.json",
+   "note": "Seeded explicit live selection mode in the private run configuration; Core-owned moving pattern raised before selection; operationId=ca7b5dda-1a7d-4ff2-8c63-9d79dbf1eb70; Recording operation ca7b5dda-1a7d-4ff2-8c63-9d79dbf1eb70; timeout: recording ready; R2 classification: raw receipt verdict failed, before interaction input. Core readiness gap #795: visible GNOME Share Screen consent remains pending; recording.inspect state preparing, no ready bar. Original receipt and bounded production-CLI diagnostic retained; no app/input pass claimed.; Boat development evidence only; driver b1c60e2f75913c23702a0b14fbb9c17e943526ad.",
+   "host": "boat",
+   "placement": "boat",
+   "guest": "selectors-ubuntu-gnome",
+   "destination": "local",
+   "frames": [
+    {
+     "label": "before",
+     "path": "frames/selectors.bar_hidden/00-before.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    },
+    {
+     "label": "after",
+     "path": "frames/selectors.bar_hidden/01-after.png",
+     "window": null,
+     "reference": null,
+     "distance": null,
+     "tolerance": null
+    }
+   ],
+   "recipe": "selectors.bar_hidden",
+   "build": "fe74b2d2c783b96880bb1901d3160a56098f3c99",
+   "at": "2026-10-30T05:13:44Z",
+   "issue": 795
+  }
+ ]
+}

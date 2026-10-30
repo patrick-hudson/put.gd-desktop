@@ -1,0 +1,2 @@
+Guest staging uses session-only tracking: scope launcher /usr/local/lib/putgd-lab/package_scope.py is not installed. Session-scan limits apply.
+{"status": "installed", "format": "deb", "sha256": "d743ef6e03698754975e9df4276f84c470a74b5378c394501a131e1edeb1c589", "installEvidence": "/home/user/c780/work/lab-runs/c1/install-25ad6454fb4a47a1848db9538505f8fe", "timedOut": false}

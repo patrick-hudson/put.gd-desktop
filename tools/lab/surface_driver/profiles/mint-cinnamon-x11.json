@@ -32,6 +32,12 @@
     "recsel": ".*"
   },
   "catalog_windows": {},
+  "shell_health": {
+    "process": "cinnamon",
+    "crash_windows": [
+      "^Cinnamon just crashed"
+    ]
+  },
   "focus": {
     "backend": "ewmh",
     "raise_before_input": false,

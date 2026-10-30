@@ -1,0 +1,13 @@
+{
+  "id": "bx_76ecpr6w",
+  "name": "lab-716-720",
+  "createdAt": "2026-10-30T00:11:06.676Z",
+  "ttlSeconds": 7200,
+  "hydrated": true,
+  "hydratedAt": "2026-10-30T00:13:28.675Z",
+  "machineProvider": "baremetal",
+  "sshEndpoint": "5.135.136.201:19037",
+  "vcpu": 4,
+  "memoryGB": 8,
+  "sourceSnapshot": "putgd-lab-cinnamon"
+}

@@ -13,6 +13,7 @@
 #endif
 #include <algorithm>
 #include <QClipboard>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QImageReader>
@@ -97,6 +98,52 @@ private slots:
   const auto fitted=window.canvas().zoom();choices[5]->trigger();QVERIFY(window.canvas().zoom()>fitted);QVERIFY(!window.viewState()["fitted"].toBool());choices[6]->trigger();QVERIFY(qAbs(window.canvas().zoom()-fitted)<0.0001);
   QVERIFY(!choices[0]->shortcut().isEmpty());QVERIFY(!choices[2]->shortcut().isEmpty());QVERIFY(!choices[5]->shortcut().isEmpty());QVERIFY(!choices[6]->shortcut().isEmpty());
   const auto buttons=window.findChild<QWidget*>("editorToolbar")->findChildren<QToolButton*>();for(auto* button:buttons){QVERIFY(!button->toolTip().startsWith("Fit to window"));QVERIFY(!button->toolTip().startsWith("Actual size"));}
+ }
+ void zoomShortcutsAfterMenus_data(){
+  QTest::addColumn<bool>("savedMenu");QTest::addColumn<int>("dismissal");QTest::addColumn<int>("key");
+  for(const bool saved:{false,true})for(int dismissal=0;dismissal<3;++dismissal)for(const int key:{Qt::Key_0,Qt::Key_1,Qt::Key_Plus,Qt::Key_Equal,Qt::Key_Minus})
+   QTest::newRow(qPrintable(QString("%1-%2-%3").arg(saved?"saved":"zoom").arg(dismissal).arg(key)))<<saved<<dismissal<<key;
+ }
+ void zoomShortcutsAfterMenus(){
+  QFETCH(bool,savedMenu);QFETCH(int,dismissal);QFETCH(int,key);
+  QImage image(640,320,QImage::Format_RGB32);image.fill(Qt::white);
+  EditDocument doc(image);EditorWindow window(doc);window.resize(900,620);window.show();window.activateWindow();
+  QVERIFY(putgd::test::waitForWindowActive(&window));
+  if(savedMenu){window.resize(760,620);window.showSaved("/synthetic/"+QString("long saved image name ").repeated(12)+".png");}
+  auto* button=window.findChild<QToolButton*>(savedMenu?"editorSavedMore":"editorZoom");QVERIFY(button&&button->menu());
+  PUTGD_TRY_VERIFY(button->isVisible());auto* menu=button->menu();
+  bool opened=false;
+  // InstantPopup runs a nested event loop. Drive the real button/menu path,
+  // including focus returning to the button, without selecting a canvas tool.
+  QTimer::singleShot(0,&window,[&]{
+   opened=putgd::test::waitFor([&]{return menu->isVisible();});
+   if(!opened){menu->close();return;}
+   if(dismissal==0)QTest::keyClick(menu,Qt::Key_Escape);
+   else if(dismissal==1)QTest::mouseClick(menu,Qt::LeftButton,Qt::NoModifier,QPoint(-8,-8));
+   else {auto* choice=savedMenu?menu->findChild<QAction*>("copySavedPathMenu"):menu->actions()[1];QTest::mouseClick(menu,Qt::LeftButton,Qt::NoModifier,menu->actionGeometry(choice).center());}
+  });
+  QTest::mouseClick(button,Qt::LeftButton);QVERIFY(opened);
+  PUTGD_TRY_VERIFY(!menu->isVisible()&&QApplication::activePopupWidget()==nullptr);
+  // Offscreen has no window manager to reactivate the owner after a popup.
+  // Model the issue's foreground check without changing the focused widget.
+  window.activateWindow();
+  PUTGD_TRY_VERIFY(window.isActiveWindow());PUTGD_TRY_VERIFY(button->hasFocus());
+  // Reset only the view; preserve exactly the focus left by the menu.
+  if(key==Qt::Key_1)window.canvas().fit();else window.canvas().setZoom(2);
+  const qreal before=window.canvas().zoom();
+  QTest::keyClick(QApplication::focusWidget(),Qt::Key(key),Qt::ControlModifier);
+  if(key==Qt::Key_0){PUTGD_TRY_VERIFY(window.canvas().fitted());QVERIFY(window.canvas().zoom()!=before);}
+  else {
+   const qreal expected=key==Qt::Key_1?1.0:before*(key==Qt::Key_Minus?0.8:1.25);
+   PUTGD_TRY_VERIFY(qAbs(window.canvas().zoom()-expected)<0.0001);QVERIFY(!window.canvas().fitted());
+  }
+ }
+ void zoomShortcutsStayInTheEditorWindow(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();window.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&window));
+  QWidget other;other.show();other.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&other));
+  QShortcut shortcut(QKeySequence("Ctrl+1"),&other);QSignalSpy activated(&shortcut,&QShortcut::activated);
+  window.canvas().setZoom(2);QTest::keyClick(&other,Qt::Key_1,Qt::ControlModifier);
+  PUTGD_TRY_COMPARE(activated.size(),1);QCOMPARE(window.canvas().zoom(),2.0);
  }
  void toolsFoldFromMeasuredWidthAndKeepPrivacyLabels(){
   {EditDocument doc(canvasImage());EditorWindow window(doc);}
@@ -504,6 +551,37 @@ private slots:
   auto* font=window.findChild<QFontComboBox*>("textFont");QVERIFY(font);QVERIFY(font->count()>0);
   font->setCurrentIndex(font->count()-1);QCOMPARE(doc.find(id)->fontFamily,font->currentFont().family());
   QVERIFY(window.findChild<QToolButton*>("customColor"));
+ }
+ void customColorSwatchNamesStayStableAndUniqueImmediatelyAfterRebuild(){
+  const bool nativeDialogsDisabled=QApplication::testAttribute(Qt::AA_DontUseNativeDialogs);
+  QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+  auto restore=qScopeGuard([nativeDialogsDisabled]{QApplication::setAttribute(Qt::AA_DontUseNativeDialogs,nativeDialogsDisabled);});
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Arrow);
+  auto* custom=window.findChild<QToolButton*>("customColor");QVERIFY(custom);
+  auto pick=[&](const QColor& color){
+   bool found=false;QTimer answer;answer.setSingleShot(true);
+   connect(&answer,&QTimer::timeout,&window,[&]{
+    auto* dialog=window.findChild<QColorDialog*>();found=dialog!=nullptr;
+    if(dialog){dialog->setCurrentColor(color);dialog->accept();return;}
+    // A failed lookup must still unwind the nested exec(), then fail the test.
+    for(auto* widget:QApplication::topLevelWidgets())
+     if(auto* modal=qobject_cast<QDialog*>(widget);modal&&modal->isVisible()&&modal->isModal())modal->reject();
+   });
+   answer.start(0);custom->click();return found;
+  };
+  auto checkNames=[&]{
+   const auto swatches=window.findChildren<QToolButton*>(QRegularExpression("^recentColorSwatch_"));
+   QCOMPARE(swatches.size(),window.recentColors().size());
+   for(const auto& color:window.recentColors()){
+    const auto matches=window.findChildren<QToolButton*>("recentColorSwatch_"+color.mid(1));
+    QCOMPARE(matches.size(),1);QCOMPARE(matches.first()->property("swatchColor").value<QColor>(),QColor(color));
+   }
+  };
+  QVERIFY2(pick(QColor("#123456")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#123456"}));checkNames();
+  QVERIFY2(pick(QColor("#abcdef")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#abcdef","#123456"}));checkNames();
+  // No event processing between a rebuild and its name checks: retired widgets still await deleteLater().
+  QVERIFY2(pick(QColor("#123456")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#123456","#abcdef"}));checkNames();
  }
  void textSizeControlFollowsACornerDrag(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
