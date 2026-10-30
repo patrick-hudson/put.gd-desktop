@@ -720,10 +720,16 @@ def about_close_recipe(identifier, key):
     @recipe(identifier)
     def close(ctx):
         about_open(ctx)
+        ctx.note('About close foreground: ' + json.dumps(ctx.focus('about'), sort_keys=True))
+        ctx.note('About close control: ' + json.dumps(ctx.accessible(
+            {'owned': True, 'window': 'About put.gd', 'name': 'Close',
+             'role': 'push button', 'showing': True}), sort_keys=True))
+        ctx.frame('about-before-close')
         if key:
             ctx.keys(key)
         else:
             ctx.click('closeAbout', window='about')
+        ctx.frame('about-after-close')
         ctx.wait(lambda: not visible(ctx, '^About put.gd$'), 'About closes')
         ctx.wait(lambda: visible(ctx, '^put.gd$'), 'main window stays visible')
         ctx.frame('about-closed')
