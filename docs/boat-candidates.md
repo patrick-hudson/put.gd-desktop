@@ -5,8 +5,10 @@ UI catalog rendering run in disposable Boat workers. This is an opt-in build
 placement that keeps physical acceptance hosts quiet. It provides package and
 offscreen catalog evidence, not desktop, hardware or release acceptance.
 
-Prerequisites: merge [code PR #685](https://github.com/patrick-hudson/put.gd-desktop/pull/685)
-first so `tools/lab/boat/candidate.py` is present. Also require authenticated `boat`, OpenSSH (the Boat CLI's local
+Prerequisite: merge companion [code PR #753](https://github.com/patrick-hudson/put.gd-desktop/pull/753)
+before using this guide's nonce leases and size-scaled collection behavior. The
+original controller arrived in [#685](https://github.com/patrick-hudson/put.gd-desktop/pull/685).
+Also require authenticated `boat`, OpenSSH (the Boat CLI's local
 `~/.ssh/ascii_box_ed25519` identity), Git, Python 3 and the distro's
 `python3-yaml` package. The public candidate commit must be pushed and available
 in the local Git object database. The existing `putgd-build-base` named snapshot
@@ -122,8 +124,11 @@ Collection packs the staged output into one tar archive on the worker, transfers
 it once over pinned SSH/SCP, verifies its SHA-256, and validates all members before
 restoring them. Absolute paths, parent traversal, duplicate paths, links and
 special files are rejected. Per-file inventories still bind the restored bytes;
-transport archives and failed collection evidence are retained. Packing, transfer
-and extraction share the finite, size-scaled collection budget. Receipts record
+transport archives and failed collection evidence are retained. Packing and transfer
+receive the remaining size-scaled collection budget. Restoration is checked
+against the deadline when it completes; local restoration can overrun before
+that check. An overrun fails the worker, retains written local evidence and
+still attempts worker cleanup (which has its own recorded outcome). Receipts record
 `collectionInput` (bytes, file count, filesystem and I/O pressure),
 `collectionBudgetSeconds`, and `collectionPhases` (probe, packing, transfer,
 verification/restoration). The transport remains uncompressed `tar -cf`; packages
@@ -152,9 +157,10 @@ are supported. A controller holds a shared cross-worktree `flock` lease under
 so startup or `--cleanup` can identify dead local controllers. Never unlink
 these files while controllers run, since unlinking splits the lock namespace.
 
-Startup cleanup deletes only workers with dead local nonce leases or expired
-Boat creation-time TTLs. Live local controllers and unknown leases (including
-controllers on another workstation) are preserved until TTL expiry. Legacy
+Startup cleanup deletes workers with dead local nonce leases, or workers with
+unknown leases and expired Boat creation-time TTLs. A held local lease always
+wins over TTL expiry. Unknown leases (including controllers on another
+workstation) are preserved until TTL expiry. Legacy
 fixed names have no lease and are preserved until TTL expiry. Each run’s final
 cleanup deletes only its own exact nonce names/IDs, observing the remainder of
 the original 120-second `boat new` timeout plus up to 120 seconds for deletion.

@@ -1,0 +1,12 @@
+{
+  "sandboxId": "bx_jrjetfwk",
+  "placement": "boat",
+  "containerImage": "ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55",
+  "source": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+  "command": "sudo -n docker run --rm --init --interactive --network host -e DEBIAN_FRONTEND=noninteractive -v /home/user/conflict-proof:/packages -w /packages ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55 bash -s",
+  "productionSha256": "a33f9943fccf690be0e2f1ef247120dc7bcf8dd6fa195497f09e0fa979f3875a",
+  "passed": true,
+  "earlierAttempt": "Docker without --interactive consumed no script; empty log preserved, not proof",
+  "fixtureSha256": "4ac7d200a067b9dd0c202a081ad91cef175ba8b65665eced3d3c2b6ab100aa00",
+  "matchedCandidateManifest": true
+}
