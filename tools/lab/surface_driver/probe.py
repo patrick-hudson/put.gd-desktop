@@ -464,6 +464,29 @@ def x11_foreground(query):
             'obscuring_window_id': obscurer.get('window_id'), 'backend': 'ewmh'}
 
 
+def x11_pointer():
+    """Root pointer position and button mask (XQueryPointer), without moving it."""
+    xlib = ctypes.CDLL(ctypes.util.find_library('X11'))
+    window_t = ctypes.c_ulong
+    xlib.XOpenDisplay.argtypes = [ctypes.c_char_p]; xlib.XOpenDisplay.restype = ctypes.c_void_p
+    xlib.XDefaultRootWindow.argtypes = [ctypes.c_void_p]; xlib.XDefaultRootWindow.restype = window_t
+    xlib.XQueryPointer.argtypes = [ctypes.c_void_p, window_t, ctypes.POINTER(window_t), ctypes.POINTER(window_t),
+                                   ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+                                   ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_uint)]
+    xlib.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = xlib.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError('cannot open X11 display for pointer state')
+    try:
+        root, child = window_t(), window_t()
+        rx, ry, wx, wy, mask = ctypes.c_int(), ctypes.c_int(), ctypes.c_int(), ctypes.c_int(), ctypes.c_uint()
+        xlib.XQueryPointer(display, xlib.XDefaultRootWindow(display), ctypes.byref(root), ctypes.byref(child),
+                           ctypes.byref(rx), ctypes.byref(ry), ctypes.byref(wx), ctypes.byref(wy), ctypes.byref(mask))
+        return rx.value, ry.value, mask.value
+    finally:
+        xlib.XCloseDisplay(display)
+
+
 def x11_ancestors(wid):
     chain = [str(wid)]
     for _ in range(12):
@@ -479,8 +502,9 @@ def x11_unmanaged_foreground(query):
 
     They are outside EWMH stacking and never become _NET_ACTIVE_WINDOW, so the
     witness is the server hit-test: pointer input needs the target in the
-    path at the input point (focus() selects at its centre). Keyboard input needs
-    the X input focus inside the target; a show-without-activating window
+    path at the input point (focus() selects at its centre); during a held
+    drag, at the pointer's position. Keyboard input needs the X input focus
+    inside the target; a show-without-activating window
     normally refuses it, naming where keys would really go.
     """
     target = query['geometry']
@@ -489,6 +513,13 @@ def x11_unmanaged_foreground(query):
         return {'ok': False, 'backend': 'x11-unmanaged', 'obscuring_window': 'unowned override-redirect target',
                 'obscuring_window_id': wid}
     point = query.get('point')
+    if point is None:
+        # A held button (drag in progress) means the implicit X grab routes
+        # motion to the pressed window, not the keyboard focus: hit-test the
+        # pointer's current position instead.
+        px, py, mask = x11_pointer()
+        if mask & (0x1f << 8):  # Button1Mask..Button5Mask
+            point = (px, py)
     if point is not None:
         hit = x11_hit(point)
         ok = wid in hit['path']

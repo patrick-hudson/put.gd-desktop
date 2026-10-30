@@ -130,12 +130,23 @@ class UnmanagedForeground(unittest.TestCase):
             result=probe.x11_foreground({'geometry':self.bar,'point':[600,720]})
         self.assertFalse(result['ok']);self.assertEqual(result['obscuring_window'],'Update Manager')
 
+    def test_held_drag_steps_hit_test_the_pointer_not_keyboard_focus(self):
+        with patch.object(probe,'owned',return_value=True),patch.object(probe,'x11_pointer',return_value=(610,715,1<<8)),\
+             patch.object(probe,'x11_hit',return_value={'path':['1','90'],'pid':7,'name':'bar'}) as hit:
+            self.assertTrue(probe.x11_foreground({'geometry':self.bar})['ok'])
+        self.assertEqual(hit.call_args[0][0],(610,715))
+        with patch.object(probe,'owned',return_value=True),patch.object(probe,'x11_pointer',return_value=(10,10,1<<8)),\
+             patch.object(probe,'x11_hit',return_value={'path':['1','33'],'pid':9,'name':'Panel'}):
+            self.assertFalse(probe.x11_foreground({'geometry':self.bar})['ok'])
+
     def test_keyboard_needs_x_input_focus_inside_the_bar(self):
         with patch.object(probe,'owned',return_value=True),patch.object(probe,'x11_focus_owner',return_value='12'),\
+             patch.object(probe,'x11_pointer',return_value=(0,0,0)),\
              patch.object(probe,'x11_ancestors',return_value=['12','1']),patch.object(probe,'run',return_value='Edit image'):
             result=probe.x11_foreground({'geometry':self.bar})
         self.assertFalse(result['ok']);self.assertIn("'Edit image'",result['obscuring_window'])
         with patch.object(probe,'owned',return_value=True),patch.object(probe,'x11_focus_owner',return_value='91'),\
+             patch.object(probe,'x11_pointer',return_value=(0,0,0)),\
              patch.object(probe,'x11_ancestors',return_value=['91','90','1']):
             self.assertTrue(probe.x11_foreground({'geometry':self.bar})['ok'])
 
