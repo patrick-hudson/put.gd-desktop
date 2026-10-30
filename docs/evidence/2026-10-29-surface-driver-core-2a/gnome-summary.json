@@ -1,0 +1,176 @@
+{
+  "kind": "surface-driver-input-foundations",
+  "application": {
+    "baseVersion": "26.1030.2317",
+    "commitCount": 2317,
+    "dirty": null,
+    "gitCommit": "315b99de57089a64b194191e0adbe9b9e2bf1f72",
+    "gitTree": "69e500e87343600ce89234d9d3ac9e8c2be7dbbe",
+    "packageVersion": "26.1030.2317~dev+g315b99de5708",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "26.1030.2317-dev+g315b99de5708"
+  },
+  "target": {
+    "hostname": "putgd-ubuntu-lab",
+    "kernel": "7.0.0-38-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "ubuntu",
+      "VERSION_ID": "26.04",
+      "VARIANT_ID": null
+    },
+    "session_type": "wayland",
+    "desktop": "ubuntu:GNOME",
+    "qt_platform": "wayland"
+  },
+  "placement": {
+    "host": "boat",
+    "sandbox": "bx_xyskun3a",
+    "snapshot": "putgd-lab-ubuntu-gnome",
+    "run_id": "287b8c12-580f-43dd-8d2f-fc8b2411ed5c",
+    "wall_port": 6095,
+    "acceleration": "kvm"
+  },
+  "tested_driver_archive_sha256": "7a489b4dd67c3913fd6b95925787d233709556b8486b8bf557b6ea494e3ee087",
+  "checks": {
+    "fresh-profile-foreground": {
+      "passed": false,
+      "error": "foreground: RuntimeError: Wayland compositor focus/stacking witness unavailable; configure focus.compositor_script",
+      "type": "RecipeBlocked"
+    },
+    "accessible-shape": {
+      "passed": true
+    },
+    "canvas-geometry": {
+      "passed": true
+    },
+    "notification-default": {
+      "passed": false,
+      "error": "notification is not uniquely drawn in the desktop accessibility tree",
+      "type": "RecipeBlocked"
+    },
+    "notification-button": {
+      "passed": false,
+      "error": "notification is not uniquely drawn in the desktop accessibility tree",
+      "type": "RecipeBlocked"
+    }
+  },
+  "accessible_sample": {
+    "window": "Edit image \u2014 put.gd",
+    "application": "putgd-ui",
+    "name": "Image being edited",
+    "role": "filler",
+    "text": "",
+    "description": "No marks. Insert places a redaction in the middle. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+    "states": {
+      "visible": true,
+      "showing": true,
+      "enabled": true,
+      "sensitive": true,
+      "active": false,
+      "focused": true,
+      "focusable": true,
+      "selected": false,
+      "expanded": false,
+      "checked": false,
+      "editable": false,
+      "modal": false,
+      "iconified": false
+    },
+    "rect": [
+      0,
+      108,
+      659,
+      456
+    ],
+    "attributes": {},
+    "pid": 11706,
+    "owned": true,
+    "objectName": "",
+    "accelerator": "",
+    "visible": true,
+    "showing": true,
+    "enabled": true,
+    "protected": false,
+    "popup": null,
+    "ancestors": [
+      {
+        "name": "main",
+        "role": "desktop frame",
+        "rect": [
+          0,
+          0,
+          1024,
+          768
+        ],
+        "pid": 1779
+      },
+      {
+        "name": "putgd-ui",
+        "role": "application",
+        "rect": null,
+        "pid": 11706
+      },
+      {
+        "name": "Edit image \u2014 put.gd",
+        "role": "filler",
+        "rect": [
+          0,
+          0,
+          900,
+          620
+        ],
+        "pid": 11706
+      },
+      {
+        "name": "",
+        "role": "split pane",
+        "rect": [
+          0,
+          108,
+          900,
+          456
+        ],
+        "pid": 11706
+      },
+      {
+        "name": "",
+        "role": "filler",
+        "rect": [
+          0,
+          108,
+          659,
+          456
+        ],
+        "pid": 11706
+      }
+    ],
+    "bounds": {
+      "x": 0,
+      "y": 108,
+      "width": 659,
+      "height": 456
+    }
+  },
+  "canvas_geometry": {
+    "x": 0,
+    "y": 108,
+    "width": 659,
+    "height": 456,
+    "scale": 1,
+    "pid": 11706,
+    "coordinate_space": "logical",
+    "head": 0
+  },
+  "private_export_sha256": "9c16c91aaf714f57c709cadbe7ad3e61d26214a4e6605e07a9ef9a05a086c193",
+  "acceptance": "partial; notification actions and general Wayland foreground witness blocked",
+  "visual_observation": "The saved before frame shows a pre-existing Software Updater banner, not the requested Core 2a toast; no GNOME AT-SPI product bug is established.",
+  "cleanup": {
+    "guest_stopped": true,
+    "guarded_cleanup": "refused: golden outside canonical root",
+    "issue": 721,
+    "sandbox_deletion_requested": true
+  },
+  "application_build_archive_sha256": "0504c1657aa4a9d2c13ce5a71a73e940f073d552161f2841349d3c5326be31ad"
+}

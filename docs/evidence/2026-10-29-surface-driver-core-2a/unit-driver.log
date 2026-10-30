@@ -1,0 +1,12 @@
+........................................{"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "__main__.<lambda>", "functional": "passed", "visual": "frames", "review": false}
+........{"recipe": "__main__.good", "functional": "passed", "visual": "frames", "review": false}
+{"recipe": "__main__.bad", "functional": "failed", "visual": "frames", "review": false}
+{"recipe": "__main__.blocked", "functional": "blocked", "visual": "frames", "review": false}
+..{"recipe": "__main__.good", "functional": "passed", "visual": "reviewed-ok", "review": false}
+{"recipe": "__main__.bad", "functional": "passed", "visual": "frames", "review": true}
+..
+----------------------------------------------------------------------
+Ran 52 tests in 0.498s
+
+OK
