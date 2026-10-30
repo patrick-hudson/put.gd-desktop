@@ -700,22 +700,26 @@ class TargetSafety(unittest.TestCase):
         from tools.lab.surface_driver.api import HOSTS, PLACEMENTS
         for host in HOSTS:
             for placement in PLACEMENTS:
-                for profile in ('builder', 'unknown', 'guest'):
+                for profile in (*desktop_lock.HOSTS, 'unknown', 'guest', 'boat'):
                     for session in (None, 'owned-session'):
                         with self.subTest(host=host, placement=placement, profile=profile, lock=session):
-                            target = self.target('192.168.68.70' if profile=='builder' else 'unknown.example')
+                            address=desktop_lock.HOSTS[profile][0] if profile in desktop_lock.HOSTS else ('127.0.0.1' if profile=='boat' else 'unknown.example')
+                            target = self.target(address)
+                            target.physical.ssh=Mock(return_value='boot-id\n')
                             if profile=='guest':
                                 target.physical=None
                             args=self.arguments(host,placement,session)
-                            allowed = (profile=='builder' and host=='f44' and placement=='native' and session) or (profile=='guest' and placement!='native')
+                            builder=profile in desktop_lock.HOSTS
+                            allowed = (builder and host==profile and placement=='native' and session) or (profile=='guest' and placement!='native') or (profile=='boat' and host=='boat' and placement=='boat')
                             command=b'qemu-system-x86_64\0-qmp\0unix:/tmp/sd-guard/qmp.sock,server=on,wait=off\0'
-                            with patch.object(lab,'verify_owned_guest',return_value={'pid':123}),patch.object(Path,'read_bytes',return_value=command):
+                            reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':'bx_test','hydrated':True}}))
+                            with patch.object(lab,'verify_owned_guest',return_value={'pid':123}),patch.object(Path,'read_bytes',return_value=command),patch.object(Path,'read_text',return_value='boot-id\n'),patch('tools.lab.surface_driver.run.subprocess.run',return_value=reply):
                                 if allowed:
                                     guard_target(args,target)
                                 else:
                                     with self.assertRaises(RecipeBlocked):guard_target(args,target)
-                            if profile=='builder' and allowed:
-                                target.require_lock.assert_called_once_with('f44','owned-session')
+                            if builder and allowed:
+                                target.require_lock.assert_called_once_with(profile,'owned-session')
                             else:
                                 target.require_lock.assert_not_called()
 
@@ -754,6 +758,9 @@ class TargetSafety(unittest.TestCase):
                     with self.assertRaises(RecipeBlocked):guard_target(args,target)
         with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=FileNotFoundError):
             with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        for malformed in ('not-json', '[]', '{}', '{"sandbox":null}'):
+            with patch('tools.lab.surface_driver.run.subprocess.run',return_value=SimpleNamespace(stdout=malformed)):
+                with self.assertRaises(RecipeBlocked):guard_target(args,target)
 
     def test_bypass_and_missing_native_lock_refuse_before_start_input_or_capture(self):
         with tempfile.TemporaryDirectory() as td:
@@ -764,7 +771,14 @@ class TargetSafety(unittest.TestCase):
                     ('f44','native','revoked-session','192.168.68.70'))):
                 target=self.target(address)
                 target.require_lock.side_effect=RecipeBlocked('lock is not held by this session')
-                target.start=Mock();target.identity=Mock();target.key=Mock();target.screenshot=Mock();target.close=Mock(return_value=[])
+                target.info={'id':'fake-target','profile':'cinnamon-x11'}
+                target.root='/tmp/sd-fake';target.socket=target.root+'/runtime/putgd/session.sock'
+                target.identity=Mock(return_value={'session_type':'x11'})
+                target.key=Mock();target.screenshot=Mock();target.close=Mock(return_value=[])
+                def unsafe_start():
+                    target.key(['t'])
+                    raise RecipeFailed('unlocked resident start was reached')
+                target.start=Mock(side_effect=unsafe_start)
                 args=['--desktop','mint-cinnamon-x11','--host',host,'--placement',placement,
                       '--host-profile',str(root/'pinned.json'),'--boat-id','bx_test','--package','deb',
                       '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',

@@ -59,7 +59,7 @@ def guard_target(args, target):
                         observed = target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip()
                         if boot and observed == boot:
                             return
-                except (OSError, ValueError, KeyError, subprocess.SubprocessError, lab.LabError):
+                except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError, lab.LabError):
                     pass
         raise RecipeBlocked('unverified host-profile is a physical target; no matching builder desktop lock')
     if args.placement == 'native':
