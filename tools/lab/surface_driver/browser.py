@@ -113,7 +113,10 @@ def default_browser(ctx, browser='firefox'):
     try:
         yield
     except BaseException:
-        _restore_transaction(ctx, state, timeouts, failing=True)
+        try:
+            _restore_transaction(ctx, state, timeouts, failing=True)
+        except Exception:
+            pass  # Reviewed; the recipe's own failure stays the result.
         raise
     else:
         _restore_transaction(ctx, state, timeouts, failing=False)
@@ -129,7 +132,9 @@ def _restore_transaction(ctx, state, timeouts, failing):
         ctx.review('Firefox handler restore incomplete (' + str(error)[:200] +
                    '); the next default_browser entry on this account restores it')
         raise
-    ctx.expect(restored.get('restored') is True, 'browser MIME bytes and hashes restored')
+    if restored.get('restored') is not True:
+        ctx.review('Firefox handler restore unconfirmed; the next default_browser entry on this account restores it')
+        ctx.expect(False, 'browser MIME bytes and hashes restored')
     ctx.note('Firefox handler restored; MIME SHA-256 checks passed')
     if restored.get('foreign'):
         ctx.note('Stopped %d Firefox process(es) started outside the private profile' % restored['foreign'])

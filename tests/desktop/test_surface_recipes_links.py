@@ -681,6 +681,22 @@ class FailurePath(unittest.TestCase):
                     browser.open_and_verify(ctx, fail, ctx.upload['expect'])
         self.assertTrue(any(e[0] == 'review' and 'Failure frame unavailable' in e[1] for e in ctx.events))
 
+    def test_restore_failure_keeps_the_recipe_failure_and_is_reviewed(self):
+        # CodeRabbit (browser.py:117): the recipe's own exception type decides the row.
+        for restore in (RecipeBlocked('cleanup refused: owned overlay'), {'restored': False}):
+            ctx, events = FakeContext(), []
+            with patch.object(browser, '_remote', self.remote(events, restore=restore)):
+                with self.assertRaises(KeyboardInterrupt):
+                    with browser.default_browser(ctx):
+                        raise KeyboardInterrupt
+            self.assertTrue(any(e[0] == 'review' and 'restore' in e[1] for e in ctx.events))
+        # On the success path a restore failure still fails the run.
+        ctx, events = FakeContext(), []
+        with patch.object(browser, '_remote', self.remote(events, restore={'restored': False})):
+            with self.assertRaisesRegex(RecipeFailed, 'browser MIME bytes and hashes restored'):
+                with browser.default_browser(ctx):
+                    pass
+
     def test_interrupted_setup_is_recovered_outside_the_deadline(self):
         # Validator N3: the transport failed, but the target step may still finish.
         ctx, events = FakeContext(), []
