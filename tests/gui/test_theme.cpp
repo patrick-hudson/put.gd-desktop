@@ -33,6 +33,10 @@
 #include <QPainter>
 #include <QRegularExpression>
 #include <QScopeGuard>
+#ifdef Q_OS_LINUX
+#include <QDBusConnection>
+#include <QDBusMessage>
+#endif
 #include <QSpinBox>
 #include <QScreen>
 #include <QScrollBar>
@@ -1684,6 +1688,82 @@ private slots:
         PanelTone tone;
         QVERIFY(!tone.light());
         QCOMPARE(tone.source(), QString("plasma-style"));
+    }
+    // #702: Cinnamon's portal does not serve org.cinnamon.theme; dconf's change
+    // notice does, as a key or a directory prefix and the paths under it.
+    void panelToneCinnamonDconfPaths_data() {
+        QTest::addColumn<QString>("prefix");
+        QTest::addColumn<QStringList>("changes");
+        QTest::addColumn<bool>("theme");
+        QTest::newRow("gsettings set: the key itself") << "/org/cinnamon/theme/name" << QStringList{""} << true;
+        QTest::newRow("several keys under the schema") << "/org/cinnamon/theme/" << QStringList{"name", "symbolic-relative-size"} << true;
+        QTest::newRow("several schemas, one the theme") << "/org/cinnamon/" << QStringList{"desktop/interface/gtk-theme", "theme/name"} << true;
+        QTest::newRow("reset of /org/cinnamon/") << "/org/cinnamon/" << QStringList{""} << true;
+        QTest::newRow("reset of everything") << "/" << QStringList{""} << true;
+        QTest::newRow("GTK theme only") << "/org/cinnamon/desktop/interface/gtk-theme" << QStringList{""} << false;
+        QTest::newRow("a sibling schema directory") << "/org/cinnamon/" << QStringList{"desktop/", "themes/name"} << false;
+        QTest::newRow("a key named like the schema") << "/org/cinnamon/theme" << QStringList{""} << false;
+        QTest::newRow("another desktop") << "/org/gnome/desktop/interface/" << QStringList{"gtk-theme"} << false;
+    }
+    void panelToneCinnamonDconfPaths() {
+        QFETCH(QString, prefix);
+        QFETCH(QStringList, changes);
+        QFETCH(bool, theme);
+        QCOMPARE(PanelTone::cinnamonThemeChanged(prefix, changes), theme);
+    }
+    // A desktop theme chosen on its own re-tints the tray: the resident re-reads
+    // the theme on dconf's notice, and only on one about the theme. Runs on the
+    // private bus of ctest's gui_theme_cinnamon_dconf, never a desktop's own.
+    void panelToneFollowsCinnamonDconfNotice() {
+#ifndef Q_OS_LINUX
+        QSKIP("dconf is Linux only");
+#else
+        if (qEnvironmentVariable("PUTGD_ISOLATED_DCONF_TEST") != "1" || !QDBusConnection::sessionBus().isConnected())
+            QSKIP("needs the private session bus of ctest's gui_theme_cinnamon_dconf");
+        QTemporaryDir bin;
+        QVERIFY(bin.isValid());
+        // gsettings as the resident runs it: prints the theme the "desktop" has
+        // now and records each read.
+        const auto theme = bin.filePath("theme"), reads = bin.filePath("reads");
+        auto write = [](const QString& path, const QByteArray& text) { QFile file(path); return file.open(QIODevice::WriteOnly) && file.write(text) == text.size(); };
+        QVERIFY(write(theme, "Mint-Y-Dark-Aqua"));
+        QVERIFY(write(bin.filePath("gsettings"), "#!/bin/sh\necho read >> '" + reads.toUtf8() + "'\nprintf \"'%s'\\n\" \"$(cat '" + theme.toUtf8() + "')\"\n"));
+        QVERIFY(QFile::setPermissions(bin.filePath("gsettings"), QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+        const QByteArray saved[] = {qgetenv("PATH"), qgetenv("XDG_CURRENT_DESKTOP")};
+        auto restore = qScopeGuard([&] {
+            const char* names[] = {"PATH", "XDG_CURRENT_DESKTOP"};
+            for (int i = 0; i < 2; ++i) saved[i].isNull() ? qunsetenv(names[i]) : qputenv(names[i], saved[i]);
+        });
+        qputenv("PATH", bin.path().toLocal8Bit() + ":" + saved[0]);
+        qputenv("XDG_CURRENT_DESKTOP", "X-Cinnamon");
+        auto readCount = [&] { QFile file(reads); return file.open(QIODevice::ReadOnly) ? file.readAll().count('\n') : 0; };
+        auto notice = [](const QString& prefix, const QStringList& changes, const QString& writer = "user") {
+            auto signal = QDBusMessage::createSignal("/ca/desrt/dconf/Writer/" + writer, "ca.desrt.dconf.Writer", "Notify");
+            signal << prefix << changes << QString(":1.1:user:1");
+            QVERIFY(QDBusConnection::sessionBus().send(signal));
+        };
+        PanelTone tone;
+        PUTGD_TRY_COMPARE(tone.source(), QString("cinnamon-theme"));
+        QVERIFY(!tone.light());
+        QCOMPARE(readCount(), 1);
+        QSignalSpy changed(&tone, &PanelTone::changed);
+        // Another setting: no re-read, past the 300 ms debounce.
+        QVERIFY(write(theme, "Mint-Y"));
+        notice("/org/cinnamon/desktop/interface/gtk-theme", {""});
+        PUTGD_COMPARE_STEADY(readCount(), 1, 700);
+        QVERIFY(!tone.light());
+        // The desktop theme itself, as `gsettings set org.cinnamon.theme name` reports it.
+        notice("/org/cinnamon/theme/name", {""});
+        PUTGD_TRY_VERIFY(tone.light());
+        QCOMPARE(readCount(), 2);
+        QCOMPARE(changed.count(), 1);
+        // And back, as a reset of the whole Cinnamon tree reports it, from a
+        // profile whose user-db is not named "user".
+        QVERIFY(write(theme, "Mint-Y-Dark"));
+        notice("/org/cinnamon/", {""}, "custom");
+        PUTGD_TRY_VERIFY(!tone.light());
+        QCOMPARE(changed.count(), 2);
+#endif
     }
 };
 

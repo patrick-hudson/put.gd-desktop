@@ -1,0 +1,23 @@
+{
+  "retention": "Private work archive; restored and verified before overlay retirement",
+  "directory": "/home/patrick/.t3/worktrees/put.gd/t3-37a7c0d4/work/issue780-b1",
+  "archives": {
+    "cinnamon": {
+      "path": "/home/patrick/.t3/worktrees/put.gd/t3-37a7c0d4/work/issue780-b1/cinnamon-evidence.tar.gz",
+      "placement": "boat",
+      "archiveSha256": "0d16030922533a1a618906e73a4f76406c27a1a87b05a8196dd5a96d101728d5",
+      "filesVerified": 189,
+      "allVerified": true,
+      "sourceCommit": "ac6e9bb2d15a9c60dbb9cac39a3a3236f8c0d7d6"
+    },
+    "ubuntu": {
+      "path": "/home/patrick/.t3/worktrees/put.gd/t3-37a7c0d4/work/issue780-b1/ubuntu-evidence.tar.gz",
+      "placement": "boat",
+      "archiveSha256": "3ca29c73868fc12a37590d1fbed9b08152ee4f0c1b14cfd7f0d80edd991aeaa1",
+      "filesVerified": 147,
+      "allVerified": true,
+      "sourceCommit": "ac6e9bb2d15a9c60dbb9cac39a3a3236f8c0d7d6"
+    }
+  },
+  "failedAttempts": "Retained inside the same verified archives, with saved native QMP frames; selected logs and screenshots accompany this index."
+}

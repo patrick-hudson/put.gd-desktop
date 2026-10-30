@@ -13,7 +13,7 @@ from unittest.mock import Mock, call, patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.catalog import Catalog, compare, control_point
-from tools.lab.surface_driver.target import Target, input_release
+from tools.lab.surface_driver.target import RELEASE_TIMEOUT, Target, input_release
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.run import run_recipes
 
@@ -208,8 +208,11 @@ class PhysicalPointerSafety(unittest.TestCase):
                     self.drag()
             else:
                 self.drag()
-        send.assert_called_once_with(self.target.run,
-            [{'type': 'btn', 'data': {'button': 'right', 'down': False}}])
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args, (self.target.run,
+            [{'type': 'btn', 'data': {'button': 'right', 'down': False}}]))
+        # Its own short budget: a deferred deadline is not held for long (#815).
+        self.assertLessEqual(send.call_args.kwargs['timeout'], RELEASE_TIMEOUT)
         # One press, zero/two move attempts, then a fresh owned-endpoint
         # check before the button-up-only QMP packet.
         self.assertEqual(self.target._verify_endpoints.call_count,

@@ -11,14 +11,16 @@ key=$(cat "$1")
 case "$key" in ssh-ed25519\ *) ;; *) echo 'Expected an Ed25519 public key.' >&2; exit 1 ;; esac
 id lab >/dev/null
 [ -f "$(dirname "$0")/guest_idle.py" ] || { echo 'Missing guest_idle.py companion.' >&2; exit 1; }
+[ -f "$(dirname "$0")/package_install.py" ] || { echo 'Missing package_install.py companion.' >&2; exit 1; }
+[ -f "$(dirname "$0")/package_scope.py" ] || { echo 'Missing package_scope.py companion.' >&2; exit 1; }
 if command -v apt-get >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y openssh-server python3
+  apt-get install -y openssh-server python3 util-linux
   package_manager=/usr/bin/apt-get
   ssh_service=ssh
 elif command -v dnf >/dev/null; then
-  dnf install -y openssh-server python3
+  dnf install -y openssh-server python3 util-linux
   package_manager=/usr/bin/dnf
   ssh_service=sshd
 else
@@ -33,8 +35,12 @@ chmod 600 /home/lab/.ssh/authorized_keys
 if command -v restorecon >/dev/null; then
   restorecon -RF /home/lab/.ssh
 fi
-# Test package installation only; this rule is never installed on the host.
-printf 'lab ALL=(root) NOPASSWD: %s\n' "$package_manager" > /etc/sudoers.d/putgd-lab
+# Test package installation and its system scopes only; never installed on the host.
+install -d -m 755 /usr/local/lib/putgd-lab
+install -m 755 "$(dirname "$0")/package_install.py" /usr/local/lib/putgd-lab/package_install.py
+# The scope launcher fixes every systemd-run argument; never grant systemd-run itself.
+install -m 755 "$(dirname "$0")/package_scope.py" /usr/local/lib/putgd-lab/package_scope.py
+printf 'lab ALL=(root) NOPASSWD: %s, /usr/local/lib/putgd-lab/package_install.py, /usr/local/lib/putgd-lab/package_scope.py\n' "$package_manager" > /etc/sudoers.d/putgd-lab
 chmod 440 /etc/sudoers.d/putgd-lab
 visudo -cf /etc/sudoers.d/putgd-lab
 systemctl enable --now "$ssh_service"

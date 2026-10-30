@@ -1,0 +1,71 @@
+{
+  "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+  "files": [
+    {
+      "bytes": 346,
+      "path": "binary-version.json",
+      "sha256": "2bdd9849526215e3d98fd9507cf106bba9f7350645d43a5f0d142ecc6e6af6f5"
+    },
+    {
+      "bytes": 345,
+      "path": "build-info.json",
+      "sha256": "995117a4c65e4caa59e7040ac75b1f98e24caf80a4e1efe4f2ddf48b2b0f06ee"
+    },
+    {
+      "bytes": 256,
+      "path": "cpack.log",
+      "sha256": "838ef6726c867649875fb9a0f073e277ebc28350279260bc93f1c0c9d52d9371"
+    },
+    {
+      "bytes": 158499,
+      "path": "native-audit.json",
+      "sha256": "9a75fd641ab6f4b4b38d77c98b823c0a319ec393d470a08c97f521e540b754ad"
+    },
+    {
+      "bytes": 36502,
+      "path": "packages.txt",
+      "sha256": "6233f30fd1a09c09aca9557c9bebc4c47e8d974a79c3a4c3419f3eb10df1ef04"
+    },
+    {
+      "bytes": 60326348,
+      "path": "putgd_26.1030.2473~dev+g0c329b0692ca_amd64.deb",
+      "sha256": "ae42eb02f5dfa35e012343dac19c0fb3f1d64bc3f5d34524c89baf6ad764a91b"
+    },
+    {
+      "bytes": 0,
+      "path": "source-status.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "finishedAt": 1793335080.6565452,
+  "identity": {
+    "baseVersion": "26.1030.2473",
+    "commitCount": 2473,
+    "dirty": false,
+    "gitCommit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "gitTree": "038bc7af0456e1698a3e31ebeb9923a225bef876",
+    "packageVersion": "26.1030.2473~dev+g0c329b0692ca",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2473-dev+g0c329b0692ca"
+  },
+  "originalFailedSandboxId": "bx_2mxrfaus",
+  "originalFailure": "npm ECONNRESET during Proton runtime provisioning; original controller result remains failed",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:25.765Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:06:37.813Z",
+    "id": "bx_jw76a9k5",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "5.196.81.183:19039",
+    "vcpu": 8
+  },
+  "runNonce": "02818a97bfa24edb",
+  "sandboxId": "bx_jw76a9k5",
+  "scope": "manual Ubuntu 26.04 recovery on retained run-A catalog worker in a separate clean checkout/build; no new sandbox",
+  "source": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "startedAt": 1793334615.5338628,
+  "state": "passed",
+  "transportSha256": "72d8de7164c9110d38bfd55525b7e7ddec89cb5000641ec033a630dd47860197"
+}

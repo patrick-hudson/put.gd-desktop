@@ -1,0 +1,54 @@
+{
+    "class": "QInputDialog",
+    "controls": [
+        {
+            "class": "QLineEdit",
+            "echo": 0,
+            "enabled": true,
+            "kind": "field",
+            "name": "",
+            "readOnly": false,
+            "rect": [
+                11,
+                36,
+                178,
+                36
+            ],
+            "text": ""
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                46,
+                78,
+                64,
+                36
+            ],
+            "text": "OK"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                116,
+                78,
+                73,
+                36
+            ],
+            "text": "Cancel"
+        }
+    ],
+    "height": 125,
+    "keys": [
+    ],
+    "width": 200
+}

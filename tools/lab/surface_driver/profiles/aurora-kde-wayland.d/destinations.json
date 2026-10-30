@@ -1,0 +1,68 @@
+{
+  "window_titles": {
+    "destinations": "put.gd",
+    "confirmDestinationRemove": "Remove destination",
+    "confirmDestinationDefault": "Use an untested destination",
+    "confirmDestinationReload": "Reload settings from file",
+    "confirmDestinationName": "Add destination"
+  },
+  "catalog_windows": {
+    "destinations": [
+      "04-destinations-s3"
+    ],
+    "confirmDestinationDefault": [
+      "confirm-make-default-untested"
+    ],
+    "confirmDestinationRemove": [
+      "confirm-remove-destination"
+    ],
+    "confirmDestinationReload": [
+      "53-reload-confirm"
+    ],
+    "confirmDestinationName": [
+      "confirm-add-destination-name"
+    ]
+  },
+  "windows": {
+    "confirmDestinationName": {
+      "title": "Add destination",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*",
+        "name": "Add destination"
+      }
+    },
+    "confirmDestinationRemove": {
+      "title": "Remove destination",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*",
+        "name": "Remove destination"
+      }
+    },
+    "confirmDestinationDefault": {
+      "title": "Use an untested destination",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*",
+        "name": "Use an untested destination"
+      }
+    },
+    "confirmDestinationReload": {
+      "title": "Reload settings from file",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*",
+        "name": "Reload settings from file"
+      }
+    },
+    "destinationActionsMenu": {
+      "owner": "destinations",
+      "popup": true
+    },
+    "destinationAddMenu": {
+      "owner": "destinations",
+      "popup": true
+    }
+  }
+}

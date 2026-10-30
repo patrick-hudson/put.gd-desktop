@@ -1,0 +1,414 @@
+{
+  "artifacts": [
+    {
+      "artifact": "appimage",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Pinned native Ubuntu 24.04 container instead of mutable GitHub ubuntu-24.04 hosted VM; package inventory retained. Hosted preinstalled desktop links can differ (appimage-build.json rootDesktopEntry.removedLinks).",
+        "Run hosted_apt_mirrors.py and export QT_PLUGIN_PATH/QML2_IMPORT_PATH as install-qt-action does; provision locked Qt with aqtinstall 3.3.* / py7zr 1.1.0 in a fresh venv instead of the cached Action.",
+        "Installer uses install-packages.sh defaults (4 attempts, 900s overall and 600s stall per attempt), rather than the AppImage CI dependency step environment (3 attempts, 300s overall, 120s stall). Installer labels default to distro/manager."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_9bek7yhb"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-appimage",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_892f9d6528b44165884a59232627a9a7",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:03.530Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_9bek7yhb"
+            },
+            "sandboxId": "bx_9bek7yhb"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330045.9555283
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Hydration deadline/cancellation",
+      "name": "putgd-49c217bd4662-appimage",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_9bek7yhb",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-appimage",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.2950008
+      },
+      "state": "failed",
+      "totalSeconds": 25.925,
+      "ttlSeconds": 10800,
+      "type": "large"
+    },
+    {
+      "artifact": "debian13",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_cu6eejs8"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-debian13",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_732e7ab6bf614478915402786099456d",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:04.043Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_cu6eejs8"
+            },
+            "sandboxId": "bx_cu6eejs8"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330046.4353871
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Hydration deadline/cancellation",
+      "name": "putgd-49c217bd4662-debian13",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_cu6eejs8",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-debian13",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.2964122
+      },
+      "state": "failed",
+      "totalSeconds": 26.403,
+      "ttlSeconds": 10800,
+      "type": "large"
+    },
+    {
+      "artifact": "fedora44",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_dtgmb7qg"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-fedora44",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_5af79dcbe8f346ee81561e02fdfd7b2b",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:04.583Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_dtgmb7qg"
+            },
+            "sandboxId": "bx_dtgmb7qg"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330046.9561825
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Hydration deadline/cancellation",
+      "name": "putgd-49c217bd4662-fedora44",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_dtgmb7qg",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-fedora44",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.3208172
+      },
+      "state": "failed",
+      "totalSeconds": 26.923,
+      "ttlSeconds": 10800,
+      "type": "large"
+    },
+    {
+      "artifact": "lab-fixture",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Test-only DEB named putgd-lab-fixture; PUTGD_PACKAGE_TARGET empty and PUTGD_UPDATE_CHECK OFF. It must not enter production staging.",
+        "native.py audit intentionally not run: production audit forbids fixture files and requires package name putgd. CPack control metadata, binary/build identity and per-file hashes retained instead."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_rxw3r7gc"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-lab-fixture",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_302f15733e414a658aa1a5bb2d8b0aae",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:03.585Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_rxw3r7gc"
+            },
+            "sandboxId": "bx_rxw3r7gc"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330045.999272
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Hydration deadline/cancellation",
+      "name": "putgd-49c217bd4662-lab-fixture",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_rxw3r7gc",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-lab-fixture",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.305185
+      },
+      "state": "failed",
+      "totalSeconds": 25.964,
+      "ttlSeconds": 10800,
+      "type": "large"
+    },
+    {
+      "artifact": "ubuntu24.04",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_ce7e7ste"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-ubuntu24.04",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_15a7ea7240904e37ac593b9754c7158d",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:03.549Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_ce7e7ste"
+            },
+            "sandboxId": "bx_ce7e7ste"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330045.9972703
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Hydration deadline/cancellation",
+      "name": "putgd-49c217bd4662-ubuntu24.04",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_ce7e7ste",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-ubuntu24.04",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.2941003
+      },
+      "state": "failed",
+      "totalSeconds": 25.967,
+      "ttlSeconds": 10800,
+      "type": "large"
+    },
+    {
+      "artifact": "ubuntu26.04",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_mrfepnx2"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-ubuntu26.04",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_08b1c5dadff04c6db5bbc7808ac91576",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:04.108Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_mrfepnx2"
+            },
+            "sandboxId": "bx_mrfepnx2"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330046.687873
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Hydration deadline/cancellation",
+      "name": "putgd-49c217bd4662-ubuntu26.04",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_mrfepnx2",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-ubuntu26.04",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.3032234
+      },
+      "state": "failed",
+      "totalSeconds": 26.657,
+      "ttlSeconds": 10800,
+      "type": "large"
+    },
+    {
+      "artifact": "ui-catalog",
+      "ciDifferences": [
+        "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+        "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+        "Untagged development identity for the exact SHA; no release tag supplied.",
+        "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M.",
+        "Pinned package-matrix Ubuntu 26.04 digest instead of CI linux floating ubuntu:26.04 tag; same dependency/build/catalog run blocks, no ctest. Compiler cache capped at 256M instead of CI linux 1G."
+      ],
+      "cleanup": {
+        "deletedIds": [
+          "bx_v83jmrfy"
+        ],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-ui-catalog",
+        "requests": [
+          {
+            "operation": {
+              "attemptCount": 0,
+              "completedAt": null,
+              "expectedBy": null,
+              "id": "bdop_5aacc5a094f34eeb86d4fea5851b09d6",
+              "kind": "sandbox",
+              "reason": "explicit",
+              "requestedAt": "2026-10-30T03:14:03.672Z",
+              "stage": "removing",
+              "status": "pending",
+              "targetId": "bx_v83jmrfy"
+            },
+            "sandboxId": "bx_v83jmrfy"
+          }
+        ],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330046.10699
+      },
+      "cleanupVerified": true,
+      "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+      "error": "Controller cancelled or deadline exceeded: boat",
+      "name": "putgd-49c217bd4662-ui-catalog",
+      "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+      "sandboxId": "bx_v83jmrfy",
+      "snapshot": "putgd-build-base",
+      "startupCleanup": {
+        "deletedIds": [],
+        "finalState": "absent",
+        "name": "putgd-49c217bd4662-ui-catalog",
+        "requests": [],
+        "verification": "boat list --all",
+        "verified": true,
+        "verifiedAt": 1793330020.304143
+      },
+      "state": "failed",
+      "totalSeconds": 26.073,
+      "ttlSeconds": 10800,
+      "type": "large"
+    }
+  ],
+  "commit": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+  "ownedSandboxesRemaining": [],
+  "passed": false,
+  "repository": "https://github.com/patrick-hudson/put.gd-desktop.git",
+  "schemaVersion": 1,
+  "scope": "candidate build rehearsal; no desktop or release acceptance",
+  "snapshot": {
+    "createdAt": "2026-10-22T03:48:58.057Z",
+    "name": "putgd-build-base",
+    "snapshotId": "e53bf9cc-f068-47bd-9f5c-61af4572398c"
+  },
+  "totalSeconds": 26.93
+}

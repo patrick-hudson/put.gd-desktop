@@ -1,0 +1,18 @@
+{
+  "completed": true,
+  "files": {
+    "capacity.json": "263f0d2b035a7e05d9d1031a480388e43d8b2f6275e6ccf1f548e175d6124856",
+    "completion.json": "9950cf5513b572c080976f8ee5fd33241804ba4b0028b6352a8e6071d5522dd1",
+    "desktop-after.ppm": "367bbcb8f3b6f5acf74ae5ef2f20adac3ee01f33963d6b60e72e75aa3a9d281d",
+    "desktop.ppm": "367bbcb8f3b6f5acf74ae5ef2f20adac3ee01f33963d6b60e72e75aa3a9d281d",
+    "guest-capacity.json": "fc2a3deef8c84746d7c980331d30403760274546715044b2ff7ae11724f4a2c0",
+    "launch.json": "0da319f7f723d9983504589ee068c9f05dd98854608f32540740b327b50c94ec",
+    "probes.log": "b58cb0d97a8fdffdbeca2e6b3f39741086776f5eb80eb7aa4521642a057b0708",
+    "reset.json": "a6d593deb1eb2faa67e68a5e8fd30f081ae1feecc8993c5a03907d1b28fb608a"
+  },
+  "kind": "vm-overlay-cleanup-evidence",
+  "outcome": "passed",
+  "run": "/home/user/work/put.gd/src/work/lab-runs/sv1",
+  "runId": "fb50e286-cf1b-4889-8a37-b46050717495",
+  "schemaVersion": 1
+}

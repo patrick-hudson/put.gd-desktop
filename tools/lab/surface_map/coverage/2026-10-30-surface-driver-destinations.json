@@ -1,0 +1,2140 @@
+{
+  "schemaVersion": 2,
+  "campaign": "surface-driver-destinations-round-2",
+  "evidenceKind": "boat-development-only",
+  "recipeSourceByGuest": {
+    "dc2": "ec5f803157f47870f9111b878b6b1cfcd196b84b",
+    "dg1": "78b476b510069c3012d26a1c8e5516904c344120"
+  },
+  "finalRecipeSource": "25a3c99a4888748a39f5f0fa74113e3f271e02f6",
+  "intendedAppSource": {
+    "baseVersion": "26.1030.1",
+    "commitCount": 1,
+    "dirty": false,
+    "gitCommit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "gitTree": "038bc7af0456e1698a3e31ebeb9923a225bef876",
+    "packageVersion": "26.1030.1~dev+g0c329b0692ca",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.1-dev+g0c329b0692ca"
+  },
+  "rawCounts": {
+    "cinnamon": {
+      "blocked": 26,
+      "failed": 3,
+      "passed": 1
+    },
+    "gnome": {
+      "blocked": 30
+    }
+  },
+  "classifiedCounts": {
+    "cinnamon": {
+      "blocked": 29,
+      "passed": 1
+    },
+    "gnome": {
+      "blocked": 30
+    }
+  },
+  "classifications": [
+    {
+      "interaction": "destinations.rename",
+      "observedFunctional": "failed",
+      "classifiedFunctional": "blocked",
+      "issue": 712,
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json"
+    },
+    {
+      "interaction": "destinations.actions-menu",
+      "observedFunctional": "failed",
+      "classifiedFunctional": "blocked",
+      "issue": 712,
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json"
+    },
+    {
+      "interaction": "destinations.unlock-credentials",
+      "observedFunctional": "failed",
+      "classifiedFunctional": "blocked",
+      "issue": 666,
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json"
+    }
+  ],
+  "limitations": [
+    "No physical/native desktop or release acceptance.",
+    "Raw receipts retain three failed Cinnamon assertions; the classifications above record the proven recipe/core causes.",
+    "Final menu-resolution, confirmation-frame and credential-fixture corrections have unit coverage only; two Cinnamon attempts and one GNOME attempt were used.",
+    "GNOME build refusal retains the observed old resident identity; no intended-build interaction was attempted.",
+    "Private evidence and checksums are indexed in work/dest-r2/evidence-index.json."
+  ],
+  "entries": [
+    {
+      "interaction": "destinations.add-credentials",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 666,
+      "note": "Need one current non-secret accessible control: addDestinationCredentials",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818242, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.add_credentials/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818242, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.add_credentials/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.add_credentials/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.add_credentials/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182423890608874,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.add_credentials/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182423890608874,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.add_credentials/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.add_credentials",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:05Z"
+    },
+    {
+      "interaction": "destinations.rename",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "Raw run failed its rename assertion: after-frame shows the menu still open and the title unchanged, so menu keyboard delivery is unverified. Recipe now resolves/clicks the live popup action; blocked on #712. Final correction has unit coverage only after the two-attempt cap.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818217, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.rename/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.817652, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.rename/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.rename/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.rename/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182166000171999,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.rename/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.817651682630289,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.rename/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.rename",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:34Z",
+      "issue": 712
+    },
+    {
+      "interaction": "destinations.actions-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "Raw run failed its rename assertion: after-frame shows the menu still open and the title unchanged, so menu keyboard delivery is unverified. Recipe now resolves/clicks the live popup action; blocked on #712. Final correction has unit coverage only after the two-attempt cap.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818217, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.rename/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.817652, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.rename/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.rename/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.rename/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182166000171999,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.rename/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.817651682630289,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.rename/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.rename",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:34Z",
+      "issue": 712
+    },
+    {
+      "interaction": "destinations.s3-bucket",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.s3_fields/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.s3_fields/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:49Z"
+    },
+    {
+      "interaction": "destinations.s3-region",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.s3_fields/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.s3_fields/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:49Z"
+    },
+    {
+      "interaction": "destinations.s3-prefix",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.s3_fields/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.s3_fields/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:49Z"
+    },
+    {
+      "interaction": "destinations.s3-public-url",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818245, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.s3_fields/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.s3_fields/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.s3_fields/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182450106961644,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.s3_fields/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:20:49Z"
+    },
+    {
+      "interaction": "destinations.s3-acl",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818282, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.acl/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818282, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.acl/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.acl/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.acl/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818282281991744,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.acl/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818282281991744,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.acl/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.acl",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:21:03Z"
+    },
+    {
+      "interaction": "destinations.s3-service",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818217, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.service/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818217, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.service/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.service/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.service/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182170044827143,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.service/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182170044827143,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.service/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.service",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:21:20Z"
+    },
+    {
+      "interaction": "destinations.advanced-connection",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818247, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.advanced_connection/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818247, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.advanced_connection/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.advanced_connection/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.advanced_connection/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182470827420881,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.advanced_connection/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182470827420881,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.advanced_connection/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.advanced_connection",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:21:36Z"
+    },
+    {
+      "interaction": "destinations.autosave",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818242, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.autosave_validation/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818242, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.autosave_validation/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.autosave_validation/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.autosave_validation/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182424535603715,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.autosave_validation/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182424535603715,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.autosave_validation/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.autosave_validation",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:21:50Z"
+    },
+    {
+      "interaction": "destinations.list",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.817386, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.select_and_key_reorder/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.817386, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.select_and_key_reorder/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.select_and_key_reorder/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.select_and_key_reorder/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8173862645661335,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.select_and_key_reorder/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8173862645661335,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.select_and_key_reorder/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.select_and_key_reorder",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:22:04Z"
+    },
+    {
+      "interaction": "destinations.key-move",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.817386, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.select_and_key_reorder/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.817386, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.select_and_key_reorder/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.select_and_key_reorder/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.select_and_key_reorder/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8173862645661335,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.select_and_key_reorder/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8173862645661335,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.select_and_key_reorder/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.select_and_key_reorder",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:22:04Z"
+    },
+    {
+      "interaction": "destinations.drag-reorder",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "accessible: RuntimeError: fresh accessibility probe timed out; core accessibility/live-window gap (#666); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.817380, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.drag_reorder/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.817380, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.drag_reorder/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.drag_reorder/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.drag_reorder/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8173801183028037,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.drag_reorder/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8173801183028037,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.drag_reorder/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.drag_reorder",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:22:32Z",
+      "issue": 666
+    },
+    {
+      "interaction": "destinations.add",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818230, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.add/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.816898, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.add/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.add/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.add/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182304109692122,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.add/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.816898405250258,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.add/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.add",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:22:48Z",
+      "issue": 712
+    },
+    {
+      "interaction": "confirm.add-destination-name",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818230, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.add/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.816898, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.add/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.add/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.add/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182304109692122,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.add/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.816898405250258,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.add/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.add",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:22:48Z",
+      "issue": 712
+    },
+    {
+      "interaction": "destinations.make-default",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818286, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.make_default/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.812027, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.make_default/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.make_default/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.make_default/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182857448077916,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.make_default/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.812027375999742,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.make_default/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.make_default",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:23:10Z",
+      "issue": 712
+    },
+    {
+      "interaction": "confirm.make-default-untested",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818286, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.make_default/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.812027, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.make_default/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.make_default/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.make_default/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182857448077916,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.make_default/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.812027375999742,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.make_default/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.make_default",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:23:10Z",
+      "issue": 712
+    },
+    {
+      "interaction": "destinations.remove",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818256, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.remove/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.816606, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.remove/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.remove/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.remove/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182562913871688,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.remove/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8166058664968181,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.remove/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.remove",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:23:34Z",
+      "issue": 712
+    },
+    {
+      "interaction": "confirm.remove-destination",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818256, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.remove/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.816606, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.remove/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.remove/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.remove/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182562913871688,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.remove/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8166058664968181,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.remove/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.remove",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:23:34Z",
+      "issue": 712
+    },
+    {
+      "interaction": "destinations.empty",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "geometry: RuntimeError: live window match is missing or ambiguous (0 matches); core accessibility/live-window gap (#712); no app failure inferred.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818256, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.remove/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.816606, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.remove/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.remove/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.remove/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182562913871688,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.remove/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8166058664968181,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.remove/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.remove",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:23:34Z",
+      "issue": 712
+    },
+    {
+      "interaction": "destinations.credential-mode",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818230, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_mode/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818230, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_mode/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_mode/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_mode/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182300159098728,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.credential_mode/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182300159098728,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.credential_mode/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.credential_mode",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:23:52Z"
+    },
+    {
+      "interaction": "cli.credentials-refused",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818228, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.cli_credentials_refused/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818228, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.cli_credentials_refused/02-after.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.cli_credentials_refused/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.cli_credentials_refused/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182279707387341,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.cli_credentials_refused/02-after.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182279707387341,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.cli_credentials_refused/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.cli_credentials_refused",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:24:10Z"
+    },
+    {
+      "interaction": "destinations.help-toggles",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818229, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.help_toggles/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818229, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.help_toggles/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.help_toggles/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.help_toggles/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182291223232714,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.help_toggles/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182291223232714,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.help_toggles/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.help_toggles",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:24:29Z"
+    },
+    {
+      "interaction": "destinations.credential-fields",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 666,
+      "note": "Fake keyring fixture is available; credential typing and reveal require secret-safe input and frame suppression (#666, #726).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818203, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_lifecycle/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818203, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_lifecycle/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_lifecycle/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_lifecycle/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818203388372893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.credential_lifecycle/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818203388372893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.credential_lifecycle/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.credential_lifecycle",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:24:43Z"
+    },
+    {
+      "interaction": "destinations.store-credentials",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 666,
+      "note": "Fake keyring fixture is available; credential typing and reveal require secret-safe input and frame suppression (#666, #726).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818203, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_lifecycle/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818203, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_lifecycle/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_lifecycle/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_lifecycle/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818203388372893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.credential_lifecycle/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818203388372893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.credential_lifecycle/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.credential_lifecycle",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:24:43Z"
+    },
+    {
+      "interaction": "destinations.show-secret",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 666,
+      "note": "Fake keyring fixture is available; credential typing and reveal require secret-safe input and frame suppression (#666, #726).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818203, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_lifecycle/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818203, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.credential_lifecycle/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_lifecycle/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.credential_lifecycle/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818203388372893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.credential_lifecycle/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.818203388372893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.credential_lifecycle/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.credential_lifecycle",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:24:43Z"
+    },
+    {
+      "interaction": "destinations.unlock-credentials",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "note": "Raw run failed an incorrect recipe assumption: the loopback fixture already unlocks the keychain reference, and cache identity is reference-based. Recipe now blocks until an uncached guest fixture exists (#666); no GUI unlock claimed. Final correction has unit coverage only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818653, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.unlock_credentials/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818653, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.unlock_credentials/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.unlock_credentials/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.unlock_credentials/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8186534899595803,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.unlock_credentials/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8186534899595803,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.unlock_credentials/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.unlock_credentials",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:24:59Z",
+      "issue": 666
+    },
+    {
+      "interaction": "destinations.test",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818604, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.test_connection/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818604, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.test_connection/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.test_connection/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.test_connection/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8186043547901617,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.test_connection/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8186043547901617,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.test_connection/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.test_connection",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:25:16Z"
+    },
+    {
+      "interaction": "destinations.conflict",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dest-r2/cinnamon-final/ev-r2/c2/receipt.json",
+      "issue": 712,
+      "note": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches) (#712)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dc2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.818268, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.conflict/01-before.png reference=/home/user/cat-r2/04-destinations-s3.png; catalog mismatch (distance=0.818268, tolerance=0.025): actual=/home/user/ev-r2/c2/frames/destinations.conflict/02-after-failure.png reference=/home/user/cat-r2/04-destinations-s3.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/destinations.conflict/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/destinations.conflict/01-before.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182683084472825,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after-failure",
+          "path": "frames/destinations.conflict/02-after-failure.png",
+          "window": "destinations",
+          "reference": "04-destinations-s3",
+          "distance": 0.8182683084472825,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/destinations.conflict/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "destinations.conflict",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:25:30Z"
+    },
+    {
+      "interaction": "destinations.add-credentials",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.add_credentials",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.rename",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.rename",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.actions-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.rename",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.s3-bucket",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.s3-region",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.s3-prefix",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.s3-public-url",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.s3_fields",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.s3-acl",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.acl",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.s3-service",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.service",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.advanced-connection",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.advanced_connection",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.autosave",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.autosave_validation",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.list",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.select_and_key_reorder",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.key-move",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.select_and_key_reorder",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.drag-reorder",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.drag_reorder",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.add",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.add",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "confirm.add-destination-name",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.add",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.make-default",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.make_default",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "confirm.make-default-untested",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.make_default",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.remove",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.remove",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "confirm.remove-destination",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.remove",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.empty",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.remove",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.credential-mode",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.credential_mode",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "cli.credentials-refused",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.cli_credentials_refused",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.help-toggles",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.help_toggles",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.credential-fields",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.credential_lifecycle",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.store-credentials",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.credential_lifecycle",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.show-secret",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.credential_lifecycle",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.unlock-credentials",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.unlock_credentials",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.test",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.test_connection",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    },
+    {
+      "interaction": "destinations.conflict",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "work/dest-r2/gnome-final/ev-r2/g1/receipt.json",
+      "note": "resident build does not match --build; observed identity retained in receipt; native Ubuntu 24.04-host DEB cannot install on Ubuntu 26.04 guest (#770); no lane input or current-build GUI acceptance.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "dg1",
+      "destination": "local",
+      "recipe": "destinations.conflict",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:14:48Z",
+      "issue": 770
+    }
+  ]
+}

@@ -26,8 +26,13 @@ public:
  static QString plasmaStyle();
  // The rules alone: light or not, and which input decided it.
  static std::pair<bool,QString> decide(const Inputs&);
+ // Whether a dconf change notice (ca.desrt.dconf.Writer Notify: a key or
+ // directory prefix and the paths under it) touches the Cinnamon desktop theme.
+ static bool cinnamonThemeChanged(const QString& prefix,const QStringList& changes);
 signals:
  void changed();
+private slots:
+ void dconfNotified(const QString& prefix,const QStringList& changes,const QString& tag);
 private:
  void refresh();
  void settle(const Inputs&);

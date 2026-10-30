@@ -1,0 +1,86 @@
+[
+  {
+    "artifact": "debian13",
+    "sandboxId": "bx_gtnqfzh3",
+    "source": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+    "before": {
+      "transport": {
+        "kind": "tar",
+        "sha256": "5a79f430656b45ab4e811a9f405ae2ffdf6876583b506dca7bd244a405cdf02e",
+        "bytes": 59975680
+      },
+      "collectionSeconds": 15.422,
+      "passed": true
+    },
+    "after": {
+      "collectionPhases": {
+        "probeSeconds": 1.732,
+        "packSeconds": 2.03,
+        "transferSeconds": 18.03,
+        "restoreSeconds": 0.225
+      },
+      "collectionBudgetSeconds": 609,
+      "collectionInput": {
+        "bytes": 59963066,
+        "files": 7,
+        "diskAndPressure": [
+          "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+          "/dev/vda1      ext4   153470764 48503588  98672188      33% /home",
+          "some avg10=0.93 avg60=1.19 avg300=3.72 total=67951670",
+          "full avg10=0.93 avg60=0.95 avg300=2.66 total=50037306"
+        ]
+      },
+      "transport": {
+        "kind": "tar",
+        "compression": "none",
+        "sha256": "5a79f430656b45ab4e811a9f405ae2ffdf6876583b506dca7bd244a405cdf02e",
+        "bytes": 59975680
+      },
+      "collectionSeconds": 22.017,
+      "passed": true
+    },
+    "identicalFiles": true
+  },
+  {
+    "artifact": "ubuntu24.04",
+    "sandboxId": "bx_hdkfct43",
+    "source": "49c217bd4662f62b8482154c18070d4e2076d2ea",
+    "before": {
+      "transport": {
+        "kind": "tar",
+        "sha256": "ad7c469012c50672de982a96e37666e9ee2710bd40f8d5528c136b931e897d5d",
+        "bytes": 64942080
+      },
+      "collectionSeconds": 18.14,
+      "passed": true
+    },
+    "after": {
+      "collectionPhases": {
+        "probeSeconds": 1.829,
+        "packSeconds": 2.011,
+        "transferSeconds": 17.794,
+        "restoreSeconds": 0.38
+      },
+      "collectionBudgetSeconds": 647,
+      "collectionInput": {
+        "bytes": 64926070,
+        "files": 9,
+        "diskAndPressure": [
+          "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+          "/dev/vda1      ext4   153470764 48795936  98379840      34% /home",
+          "some avg10=4.40 avg60=1.94 avg300=2.25 total=37821598",
+          "full avg10=4.40 avg60=1.91 avg300=1.92 total=31136689"
+        ]
+      },
+      "transport": {
+        "kind": "tar",
+        "compression": "none",
+        "sha256": "ad7c469012c50672de982a96e37666e9ee2710bd40f8d5528c136b931e897d5d",
+        "bytes": 64942080
+      },
+      "collectionSeconds": 22.014,
+      "passed": true
+    },
+    "identicalFiles": true
+  }
+]

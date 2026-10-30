@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="1"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="box-node-92ad7400cc57c384"
+	time="86"
+	timestamp="2026-10-30T04:23:29"
+	>
+	<testcase name="gui_history_view" classname="gui_history_view" time="86.1871" status="run">
+		<properties>
+			<property name="cmake_labels" value="integration"/>
+		</properties>
+		<system-out>********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : HistoryGui::initTestCase()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::cancelAllCapturesExactIdsAndRequiresConfirmation() Thi...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

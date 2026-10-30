@@ -68,6 +68,61 @@ def matches(row, query):
     return True
 
 
+ROOT_PATH = '/org/a11y/atspi/accessible/root'
+NULL_PATH = '/org/a11y/atspi/null'
+REGISTRY = 'org.a11y.atspi.Registry'
+
+# Reads go over raw D-Bus, never through libatspi (#814). libatspi sends
+# org.a11y.atspi.Cache.GetItems to every application it first meets, and a
+# probe meets the whole desktop: getDesktop(0) adds every registered app, an
+# event from an app adds it too. Each fresh probe process therefore asked the
+# shell to serialise its whole bridge cache. On Cinnamon (at-spi2-core 2.52)
+# that cache can hold a freed AtkObject; GetItems refs every entry first and
+# crashes the shell ("Cinnamon just crashed", impl_GetItems ->
+# g_hash_table_foreach -> g_object_ref). Plain Accessible/Component/Text/
+# Action calls never walk that cache.
+_A11Y = {}
+
+
+def a11y_bus():
+    """This process's private connection to the accessibility bus."""
+    import dbus
+    connection = _A11Y.get('connection')
+    if connection is None or not connection.get_is_connected():
+        session = dbus.SessionBus()
+        address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
+        connection = dbus.bus.BusConnection(str(address))
+        _A11Y.clear()
+        _A11Y.update(connection=connection, pids={})
+    return connection
+
+
+def bus_pid(connection, bus):
+    """Owner PID of an a11y-bus name, from the bus daemon (never the app itself)."""
+    import dbus
+    pids = _A11Y.setdefault('pids', {})
+    if bus not in pids:
+        daemon = dbus.Interface(connection.get_object('org.freedesktop.DBus', '/org/freedesktop/DBus'), 'org.freedesktop.DBus')
+        try:
+            pids[bus] = int(daemon.GetConnectionUnixProcessID(bus, timeout=3))
+        except dbus.DBusException as error:
+            raise NotImplementedError(str(error)) from error
+    return pids[bus]
+
+
+def role_name(role, fallback):
+    """libatspi's own name for a role number (as pyatspi reported it), else the server's."""
+    try:
+        import gi
+        gi.require_version('Atspi', '2.0')
+        from gi.repository import Atspi
+        if 0 <= role < int(Atspi.Role.LAST_DEFINED) and role != int(Atspi.Role.EXTENDED):
+            return Atspi.role_get_name(Atspi.Role(role))
+    except (ImportError, ValueError, AttributeError):
+        pass
+    return fallback()
+
+
 def popup_file():
     runtime = os.environ.get('XDG_RUNTIME_DIR')
     return runtime + '/putgd-lab-popups.json' if runtime else None
@@ -79,12 +134,16 @@ def popup_watch(query):
     Qt lists only non-Qt::Popup top-level windows as application children, so a
     context or row menu opened with QMenu::exec() is unreachable by a tree walk.
     Qt does emit object:state-changed:showing for it (ObjectShow) once a
-    listener is registered. This process listens for the whole run and keeps
-    {bus, path, pid} of owned showing popups in a private runtime file; every
-    (fresh) accessible() walks those popups live over the a11y bus.
+    listener is registered. This process registers that listener with the
+    registry itself and reads the signals off the a11y bus (no libatspi, so no
+    GetItems on the shell, #814). It keeps {bus, path, pid} of owned showing
+    popups in a private runtime file; every (fresh) accessible() walks those
+    popups live over the a11y bus.
     """
-    import pyatspi
+    import dbus
+    import dbus.mainloop.glib
     import signal
+    from gi.repository import GLib
     path, current, focus = popup_file(), {}, {}
     def write():
         temporary = path + '.tmp'
@@ -94,53 +153,71 @@ def popup_watch(query):
         finally:
             os.close(descriptor)
         os.replace(temporary, path)
-    def changed(event):
+    session = dbus.SessionBus()
+    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
+    connection = dbus.bus.BusConnection(str(address), mainloop=dbus.mainloop.glib.DBusGMainLoop())
+    _A11Y.update(connection=connection, pids={})
+    def changed(minor, detail1, detail2, value, properties, sender=None, path=None):
         try:
-            node = event.source
-            pid = node.get_process_id()
+            if str(minor) not in ('showing', 'focused') or not sender or not path:
+                return
+            pid = bus_pid(connection, str(sender))
             if not owned(pid):
                 return
-            bus = node.app.bus_name
-            key = bus + node.path
-            if event.type.endswith(':focused'):
+            bus, node_path = str(sender), str(path)
+            key = bus + node_path
+            if str(minor) == 'focused':
                 # Widgets parented to a view's viewport (History's row "More
                 # actions" button) are outside Qt's accessible tree too; the
                 # focused one is found here.
-                if not event.detail1:
+                if not detail1:
                     if key not in focus:
                         return
                     focus.clear()
                 else:
                     focus.clear()
-                    focus[key] = {'bus': bus, 'path': node.path, 'pid': pid, 'focus': True}
-            elif normalize_role(node.getRoleName()) not in POPUP_ROLES:
+                    focus[key] = {'bus': bus, 'path': node_path, 'pid': pid, 'focus': True}
+            elif normalize_role(RawNode(connection, bus, node_path, pid).getRoleName()) not in POPUP_ROLES:
                 return
-            elif event.detail1:
-                current[key] = {'bus': bus, 'path': node.path, 'pid': pid}
+            elif detail1:
+                current[key] = {'bus': bus, 'path': node_path, 'pid': pid}
             elif current.pop(key, None) is None:
                 return
             write()
         except Exception:
             pass
     write()
-    pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing', 'object:state-changed:focused')
-    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-    pyatspi.Registry.start()
+    connection.add_signal_receiver(changed, signal_name='StateChanged', dbus_interface='org.a11y.atspi.Event.Object',
+                                   sender_keyword='sender', path_keyword='path')
+    registry = dbus.Interface(connection.get_object(REGISTRY, '/org/a11y/atspi/registry'), 'org.a11y.atspi.Registry')
+    for event in ('object:state-changed:showing', 'object:state-changed:focused'):
+        registry.RegisterEvent(event, dbus.Array([], signature='s'), '', timeout=5)
+    loop = GLib.MainLoop()
+    signal.signal(signal.SIGTERM, lambda *_: loop.quit())
+    loop.run()
     return {}
 
 
 class RawNode:
     """A live accessible addressed by (bus name, path) on the a11y bus.
 
-    Implements just the pyatspi node surface accessible() uses, so a popup
-    known only from the watcher's file is walked with the same code. Every
-    property is a direct D-Bus call: nothing is cached across probes.
+    Implements just the pyatspi node surface the probes use, so the desktop,
+    applications and popups known only from the watcher's file are walked with
+    the same code. Every property is a direct D-Bus call: nothing is cached
+    across probes, and the Cache interface is never called (#814).
     """
     ACCESSIBLE = 'org.a11y.atspi.Accessible'
 
-    def __init__(self, connection, bus, path, pid):
-        self.connection, self.bus, self.path, self.pid = connection, bus, path, pid
-        self._object = connection.get_object(bus, path, introspect=False)
+    def __init__(self, connection, bus, path, pid=None):
+        self.connection, self.bus, self.path, self.pid = connection, str(bus), str(path), pid
+        self._object = connection.get_object(self.bus, self.path, introspect=False)
+        self._interfaces = None
+
+    def __eq__(self, other):
+        return isinstance(other, RawNode) and (self.bus, self.path) == (other.bus, other.path)
+
+    def __hash__(self):
+        return hash((self.bus, self.path))
 
     def _call(self, interface, method, *args):
         import dbus
@@ -149,21 +226,33 @@ class RawNode:
         except dbus.DBusException as error:
             raise NotImplementedError(str(error)) from error
 
-    def _property(self, name):
-        return str(self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, name))
+    def _property(self, name, interface=ACCESSIBLE):
+        return self._call('org.freedesktop.DBus.Properties', 'Get', interface, name)
+
+    def _node(self, reference):
+        bus, path = str(reference[0]), str(reference[1])
+        if path == NULL_PATH:
+            return None
+        return RawNode(self.connection, bus, path, self.pid if bus == self.bus else None)
 
     @property
     def name(self):
-        return self._property('Name')
+        return str(self._property('Name'))
 
     @property
     def description(self):
-        return self._property('Description')
+        return str(self._property('Description'))
+
+    @property
+    def childCount(self):
+        return int(self._property('ChildCount'))
 
     def getRoleName(self):
-        return str(self._call(self.ACCESSIBLE, 'GetRoleName'))
+        return role_name(int(self._call(self.ACCESSIBLE, 'GetRole')), lambda: str(self._call(self.ACCESSIBLE, 'GetRoleName')))
 
     def get_process_id(self):
+        if self.pid is None:
+            self.pid = bus_pid(self.connection, self.bus)
         return self.pid
 
     def getAttributes(self):
@@ -177,6 +266,12 @@ class RawNode:
                 return bool(index // 32 < len(words) and words[index // 32] >> (index % 32) & 1)
         return States()
 
+    def _require(self, interface):
+        if self._interfaces is None:
+            self._interfaces = {str(i) for i in self._call(self.ACCESSIBLE, 'GetInterfaces')}
+        if interface not in self._interfaces:
+            raise NotImplementedError(interface)
+
     def queryComponent(self):
         return self
 
@@ -184,19 +279,36 @@ class RawNode:
         import dbus
         return tuple(int(v) for v in self._call('org.a11y.atspi.Component', 'GetExtents', dbus.UInt32(int(coordinates))))
 
+    def getAccessibleAtPoint(self, x, y, coordinates):
+        import dbus
+        return self._node(self._call('org.a11y.atspi.Component', 'GetAccessibleAtPoint',
+                                     dbus.Int32(int(x)), dbus.Int32(int(y)), dbus.UInt32(int(coordinates))))
+
     def queryText(self):
-        raise NotImplementedError
+        self._require('org.a11y.atspi.Text')
+        node = self
+        class Text:
+            characterCount = int(node._property('CharacterCount', 'org.a11y.atspi.Text'))
+            def getText(self, start, end):
+                import dbus
+                return str(node._call('org.a11y.atspi.Text', 'GetText', dbus.Int32(start), dbus.Int32(end)))
+        return Text()
 
     def queryAction(self):
-        raise NotImplementedError
+        self._require('org.a11y.atspi.Action')
+        node = self
+        class Action:
+            nActions = int(node._property('NActions', 'org.a11y.atspi.Action'))
+            def getKeyBinding(self, index):
+                import dbus
+                return str(node._call('org.a11y.atspi.Action', 'GetKeyBinding', dbus.Int32(index)))
+        return Action()
 
     def __iter__(self):
-        return iter([RawNode(self.connection, str(bus), str(path), self.pid)
-                     for bus, path in self._call(self.ACCESSIBLE, 'GetChildren')])
+        return iter([self._node(child) for child in self._call(self.ACCESSIBLE, 'GetChildren')])
 
     def parent(self):
-        bus, path = self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, 'Parent')
-        return RawNode(self.connection, str(bus), str(path), self.pid) if str(path) != '/org/a11y/atspi/null' else None
+        return self._node(self._property('Parent'))
 
     def window(self):
         """Name of the top-level accessible (child of the application root) above this node."""
@@ -211,6 +323,11 @@ class RawNode:
         return ''
 
 
+def desktop_root():
+    """The registry's desktop; its children are the application roots."""
+    return RawNode(a11y_bus(), REGISTRY, ROOT_PATH)
+
+
 def popup_roots(query):
     """Extra walk roots for the watcher's showing popups, with the same app scoping."""
     path = popup_file()
@@ -221,11 +338,8 @@ def popup_roots(query):
         return []
     if not entries:
         return []
-    import dbus
     import pyatspi
-    session = dbus.SessionBus()
-    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
-    connection = dbus.bus.BusConnection(str(address))
+    connection = a11y_bus()
     roots = []
     for entry in entries:
         pid = entry['pid']
@@ -236,7 +350,7 @@ def popup_roots(query):
             states = node.getState()
             if not states.contains(pyatspi.STATE_SHOWING) or (entry.get('focus') and not states.contains(pyatspi.STATE_FOCUSED)):
                 continue
-            name = RawNode(connection, entry['bus'], '/org/a11y/atspi/accessible/root', pid).name
+            name = RawNode(connection, entry['bus'], ROOT_PATH, pid).name
             window = node.window() if entry.get('focus') else ''
         except NotImplementedError:
             continue
@@ -523,7 +637,7 @@ def accessible(query):
                 ancestor['rect'] = shift(ancestor['rect'], where)
         return 'desktop', None
     matches_ = []
-    stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
+    stack = [(desktop_root(), 0, '', '', None, [])]
     # LIFO: popup roots go first so the ordinary tree is walked before them;
     # a popup already reached there (a button's own menu) is not walked twice.
     extra = popup_roots(query)
@@ -540,6 +654,13 @@ def accessible(query):
                     continue
             elif extra_keys:
                 seen.add((node.get_process_id(), node.path))
+            if depth == 1 and (query.get('pid') is not None or query.get('owned')):
+                # Scope by the bus daemon's PID before any call reaches the
+                # application: unrelated apps (the shell, a hung screen
+                # reader) are never queried for owned-control walks.
+                pid = node.get_process_id()
+                if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
+                    continue
             server_role = node.getRoleName()
             role, name = normalize_role(server_role), node.name or ''
             pid = node.get_process_id()
@@ -1147,7 +1268,7 @@ def shell_cover(point, application):
     """
     import pyatspi
     x, y = int(point[0]), int(point[1])
-    for app in pyatspi.Registry.getDesktop(0):
+    for app in desktop_root():
         try:
             if not app or not fnmatch.fnmatchcase(app.name or '', application):
                 continue
@@ -1220,8 +1341,7 @@ def shell_hit(query):
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
         raise RuntimeError('desktop hit-test requires the profile compositor application')
     point = query['point']
-    desktop = pyatspi.Registry.getDesktop(0)
-    roots = [app for app in desktop if app and app.get_process_id()==expected['pid']]
+    roots = [app for app in desktop_root() if app and app.get_process_id()==expected['pid']]
     for app in roots:
         for window in app:
             try:
@@ -1276,6 +1396,66 @@ def shell_witness_hit(query):
     return {'ok':bool(ok),'backend':'gnome-native-shell-pick',
             'obscuring_window':None if ok else (window.get('title') if window else
                 'native shell actor identity, role or bounds did not match the live desktop node')}
+
+
+def shell_state(query):
+    """The desktop shell process this run started on, and signs that it crashed.
+
+    query: {'process': comm name, 'crash_windows': [title regexes],
+    'since': epoch seconds for core dumps, 'full': also read windows/cores}.
+    A crashed Cinnamon is restarted by cinnamon-launcher under a new PID and
+    shows "Cinnamon just crashed" in fallback mode (#814); input on that
+    desktop proves nothing. Only processes of this user are considered.
+    """
+    import pwd
+    name, uid = query['process'], os.getuid()
+    found = []
+    for entry in os.listdir('/proc'):
+        if not entry.isdigit():
+            continue
+        try:
+            with open('/proc/' + entry + '/comm') as stream:
+                if stream.read().strip() != name or os.stat('/proc/' + entry).st_uid != uid:
+                    continue
+            with open('/proc/' + entry + '/stat') as stream:
+                start = int(stream.read().rsplit(')', 1)[1].split()[19])  # field 22, starttime
+            # A crashing shell keeps its PID while the kernel writes its core
+            # (a minute or more for Cinnamon); CoreDumping marks that window.
+            with open('/proc/' + entry + '/status') as stream:
+                dumping = any(line.split() == ['CoreDumping:', '1'] for line in stream)
+            found.append({'pid': int(entry), 'start': start, 'dumping': dumping})
+        except (OSError, ValueError, IndexError):
+            continue
+    state = {'process': name, 'instances': sorted(found, key=lambda p: p['pid'])}
+    if not query.get('full'):
+        return state
+    windows = []
+    if os.environ.get('XDG_SESSION_TYPE') == 'x11':
+        for pattern in query.get('crash_windows', []):
+            search = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', pattern],
+                                    text=True, capture_output=True, timeout=5)
+            for wid in search.stdout.split():
+                try:
+                    windows.append({'window_id': wid, 'name': run('xdotool', 'getwindowname', wid)})
+                except subprocess.CalledProcessError:
+                    windows.append({'window_id': wid, 'name': pattern})
+    state['crash_windows'] = windows
+    cores = None
+    if query.get('since') is not None:
+        try:
+            listing = subprocess.run(['coredumpctl', '--no-pager', '--json=short', 'list',
+                                      '--since=@' + str(int(query['since'])), 'COREDUMP_COMM=' + name],
+                                     text=True, capture_output=True, timeout=10)
+            if listing.returncode == 0:
+                cores = [{'pid': int(c.get('pid', 0)), 'time': c.get('time'), 'signal': c.get('sig')}
+                         for c in json.loads(listing.stdout or '[]') if int(c.get('uid', -1)) == uid]
+            elif 'No coredumps found' in listing.stderr:
+                cores = []
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            cores = None  # no systemd-coredump on this host: the PID witness still applies
+    state['cores'] = cores
+    state['user'] = pwd.getpwuid(uid).pw_name
+    return state
 
 
 def witness_foreground(query):
@@ -1516,7 +1696,7 @@ def main():
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
                     'foreground': foreground, 'windows': windows, 'tray':tray, 'resize':resize_witness,
                     'notification_monitor': notification_monitor, 'notification_log': notification_log,
-                    'popup_watch': popup_watch}[request['probe']]
+                    'popup_watch': popup_watch, 'shell_state': shell_state}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))

@@ -3,6 +3,7 @@ from functools import partial
 import time
 
 from ..api import RecipeBlocked
+from ..critical import armed, critical, entry
 from .base import Fixture, Scope
 from . import destinations, dialogs, events, history, images, live, notifications, profile, recordings, settings, uploads
 from .geometry import history_window
@@ -105,18 +106,28 @@ class FixtureManager:
             if options:raise ValueError('fixture options must be supplied on first resolution')
             return self.scope.values[name]
         # Lazy notification descriptor deliberately does not publish in needs.
-        try:
-            value=FACTORIES[name](self.scope,**options)
-            self.scope.values[name]=value
-            return value
-        except BaseException:
+        # Armed: no deadline or termination can skip the setup-failure cleanup.
+        with armed(getattr(self.ctx,'review',None),label='fixture setup-failure cleanup'):
+            try:
+                value=FACTORIES[name](self.scope,**options)
+                self.scope.values[name]=value
+                return value
+            except BaseException:
+                self._discard_failed()
+                raise
+
+    @entry
+    def _discard_failed(self):
+        # The setup failure stays the error; a deferred signal becomes a review.
+        with critical(getattr(self.ctx,'review',None),failed=True,label='fixture setup-failure cleanup'):
             failed, self.scope = self.scope, Scope(self.ctx)
             self.errors.extend(failed.close())
-            raise
 
+    @entry
     def close(self):
-        errors=self.errors+self.scope.close()
-        self.errors=[]
-        self.scope=Scope(self.ctx)
-        self.ctx._fixtures.clear()
+        with critical(getattr(self.ctx,'review',None),label='fixture cleanup'):
+            errors=self.errors+self.scope.close()
+            self.errors=[]
+            self.scope=Scope(self.ctx)
+            self.ctx._fixtures.clear()
         return errors

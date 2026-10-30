@@ -1,0 +1,696 @@
+{
+    "class": "putgd::EditorWindow",
+    "controls": [
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "windowMinimize",
+            "rect": [
+                784,
+                12,
+                32,
+                32
+            ],
+            "text": "Minimize"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "windowMaximize",
+            "rect": [
+                820,
+                12,
+                32,
+                32
+            ],
+            "text": "Maximize"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "windowClose",
+            "rect": [
+                856,
+                12,
+                32,
+                32
+            ],
+            "text": "Close window"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                12,
+                64,
+                36,
+                36
+            ],
+            "text": "Select"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                52,
+                64,
+                36,
+                36
+            ],
+            "text": "Crop"
+        },
+        {
+            "checkable": true,
+            "checked": true,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                92,
+                64,
+                36,
+                36
+            ],
+            "text": "Arrow"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                132,
+                64,
+                36,
+                36
+            ],
+            "text": "Rectangle"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                172,
+                64,
+                36,
+                36
+            ],
+            "text": "Highlight"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                212,
+                64,
+                36,
+                36
+            ],
+            "text": "Text"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                265,
+                64,
+                102,
+                36
+            ],
+            "text": "Redact"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                371,
+                64,
+                84,
+                36
+            ],
+            "text": "Blur"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                687,
+                64,
+                36,
+                36
+            ],
+            "text": "Undo (Ctrl+Z)"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": false,
+            "kind": "button",
+            "name": "",
+            "rect": [
+                727,
+                64,
+                36,
+                36
+            ],
+            "text": "Redo (Ctrl+Shift+Z)"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "editorZoom",
+            "rect": [
+                780,
+                64,
+                108,
+                36
+            ],
+            "text": "Fit · 65%"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "placeMark",
+            "rect": [
+                676,
+                199,
+                127,
+                28
+            ],
+            "text": "Place arrow"
+        },
+        {
+            "checkable": true,
+            "checked": true,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchRed",
+            "rect": [
+                676,
+                292,
+                32,
+                32
+            ],
+            "text": "Red (#dc2626)"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchOrange",
+            "rect": [
+                712,
+                292,
+                32,
+                32
+            ],
+            "text": "Orange (#f59e0b)"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchYellow",
+            "rect": [
+                748,
+                292,
+                32,
+                32
+            ],
+            "text": "Yellow (#facc15)"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchGreen",
+            "rect": [
+                784,
+                292,
+                32,
+                32
+            ],
+            "text": "Green (#22c55e)"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchBlue",
+            "rect": [
+                676,
+                328,
+                32,
+                32
+            ],
+            "text": "Blue (#3b82f6)"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchWhite",
+            "rect": [
+                712,
+                328,
+                32,
+                32
+            ],
+            "text": "White (#ffffff)"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "colorSwatchBlack",
+            "rect": [
+                748,
+                328,
+                32,
+                32
+            ],
+            "text": "Black (#111317)"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "customColor",
+            "rect": [
+                784,
+                328,
+                32,
+                32
+            ],
+            "text": "Custom color…"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "recentColorSwatch_123456",
+            "rect": [
+                676,
+                368,
+                32,
+                32
+            ],
+            "text": "Recent custom color #123456"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "recentColorSwatch_abcdef",
+            "rect": [
+                712,
+                368,
+                32,
+                32
+            ],
+            "text": "Recent custom color #abcdef"
+        },
+        {
+            "class": "QComboBox",
+            "count": 3,
+            "enabled": true,
+            "kind": "choice",
+            "name": "lineWidth",
+            "rect": [
+                676,
+                440,
+                208,
+                28
+            ],
+            "text": "Medium · 4 px"
+        },
+        {
+            "checkable": true,
+            "checked": false,
+            "class": "QToolButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "editorKeyboardHelp",
+            "rect": [
+                676,
+                480,
+                123,
+                28
+            ],
+            "text": "Keyboard help"
+        },
+        {
+            "class": "putgd::Ui::ElidedLabel",
+            "enabled": true,
+            "kind": "focusable",
+            "name": "editorDestination",
+            "rect": [
+                221,
+                574,
+                119,
+                36
+            ],
+            "text": "Project archive"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "editorUpload",
+            "rect": [
+                780,
+                574,
+                104,
+                36
+            ],
+            "text": "Upload"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "editorSaveCopy",
+            "rect": [
+                425,
+                574,
+                143,
+                36
+            ],
+            "text": "Save a copy…"
+        },
+        {
+            "checkable": false,
+            "checked": false,
+            "class": "QPushButton",
+            "enabled": true,
+            "kind": "button",
+            "name": "editorCancel",
+            "rect": [
+                576,
+                574,
+                89,
+                36
+            ],
+            "text": "Discard…"
+        }
+    ],
+    "height": 620,
+    "keys": [
+        {
+            "context": 0,
+            "enabled": true,
+            "keys": [
+                "Ctrl+0"
+            ],
+            "name": "",
+            "text": "Fit"
+        },
+        {
+            "context": 0,
+            "enabled": true,
+            "keys": [
+                "Ctrl+1"
+            ],
+            "name": "",
+            "text": "100%"
+        },
+        {
+            "context": 0,
+            "enabled": true,
+            "keys": [
+                "Ctrl++"
+            ],
+            "name": "",
+            "text": "Zoom in"
+        },
+        {
+            "context": 0,
+            "enabled": true,
+            "keys": [
+                "Ctrl+-"
+            ],
+            "name": "",
+            "text": "Zoom out"
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "V"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "C"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "A"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "R"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "H"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "T"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "X"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "B"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+Z"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Alt+Backspace"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+Y"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Alt+Shift+Backspace"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+Shift+Z"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+0"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+1"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl++"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+="
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+-"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+S"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+Return"
+            ],
+            "name": "",
+            "text": ""
+        },
+        {
+            "context": 1,
+            "enabled": true,
+            "keys": [
+                "Ctrl+Enter"
+            ],
+            "name": "",
+            "text": ""
+        }
+    ],
+    "width": 900
+}

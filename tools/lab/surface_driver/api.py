@@ -272,7 +272,8 @@ class Context:
         left. ``cleanup=True`` is for restoring what a recipe changed (default
         browser, theme, dconf): it runs even after the deadline, with its own
         timeout (30 s when none is given, at most 600 s), never the clipped
-        remainder, and the recipe alarm is deferred until it returns. The
+        remainder, and the recipe alarm and termination signals are deferred
+        until it returns (critical.py). The
         target's safety checks still apply (desktop lock for physical targets,
         an owned overlay for guests).
         """

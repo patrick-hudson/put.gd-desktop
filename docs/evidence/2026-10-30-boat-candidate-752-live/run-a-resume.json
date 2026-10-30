@@ -1,0 +1,6 @@
+{
+  "pid": 1766383,
+  "signal": "SIGCONT",
+  "time": 1793335088.1212218,
+  "reason": "same-worker recovery collected and verified; resume original collection/failure manifest and owned-worker cleanup"
+}
