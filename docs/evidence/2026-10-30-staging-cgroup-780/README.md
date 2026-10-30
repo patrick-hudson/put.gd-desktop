@@ -32,7 +32,7 @@ and [systemd-run scope semantics](https://www.freedesktop.org/software/systemd/m
 
 | Item | Evidence |
 | --- | --- |
-| Local light contracts | [65 lab](test-lab.log), [31 staging](test-staging.log), [8 root supervisor](test-package-install.log), [29 cleanup](test-overlay-cleanup.log); no real workstation apt. New fake cases cover hierarchical populated state, missing/unreadable/malformed events, replaced/symlinked directories, changed boot/mount identities, legacy fallback and scope-launch failure. |
+| Local light contracts | [65 lab](test-lab.log), [31 staging](test-staging.log), [8 root supervisor](test-package-install.log), [29 cleanup](test-overlay-cleanup.log); no real workstation apt. New fake cases cover hierarchical populated state, missing/unreadable/malformed events, replaced/symlinked directories, changed boot and cgroup identities, legacy fallback and scope-launch failure. |
 | Cinnamon real guest | `putgd-lab-cinnamon-v2`, sandbox `bx_kt4t3rgm`, bare-metal KVM, fresh overlay `c1`; Mint 22.3, systemd 255, native Cinnamon/X11 with saved QMP visuals. [Results](cinnamon-results.json). |
 | Root setsid survivor | Real `sudo -n apt-get` with empty sources runs a synthetic Pre-Invoke hook. Its root grandchild calls `setsid()`. Exact controller and wrapper PIDs/start identities are retained; both are SIGKILLed. With the original session empty, `populated 1` still refuses recovery and preserves the token. |
 | Atomic empty and release | An external observer captures actual `populated 1` then `populated 0`. The child exits naturally through a file gate; systemd removes the empty scope. Production recovery verifies the gone scope and existing identities, releases, then writes its receipt. No recovery signal is sent. |
