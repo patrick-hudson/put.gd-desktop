@@ -15,7 +15,7 @@ import json
 import re
 import shlex
 
-from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.api import RecipeBlocked, recipe
 
 
 BACKENDS = ('portal', 'fallback')
@@ -125,7 +125,10 @@ def _same_path(actual, expected, mode):
 
 def _input(ctx, backend, path, mode, inspect):
     if backend == 'fallback':
-        ctx.click('fileNameEdit', window='putgdFileDialog')
+        # QFileDialog exposes one live editable field, but Qt 6.4 AT-SPI
+        # omits its objectName. The class selector still requires a unique,
+        # visible owned QLineEdit inside the guarded chooser.
+        ctx.click('class:QLineEdit', window='putgdFileDialog')
         ctx.keys('Ctrl+A')
     else:
         settings = ctx.profile['dialogs']['backends'][backend]
@@ -151,7 +154,19 @@ def _input(ctx, backend, path, mode, inspect):
     _frame(ctx, 'path-entered', backend)
     ctx.keys('Return')
     if backend == 'portal' and mode == 'folder' and inspect()['open']:
-        ctx.keys(*ctx.profile['dialogs']['backends'][backend]['folder_accept_keys'])
+        try:
+            ctx.keys(*ctx.profile['dialogs']['backends'][backend]['folder_accept_keys'])
+        except RecipeBlocked as error:
+            # Return can accept an already completed folder path. If the
+            # chooser closes between inspect and the next guarded key, no
+            # second key is needed. Reconcile only the exact completed choice.
+            state = inspect()
+            last = state.get('last') or {}
+            if not (error.reason.startswith('geometry:') and not state['open'] and
+                    last.get('status') == 'chosen' and last.get('backend') == backend and
+                    _same_path(last.get('path'), path, mode)):
+                raise
+            ctx.note('Return completed the exact folder choice before the optional accept key')
 
 
 def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):

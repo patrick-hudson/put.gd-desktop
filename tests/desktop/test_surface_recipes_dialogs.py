@@ -46,6 +46,8 @@ class FakeContext(Context):
         self.keep_save_suffix = False
         self.folder_completion = False
         self.selected_all = False
+        self.folder_accept_race = False
+        self.stale_folder_open = False
 
     def fixture(self, name):
         if name == 'chooser-failure':
@@ -95,6 +97,9 @@ class FakeContext(Context):
 
     def _chooser(self, method, params):
         action = params['action']
+        if action == 'inspect' and self.stale_folder_open:
+            self.stale_folder_open = False
+            return dict(copy.deepcopy(self.dialog), open=True)
         if action == 'open':
             self.owner = params.get('dialog', 'editor')
             self.field = params.get('field', 'root')
@@ -115,6 +120,8 @@ class FakeContext(Context):
     def _finish(self, status):
         self.dialog['open'] = False
         self.dialog['last'] = {'status': status, 'backend': self.backend, 'path': '/wrong' if self.corrupt_choice else self.typed}
+        if status == 'chosen' and self.folder_accept_race and self.dialog.get('mode') == 'folder':
+            self.stale_folder_open = True
         if status == 'cancelled':
             if self.cancel_mutates:
                 self.document['archive']['root'] = '/incorrect'
@@ -175,6 +182,8 @@ class FakeContext(Context):
 
     def keys(self, *sequence):
         self.inputs.append(('keys', sequence))
+        if sequence == ('Alt+S',) and self.folder_accept_race and not self.dialog['open']:
+            raise RecipeBlocked('geometry: RuntimeError: live window match is missing (0 matches)')
         if self.dialog['open']:
             if 'Ctrl+A' in sequence:
                 self.selected_all = True
@@ -334,6 +343,19 @@ class DialogRecipes(unittest.TestCase):
         self.assertFalse(dialogs._same_path('/tmp/folder-more/', '/tmp/folder', 'folder'))
         self.assertFalse(dialogs._same_path('/tmp/file.png.png', '/tmp/file.png', 'save'))
         self.assertFalse(dialogs._same_path('/tmp/file.png/', '/tmp/file.png', 'open'))
+
+    def test_folder_return_may_complete_before_optional_accept_key(self):
+        ctx = FakeContext('portal')
+        ctx.folder_accept_race = True
+        dialogs.output_folder_portal(ctx)
+        self.assertEqual(ctx.document['archive']['root'], '/tmp/pgfd.test/Chosen folder')
+
+    def test_folder_completion_race_cannot_hide_a_different_choice(self):
+        ctx = FakeContext('portal')
+        ctx.folder_accept_race = True
+        ctx.corrupt_choice = True
+        with self.assertRaisesRegex(RecipeBlocked, 'geometry:'):
+            dialogs.output_folder_portal(ctx)
 
     def test_independent_file_witness_is_required(self):
         ctx = FakeContext('fallback')
