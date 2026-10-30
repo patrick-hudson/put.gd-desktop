@@ -24,8 +24,8 @@ header #label:empty{display:none}
 .views button{border:0;background:transparent;color:var(--muted);padding:3px 10px;cursor:pointer;font-size:11.5px}
 .views button.on{background:var(--card2);color:var(--text)}
 main{display:grid;grid-template-columns:260px 1fr;gap:16px;padding:16px 18px;align-items:start}
-@media (max-width:900px){main{grid-template-columns:1fr}}
-.col{position:sticky;top:58px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 70px);overflow:auto}
+.col{position:sticky;top:var(--toolbar-height,0px);display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - var(--toolbar-height,0px) - 12px);overflow:auto}
+@media (max-width:900px){main{grid-template-columns:minmax(0,1fr)}.col{position:static;max-height:none;overflow:visible;min-width:0}}
 .card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
 .card h3{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;display:flex;gap:8px;align-items:center}
 .card h3 .n{margin-left:auto;font-weight:400;letter-spacing:0;text-transform:none}
@@ -68,7 +68,7 @@ details li{margin:2px 0}
 .pop th{color:var(--muted)}
 .pop .x{position:absolute;right:8px;top:6px;cursor:pointer;color:var(--muted)}
 table.matrix{border-collapse:collapse;width:100%;font-size:11.5px}
-table.matrix th{position:sticky;top:58px;background:var(--bg);text-align:left;padding:6px 6px;border-bottom:1px solid var(--border);font-weight:600;color:var(--muted);font-size:11px}
+table.matrix th{position:sticky;top:var(--toolbar-height,0px);background:var(--bg);text-align:left;padding:6px 6px;border-bottom:1px solid var(--border);font-weight:600;color:var(--muted);font-size:11px}
 table.matrix td{padding:4px 6px;border-bottom:1px solid var(--border);white-space:nowrap}
 table.matrix td.c{text-align:center}
 table.matrix tr.s td{background:var(--card2);font-weight:600;color:var(--muted);text-transform:uppercase;font-size:10.5px;letter-spacing:.06em}
@@ -76,6 +76,16 @@ table.matrix tr.s td{background:var(--card2);font-weight:600;color:var(--muted);
 .gaps ul{margin:0;padding-left:18px}
 button.act{border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11.5px}
 .hidden{display:none}
+.host-filter{display:flex;gap:8px;align-items:center;font-size:12px}
+.host-filter select{background:var(--card2);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:4px}
+.badge{display:inline-block;border:1px solid var(--border);border-radius:4px;padding:1px 5px;margin:2px;color:var(--accent);font-size:10px}
+.review-row{border-top:1px solid var(--border);padding:12px 0;overflow-wrap:anywhere}
+.review-row code{font-size:11px}
+table.matrix th{white-space:normal;min-width:155px}
+table.matrix th:nth-child(2),table.matrix th:nth-child(3){min-width:80px}
+table.matrix td:first-child{white-space:normal;min-width:270px;max-width:350px}
+.pop{max-width:min(850px,95vw);overflow:auto}
+.pop td:first-child{white-space:normal;min-width:160px}
 </style>
 </head>
 <body>
@@ -84,7 +94,8 @@ button.act{border:1px solid var(--border);background:var(--card2);color:var(--te
  <span class="gen" id="label">__LABEL__</span>
  <span class="gen">generated __GENERATED__</span>
  <div class="chips" id="desktops"></div>
- <div class="views" id="views"><button data-v="map" class="on">Map</button><button data-v="matrix">Matrix</button><button data-v="gaps">Gaps</button></div>
+ <label class="host-filter">Host <select id="host" aria-label="Host filter"></select></label>
+ <div class="views" id="views"><button data-v="map" class="on">Map</button><button data-v="matrix">Matrix</button><button data-v="gaps">Gaps</button><button data-v="review">Review</button></div>
  <div class="counts" id="counts"></div>
 </header>
 <div class="legend" id="legend"></div>
@@ -97,12 +108,34 @@ const F = {passed:'var(--ok)', partial:'var(--warn)', failed:'var(--bad)', block
 const V = {'reviewed-ok':'var(--ok)', frames:'var(--info)', 'reviewed-wrong':'var(--bad)', none:'var(--none)', 'n/a':'var(--na)'};
 const FL = {passed:'passed on every required desktop', partial:'passed on some desktops', failed:'failed somewhere', blocked:'blocked', untested:'never exercised'};
 const VL = {'reviewed-ok':'frames reviewed and right', frames:'frames saved, nobody reviewed', 'reviewed-wrong':'frames reviewed, wrong', none:'no frames', 'n/a':'no visual side'};
-let desktop = null, view = 'map';
+let desktop = null, host = null, view = 'map';
 const byId = {}; DATA.interactions.forEach(i => byId[i.id] = i);
 const surfaceById = {}; DATA.surfaces.forEach(s => surfaceById[s.id] = s);
 const desktopLabel = {}; DATA.desktops.forEach(d => desktopLabel[d.id] = d.label);
+// Controls and counts wrap as the viewport, filters and font metrics change.
+const toolbar = document.querySelector('header');
+function syncToolbarHeight(){
+ document.documentElement.style.setProperty('--toolbar-height', toolbar.getBoundingClientRect().height + 'px');
+}
+new ResizeObserver(syncToolbarHeight).observe(toolbar);
 
+function rowKey(r){ return JSON.stringify([r.desktop,r.host||null,r.placement||null,r.guest||null]); }
+function rowLabel(r){
+ return (desktopLabel[r.desktop] || r.desktop) + ' on ' + (r.host || 'unspecified host') +
+  (r.placement ? ' (' + (r.placement==='guest' ? 'VM' : r.placement) + ')' : '') + (r.guest ? ' · ' + r.guest : '');
+}
+function selectedRows(filterDesktop=true){ return DATA.rows.filter(r => (!host || r.host===host) && (!filterDesktop || !desktop || r.desktop===desktop)); }
+function cellFor(i,r){ return (i.cells||[]).find(c => rowKey(c)===rowKey(r)) || {}; }
+function badges(ds){ return (ds||[]).map(d => '<span class="badge">' + esc(d) + '</span>').join(''); }
 function status(i){
+ if(host){
+  // Optional desktops gate only when explicitly selected, as without a host filter.
+  const cs = selectedRows().filter(r => desktop || r.required!==false).map(r => cellFor(i,r));
+  const fs = cs.map(c => c.functional), vs = cs.map(c => c.visual);
+  const f = fs.includes('failed') ? 'failed' : fs.length && fs.every(s => s==='passed') ? 'passed' : fs.includes('passed') ? 'partial' : fs.includes('blocked') ? 'blocked' : 'untested';
+  const v = !i.visualApplies ? 'n/a' : vs.includes('reviewed-wrong') ? 'reviewed-wrong' : vs.length && vs.every(s => s==='reviewed-ok') ? 'reviewed-ok' : vs.some(Boolean) ? 'frames' : 'none';
+  return {f,v};
+ }
  if(!desktop) return {f:i.functional, v:i.visual};
  const c = i.desktops[desktop] || {};
  return {f: c.functional || 'untested', v: i.visualApplies ? (c.visual || 'none') : 'n/a'};
@@ -139,18 +172,20 @@ function keysHtml(keys){ return (keys||[]).map(k => '<kbd>' + esc(k) + '</kbd>')
 let pop = null;
 function closePop(){ if(pop){ pop.remove(); pop = null; } }
 document.addEventListener('click', closePop);
-function popover(i, anchor){
+function popover(i, anchor, matrixRow=null){
  closePop();
  const s = status(i);
- const rows = DATA.desktops.map(d => {
-  const c = i.desktops[d.id] || {};
+ const ds = (DATA.hostCoverage || host) ? selectedRows() : DATA.desktops.map(d => ({desktop:d.id,label:d.label,required:d.required}));
+ if(matrixRow && !ds.some(d => rowKey(d)===rowKey(matrixRow))) ds.push(matrixRow);
+ const rows = ds.map(d => {
+  const c = (DATA.hostCoverage || host) ? cellFor(i,d) : i.desktops[d.desktop] || {};
   const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
   const receipts = (c.receipts||[]).map(r => { const href = safeHref(r), text = esc(String(r).split('/').slice(-2).join('/')); return href === null ? text : '<a href="' + esc(href) + '" rel="noopener noreferrer">' + text + '</a>'; }).join('<br>');
   const issues = (c.issues||[]).map(n => '#' + n).join(' ');
-  return '<tr><td>' + esc(d.label) + (d.required===false ? ' <small>(optional)</small>' : '') + '</td>' +
+  return '<tr><td>' + esc(d.label || rowLabel(d)) + (d.required===false ? ' <small>(optional)</small>' : '') + '</td>' +
    '<td><span class="d" style="background:' + F[f] + ';cursor:default"></span> ' + esc(f) + '</td>' +
    '<td><span class="d" style="background:' + V[v] + ';cursor:default"></span> ' + esc(v) + '</td>' +
-   '<td>' + esc((c.packages||[]).join(', ')) + '</td><td>' + receipts + (issues ? '<br>' + esc(issues) : '') +
+   '<td>' + esc((c.packages||[]).join(', ')) + badges(c.destinations) + '</td><td>' + receipts + (issues ? '<br>' + esc(issues) : '') +
    ((c.notes||[]).length ? '<br><small>' + esc(c.notes.join('; ')) + '</small>' : '') + '</td></tr>';
  }).join('');
  const meta = [i.kind, i.method ? 'method ' + i.method : null, (i.drivers||[]).length ? 'driver ' + i.drivers.join(', ') : 'manual only',
@@ -172,6 +207,8 @@ function popover(i, anchor){
 }
 
 function renderHeader(){
+ const hosts = document.getElementById('host'); hosts.innerHTML = '<option value="">All hosts</option>' + DATA.hosts.map(h => '<option value="' + esc(h) + '">' + esc(h) + '</option>').join('');
+ hosts.value = host || ''; hosts.onchange = () => {host = hosts.value || null; render();};
  const chips = document.getElementById('desktops'); chips.innerHTML = '';
  const all = document.createElement('button'); all.className = 'chip' + (desktop ? '' : ' on'); all.textContent = 'All required desktops';
  all.onclick = () => { desktop = null; render(); }; chips.appendChild(all);
@@ -296,22 +333,24 @@ function lightbox(s){
 
 function renderMatrix(main){
  const wrap = document.createElement('div'); wrap.style.gridColumn = '1 / -1';
- const ds = DATA.desktops;
- let h = '<table class="matrix"><tr><th>Interaction</th><th>kind</th><th>driver</th>' + ds.map(d => '<th colspan="2">' + esc(d.label) + '</th>').join('') + '</tr>';
+ const hosted = DATA.hostCoverage || host;
+ // Matrix compares all desktop columns; chips affect Map/Gaps and popovers.
+ const ds = hosted ? selectedRows(false) : DATA.desktops;
+ let h = '<table class="matrix"><tr><th>Interaction</th><th>kind</th><th>driver</th>' + ds.map(d => '<th colspan="2">' + esc(hosted ? rowLabel(d) : d.label) + '</th>').join('') + '</tr>';
  DATA.surfaces.forEach(s => {
   const items = DATA.interactions.filter(i => i.surface === s.id); if(!items.length) return;
   h += '<tr class="s"><td colspan="' + (3 + 2*ds.length) + '">' + esc(s.label) + '</td></tr>';
   items.forEach(i => {
    h += '<tr><td title="' + esc(i.id) + '">' + esc(i.label) + (i.keys && i.keys.length ? ' ' + keysHtml(i.keys) : '') + '</td><td>' + esc(i.kind) + '</td><td>' + esc((i.drivers||[]).join(', ') || 'manual') + '</td>';
-   ds.forEach(d => {
-    const c = i.desktops[d.id] || {}; const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
-    h += '<td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + d.label + ': functional ' + f) + '" title="functional ' + esc(f) + '" data-i="' + esc(i.id) + '" style="background:' + F[f] + '"></button></td><td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + d.label + ': visual ' + v) + '" title="visual ' + esc(v) + '" data-i="' + esc(i.id) + '" style="background:' + V[v] + '"></button></td>';
+   ds.forEach((d, rowIndex) => {
+    const c = hosted ? cellFor(i,d) : i.desktops[d.id] || {}; const f = c.functional || 'untested', v = i.visualApplies ? (c.visual || 'none') : 'n/a';
+    h += '<td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + (hosted ? rowLabel(d) : d.label) + ': functional ' + f) + '" title="functional ' + esc(f) + '" data-i="' + esc(i.id) + '" data-row="' + rowIndex + '" style="background:' + F[f] + '"></button></td><td class="c"><button type="button" class="d" aria-label="' + esc(i.label + ' on ' + (hosted ? rowLabel(d) : d.label) + ': visual ' + v) + '" title="visual ' + esc(v) + '" data-i="' + esc(i.id) + '" data-row="' + rowIndex + '" style="background:' + V[v] + '"></button>' + badges(c.destinations) + '</td>';
    });
    h += '</tr>';
   });
  });
  wrap.innerHTML = h + '</table>';
- wrap.querySelectorAll('.d[data-i]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); popover(byId[el.dataset.i], el); }));
+ wrap.querySelectorAll('.d[data-i]').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); popover(byId[el.dataset.i], el, hosted ? ds[Number(el.dataset.row)] : null); }));
  main.appendChild(wrap);
 }
 
@@ -337,11 +376,30 @@ function renderGaps(main){
  main.appendChild(wrap);
 }
 
+function evidencePath(path){
+ const href = safeHref(path);
+ return href ? '<a href="' + esc(href) + '" rel="noopener noreferrer">' + esc(path) + '</a>' : '<code>' + esc(path) + '</code>';
+}
+function renderReview(main){
+ const wrap = document.createElement('div'); wrap.className = 'card reviews'; wrap.style.gridColumn = '1 / -1';
+ const rows = DATA.reviews.filter(r => (!host || r.host===host) && (!desktop || r.desktop===desktop));
+ wrap.innerHTML = '<h3>Review · ' + rows.length + ' rows</h3>' + (rows.length ? rows.map(r =>
+  '<article class="review-row"><b>' + esc(r.interaction) + '</b> · ' + esc(rowLabel(r)) + badges(r.destination ? [r.destination] : []) +
+  '<p>' + esc(r.review_reason || 'Review requested without a reason') + '</p>' +
+  (r.frames||[]).map(f => '<div><b>' + esc(f.label) + '</b>: ' + evidencePath(f.path) +
+   (f.reference ? ' · reference: ' + evidencePath(f.reference) : '') +
+   (f.distance!=null ? ' · distance ' + esc(f.distance) : '') + (f.tolerance!=null ? ' / tolerance ' + esc(f.tolerance) : '') + '</div>').join('') +
+  (r.receipt ? '<div>receipt: ' + evidencePath(r.receipt) + '</div>' : '') +
+  '<div class="meta">' + esc([r.recipe,r.build,r.at].filter(Boolean).join(' · ')) + '</div></article>').join('') : '<p>No rows request review for these filters.</p>');
+ main.appendChild(wrap);
+}
+
 function render(){
  closePop();
  renderHeader();
  const main = document.getElementById('main'); main.innerHTML = '';
- if(view === 'map') renderMap(main); else if(view === 'matrix') renderMatrix(main); else renderGaps(main);
+ if(view === 'map') renderMap(main); else if(view === 'matrix') renderMatrix(main); else if(view === 'review') renderReview(main); else renderGaps(main);
+ syncToolbarHeight();
 }
 render();
 })();

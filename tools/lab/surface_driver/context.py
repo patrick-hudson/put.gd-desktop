@@ -38,6 +38,7 @@ class DriverContext(Context):
     def begin(self, recipe):
         self.recipe = recipe
         self.frames, self.notes, self.reviews = [], [], []
+        self._noted_ids=set()
         self._notifications_since = time.time()
         self._deadline = time.monotonic() + (recipe.timeout if recipe else 120)
 
@@ -55,7 +56,13 @@ class DriverContext(Context):
             except ValueError as error:
                 raise RecipeBlocked('production CLI returned no JSON envelope') from error
             if envelope.get('ok'):
-                return envelope['result']
+                result=envelope['result']
+                for field in ('operationId','recordingId','shareOperationId'):
+                    identity=result.get(field)
+                    if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
+                        self.note(field+'='+identity)
+                        self._noted_ids.add(identity)
+                return result
             code=envelope.get('error',{}).get('code','unknown')
             # Startup acknowledgement precedes helper construction. Retry only
             # observational commands, never a mutation whose effect is uncertain.
@@ -210,12 +217,7 @@ class DriverContext(Context):
     def scroll(self,x,y,clicks):
         w,h = self._dimensions()
         if self.target.physical:
-            from tools.lab.rfb import RFB
-            client = RFB(self.target.physical.config['vnc_port'])
-            try:
-                client.scroll(x,y,clicks)
-            finally:
-                client.close()
+            self.target.scroll_vnc(x,y,clicks)
         else:
             self.target.pointer(x,y,w,h)
             for _ in range(abs(clicks)):
@@ -236,16 +238,13 @@ class DriverContext(Context):
         # executable is configurable for a locked tools/mcp/.venv installation.
         python = self.profile.get('mcp_python','python3')
         helper = self.profile.get('mcp_helper','putgd-mcp')
-        code = '''import asyncio,json
-from mcp import ClientSession,StdioServerParameters
-from mcp.client.stdio import stdio_client
+        import inspect
+        from tools.lab.mcp_client import helper_session
+        code='import asyncio,json\nfrom contextlib import asynccontextmanager\n'+inspect.getsource(helper_session)+'''
 async def main():
-    p=StdioServerParameters(command=HELPER,args=['--cli','putgd-cli','--socket',SOCKET,'--timeout','60'])
-    async with stdio_client(p) as (read,write):
-        async with ClientSession(read,write) as session:
-            await session.initialize()
-            reply=await session.call_tool(TOOL,ARGS)
-            print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
+    async with helper_session(HELPER,['--cli','putgd-cli','--socket',SOCKET,'--timeout','60']) as session:
+        reply=await session.call_tool(TOOL,ARGS)
+        print(json.dumps(reply.structuredContent if reply.structuredContent is not None else {'content':[v.model_dump(mode='json') for v in reply.content],'isError':reply.isError}))
 asyncio.run(main())
 '''
         code = 'HELPER='+repr(helper)+'\nSOCKET='+repr(self.target.socket)+'\nTOOL='+repr(tool)+'\nARGS='+repr(arguments or {})+'\n'+code
