@@ -3,9 +3,9 @@
 `putgd-ui-catalog` (`tests/gui/ui_catalog.cpp`) renders every window, menu,
 dialog, editor, review and overlay state from synthetic data, one PNG per
 state, plus a `<state>.controls.json` inventory per capture and a
-`manifest.json`. Since #708 the Ubuntu 26.04 CI leg compares every state with
-a reference image kept in git, so a moved, clipped or recoloured control fails
-CI. The catalog is synthetic: it proves design and widget behaviour, not
+`manifest.json`. Since #708 the Ubuntu 26.04 CI leg compares every state,
+apart from the few [exempt](#reproducible-renders) ones, with a reference image
+kept in git, so a moved, clipped or recoloured control fails CI. The catalog is synthetic: it proves design and widget behaviour, not
 desktop support (see [the visual language](visual-language.md)).
 
 ## Running it
@@ -28,14 +28,16 @@ leg's Qt 6.4 draws text and edges differently) CTest registers:
 
 | Test | What it checks |
 | --- | --- |
-| `ui_catalog_dark` | Every dark state against `tests/gui/catalog-references/dark/` |
-| `ui_catalog_light` | Every light state against `tests/gui/catalog-references/light/` |
+| `ui_catalog_dark` | Every non-exempt dark state against `tests/gui/catalog-references/dark/` |
+| `ui_catalog_light` | Every non-exempt light state against `tests/gui/catalog-references/light/` |
 | `ui_catalog_text_150` | The catalog's own layout checks at 150% text; no images |
 
 Each runs `tools/ci/check_catalog_references.py`, which renders offscreen and
 keeps the catalog's own checks (stepper sizes, review footers, state waits, no
 source reads). It fails when a state differs beyond the tolerance, when a
-reference has no rendered state, and when a rendered state has no reference.
+reference has no rendered state, and when a rendered state that is not exempt
+has no reference. An exempt state must still render; it has no reference and
+its pixels are not compared.
 The tests run inside the Test step in the `cpu` pool, in parallel with the
 rest of the suite. The surface map check reads the dark render afterwards.
 

@@ -85,7 +85,8 @@ acceptance. The Release-preset compile happens in the package builders, not here
 
 On the 26.04 leg only (`-DPUTGD_UI_CATALOG_REFERENCES=ON`), the suite includes
 the [UI catalog](ui-catalog.md) tests. `ui_catalog_dark` and `ui_catalog_light`
-compare every rendered state with `tests/gui/catalog-references`, within the
+compare every rendered state except those in `IMAGE_EXEMPT` with
+`tests/gui/catalog-references`, within the
 `tools/ci/image_diff.py` tolerance. `ui_catalog_text_150` keeps the catalog's
 layout checks at 150% text. They run in the `cpu` pool alongside the other
 tests. When one fails, the `ui-catalog-check` artifact holds each render with

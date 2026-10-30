@@ -11,7 +11,7 @@ rows and current-candidate evidence remain gates.
 
 ## UI catalog reference images (#708) — 2026-10-30
 
-Every `putgd-ui-catalog` state is now compared with a reference image in CI (see
+Every `putgd-ui-catalog` state except the exempt ones is now compared with a reference image in CI (see
 [the UI catalog](ui-catalog.md)). The references were rendered on k72 in an
 `ubuntu:26.04` container built from the CI leg's package list (Qt 6.10.2).
 Making renders reproducible took a stopped clock, fixed data paths, a fixed
