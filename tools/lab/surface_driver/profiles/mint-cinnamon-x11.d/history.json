@@ -40,6 +40,32 @@
         "owned": true,
         "name": "Help"
       }
+    },
+    "historyConfirmAction": {
+      "title": "^(Delete from destination|Clear history records|Clear temporary files)$",
+      "accessible": {
+        "owned": true
+      }
     }
+  },
+  "control_names": {
+    "historyCategories": [
+      "Show history items"
+    ],
+    "historyList": [
+      "History items and upload activity"
+    ],
+    "historyReceiptExpanded": [
+      "Show advanced receipt details"
+    ],
+    "historyDetails": [
+      "Advanced original receipt details"
+    ],
+    "historyChoiceuploadStatus": [
+      "Upload state"
+    ],
+    "historyManagementExpanded": [
+      "Manage history"
+    ]
   }
 }

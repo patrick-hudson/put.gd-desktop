@@ -164,12 +164,12 @@ def clear_filters(ctx):
     _frame(ctx, 'before')
     ctx.click('historyFiltersExpanded', window='history')
     ctx.click('historyAddFilter', window='history')
-    ctx.click('historyAddFilteruploadStatus', window='historyAddFilterMenu')
-    ctx.click('historyChoiceuploadStatus', window='history')
+    ctx.click('text:Upload state', window='historyAddFilterMenu')
+    ctx.click_accessible({'owned': True, 'visible': True, 'name': 'Upload state', 'role': 'combo box'})
     ctx.keys('Home', 'Down', 'Return')
     ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']), 'upload filter applied')
     _frame(ctx, 'filtered', '40-history-filters-active')
-    ctx.click('historyClearFilters', window='history')
+    ctx.click('text:Clear filters', window='history')
     ctx.wait(lambda: not _state(ctx)['activeFilters'], 'advanced filters cleared')
     ctx.expect(_state(ctx)['query']['search'] == row['name'], 'Clear filters preserves search')
     _frame(ctx, 'after')
@@ -204,23 +204,38 @@ def enter_details(ctx):
     ctx.keys('Esc')
 
 
+def _click_preview(ctx, button=False):
+    query = {'owned': True, 'visible': True, 'name': 'Expand preview'}
+    nodes = [n for n in ctx.accessible(query) if n.get('rect')
+             and (n.get('role') == 'push button') == button]
+    ctx.expect(len(nodes) == 1, 'one owned preview button' if button else 'one owned preview image')
+    # Qt versions expose a QLabel pixmap as an icon or label. Observe its role;
+    # the image and its child expand button deliberately share an accessible name.
+    ctx.click_accessible(dict(query, role=nodes[0]['role'], pid=nodes[0]['pid']))
+
+
 @recipe('history.preview', 'history.expand-preview', 'history.key-esc', needs=('history-row',))
 def preview(ctx):
     _row(ctx)
     ctx.wait(lambda: _state(ctx)['canExpandPreview'], 'retained image preview loads')
     _frame(ctx, 'before')
-    ctx.click('historyPreview', window='history')
+    _click_preview(ctx)
     ctx.wait(lambda: _state(ctx)['previewExpanded'], 'preview click expands')
     _frame(ctx, 'expanded-click', '68-history-expanded-preview', 'historyExpandedPreview')
+    ctx.focus('historyExpandedPreview', raise_window=False)
     ctx.keys('Esc')
+    ctx.focus('history', raise_window=False)
     ctx.wait(lambda: not _state(ctx)['previewExpanded'], 'Escape closes preview')
     ctx.keys('Space')
     ctx.wait(lambda: _state(ctx)['previewExpanded'], 'Space on focused preview expands')
-    ctx.click('closeHistoryPreview', window='historyExpandedPreview')
+    ctx.click('text:Close preview', window='historyExpandedPreview')
     ctx.wait(lambda: not _state(ctx)['previewExpanded'], 'Close preview closes dialog')
-    ctx.click('expandHistoryPreview', window='history')
+    ctx.focus('history', raise_window=False)
+    _click_preview(ctx, button=True)
     ctx.wait(lambda: _state(ctx)['previewExpanded'], 'expand glyph opens preview')
+    ctx.focus('historyExpandedPreview', raise_window=False)
     ctx.keys('Esc')
+    ctx.focus('history', raise_window=False)
     _details(ctx)
     ctx.keys('Esc')
     ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape without expanded preview closes details')
@@ -257,7 +272,7 @@ def multi_select(ctx):
     _size(ctx, data['bytes'], 'Total size')
     _frame(ctx, 'selected', '41a-history-selection-inspector')
     ctx.click('historySelectionMore', window='history')
-    ctx.click('historyClearSelection', window='historySelectionMore')
+    ctx.click('text:Clear selection', window='historySelectionMore')
     ctx.wait(lambda: _state(ctx)['selectedRows'] == 0, 'Clear selection menu clears both rows')
     _frame(ctx, 'after')
 
@@ -269,10 +284,10 @@ def paging(ctx):
     ctx.expect(before['query']['offset'] == 0 and before['query']['limit'] == 50, 'known first page')
     ctx.expect(before['total'] == ctx.fixture('history_paging')['total'] > 50, 'fixture spans pages')
     _frame(ctx, 'before')
-    ctx.click('historyNext', window='history')
+    ctx.click('text:Next', window='history')
     ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['query']['offset'] == 50, 'Next advances one page')
     _frame(ctx, 'next')
-    ctx.click('historyPrevious', window='history')
+    ctx.click('text:Previous', window='history')
     ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['query']['offset'] == 0, 'Previous restores first page')
     _frame(ctx, 'after')
 
@@ -283,24 +298,26 @@ def key_menu(ctx):
     _frame(ctx, 'before')
     for key in ('Menu', 'Shift+F10'):
         ctx.keys(key)
-        ctx.frame('menu-' + key, window='historyRowMenu')
+        ctx.frame('menu-' + key)
         ctx.click('text:Copy details', window='historyRowMenu')
         detail = json.loads(ctx.clipboard_text())
         ctx.expect(any(item['id'] == row['id'] for item in detail['records']), 'keyboard row menu copies selected receipt')
     _frame(ctx, 'after')
 
 
-@recipe('history.inspector-more', needs=('history-row',))
+@recipe('history.inspector-more', needs=('history-row', 'file-dialog-fallback'))
 def inspector_more(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
     ctx.click('historyInspectorMore', window='history')
-    ctx.frame('menu', window='historyInspectorMenu')
-    ctx.click('saveHistoryAsAction', window='historyInspectorMenu')
+    ctx.frame('menu')
+    ctx.click('text:Save a copy…', window='historyInspectorMenu')
     chooser = _result(ctx.call('ui.fileDialog', {'dialog': 'historySaveAs', 'action': 'inspect', 'id': row['id']}))
     ctx.expect(chooser['open'] is True, 'More file actions opens Save a copy chooser')
-    # Chooser completion belongs to dialogs; Escape is real cancellation here.
+    # Bind the actual chooser before sending its cancellation key.
+    ctx.focus('fileDialog', raise_window=False)
     ctx.keys('Esc')
+    ctx.focus('history', raise_window=False)
     ctx.wait(lambda: _result(ctx.call('ui.fileDialog', {'dialog': 'historySaveAs', 'action': 'inspect', 'id': row['id']}))['open'] is False, 'chooser canceled')
     _frame(ctx, 'after')
 
@@ -322,11 +339,11 @@ def saved_copy_strip(ctx):
     _frame(ctx, 'after', '69b-history-dismissed-copy')
 
 
-def _retry(ctx, fixture, control, local=False):
+def _retry(ctx, fixture, local=False):
     row = _row(ctx, fixture)
     before = _result(ctx.call('operation.inspect', {'id': row['operation_id']}))
     _frame(ctx, 'local-before' if local else 'before', '50a-history-failure-inspector')
-    ctx.click(control, window='history')
+    ctx.click('text:Retry local save' if local else 'text:Retry upload', window='history')
     def saved():
         detail = _result(ctx.call('history.detail', {'id': row['id']}))
         return detail if (detail['local']['status'] == 'saved' if local else detail['uploadStatus'] == 'uploaded') else None
@@ -340,8 +357,8 @@ def _retry(ctx, fixture, control, local=False):
 
 @recipe('history.retry-upload', needs=('history_retry_upload', 'history_retry_local'), destinations=('local', 's3'), timeout=180)
 def retry_upload(ctx):
-    _retry(ctx, 'history_retry_upload', 'retryOperation')
-    _retry(ctx, 'history_retry_local', 'retryOperation', local=True)
+    _retry(ctx, 'history_retry_upload')
+    _retry(ctx, 'history_retry_local', local=True)
 
 
 @recipe('history.active-banner', needs=('history_active_uploads',), destinations=('local', 's3'))
@@ -350,9 +367,9 @@ def active_banner(ctx):
     _open(ctx)
     ctx.expect(_state(ctx)['activeOperationCount'] == len(data['operation_ids']) >= 2, 'known stalled loopback operations')
     _frame(ctx, 'before', 'history-many-active')
-    ctx.click('historyMoreActive', window='history')
+    ctx.click('text-glob:* more active', window='history')
     ctx.wait(lambda: _state(ctx)['query']['uploadStatus'] == 'uploading', 'More active filters running uploads')
-    ctx.click('cancelBannerOperation', window='history')
+    ctx.click('text-glob:Cancel this upload:*', window='history')
     ctx.wait(lambda: _state(ctx)['activeOperationCount'] < len(data['operation_ids']), 'Cancel this upload stops an active operation')
     states = [_result(ctx.call('operation.inspect', {'id': item})) for item in data['operation_ids']]
     ctx.expect(any(item['state'] == 'cancelled' for item in states), 'one exact fixture operation canceled')
@@ -364,17 +381,17 @@ def cancel_all(ctx):
     ids = ctx.fixture('history_active_uploads')['operation_ids']
     _open(ctx)
     _frame(ctx, 'before', 'history-many-active')
-    ctx.click('cancelAllBannerOperations', window='history')
+    ctx.click('text-glob:Cancel all (*)…', window='history')
     state = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'cancel-all confirmation opens')['cancelAllConfirmation']
     _frame(ctx, 'keep-question', 'history-cancel-all-confirmation', 'historyCancelAllConfirmation')
     ctx.expect(state['open'] and set(state['operationIds']) == set(ids), 'confirmation captures exact active identities')
-    ctx.click('historyKeepUploading', window='historyCancelAllConfirmation')
+    ctx.click('text:Keep uploading', window='historyCancelAllConfirmation')
     ctx.wait(lambda: not _state(ctx)['cancelAllConfirmation']['open'], 'Keep uploading dismisses confirmation')
     ctx.expect(_state(ctx)['activeOperationCount'] == len(ids), 'Keep uploading leaves all operations active')
-    ctx.click('cancelAllBannerOperations', window='history')
+    ctx.click('text-glob:Cancel all (*)…', window='history')
     second = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'second cancel-all confirmation opens')
     ctx.expect(set(second['cancelAllConfirmation']['operationIds']) == set(ids), 'second confirmation captures same identities')
-    ctx.click('historyConfirmCancelAll', window='historyCancelAllConfirmation')
+    ctx.click('text-glob:Cancel * uploads', window='historyCancelAllConfirmation')
     ctx.wait(lambda: all(_result(ctx.call('operation.inspect', {'id': item}))['state'] == 'cancelled' for item in ids), 'all confirmed uploads cancel', timeout=30)
     ctx.expect(_state(ctx)['activeOperationCount'] == 0, 'banner clears canceled uploads')
     _frame(ctx, 'after')
@@ -385,18 +402,18 @@ def delete_remote(ctx):
     row = _row(ctx, 'history_delete')
     original = _result(ctx.call('history.detail', {'id': row['id']}))
     _frame(ctx, 'before')
-    ctx.click('deleteHistoryRemote', window='history')
-    ctx.frame('question', window='confirmAction')
-    ctx.click('deleteConfirmationDetailsExpanded', window='confirmAction')
-    ctx.click('copyDeletionTechnicalDetails', window='Deletion technical details')
+    ctx.click('text:Delete from destination…', window='history')
+    ctx.frame('question', window='historyConfirmAction')
+    ctx.click('text:Show the full deletion preparation', window='historyConfirmAction')
+    ctx.click('text:Copy technical details', window='Deletion technical details')
     preparation = json.loads(ctx.clipboard_text())
     ctx.frame('technical-details', window='Deletion technical details')
     ctx.expect([target['historyId'] for target in preparation['targets']] == [row['id']], 'dialog prepares only exact fixture identity')
     ctx.keys('Esc')
-    ctx.click('confirmCancel', window='confirmAction')
+    ctx.click('text:Cancel', window='historyConfirmAction')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['remoteStatus'] == original['remoteStatus'], 'Cancel preserves remote state')
-    ctx.click('deleteHistoryRemote', window='history')
-    ctx.click('confirmActionButton', window='confirmAction')
+    ctx.click('text:Delete from destination…', window='history')
+    ctx.click('text-glob:Delete * file*', window='historyConfirmAction')
     final = ctx.wait(lambda: (d if (d := _result(ctx.call('history.detail', {'id': row['id']})))['remoteStatus'] in ('removed', 'already_missing') else None), 'recorded loopback object deleted', timeout=60)
     ctx.expect(final['id'] == original['id'] and final['local'] == original['local'], 'deletion preserves history and local copy')
     _frame(ctx, 'after', '48-history-deletion-recovery')
@@ -411,20 +428,20 @@ def clear_history(ctx):
     _frame(ctx, 'before')
     for action in ('Clear temporary files…', 'Clear history records…'):
         ctx.click('historyManagementExpanded', window='history')
-        ctx.frame('more-menu-' + ('cache' if 'temporary' in action else 'records'), window='historyManagementMenu')
+        ctx.frame('more-menu-' + ('cache' if 'temporary' in action else 'records'))
         ctx.click('text:' + action, window='historyManagementMenu')
-        ctx.frame('question-' + ('cache' if 'temporary' in action else 'records'), window='confirmAction')
-        ctx.click('text:Cancel', window='confirmAction')
+        ctx.frame('question-' + ('cache' if 'temporary' in action else 'records'), window='historyConfirmAction')
+        ctx.click('text:Cancel', window='historyConfirmAction')
         ctx.expect(_state(ctx)['total'] == before, 'Cancel preserves history')
     ctx.click('historyManagementExpanded', window='history')
     ctx.click('text:Clear temporary files…', window='historyManagementMenu')
-    ctx.click('confirmDiscard', window='confirmAction')
+    ctx.click('text:Clear temporary files', window='historyConfirmAction')
     ctx.wait(lambda: not _state(ctx)['busy'], 'temporary file cleanup finishes')
     ctx.expect(_state(ctx)['total'] == before, 'cache cleanup preserves history records')
     ctx.expect(_result(ctx.call('history.detail', {'id': ctx.fixture('history_rows')['image']['id']}))['local'] == local_before, 'cache cleanup preserves local-copy receipt')
     ctx.click('historyManagementExpanded', window='history')
     ctx.click('text:Clear history records…', window='historyManagementMenu')
-    ctx.click('confirmDiscard', window='confirmAction')
+    ctx.click('text:Clear history records', window='historyConfirmAction')
     ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['total'] == 0, 'confirmed clear removes local history')
     _frame(ctx, 'after')
     ctx.review('Catalog has no empty-history reference or confirmation controls dump; inspect saved frames for empty state and both safe defaults.')
@@ -609,14 +626,19 @@ def close_window(ctx):
     _frame(ctx, 'after')
 
 
+def _launcher_identity(ctx):
+    text = ctx.cli('--version')
+    if text['returncode'] == 0 and text['stdout'].startswith('putgd-cli '):
+        ctx.blocked('Context.cli routed the launcher flag to putgd-cli; launcher dispatch remains a core capability gap.', issue=675)
+    return text
+
+
 @recipe('cli.version', needs=('launcher',))
 def cli_version(ctx):
     ctx.view('ui.show', {'view': 'history'})
     ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'History helper ready')
     _frame(ctx, 'before')
-    text = ctx.cli('--version')
-    if text['returncode'] == 0 and text['stdout'].startswith('putgd-cli '):
-        ctx.blocked('Context.cli routed the launcher flag to putgd-cli; launcher dispatch remains a core capability gap.', issue=675)
+    text = _launcher_identity(ctx)
     ctx.expect(text['returncode'] == 0 and text['stdout'].startswith('putgd '), 'launcher prints version')
     version = _cli(ctx, '--version-json')
     authoritative = _result(ctx.call('ui.snapshot'))['build']
@@ -626,6 +648,7 @@ def cli_version(ctx):
 
 @recipe('cli.launcher-history', 'cli.second-launch', needs=('history-row', 'launcher'))
 def launcher_history(ctx):
+    _launcher_identity(ctx)
     _row(ctx)
     _frame(ctx, 'before')
     # cli is the launcher for leading flags; method names address putgd-cli.

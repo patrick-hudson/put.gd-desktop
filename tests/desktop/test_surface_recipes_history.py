@@ -30,7 +30,7 @@ class FakeContext(Context):
         self.events = []
         self.frames = []
         self.reviews = []
-        self.focus = ''
+        self.focused_control = ''
         self.typed = ''
         self.clipboard = ''
         self.category_index = 0
@@ -147,8 +147,23 @@ class FakeContext(Context):
         raise AssertionError('unknown production method ' + method)
 
     def click(self, control, window, button='left', offset=None):
+        aliases = {
+            'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
+            'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
+            'text:Clear selection': 'historyClearSelection', 'text:Clear filters': 'historyClearFilters',
+            'text:Keep uploading': 'historyKeepUploading', 'text-glob:Cancel * uploads': 'historyConfirmCancelAll',
+            'text-glob:* more active': 'historyMoreActive', 'text-glob:Cancel this upload:*': 'cancelBannerOperation',
+            'text-glob:Cancel all (*)…': 'cancelAllBannerOperations', 'text:Upload state': 'historyAddFilteruploadStatus',
+            'text:Save a copy…': 'saveHistoryAsAction', 'text:Close preview': 'closeHistoryPreview',
+            'text:Delete from destination…': 'deleteHistoryRemote',
+            'text:Show the full deletion preparation': 'deleteConfirmationDetailsExpanded',
+            'text:Copy technical details': 'copyDeletionTechnicalDetails',
+            'text-glob:Delete * file*': 'confirmActionButton',
+            'text:Clear temporary files': 'confirmDiscard', 'text:Clear history records': 'confirmDiscard',
+        }
+        control = aliases.get(control, control)
         self.events.append(('click', control, window, button))
-        self.focus = control
+        self.focused_control = control
         if control == 'applicationMenu':
             self.menu = 'app'
         elif control == 'text:Capture actions':
@@ -170,7 +185,7 @@ class FakeContext(Context):
             self.preview = self.fault != 'preview-no-effect'
         elif control == 'closeHistoryPreview':
             self.preview = False
-            self.focus = 'historyPreview'
+            self.focused_control = 'historyPreview'
         elif control == 'historyReceiptExpanded':
             self.receipt = not self.receipt
         elif control == 'historyClearSelection':
@@ -246,22 +261,22 @@ class FakeContext(Context):
         self.events.append(('keys', sequence))
         for key in sequence:
             if key == 'Home':
-                if self.focus == 'historyCategories':
+                if self.focused_control == 'historyCategories':
                     self.category_index = 0
                     self.query.update(category='', uploadStatus='')
-                elif self.focus == 'historyList':
+                elif self.focused_control == 'historyList':
                     self.selected = ['image-1']
-            elif key == 'Down' and self.focus == 'historyCategories':
+            elif key == 'Down' and self.focused_control == 'historyCategories':
                 self.category_index += 1
                 category = ['', 'images', 'videos', 'text+other', ''][self.category_index]
                 self.query.update(category=category, uploadStatus='failed' if self.category_index == 4 else '')
-            elif key == 'Down' and self.focus == 'historyChoiceuploadStatus':
+            elif key == 'Down' and self.focused_control == 'historyChoiceuploadStatus':
                 self.query['uploadStatus'] = 'uploaded'
-            elif key == 'Backspace' and self.focus == 'historySearch':
+            elif key == 'Backspace' and self.focused_control == 'historySearch':
                 self.typed = ''
-            elif key == 'Return' and self.focus == 'historySearch':
+            elif key == 'Return' and self.focused_control == 'historySearch':
                 self.query['search'] = self.typed
-            elif key == 'Return' and self.focus == 'historyList':
+            elif key == 'Return' and self.focused_control == 'historyList':
                 self.details = self.grid
             elif key == 'Shift+Down':
                 self.selected = ['image-1', 'image-2']
@@ -269,14 +284,14 @@ class FakeContext(Context):
                 self.menu = None
                 if self.preview:
                     self.preview = False
-                    self.focus = 'historyPreview'
+                    self.focused_control = 'historyPreview'
                 elif self.chooser:
                     self.chooser = False
                 else:
                     self.details = False
-            elif key == 'Space' and self.focus == 'historyPreview':
+            elif key == 'Space' and self.focused_control == 'historyPreview':
                 self.preview = True
-            elif key == 'Ctrl+C' and self.focus == 'historyDetails':
+            elif key == 'Ctrl+C' and self.focused_control == 'historyDetails':
                 self.clipboard = json.dumps(self.detail())
 
     def type_text(self, text):
@@ -284,11 +299,26 @@ class FakeContext(Context):
         if text:
             self.typed = text
 
+    def focus(self, window, raise_window=True):
+        self.events.append(('focus', window, raise_window))
+        if window == 'fileDialog' and not self.chooser:
+            raise AssertionError('chooser must be visible before binding input')
+
+    def click_accessible(self, query, button='left'):
+        if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
+            return self.click('historyChoiceuploadStatus', 'history', button)
+        if not query.get('owned') or query.get('name') != 'Expand preview' or query.get('pid') != 123:
+            raise AssertionError('preview click must constrain private family and observed pid')
+        control = {'icon': 'historyPreview', 'label': 'historyPreview', 'push button': 'expandHistoryPreview'}[query['role']]
+        self.click(control, 'history', button)
+
     def click_at(self, x, y, button='left', head=None):
         self.events.append(('click', 'header', 'history', button))
         self.menu = 'header'
 
     def accessible(self, query):
+        if query.get('name') == 'Expand preview':
+            return [{'name': 'Expand preview', 'role': role, 'pid': 123, 'rect': [100, 100, 40, 40]} for role in ('icon', 'push button')]
         if query.get('role') == 'menu item':
             return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else set())]
         if query.get('name') == 'Capture actions':
@@ -544,6 +574,45 @@ class HistoryRecipeTests(unittest.TestCase):
             ctx = FakeContext(needs)
             action(ctx)
             self.assertFalse(any(e[0] in ('click', 'drag', 'keys', 'type_text') for e in ctx.events))
+
+    def test_older_catalog_lists_resolve_through_supported_profile_aliases(self):
+        import tempfile
+        from tools.lab.surface_driver.catalog import Catalog
+        from tools.lab.surface_driver.probe import selector_matches
+        from tools.lab.surface_driver.profiles import load_profile
+        source = (ROOT / 'src/ui/HistoryWindow.cpp').read_text()
+        names = {'historyList': 'History items and upload activity', 'historyCategories': 'Show history items'}
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, '01-history-list.controls.json').write_text(json.dumps({'controls': [
+                {'name': control, 'text': '', 'class': 'QListView'} for control in names]}))
+            for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
+                catalog = Catalog(directory, load_profile(desktop))
+                for control, label in names.items():
+                    self.assertIn('setAccessibleName("' + label + '")', source)
+                    self.assertEqual(selector_matches({'name': label, 'objectName': ''}, control,
+                                                      catalog.candidates(control, 'history')), 1)
+
+    def test_popup_frames_do_not_require_a_native_menu_window(self):
+        class PopupContext(FakeContext):
+            def frame(self, label, window=None, reference=None):
+                if window and (window.endswith('Menu') or window.endswith('Popup')):
+                    raise AssertionError('runtime popup is not an independently titled window')
+                return super().frame(label, window, reference)
+        for action in (history.application_menu, history.header_context_menu, history.key_menu, history.inspector_more):
+            entry = next(r for r in LANE if r.function == action)
+            action(PopupContext(entry.needs))
+
+    def test_file_chooser_input_requires_explicit_target_binding(self):
+        class ChooserContext(FakeContext):
+            input_window = 'history'
+            def focus(self, window, raise_window=True):
+                super().focus(window, raise_window)
+                self.input_window = window
+            def keys(self, *sequence):
+                if self.chooser and self.input_window != 'fileDialog':
+                    raise AssertionError('keyboard would target History behind the chooser')
+                super().keys(*sequence)
+        history.inspector_more(ChooserContext(('history-row', 'file-dialog-fallback')))
 
     def test_history_popup_owners_are_scoped_on_both_guests(self):
         from tools.lab.surface_driver.profiles import load_profile
