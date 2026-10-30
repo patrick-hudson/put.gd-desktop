@@ -54,3 +54,18 @@ bytes and guest identity private keys are excluded. The code PR acceptance
 comment records the export and retirement receipts. No physical desktop,
 workstation build/VM/GUI driver, S3 credentials, or existing named snapshot was
 used or modified.
+
+After core advanced with #734, the geometry branch merged `bb3012c0` and reached
+`37217c45b1db8d8e8500770d96cdd562e9ae1347`. The exact branch source passed all
+97 driver tests on boat. A fresh disposable guest overlay then reran all three
+core_demo recipes with that head plus the same frozen desktop peer; all passed
+functionally, including the newly merged cleanup between recipes. The native
+[text-tool frame](core-demo-text.png), [merged check identities](merged-check.json),
+and [original campaign retirement summary](retirement.json) are retained here.
+The original live gates above keep their original source identities.
+
+Issues #705, #714 and #709 remain open for the coordinator to close after
+independent validation and merge. #712's Rename item belongs to the
+2a-desktop/#675 runtime-menu work. #718's unresolved resize guard is handed
+back in geometry/WM scope after the two-attempt limit. Provisioning is a step
+only: the coordinator schedules a new golden/snapshot after merge.
