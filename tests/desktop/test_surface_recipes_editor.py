@@ -156,7 +156,7 @@ class ExportContext(FakeContext):
 
     def shell(self,script,**kwargs):
         self.oracle_script=script
-        # Execute the exact recipe pixel oracle with a controlled PPM. This
+        # Execute the exact recipe pixel oracle with a controlled PNG. This
         # tests the oracle's rejection behaviour, never an app export.
         oracle=script.split("<<'ORACLE'\n",1)[1].rsplit('\nORACLE',1)[0]
         pixels=bytearray(640*320*3)
@@ -168,8 +168,9 @@ class ExportContext(FakeContext):
                 pixels[(y*640+x)*3:(y*640+x+1)*3]=bytes(rgb)
         if self.corrupt: pixels[(50*640+400)*3]=20
         with tempfile.TemporaryDirectory() as directory:
-            path=Path(directory)/'output.ppm'
-            path.write_bytes(b'P6\n640 320\n255\n'+pixels)
+            path=Path(directory)/'output.png'
+            from PIL import Image
+            Image.frombytes('RGB',(640,320),bytes(pixels)).save(path)
             result=subprocess.run([sys.executable,'-c',oracle,str(path)],capture_output=True,text=True)
         return {'returncode':result.returncode,'stdout':result.stdout,'stderr':result.stderr}
 
@@ -279,7 +280,7 @@ class EditorRecipes(unittest.TestCase):
     def test_export_oracle_accepts_sanitized_pixels_and_quotes_path(self):
         ctx=ExportContext(); editor.upload(ctx)
         self.assertEqual('completed',ctx.phase)
-        self.assertIn("putgd-desktop-fixture --convert '/private/output",ctx.oracle_script)
+        self.assertIn("python3 - '/private/output",ctx.oracle_script)
         self.assertNotIn('from tools.lab',ctx.oracle_script)
 
     def test_export_oracle_rejects_a_single_source_pixel_in_mask(self):

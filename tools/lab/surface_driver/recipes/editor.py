@@ -484,23 +484,20 @@ def upload(ctx):
         item = operation['items'][0]
         ctx.expect(item['local']['status']=='saved' and item['artifact']['mime']=='image/png', 'output is a saved sanitized PNG')
         # Same independent pixel oracle as edit_acceptance.py; no preview pixels
-        # or source bytes enter receipts. Conversion uses the shipped fixture.
+        # or source bytes enter receipts. Decode the actual saved PNG independently.
         path = shlex.quote(item['local']['path'])
         masks = json.dumps([s['rect'] for s in final['shapes'] if s['kind']=='redact'])
-        # Reuse the acceptance driver's PPM decoder and full-mask oracle.
-        decoder = inspect.getsource(lab.ppm)
+        # Reuse the acceptance driver's full-mask oracle on independent PNG bytes.
         mask_check = inspect.getsource(redactions_black)
         script = f'''set -eu
-p=$(mktemp --suffix=.ppm)
-trap 'rm -f "$p"' EXIT
-putgd-desktop-fixture --convert {path} "$p"
-python3 - "$p" <<'ORACLE'
-import sys,re
-from pathlib import Path
-LabError=AssertionError
-{decoder}
+python3 - {path} <<'ORACLE'
+import sys
+from PIL import Image
 {mask_check}
-w,h,pixels=ppm(sys.argv[1])
+with Image.open(sys.argv[1]) as saved:
+ image=saved.convert("RGB")
+ w,h=image.size
+ pixels=image.tobytes()
 assert (w,h)==(640,320)
 assert redactions_black(w,pixels,{masks})
 for x,y,rgb in [(100,60,[220,30,40]),(230,170,[35,70,220]),(330,290,[235,190,20])]:
