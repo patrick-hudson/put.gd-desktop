@@ -25,11 +25,22 @@ spec = importlib.util.spec_from_file_location('putgd_lab', ROOT / 'tools/lab/lab
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 JOB = 'install-' + 'e' * 32
+
+
+def time_scale():
+    # Like tests/fixtures/Waits.h: PUTGD_TEST_TIME_SCALE, clamped to [1, 20].
+    try:
+        value = float(os.environ.get('PUTGD_TEST_TIME_SCALE', '1'))
+    except ValueError:
+        return 1.0
+    return min(max(value, 1.0), 20.0) if value == value else 1.0
+
+
 # Budget for things that will happen: a process exits, a handshake line
 # arrives, a guard script finishes. A passing wait ends as soon as its
 # condition holds; fixed 3 to 5 s budgets expired on a CPU-starved runner.
 # Timings that must elapse (admission waits, steady checks) stay literal.
-WAIT = 30 * float(os.environ.get('PUTGD_TEST_TIME_SCALE', '1'))
+WAIT = 30 * time_scale()
 
 
 def identity(pid):
