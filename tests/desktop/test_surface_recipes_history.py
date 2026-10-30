@@ -764,7 +764,7 @@ class HistoryRecipeTests(unittest.TestCase):
                 return super().fixture(name)
             def accessible(self, query):
                 if query.get('name') == 'Change output' and query.get('role') == 'menu item':
-                    return [{'pid': 123, 'popup': {'pid': 123}, 'coordinate_space': 'desktop',
+                    return [{'pid': 123, 'popup': {'pid': 123}, 'coordinate_space': 'desktop', 'rect': [300, 540, 480, 60],
                              'ancestors': [{'pid': 123, 'role': 'popup menu', 'rect': [300, 400, 480, 200]}]}]
                 # The production OutputLabel QWidget has no native label role.
                 if query.get('role') == 'label' or query.get('within') != [300, 400, 480, 200]:

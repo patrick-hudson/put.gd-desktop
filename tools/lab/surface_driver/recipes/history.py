@@ -1153,7 +1153,8 @@ def output_summary(ctx):
     actions = ctx.accessible({'owned': True, 'pid': pid, 'visible': True, 'showing': True,
                               'role': 'menu item', 'name': 'Change output'})
     ctx.expect(len(actions) == 1 and bool(actions[0].get('popup'))
-               and actions[0].get('coordinate_space') != 'window-relative'
+               and actions[0].get('coordinate_space') == 'desktop'
+               and actions[0].get('rect') and min(actions[0]['rect'][2:]) > 0
                and not actions[0].get('coordinate_error'), 'one placed owned output-menu action')
     menus = [a for a in actions[0].get('ancestors', [])
              if a.get('pid') == pid and a.get('role', '').lower().replace('_', ' ').replace('-', ' ')
