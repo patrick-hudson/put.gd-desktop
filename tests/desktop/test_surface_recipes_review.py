@@ -424,6 +424,14 @@ class ReviewRecipes(unittest.TestCase):
         with self.assertRaises(RecipeFailed):
             review._reply(FakeContext(), {'isError':True})
 
+    def test_api_exports_include_a_timed_solid_mask_inside_trim(self):
+        trim, mask = review._api_edits({'canvas':[640,320]})
+        self.assertEqual(trim, {'op':'setTrim','start':1_000_000,'end':3_000_000})
+        self.assertEqual(mask['mask']['rect'], [160,80,160,80])
+        self.assertEqual(mask['mask']['kind'], 'solid')
+        self.assertLess(trim['start'], mask['mask']['start'])
+        self.assertLess(mask['mask']['end'], trim['end'])
+
     def test_mcp_review_upload_uses_reviewed_revision_and_decodes(self):
         ctx = FakeContext()
         ctx.info['edit']['revision'] = 3

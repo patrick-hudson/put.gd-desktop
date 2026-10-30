@@ -607,13 +607,22 @@ def _reply(ctx, result):
     return result.get('result', result)
 
 
+def _api_edits(info):
+    """Exercise timed opaque masks as well as trim through the public APIs."""
+    w, h = info['canvas']
+    return [{'op': 'setTrim', 'start': 1_000_000, 'end': 3_000_000},
+            {'op': 'addMask', 'mask': {'kind': 'solid', 'rect': [w//4, h//4, w//4, h//4],
+                                      'start': 1_200_000, 'end': 2_800_000}}]
+
+
 @recipe('cli.recording', needs=('recording',))
 def cli_recording(ctx):
     rid = _open(ctx)
+    initial = _inspect(ctx, rid)
     for method, params in [('recording.capabilities', {}), ('recording.inspect', {'id': rid}),
                            ('recording.review', {'id': rid, 'action': 'seek', 'time': 1_000_000}),
-                           ('recording.edit', {'id': rid, 'revision': _inspect(ctx, rid)['edit']['revision'],
-                                               'commands': [{'op': 'setTrim', 'start': 1_000_000, 'end': 3_000_000}]}),
+                           ('recording.edit', {'id': rid, 'revision': initial['edit']['revision'],
+                                               'commands': _api_edits(initial)}),
                            ('recording.preview', {'id': rid, 'time': 1_500_000, 'maxEdge': 320})]:
         reply = _reply(ctx, ctx.cli(method, json.dumps(params)))
         if method == 'recording.preview':
@@ -632,7 +641,7 @@ def _mcp_review(ctx):
     _reply(ctx, ctx.mcp('get_recording_capabilities'))
     info = _reply(ctx, ctx.mcp('get_recording', {'id': rid}))
     _reply(ctx, ctx.mcp('edit_recording', {'id': rid, 'revision': info['edit']['revision'],
-                                         'commands': [{'op': 'setTrim', 'start': 1_000_000, 'end': 3_000_000}]}))
+                                         'commands': _api_edits(info)}))
     _reply(ctx, ctx.mcp('drive_recording_review', {'id': rid, 'action': 'seek', 'time_us': 1_500_000}))
     preview = ctx.mcp('preview_recording', {'id': rid, 'time_us': 1_500_000, 'max_edge': 320})
     ctx.expect(any(c.get('type') == 'image' and c.get('data') for c in preview.get('content', [])),
