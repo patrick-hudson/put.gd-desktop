@@ -23,7 +23,7 @@ from . import editor, history, selectors
 
 def pixels_equal(actual, expected):
     """Reject wrong dimensions, offsets, black frames and retained overlays."""
-    return actual.size == expected.size and actual.convert('RGB').tobytes() == expected.convert('RGB').tobytes()
+    return actual.size == expected.size and actual.convert('RGBA').tobytes() == expected.convert('RGBA').tobytes()
 
 
 def pattern_visible(image, rect):
@@ -38,7 +38,7 @@ def pattern_visible(image, rect):
 
 def edited_pixels(actual, original):
     """Independent, fixed image-space oracle, not an editor-state assertion."""
-    if actual.size != original.size:
+    if actual.size != original.size or actual.convert('RGBA').getextrema()[3] != (255, 255):
         return False
     actual, original = actual.convert('RGB'), original.convert('RGB')
     # Interiors of the requested redaction must be solid black, not a blur.

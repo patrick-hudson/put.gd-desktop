@@ -43,12 +43,17 @@ class Outcomes(unittest.TestCase):
         shifted.paste(expected.crop((1, 0, 640, 320)), (0, 0))
         overlay = expected.copy()
         overlay.putpixel((100, 100), (0, 0, 0))
-        for defect in (shifted, overlay, Image.new('RGB', expected.size), expected.resize((320, 160))):
+        transparent = expected.convert('RGBA')
+        transparent.putalpha(0)
+        for defect in (shifted, overlay, transparent, Image.new('RGB', expected.size), expected.resize((320, 160))):
             self.assertFalse(pixels_equal(defect, expected))
 
     def test_editor_rejects_missing_marks_non_solid_redaction_and_wrong_location(self):
         self.assertTrue(edited_pixels(annotated(), original()))
         self.assertFalse(edited_pixels(original(), original()))
+        transparent = annotated().convert('RGBA')
+        transparent.putalpha(0)
+        self.assertFalse(edited_pixels(transparent, original()))
         for box in ((20, 20, 265, 105), (340, 20, 605, 125), (30, 195, 290, 265)):
             missing = annotated()
             missing.paste(original().crop(box), box)
