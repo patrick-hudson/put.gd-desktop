@@ -333,6 +333,45 @@ class DialogRecipes(unittest.TestCase):
         dialogs.edit_image_portal(ctx)
         self.assertIn(('keys', ('Alt+S',)), ctx.inputs)
 
+    def test_nautilus_save_keeps_location_and_filename_separate(self):
+        ctx = FakeContext('portal')
+        ctx.profile['dialogs']['portal_identity'] = {'pid': 123}
+        ctx.profile['dialogs']['backends']['portal']['save_name_button'] = 'Edit File Name'
+        ctx.dialog = {'open': True, 'mode': 'save'}
+        ctx.owner = 'historySaveAs'
+        phase = ['location']
+        original_keys, original_accessible = ctx.keys, ctx.accessible
+        def keys(*sequence):
+            if sequence == ('Return',) and phase[0] == 'location':
+                ctx.inputs.append(('keys', sequence)); phase[0] = 'content'; return
+            if sequence == ('Tab',):
+                phase[0] = 'button'
+            if sequence == ('Space',):
+                phase[0] = 'filename'
+            if sequence == ('Return',) and phase[0] == 'filename':
+                ctx.typed = '/tmp/pgfd.test/' + ctx.typed
+            original_keys(*sequence)
+        def accessible(query):
+            if query.get('role') == 'text' and 'states' in query:
+                return [{'text': 'Original.png'}] if phase[0] == 'filename' else []
+            if query.get('description') == 'Edit File Name':
+                return [{'role': 'push button'}] if phase[0] == 'button' else []
+            return original_accessible(query)
+        ctx.keys, ctx.accessible = keys, accessible
+        dialogs._input(ctx, 'portal', '/tmp/pgfd.test/New copy.png', 'save', lambda: ctx.dialog)
+        self.assertEqual(ctx.history_path, '/tmp/pgfd.test/New copy.png')
+        self.assertEqual([i[1] for i in ctx.inputs if i[0] == 'type'],
+                         ['/tmp/pgfd.test', 'New copy.png'])
+
+    def test_ambiguous_save_name_focus_never_receives_filename(self):
+        ctx = FakeContext('portal')
+        ctx.profile['dialogs']['portal_identity'] = {'pid': 123}
+        ctx.accessible = lambda query: ([{'text': 'a.png'}, {'text': 'b.png'}]
+                                        if query.get('role') == 'text' else [])
+        with self.assertRaisesRegex(RecipeBlocked, 'filename field'):
+            dialogs._save_name_focus(ctx, {'save_name_button': 'Edit File Name'})
+        self.assertFalse(any(i[0] == 'type' for i in ctx.inputs))
+
     def test_failure_recipe_uses_core_fixture_before_backend_launch(self):
         for backend in dialogs.BACKENDS:
             row = next(r for r in REGISTRY if r.function is getattr(dialogs, 'failure_strip_' + backend))

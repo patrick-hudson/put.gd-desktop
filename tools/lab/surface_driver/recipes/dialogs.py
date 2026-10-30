@@ -88,7 +88,8 @@ def _ready(ctx, inspect, backend, mode):
             if current.get('backend') != backend:
                 ctx.blocked('Portal changed backend before becoming ready; fallbackReason=' +
                             str(current.get('fallbackReason')), issue=671)
-            nodes = ctx.accessible({'name': current['title'], 'owned': False,
+            scope = ctx.profile['dialogs']['backends'][backend].get('accessible', {})
+            nodes = ctx.accessible({**scope, 'name': current['title'], 'owned': False,
                                     'visible': True, 'showing': True})
             # GTK can expose the title label before its window enters AT-SPI.
             # Readiness requires the unique input target, not any named child.
@@ -125,7 +126,42 @@ def _same_path(actual, expected, mode):
             mode == 'folder' and actual.rstrip('/') == expected.rstrip('/'))
 
 
+def _portal_content(ctx, path, mode):
+    def contains_path():
+        identity = ctx.profile['dialogs']['portal_identity']
+        nodes = ctx.accessible({'text': path + '*' if mode == 'folder' else path,
+                                'pid': identity['pid'], 'visible': True, 'showing': True})
+        matches = [node for node in nodes if any(_same_path(node.get(key), path, mode)
+                   for key in ('text', 'value'))]
+        if nodes and not matches and not any('text' in node or 'value' in node for node in nodes):
+            ctx.blocked('AT-SPI probe exposes names only; cannot prove typed chooser path', issue=671)
+        return matches
+    ctx.wait(contains_path, 'desktop chooser contains the typed path')
+
+
+def _save_name_focus(ctx, settings):
+    # Nautilus 50 separates location and filename. Its filename edit button
+    # enters the text field; use native Tab/Space, with AT-SPI focus readback.
+    pid = ctx.profile['dialogs']['portal_identity']['pid']
+    scope = {'pid': pid, 'visible': True, 'showing': True, 'states': {'focused': True}}
+    for _ in range(24):
+        fields = ctx.accessible({**scope, 'role': 'text', 'states': {'focused': True, 'editable': True}})
+        fields = [n for n in fields if any(isinstance(n.get(k), str) and n[k] and
+                  not n[k].startswith('/') for k in ('text', 'value'))]
+        if len(fields) == 1:
+            return
+        buttons = ctx.accessible({**scope, 'role': 'push button',
+                                  'description': settings['save_name_button']})
+        if len(buttons) == 1:
+            ctx.keys('Space')
+        else:
+            ctx.keys('Tab')
+    ctx.blocked('Desktop Save chooser filename field could not be focused through keys', issue=671)
+
+
 def _input(ctx, backend, path, mode, inspect):
+    settings = ctx.profile['dialogs']['backends'][backend]
+    typed_path = path
     if backend == 'fallback':
         # QFileDialog exposes one live editable field, but Qt 6.4 AT-SPI
         # omits its objectName. The class selector still requires a unique,
@@ -133,29 +169,24 @@ def _input(ctx, backend, path, mode, inspect):
         ctx.click('class:QLineEdit', window='putgdFileDialog')
         ctx.keys('Ctrl+A')
     else:
-        settings = ctx.profile['dialogs']['backends'][backend]
         ctx.keys(*settings['location_keys'])
         # SaveFile selects only the old basename; replace the extension too.
         ctx.keys('Ctrl+A')
-    ctx.type_text(path)
+        if mode == 'save' and settings.get('save_name_button'):
+            folder, typed_path = path.rsplit('/', 1)
+            ctx.type_text(folder)
+            _portal_content(ctx, folder, 'folder')
+            ctx.keys('Return')
+            _save_name_focus(ctx, settings)
+            ctx.keys('Ctrl+A')
+    ctx.type_text(typed_path)
     if backend == 'portal':
         # A title-only AT-SPI witness is insufficient: inspect the typed path
         # before Return can navigate, accept, or trigger an overwrite prompt.
-        def contains_path():
-            identity = ctx.profile['dialogs']['portal_identity']
-            # GTK exposes the focused entry beneath 'File Chooser Widget',
-            # independently of its title. Pin content to the observed process.
-            nodes = ctx.accessible({'text': path + '*' if mode == 'folder' else path,
-                                    'pid': identity['pid'], 'visible': True, 'showing': True})
-            matches = [node for node in nodes if any(_same_path(node.get(key), path, mode)
-                       for key in ('text', 'value'))]
-            if nodes and not matches and not any('text' in node or 'value' in node for node in nodes):
-                ctx.blocked('AT-SPI probe exposes names only; cannot prove typed chooser path', issue=671)
-            return matches
-        ctx.wait(contains_path, 'desktop chooser contains the typed path')
+        # GTK's entry can belong to 'File Chooser Widget'; PID scopes content.
+        _portal_content(ctx, typed_path, mode)
     _frame(ctx, 'path-entered', backend)
     ctx.keys('Return')
-    settings = ctx.profile['dialogs']['backends'][backend]
     accept_keys = (settings['folder_accept_keys'] if mode == 'folder' else
                    settings.get(mode + '_accept_keys', [])) if backend == 'portal' else []
     if accept_keys and inspect()['open']:

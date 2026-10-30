@@ -4,6 +4,10 @@
       "portal": {
         "available": true,
         "chooser": "gnome",
+        "accessible": {
+          "application": "org.gnome.Nautilus"
+        },
+        "save_name_button": "Edit File Name",
         "environment": {
           "PUTGD_FILE_DIALOG": ""
         },
