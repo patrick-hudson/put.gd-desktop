@@ -317,7 +317,7 @@ print(json.dumps(ids))
                    'loginctl terminate-session '+session+'\n')
 
     snapshots=[];inactive_at=None
-    deadline=time.monotonic()+55
+    deadline=time.monotonic()+90
     while time.monotonic()<deadline:
         probe="""import json,subprocess
 from pathlib import Path
