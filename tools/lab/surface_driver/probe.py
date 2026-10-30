@@ -1263,7 +1263,11 @@ def shell_state(query):
                     continue
             with open('/proc/' + entry + '/stat') as stream:
                 start = int(stream.read().rsplit(')', 1)[1].split()[19])  # field 22, starttime
-            found.append({'pid': int(entry), 'start': start})
+            # A crashing shell keeps its PID while the kernel writes its core
+            # (a minute or more for Cinnamon); CoreDumping marks that window.
+            with open('/proc/' + entry + '/status') as stream:
+                dumping = any(line.split() == ['CoreDumping:', '1'] for line in stream)
+            found.append({'pid': int(entry), 'start': start, 'dumping': dumping})
         except (OSError, ValueError, IndexError):
             continue
     state = {'process': name, 'instances': sorted(found, key=lambda p: p['pid'])}

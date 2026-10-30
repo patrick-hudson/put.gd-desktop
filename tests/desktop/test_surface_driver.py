@@ -283,7 +283,7 @@ class Running(unittest.TestCase):
                     'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
             return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
         target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
-        shell={'process':'cinnamon','instances':[{'pid':5,'start':1}],'crash_windows':[],'cores':[]}
+        shell={'process':'cinnamon','instances':[{'pid':5,'start':1,'dumping':False}],'crash_windows':[],'cores':[]}
         target.probe=lambda name,query,source,timeout=15:{'ok':True,'result':shell} if name=='shell_state' else {'ok':False,'error':name}
         recipe=Recipe(('editor.undo',),lambda c:None)
         args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',

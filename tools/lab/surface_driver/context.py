@@ -198,8 +198,12 @@ class DriverContext(Context):
             raise RecipeBlocked('desktop shell '+policy['process']+' is not running exactly once at run start')
         if state.get('crash_windows'):
             raise RecipeBlocked('desktop shell already shows a crash notice at run start: '+state['crash_windows'][0]['name'])
-        self._shell = {'policy': policy, 'instance': state['instances'][0], 'since': since - 1, 'failure': None}
-        return {'process': policy['process'], **state['instances'][0], 'cores_readable': state.get('cores') is not None}
+        instance = state['instances'][0]
+        if instance.get('dumping'):
+            raise RecipeBlocked('desktop shell '+policy['process']+' is dumping core at run start')
+        identity = {'pid': instance['pid'], 'start': instance['start']}
+        self._shell = {'policy': policy, 'instance': identity, 'since': since - 1, 'failure': None}
+        return {'process': policy['process'], **identity, 'cores_readable': state.get('cores') is not None}
 
     def shell_failure(self, full=True):
         """None while the run's shell is intact, else why the desktop can no longer be trusted (#814).
@@ -217,9 +221,12 @@ class DriverContext(Context):
         state = self._probe('shell_state', {'process': policy['process'], 'full': full,
                                             'crash_windows': policy.get('crash_windows', []), 'since': shell['since']})
         reasons = []
-        if baseline not in state['instances']:
+        same = [i for i in state['instances'] if (i['pid'], i['start']) == (baseline['pid'], baseline['start'])]
+        if not same:
             now = ', '.join(str(i['pid']) for i in state['instances']) or 'none'
             reasons.append(policy['process']+' pid '+str(baseline['pid'])+' ended (now: '+now+')')
+        elif same[0].get('dumping'):
+            reasons.append(policy['process']+' pid '+str(baseline['pid'])+' is dumping core')
         for window in state.get('crash_windows') or []:
             reasons.append('crash notice '+repr(window['name'])+' (window '+str(window['window_id'])+')')
         for core in state.get('cores') or []:

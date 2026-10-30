@@ -116,8 +116,8 @@ class RawAccessibility(unittest.TestCase):
             self.assertNotIn(forbidden,source)
 
 
-def shell(pid,start=500,windows=(),cores=()):
-    return {'process':'cinnamon','instances':[{'pid':pid,'start':start}] if pid else [],
+def shell(pid,start=500,windows=(),cores=(),dumping=False):
+    return {'process':'cinnamon','instances':[{'pid':pid,'start':start,'dumping':dumping}] if pid else [],
             'crash_windows':list(windows),'cores':list(cores)}
 
 
@@ -154,6 +154,11 @@ class ShellCrashDetector(unittest.TestCase):
         self.ctx.shell_baseline()
         self.state=shell(100,start=900)
         self.assertIn('ended',self.ctx.shell_failure())
+
+    def test_a_shell_still_writing_its_core_has_crashed(self):
+        self.ctx.shell_baseline()
+        self.state=shell(100,dumping=True)
+        self.assertIn('cinnamon pid 100 is dumping core',self.ctx.shell_failure(full=False))
 
     def test_run_refuses_a_shell_already_showing_a_crash(self):
         self.state=shell(100,windows=[{'window_id':'5','name':'Cinnamon just crashed'}])
