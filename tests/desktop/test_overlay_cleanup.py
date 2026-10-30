@@ -17,6 +17,25 @@ cleanup = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cleanup)
 
 
+class ChainPrerequisite(unittest.TestCase):
+    def test_slow_inspection_has_an_explicit_bounded_budget(self):
+        disk=Path('/owned/disk.qcow2')
+        reply=subprocess.CompletedProcess([],0,json.dumps([
+            {'format':'qcow2','backing-filename':'base.qcow2'},{'format':'qcow2'}]),'')
+        with patch.object(cleanup.subprocess,'run',return_value=reply) as run:
+            self.assertEqual(cleanup._chain(disk),[disk,Path('/owned/base.qcow2')])
+        self.assertEqual(run.call_args.kwargs['timeout'],180)
+        self.assertIn('--force-share',run.call_args.args[0])
+        self.assertIn('--backing-chain',run.call_args.args[0])
+
+    def test_timeout_names_the_prerequisite_without_exposing_subprocess_data(self):
+        error=subprocess.TimeoutExpired(['private argument'],180,output='private stdout',stderr='private stderr')
+        with patch.object(cleanup.subprocess,'run',side_effect=error),patch.object(cleanup.time,'monotonic',side_effect=[10,190]):
+            with self.assertRaisesRegex(cleanup.CleanupError,'qemu-img backing-chain inspection.*180.0s elapsed.*overlay retained') as caught:
+                cleanup._chain(Path('/owned/disk.qcow2'))
+        self.assertNotIn('private',str(caught.exception))
+
+
 class ProcessInventory(unittest.TestCase):
     """No VM/tools/root needed; all opaque process cases must use evidence."""
     def setUp(self):
