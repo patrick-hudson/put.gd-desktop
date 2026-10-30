@@ -28,7 +28,8 @@ QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'wind
 # finish within WALK_SECONDS (the fresh child is killed at 12 s) stops with
 # the slowest application named instead of a bare timeout (#805).
 CALL_TIMEOUT_MS = 2000
-WALK_SECONDS = 9.0
+WALK_SECONDS = 8.0
+PROCESS_STARTED = None  # set by main(): the walk budget counts from process start
 
 
 def bound_calls():
@@ -42,6 +43,67 @@ def unanswered(error):
     """A D-Bus call that timed out (libatspi GLib.Error or dbus-python), not a vanished object."""
     text = str(error)
     return any(marker in text for marker in ('Timeout was reached', 'NoReply', 'Did not receive a reply', 'timed out'))
+
+
+def executable(pid):
+    """Local identity of a process: executable and argv basenames (no AT-SPI call)."""
+    names = []
+    try:
+        names.append(os.path.basename(os.readlink('/proc/%d/exe' % pid)))
+    except (OSError, TypeError):
+        pass
+    try:
+        with open('/proc/%d/cmdline' % pid, 'rb') as stream:
+            names += [os.path.basename(a.decode('utf-8', 'replace')) for a in stream.read().split(b'\0')[:2] if a]
+    except (OSError, TypeError):
+        pass
+    return list(dict.fromkeys(n for n in names if n))
+
+
+def application_names():
+    """{a11y bus name: accessible name, None (no answer) or False (gone)} for every application.
+
+    Asked concurrently, so applications that never answer (busy or wedged
+    GTK session services, #805) cost one bounded wait in total, not
+    CALL_TIMEOUT_MS each in turn. None when the registry cannot be read.
+    """
+    try:
+        import dbus
+        import dbus.bus
+        import dbus.mainloop.glib
+        from gi.repository import GLib
+    except ImportError:
+        return None
+    seconds = CALL_TIMEOUT_MS / 1000
+    try:
+        address = dbus.Interface(dbus.SessionBus().get_object('org.a11y.Bus', '/org/a11y/bus'),
+                                 'org.a11y.Bus').GetAddress(timeout=seconds)
+        connection = dbus.bus.BusConnection(str(address), mainloop=dbus.mainloop.glib.DBusGMainLoop())
+        registry = connection.get_object('org.a11y.atspi.Registry', '/org/a11y/atspi/accessible/root', introspect=False)
+        children = registry.GetChildren(dbus_interface='org.a11y.atspi.Accessible', timeout=seconds)
+    except dbus.DBusException:
+        return None
+    loop, names = GLib.MainLoop(), {}
+    pending = {str(bus) for bus, _ in children}
+    def answer(bus, value):
+        names[bus] = value
+        pending.discard(bus)
+        if not pending:
+            loop.quit()
+    try:
+        for bus, path in children:
+            bus = str(bus)
+            connection.get_object(bus, str(path), introspect=False).Get(
+                'org.a11y.atspi.Accessible', 'Name', dbus_interface='org.freedesktop.DBus.Properties', timeout=seconds,
+                reply_handler=lambda value, bus=bus: answer(bus, str(value)),
+                error_handler=lambda error, bus=bus: answer(bus, None if unanswered(error) else False))
+        if pending:
+            GLib.timeout_add(CALL_TIMEOUT_MS + 250, loop.quit)
+            loop.run()
+    finally:
+        connection.close()
+    names.update((bus, None) for bus in pending)
+    return names
 
 
 def accessible_id(node):
@@ -564,8 +626,10 @@ def accessible(query, toplevel=False, detail=True):
     extra_keys = {id(root[0]): key for key, root in extra}
     seen = set()
     visited, truncated = 0, False
-    deadline = time.monotonic() + WALK_SECONDS
+    deadline = (PROCESS_STARTED or time.monotonic()) + WALK_SECONDS
     spent, silent = {}, {}
+    # Unscoped by pid: learn every application's name at once before any walk.
+    names = UNREAD if query.get('pid') is None and not query.get('owned') else None
     while stack and visited < 20000:
         if time.monotonic() > deadline:
             raise RuntimeError(walk_budget_error(spent, visited))
@@ -583,6 +647,23 @@ def accessible(query, toplevel=False, detail=True):
                 # them: a busy or hung foreign application is never contacted.
                 pid = node.get_process_id()
                 if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not is_owned(pid)):
+                    continue
+            bus = getattr(getattr(node, 'app', None), 'bus_name', None) if depth == 1 and names is not None else None
+            if bus and names is UNREAD:
+                names = application_names()
+            if bus and names:
+                known = names.get(bus, '')
+                if known is False:
+                    continue  # gone since the registry listed it
+                if known is None:
+                    pid = node.get_process_id()
+                    pattern = query.get('application')
+                    if pattern and not any(fnmatch.fnmatchcase(n, pattern) for n in executable(pid)):
+                        continue  # cannot be the queried application; never contacted
+                    entry = silent.setdefault((' / '.join(executable(pid)), pid), [0, 'no answer to its name'])
+                    entry[0] += 1
+                    continue
+                if known and query.get('application') and not fnmatch.fnmatchcase(known, query['application']):
                     continue
             pid = node.get_process_id()
             role, name = normalize_role(node.getRoleName()), node.name or ''
@@ -689,17 +770,21 @@ def accessible(query, toplevel=False, detail=True):
     if silent:
         (application, pid), (count, error) = max(silent.items(), key=lambda item: item[1][0])
         raise RuntimeError('accessibility walk incomplete: %s (pid %s) did not answer %d call(s) within %d ms (%s)'
-                           % (application or 'an application', pid, count, CALL_TIMEOUT_MS, error))
+                           % (application or ' / '.join(executable(pid)) or 'an application', pid, count, CALL_TIMEOUT_MS, error))
     for row in matches_:
         row['ancestors'] = [{k: (None if v is UNREAD else v) for k, v in a.items() if not k.startswith('_')} for a in row['ancestors']]
     return matches_
 
 
 def walk_budget_error(spent, visited):
+    if not spent:
+        return ('accessibility walk exceeded its %g s budget after 0 nodes: probe setup (compositor witness, '
+                'observer popups) used the whole budget' % WALK_SECONDS)
     (application, pid), (nodes, seconds) = max(spent.items(), key=lambda item: item[1][1])
     return ('accessibility walk exceeded its %g s budget after %d nodes: %s (pid %s) took %.1f s for %d nodes '
             '(%.1f ms per node); its accessibility replies are too slow to observe'
-            % (WALK_SECONDS, visited, application or 'an application', pid, seconds, nodes, 1000 * seconds / max(nodes, 1)))
+            % (WALK_SECONDS, visited, application or ' / '.join(executable(pid)) or 'an application', pid,
+               seconds, nodes, 1000 * seconds / max(nodes, 1)))
 
 
 def label(value):
@@ -1456,8 +1541,10 @@ LONG_RUNNING = ('notification_monitor', 'popup_watch')
 
 
 def main():
+    global PROCESS_STARTED
     request = json.loads(sys.argv[1])
     if request.get('probe') not in LONG_RUNNING:
+        PROCESS_STARTED = time.monotonic()
         # Before the persistent channel kills a fresh child (12 s), leave the
         # stalled frame on stderr so the timeout names where it stopped.
         import faulthandler

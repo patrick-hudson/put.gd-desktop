@@ -157,7 +157,14 @@ class BoundedCalls(Walk):
         app, frame, nodes = settings_window()
         clock = iter(range(0, 10000))
         with patch.object(probe.time, 'monotonic', side_effect=lambda: next(clock)), \
-             self.assertRaisesRegex(RuntimeError, r'exceeded its 9 s budget after \d+ nodes: putgd-ui \(pid 50\)'):
+             self.assertRaisesRegex(RuntimeError, r'exceeded its 8 s budget after \d+ nodes: putgd-ui \(pid 50\)'):
+            self.run_probe(probe.accessible, {'owned': True, 'name': 'Launch at login'}, app)
+
+    def test_budget_counts_from_the_fresh_process_start(self):
+        # Setup (compositor witness, popup roots) shares the 12 s the child has.
+        app, frame, nodes = settings_window()
+        with patch.object(probe, 'PROCESS_STARTED', probe.time.monotonic() - probe.WALK_SECONDS - 1), \
+             self.assertRaisesRegex(RuntimeError, r'exceeded its 8 s budget after 0 nodes'):
             self.run_probe(probe.accessible, {'owned': True, 'name': 'Launch at login'}, app)
 
     def test_unowned_applications_are_never_contacted_for_owned_queries(self):
@@ -185,6 +192,42 @@ class BoundedCalls(Walk):
                 b'  File "<string>", line 775 in geometry\n  File "<string>", line 1448 in main\n')
         self.assertEqual(namespace['stalled'](dump), ' in extents:456 <- accessible:549 <- geometry:775 <- main:1448')
         self.assertEqual(namespace['stalled'](None), ' before reporting where it stalled')
+
+
+class ApplicationNames(Walk):
+    def shell_query(self, names, *applications):
+        for app in applications:
+            app.app = SimpleNamespace(bus_name=':1.%d' % app.pid)
+        with patch.object(probe, 'application_names', return_value=names) as asked, \
+             patch.object(probe, 'executable', side_effect=lambda pid: {60: ['evolution-alarm-notify'],
+                                                                          61: ['gnome-shell']}.get(pid, [])):
+            rows = self.run_probe(probe.accessible, {'application': 'gnome-shell*', 'name': 'put.gd'}, *applications)
+        self.assertEqual(asked.call_count, 1)
+        return rows
+
+    def shell(self):
+        icon = Node('put.gd', 'menu', [1140, 0, 36, 32], pid=40)
+        return Node('gnome-shell', 'application', None, pid=40, children=[Node('', 'window', [0, 0, 1920, 1080], pid=40, children=[icon])])
+
+    def test_silent_foreign_applications_are_never_contacted(self):
+        # #805 tray rows: GTK session services that never answer cost nothing.
+        shell = self.shell()
+        silent = Node('', 'application', None, pid=60, fail='Timeout was reached')
+        rows = self.shell_query({':1.40': 'gnome-shell', ':1.60': None}, silent, shell)
+        self.assertEqual([(r['name'], r['role']) for r in rows], [('put.gd', 'menu')])
+        self.assertEqual(silent.calls, 0)
+
+    def test_named_foreign_applications_are_skipped_without_a_walk(self):
+        other = Node('evolution-alarm-notify', 'application', None, pid=62, children=[Node('put.gd', 'menu', [0, 0, 1, 1], pid=62)])
+        rows = self.shell_query({':1.40': 'gnome-shell', ':1.62': 'evolution-alarm-notify'}, other, self.shell())
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(other.calls, 0)
+
+    def test_silent_application_that_could_match_blocks_the_walk(self):
+        silent = Node('', 'application', None, pid=61, fail='Timeout was reached')
+        with self.assertRaisesRegex(RuntimeError, r'incomplete: gnome-shell \(pid 61\) did not answer'):
+            self.shell_query({':1.40': 'gnome-shell', ':1.61': None}, silent, self.shell())
+        self.assertEqual(silent.calls, 0)
 
 
 class QtAccessibleId(Walk):
