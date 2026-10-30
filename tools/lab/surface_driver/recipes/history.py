@@ -590,7 +590,7 @@ def header_context_menu(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('shell.header-drag', needs=('history-row',))
+@recipe('shell.header-drag', needs=('history-row',), timeout=180)
 def header_drag(ctx):
     _row(ctx)
     box = ctx.geometry('history')
@@ -606,7 +606,7 @@ def header_drag(ctx):
     ctx.drag((start[0] + moved['x'] - box['x'], start[1] + moved['y'] - box['y']), start)
 
 
-@recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row',))
+@recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row',), timeout=180)
 def edge_resize(ctx):
     _row(ctx)
     box = ctx.geometry('history')
