@@ -93,6 +93,7 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
     report = {'schemaVersion': 1, 'timeoutSeconds': timeout, 'recoverySeconds': recovery,
               'timedOut': False, 'aborted': False, 'ownedProcesses': [], 'exitCodes': []}
     try:
+        save(directory / 'progress.json', report)
         with (directory / 'apt.log').open('w') as log:
             for arguments in commands:
                 # Never start the next apt command after the initial budget expires.
@@ -141,6 +142,8 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
                 report[key] = {'exitCode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}
             except subprocess.TimeoutExpired:
                 report[key] = {'error': 'query timed out'}
+            except OSError as error:
+                report[key] = {'error': type(error).__name__}
         report['ok'] = (not report['aborted'] and not report['remainingPids']
                         and report['exitCodes'] == [0] * len(commands)
                         and report['dpkgStatus'].get('exitCode') == 0

@@ -1665,6 +1665,8 @@ def verify_installed_binaries(run, deb):
 
 
 def install_package(run, deb, install_timeout=None, install_recovery_timeout=None):
+    if Path(deb).suffix.lower() != '.deb':
+        raise LabError('Guest apt installation requires a .deb package; RPM/dnf installation uses physical.py')
     profile = load_profile(state(run)['profile'])
     timeout = install_timeout if install_timeout is not None else profile.get('install_timeout', 900)
     recovery = (install_recovery_timeout if install_recovery_timeout is not None
@@ -1682,6 +1684,10 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
         raise LabError('Guest requires the current root-owned package_install.py bootstrap helper; '
                        'refresh bootstrap in this disposable overlay before installing. Apt was not started.') from error
     token = 'install-' + uuid.uuid4().hex
+    def release_lock():
+        # Do not clear a replacement job if an operator reconciled this one.
+        ssh(run, f'if [ "$(cat ~/putgd-lab/install-active/job)" = {token} ]; then\n'
+                 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\nfi\n')
     remote = 'putgd-lab/' + token
     evidence = Path(run) / token
     evidence.mkdir(mode=0o700)
@@ -1691,9 +1697,19 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
     ssh(run, f'set -eu\numask 077\nmkdir -p ~/putgd-lab\n'
              f'mkdir ~/putgd-lab/install-active\nmkdir ~/{remote}\n'
              f'printf %s {token} > ~/putgd-lab/install-active/job\n')
-    put(run, str(Path(deb).resolve()), remote + '/package.deb')
-    ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
-             f'> ~/{remote}/supervisor.log 2>&1 < /dev/null &\n')
+    try:
+        put(run, str(Path(deb).resolve()), remote + '/package.deb')
+    except BaseException:
+        # The helper has not started. A retry cannot race apt/dpkg from this job.
+        release_lock()
+        raise
+    try:
+        ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
+                 f'> ~/{remote}/supervisor.log 2>&1 < /dev/null &\n')
+    except (LabError, subprocess.TimeoutExpired):
+        # The remote launch may have happened even when its SSH reply was lost.
+        # Reconcile the same job below; never launch a replacement.
+        pass
     # The detached guest watchdog survives a controller/SSH timeout. Never start
     # a replacement. Its own pidfds bound package recovery independently of SSH.
     deadline = time.monotonic() + timeout + recovery + 120
@@ -1710,13 +1726,19 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
                            'install-active blocks retries. Inspect result.json and dpkg state before recovery.')
         time.sleep(1)
     write_json(evidence / 'result.json', report)
-    for name in ('apt.log', 'progress.json', 'supervisor.log'):
-        get(run, remote + '/' + name, evidence / name)
-    if not report.get('ok'):
-        raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '
-                       'install-active blocks retries pending recovery.')
-    installed = verify_installed_binaries(run, deb)
-    ssh(run, 'rm ~/putgd-lab/install-active/job\nrmdir ~/putgd-lab/install-active\n')
+    try:
+        for name in ('apt.log', 'progress.json', 'supervisor.log'):
+            get(run, remote + '/' + name, evidence / name)
+        if not report.get('ok'):
+            raise LabError(f'Install failed; dpkg state and owned PIDs retained in {evidence}/result.json; '
+                           'install-active blocks retries pending recovery.')
+        installed = verify_installed_binaries(run, deb)
+    finally:
+        # A successful report proves apt stopped and dpkg is clean. Hold the
+        # lock through binary verification to prevent a concurrent replacement,
+        # but release it even if collection/verification fails afterward.
+        if report.get('ok'):
+            release_lock()
     return {'sha256': hash_file(deb), 'filename': Path(deb).name, 'installedBinarySha256': installed,
             'installEvidence': str(evidence), 'timedOut': report['timedOut']}
 

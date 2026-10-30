@@ -358,7 +358,7 @@ class LabContracts(unittest.TestCase):
             calls = []
             def ssh(_run, script, **kwargs):
                 calls.append(script)
-                return json.dumps(report) if 'cat ~/' in script else ''
+                return json.dumps(report) if 'result.json; then cat' in script else ''
             with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
                     patch.object(lab, 'get'), patch.object(lab, 'verify_installed_binaries', return_value={'/usr/bin/putgd': 'a' * 64}):
                 result = lab.install(run, deb=deb, install_timeout=1200, install_recovery_timeout=300)
@@ -366,6 +366,34 @@ class LabContracts(unittest.TestCase):
             self.assertEqual(lab.read_json(Path(result['installEvidence']) / 'result.json'), report)
             self.assertTrue(any('1200 300' in call for call in calls))
             self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
+
+    def test_install_known_safe_failures_release_only_this_jobs_lock(self):
+        for stage in ('upload', 'collection', 'verification'):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+                calls = []
+                def ssh(_run, script, **kwargs):
+                    calls.append(script)
+                    return json.dumps({'ok': True, 'timedOut': False}) if 'result.json; then cat' in script else ''
+                with patch.object(lab, 'ssh', side_effect=ssh), \
+                        patch.object(lab, 'put', side_effect=lab.LabError('upload') if stage == 'upload' else None), \
+                        patch.object(lab, 'get', side_effect=lab.LabError('collection') if stage == 'collection' else None), \
+                        patch.object(lab, 'verify_installed_binaries', side_effect=lab.LabError('verification')):
+                    with self.assertRaisesRegex(lab.LabError, stage):
+                        lab.install_package(run, 'synthetic.deb')
+                release = [c for c in calls if 'rmdir' in c]
+                self.assertEqual(len(release), 1)
+                self.assertIn('if [ "$(cat ~/putgd-lab/install-active/job)" = install-', release[0])
+                if stage == 'upload':
+                    self.assertFalse(any('nohup sudo' in c for c in calls))
+
+    def test_install_rpm_is_rejected_before_guest_work(self):
+        with patch.object(lab, 'put') as put, patch.object(lab, 'ssh') as ssh:
+            with self.assertRaisesRegex(lab.LabError, 'requires a .deb.*RPM'):
+                lab.install_package('unused', 'synthetic.rpm')
+            put.assert_not_called()
+            ssh.assert_not_called()
 
     def test_install_missing_or_stale_helper_starts_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -389,7 +417,7 @@ class LabContracts(unittest.TestCase):
             def ssh(_run, script, **kwargs):
                 nonlocal polls
                 calls.append(script)
-                if 'cat ~/' in script:
+                if 'result.json; then cat' in script:
                     polls += 1
                     if polls == 1:
                         raise lab.subprocess.TimeoutExpired('ssh', 10)
@@ -402,6 +430,24 @@ class LabContracts(unittest.TestCase):
             self.assertEqual(polls, 2)
             self.assertEqual(sum('nohup sudo' in call for call in calls), 1)
 
+    def test_install_lost_launch_reply_reconciles_without_starting_twice(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            deb = run / 'synthetic.deb'
+            deb.write_bytes(b'synthetic')
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            calls = []
+            def ssh(_run, script, **kwargs):
+                calls.append(script)
+                if 'nohup sudo' in script:
+                    raise lab.subprocess.TimeoutExpired('ssh', 60)
+                return json.dumps({'ok': True, 'timedOut': False}) if 'result.json; then cat' in script else ''
+            with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
+                    patch.object(lab, 'get'), patch.object(lab, 'verify_installed_binaries', return_value={}):
+                lab.install_package(run, deb)
+            self.assertEqual(sum('nohup sudo' in c for c in calls), 1)
+            self.assertTrue(any('rmdir' in c for c in calls))
+
     def test_install_profile_timeouts_and_abort_block_blind_retry(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
@@ -409,7 +455,7 @@ class LabContracts(unittest.TestCase):
             calls = []
             def ssh(_run, script, **kwargs):
                 calls.append(script)
-                return json.dumps({'ok': False, 'aborted': True, 'dpkgStatus': {'stdout': 'half-configured'}}) if 'cat ~/' in script else ''
+                return json.dumps({'ok': False, 'aborted': True, 'dpkgStatus': {'stdout': 'half-configured'}}) if 'result.json; then cat' in script else ''
             with patch.object(lab, 'load_profile', return_value={'install_timeout': 42, 'install_recovery_timeout': 21}), \
                     patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), patch.object(lab, 'get'), \
                     patch.object(lab, 'verify_installed_binaries') as verify:
