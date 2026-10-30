@@ -6,10 +6,10 @@
       "interaction": "dialog.edit-image",
       "desktop": "mint-cinnamon-x11",
       "package": "deb",
-      "functional": "failed",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=open, title=Edit an image file; timeout: chooser cancelled; Classification: Foreground guard/QMP Escape returned; native GTK ready frame changes to the Qt fallback in the failure frame. Cancel result did not arrive. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=open, title=Edit an image file; Chooser ready: backend=portal, mode=open, title=Edit an image file; operationId=9a11b3d2-ae89-4f2e-9cd5-c99649e46b7c; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
       "guest": "cinnamon-x11",
@@ -42,8 +42,24 @@
           "tolerance": null
         },
         {
-          "label": "dialog-failure",
-          "path": "frames/dialogs.edit_image_portal/03-dialog-failure.png",
+          "label": "after-cancel",
+          "path": "frames/dialogs.edit_image_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.edit_image_portal/05-path-entered.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -51,7 +67,15 @@
         },
         {
           "label": "after",
-          "path": "frames/dialogs.edit_image_portal/04-after.png",
+          "path": "frames/dialogs.edit_image_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_portal/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -59,22 +83,2127 @@
         }
       ],
       "recipe": "dialogs.edit_image_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:21:48Z",
-      "issue": 781,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:02:54Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
     },
     {
       "interaction": "dialog.edit-image",
       "desktop": "mint-cinnamon-x11",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 7552, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=open, title=Edit an image file; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 7552, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=open, title=Edit an image file; operationId=e41c42a3-7512-4146-9e77-d697f69063a8; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
       "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback open chooser catalog capture is registered; No current fallback open chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.edit_image_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.edit_image_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_fallback/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.edit_image_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:03:34Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.history-save-as",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "operationId=b0648b21-b451-4c93-be23-f983c65ce479; Requested chooser backend: portal; Chooser ready: backend=portal, mode=save, title=Save original file as; Chooser ready: backend=portal, mode=save, title=Save original file as; Saved original: 4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb  /tmp/pgfd.exg7hgcx/History copy.png; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.history_save_as_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.history_save_as_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.history_save_as_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:04:17Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.history-save-as",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "operationId=858f15b6-168c-4ca1-ab32-8e92b781af5f; Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save original file as\", \"pid\": 15727, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=Save original file as; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save original file as\", \"pid\": 15727, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=Save original file as; Saved original: 4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb  /tmp/pgfd.p7racejm/History copy.png; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback save chooser catalog capture is registered; No current fallback save chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.history_save_as_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.history_save_as_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.history_save_as_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_fallback/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.history_save_as_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:05:19Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.output-folder",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.output_folder_portal/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/07-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/08-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/09-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/10-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/11-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-images",
+          "path": "frames/dialogs.output_folder_portal/12-after-images.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/13-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/14-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/15-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/16-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/17-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-videos",
+          "path": "frames/dialogs.output_folder_portal/18-after-videos.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/19-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/20-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/21-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/22-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/23-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-text",
+          "path": "frames/dialogs.output_folder_portal/24-after-text.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/25-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/26-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/27-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/28-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/29-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-other",
+          "path": "frames/dialogs.output_folder_portal/30-after-other.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.output_folder_portal/31-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.output_folder_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:07:25Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.output-folder",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 30719, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.output_folder_fallback/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/07-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/08-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_fallback/09-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/10-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_fallback/11-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-images",
+          "path": "frames/dialogs.output_folder_fallback/12-after-images.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/13-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/14-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_fallback/15-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/16-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_fallback/17-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-videos",
+          "path": "frames/dialogs.output_folder_fallback/18-after-videos.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/19-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/20-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_fallback/21-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/22-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_fallback/23-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-text",
+          "path": "frames/dialogs.output_folder_fallback/24-after-text.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_fallback/25-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/26-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_fallback/27-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_fallback/28-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_fallback/29-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-other",
+          "path": "frames/dialogs.output_folder_fallback/30-after-other.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.output_folder_fallback/31-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.output_folder_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:16:31Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.diagnostics-folder",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Save diagnostics packages to; Chooser ready: backend=portal, mode=folder, title=Save diagnostics packages to; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.diagnostics_folder_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.diagnostics_folder_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.diagnostics_folder_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.diagnostics_folder_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.diagnostics_folder_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:17:14Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.diagnostics-folder",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save diagnostics packages to\", \"pid\": 45373, \"rect\": [210, 40, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Save diagnostics packages to; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save diagnostics packages to\", \"pid\": 45373, \"rect\": [210, 40, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Save diagnostics packages to; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.diagnostics_folder_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.diagnostics_folder_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.diagnostics_folder_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.diagnostics_folder_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.diagnostics_folder_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_fallback/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.diagnostics_folder_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.diagnostics_folder_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:19:13Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.editor-save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; operationId=5f54c384-1b53-4337-8b1c-2c620252ff3c; Chooser ready: backend=portal, mode=save, title=Save a copy; Chooser ready: backend=portal, mode=save, title=Save a copy; Saved PNG: 108a36e2ee46c0645330446b7f99efe7c9131ce815e891b8796d4a4530a393b0  /tmp/pgfd.vrqldx3j/Edited copy.png; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.editor_save_copy_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.editor_save_copy_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.editor_save_copy_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.editor_save_copy_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.editor_save_copy_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.editor_save_copy_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.editor_save_copy_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:19:47Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.editor-save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; operationId=4744fbf3-93df-4475-b43a-1f3a8cfeff34; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save a copy\", \"pid\": 52523, \"rect\": [219, 56, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=Save a copy; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save a copy\", \"pid\": 52523, \"rect\": [219, 56, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=Save a copy; Saved PNG: 108a36e2ee46c0645330446b7f99efe7c9131ce815e891b8796d4a4530a393b0  /tmp/pgfd.164gm4yw/Edited copy.png; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback save chooser catalog capture is registered; No current fallback save chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.editor_save_copy_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.editor_save_copy_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.editor_save_copy_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.editor_save_copy_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.editor_save_copy_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.editor_save_copy_fallback/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.editor_save_copy_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.editor_save_copy_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:20:31Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.review-save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "operationId=b2159299-5ee3-4b12-8f73-a38e4e9664e8; operationId=fa4da026-abce-46a7-939b-1b96bfab50a8; Requested chooser backend: portal; Chooser ready: backend=portal, mode=save, title=Save a copy; Chooser ready: backend=portal, mode=save, title=Save a copy; Saved recording: da11d37d7ab5d859d139bc2820d122e001f91f9c7eaed205af6bb763cf02503b  /tmp/pgfd.1z1i2isj/Recording copy.mp4; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.review_save_copy_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.review_save_copy_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.review_save_copy_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.review_save_copy_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.review_save_copy_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.review_save_copy_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.review_save_copy_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.review_save_copy_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.review_save_copy_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:22:00Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.review-save-copy",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "operationId=332c3e6e-a51d-4a0a-b714-1afe5c6b2b51; operationId=d8a8fcee-7995-4329-b20a-c90be5f7c8e7; Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-record\", \"name\": \"Save a copy\", \"pid\": 62038, \"rect\": [92, 56, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=Save a copy; Fallback accessible surfaces: [{\"application\": \"putgd-record\", \"name\": \"Save a copy\", \"pid\": 62038, \"rect\": [92, 56, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=Save a copy; Saved recording: ea7c150a314288b4395b6132648f1ae2b0abf90e63202b9ca90622d7931f34aa  /tmp/pgfd.bqmkr8zg/Recording copy.mp4; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback save chooser catalog capture is registered; No current fallback save chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.review_save_copy_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.review_save_copy_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.review_save_copy_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.review_save_copy_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.review_save_copy_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.review_save_copy_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.review_save_copy_fallback/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.review_save_copy_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.review_save_copy_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:23:28Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.portal",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.portal_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.portal_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.portal_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.portal_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.portal_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.portal_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.portal_portal/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.portal_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.portal_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:24:05Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.portal",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "issue": 671,
+      "note": "Requested chooser backend: fallback; portal backend state does not exist in a fallback run; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.portal_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.portal_fallback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.portal_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:24:24Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "blocked",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.fallback",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "issue": 671,
+      "note": "Requested chooser backend: portal; fallback backend state does not exist in a portal run; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.fallback_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.fallback_portal/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.fallback_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:24:42Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "blocked",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.fallback",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 71917, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 71917, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.fallback_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.fallback_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.fallback_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.fallback_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.fallback_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.fallback_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.fallback_fallback/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.fallback_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.fallback_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:26:58Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.cancel",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.cancel_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.cancel_portal/03-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.cancel_portal/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.cancel_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:27:30Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.cancel",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 76840, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback folder chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.cancel_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.cancel_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.cancel_fallback/03-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.cancel_fallback/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.cancel_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:28:09Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.failure-strip",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "issue": 671,
+      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.failure_strip_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.failure_strip_portal/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.failure_strip_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:28:10Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "blocked",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.failure-strip",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "issue": 671,
+      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.failure_strip_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.failure_strip_fallback/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.failure_strip_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:28:12Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "blocked",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "mcp.file-dialogs",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.mcp_file_dialogs_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.mcp_file_dialogs_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:29:41Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "mcp.file-dialogs",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/cin/e3/lane4/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 81918, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Choose output folder\", \"pid\": 81918, \"rect\": [220, 80, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=folder, title=Choose output folder; Recipe/driver commit=a7c53ed4c144d4ef5a66eb23f63e50337e8682d5. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "No current fallback folder chooser catalog capture is registered; No current fallback folder chooser catalog capture is registered",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.mcp_file_dialogs_fallback/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.mcp_file_dialogs_fallback",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:32:25Z",
+      "packageSha256": "0cf49c4dc64c031d0b4659b7c48e933bc2a1813cdfddcc5be654ad589c23508f",
+      "rawFunctional": "passed",
+      "receiptSha256": "b25b7cda3e9d6550df004c9b79d240efd0788662028b5ddb114d1e711e88ee3d",
+      "driverCommit": "a7c53ed4c144d4ef5a66eb23f63e50337e8682d5",
+      "runId": "85a70b46-c419-46aa-8857-e1e6eeaf04e8"
+    },
+    {
+      "interaction": "dialog.edit-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=open, title=Edit an image file; Chooser ready: backend=portal, mode=open, title=Edit an image file; operationId=5f497bd2-2f8d-4729-8f2d-9ec5ffa25bde; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_portal/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.edit_image_portal/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_portal/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.edit_image_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.edit_image_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.edit_image_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.edit_image_portal/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "dialogs.edit_image_portal",
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:17:46Z",
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "passed",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
+    },
+    {
+      "interaction": "dialog.edit-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 9205, \"rect\": null, \"role\": \"dialog\"}, {\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 9205, \"rect\": null, \"role\": \"file chooser\"}, {\"application\": \"putgd-ui\", \"name\": \"Edit an image file\", \"pid\": 9205, \"rect\": null, \"role\": \"label\"}]; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"editImage\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"open\", \"open\": true, \"parentWindow\": null, \"title\": \"Edit an image file\"}; geometry: RuntimeError: Wayland window cannot be placed on the desktop: Edit an image file: compositor window for 'Edit an image file' (pid 9205, 820x520) is missing or ambiguous (0 matches); Classification: The themed GTK fallback has no matching compositor placement for its Qt 820x520 accessible proxy; native input was withheld.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -111,22 +2240,26 @@
         }
       ],
       "recipe": "dialogs.edit_image_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:22:12Z",
-      "issue": 671,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:18:21Z",
+      "issue": 842,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.history-save-as",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "failed",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "operationId=c9c4de5a-f428-4741-96e8-a602ce4cfe3e; Requested chooser backend: portal; Chooser ready: backend=portal, mode=save, title=Save original file as; timeout: chooser cancelled; Classification: Foreground guard/QMP Escape returned; native GTK ready frame changes to the Qt fallback in the failure frame. Cancel result did not arrive. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "operationId=cde87831-3e13-4141-bf06-5a034641a9b6; Requested chooser backend: portal; Chooser ready: backend=portal, mode=save, title=Save original file as; Chooser ready: backend=portal, mode=save, title=Save original file as; Saved original: 4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb  /tmp/pgfd.2achkjqs/History copy.png; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -156,8 +2289,24 @@
           "tolerance": null
         },
         {
-          "label": "dialog-failure",
-          "path": "frames/dialogs.history_save_as_portal/03-dialog-failure.png",
+          "label": "after-cancel",
+          "path": "frames/dialogs.history_save_as_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.history_save_as_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.history_save_as_portal/05-path-entered.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -165,7 +2314,15 @@
         },
         {
           "label": "after",
-          "path": "frames/dialogs.history_save_as_portal/04-after.png",
+          "path": "frames/dialogs.history_save_as_portal/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/dialogs.history_save_as_portal/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -173,22 +2330,25 @@
         }
       ],
       "recipe": "dialogs.history_save_as_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:22:59Z",
-      "issue": 781,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:19:36Z",
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "passed",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.history-save-as",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "operationId=cf68adfa-9d18-46d2-ad85-7548d20ce979; Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "operationId=85c09b51-ac7b-44e6-be9d-f6966cd67442; Requested chooser backend: fallback; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"Save original file as\", \"pid\": 17314, \"rect\": null, \"role\": \"dialog\"}, {\"application\": \"putgd-ui\", \"name\": \"Save original file as\", \"pid\": 17314, \"rect\": null, \"role\": \"file chooser\"}]; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"historySaveAs\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"save\", \"open\": true, \"parentWindow\": null, \"title\": \"Save original file as\"}; geometry: RuntimeError: Wayland window cannot be placed on the desktop: Save original file as: compositor window for 'Save original file as' (pid 17314, 820x520) is missing or ambiguous (0 matches); Classification: The themed GTK fallback has no matching compositor placement for its Qt 820x520 accessible proxy; native input was withheld.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -225,22 +2385,26 @@
         }
       ],
       "recipe": "dialogs.history_save_as_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:23:28Z",
-      "issue": 671,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:20:19Z",
+      "issue": 842,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.output-folder",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "failed",
+      "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; timeout: chooser cancelled; Classification: Foreground guard/QMP Escape returned; native GTK ready frame changes to the Qt fallback in the failure frame. Cancel result did not arrive. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser ready: backend=portal, mode=folder, title=Choose output folder; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"outputFolder\", \"fallbackReason\": null, \"last\": {\"backend\": \"portal\", \"error\": null, \"fallbackReason\": null, \"mode\": \"folder\", \"path\": null, \"status\": \"cancelled\"}, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Choose output folder\"}; geometry: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -270,8 +2434,224 @@
           "tolerance": null
         },
         {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/03-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/05-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-root",
+          "path": "frames/dialogs.output_folder_portal/06-after-root.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/07-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/08-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/09-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/10-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/11-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-images",
+          "path": "frames/dialogs.output_folder_portal/12-after-images.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/13-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/14-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/15-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/16-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/17-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-videos",
+          "path": "frames/dialogs.output_folder_portal/18-after-videos.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/19-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/20-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/21-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/22-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/23-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-text",
+          "path": "frames/dialogs.output_folder_portal/24-after-text.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/dialogs.output_folder_portal/25-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/26-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-cancel",
+          "path": "frames/dialogs.output_folder_portal/27-after-cancel.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/dialogs.output_folder_portal/28-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/dialogs.output_folder_portal/29-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "dialog-failure",
-          "path": "frames/dialogs.output_folder_portal/03-dialog-failure.png",
+          "path": "frames/dialogs.output_folder_portal/30-dialog-failure.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -279,7 +2659,7 @@
         },
         {
           "label": "after",
-          "path": "frames/dialogs.output_folder_portal/04-after.png",
+          "path": "frames/dialogs.output_folder_portal/31-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -287,22 +2667,26 @@
         }
       ],
       "recipe": "dialogs.output_folder_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:24:03Z",
-      "issue": 781,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:25:04Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.output-folder",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"outputFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -339,22 +2723,26 @@
         }
       ],
       "recipe": "dialogs.output_folder_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:24:24Z",
-      "issue": 671,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:25:50Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.diagnostics-folder",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane2/receipt.json",
-      "note": "Requested chooser backend: portal; Chooser ready: backend=portal, mode=folder, title=Save diagnostics packages to; runner interrupted by SIGTERM; Classification: Campaign intentionally stopped the exact owned runner after repeated portal failures, per the two-attempt escalation rule. Raw SIGTERM result is retained; this is not a completed chooser verdict. Driver commit=14aceeebba17dfdb5e298cd457a223e0a140f858. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"diagnosticsFolder\", \"fallbackReason\": null, \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Save diagnostics packages to\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -376,16 +2764,8 @@
           "tolerance": null
         },
         {
-          "label": "dialog-ready",
-          "path": "frames/dialogs.diagnostics_folder_portal/02-dialog-ready.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
           "label": "dialog-failure",
-          "path": "frames/dialogs.diagnostics_folder_portal/03-dialog-failure.png",
+          "path": "frames/dialogs.diagnostics_folder_portal/02-dialog-failure.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -393,7 +2773,7 @@
         },
         {
           "label": "after",
-          "path": "frames/dialogs.diagnostics_folder_portal/04-after.png",
+          "path": "frames/dialogs.diagnostics_folder_portal/03-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -401,22 +2781,26 @@
         }
       ],
       "recipe": "dialogs.diagnostics_folder_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:24:59Z",
-      "issue": 781,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:26:39Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.diagnostics-folder",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"diagnosticsFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Save diagnostics packages to\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -453,22 +2837,26 @@
         }
       ],
       "recipe": "dialogs.diagnostics_folder_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:14:17Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:27:24Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.editor-save-copy",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: portal; operationId=ef577dce-8e51-4baf-a7f1-f7573ece62aa; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; operationId=1736c322-4e9c-4892-b571-51d3e21ecb2d; Chooser state at failure: {\"backend\": \"portal\", \"fallbackReason\": null, \"last\": null, \"mode\": \"save\", \"open\": true, \"operationId\": \"1736c322-4e9c-4892-b571-51d3e21ecb2d\", \"parentWindow\": \"\", \"title\": \"Save a copy\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -507,22 +2895,26 @@
         }
       ],
       "recipe": "dialogs.editor_save_copy_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:14:25Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:28:11Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.editor-save-copy",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: fallback; operationId=1a0f5fb2-3067-472c-9c03-f696f9db2039; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; operationId=0c1b370c-cf4c-463a-aaf6-8a0740ca5b53; Chooser state at failure: {\"backend\": \"fallback\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"save\", \"open\": true, \"operationId\": \"0c1b370c-cf4c-463a-aaf6-8a0740ca5b53\", \"parentWindow\": null, \"title\": \"Save a copy\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -559,22 +2951,26 @@
         }
       ],
       "recipe": "dialogs.editor_save_copy_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:14:37Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:29:01Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.review-save-copy",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "operationId=325a5af0-314e-488e-8e39-0dfba3710387; operationId=e70a7108-d21a-4464-83fd-69d0e606d576; Requested chooser backend: portal; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "operationId=e30a27e1-85dc-462c-b6d2-a5ddb5bfff87; timeout: synthetic recording ready; Classification: The recording fixture acknowledged prepare but never reached ready; Save a copy was not entered. The final frame shows the desktop-icons crash alert; consent as the cause is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -588,24 +2984,8 @@
           "tolerance": null
         },
         {
-          "label": "before",
-          "path": "frames/dialogs.review_save_copy_portal/01-before.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
-          "label": "dialog-failure",
-          "path": "frames/dialogs.review_save_copy_portal/02-dialog-failure.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
           "label": "after",
-          "path": "frames/dialogs.review_save_copy_portal/03-after.png",
+          "path": "frames/dialogs.review_save_copy_portal/01-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -613,22 +2993,26 @@
         }
       ],
       "recipe": "dialogs.review_save_copy_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:15:06Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:30:50Z",
+      "issue": 672,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "failed",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.review-save-copy",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "operationId=100b3747-c7fd-471b-87ac-e1261bbabbc3; operationId=9fb5e88f-52ac-42b4-a225-cc16f7ad7809; Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "operationId=900caf0d-1177-4306-b765-f58100e03ad1; timeout: synthetic recording ready; Classification: The recording fixture acknowledged prepare but never reached ready; Save a copy was not entered. The final frame shows the desktop-icons crash alert; consent as the cause is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -640,24 +3024,8 @@
           "tolerance": null
         },
         {
-          "label": "before",
-          "path": "frames/dialogs.review_save_copy_fallback/01-before.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
-          "label": "dialog-failure",
-          "path": "frames/dialogs.review_save_copy_fallback/02-dialog-failure.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
           "label": "after",
-          "path": "frames/dialogs.review_save_copy_fallback/03-after.png",
+          "path": "frames/dialogs.review_save_copy_fallback/01-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -665,22 +3033,26 @@
         }
       ],
       "recipe": "dialogs.review_save_copy_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:15:32Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:32:46Z",
+      "issue": 672,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "failed",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.portal",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: portal; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"outputFolder\", \"fallbackReason\": null, \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -719,22 +3091,27 @@
         }
       ],
       "recipe": "dialogs.portal_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:15:42Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:34:15Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.portal",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: fallback; portal backend state does not exist in a fallback run; Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "issue": 671,
+      "note": "Requested chooser backend: fallback; portal backend state does not exist in a fallback run; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -755,22 +3132,26 @@
         }
       ],
       "recipe": "dialogs.portal_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:15:48Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:34:56Z",
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.fallback",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: portal; fallback backend state does not exist in a portal run; Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "issue": 671,
+      "note": "Requested chooser backend: portal; fallback backend state does not exist in a portal run; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -793,22 +3174,25 @@
         }
       ],
       "recipe": "dialogs.fallback_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:15:57Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:35:34Z",
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.fallback",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"outputFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -845,22 +3229,26 @@
         }
       ],
       "recipe": "dialogs.fallback_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:16:10Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:36:46Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.cancel",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: portal; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -891,22 +3279,26 @@
         }
       ],
       "recipe": "dialogs.cancel_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:16:24Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:37:43Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.cancel",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -935,23 +3327,27 @@
         }
       ],
       "recipe": "dialogs.cancel_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:16:35Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:38:37Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.failure-strip",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
       "issue": 671,
-      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back; Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -974,22 +3370,26 @@
         }
       ],
       "recipe": "dialogs.failure_strip_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:16:35Z",
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:38:38Z",
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "dialog.failure-strip",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
       "issue": 671,
-      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back; Classification: Core/fixture chooser gap; no successful chooser input is claimed. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "note": "isolated chooser failure needs a production failure injection boundary; portal Response 2 falls back; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -1010,21 +3410,25 @@
         }
       ],
       "recipe": "dialogs.failure_strip_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:16:35Z",
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:38:38Z",
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "mcp.file-dialogs",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: portal; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: portal; Chooser state at failure: {\"backend\": \"portal\", \"dialog\": \"outputFolder\", \"fallbackReason\": null, \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": \"\", \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
       "review_reason": "desktop-drawn frames need visual judgement",
@@ -1063,22 +3467,26 @@
         }
       ],
       "recipe": "dialogs.mcp_file_dialogs_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:16:54Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:40:20Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     },
     {
       "interaction": "mcp.file-dialogs",
-      "desktop": "mint-cinnamon-x11",
+      "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/dialogs-r2/cin/dlev/lane1/receipt.json",
-      "note": "Requested chooser backend: fallback; geometry: RuntimeError: live window match is missing or ambiguous (0 matches); Classification: Core/fixture chooser gap; no successful chooser input is claimed. Not replayed after the repeated portal failure triggered escalation (#781); original complete-run geometry refusal retained. Driver commit=2bd35d714d851f5decf416a37d4da5e946de419c. Boat development evidence; not desktop acceptance.",
+      "receipt": "work/dialogs-r3/gno/e3/lane3/receipt.json",
+      "note": "Requested chooser backend: fallback; Chooser state at failure: {\"backend\": \"fallback\", \"dialog\": \"outputFolder\", \"fallbackReason\": \"disabled\", \"last\": null, \"mode\": \"folder\", \"open\": true, \"parentWindow\": null, \"title\": \"Choose output folder\"}; accessible: RuntimeError: fresh accessibility probe timed out; Classification: Fresh AT-SPI child exceeded its core observation limit with both extensions ACTIVE. The final run records a DING/gjs-console signal-5 crash at the same stage; causality is unproven.; Recipe/driver commit=ffcb144d9006f167fcde533a38feb364c2f58af6. Boat development evidence; not physical desktop acceptance. Raw verdict is retained in the referenced receipt.",
       "host": "boat",
       "placement": "boat",
-      "guest": "cinnamon-x11",
+      "guest": "gnome-wayland",
       "destination": "local",
       "frames": [
         {
@@ -1115,384 +3523,14 @@
         }
       ],
       "recipe": "dialogs.mcp_file_dialogs_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:10Z",
-      "issue": 671,
-      "driverCommit": "2bd35d714d851f5decf416a37d4da5e946de419c"
-    },
-    {
-      "interaction": "dialog.edit-image",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.edit_image_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.edit-image",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.edit_image_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.history-save-as",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.history_save_as_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.history-save-as",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.history_save_as_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.output-folder",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.output_folder_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.output-folder",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.output_folder_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.diagnostics-folder",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.diagnostics_folder_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.diagnostics-folder",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.diagnostics_folder_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.editor-save-copy",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.editor_save_copy_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.editor-save-copy",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.editor_save_copy_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.review-save-copy",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.review_save_copy_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.review-save-copy",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.review_save_copy_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.portal",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.portal_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.portal",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.portal_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.fallback",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.fallback_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.fallback",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.fallback_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.cancel",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.cancel_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.cancel",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.cancel_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.failure-strip",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.failure_strip_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "dialog.failure-strip",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.failure_strip_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "mcp.file-dialogs",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.mcp_file_dialogs_portal",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
-    },
-    {
-      "interaction": "mcp.file-dialogs",
-      "desktop": "ubuntu-gnome-wayland",
-      "package": "deb",
-      "functional": "blocked",
-      "receipt": "work/dialogs-r2/gno/dlev/lane1/receipt.json",
-      "note": "resident build does not match --build; observed identity retained in receipt; Current DEB cannot install on Ubuntu 26.04 (unavailable Noble FFmpeg/Qt package dependencies). Runner correctly refused installed source 050b702c6a6d. No chooser input; no current-version GNOME evidence. See #775.",
-      "host": "boat",
-      "placement": "boat",
-      "guest": "gnome-wayland",
-      "destination": "local",
-      "recipe": "dialogs.mcp_file_dialogs_fallback",
-      "build": "9b3e25e80926583886c7b7c99ab10bfb5bba1817",
-      "at": "2026-10-30T04:17:22Z",
-      "issue": 775,
-      "driverCommit": "14aceeebba17dfdb5e298cd457a223e0a140f858"
+      "build": "5bee90543eb1b5e0778e510385862bbb269dd5de",
+      "at": "2026-10-30T09:41:31Z",
+      "issue": 805,
+      "packageSha256": "ddbf910c08f1550ffabd508aedf4f6b659004678d6ee3eded98c6c3785b9e161",
+      "rawFunctional": "blocked",
+      "receiptSha256": "19e55e54d83e277f92fc06e20215adf45ecd3a6b71e57fd43e00812f94228fda",
+      "driverCommit": "ffcb144d9006f167fcde533a38feb364c2f58af6",
+      "runId": "1b110b3e-eca4-4677-895f-6c10c18faa25"
     }
   ]
 }
