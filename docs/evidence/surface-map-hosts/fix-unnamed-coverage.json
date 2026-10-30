@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 2,
+  "entries": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-01",
+      "functional": "failed",
+      "host": "f44",
+      "placement": "guest"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-02",
+      "functional": "passed",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "golden"
+    }
+  ]
+}
