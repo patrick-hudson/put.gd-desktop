@@ -38,15 +38,36 @@ class Handler(BaseHTTPRequestHandler):
         with self.server.lock:
             self.server.ledger.append(dict(sequence=len(self.server.ledger)+1, method='GET', route=route,
                                            channel=relative.stem if route == 'feed' else None,
-                                           status=status, bytes=len(body)))
+                                           status=status, bytes=len(body),privacy=self.privacy()))
         self.reply(status, body)
+
+    def privacy(self):
+        """Booleans/counts only: detect identifying data without retaining it."""
+        allowed={'host','user-agent','accept','accept-language','connection','accept-encoding','range','if-range'}
+        return {'queryEmpty':not urlsplit(self.path).query,
+                'authorizationAbsent':'Authorization' not in self.headers,
+                'cookieAbsent':'Cookie' not in self.headers,
+                'bodyEmpty':self.headers.get('Content-Length','0')=='0' and 'Transfer-Encoding' not in self.headers,
+                'genericAgent':self.headers.get('User-Agent') in ('put.gd-update-check/1','put.gd-update/1'),
+                'unexpectedHeaderCount':sum(name.lower() not in allowed for name in self.headers)}
+
+    def unsupported(self):
+        with self.server.lock:
+            self.server.ledger.append(dict(sequence=len(self.server.ledger)+1,method=self.command,
+                                           route='other',channel=None,status=405,bytes=0,privacy=self.privacy()))
+        self.reply(405,b'')
+
+    do_HEAD=unsupported
+    do_POST=unsupported
+    do_PUT=unsupported
+    do_DELETE=unsupported
 
     def reply(self, status, body):
         self.send_response(status)
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         try:
-            self.wfile.write(body)
+            if self.command!='HEAD':self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError):
             pass
 

@@ -315,7 +315,9 @@ class Context:
         * events.update-feed / settings-update-feed: url/root/residentPid,
           resident() (authenticated peer PID/start), channel/version/supported,
           publish(schema-1 feed), ledger() (sequence/method/route/channel/status/
-          bytes). Requests contain no headers, queries or raw URL logging.
+          bytes and privacy booleans queryEmpty/authorizationAbsent/cookieAbsent/
+          bodyEmpty/genericAgent plus unexpectedHeaderCount). No header values,
+          queries or raw URLs are logged, including rejected HTTP methods.
           Feed, release and mirror overrides are literal loopback endpoints.
         * settings-update-lifecycle / events.update-lifecycle: updates.bundle
           in the profile must point to authentic tagged AppImage releases and

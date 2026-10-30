@@ -27,7 +27,7 @@ class Round3(fixture_tests.Fixtures):
         value=self.ctx.fixture('settings-no-output')
         self.assertFalse(self.ctx.document['archive']['keepUploads'])
         self.assertIsNone(self.ctx.document['captureDefaults']['profileId'])
-        self.assertEqual(set(value.recovery_actions),{'chooseDestination','saveLocally'})
+        self.assertEqual(set(value.recovery_actions),{'chooseCaptureDestination','enableLocalCopies'})
         self.assertTrue(all(v['destination']=='default' and v['profileId'] is None for k,v in self.ctx.document['actions'].items() if k!='record'))
 
     def test_known_loopback_choices_and_route_removal_preserve_shortcuts(self):
@@ -79,7 +79,7 @@ class Round3(fixture_tests.Fixtures):
             with self.assertRaisesRegex(RecipeBlocked,'absent'):self.ctx.fixture(name)
 
     def test_recording_label_and_disclosure_are_observations(self):
-        nodes=[{'name':'Help','objectName':'help','role':'toggle button','states':{'checked':True},'text':'Help'},
+        nodes=[{'name':'Help','objectName':'help','role':'toggle button','states':{'checked':True,'expanded':False},'text':'Help'},
                {'name':'Visible help content','role':'label','text':'Visible help content'}]
         self.ctx.catalog=Fixture(candidates=lambda *a:[{'name':'help','class':'QToolButton','accessibleName':'Help'}])
         self.ctx._captures={};self.ctx.geometry=lambda role:{'pid':42}
@@ -221,7 +221,10 @@ class Ledger(unittest.TestCase):
                 self.assertEqual(urlopen(url+'/nightly.json?private=must-not-log').read(),b'{}')
                 with self.assertRaises(HTTPError):urlopen(url+'/../foreign')
                 ledger=json.load(urlopen(url+'/__ledger'))
-                self.assertEqual(ledger[0],{'sequence':1,'method':'GET','route':'feed','channel':'nightly','status':200,'bytes':2})
+                self.assertEqual({k:v for k,v in ledger[0].items() if k!='privacy'},
+                                 {'sequence':1,'method':'GET','route':'feed','channel':'nightly','status':200,'bytes':2})
+                self.assertFalse(ledger[0]['privacy']['queryEmpty'])
+                self.assertTrue(ledger[0]['privacy']['authorizationAbsent'])
                 self.assertNotIn('private',json.dumps(ledger))
                 self.assertEqual(ledger[1]['status'],404)
             finally:server.shutdown();server.server_close();thread.join()

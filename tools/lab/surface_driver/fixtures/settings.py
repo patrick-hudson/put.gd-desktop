@@ -21,7 +21,7 @@ def settings(scope, state='default'):
         return Fixture(profile,state=state,profiles=profiles,profile_ids=[p['id'] for p in profiles],
                        loopback=True,share_profile_id=profiles[0]['id'],publication_modes=['default','share'],
                        private_supported=False)
-    return Fixture(profile,state=state,recovery_actions=['chooseDestination','saveLocally'] if state=='no-output' else [])
+    return Fixture(profile,state=state,recovery_actions=['chooseCaptureDestination','enableLocalCopies'] if state=='no-output' else [])
 
 
 def save_failure(scope):
@@ -82,12 +82,14 @@ def observations(scope):
         title=ctx.geometry(window)
         rows=ctx.accessible({'owned':True,'pid':title['pid'],'visible':True,'showing':True})
         matches=[row for row in rows if row.get('objectName')==name or
-                 (row.get('name') in labels and row.get('role') in ('toggle button','push button','check box'))]
+                 (row.get('name') in labels and row.get('role') in ('toggle button','push button','button','check box'))]
         if len(matches)!=1:
             raise RecipeBlocked('disclosure must have one owned accessible control',issue=681)
         row=matches[0]
         states=row.get('states',{})
-        expanded=states.get('expanded',states.get('checked'))
+        # Ui::disclosure is a checkable QToolButton. AT-SPI exports both keys,
+        # with expanded=False even while checked=True on Qt 6.4.
+        expanded=states.get('checked',states.get('expanded'))
         if expanded is None:
             raise RecipeBlocked('disclosure exports neither expanded nor checked state',issue=681)
         return Fixture(control=row,expanded=expanded,text=[r.get('text') or r.get('name','') for r in rows

@@ -146,8 +146,10 @@ assert COLLECTION in locked and prompt=='/'
 '''.replace('COLLECTION',repr(value.collection)))
     def unlock():
         scope.python(KEYRING+'''
-unlocked,prompt=call(service,'org.freedesktop.Secret.Service','Unlock',GLib.Variant('(ao)',([COLLECTION],)),'(aoo)')
-assert prompt=='/' and COLLECTION in unlocked
+locked=call(COLLECTION,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Locked')),'(v)')[0]
+if locked:
+ unlocked,prompt=call(service,'org.freedesktop.Secret.Service','Unlock',GLib.Variant('(ao)',([COLLECTION],)),'(aoo)')
+ assert prompt=='/' and COLLECTION in unlocked
 '''.replace('COLLECTION',repr(value.collection)))
     scope.defer('unlock owned blank-password collection',unlock,priority=60)
     lock()
