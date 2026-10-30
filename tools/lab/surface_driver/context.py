@@ -9,7 +9,7 @@ import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
-from .target import qcodes
+from .target import input_release, qcodes
 
 
 class Fixture(dict):
@@ -261,11 +261,12 @@ class DriverContext(Context):
         if not guarded:
             self._guard(point=self._global_point(x,y,head))
         for index in range(self._click_count):
-            self.target.pointer(x,y,w,h,True,button,head)
             try:
+                self.target.pointer(x,y,w,h,True,button,head)
                 time.sleep(.04)
             finally:
-                self.target.pointer(x,y,w,h,False,button,head)
+                with input_release():
+                    self.target.pointer(x,y,w,h,False,button,head)
             if index+1 < self._click_count:
                 time.sleep(.06)
 
@@ -297,8 +298,8 @@ class DriverContext(Context):
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
         self._guard(point=self._global_point(*start,head))
-        self.target.pointer(*start,w,h,True,button,head)
         try:
+            self.target.pointer(*start,w,h,True,button,head)
             # A held pointer may leave its window during a header/resize drag;
             # recheck keyboard foreground without demanding hit-test at the end.
             for step in range(1,steps+1):
@@ -308,7 +309,8 @@ class DriverContext(Context):
                 self.target.pointer(x,y,w,h,head=head)
                 time.sleep(.025)
         finally:
-            self.target.pointer(*end,w,h,False,button,head)
+            with input_release():
+                self.target.pointer(*end,w,h,False,button,head)
 
     def keys(self,*sequence):
         codes = [qcodes(chord) for chord in sequence]
@@ -316,7 +318,8 @@ class DriverContext(Context):
             raise RecipeBlocked('key chord would release a key held by held_keys()')
         for chord in codes:
             self._guard()
-            self.target.key(chord)
+            with input_release():
+                self.target.key(chord)
         self._popup = None
 
     @contextmanager
@@ -329,11 +332,12 @@ class DriverContext(Context):
         self._guard()
         self._held_codes.extend(codes)
         def release():
-            try:
-                self.target.key_state(list(reversed(codes)),False)
-            except BaseException:
-                self._input_poisoned = True
-                raise
+            with input_release():
+                try:
+                    self.target.key_state(list(reversed(codes)),False)
+                except BaseException:
+                    self._input_poisoned = True
+                    raise
         try:
             # Dispatch can succeed before a reply/deadline failure. Acquisition
             # belongs inside the cleanup scope too.
@@ -356,7 +360,8 @@ class DriverContext(Context):
             raise RecipeBlocked('typed text would release a key held by held_keys()')
         for chord in chords:
             self._guard()
-            self.target.key(chord)
+            with input_release():
+                self.target.key(chord)
 
     def scroll(self,x,y,clicks,head=None):
         head = self._input_head if head is None else head
@@ -372,8 +377,12 @@ class DriverContext(Context):
             self.target.pointer(x,y,w,h,head=head)
             for _ in range(abs(clicks)):
                 self._guard(point=self._global_point(x,y,head))
-                for down in (True,False):
-                    self.target.events([{'type':'btn','data':{'button':'wheel-up' if clicks>0 else 'wheel-down','down':down}}],head)
+                button = 'wheel-up' if clicks>0 else 'wheel-down'
+                try:
+                    self.target.events([{'type':'btn','data':{'button':button,'down':True}}],head)
+                finally:
+                    with input_release():
+                        self.target.events([{'type':'btn','data':{'button':button,'down':False}}],head)
 
     def cli(self,*args,timeout=60):
         self._check_time()

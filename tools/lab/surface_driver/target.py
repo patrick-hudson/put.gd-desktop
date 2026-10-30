@@ -4,9 +4,11 @@ The controller never creates VMs. --run selects an owned lab.py run; --host-prof
 selects physical.py's pinned transport, forwarded uinput socket and VNC listener.
 """
 import json
+from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
 import shlex
+import signal
 import subprocess
 import time
 import uuid
@@ -21,6 +23,80 @@ QT_KEYS = {'Ctrl':'ctrl','Control':'ctrl','Shift':'shift','Alt':'alt','AltGr':'a
            'PageUp':'pgup','PageDown':'pgdn','Left':'left','Right':'right','Up':'up','Down':'down','Menu':'menu'}
 PUNCTUATION = dict(zip('-=[];\'`,./\\', ['minus','equal','bracket_left','bracket_right','semicolon','apostrophe','grave_accent','comma','dot','slash','backslash']))
 SHIFTED = dict(zip('!@#$%^&*()_+{}:"~<>?|', '1234567890-=[];\'`,./\\'))
+
+
+@contextmanager
+def input_release():
+    """Defer the recipe alarm until release's bounded transport has completed.
+
+    Do not cancel/rearm the timer: a pending deadline must still fail the
+    recipe. QMP and RFB have socket timeouts independent of SIGALRM.
+    """
+    previous = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+    try:
+        yield
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous)
+
+
+PREFLIGHT = r'''
+import ctypes.util, importlib, json, os, shutil
+session = os.environ.get('XDG_SESSION_TYPE')
+commands = ['python3', 'dbus-monitor', 'gdbus']
+commands += ['xdotool', 'xprop', 'xclip', 'xrandr'] if session == 'x11' else ['wl-paste', 'wl-copy']
+missing = [name for name in commands if not shutil.which(name)]
+for module, package in [('pyatspi', 'python3-pyatspi'), ('PyQt6.QtGui', 'python3-pyqt6')]:
+    try:
+        importlib.import_module(module)
+    except (ImportError, ValueError):
+        missing.append(package)
+if session == 'x11' and not ctypes.util.find_library('X11'):
+    missing.append('libX11')
+print(json.dumps({'session': session, 'missing': missing}))
+'''
+
+
+# Clipboard bytes never cross SSH, enter a log, or touch disk. The process
+# serves the restored MIME data until the desktop clipboard manager or the
+# next copy takes ownership; quitting immediately would clear X11 selections.
+CLIPBOARD = r'''
+import os, signal, sys
+from pathlib import Path
+from PyQt6.QtCore import QMimeData, QTimer
+from PyQt6.QtGui import QGuiApplication
+app = QGuiApplication([])
+clipboard = app.clipboard()
+saved = QMimeData()
+source = clipboard.mimeData()
+size = 0
+if source:
+    for mime in source.formats():
+        data = source.data(mime)
+        size += len(data)
+        if size > 32 * 1024 * 1024:
+            sys.exit(2)
+        saved.setData(mime, data)
+state = Path(sys.argv[1])
+state.write_text('ready')
+restore = False
+restored = False
+def request(*_):
+    global restore
+    restore = True
+def tick():
+    global restore, restored
+    if restore and not restored:
+        clipboard.setMimeData(saved)
+        restored = True
+        state.write_text('restored')
+    elif restored and not clipboard.ownsClipboard():
+        app.quit()
+signal.signal(signal.SIGUSR1, request)
+timer = QTimer()
+timer.timeout.connect(tick)
+timer.start(50)
+app.exec()
+'''
 
 
 def qcodes(chord):
@@ -80,6 +156,9 @@ class Target:
         self._lock = None
         self._last_heartbeat = 0
         self._lock_valid_until = 0
+        self._created_root = False
+        self.clipboard_pid = None
+        self._outputs = None
 
     def require_lock(self, host, session):
         self._lock = (host, session)
@@ -150,6 +229,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         return json.loads(result['stdout'])
 
     def start(self, *, first_launch=False):
+        self.preflight()
         available=self.execute('command -v '+shlex.quote(self.app_executable)+' >/dev/null && command -v putgd-cli >/dev/null')
         if available['returncode']:
             raise RecipeBlocked(self.app_executable+' and putgd-cli must be installed before the surface run')
@@ -157,6 +237,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                               ' '.join(shlex.quote(self.root+'/'+s) for s in ('runtime','config','data','cache','state','files')))
         if result['returncode']:
             raise RecipeBlocked('private session directory already exists or cannot be created')
+        self._created_root = True
+        self.preserve_clipboard()
         if not first_launch:
             # Use the checked-in schema example as a baseline; discard every
             # provider and credential reference before sending it to the guest.
@@ -187,6 +269,40 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 raise RecipeBlocked('isolated resident did not answer capabilities; private app.log retained')
             time.sleep(.25)
 
+    def preflight(self):
+        result = self.execute("python3 - <<'SD_PREFLIGHT'\n" + PREFLIGHT + '\nSD_PREFLIGHT\n')
+        if result['returncode']:
+            raise RecipeBlocked('surface preflight could not run python3 on target', issue=709)
+        report = json.loads(result['stdout'])
+        if report['session'] not in ('x11', 'wayland'):
+            raise RecipeBlocked('surface preflight needs a native X11 or Wayland session', issue=709)
+        if report['missing']:
+            raise RecipeBlocked('surface preflight missing target tools: ' + ', '.join(report['missing']) +
+                                '; provision distro packages before starting recipes', issue=709)
+        return report
+
+    def preserve_clipboard(self):
+        path = self.root + '/clipboard-keeper.py'
+        script = "python3 - <<'SD_KEEPER'\nfrom pathlib import Path\nPath(" + repr(path) + ').write_text(' + repr(CLIPBOARD) + ')\nSD_KEEPER\n'
+        script += 'nohup python3 ' + shlex.quote(path) + ' ' + shlex.quote(self.root + '/clipboard-state') + ' >/dev/null 2>&1 </dev/null & echo $!\n'
+        result = self.execute(script)
+        if result['returncode']:
+            raise RecipeBlocked('cannot start private in-memory clipboard preservation')
+        self.clipboard_pid = int(result['stdout'].strip())
+        result = self.execute('for n in $(seq 1 50); do test -f ' + shlex.quote(self.root + '/clipboard-state') +
+                              ' && exit 0; kill -0 ' + str(self.clipboard_pid) + ' 2>/dev/null || exit 1; sleep .1; done; exit 1', timeout=8)
+        if result['returncode']:
+            raise RecipeBlocked('clipboard preservation unavailable or existing MIME data exceeds 32 MiB; no resident started')
+
+    def restore_clipboard(self):
+        if not self.clipboard_pid:
+            return
+        result = self.execute('kill -USR1 ' + str(self.clipboard_pid) + '\nfor n in $(seq 1 50); do test "$(cat ' +
+                              shlex.quote(self.root + '/clipboard-state') + ' 2>/dev/null)" = restored && exit 0; sleep .1; done; exit 1', timeout=8)
+        if result['returncode']:
+            raise RecipeBlocked('previous clipboard could not be restored')
+        self.clipboard_pid = None
+
     def cli(self, *args, timeout=60):
         return self.execute(shlex.join(['putgd-cli','--socket',self.socket,*args]), timeout)
 
@@ -214,12 +330,28 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
     def pointer(self, x, y, width, height, down=None, button='left', head=0):
         if self.physical and not (self.run / 'qmp.sock').exists():
             self.vnc().pointer_button(x,y,button,down)
-        elif head or self.info.get("heads"):
+        elif self.info.get("heads"):
             import math
+            # The unbound QMP tablet spans the combined framebuffer. Display-
+            # bound tablets are for per-head VNC and depend on compositor input
+            # transforms; using them for QMP silently distorts guest drags.
+            if self._outputs is None:
+                profile = lab.load_profile(self.info['profile'])
+                self._outputs = lab.guest_outputs(self.run, lab.layout_backend(profile))['outputs']
+                self._outputs = [o for o in self._outputs if o.get('enabled')]
+            if not 0 <= head < len(self._outputs):
+                raise RecipeBlocked('QMP input head has no enabled guest output')
+            output = self._outputs[head]
+            if (width, height) != (output['width'], output['height']):
+                raise RecipeBlocked('QMP input dimensions differ from live output; refresh the layout')
+            left, top = min(o['x'] for o in self._outputs), min(o['y'] for o in self._outputs)
+            x, y = x + output['x'] - left, y + output['y'] - top
+            width = max(o['x'] + o['width'] for o in self._outputs) - left
+            height = max(o['y'] + o['height'] for o in self._outputs) - top
             events=[{'type':'abs','data':{'axis':a,'value':min(32767,max(0,math.ceil(v*32768/e)))}} for a,v,e in [('x',x,width),('y',y,height)]]
             if down is not None:
                 events.append({'type':'btn','data':{'button':button,'down':down}})
-            self.events(events, head)
+            self.events(events)
         else:
             lab.pointer(self.run,x,y,width,height,down,button)
 
@@ -263,4 +395,44 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                     self.started=False
             except RecipeBlocked:
                 errors.append('resident quit transport unavailable; private session retained')
+        if getattr(self, 'clipboard_pid', None):
+            try:
+                self.restore_clipboard()
+            except RecipeBlocked:
+                errors.append('previous clipboard restoration unavailable; private session retained')
+        if getattr(self, '_created_root', False) and not errors and not self.started:
+            # Delete only a directory this Target successfully created. Check
+            # the private resident process family is gone before touching files.
+            code = r'''import os, shutil, stat, time
+from pathlib import Path
+root = Path(ROOT)
+for attempt in range(50):
+    live = []
+    for proc in Path('/proc').glob('[0-9]*'):
+        try:
+            env = (proc/'environ').read_bytes().split(b'\0')
+            if ('XDG_RUNTIME_DIR='+str(root/'runtime')).encode() in env:
+                cmd = (proc/'comm').read_text().strip()
+                if cmd.startswith('putgd'):
+                    live.append(proc.name)
+        except OSError:
+            pass
+    if not live:
+        break
+    time.sleep(.1)
+else:
+    raise RuntimeError('private resident still running')
+info = root.lstat()
+if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
+    raise RuntimeError('session root identity changed')
+shutil.rmtree(root)
+'''
+            try:
+                result = self.execute("python3 - <<'SD_CLEANUP'\nROOT=" + repr(self.root) + '\n' + code + '\nSD_CLEANUP\n', timeout=8)
+                if result['returncode']:
+                    errors.append('private session root cleanup refused')
+                else:
+                    self._created_root = False
+            except RecipeBlocked:
+                errors.append('private session root cleanup unavailable')
         return errors
