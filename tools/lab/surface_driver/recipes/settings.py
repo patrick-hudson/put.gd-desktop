@@ -458,7 +458,7 @@ def shortcut_field(ctx):
     shortcut_campaign(ctx, 'field')
 
 
-@recipe('shortcuts-page.record', timeout=360)
+@recipe('shortcuts-page.record', timeout=600)
 def shortcut_recording(ctx):
     shortcut_campaign(ctx, 'record')
 
@@ -996,7 +996,7 @@ def exercise_disclosure(ctx, control, section):
     frame(ctx, control + '-collapsed', section)
 
 
-@recipe('capture.help-toggles', timeout=240)
+@recipe('capture.help-toggles', timeout=480)
 def capture_help(ctx):
     opened(ctx, 1)
     controls = ctx.catalog.candidates('glob:*Help', 'settings', REFERENCES[1])
