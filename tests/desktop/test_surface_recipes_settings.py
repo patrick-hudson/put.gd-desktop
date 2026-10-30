@@ -58,12 +58,13 @@ class Fake(Context):
             'archive': {'keepUploads': True, 'root': '/tmp/private/archive',
                         'folders': {k: None for k in ('images', 'videos', 'text', 'other')}},
             'retention': {'recentActivityLimit': 100, 'historyRetentionDays': None, 'failedArtifactDays': 7},
+            'limits': {'maxFiles': 100},
             'naming': {'mode': 'original', 'collisionPolicy': 'rename'},
             'actions': {k: {'shortcut': ''} for k in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record')},
         }
         self.disk = copy.deepcopy(self.document)
         self.section = 0
-        self.focus = None
+        self.focused_control = None
         self.recording_action = None
         self.pending_index = 0
         self.text = ''
@@ -79,6 +80,12 @@ class Fake(Context):
         self.pkg = {'open': False}
         self.fixtures = {'diagnostics-upload': {'profileId': 'synthetic', 'loopback': True, 'isolated': True}}
         self.config_path = '/tmp/private/config/putgd/config.json'
+        self.about_visible = False
+        self.about_expanded = False
+        self.confirmation = None
+        self.build = {'gitCommit': 'a' * 40, 'version': '26.1029.1-dev+gaaaaaaaa'}
+        self.fixtures['settings'] = {}
+        self.fixtures['settings-conflict'] = {'external_change': lambda patch: merge(self.disk, patch)}
 
     def checkpoint(self):
         if self.disk_writable:
@@ -100,6 +107,7 @@ class Fake(Context):
             self.checkpoint()
             return {}
         if method == 'ui.show':
+            if params['view'] == 'about': self.about_visible = True
             return {'shown': params['view']}
         if method == 'ui.viewState':
             theme = self.document['preferences']['appearance']['theme']
@@ -108,7 +116,7 @@ class Fake(Context):
             bindings = {a: {'state': 'recording' if a == self.recording_action else 'bound',
                             'bound': a != self.recording_action,
                             'actual': [v['shortcut']]} for a, v in self.document['actions'].items()}
-            return {'diagnostics': {'loginStartup': {'enabled': self.document['preferences']['launchAtLogin'], 'applied': True},
+            return {'build': self.build, 'diagnostics': {'loginStartup': {'enabled': self.document['preferences']['launchAtLogin'], 'applied': True},
                                     'capabilities': {'source': {'shortcuts': {'available': self.available, 'bindings': bindings}}}}}
         if method == 'ui.diagnostics':
             if params['action'] == 'setDesktopDetails':
@@ -137,8 +145,19 @@ class Fake(Context):
         raise RecipeFailed(what)
 
     def click(self, control, window, **kwargs):
+        if control == 'closeAbout': self.about_visible = False
+        if control == 'buildDetails': self.about_expanded = not self.about_expanded
+        if control == 'copyBuildDetails': self.clipboard = json.dumps(self.build)
+        if control == 'resetAdvancedDefaults': self.confirmation = 'Reset limits to defaults'
+        if control == 'reloadSettings': self.confirmation = 'Reload settings from file'
+        if control == 'text:Reset limits':
+            self.document['limits'].update(maxFiles=100, pendingOperations=8, concurrentUploads=3, maxFileBytes='auto', maxBatchBytes='auto', pendingArtifactBytes='auto', pendingImageBytes=67108864, clipboardTextBytes=16777216, imagePixels=100000000, imageBytes=536870912)
+            self.document['retention'].update(failedArtifactDays=7, recentActivityLimit=100, previewCacheBytes=268435456, historyRetentionDays=None)
+            self.checkpoint(); self.confirmation = None
+        if control == 'text:Reload from file':
+            self.document = copy.deepcopy(self.disk); self.confirmation = None
         self.inputs.append(('click', control, window))
-        self.focus = control
+        self.focused_control = control
         if control.startswith('settingsSection'):
             self.section = int(control[-1])
         toggles = {'launchAtLogin': 'preferences.launchAtLogin',
@@ -178,6 +197,11 @@ class Fake(Context):
     def keys(self, *sequence):
         self.inputs.append(('keys', sequence))
         for key in sequence:
+            if self.confirmation and key in ('Esc', 'Return'):
+                self.confirmation = None
+                continue
+            if self.about_visible and key == 'Esc': self.about_visible = False
+            if self.about_visible and key == 'Ctrl+C': self.clipboard = self.build['version'].split('-')[0]
             if self.recording_action:
                 action = self.recording_action
                 if key != 'Esc':
@@ -185,7 +209,7 @@ class Fake(Context):
                     self.checkpoint()
                 self.recording_action = None
                 continue
-            if self.focus == 'settingsNavigation':
+            if self.focused_control == 'settingsNavigation':
                 if key == 'Home': self.section = 0
                 if key == 'Down': self.section += 1
                 continue
@@ -201,20 +225,21 @@ class Fake(Context):
                     'namingMode': ('naming.mode', ['original', 'generated', 'template']),
                     'collisionPolicy': ('naming.collisionPolicy', ['rename', 'skip', 'overwrite']),
                 }
-                if self.focus in options:
-                    path, values = options[self.focus]
+                if self.focused_control in options:
+                    path, values = options[self.focused_control]
                     assign(self.document, path, values[self.pending_index])
                     self.checkpoint()
             if key == 'Ctrl+V':
                 self.text = self.clipboard
             if key == 'Tab' and self.text:
-                path = {'recentActivityLimit': 'retention.recentActivityLimit', 'archiveRoot': 'archive.root'}.get(self.focus)
-                if self.focus and self.focus.startswith('folder'):
-                    path = 'archive.folders.' + self.focus[6:].lower()
-                if self.focus and self.focus.endswith('Template'):
-                    path = 'naming.' + self.focus
+                path = {'recentActivityLimit': 'retention.recentActivityLimit', 'archiveRoot': 'archive.root'}.get(self.focused_control)
+                if self.focused_control and self.focused_control.startswith('folder'):
+                    path = 'archive.folders.' + self.focused_control[6:].lower()
+                if self.focused_control and self.focused_control.endswith('Template'):
+                    path = 'naming.' + self.focused_control
                 if path:
-                    assign(self.document, path, int(self.text) if self.focus == 'recentActivityLimit' else self.text)
+                    if self.focused_control != 'recentActivityLimit' or self.text.isdigit():
+                        assign(self.document, path, int(self.text) if self.focused_control == 'recentActivityLimit' else self.text)
                     self.checkpoint()
                 self.text = ''
 
@@ -246,14 +271,26 @@ class Fake(Context):
     def geometry(self, window):
         return {'window_id': '42', 'x': 120, 'y': 40, 'width': 1440, 'height': 960, 'scale': 1}
 
+    def windows(self, query=None):
+        title = (query or {}).get('title', '')
+        return [{'title': title}] if (title == '^About put.gd$' and self.about_visible or title == '^put.gd$' or self.confirmation and title == '^' + self.confirmation + '$') else []
+
+    def focus(self, window, raise_window=True):
+        self.inputs.append(('focus', window))
+        return {}
+
     def accessible(self, query):
+        if query.get('window') == 'About put.gd':
+            if query['name'] == 'Copy build details': return [{'name': query['name']}] if self.about_expanded else []
+            if query['name'] == 'Commit': return [{'description': self.build['gitCommit']}]
+            return [{'text': self.build['version'].split('-')[0]}]
         control = next(k for k, v in self.profile['settings']['live_controls'].items() if v == query)
         # Status insertion shifts controls; a stale point must not hit a field.
         shift = 50 if self.recording_action or any('Esc' in str(i) for i in self.inputs) else 0
         rectangle = [700, 240 + shift, 180, 36]
         self.targets = {(760, 258 + shift): control}
         return [{'pid': 123, 'rect': rectangle, 'checked': self.category_expanded if control == 'categoryFoldersToggle' else False,
-                 'focused': self.focus == control}]
+                 'focused': self.focused_control == control}]
 
     def click_at(self, x, y, **kwargs):
         self.pointer = (x, y)
@@ -318,7 +355,7 @@ class Contracts(unittest.TestCase):
                     rec.function(ctx)
                 self.assertTrue(ctx.inputs)
                 self.assertGreaterEqual(len(ctx.frames), 2)
-                self.assertTrue(all(ref in (None, *lane.REFERENCES, '07-settings-general-light', '58-diagnostics-package') for _, _, ref in ctx.frames))
+                self.assertTrue(all(ref in (None, *lane.REFERENCES, '07-settings-general-light', '58-diagnostics-package', 'about', 'about-build-details', 'confirm-reset-limits', '53-reload-confirm') for _, _, ref in ctx.frames))
                 self.assertEqual(ctx.disk, ctx.document)
                 self.assertTrue(any(method == 'ui.viewState' for method, _ in ctx.calls))
 
@@ -389,7 +426,7 @@ class Contracts(unittest.TestCase):
         from tools.lab.surface_driver.recipes.settings_input import click
         click(ctx, 'archiveRoot')
         self.assertEqual(scrolled, [(1536, 520, -3)])
-        self.assertEqual(ctx.focus, 'archiveRoot')
+        self.assertEqual(ctx.focused_control, 'archiveRoot')
 
     def test_unavailable_clipboard_writer_withholds_input(self):
         ctx = Fake()
@@ -422,7 +459,7 @@ class Contracts(unittest.TestCase):
         from tools.lab.surface_driver.recipes.settings_input import click
         click(ctx, 'archiveRoot')
         self.assertGreaterEqual(len(calls), 2)
-        self.assertEqual(ctx.focus, 'archiveRoot')
+        self.assertEqual(ctx.focused_control, 'archiveRoot')
 
     def test_zero_height_control_cannot_receive_a_click(self):
         ctx = Fake()

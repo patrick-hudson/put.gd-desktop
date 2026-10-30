@@ -100,6 +100,11 @@ def prepare(ctx):
 
 
 def ensure_accessible(ctx):
+    if not ctx.profile.get('settings', {}).get('foreground_script'):
+        # Current core owns compositor verification; never apply X11 scripts to
+        # a Wayland guest. Its unavailable witness must remain a blocked row.
+        ctx.focus('settings')
+        return
     geometry = live_geometry(ctx)
     owner = observe(ctx, geometry, foreground=True)
     query = ctx.profile['settings']['live_controls']['settingsSection0']
@@ -129,6 +134,8 @@ def ensure_accessible(ctx):
 def click(ctx, control):
     """Resolve each click anew, including scroll/status/disclosure layout changes."""
     options = ctx.profile.get('settings', {})
+    if not options.get('foreground_script'):
+        return ctx.click(control, window='settings')
     query = options.get('live_controls', {}).get(control)
     if not query:
         ctx.blocked('Settings live control query missing: ' + control)

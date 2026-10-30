@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import shlex
 
-from tools.lab.surface_driver.api import recipe
+from tools.lab.surface_driver.api import recipe, RecipeBlocked
 from .settings_input import (click as live_click, observe as input_witness,
                              prepare as prepare_input, ensure_accessible, collapse)
 
@@ -86,6 +86,7 @@ def state(ctx):
 
 
 def opened(ctx, section):
+    ctx.fixture('settings')
     persisted(ctx)  # fail closed before any mutation, including resident setup
     # The primary catalog has a working local output and the dark scheme.
     # Without local output, the resident adds a warning above the page and all
@@ -129,6 +130,22 @@ def saved(ctx, path, value, section):
     ctx.expect(state(ctx)['settings']['section'] == section, 'expected Settings page remains active')
 
 
+def scroll_click(ctx, control, window='settings'):
+    """Search clipped controls with real wheel input; core verifies every hit."""
+    for attempt in range(16):
+        try:
+            return ctx.click(control, window=window)
+        except RecipeBlocked as error:
+            if '0 matches' not in error.reason:
+                raise
+            geometry = ctx.geometry(window)
+            ctx.focus(window)
+            ctx.scroll(geometry['x'] + geometry['width'] - 24,
+                       geometry['y'] + geometry['height'] // 2,
+                       40 if attempt == 0 else -3)
+    ctx.blocked('Live Settings control remains unavailable after scrolling: ' + control, issue=CORE_ISSUE)
+
+
 def choose(ctx, control, index):
     if control in ('namingMode', 'collisionPolicy'):
         live_click(ctx, control)
@@ -137,7 +154,8 @@ def choose(ctx, control, index):
     # Editable choices route Home to their line edit unless the popup is open.
     ctx.keys('Esc', 'Alt+Down', 'Home', *('Down',) * index, 'Return', 'Tab')
     if control in ('namingMode', 'collisionPolicy'):
-        input_witness(ctx, ctx.geometry('settings'))
+        if ctx.profile.get('settings', {}).get('input_state_script'):
+            input_witness(ctx, ctx.geometry('settings'))
         ctx.frame('keys-after-' + control)
 
 
@@ -164,7 +182,8 @@ def replace(ctx, control, text):
         ctx.type_text(text)
     ctx.keys('Tab')
     if control == 'archiveRoot' or paste:
-        input_witness(ctx, ctx.geometry('settings'))
+        if ctx.profile.get('settings', {}).get('input_state_script'):
+            input_witness(ctx, ctx.geometry('settings'))
         ctx.frame('keys-after-' + control)
 
 
@@ -300,10 +319,14 @@ def category_folders(ctx):
     # Empty overrides ensure the disclosure starts closed when the page opens.
     patch(ctx, {'archive': {'folders': {k: None for k in ('images', 'videos', 'text', 'other')}}})
     ctx.click('categoryFoldersToggle', window='settings')
+    ctx.use_catalog('settings', 'settings-category-folders')
     try:
         for category in ('images', 'videos', 'text', 'other'):
             target = root.rstrip('/') + '/surface-' + category
-            replace(ctx, 'folder' + category.title(), target)
+            scroll_click(ctx, 'folder' + category.title())
+            ctx.keys('Ctrl+A')
+            ctx.type_text(target)
+            ctx.keys('Tab')
             saved(ctx, 'archive.folders.' + category, target, 1)
         frame(ctx, 'after', 1)
     finally:
@@ -436,8 +459,9 @@ def desktop_support(ctx):
     ctx.click('desktopSupportDetailsToggle', window='settings')
     ctx.wait(lambda: call(ctx, 'ui.diagnostics', {'action': 'inspect'})['desktopSupport']['expanded'],
              'desktop support disclosure expands')
-    ctx.click('refreshDesktopSupport', window='settings')
-    ctx.click('copyDesktopDetails', window='settings')
+    ctx.use_catalog('settings', 'settings-desktop-support-expanded')
+    scroll_click(ctx, 'refreshDesktopSupport')
+    scroll_click(ctx, 'copyDesktopDetails')
     ctx.wait(lambda: 'capabilities' in ctx.clipboard_text(), 'copied desktop diagnostics')
     ctx.expect(persisted(ctx) == get(ctx)['document'], 'support inspection preserves configuration')
     frame(ctx, 'after', 3)
@@ -610,6 +634,161 @@ def mcp_diagnostics(ctx):
     ctx.blocked('Partial MCP diagnostics evidence saved; upload target/reveal/clear and saved package variants need isolated diagnostics fixtures.', issue=CORE_ISSUE)
 
 
+def visible(ctx, title):
+    return ctx.windows({'title': title})
+
+
+def about_open(ctx):
+    opened(ctx, 0)
+    result(ctx, ctx.view('ui.show', {'view': 'about'}))
+    ctx.wait(lambda: visible(ctx, '^About put.gd$'), 'About window is visible')
+    ctx.use_catalog('about', 'about')
+    ctx.focus('about')
+    ctx.frame('about-before', window='about', reference='about')
+
+
+@recipe('about.build-details', 'about.copy-build-details')
+def about_details(ctx):
+    about_open(ctx)
+    expected = call(ctx, 'ui.snapshot')['build']
+    try:
+        ctx.click('buildDetails', window='about')
+        ctx.wait(lambda: ctx.accessible({'owned': True, 'window': 'About put.gd',
+                                        'name': 'Copy build details', 'showing': True}),
+                 'build disclosure exposes copy action')
+        ctx.use_catalog('about', 'about-build-details')
+        commit = expected.get('gitCommit') or expected.get('commit')
+        facts = ctx.accessible({'owned': True, 'window': 'About put.gd', 'name': 'Commit', 'showing': True})
+        ctx.expect(any(row.get('description') == commit or row.get('text') == commit[:12]
+                       for row in facts), 'About displays this resident build commit')
+        ctx.click('copyBuildDetails', window='about')
+        ctx.wait(lambda: ctx.clipboard_text().startswith('{'), 'build JSON copied')
+        ctx.expect(json.loads(ctx.clipboard_text()) == expected, 'copied build details exactly match resident')
+        ctx.frame('about-expanded', window='about', reference='about-build-details')
+        ctx.click('buildDetails', window='about')
+        ctx.wait(lambda: not ctx.accessible({'owned': True, 'window': 'About put.gd',
+                                            'name': 'Copy build details', 'showing': True}),
+                 'build disclosure collapses')
+    finally:
+        if visible(ctx, '^About put.gd$'):
+            ctx.focus('about')
+            ctx.keys('Esc')
+
+
+def about_close_recipe(identifier, key):
+    @recipe(identifier)
+    def close(ctx):
+        about_open(ctx)
+        if key:
+            ctx.keys(key)
+        else:
+            ctx.click('closeAbout', window='about')
+        ctx.wait(lambda: not visible(ctx, '^About put.gd$'), 'About closes')
+        ctx.expect(bool(visible(ctx, '^put.gd$')), 'main window stays visible')
+        ctx.frame('about-closed')
+    close.__name__ = identifier.replace('.', '_').replace('-', '_')
+
+
+about_close_recipe('about.close', None)
+about_close_recipe('about.key-esc', 'Esc')
+
+
+@recipe('about.modeless')
+def about_modeless(ctx):
+    about_open(ctx)
+    try:
+        ctx.focus('settings')
+        live_click(ctx, 'settingsSection1')
+        ctx.wait(lambda: state(ctx)['settings']['section'] == 1, 'main window remains usable with About open')
+        ctx.expect(bool(visible(ctx, '^About put.gd$')), 'About remains open during main-window input')
+        ctx.frame('modeless-after')
+    finally:
+        ctx.focus('about')
+        ctx.keys('Esc')
+
+
+@recipe('about.version')
+def about_version(ctx):
+    about_open(ctx)
+    try:
+        expected = call(ctx, 'ui.snapshot')['build']['version'].split('-')[0].split('+')[0]
+        rows = ctx.accessible({'owned': True, 'window': 'About put.gd', 'name': expected, 'showing': True})
+        ctx.expect(len(rows) == 1 and rows[0].get('text') == expected, 'selectable About version matches build')
+        ctx.click('aboutVersion', window='about')
+        ctx.keys('Ctrl+A', 'Ctrl+C')
+        ctx.wait(lambda: ctx.clipboard_text() == expected, 'version text can be selected and copied')
+        ctx.frame('about-version-selected', window='about', reference='about')
+    finally:
+        ctx.focus('about')
+        ctx.keys('Esc')
+
+
+@recipe('advanced.reset-limits', 'confirm.reset-limits', 'confirm.key-esc', needs=('settings',), timeout=180)
+def reset_limits(ctx):
+    opened(ctx, 3)
+    defaults = {'limits': {'maxFiles': 100, 'pendingOperations': 8, 'concurrentUploads': 3,
+                          'maxFileBytes': 'auto', 'maxBatchBytes': 'auto', 'pendingArtifactBytes': 'auto',
+                          'pendingImageBytes': 67108864, 'clipboardTextBytes': 16777216,
+                          'imagePixels': 100000000, 'imageBytes': 536870912},
+                'retention': {'failedArtifactDays': 7, 'recentActivityLimit': 100,
+                              'previewCacheBytes': 268435456, 'historyRetentionDays': None}}
+    changed = {'limits': {key: (1073741824 if value == 'auto' else max(1, value // 2))
+                          for key, value in defaults['limits'].items()},
+               'retention': {'failedArtifactDays': 3, 'recentActivityLimit': 23,
+                             'previewCacheBytes': 134217728, 'historyRetentionDays': 30}}
+    patch(ctx, changed)
+    baseline = get(ctx)['document']
+    ctx.click('resourceLimitsToggle', window='settings')
+    ctx.use_catalog('settings', 'settings-resource-limits-expanded')
+    # Return must choose the safe default, and Escape must cancel too.
+    for answer in ('Return', 'Esc', None):
+        scroll_click(ctx, 'resetAdvancedDefaults')
+        ctx.wait(lambda: visible(ctx, '^Reset limits to defaults$'), 'reset confirmation opens')
+        ctx.use_catalog('confirmAction', 'confirm-reset-limits')
+        ctx.focus('confirmAction')
+        ctx.frame('reset-confirm-' + str(answer), window='confirmAction', reference='confirm-reset-limits')
+        if answer:
+            ctx.keys(answer)
+        else:
+            ctx.click('text:Reset limits', window='confirmAction')
+        ctx.wait(lambda: not visible(ctx, '^Reset limits to defaults$'), 'reset confirmation closes')
+        if answer:
+            ctx.expect(persisted(ctx) == baseline and get(ctx)['document'] == baseline,
+                       'safe default and Escape preserve all settings')
+    for group, values in defaults.items():
+        for key, value in values.items():
+            saved(ctx, group + '.' + key, value, 3)
+    accepted = get(ctx)['document']
+    ctx.expect(accepted['preferences'] == baseline['preferences'] and accepted['archive'] == baseline['archive'],
+               'reset preserves preferences and output')
+    frame(ctx, 'reset-after', 3)
+    # Fixture teardown restores the complete starting document, including absent keys.
+
+
+@recipe('confirm.settings-reload', needs=('settings-conflict',), timeout=180)
+def reload_confirmation(ctx):
+    fixture = ctx.fixture('settings-conflict')
+    opened(ctx, 3)
+    original = get(ctx)['document']['preferences']['notifications']
+    # An invalid edit preserves a draft while the external revision arrives.
+    replace(ctx, 'recentActivityLimit', 'not-a-number')
+    fixture['external_change']({'preferences': {'notifications': not original}})
+    scroll_click(ctx, 'reloadSettings')
+    ctx.wait(lambda: visible(ctx, '^Reload settings from file$'), 'reload confirmation opens')
+    ctx.use_catalog('confirmAction', '53-reload-confirm')
+    ctx.focus('confirmAction')
+    ctx.frame('reload-before', window='confirmAction', reference='53-reload-confirm')
+    ctx.keys('Esc')
+    ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload canceled')
+    scroll_click(ctx, 'reloadSettings')
+    ctx.focus('confirmAction')
+    ctx.click('text:Reload from file', window='confirmAction')
+    ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload accepted')
+    saved(ctx, 'preferences.notifications', not original, 3)
+    ctx.expect(not state(ctx)['settings'].get('conflict'), 'reload clears conflict')
+    frame(ctx, 'reload-after', 3)
+
+
 # Honest declarations for edges that the current interface cannot prepare or
 # observe. Each gets its own blocked receipt (and never a visual-only pass).
 BLOCKED = {
@@ -626,23 +805,13 @@ BLOCKED = {
     'shortcuts-page.help': 'Help visibility absent from resident view state; needs accessible expanded/text observation.',
     'shortcuts-page.unsupported-desktop': 'Required desktop profiles have a shortcut channel; needs an explicitly unsupported Wayland profile.',
     'advanced.resource-limits': 'Needs complete resource-field exercise including Auto/No limit, resolved hints and per-field resets; partial value checks cannot prove this ID.',
-    'advanced.reset-limits': 'Needs confirmation control inventory and deterministic all-limits baseline for accept/cancel.',
     'advanced.clear-logs': 'Needs seeded persistent logs and confirmation control inventory with accept/cancel assertions.',
     'advanced.unclean-exit': 'Needs runner-owned previous unclean-exit fixture with exact expected identity/cause.',
     'advanced.config-file': 'Needs host editor/file-manager observation and failed-editor Copy path fixture; Copy path is normally hidden.',
     'diagnostics.folder': 'Needs native folder chooser fixture, chosen-directory assertion and deterministic failure/retry.',
     'diagnostics.show-in-folder': 'Needs file-manager observation for exact saved path plus absent/removed-package refusal fixture.',
     'about.website': 'Needs host browser/portal observation, including failed-open feedback; UI state exposes neither.',
-    'about.build-details': 'Needs accessible expanded/build-facts observation; about is absent from resident view state.',
-    'about.copy-build-details': 'Needs accessible disclosure state and exact expected build-details text fixture.',
-    'about.close': 'About visibility absent from resident view state; needs window-lifecycle observation.',
-    'about.key-esc': 'About visibility absent from resident view state; needs window-lifecycle observation for Esc.',
-    'about.modeless': 'Needs two-window activation/visibility observation; resident view state omits About.',
-    'about.version': 'Needs exact build identity plus accessible selectable version text observation.',
-    'confirm.settings-reload': 'Needs deterministic unsaved draft/conflict fixture and confirmation control inventory.',
-    'confirm.reset-limits': 'Needs all-limits baseline plus confirmation control inventory for accept/cancel.',
     'confirm.clear-logs': 'Needs seeded logs plus confirmation control inventory for accept/cancel.',
-    'confirm.key-esc': 'Needs confirmation control inventory and visible dialog-lifecycle observation for default/Esc cancellation.',
     'confirm.in-app-notices': 'Needs runner-owned slow-checkpoint, invalid-draft, slow-close and unfinished-credential fixtures.',
 }
 for _identifier in ('settings.update-privacy', 'settings.update-toggle', 'settings.update-status',
