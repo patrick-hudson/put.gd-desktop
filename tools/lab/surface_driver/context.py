@@ -576,9 +576,10 @@ asyncio.run(main())
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
         # St buttons arm only after the pointer has entered them: hover the
-        # drawn title at once, then click without another tree walk.
+        # drawn title at once, let the shell process the enter (0.05 s was
+        # too short on Cinnamon), then click without another tree walk.
         self._accessible_pointer(None, None, node=title)
-        time.sleep(.05)
+        time.sleep(.25)
         if action == 'default':
             target = title
         else:
