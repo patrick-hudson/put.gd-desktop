@@ -442,6 +442,17 @@ class Contracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'renders its actual help description'):
             lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
 
+    def test_disclosure_cannot_pass_when_body_remains_after_collapse(self):
+        from types import SimpleNamespace
+        ctx = Fake()
+        expanded = [False]
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.click = lambda *a, **k: expanded.__setitem__(0, not expanded[0])
+        ctx.fixture = lambda name: SimpleNamespace(disclosure=lambda control: SimpleNamespace(
+            expanded=expanded[0], control={'description': 'Synthetic help body'}, text=['Synthetic help body']))
+        with self.assertRaisesRegex(RecipeFailed, 'hides its help body'):
+            lane.exercise_disclosure(ctx, 'syntheticHelp', 1)
+
     def test_channel_probe_restores_notifications_on_save_failure(self):
         for channel, function in (('cli', lane.cli_settings), ('mcp', lane.mcp_configuration)):
             with self.subTest(channel=channel):

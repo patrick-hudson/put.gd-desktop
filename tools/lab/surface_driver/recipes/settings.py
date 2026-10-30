@@ -953,9 +953,17 @@ def exercise_disclosure(ctx, control, section):
     else:
         ctx.expect(bool(description) and any(description in text for text in opened_state.text),
                    control + ' renders its actual help description')
+    # A checked glyph alone cannot prove that its help body was drawn. Bind
+    # the expanded text to the actual disappearance of that body on collapse,
+    # even when another caption repeats the same words.
+    needle = 'Escape cancels' if control == 'shortcutHelpToggle' else description
+    expanded_count = sum(needle in text for text in opened_state.text)
     frame(ctx, control + '-expanded', section)
     live_click(ctx, control)
-    ctx.wait(lambda: not observe(control).expanded, control + ' collapses')
+    def collapsed():
+        current = observe(control)
+        return not current.expanded and sum(needle in text for text in current.text) < expanded_count
+    ctx.wait(collapsed, control + ' collapses and hides its help body')
     frame(ctx, control + '-collapsed', section)
 
 
