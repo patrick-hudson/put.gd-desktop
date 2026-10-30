@@ -1743,25 +1743,24 @@ private slots:
             QVERIFY(QDBusConnection::sessionBus().send(signal));
         };
         PanelTone tone;
-        QTRY_COMPARE(tone.source(), QString("cinnamon-theme"));
+        PUTGD_TRY_COMPARE(tone.source(), QString("cinnamon-theme"));
         QVERIFY(!tone.light());
         QCOMPARE(readCount(), 1);
         QSignalSpy changed(&tone, &PanelTone::changed);
         // Another setting: no re-read, past the 300 ms debounce.
         QVERIFY(write(theme, "Mint-Y"));
         notice("/org/cinnamon/desktop/interface/gtk-theme", {""});
-        QTest::qWait(700);
-        QCOMPARE(readCount(), 1);
+        PUTGD_COMPARE_STEADY(readCount(), 1, 700);
         QVERIFY(!tone.light());
         // The desktop theme itself, as `gsettings set org.cinnamon.theme name` reports it.
         notice("/org/cinnamon/theme/name", {""});
-        QTRY_VERIFY(tone.light());
+        PUTGD_TRY_VERIFY(tone.light());
         QCOMPARE(readCount(), 2);
         QCOMPARE(changed.count(), 1);
         // And back, as a reset of the whole Cinnamon tree reports it.
         QVERIFY(write(theme, "Mint-Y-Dark"));
         notice("/org/cinnamon/", {""});
-        QTRY_VERIFY(!tone.light());
+        PUTGD_TRY_VERIFY(!tone.light());
         QCOMPARE(changed.count(), 2);
 #endif
     }
