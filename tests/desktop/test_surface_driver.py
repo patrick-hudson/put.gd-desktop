@@ -13,7 +13,7 @@ import tempfile
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
@@ -856,7 +856,13 @@ class TargetSafety(unittest.TestCase):
                 getattr(target,method)(*arguments)
                 with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
                 self.assertEqual(target.physical.ssh.call_count,2)
-                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),1)
+                # A wheel gesture consists of press plus deadline-safe release;
+                # the rejected second gesture must dispatch neither packet.
+                expected = 2 if method == 'scroll_vnc' else 1
+                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),expected)
+                if method == 'scroll_vnc':
+                    self.assertEqual(target._rfb.pointer_button.call_args_list,
+                                     [call(1,1,'wheel-up',True),call(1,1,'wheel-up',False)])
 
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
