@@ -40,7 +40,7 @@ while stack and visited < 6000:
             viewport = bounds
         if query.get('label') == name and role == 'label':
             anchors.append(list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)))
-        if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
+        if fnmatch.fnmatchcase(name, query['name']) and fnmatch.fnmatchcase(role, query['role']):
             rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
             rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect,
                          'viewport': viewport,
@@ -141,11 +141,96 @@ def ensure_accessible(ctx):
     ctx.frame('accessibility-after-reopen')
 
 
+def native_viewport(ctx, control, geometry, attempt):
+    """Clip against live ancestors: Qt exports its viewport as a filler.
+
+    Compositor containment alone allows a child behind the Settings footer.
+    Desktop/application extents are excluded: AT-SPI can retain the golden's
+    old desktop size after the real guest framebuffer has been resized.
+    """
+    query = {'owned': True, 'pid': geometry['pid'], 'visible': True}
+    alias = ctx.profile.get('live_controls', {}).get(control)
+    if alias:
+        query.update(name=alias['name'], role=alias['role'])
+    elif control.startswith('text:'):
+        query['name'] = control[5:]
+    else:
+        query['objectName'] = control
+        if hasattr(ctx, 'catalog'):
+            candidates = ctx.catalog.candidates(control, 'settings')
+            if not candidates:
+                # Expanded-state captures still supply class semantics. Live
+                # AT-SPI supplies all geometry and current visibility.
+                candidates = [item for inventory in getattr(ctx.catalog, 'inventories', {}).values()
+                              for item in inventory.get('controls', []) if item.get('name') == control]
+            classes = {c.get('class') for c in candidates}
+            roles = {'QPushButton': 'push button', 'QLineEdit': 'text',
+                     'QSpinBox': 'spin button', 'QComboBox': 'combo box',
+                     'QToolButton': 'check box'}
+            if len(classes) == 1 and next(iter(classes)) in roles:
+                query['role'] = roles[next(iter(classes))]
+    rows = ctx.accessible(query)
+    if len(rows) > 1:
+        ctx.blocked('Native Settings viewport target is ambiguous: ' + control, issue=856)
+    if not rows or not rows[0].get('rect'):
+        return 40 if attempt == 0 else -3
+    row = rows[0]
+    if row.get('enabled') is False:
+        ctx.blocked('Native Settings control is disabled; input withheld: ' + control, issue=681)
+    parents = [a['rect'] for a in row.get('ancestors', [])
+               if a.get('role') not in ('desktop frame', 'application') and
+               a.get('rect') and min(a['rect'][2:]) > 0]
+    if not parents:
+        ctx.blocked('Native Settings viewport ancestry is unavailable; input withheld: ' + control, issue=856)
+    left, top = geometry['x'], geometry['y']
+    right, bottom = left + geometry['width'], top + geometry['height']
+    for x, y, width, height in parents:
+        left, top = max(left, x), max(top, y)
+        right, bottom = min(right, x + width), min(bottom, y + height)
+    x, y, width, height = row['rect']
+    if left <= x and x + width <= right and top <= y and y + height <= bottom:
+        ctx.note('Verified native Settings viewport: ' + json.dumps(
+            {'control': control, 'rect': row['rect'], 'viewport': [left, top, right-left, bottom-top]}, sort_keys=True))
+        return None
+    return 3 if y < top else -3
+
+
+def native_wheel(ctx, geometry, direction):
+    ctx.focus('settings')
+    scale = geometry.get('scale', 1)
+    ctx.scroll(round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale),
+               round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height'] / 2) * scale),
+               direction, head=geometry.get('head'))
+
+
 def click(ctx, control, *, after_window=None):
     """Resolve each click anew, including scroll/status/disclosure layout changes."""
     options = ctx.profile.get('settings', {})
-    if not options.get('foreground_script'):
-        return ctx.click(control, window='settings')
+    if not options.get('foreground_script') or control not in options.get('live_controls', {}):
+        ctx.note('Resolving native Settings control: ' + control)
+        # Qt omits fully clipped controls and the native guard refuses partly
+        # clipped rectangles. Scroll the page, then resolve the control again;
+        # never reuse a refused rectangle or relax compositor ownership.
+        for attempt in range(12):
+            try:
+                if ctx.profile.get('session') == 'wayland' and not control.startswith('settingsSection'):
+                    geometry = live_geometry(ctx)
+                    direction = native_viewport(ctx, control, geometry, attempt)
+                    if direction is not None:
+                        ctx.note('Scrolling a clipped native Settings control before input: ' + control)
+                        native_wheel(ctx, geometry, direction)
+                        continue
+                return ctx.click(control, window='settings')
+            except RecipeBlocked as error:
+                if not any(reason in error.reason for reason in
+                           ('0 matches', 'falls outside compositor frame')):
+                    raise
+                if control.startswith('settingsSection'):
+                    raise
+                geometry = live_geometry(ctx)
+                ctx.note('Searching the native Settings page for ' + control)
+                native_wheel(ctx, geometry, 40 if attempt == 0 else -3)
+        ctx.blocked('Settings control remains clipped or absent after bounded wheel search: ' + control, issue=856)
     query = options.get('live_controls', {}).get(control)
     if not query:
         ctx.blocked('Settings live control query missing: ' + control)
@@ -190,7 +275,7 @@ def click(ctx, control, *, after_window=None):
     # The right end of a keycap contains its independent Clear button.
     point = (round(x + width / 3), round(y + height / 2))
     ctx.frame('input-before-' + control)
-    ctx.note('settings live target: ' + json.dumps({'control': control, 'accessible_name': matches[0].get('name'),
+    ctx.note('settings live target: ' + json.dumps({'control': control, 'accessible_name': matches[0].get('name'), 'role': matches[0].get('role'),
                                                    'rect': [x, y, width, height],
                                                    'viewport': matches[0].get('viewport'),
                                                    'point': point, 'geometry': geometry}, sort_keys=True))
@@ -214,7 +299,43 @@ def click(ctx, control, *, after_window=None):
     ctx.frame('input-after-' + control)
 
 
+def field_click(ctx, control):
+    """Withhold native text until AT-SPI confirms the intended field's focus.
+
+    A partly clipped field can lie inside the compositor frame while its
+    parent viewport clips the hit. Scroll with real guarded input and resolve
+    again; a spin box's focus proxy must belong to its exported ID path.
+    """
+    if ctx.profile.get('session') != 'wayland':
+        return click(ctx, control)
+    for _ in range(12):
+        click(ctx, control)
+        geometry = live_geometry(ctx)
+        query = {'owned': True, 'pid': geometry['pid']}
+        rows = ctx.accessible({**query, 'states': {'focused': True}})
+        if any(row.get('objectName') == control or
+               control in (row.get('accessibleId') or '').split('.') for row in rows):
+            ctx.note('native Settings field keyboard focus: ' + control)
+            return
+        ctx.note('Native field is not focused; text withheld while scrolling: ' + control)
+        targets = ctx.accessible({**query, 'objectName': control})
+        rectangles = [row['rect'] for row in targets if row.get('rect')]
+        direction = 3 if len(rectangles) == 1 and rectangles[0][1] < geometry['y'] + geometry['height'] / 2 else -3
+        scale = geometry.get('scale', 1)
+        ctx.scroll(round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale),
+                   round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height'] / 2) * scale),
+                   direction, head=geometry.get('head'))
+    ctx.frame('field-focus-withheld-' + control, window='settings')
+    ctx.blocked('Native Settings field did not acquire verified keyboard focus; no text sent: ' + control, issue=856)
+
+
 def collapse(ctx, control):
+    if control not in ctx.profile.get('settings', {}).get('live_controls', {}) or not ctx.profile.get('settings', {}).get('foreground_script'):
+        disclosure = ctx.fixture('settings-observations').disclosure
+        if disclosure(control).expanded:
+            click(ctx, control)
+            ctx.wait(lambda: not disclosure(control).expanded, 'Settings disclosure collapses: ' + control)
+        return
     query = ctx.profile['settings']['live_controls'][control]
     owner = observe(ctx, live_geometry(ctx), foreground=True)
     def checked():

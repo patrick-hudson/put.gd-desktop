@@ -204,6 +204,122 @@
       "reloadSettings": {
         "name": "Reload from file\u2026",
         "role": "push button"
+      },
+      "defaultCaptureDestination": {
+        "name": "Destination",
+        "role": "combo box"
+      },
+      "defaultCaptureSharing": {
+        "name": "Sharing",
+        "role": "combo box"
+      },
+      "chooseCaptureDestination": {
+        "name": "Choose a destination",
+        "role": "push button"
+      },
+      "enableLocalCopies": {
+        "name": "Turn on Keep a local copy",
+        "role": "push button"
+      },
+      "captureExceptionsToggle": {
+        "name": "Different output for some actions",
+        "role": "check box"
+      },
+      "profileRegion": {
+        "name": "Capture region destination",
+        "role": "combo box"
+      },
+      "publicationRegion": {
+        "name": "Capture region sharing",
+        "role": "combo box"
+      },
+      "removeRegionException": {
+        "name": "Remove capture region exception",
+        "role": "push button"
+      },
+      "profileWindow": {
+        "name": "Capture window destination",
+        "role": "combo box"
+      },
+      "publicationWindow": {
+        "name": "Capture window sharing",
+        "role": "combo box"
+      },
+      "removeWindowException": {
+        "name": "Remove capture window exception",
+        "role": "push button"
+      },
+      "profileDesktop": {
+        "name": "Capture desktop destination",
+        "role": "combo box"
+      },
+      "publicationDesktop": {
+        "name": "Capture desktop sharing",
+        "role": "combo box"
+      },
+      "removeDesktopException": {
+        "name": "Remove capture desktop exception",
+        "role": "push button"
+      },
+      "profileClipboard": {
+        "name": "Upload clipboard destination",
+        "role": "combo box"
+      },
+      "publicationClipboard": {
+        "name": "Upload clipboard sharing",
+        "role": "combo box"
+      },
+      "removeClipboardException": {
+        "name": "Remove upload clipboard exception",
+        "role": "push button"
+      },
+      "profileEdit": {
+        "name": "Capture region & edit destination",
+        "role": "combo box"
+      },
+      "publicationEdit": {
+        "name": "Capture region & edit sharing",
+        "role": "combo box"
+      },
+      "removeEditException": {
+        "name": "Remove capture region & edit exception",
+        "role": "push button"
+      },
+      "profileRecord": {
+        "name": "Record screen destination",
+        "role": "combo box"
+      },
+      "publicationRecord": {
+        "name": "Record screen sharing",
+        "role": "combo box"
+      },
+      "removeRecordException": {
+        "name": "Remove record screen exception",
+        "role": "push button"
+      },
+      "uploadClipboardBehaviorHelp": {
+        "name": "Help for After uploading",
+        "role": "check box"
+      },
+      "regionSelectionModeHelp": {
+        "name": "Help for While selecting",
+        "role": "check box"
+      },
+      "namingModeHelp": {
+        "name": "Help for Naming",
+        "role": "check box"
+      },
+      "shortcutHelpToggle": {
+        "name": "How shortcuts work",
+        "role": "check box"
+      },
+      "refreshShortcutSupport": {
+        "name": "Check shortcuts again",
+        "role": "push button"
+      },
+      "text:Add an exception\u2026": {
+        "name": "Add an exception\u2026",
+        "role": "*"
       }
     },
     "theme_references": {
@@ -228,5 +344,25 @@
     ]
   },
   "mcp_python": "/home/lab/putgd-surface-mcp/.venv/bin/python",
-  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp"
+  "mcp_helper": "/home/lab/putgd-surface-mcp/.venv/bin/putgd-mcp",
+  "live_controls": {
+    "captureExceptionsToggle": {
+      "name": "Different output for some actions",
+      "role": "push button"
+    }
+  },
+  "control_names": {
+    "uploadClipboardBehaviorHelp": [
+      "Help for After uploading"
+    ],
+    "regionSelectionModeHelp": [
+      "Help for While selecting"
+    ],
+    "namingModeHelp": [
+      "Help for Naming"
+    ],
+    "shortcutHelpToggle": [
+      "How shortcuts work"
+    ]
+  }
 }
