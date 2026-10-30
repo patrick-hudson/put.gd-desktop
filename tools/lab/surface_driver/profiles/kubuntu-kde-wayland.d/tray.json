@@ -3,7 +3,8 @@
     "icon": {
       "name": "put.gd",
       "role": "button",
-      "application": "plasmashell*"
+      "application": "plasmashell*",
+      "objectName": ""
     },
     "notification_server": "Plasma",
     "resident_notifications": false,

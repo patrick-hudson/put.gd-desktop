@@ -177,13 +177,20 @@ def _icon(ctx):
     selector = _profile(ctx).get('icon')
     if not selector:
         ctx.blocked('Profile has no owned desktop tray icon selector', 670)
-    nodes = ctx.accessible(selector)
-    nodes = [n for n in nodes if n.get('visible') and n.get('showing')
-             and n.get('rect') and (min(n['rect'][k] for k in ('width', 'height'))
-                  if isinstance(n['rect'], dict) else min(n['rect'][2:])) > 0]
-    if len(nodes) != 1:
-        ctx.blocked('Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle', 670)
-    return nodes[0]
+    def drawn():
+        nodes = ctx.accessible(selector)
+        nodes = [n for n in nodes if n.get('visible') and n.get('showing')
+                 and n.get('rect') and (min(n['rect'][k] for k in ('width', 'height'))
+                      if isinstance(n['rect'], dict) else min(n['rect'][2:])) > 0]
+        if len(nodes) > 1:
+            ctx.blocked('Desktop tray icon selector is ambiguous; needs an owned panel rectangle', 670)
+        return nodes[0] if nodes else None
+    try:
+        # SNI registration precedes Plasma's drawn/accessibility delegate.
+        # Observe its birth; ambiguity and all input witnesses stay strict.
+        return ctx.wait(drawn, 'uniquely drawn desktop tray icon', timeout=10)
+    except RecipeFailed:
+        ctx.blocked('Desktop tray icon selector is missing; needs an owned panel rectangle', 670)
 
 
 def _icon_input(ctx, button='left'):

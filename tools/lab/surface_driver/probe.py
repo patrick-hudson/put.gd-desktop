@@ -272,7 +272,8 @@ def popup_watch(query):
             if str(minor) not in ('showing', 'focused') or not sender or not path:
                 return
             pid = bus_pid(connection, str(sender))
-            if not owned(pid):
+            shell = plasma_popup_sender(pid, str(minor), query)
+            if not owned(pid) and not shell:
                 return
             bus, node_path = str(sender), str(path)
             key = bus + node_path
@@ -290,7 +291,7 @@ def popup_watch(query):
             elif normalize_role(RawNode(connection, bus, node_path, pid).getRoleName()) not in POPUP_ROLES:
                 return
             elif detail1:
-                current[key] = {'bus': bus, 'path': node_path, 'pid': pid}
+                current[key] = {'bus': bus, 'path': node_path, 'pid': pid, 'plasma': shell}
             elif current.pop(key, None) is None:
                 return
             write()
@@ -306,6 +307,12 @@ def popup_watch(query):
     signal.signal(signal.SIGTERM, lambda *_: loop.quit())
     loop.run()
     return {}
+
+
+def plasma_popup_sender(pid, event, query):
+    """Only showing popups from the live compositor shell; never foreign focus."""
+    return (event == 'showing' and (query.get('compositor') or {}).get('kind') == 'kwin-script'
+            and type(pid) is int and pid > 0 and pid == plasma_pid())
 
 
 class RawNode:
@@ -460,6 +467,9 @@ def popup_roots(query):
         if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
             continue
         try:
+            if entry.get('plasma') and (not plasma_popup_sender(pid, 'showing', query)
+                                       or bus_pid(connection, entry['bus']) != pid):
+                continue
             node = RawNode(connection, entry['bus'], entry['path'], pid)
             states = node.getState()
             if not states.contains(pyatspi.STATE_SHOWING) or (entry.get('focus') and not states.contains(pyatspi.STATE_FOCUSED)):
@@ -885,7 +895,8 @@ def accessible(query, toplevel=False, detail=True):
             # are filled in for matched rows only (a shell tree has ~2000 nodes).
             rect = extents(node, kind) if potential or role in POPUP_ROLES else UNREAD
             if role in POPUP_ROLES and states['showing']:
-                popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid}
+                popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid,
+                         'a11y_bus': getattr(node, 'bus', None), 'a11y_path': getattr(node, 'path', None)}
             if potential:
                 attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
                 protected = role == 'password text'
@@ -911,6 +922,7 @@ def accessible(query, toplevel=False, detail=True):
                     identifier = accessible_id(node)
                     object_name = id_object_name(identifier, role)
                 row = {'window': window, 'application': application, 'name': name, 'role': server_role,
+                       'a11y_bus': getattr(node, 'bus', None), 'a11y_path': getattr(node, 'path', None),
                        'text': text, 'description': '' if protected or not detail else (node.description or ''),
                        'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
                        'owned': is_owned(pid), 'objectName': object_name, 'accessibleId': identifier,
@@ -1493,7 +1505,7 @@ def native_capture_process(pid):
         return False
 
 
-SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
+SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')
 
 
 def shell_cover(point, application):
@@ -1620,6 +1632,8 @@ def native_shell_role(value):
 
 def shell_witness_hit(query):
     """Bind the live AT-SPI node to the shell's actual picked actor and PID."""
+    if (query.get('compositor') or {}).get('kind') == 'kwin-script':
+        return plasma_witness_hit(query)
     expected = query['desktop_node']
     pick = compositor_pick(query['compositor'],query['point'])
     ok = (bool(query['shell_application']) and type(expected.get('pid')) is int and expected['pid'] > 0
@@ -1636,6 +1650,89 @@ def shell_witness_hit(query):
     return {'ok':bool(ok),'backend':'gnome-native-shell-pick',
             'obscuring_window':None if ok else (window.get('title') if window else
                 'native shell actor identity, role or bounds did not match the live desktop node')}
+
+
+def plasma_witness_hit(query):
+    """KWin proves the surface; Plasma's live component pick proves the actor.
+
+    Plasma exports Qt window-relative coordinates. Never treat its tree as a
+    GNOME stage or authorize a panel solely by its process/name/rectangle.
+    """
+    import pyatspi
+    bound_calls()
+    expected, point = query['desktop_node'], query['point']
+    window = compositor_pick(query['compositor'], point).get('window')
+    def refused(reason):
+        return {'ok': False, 'backend': 'kwin-plasma-pick', 'obscuring_window': reason}
+    if not window:
+        return refused('KWin picked no Plasma surface')
+    pid = expected.get('pid')
+    if (type(pid) is not int or pid <= 0 or plasma_pid() != pid
+            or not query.get('shell_application')
+            or not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application'])
+            or window['pid'] != pid or window['id'] != expected.get('window_id')):
+        return refused(window.get('title') or 'KWin surface does not own the Plasma node')
+    if not expected.get('a11y_bus') or not expected.get('a11y_path') or not expected.get('rect'):
+        return refused('Plasma node lacks a live accessibility identity or placed bounds')
+    connection = a11y_bus()
+    target = RawNode(connection, expected['a11y_bus'], expected['a11y_path'])
+    if target.get_process_id() != pid:
+        return refused('Plasma accessibility bus owner changed')
+    # Re-resolve this exact identity to reject stale names, roles and bounds.
+    rows = accessible({'pid':pid, 'application':query['shell_application'], 'name':glob_escape(expected['name']),
+                       'role':expected['role'], 'visible':True, 'showing':True, 'compositor':query['compositor']})
+    same = [r for r in rows if r.get('a11y_bus') == expected['a11y_bus']
+            and r.get('a11y_path') == expected['a11y_path'] and r.get('window_id') == window['id']
+            and r.get('rect') == expected['rect'] and r.get('name') == expected['name']
+            and normalize_role(r.get('role','')) == normalize_role(expected['role']) and r.get('pid') == pid]
+    if len(same) != 1:
+        return refused('Plasma actor changed or disappeared before input')
+    rect = expected['rect']
+    if not (rect[0] <= point[0] < rect[0]+rect[2] and rect[1] <= point[1] < rect[1]+rect[3]):
+        return refused('input point is outside the live Plasma actor')
+    # Translate using this surface's measured client area and raw top-level
+    # origin. getAccessibleAtPoint then supplies the deepest actor, not a
+    # same-process cover, a duplicate label or a guessed panel coordinate.
+    tops = [top for app in desktop_root() if app is not None and app.get_process_id() == pid for top in app]
+    tops.extend(root[0] for _, root in popup_roots({'pid':pid, 'compositor':query['compositor']}))
+    for top in tops:
+        popup = expected.get('popup')
+        if popup:
+            # Qt's out-of-tree QMenu has a name but no window title. Bind its
+            # actual root identity, never a guessed or empty title match.
+            if (getattr(top,'bus',None),getattr(top,'path',None)) != (popup.get('a11y_bus'),popup.get('a11y_path')):
+                continue
+        elif (top.name or '') != expected.get('window'):
+            continue
+        raw = extents(top)
+        content = window.get('content')
+        if not raw or not content or any(abs(a-b)>2 for a,b in zip(raw[2:],content[2:])):
+            continue
+        x, y = int(point[0]-content[0]+raw[0]), int(point[1]-content[1]+raw[1])
+        node = top
+        picked = []
+        for _ in range(50):
+            child = node.queryComponent().getAccessibleAtPoint(x,y,pyatspi.DESKTOP_COORDS)
+            if child is None or child == node:
+                break
+            node = child
+            picked.append(node)
+        # The target may be a semantic parent of the picked text/icon.
+        if target in picked and all(n.get_process_id() == pid for n in picked):
+            return {'ok':True, 'backend':'kwin-plasma-pick', 'obscuring_window':None}
+    return refused('Plasma component pick did not reach the exact live actor')
+
+
+def glob_escape(value):
+    import glob
+    return glob.escape(value)
+
+
+def plasma_pid():
+    import dbus
+    bus = dbus.SessionBus()
+    daemon = dbus.Interface(bus.get_object('org.freedesktop.DBus', '/org/freedesktop/DBus'), 'org.freedesktop.DBus')
+    return int(daemon.GetConnectionUnixProcessID('org.kde.plasmashell', timeout=3))
 
 
 def shell_state(query):
@@ -1742,7 +1839,7 @@ def foreground(query):
     # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
     # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
     if query.get('desktop_node') and query.get('desktop_hit_test') in SHELL_PICKS:
-        if (query.get('compositor') or {}).get('kind') == 'gnome-lab-witness':
+        if (query.get('compositor') or {}).get('kind') in ('gnome-lab-witness', 'kwin-script'):
             return shell_witness_hit(query)
         return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
@@ -1976,7 +2073,8 @@ def notification_monitor(query):
     import threading
     def die_with_parent():
         ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
-    watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch', 'query': {}})],
+    watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch',
+                                'query': {'compositor':query.get('compositor')}})],
                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                preexec_fn=die_with_parent)
     kept, lock, children = collections.deque(maxlen=4096), threading.Lock(), [watcher]

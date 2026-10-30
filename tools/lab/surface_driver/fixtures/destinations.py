@@ -1,13 +1,15 @@
 """Loopback-only destination profiles and an owned blank-password collection.
 
-Uses the GNOME Secret Service calls already used by lab_keyring.py, without
-moving the desktop's default alias or reading any existing item.
+Uses unique collections without changing a default alias. KDE guests use a
+fixture-owned Secret Service with private storage and an exact process identity;
+the desktop's KWallet is never opened or modified.
 """
 import json
 from pathlib import Path
 
 from ..api import RecipeBlocked
 from .base import Fixture
+from .keyring import isolated_service
 
 # Query/return metadata only. Fake material is generated/read solely on target.
 KEYRING = '''import base64,json,os,secrets
@@ -27,6 +29,8 @@ def fake_keyring(scope):
     if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('fake credential collection is restricted to a disposable nested guest',issue=666)
     scope.initialize()
+    if ctx.profile.get('compositor',{}).get('kind')=='kwin-script':
+        isolated_service(scope)
     reference='putgd-lab-'+str(__import__('uuid').uuid4())
     path=scope.root+'/fake-input.json'
     scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000)
@@ -54,6 +58,7 @@ print(json.dumps({'collection':collection,'reference':REFERENCE}))
 p=COLLECTION
 label=call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]
 assert label==LABEL
+assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]!=p
 prompt=call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]
 assert prompt=='/'
 '''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr('putgd fixture '+scope.token))))

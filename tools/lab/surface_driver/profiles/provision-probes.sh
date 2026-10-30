@@ -8,6 +8,8 @@
 # (GStreamer's GTK3 sink for the visible pattern, #784) in a disposable run
 # overlay. It is never sealed into a golden or snapshot; it fails closed when
 # the package or the gtksink element is unavailable.
+# --keyring-overlay stages the distro Secret Service daemon for private
+# synthetic KDE fixtures. It never opens or configures a desktop wallet.
 set -eu
 if [ "${1:-}" = --recording-overlay ]; then
   sudo -n apt-get update
@@ -16,8 +18,14 @@ if [ "${1:-}" = --recording-overlay ]; then
   python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; Gst.init(None); assert Gst.ElementFactory.find('gtksink'), 'gtksink missing'"
   exit 0
 fi
+if [ "${1:-}" = --keyring-overlay ]; then
+  sudo -n apt-get update
+  sudo -n apt-get install -y --no-install-recommends gnome-keyring python3-gi
+  command -v gnome-keyring-daemon >/dev/null
+  exit 0
+fi
 if [ "${1:-}" != --disposable ]; then
-  echo 'usage: provision-probes.sh --disposable | --recording-overlay (disposable guests and overlays only; never run on goldens)' >&2
+  echo 'usage: provision-probes.sh --disposable | --recording-overlay | --keyring-overlay (disposable guests and overlays only; never run on goldens)' >&2
   exit 2
 fi
 sudo -n apt-get update
