@@ -5,6 +5,49 @@ import shlex
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 
 
+# SD_SETTINGS_CONTROLS: inspect only the verified helper. The generic desktop
+# query also traverses every Cinnamon menu and unrelated application.
+OWNED_CONTROLS = r'''import fnmatch, json, os, pathlib, sys
+import pyatspi
+request = json.loads(sys.argv[1])
+pid, query = request['pid'], request['query']
+environment = pathlib.Path('/proc/' + str(pid) + '/environ').read_bytes().split(b'\0')
+assert ('XDG_RUNTIME_DIR=' + os.environ['XDG_RUNTIME_DIR']).encode() in environment
+apps = []
+for app in pyatspi.Registry.getDesktop(0):
+    try:
+        if app.get_process_id() == pid:
+            apps.append(app)
+    except (RuntimeError, AttributeError):
+        pass
+stack, rows, visited = [(app, 0) for app in apps], [], 0
+while stack and visited < 6000:
+    node, depth = stack.pop()
+    visited += 1
+    try:
+        name, role = node.name or '', node.getRoleName()
+        if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
+            rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
+            rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect})
+        if depth < 30:
+            stack.extend((child, depth + 1) for child in node if child is not None)
+    except (RuntimeError, AttributeError, NotImplementedError):
+        pass
+assert not stack, 'private accessibility tree exceeded the bounded scan'
+print(json.dumps(rows))
+'''
+
+
+def controls(ctx, query, pid):
+    if not ctx.profile.get('at_spi', {}).get('available'):
+        ctx.blocked('Settings live controls require the profile accessibility capability.')
+    request = json.dumps({'pid': int(pid), 'query': query})
+    reply = ctx.shell('python3 -c ' + shlex.quote(OWNED_CONTROLS) + ' ' + shlex.quote(request))
+    if reply['returncode']:
+        ctx.blocked('Settings private accessibility probe unavailable; input withheld.')
+    return json.loads(reply['stdout'])
+
+
 def observe(ctx, geometry, *, foreground=False):
     key = 'foreground_script' if foreground else 'input_state_script'
     script = ctx.profile.get('settings', {}).get(key)
@@ -33,7 +76,7 @@ def ensure_accessible(ctx):
     geometry = ctx.geometry('settings')
     owner = observe(ctx, geometry, foreground=True)
     query = ctx.profile['settings']['live_controls']['settingsSection0']
-    if any(row.get('pid') == owner['pid'] for row in ctx.accessible(query)):
+    if any(row.get('pid') == owner['pid'] for row in controls(ctx, query, owner['pid'])):
         return
     # Qt 6.4 reads the AT-SPI properties at helper startup and does not
     # subscribe to their changes (qtbase/src/gui/accessible/linux/dbusconnection.cpp).
@@ -68,7 +111,7 @@ def click(ctx, control):
     for attempt in range(12):
         geometry = ctx.geometry('settings')
         def matching():
-            return [row for row in ctx.accessible(query)
+            return [row for row in controls(ctx, query, owner['pid'])
                     if row.get('pid') == owner['pid'] and row.get('rect') and row['rect'][2] > 0]
         try:
             matches = ctx.wait(matching, 'Settings accessibility exposes ' + control)

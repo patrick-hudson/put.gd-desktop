@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -219,6 +220,9 @@ class Fake(Context):
     def shell(self, script, **kwargs):
         if script.startswith('python3 -c ') and 'XDG_CONFIG_HOME' in script:
             return {'returncode': 0, 'stdout': json.dumps({'path': self.config_path, 'document': self.disk})}
+        if 'private accessibility tree exceeded' in script:
+            request = json.loads(shlex.split(script)[-1])
+            return {'returncode': 0, 'stdout': json.dumps(self.accessible(request['query']))}
         if 'zipfile' in script:
             return {'returncode': 0, 'stdout': ''}
         if script.endswith(self.profile['settings']['prepare_script']):
