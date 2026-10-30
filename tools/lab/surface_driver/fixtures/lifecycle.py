@@ -15,6 +15,13 @@ def source(scope):
         result=ctx.shell('sudo -n /usr/bin/apt-get install -y --no-install-recommends gstreamer1.0-gtk3 >/dev/null 2>&1',timeout=180)
         if result['returncode'] or ctx.shell(check)['returncode']:
             raise RecipeBlocked('synthetic motion prerequisite unavailable: gstreamer1.0-gtk3 (gtksink/gtkglsink)',issue=672)
+    media='command -v ffmpeg >/dev/null && command -v ffprobe >/dev/null'
+    if ctx.shell(media)['returncode']:
+        if ctx.placement not in ('boat','guest') or not ctx.profile.get('guest'):
+            raise RecipeBlocked('synthetic clip verification needs distro ffmpeg and ffprobe',issue=672)
+        result=ctx.shell('sudo -n /usr/bin/apt-get install -y --no-install-recommends ffmpeg >/dev/null 2>&1',timeout=180)
+        if result['returncode'] or ctx.shell(media)['returncode']:
+            raise RecipeBlocked('synthetic clip verification prerequisite unavailable: ffmpeg/ffprobe',issue=672)
     from .recordings import pattern
     return pattern(scope)
 

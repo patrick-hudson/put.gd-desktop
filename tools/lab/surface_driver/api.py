@@ -333,6 +333,9 @@ class Context:
           prepare_recording(**overrides), recording_ids, output_dir, destination
           and capabilities. Callers exercise the production CLI/MCP lifecycle;
           native recording consent is supplied separately, never bypassed.
+          events.recording-source preflights/stages the distro GTK3 GStreamer
+          sink and ffmpeg/ffprobe in disposable guests, before scene/capture
+          setup; an unavailable decoder prerequisite blocks precisely.
         * events.expired-multipart: real failed SDK operation/journal,
           operationId/itemId, listing()/requests() independent loopback S3
           evidence; automatic_cleanup() ages only that stopped owned journal
