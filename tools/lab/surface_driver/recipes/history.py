@@ -362,7 +362,8 @@ def inspector_more(ctx):
     ctx.click('text:Save a copy…', window='historyInspectorMenu')
     chooser = _result(ctx.call('ui.fileDialog', {'dialog': 'historySaveAs', 'action': 'inspect', 'id': row['id']}))
     ctx.expect(chooser['open'] is True, 'More file actions opens Save a copy chooser')
-    # Bind the actual chooser before sending its cancellation key.
+    # The resident reports the chooser request before its native window maps.
+    _wait_window(ctx, 'historySaveDialog')
     ctx.focus('historySaveDialog', raise_window=False)
     ctx.keys('Esc')
     ctx.focus('history', raise_window=False)

@@ -743,6 +743,25 @@ class HistoryRecipeTests(unittest.TestCase):
                 super().keys(*sequence)
         history.inspector_more(ChooserContext(('history-row', 'file-dialog-fallback')))
 
+    def test_inspector_waits_for_native_chooser_mapping_before_focus(self):
+        class MappingContext(FakeContext):
+            chooser_geometry_calls = 0
+            mapped = False
+            def geometry(self, window):
+                if window == 'historySaveDialog':
+                    self.chooser_geometry_calls += 1
+                    if self.chooser_geometry_calls == 1:
+                        raise RecipeBlocked('geometry: RuntimeError: live window match is missing or ambiguous (0 matches)')
+                    self.mapped = True
+                return super().geometry(window)
+            def focus(self, window, raise_window=True):
+                if window == 'historySaveDialog' and not self.mapped:
+                    raise AssertionError('chooser request is open but its native window is not mapped')
+                return super().focus(window, raise_window)
+        ctx = MappingContext(('history-row', 'file-dialog-fallback'))
+        history.inspector_more(ctx)
+        self.assertEqual(ctx.chooser_geometry_calls, 2)
+
     def test_history_popup_owners_are_scoped_on_both_guests(self):
         from tools.lab.surface_driver.profiles import load_profile
         for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
