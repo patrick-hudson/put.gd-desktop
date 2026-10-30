@@ -9,6 +9,10 @@ continuing a test session so subsequent actions remain visible on the display wa
 A locked or blanked session must be visibly restored before graphical acceptance.
 Host protocol tests and offscreen fixture checks do not prove desktop acceptance.
 
+For opt-in parallel package preparation on disposable cloud workers, use
+[exact candidate builds on Boat](boat-candidates.md). Its artifact and snapshot
+receipts are separate from the graphical acceptance evidence below.
+
 ## Host selection
 
 Plan host/guest placement with the [Linux acceptance matrix](acceptance-matrix.md).
@@ -50,7 +54,12 @@ actual host-visible QEMU processes and reserved VNC/SSH ports. A sandbox's missi
 PID does not prove that the host VM stopped. Verify the exact process identity
 and owned overlay before stopping a VM; preserve its diagnostics. `reset` retains
 the overlay. `launch` requires a new run directory and creates a new overlay;
-it does not resume an existing run. An existing-overlay resume must separately
+it does not resume an existing run. `--run` must name a symlink-free direct child
+of this checkout's canonical `work/lab-runs`; an outside or nested path is rejected
+before allocating an overlay or bootstrapping anything. Use a short name such as
+`work/lab-runs/c1`. If that still exceeds the 107-byte resolved socket limit,
+use a checkout at a shorter real path and keep runs inside its canonical root;
+a symlink or `/tmp` run outside that root does not provide a cleanup-safe shortcut. An existing-overlay resume must separately
 validate its recorded backing chain, host process/port absence and new QEMU identity,
 then update the live run metadata without overwriting the prior receipt.
 
@@ -164,20 +173,21 @@ truncate -s 16M "$provision_control/seed.img"
 mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
 mcopy -i "$provision_control/seed.img" tools/lab/bootstrap-guest.sh ::bootstrap.sh
 mcopy -i "$provision_control/seed.img" tools/lab/guest_idle.py ::guest_idle.py
+mcopy -i "$provision_control/seed.img" tools/lab/package_install.py ::package_install.py
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
 Shut down this new provisioning guest before restarting it. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
-QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script and visibility helper only. In the guest terminal:
+QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script, visibility helper and package supervisor only. In the guest terminal:
 
 ```sh
 sudo mount /dev/disk/by-label/PUTGDLAB /mnt
 sudo sh /mnt/bootstrap.sh /mnt/identity.pub
 ```
 
-Copy `tools/lab/bootstrap-guest.sh`, its companion `tools/lab/guest_idle.py` and the public key into the disposable guest, keeping the two scripts together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
+Copy `tools/lab/bootstrap-guest.sh`, its companions `tools/lab/guest_idle.py` and `tools/lab/package_install.py`, and the public key into the disposable guest, keeping all three files together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
 
 Verify the SSH host fingerprint
 against the guest console before recording the host key. Keep the private key outside
@@ -249,7 +259,206 @@ SHA256 values with the requested package, even when its version is unchanged. Th
 runtime directory for desktop startup. U10 still owns complete release lifecycle,
 checksums and final notice auditing.
 
-The guest bootstrap grants the narrowly scoped `/usr/bin/apt-get` rule used by `install`; it never changes host privileges. Package dependency resolution uses distro repositories.
+New guest bootstrap installs the root-owned fixed supervisor at
+`/usr/local/lib/putgd-lab/package_install.py`. Every DEB `install` also stages
+its controller's helper into the fresh run overlay over that run's SSH
+connection, so existing immutable goldens need no refresh. The controller checks
+the uploaded SHA-256, uses the guest's existing passwordless `/usr/bin/apt-get`
+rule with an `APT::Update::Pre-Invoke` hook to install the root-owned helper and
+its fixed-command sudo rule, then checks the installed SHA-256, ownership,
+permissions and sudo access before starting the supervisor. The staging update uses `/dev/null` as its source list, disables source parts
+and list cleanup, and therefore neither fetches repositories nor deletes cached
+indexes. Its hook intentionally exits unsuccessfully; that expected apt exit is
+checked through the installed helper's postconditions. The normal update/install
+runs only under the bounded supervisor. `helper.json` records
+the verified hash and staging route; `staging.log` retains the hook result.
+If another apt process holds `/var/lib/apt/lists/lock`, staging fails promptly
+with the holder PID and process name reported by apt (for example, apt-daily
+or Mint Update may be active). Wait for that process to finish before retrying;
+the controller does not stop it. Failed staging also attempts to copy
+`staging.log` into the host attempt directory, with a 10-second collection
+timeout. A missing log or disconnected guest does not replace the original error.
+
+Staging runs under a detached, unprivileged guest subreaper in a new Linux
+session (`setsid`), in that job's private `~/putgd-lab/install-<id>` directory.
+`staging-process.json` records the session ID, session leader PID and `/proc`
+start ticks before any privileged work. `staging-result.json` is
+written only after the staging shell and all its descendants have exited. A
+lost SSH reply, timeout, or Ctrl-C therefore does not establish completion.
+Failed staging reconciles the same job for up to 30 seconds, independently of
+best-effort log collection. It records `staging-reconciliation.json` on the host
+when available and releases `install-active` only after proving completion (or
+fencing a launch that never started). A second Ctrl-C while writing the failure
+receipt or reconciling staging prints recovery guidance even if the host failure
+receipt could not be saved. Guidance checks the actual `install-active` state:
+held, released, owned by a replacement job, or unknown if the guest cannot be
+inspected. An interruption after release therefore does not claim the token is
+still held. Held or unknown state includes the exact `recover-staging` command.
+The cancellation fence also prevents a delayed SSH command from starting after
+recovery. The controller never stops
+staging by process name or kills a privileged apt process through its
+unprivileged wrapper.
+
+If the guest is unreachable, staging is still running after the bounded wait,
+or the wrapper exited without a terminal receipt, the lock stays held and
+retries are refused. Acquisition and both release paths serialize their token
+checks and updates under the same guest `install-guard` flock (five-second
+acquisition limit), so concurrent recovery cannot remove a replacement job.
+Inspect `staging-process.json`, `staging-result.json`,
+`staging-output.log` and `staging.log` for the reported job. When the same guest
+is reachable and staging has finished, use the exact job ID from the error:
+
+```sh
+python3 tools/lab/lab.py recover-staging --run "$lab_run" \
+  --job install-0123456789abcdef0123456789abcdef
+```
+
+This command first takes the host's `install.lock` flock in the run directory
+without waiting. An `install` controller holds that lock from guest lock
+acquisition until it returns. The kernel drops it when the controller exits for
+any reason. While the controller is alive, recovery refuses. That includes the
+window after successful staging while it writes `helper.json`, uploads
+`package.deb` and launches the supervisor, when the guest shows no
+supervisor progress yet. A second `install` on the same run is refused the same
+way. The command then authenticates the owned running overlay, rejects a changed
+lock token and any package-supervisor progress/result, and repeats the bounded
+guest lifetime check before releasing that token.
+
+The root package supervisor also admits itself under `install-guard`. It
+becomes a subreaper first, then starts only while its own job holds
+`install-active`, and writes `progress.json` before releasing the guard. A
+failure before admission leaves no progress or result, so the job stays
+recoverable. After admission, the supervisor's own failures also end in
+`result.json`.
+
+Recovery checks the token and the absence of `progress.json` and `result.json`
+twice. The first check happens before reconciling staging. The second happens
+in the release, which holds `install-guard`. Each check is a separate
+fail-closed shell statement. A delayed supervisor start therefore either
+leaves `progress.json` before the release (recovery refuses and keeps the lock),
+or finds the token gone or replaced. In that case it exits with
+`Install supervisor refused to start` and writes no progress or result. The
+supervisor never runs without the lock.
+
+Recovery that reconciles a started staging requires a verifiable session leader
+identity and no live process in the recorded session. That covers ordinary
+recovery after a recorded start, and every `--abandoned` recovery. The scan
+enumerates `/proc/<pid>/stat` session IDs (field 6), including root-owned
+staging descendants. An empty session must be empty on two consecutive passes,
+because a member that forks and exits during a single pass can be missed.
+Missing identity for `--abandoned`, unreadable process information or
+incomplete enumeration (including restricted procfs mounts) refuses recovery.
+
+An abrupt controller death or an interrupted receipt write can leave no host
+`staging-failed.json`. Once the controller has exited, recovery works from the
+guest's state under the same ownership, token, supervisor and lifetime guards.
+If the guest has `staging-process.json`, recovery reconciles that identity.
+If staging never recorded an identity, the controller died before the
+wrapper took `staging.lock` and started its script. The wrapper may not have
+launched yet, or may be waiting for that lock. Ordinary recovery then fences
+a delayed wrapper launch under `staging.lock`, reports `staging-not-started`
+and releases the token. `--abandoned` refuses in that case, because it
+requires a recorded identity. The command saves `staging-recovery.json` in the
+host job directory and preserves the install-time
+`staging-reconciliation.json`. It refuses a running or uncertain job. It does
+not resume the failed install; run `install` again after recovery succeeds.
+
+If the wrapper died without writing `staging-result.json`, ordinary recovery
+continues to refuse. Inspect the recorded PID/start ticks, logs and descendants
+before explicitly abandoning that attempt:
+
+```sh
+python3 tools/lab/lab.py recover-staging --run "$lab_run" \
+  --job install-0123456789abcdef0123456789abcdef --abandoned
+```
+
+`--abandoned` requires every recovery guard above, an unheld guest
+`staging.lock` flock, a valid recorded session leader PID that is dead or has
+different `/proc` start ticks, and a complete scan proving no live process has
+the recorded session ID. Killing the wrapper can free its flock while privileged
+children still run. Children that remain in the staging session keep recovery
+blocked until they exit. Zombie or exited processes do not count as live.
+
+The session scan has two limits. First, a live wrapper waits, as subreaper, for every
+descendant. That includes descendants that called `setsid()`, which keeps
+ordinary recovery blocked. After the wrapper is killed, though, a descendant
+that left the session with `setsid()` is not visible to the scan. `--abandoned`
+can then release `install-active` while it runs. The in-tree staging commands
+start no such process: the hook runs only `install`, `sha256sum`, `printf`,
+`chmod` and `visudo`, `apt-get update` with empty sources runs no dpkg, and
+sudo's `use_pty` has no effect without a terminal. The remaining risk is a
+guest's own APT Pre-Invoke hook daemonizing. Second, the `/proc` scan is not
+atomic. Two consecutive empty passes make a miss unlikely, but a member that
+keeps forking and exiting could evade both. Proving the session empty would
+mean freezing it. Recovery never signals, and a cgroup is not available yet.
+The `staging-abandoned` report states both limits in its `limit` field. If the
+guest's hooks can daemonize, inspect its process list before retrying.
+Cgroup-based tracking, whose `cgroup.events` `populated` flag is atomic, is
+[#780](https://github.com/patrick-hudson/put.gd-desktop/issues/780).
+
+A held flock, live matching leader,
+live session member, malformed identity or uncertain inspection retains
+`install-active`; so does a missing identity under `--abandoned`. Recovery
+writes `staging-recovery.json` only after the guarded release succeeds. Older receipts without a session ID cannot prove abandonment;
+preserve the run for investigation.
+
+On guests without Python 3.9's `os.pidfd_open`, or where the kernel returns
+`ENOSYS` for that API, leader identity checks fall back to `/proc` start ticks
+and process state. `pidfd_open` `EINVAL` means the leader exited but its PID is
+still in use as the ID of a session with live members. Recovery counts the
+leader as dead and refuses, with those member PIDs from the session scan in the
+report and the error. Other inspection failures remain unknown and cannot
+authorize abandonment. The command never signals a process. It fences delayed starts,
+records a `staging-abandoned` report in the host's `staging-recovery.json`, and
+clears only the matching install token. The missing terminal receipt remains
+missing; recovery proves session quiescence rather than a successful helper
+installation. These rules apply only to disposable overlays; immutable goldens
+and the separate package supervisor's recovery remain unchanged.
+See the [Cinnamon cancellation proof](evidence/2026-10-30-lab-staging-748/README.md)
+for the exact identities, refused retries, later successful install and cleanup.
+
+This uses authority already granted to apt in the disposable guest. It never
+changes the host, golden, bootstrap key or `authorized_keys`, and needs no guest
+password or console bootstrap rerun. Keep the golden immutable; provision a new
+golden for lasting bootstrap changes. Package dependency resolution uses distro
+repositories.
+
+The VM apt path rejects RPM inputs; `physical.py` retains its existing dnf/RPM
+install path. DEB `install` has a 900-second apt budget and a further 600-second
+recovery window.
+Profiles can set positive integer `install_timeout` and
+`install_recovery_timeout` values; CLI `--install-timeout` and
+`--install-recovery-timeout` override them. The guest supervisor survives an SSH or
+controller disconnect, waits for only its own descendants after the apt budget
+expires, and never starts a replacement apt command during recovery. It verifies
+`dpkg -s putgd` and a clean `dpkg --audit` before recording success in
+`result.json`. The controller then verifies the installed binary hashes in the
+guest before recording the package receipt. Recovery can succeed after the
+initial timeout if the owned install finishes; that timeout remains recorded in
+the receipt.
+
+Each attempt retains `apt.log`, PID/start identities, `progress.json`, and
+`result.json` (including dpkg state) under `~/putgd-lab/install-<id>` in the guest
+and copies completed evidence into the host run's matching directory. If the
+recovery window expires, the supervisor freezes and kills only descendants pinned
+by pidfds, then reports any remaining PIDs and package state. It never kills by
+name or retries apt. The guest `~/putgd-lab/install-active` lock blocks retries
+through binary verification after successful package-manager completion. A failure
+before staging is launched, confirmed staging completion before the supervisor
+starts, or a later collection/verification failure after a successful
+package-manager report releases only that job's lock. Unresolved or
+failed package-manager attempts retain it. A refused retry reports the held job
+ID, summarized result/progress state, UTC start time from the job marker, and
+guest `result.json` path without creating another host evidence directory.
+The complete report, including owned process identities, stays in the evidence file.
+If the supervisor produces no progress within 15 seconds, installation fails early
+and points to `supervisor.log` (which may itself be missing); the lock stays held
+because a lost launch reply does not prove no process started.
+For those attempts, inspect the recorded
+job/result, reconcile the exact owned process identities and dpkg recovery state, and acknowledge recovery by removing only that
+job's lock before another install. Do not remove a lock while its supervisor or
+package descendants are still running; uninterruptible IO may require retaining
+the stopped run for investigation.
 
 After inventory and clean golden image shutdown, choose a new run path and
 verify that it does not exist. On a builder, replace the `--golden` path with
@@ -264,7 +473,7 @@ set -eu
 lab_run_id=$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')
 lab_run="$PWD/work/lab-runs/cinnamon-$lab_run_id"
 test ! -e "$lab_run"
-python3 tools/diagnostics/check_socket_paths.py --socket "$lab_run/qmp.sock"
+python3 tools/diagnostics/check_socket_paths.py --socket "$lab_run/qmp.sock" "$lab_run/vnc.sock"
 python3 tools/lab/lab.py profiles
 python3 tools/lab/lab.py launch --profile cinnamon-x11 \
   --golden work/lab-images/cinnamon-x11.qcow2 --run "$lab_run" \
@@ -405,9 +614,21 @@ operations and overlay cleanup share a host lock. Cleanup also checks actual
 process/open-file identities and QEMU backing chains, identified by their image
 headers rather than filename extensions. It holds a native QEMU image lock
 through final verification and unlink, preventing a competing writer from
-opening the disk. Unrelated nondumpable applications may hide their memory maps;
-the held image lock handles that normal host restriction, while hidden VM
-processes and incomplete image inventories still refuse cleanup. It refuses running,
+opening the disk. The process inventory must also rule out ordinary read-only
+file descriptors and mappings, including those held by root or another user.
+If a process is unreadable, cleanup retries the same read-only inventory with
+`sudo -n -- /usr/bin/python3 -I -B`; it does not run the lab controller, import
+checkout modules at elevation or delete files as root. The elevated program is
+the scan function's source, captured once when cleanup is imported. A regular
+user can't read `/proc/1/fd`, so in practice every host takes this path: boat's
+`user` runner and all five builders already allow `/usr/bin/python3` through
+`sudo -n` without a prompt. No sudo rule is installed or changed. The direct
+scan alone is enough only where every process is readable, such as cleanup run
+as root.
+Unavailable sudo, unreadable elevated inventory, changed process identities,
+`hidepid` and nested PID namespaces refuse cleanup; a native image lock alone
+cannot establish that an opaque process has no read-only descriptor.
+Incomplete image inventories also refuse cleanup. It refuses running,
 referenced, symlinked or mismatched disks, changed evidence and unrecorded
 completion. It only removes `disk.qcow2`; screenshots, logs, parameters, results,
 keys, firmware/TPM state and historical metadata remain in place. The separate
@@ -452,6 +673,39 @@ Windows custom runs use `python3 tools/lab/windows.py cleanup --vm RUN
 rules. Do not place evidence manifests or private run files in release exports.
 Retirement removes the old guest filesystem permanently; future tests use a
 fresh run directory cloned from the preserved golden.
+
+
+### Retire a pre-existing run outside the canonical root
+
+The cleanup guard deliberately refuses an old run outside this checkout's
+`work/lab-runs`. Do not bypass the guard, use a symlink, or delete its disk by
+hand. Complete the following on the actual QEMU host, after its campaign and
+investigation finish:
+
+1. Export and checksum its evidence, original `state.json`, exact QEMU identity,
+   backing chain and old absolute run path. Stop the exact owned VM with
+   `lab.py reset --run OLD_RUN`, then verify that process has exited and no
+   process holds the overlay. Inventory backing chains and confirm no other
+   overlay references a disk inside the run before relocating it. Preserve all
+   golden disks and their paths.
+2. Choose an unused, short, symlink-free direct child of this checkout's
+   `work/lab-runs`. Move the stopped run directory there as a complete bundle.
+   Preserve the original state as an evidence file; update only the active
+   `state.json`'s `overlay` field to the new absolute `disk.qcow2` path. Preserve
+   the run ID, golden path/hash and historical results. Record both paths and
+   the unchanged overlay/backing identities in relocation evidence. Never
+   resume this retired run or rewrite historical acceptance records.
+3. Export and verify that relocation evidence. Create the explicit completion
+   manifest described above using the **new** absolute run path and original
+   run ID, and include the original state and relocation record as hashed
+   members. Run canonical `cleanup --run NEW_RUN --evidence-manifest MANIFEST
+   --dry-run`, then the same command without `--dry-run`. For a golden in
+   another checkout, supply its owned canonical `--images-root .../work/lab-images`.
+   Retain the cleanup receipt alongside the evidence.
+
+The guard still checks ownership, actual processes, all backing dependencies,
+image locks and completion evidence after relocation. A stopped VM alone is
+insufficient authorization to retire its disk.
 
 
 ## Physical-desktop input agent

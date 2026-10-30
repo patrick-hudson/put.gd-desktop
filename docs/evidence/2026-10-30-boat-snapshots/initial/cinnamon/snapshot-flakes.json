@@ -1,0 +1,1634 @@
+{
+ "passes": [
+  {
+   "command": [
+    "ctest",
+    "--preset",
+    "dev",
+    "--parallel",
+    "8",
+    "--resource-spec-file",
+    "/home/user/work/put.gd/src/tools/ci/ctest-resources.json",
+    "--output-junit",
+    "/home/user/work/put.gd/src/build/dev/snapshot-tests.xml"
+   ],
+   "exitCode": 0,
+   "kind": "first",
+   "seconds": 124.08
+  }
+ ],
+ "retryLabel": "integration",
+ "schemaVersion": 1,
+ "source": {
+  "PUTGD_TEST_TIME_SCALE": "3",
+  "kind": "ci"
+ },
+ "summary": {
+  "blocking": [],
+  "failed": [],
+  "failedFirst": [],
+  "ok": true,
+  "passedOnRetry": [],
+  "retried": [],
+  "tests": 114,
+  "unexplainedCtestFailure": false
+ },
+ "tests": {
+  "allocator_policy_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0589523
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "archive_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0149025
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "b2_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.1619
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "bar_placement_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0623015
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "bar_placement_single_monitor_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0626229
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "build_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0498392
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "capture_control_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00621619
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "capture_preparation_x11": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.13433
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "capture_process_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.35102
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "cli_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 39.147
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "collision_policy_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 8.19807
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "config_reload_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.641953
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "crash_handler_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.5564
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "diagnostics_bundle_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.79461
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "diagnostics_upload_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.55651
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "edit_operations_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.9588
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "editor_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.51787
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "editor_job_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.22165
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "export_av_sync_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.04968
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "file_dialog_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.33956
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "file_dialog_x11_parent": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.108992
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "geometry_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.386821
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "gnome_bridge_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0402396
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gnome_core_transport_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.8711
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gnome_image_decode": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0604637
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "gui_application": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 37.3156
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_editor_window": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 22.1195
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_history_view": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 58.5498
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_history_view_text150": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.21774
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_review_window": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 19.269
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_settings": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 124.079
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_theme": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.794243
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_theme_cinnamon_dconf": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.47532
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_tray": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 34.3459
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_version": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.12176
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "gui_window_buttons": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.184258
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "history_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.13374
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "host_environment_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0654081
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "host_open_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.70717
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "image_job_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.57327
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ip_address_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0149724
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "json_ref_lifetime_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.299653
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "kde_clipboard_import": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.110434
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_keyboard_map": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.012725
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "kde_ownership_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 8.25625
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_region_control": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.23632
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_region_overlay": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.055623
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kde_shortcut_normalization": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0101206
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "kde_shortcuts_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 5.56667
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "keychain_backend_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0132303
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "keychain_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.111047
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "kwin_transfer_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.17119
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "local_ipc_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 12.2241
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "logging_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.476572
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "login_startup_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0453843
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "native_background_startup_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 67.7439
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_region_overlay": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.2374
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_session_guards": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00711701
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_shortcut_rejection_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.76596
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "native_tray_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 15.8175
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "operations_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 77.3022
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "pause_timeline_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00214057
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "payload_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0728511
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "portal_streams_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00921891
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "poster_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.387973
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "poster_job_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.99385
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "proton_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.97105
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "proton_transport": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 7.0439
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "public_url": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00750749
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "record_identity_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0172821
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "record_runtime_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00367435
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "recording_helper_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.6811
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "recording_model_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0192046
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "recording_service_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.87766
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "recording_storage_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 6.54297
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "region_selection_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.03199
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "release_link_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00461033
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "resident_display_loss_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.647804
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "resident_retire_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.52099
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "resident_session_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 1.71126
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_delete_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 10.1682
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 11.6314
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_module_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 35.3157
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_multipart_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.7833
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_worker_protocol": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0825182
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "s3_worker_supervision": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 47.8768
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "sdk_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.243549
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "session_client_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 16.6927
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "settings_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 9.59539
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "shortcut_keyboard": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00524736
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "storage_contract_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.19674
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "storage_locations_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.764424
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_control_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.888313
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_endpoints_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.418484
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_native_lifecycle_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 2.01395
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_process_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 14.0119
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "ui_split_services_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.470676
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "update_appimage_install_child": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0910548
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_appimage_install_files": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.039
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "update_check_request": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0195721
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_feed_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00657504
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_minisign_verify": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00518489
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "update_service_schedule": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 3.65282
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "update_system_repository": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00636198
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "upload_naming_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0423988
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  },
+  "version_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 4.51153
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "version_integration": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0568614
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "wayland_acquisition_contract": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00357967
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_capture_decode": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.151612
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_clipboard_import": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.576794
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_core_clipboard": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 17.767
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_isolated": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 21.2158
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_native_snapshot": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.0486277
+    }
+   ],
+   "labels": [
+    "integration"
+   ],
+   "outcome": "passed"
+  },
+  "x11_raw_key_matcher": {
+   "attempts": [
+    {
+     "details": [],
+     "message": "",
+     "outcome": "passed",
+     "seconds": 0.00417529
+    }
+   ],
+   "labels": [
+    "unit"
+   ],
+   "outcome": "passed"
+  }
+ }
+}

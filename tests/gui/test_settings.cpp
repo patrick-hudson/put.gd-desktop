@@ -5,6 +5,7 @@
 #include "ui/PreferenceRows.h"
 #include "ui/Fonts.h"
 #include "ui/ByteSize.h"
+#include <QAccessible>
 #include <QToolTip>
 #include <QPainter>
 #include <QStyleOptionViewItem>
@@ -654,6 +655,8 @@ private slots:
   QTemporaryDir dir;logging::open(dir.filePath("state/logs"),{},"putgd-test");auto closeLog=qScopeGuard([]{logging::close();});logging::info(logApp(),"Synthetic diagnostics record");logging::flush();
   SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=Settings::developmentTemplate();auto archive=doc["archive"].toObject();archive["root"]=dir.filePath("archive");doc["archive"]=archive;QVERIFY(service.save(doc,{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);DiagnosticsBundles bundles(fixture.operations(),dir.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);
+  // The layout fixture needs a journal to preview, not an in-flight migration.
+  PUTGD_TRY_VERIFY(fixture.operations().ready());
   MainWindow window(fixture.session);window.navigate("settings");window.show();fixture.session.refreshSnapshot();auto* settings=window.settings();
   bool opened=false;settings->diagnosticsCommand({{"action","openPackage"}},[&](Error,QJsonObject){opened=true;});PUTGD_TRY_VERIFY(opened);
   auto* dialog=settings->findChild<QDialog*>("diagnosticsPackageDialog");QVERIFY(dialog&&dialog->isVisible());QVERIFY(putgd::test::waitForWindowExposed(dialog));
@@ -1650,6 +1653,107 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   QTest::keyClick(input,Qt::Key_Escape,Qt::ControlModifier);QTest::keyRelease(input,Qt::Key_2,Qt::ControlModifier);QTest::keyRelease(input,Qt::Key_Control);
   QCOMPARE(input->text(),QString("Ctrl+1"));
  }
+ void shortcutSecondMouseClickCancelsRecording_data(){
+  QTest::addColumn<bool>("ready");QTest::newRow("preparing")<<false;QTest::newRow("ready")<<true;
+ }
+ void shortcutSecondMouseClickCancelsRecording(){
+  QFETCH(bool,ready);std::function<void(Error)> acknowledge;
+  QList<bool> transitions;QScrollArea page;ShortcutEditor editor;
+  page.setWidget(&editor);page.setWidgetResizable(true);page.resize(800,900);
+  editor.setRecordingControl([&](bool active,auto reply){
+   transitions.append(active);QJsonObject bindings;
+   for(auto it=editor.editors().cbegin();it!=editor.editors().cend();++it)bindings[it.key()]=QJsonObject{{"requested",it.value()->text()},{"actual",it.value()->text()},{"bound",!active},{"state",active?"recording":"bound"}};
+   editor.setStatus({{"available",true},{"bindings",bindings}});
+   if(active&&!ready)acknowledge=reply;else reply({});
+  });
+  editor.setActions(Settings::defaults()["actions"].toObject());page.show();
+  QVERIFY(putgd::test::waitForWindowExposed(&page));page.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&page));
+  auto* input=editor.editors().value("region");const auto saved=input->text();
+  auto click=[&]{QTest::mouseClick(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,input->mapTo(&page,input->rect().center()));};
+  click();PUTGD_TRY_COMPARE(transitions,QList<bool>({true}));
+  QCOMPARE(input->placeholderText(),QString("Press shortcut…"));
+  click();PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false}));
+  if(acknowledge)acknowledge({});
+  QCOMPARE(input->text(),saved);QCOMPARE(input->placeholderText(),QString("Not set"));
+  QVERIFY(editor.findChild<QLabel*>("shortcutRecordingStatus")->text().startsWith("Recording canceled."));
+  // Another real keycap click switches rows; Escape still restores bindings.
+  click();auto* next=editor.editors().value("window");const auto nextSaved=next->text();
+  const auto nextPoint=next->mapTo(&page,next->rect().center());
+  QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,nextPoint);putgd::test::settle(50);
+  QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,nextPoint);
+  PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true}));
+  QCOMPARE(input->placeholderText(),QString("Not set"));QCOMPARE(next->placeholderText(),QString("Press shortcut…"));
+  QTest::keyClick(page.windowHandle(),Qt::Key_Escape);
+  PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true,false}));QCOMPARE(next->text(),nextSaved);
+  click();const auto abandoned=next->mapTo(&page,next->rect().center());
+  QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,abandoned);putgd::test::settle(50);
+  QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,QPoint(1,1));
+  PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true,false,true,false}));
+  QCOMPARE(input->text(),saved);QCOMPARE(input->placeholderText(),QString("Not set"));
+  click();QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,next->mapTo(&page,next->rect().center()));
+  QTest::keyClick(page.windowHandle(),Qt::Key_Escape);putgd::test::settle(50);
+  QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,next->mapTo(&page,next->rect().center()));
+  PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true,false,true,false,true,false}));
+  QCOMPARE(input->text(),saved);QCOMPARE(next->text(),nextSaved);
+ }
+ void shortcutRowSwitchIgnoresKeysUntilRelease_data(){
+  QTest::addColumn<QString>("ending");
+  for(const auto* ending:{"switch","abandon","escape","deactivate"})QTest::newRow(ending)<<QString(ending);
+ }
+ void shortcutRowSwitchIgnoresKeysUntilRelease(){
+  QFETCH(QString,ending);QList<bool> transitions;QScrollArea page;ShortcutEditor editor;
+  page.setWidget(&editor);page.setWidgetResizable(true);page.resize(800,900);
+  editor.setRecordingControl([&](bool active,auto reply){
+   transitions.append(active);QJsonObject bindings;
+   for(auto it=editor.editors().cbegin();it!=editor.editors().cend();++it)bindings[it.key()]=QJsonObject{{"requested",it.value()->text()},{"actual",it.value()->text()},{"bound",!active},{"state",active?"recording":"bound"}};
+   editor.setStatus({{"available",true},{"bindings",bindings}});reply({});
+  });
+  editor.setChordResolver([](const QKeyEvent& key){return key.keyCombination();});
+  editor.setActions(Settings::defaults()["actions"].toObject());page.show();
+  QVERIFY(putgd::test::waitForWindowExposed(&page));page.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&page));
+  auto* input=editor.editors().value("region");auto* next=editor.editors().value("window");
+  const auto saved=input->text(),nextSaved=next->text();
+  QTest::mouseClick(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,input->mapTo(&page,input->rect().center()));
+  QCOMPARE(transitions,QList<bool>({true}));
+  const auto point=next->mapTo(&page,next->rect().center());
+  QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,point);
+  bool held=true;auto release=qScopeGuard([&]{if(held)QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,point);});
+  PUTGD_TRY_COMPARE(QApplication::focusWidget(),editor.findChild<QPushButton*>("recordWindowShortcut"));
+  // A complete chord and Backspace during the hold must change neither draft.
+  QTest::keyClick(page.windowHandle(),Qt::Key_8,Qt::ControlModifier|Qt::AltModifier|Qt::ShiftModifier);
+  QTest::keyClick(page.windowHandle(),Qt::Key_Backspace);
+  QCOMPARE(input->text(),saved);QCOMPARE(next->text(),nextSaved);QCOMPARE(transitions,QList<bool>({true}));
+  if(ending=="escape")QTest::keyClick(page.windowHandle(),Qt::Key_Escape);
+  if(ending=="deactivate"){QEvent event(QEvent::WindowDeactivate);QApplication::sendEvent(&page,&event);}
+  QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,ending=="abandon"?QPoint(1,1):point);held=false;
+  if(ending=="switch"){
+   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true}));
+   QTest::keyClick(page.windowHandle(),Qt::Key_9,Qt::ControlModifier|Qt::AltModifier|Qt::ShiftModifier);
+   QCOMPARE(next->text(),QString("Ctrl+Alt+Shift+9"));
+   QCOMPARE(transitions,QList<bool>({true,false,true,false}));
+  }else{
+   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false}));QCOMPARE(next->text(),nextSaved);
+  }
+  QCOMPARE(input->text(),saved);
+ }
+ void shortcutFocusedKeycapAnnouncesRecordingAction(){
+  ShortcutEditor editor;std::function<void(Error)> acknowledge;
+  editor.setRecordingControl([&](bool active,auto reply){if(active)acknowledge=reply;else reply({});});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  QVERIFY(putgd::test::waitForWindowExposed(&editor));editor.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&editor));
+  for(const auto& action:Settings::presentationOrder()){
+   auto* button=editor.findChild<QPushButton*>("record"+action.left(1).toUpper()+action.mid(1)+"Shortcut");
+   auto* accessible=QAccessible::queryAccessibleInterface(button);QVERIFY(accessible);QCOMPARE(accessible->role(),QAccessible::Button);
+   const auto idleName=accessible->text(QAccessible::Name),idleDescription=accessible->text(QAccessible::Description);
+   button->click();QCOMPARE(QApplication::focusWidget(),button);QVERIFY(accessible->state().focused);
+   const auto recording=accessible->text(QAccessible::Name)+" "+accessible->text(QAccessible::Description);
+   QVERIFY2(recording.contains("recording",Qt::CaseInsensitive),qPrintable(recording));
+   QVERIFY2(recording.contains(editor.editors().value(action)->accessibleName(),Qt::CaseInsensitive),qPrintable(recording));
+   acknowledge({});QCOMPARE(accessible->text(QAccessible::Name)+" "+accessible->text(QAccessible::Description),recording);
+   QTest::keyClick(button,Qt::Key_Escape);
+   QCOMPARE(accessible->text(QAccessible::Name),idleName);QCOMPARE(accessible->text(QAccessible::Description),idleDescription);
+  }
+ }
  void shortcutRecordingNormalizesEveryActionAndIgnoresRepeat(){
   ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
   for(const auto& action:Settings::invocableActionNames()){
@@ -2144,7 +2248,7 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
 
  }
  void advancedCompactValuesEndInTheSharedColumn(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* field=window.findChild<QLineEdit*>("failedArtifactDays");auto* count=window.findChild<QLineEdit*>("recentActivityLimit");auto* choice=window.findChild<QComboBox*>("historyRetentionChoice");QVERIFY(field&&count&&choice);putgd::test::settle(50);auto* retry=window.findChild<QComboBox*>("failedArtifactChoice");QVERIFY(retry);QCOMPARE(retry->parentWidget()->width(),choice->parentWidget()->width());QCOMPARE(count->width(),Ui::scaled(120));QCOMPARE(count->alignment(),Qt::AlignRight);QCOMPARE(count->mapTo(&window,QPoint(count->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());QVERIFY(!window.findChild<QLabel*>("failedArtifactDaysUnit"));QCOMPARE(retry->mapTo(&window,QPoint(retry->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(3);window.resize(1440,1100);window.show();auto* field=window.findChild<QLineEdit*>("failedArtifactDays");auto* count=window.findChild<QLineEdit*>("recentActivityLimit");auto* choice=window.findChild<QComboBox*>("historyRetentionChoice");QVERIFY(field&&count&&choice);auto* retry=window.findChild<QComboBox*>("failedArtifactChoice");QVERIFY(retry);PUTGD_TRY_COMPARE(retry->parentWidget()->width(),choice->parentWidget()->width());PUTGD_TRY_COMPARE(count->width(),Ui::scaled(120));QCOMPARE(count->alignment(),Qt::AlignRight);PUTGD_TRY_COMPARE(count->mapTo(&window,QPoint(count->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());QVERIFY(!window.findChild<QLabel*>("failedArtifactDaysUnit"));PUTGD_TRY_COMPARE(retry->mapTo(&window,QPoint(retry->width(),0)).x(),choice->mapTo(&window,QPoint(choice->width(),0)).x());
  }
  void checkboxCaptionsUseTheirAvailableWidthBeforeWrapping(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.resize(1440,960);window.show();auto* check=window.findChild<QCheckBox*>("unlockCredentialsAtStartup");QLabel* caption=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->buddy()==check)caption=label;auto* help=window.findChild<QToolButton*>("unlockCredentialsAtStartupHelp");QVERIFY(caption&&help);PUTGD_TRY_VERIFY(caption->width()>=caption->fontMetrics().horizontalAdvance(caption->text()));QCOMPARE(help->mapTo(caption->parentWidget(),QPoint()).x(),caption->width()+Ui::space(Ui::Space::xs));
@@ -2172,7 +2276,37 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  void familyLabelGuttersAreCappedAndFieldsUseTheRemainder(){
   QFETCH(int,pixels);Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1100);window.showCaptureSettings();window.show();
   int familyGutter=-1;const auto check=[&](QComboBox* combo){QVERIFY(combo);auto* value=combo->parentWidget();while(value&&!value->property("preferenceChoiceValue").toBool())value=value->parentWidget();QVERIFY(value);auto* row=value->parentWidget();auto* caption=qobject_cast<QWidget*>(row->property("preferenceLabel").value<QObject*>());QVERIFY(caption);if(row->property("stacked").toBool()){QVERIFY(value->width()>=Ui::scaled(280)||value->width()==row->width()-2*Ui::space(Ui::Space::l));return;}const int gutter=value->mapTo(row,QPoint()).x()-caption->parentWidget()->mapTo(row,QPoint()).x();QVERIFY(gutter<=220+Ui::scaled(24)+Ui::space(Ui::Space::xs)+Ui::space(Ui::Space::l));if(familyGutter<0)familyGutter=gutter;QCOMPARE(gutter,familyGutter);QCOMPARE(value->mapTo(row,QPoint(value->width(),0)).x(),row->width()-Ui::space(Ui::Space::l));QVERIFY(caption->width()<=220+Ui::scaled(24)+Ui::space(Ui::Space::xs));for(auto* hint:row->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(hint->isVisible()&&hint->objectName().endsWith("Hint")){QCOMPARE(hint->width(),row->width()-2*Ui::space(Ui::Space::l));QVERIFY(hint->height()>=hint->heightForWidth(hint->width()));}};
-  auto* tabs=window.findChild<QTabWidget*>("settingsTabs");for(int page:{0,1,3}){tabs->setCurrentIndex(page);putgd::test::settle(50);for(auto* combo:tabs->currentWidget()->findChildren<QComboBox*>())if(combo->isVisible()&&combo->property("preferenceChoice").toBool())check(combo);}familyGutter=-1;window.navigate("destinations");window.findChild<QToolButton*>("advancedSettings")->setChecked(true);putgd::test::settle(50);for(auto* combo:window.findChild<QScrollArea*>("destinationScroll")->findChildren<QComboBox*>())if(combo->isVisible()&&combo->property("preferenceChoice").toBool())check(combo);
+  // The shared family sizer runs in a queued callback; all visible rows must
+  // agree before the first row's gutter becomes the family's reference.
+  const auto checkFamily=[&](QWidget* page){
+   QList<QComboBox*> choices;
+   for(auto* combo:page->findChildren<QComboBox*>())if(combo->isVisible()&&combo->property("preferenceChoice").toBool())choices.append(combo);
+   QVERIFY(!choices.isEmpty());
+   const auto ready=[&]{
+    int gutter=familyGutter;
+    for(auto* combo:choices){
+     auto* value=combo->parentWidget();while(value&&!value->property("preferenceChoiceValue").toBool())value=value->parentWidget();if(!value)return false;
+     auto* row=value->parentWidget();auto* caption=qobject_cast<QWidget*>(row->property("preferenceLabel").value<QObject*>());
+     if(!caption||!value->property("preferenceChoiceSizer").isValid())return false;
+     if(row->property("stacked").toBool()){
+      if(value->width()<Ui::scaled(280)&&value->width()!=row->width()-2*Ui::space(Ui::Space::l))return false;
+      continue;
+     }
+     const int current=value->mapTo(row,QPoint()).x()-caption->parentWidget()->mapTo(row,QPoint()).x();
+     if(current>220+Ui::scaled(24)+Ui::space(Ui::Space::xs)+Ui::space(Ui::Space::l))return false;
+     if(gutter<0)gutter=current;if(current!=gutter)return false;
+     if(value->mapTo(row,QPoint(value->width(),0)).x()!=row->width()-Ui::space(Ui::Space::l))return false;
+     if(caption->width()>220+Ui::scaled(24)+Ui::space(Ui::Space::xs))return false;
+     for(auto* hint:row->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(hint->isVisible()&&hint->objectName().endsWith("Hint"))
+      if(hint->width()!=row->width()-2*Ui::space(Ui::Space::l)||hint->height()<hint->heightForWidth(hint->width()))return false;
+    }
+    return true;
+   };
+   PUTGD_TRY_VERIFY(ready());
+   for(auto* combo:choices)check(combo);
+  };
+  auto* tabs=window.findChild<QTabWidget*>("settingsTabs");for(int page:{0,1,3}){tabs->setCurrentIndex(page);checkFamily(tabs->currentWidget());}
+  familyGutter=-1;window.navigate("destinations");window.findChild<QToolButton*>("advancedSettings")->setChecked(true);checkFamily(window.findChild<QScrollArea*>("destinationScroll"));
  }
  void formChoicesShareWidthsAndTextFieldsKeepTheirColumn(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1200);window.showCaptureSettings();window.show();
@@ -2247,7 +2381,9 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  void preferenceCardsKeepControlsAndIndicatorsAligned_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}
  void preferenceCardsKeepControlsAndIndicatorsAligned(){
   Fonts::load();Ui::apply(*qApp);QFETCH(int,pixels);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1440,1200);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");
-  for(const auto& size:{QSize(1440,960),QSize(1060,680)}){window.resize(size);int columnLeft=-1;for(int page=0;page<2;++page){tabs->setCurrentIndex(page);putgd::test::settle(30);auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(page));auto* column=window.findChild<QWidget*>(page?"capturePreferenceColumn":"generalPreferenceColumn");QVERIFY(column);QVERIFY(column->width()<=Ui::scaled(760));const int left=column->mapTo(scroll->viewport(),QPoint()).x(),right=scroll->viewport()->width()-left-column->width();QCOMPARE(left,Ui::space(Ui::Space::xxl));QVERIFY(right>=left-2);const int globalLeft=column->mapTo(&window,QPoint()).x();if(columnLeft<0)columnLeft=globalLeft;QCOMPARE(globalLeft,columnLeft);QWidget* previousSection=nullptr;for(auto* section:column->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(section->property("preferenceSection").toBool()){auto* heading=section->layout()->itemAt(0)->widget();QCOMPARE(heading->height(),heading->sizeHint().height());for(auto* label:section->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(label->wordWrap())QVERIFY(label->height()>=label->heightForWidth(label->width()));QVERIFY(column->rect().contains(section->geometry()));if(previousSection)PUTGD_TRY_VERIFY2(section->y()-previousSection->geometry().bottom()-1>=Ui::space(Ui::Space::xxl),qPrintable(QString("page %1 window %2x%3; section y/h/min/max %4/%5/%6/%7; previous bottom %8; column h/min/minimum/HFW %9/%10/%11/%12; spacing %13; previous min/HFW %14/%15; current min/HFW %16/%17").arg(page).arg(window.width()).arg(window.height()).arg(section->y()).arg(section->height()).arg(section->minimumHeight()).arg(section->maximumHeight()).arg(previousSection->geometry().bottom()+1).arg(column->height()).arg(column->minimumHeight()).arg(column->layout()->totalMinimumSize().height()).arg(column->layout()->totalHeightForWidth(column->width())).arg(column->layout()->spacing()).arg(previousSection->layout()->totalMinimumSize().height()).arg(previousSection->layout()->totalHeightForWidth(previousSection->width())).arg(section->layout()->totalMinimumSize().height()).arg(section->layout()->totalHeightForWidth(section->width()))));previousSection=section;}int cards=0;for(auto* card:column->findChildren<QWidget*>())if(card->property("preferenceCard").toBool()&&card->isVisibleTo(column)){++cards;QVERIFY(card->parentWidget()->rect().contains(card->geometry()));auto* form=card->findChild<QFormLayout*>();QVERIFY(form);for(int row=0;row<form->rowCount();++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||!item->widget()||!form->isRowVisible(row))continue;auto* field=item->widget();QVERIFY(card->rect().contains(QRect(field->mapTo(card,QPoint()),field->size())));if(auto* text=qobject_cast<QLabel*>(field))QVERIFY(text->height()>=text->heightForWidth(text->width()));else if(field->property("preferenceRow").toBool())QVERIFY2(field->height()>=Ui::scaled(Ui::Metric::control)+2*Ui::space(Ui::Space::s),qPrintable(QString("field %1 height %2, floor %3, class %4, minimum %5").arg(field->objectName()).arg(field->height()).arg(Ui::scaled(Ui::Metric::control)+2*Ui::space(Ui::Space::s)).arg(field->metaObject()->className()).arg(field->minimumHeight())));QVERIFY(!form->itemAt(row,QFormLayout::LabelRole));for(auto* value:field->findChildren<QWidget*>())if(value->objectName().endsWith("PreferenceValue"))if(value->property("preferenceChoiceValue").toBool()){QVERIFY(value->width()>0);QCOMPARE(value->mapTo(card,QPoint(value->width(),0)).x(),card->width()-Ui::space(Ui::Space::l));}}}QVERIFY(cards>=3);QCOMPARE(scroll->horizontalScrollBar()->maximum(),0);}}
+  // Resize/show queues several rounds of height-for-width and choice layout.
+  // Wait for each exact geometry contract, rather than assuming 30 ms drains them.
+  for(const auto& size:{QSize(1440,960),QSize(1060,680)}){window.resize(size);int columnLeft=-1;for(int page=0;page<2;++page){tabs->setCurrentIndex(page);auto* scroll=qobject_cast<QScrollArea*>(tabs->widget(page));auto* column=window.findChild<QWidget*>(page?"capturePreferenceColumn":"generalPreferenceColumn");QVERIFY(column);PUTGD_TRY_VERIFY(column->width()<=Ui::scaled(760));PUTGD_TRY_COMPARE(column->mapTo(scroll->viewport(),QPoint()).x(),Ui::space(Ui::Space::xxl));PUTGD_TRY_VERIFY(scroll->viewport()->width()-column->mapTo(scroll->viewport(),QPoint()).x()-column->width()>=Ui::space(Ui::Space::xxl)-2);if(columnLeft<0)columnLeft=column->mapTo(&window,QPoint()).x();PUTGD_TRY_COMPARE(column->mapTo(&window,QPoint()).x(),columnLeft);QWidget* previousSection=nullptr;for(auto* section:column->findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(section->property("preferenceSection").toBool()){auto* heading=section->layout()->itemAt(0)->widget();PUTGD_TRY_COMPARE(heading->height(),heading->sizeHint().height());for(auto* label:section->findChildren<QLabel*>(Qt::FindDirectChildrenOnly))if(label->wordWrap())PUTGD_TRY_VERIFY(label->height()>=label->heightForWidth(label->width()));PUTGD_TRY_VERIFY(column->rect().contains(section->geometry()));if(previousSection)PUTGD_TRY_VERIFY2(section->y()-previousSection->geometry().bottom()-1>=Ui::space(Ui::Space::xxl),qPrintable(QString("page %1 window %2x%3; section y/h/min/max %4/%5/%6/%7; previous bottom %8; column h/min/minimum/HFW %9/%10/%11/%12; spacing %13; previous min/HFW %14/%15; current min/HFW %16/%17").arg(page).arg(window.width()).arg(window.height()).arg(section->y()).arg(section->height()).arg(section->minimumHeight()).arg(section->maximumHeight()).arg(previousSection->geometry().bottom()+1).arg(column->height()).arg(column->minimumHeight()).arg(column->layout()->totalMinimumSize().height()).arg(column->layout()->totalHeightForWidth(column->width())).arg(column->layout()->spacing()).arg(previousSection->layout()->totalMinimumSize().height()).arg(previousSection->layout()->totalHeightForWidth(previousSection->width())).arg(section->layout()->totalMinimumSize().height()).arg(section->layout()->totalHeightForWidth(section->width()))));previousSection=section;}int cards=0;for(auto* card:column->findChildren<QWidget*>())if(card->property("preferenceCard").toBool()&&card->isVisibleTo(column)){++cards;PUTGD_TRY_VERIFY(card->parentWidget()->rect().contains(card->geometry()));auto* form=card->findChild<QFormLayout*>();QVERIFY(form);for(int row=0;row<form->rowCount();++row){auto* item=form->itemAt(row,QFormLayout::FieldRole);if(!item||!item->widget()||!form->isRowVisible(row))continue;auto* field=item->widget();PUTGD_TRY_VERIFY(card->rect().contains(QRect(field->mapTo(card,QPoint()),field->size())));if(auto* text=qobject_cast<QLabel*>(field))PUTGD_TRY_VERIFY(text->height()>=text->heightForWidth(text->width()));else if(field->property("preferenceRow").toBool())PUTGD_TRY_VERIFY2(field->height()>=Ui::scaled(Ui::Metric::control)+2*Ui::space(Ui::Space::s),qPrintable(QString("field %1 height %2, floor %3, class %4, minimum %5").arg(field->objectName()).arg(field->height()).arg(Ui::scaled(Ui::Metric::control)+2*Ui::space(Ui::Space::s)).arg(field->metaObject()->className()).arg(field->minimumHeight())));QVERIFY(!form->itemAt(row,QFormLayout::LabelRole));for(auto* value:field->findChildren<QWidget*>())if(value->objectName().endsWith("PreferenceValue"))if(value->property("preferenceChoiceValue").toBool()){PUTGD_TRY_VERIFY(value->width()>0);PUTGD_TRY_COMPARE(value->mapTo(card,QPoint(value->width(),0)).x(),card->width()-Ui::space(Ui::Space::l));}}}QVERIFY(cards>=3);PUTGD_TRY_COMPARE(scroll->horizontalScrollBar()->maximum(),0);}}
   tabs->setCurrentIndex(0);auto* check=window.findChild<QCheckBox*>("notifications");QVERIFY(!check->text().isEmpty());QCOMPARE(check->accessibleName(),check->text());QLabel* label=nullptr;for(auto* candidate:tabs->widget(0)->findChildren<QLabel*>())if(candidate->buddy()==check)label=candidate;QVERIFY(label);const bool before=check->isChecked();QTest::mouseClick(label,Qt::LeftButton);QCOMPARE(check->isChecked(),!before);
  }
  void destinationFieldsHintsAndSharingTextFit_data(){QTest::addColumn<int>("pixels");QTest::newRow("normal")<<14;QTest::newRow("large")<<21;}

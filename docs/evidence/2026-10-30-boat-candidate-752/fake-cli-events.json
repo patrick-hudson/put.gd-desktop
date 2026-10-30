@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "tests": [
+    {
+      "test": "test_fake_cli_same_sha_live_runs_never_delete_each_others_workers",
+      "service": {
+        "sandboxes": [],
+        "events": [
+          {
+            "create": "bx_0",
+            "name": "putgd-aaaaaaaaaaaa-appimage-aaaaaaaaaaaaaaaa"
+          },
+          {
+            "create": "bx_1",
+            "name": "putgd-aaaaaaaaaaaa-appimage-bbbbbbbbbbbbbbbb"
+          },
+          {
+            "delete": "bx_0"
+          },
+          {
+            "delete": "bx_1"
+          }
+        ],
+        "lists": 6
+      }
+    },
+    {
+      "test": "test_fake_cli_interrupted_create_without_id_recovers_late_worker",
+      "service": {
+        "sandboxes": [],
+        "events": [
+          {
+            "create": "bx_0",
+            "name": "putgd-aaaaaaaaaaaa-appimage-cccccccccccccccc"
+          },
+          {
+            "delete": "bx_0"
+          }
+        ],
+        "lists": 17
+      }
+    }
+  ]
+}

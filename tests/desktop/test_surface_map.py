@@ -95,8 +95,8 @@ class ModelContract(unittest.TestCase):
 
     def test_captures_are_catalog_states(self):
         for surface in self.model['surfaces']:
-            capture = surface.get('capture')
-            if capture:
+            items = [i for i in self.model['interactions'] if i['surface'] == surface['id']]
+            for capture in surface_map.surface_captures(surface, items):
                 self.assertTrue('"%s"' % capture in self.catalog or '"%s.png"' % capture in self.catalog,
                                 'capture %s is not a ui_catalog state' % capture)
 
@@ -582,13 +582,24 @@ class ReceiptImport(unittest.TestCase):
 
 
 class CatalogCheck(unittest.TestCase):
+    def setUp(self):
+        self.model = surface_map.load_model()
+        self.model['interactions'] = []
+        self.model['receipts'] = {}
+        next(s for s in self.model['surfaces'] if s['id'] == 'tray')['capture'] = '00-tray-upload-status'
+
     def run_check(self, directory):
         import contextlib, io
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            return surface_map.main(['check', '--catalog', str(directory)])
+            path = Path(directory).parent / ('check-model-' + Path(directory).name + '.json')
+            path.write_text(json.dumps(self.model), encoding='utf-8')
+            try:
+                return surface_map.main(['--model', str(path), 'check', '--catalog', str(directory)])
+            finally:
+                path.unlink()
 
     def catalog(self, root, platform, skip=()):
-        model = surface_map.load_model()
+        model = self.model
         captures = []
         for surface in model['surfaces']:
             if surface.get('capture') and surface['capture'] not in skip:
@@ -626,6 +637,89 @@ class CatalogCheck(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             self.catalog(Path(tmp), 'xcb', skip={'about'})
             self.assertEqual(self.run_check(tmp), 1)
+
+
+class CaptureStates(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.model = {'schemaVersion': 1, 'desktops': [{'id': 'desktop'}],
+                      'surfaces': [{'id': 'tray', 'capture': 'idle'}], 'interactions': [
+                          {'id': 'tray.about', 'surface': 'tray', 'kind': 'menu-item', 'label': 'About', 'control': 'about'},
+                          {'id': 'tray.cancel', 'surface': 'tray', 'kind': 'menu-item', 'label': 'Cancel',
+                           'control': 'cancel', 'capture': 'uploading'},
+                          {'id': 'tray.output', 'surface': 'tray', 'kind': 'menu-item', 'label': 'Output',
+                           'control': ['summary', 'glob:output*'], 'capture': ['idle', 'output']}]}
+        for name, controls in {'idle': ['about', 'summary'], 'uploading': ['cancel'],
+                               'output': ['outputRegion', 'outputEdit']}.items():
+            (self.root / (name + '.png')).write_bytes(b'png')
+            (self.root / (name + '.controls.json')).write_text(json.dumps({
+                'width': 100, 'height': 100, 'controls': [
+                    {'name': c, 'rect': [0, n * 10, 100, 10]} for n, c in enumerate(controls)], 'keys': []}))
+        (self.root / 'manifest.json').write_text(json.dumps({'kind': 'synthetic-ui-catalog', 'platform': 'offscreen',
+            'captures': [{'file': n + '.png', 'controls': n + '.controls.json'} for n in ('idle', 'uploading', 'output')]}))
+        self.path = self.root / 'model.json'
+        self.path.write_text(json.dumps(self.model))
+
+    def check(self):
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return surface_map.main(['--model', str(self.path), 'check', '--catalog', str(self.root)])
+
+    def test_override_and_all_matching_rows_have_hotspots(self):
+        data = surface_map.build_page_data(self.model, [], self.root, self.root / 'page')
+        surface = data['surfaces'][0]
+        self.assertEqual(surface['capture'], 'idle')  # legacy default fields stay available
+        states = {c['capture']: c for c in surface['captures']}
+        self.assertEqual([h['interaction'] for h in states['idle']['hotspots']], ['tray.about', 'tray.output'])
+        self.assertEqual([h['interaction'] for h in states['uploading']['hotspots']], ['tray.cancel'])
+        self.assertEqual(len(states['output']['hotspots']), 2)  # glob expands to every row
+        self.assertTrue(all(not c['unmodelledControls'] for c in states.values()))
+        self.assertEqual(self.check(), 0)
+        self.assertIn('uploading', surface_map.render(data))
+
+    def test_explicit_state_must_resolve_there_even_if_control_exists_elsewhere(self):
+        self.model['interactions'][1]['capture'] = 'idle'
+        self.path.write_text(json.dumps(self.model))
+        self.assertEqual(self.check(), 1)
+
+    def test_missing_interaction_image_and_sidecar_are_rejected(self):
+        for suffix in ('.png', '.controls.json'):
+            path = self.root / ('uploading' + suffix)
+            content = path.read_bytes()
+            path.unlink()
+            self.assertEqual(self.check(), 1)
+            path.write_bytes(content)
+
+    def test_multistate_inventory_is_required_even_when_manifest_omits_it(self):
+        (self.root / 'output.controls.json').unlink()
+        manifest = json.loads((self.root / 'manifest.json').read_text())
+        manifest['captures'][-1].pop('controls')
+        (self.root / 'manifest.json').write_text(json.dumps(manifest))
+        self.assertEqual(self.check(), 1)
+
+    def test_native_catalog_can_omit_documented_offscreen_override(self):
+        self.model['interactions'][1]['capture'] = '00-tray-edit-submenu'
+        self.path.write_text(json.dumps(self.model))
+        manifest = json.loads((self.root / 'manifest.json').read_text())
+        manifest['platform'] = 'xcb'
+        (self.root / 'manifest.json').write_text(json.dumps(manifest))
+        self.assertEqual(self.check(), 0)
+        manifest['platform'] = 'offscreen'
+        (self.root / 'manifest.json').write_text(json.dumps(manifest))
+        self.assertEqual(self.check(), 1)
+
+    def test_legacy_other_state_selectors_remain_compatible(self):
+        self.model['interactions'][1].pop('capture')
+        self.path.write_text(json.dumps(self.model))
+        self.assertEqual(self.check(), 0)
+
+    def test_invalid_capture_overrides_are_rejected(self):
+        for value in ('', [], 3, '../escape', ['idle', None]):
+            with self.subTest(value=value):
+                self.model['interactions'][1]['capture'] = value
+                with self.assertRaises(surface_map.ModelError):
+                    surface_map.validate_model(self.model)
 
 
 class ControlMatching(unittest.TestCase):

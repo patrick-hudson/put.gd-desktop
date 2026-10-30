@@ -36,6 +36,20 @@ The helper handles the request asynchronously:
   handle returned by an old portal is followed.
 - `0` returns the `file://` URI as a local path.
 - `1` is a cancel.
+- `2` ("ended in some other way") is a cancel when it arrives 250 ms or more
+  after the portal accepted the request. xdg-desktop-portal-gtk (Cinnamon) and
+  xdg-desktop-portal-gnome 46 send it when the person presses Escape or closes
+  the chooser's window. The frontend also sends `2` when a running backend
+  fails after accepting; a backend that fails to start makes the call itself
+  error instead. An earlier `2` is therefore a failure and opens the fallback
+  (#781). The chooser takes about 300 ms to get focus, so a person can't
+  normally dismiss it inside the window.
+- The cost: a backend that fails 250 ms or more after accepting looks like a
+  cancel. The chooser disappears and put.gd does nothing else; asking again
+  starts the backend afresh. The `putgd.filedialog` log line records
+  `portal response 2 after N ms since accepted (closed by the person, or the
+  backend failed late)`, and the portal writes `Backend call failed` to the
+  user journal. Both appear in a diagnostics package.
 - A non-local URI is a failure that returns nothing.
 - Cancelling from put.gd, or the owning window going away, calls `Request.Close`.
 
@@ -65,7 +79,8 @@ Qt's widget `QFileDialog` opens instead when:
 - the portal or its FileChooser interface is missing;
 - a folder is asked for and the FileChooser is older than version 3;
 - the call errors, or isn't accepted within 8 s;
-- the portal answers `Response` 2;
+- the portal answers `Response` 2 within 250 ms of accepting the request, or
+  any code other than 0, 1 and 2;
 - the portal exits while its chooser is open.
 
 The dialog is styled from the Theme tokens in both schemes:
@@ -103,7 +118,9 @@ The methods that save to a given path without a dialog remain:
 | `ui.fileDialog {dialog, action: open \| inspect \| cancel, field?, id?}` | `drive_file_dialog` | `editImage`; `historySaveAs`, for the selected file or the row with history or operation `id`; `outputFolder`, with `field` `root`, `images`, `videos`, `text` or `other`; `diagnosticsFolder` (open the package dialog first) |
 
 Each step also logs a `putgd.filedialog` line naming the backend and, for the
-fallback, the reason.
+fallback, the reason. Each portal `Response` is logged with its code and how long
+after the portal accepted the request it came; a `2` also says which reading
+applied.
 
 ## Tests
 
@@ -113,7 +130,8 @@ fallback, the reason.
   where the real portal could be started. It covers:
   - the request options and the URI-to-path conversion;
   - cancel, the modal stand-in, and `Request.Close` on cancel and on destruction;
-  - every fallback trigger;
+  - a late `Response` 2 in open, save and folder modes as a cancel with no fallback;
+  - every fallback trigger, including an immediate `Response` 2 and an error reply;
   - the fallback's contrast and surfaces in Dark and Light, and a scheme switch while open.
 - **`file_dialog_x11_parent`** checks the `x11:<xid>` handle under Xvfb.
 - **`gui_review_window`, `gui_settings` and `mcp_integration`** cover the commands above.

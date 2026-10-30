@@ -1,0 +1,14 @@
+{
+  "archive": "work/779/export.tar.gz",
+  "archiveSha256": "18c9aad1840e41685a5c717ddf586cafae383dc0a5ed2d15fd72154b73e670f5",
+  "archiveBytes": 219255427,
+  "verifiedFiles": 656,
+  "manifestSha256": "b59a648d52a578301ae55e91245cb35959e2d3ccad079dd47ab9d9ba64d7972f",
+  "runId": "cc34e70d-51ba-42b8-a00b-bf4f25350f05",
+  "allFilesVerified": true,
+  "privateRoot": "/home/patrick/.t3/worktrees/put.gd/t3-dfb715f2/work/779",
+  "cleanupArchive": "work/779/cleanup-evidence.tar",
+  "cleanupArchiveSha256": "6bc5e617ad9d65fb91afb82470848721d75b6e57925abafc798383156689774c",
+  "restore": "Validate archiveSha256, reject absolute/parent/link members, extract export.tar.gz to a private directory, then verify each member against manifest.json files. The manifest excludes itself.",
+  "excluded": "VM disks, SSH private keys, credentials, payloads from user accounts and live cloud sessions."
+}

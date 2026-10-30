@@ -22,7 +22,7 @@ Use the shared components before adding window-specific painting:
 | Window theme entry point, `Ui::styleWindow` (needs the bundled fonts, so it lives in `putgd_ui`) | `src/ui/UiWindow.cpp` |
 | Bundled IBM Plex Sans and Mono registration | `src/ui/Fonts.h`, `Fonts.cpp` |
 | Action glyphs | `src/ui/IconArt.h` |
-| Synthetic screens of every window state | `putgd-ui-catalog` (`tests/gui/ui_catalog.cpp`) |
+| Synthetic screens of every window state, compared with reference images in CI | `putgd-ui-catalog` (`tests/gui/ui_catalog.cpp`, [the UI catalog](ui-catalog.md)) |
 
 `Ui::Style` is a `QProxyStyle` over Fusion. It paints standard controls
 without an application stylesheet. Style hints set on widgets are dynamic

@@ -1,0 +1,18 @@
+ new Debian package, version 2.0.
+ size 60411722 bytes: control archive=3601 bytes.
+    1409 bytes,    14 lines      control
+    9230 bytes,   112 lines      md5sums
+ Architecture: amd64
+ Conflicts: putgd
+ Depends: libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire, xdg-utils, libsecret-1-0, libavcodec60 (>= 7:6.1), libavfilter9 (>= 7:6.0), libavformat60 (>= 7:6.0), libavutil58 (>= 7:6.0), libc6 (>= 2.38), libcurl4t64 (>= 7.18.0), libgcc-s1 (>= 4.2), libglib2.0-0t64 (>= 2.12.0), libgstreamer1.0-0 (>= 1.0.0), libqt6core6t64 (>= 6.4.0), libqt6dbus6t64 (>= 6.4.0), libqt6gui6t64 (>= 6.4.0), libqt6keychain1 (>= 0.13.2), libqt6network6t64 (>= 6.1.2), libqt6sql6t64 (>= 6.1.2), libqt6widgets6t64 (>= 6.4.0), libssl3t64 (>= 3.0.3), libstdc++6 (>= 13.1), libswresample4 (>= 7:6.0), libswscale7 (>= 7:6.0), libwayland-client0 (>= 1.20.0), libxcb-damage0, libxcb-keysyms1 (>= 0.4.0), libxcb-randr0 (>= 1.3), libxcb-render0, libxcb-xfixes0, libxcb-xinput0 (>= 1.15), libxcb1, libxcursor1 (>> 1.1.2), libxkbcommon0 (>= 1.0.0), zlib1g (>= 1:1.1.4)
+ Description: Disposable lab fixture build of put.gd; test use only
+  Disposable lab fixture build of put.gd; test use only
+ Maintainer: put.gd maintainers <packages@put.gd>
+ Package: putgd-lab-fixture
+ Priority: optional
+ Recommends: gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi
+ Replaces: putgd
+ Section: graphics
+ Version: 26.1030.2473~dev+g0c329b0692ca
+ Installed-Size: 155970
+ 

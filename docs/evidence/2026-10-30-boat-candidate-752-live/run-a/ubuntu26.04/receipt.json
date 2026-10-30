@@ -1,0 +1,93 @@
+{
+  "artifact": "ubuntu26.04",
+  "buildSeconds": 454.34,
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_2mxrfaus"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-ubuntu26.04-02818a97bfa24edb",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_043a0f61ae504c0293a560aedf9d59f5",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:14:30.147Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_2mxrfaus"
+        },
+        "sandboxId": "bx_2mxrfaus"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793333672.5269845
+  },
+  "cleanupVerified": true,
+  "collectionBudgetSeconds": 9962.048,
+  "collectionInput": {
+    "bytes": 0,
+    "diskAndPressure": [
+      "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+      "/dev/vda1      ext4   153470764 46602128 100573648      32% /home",
+      "some avg10=7.15 avg60=4.01 avg300=10.24 total=155267834",
+      "full avg10=6.95 avg60=3.90 avg300=8.79 total=128823811"
+    ],
+    "files": 0
+  },
+  "collectionPhases": {
+    "packSeconds": 1.747,
+    "probeSeconds": 2.183,
+    "restoreSeconds": 0.001,
+    "transferSeconds": 2.838
+  },
+  "collectionSeconds": 6.768,
+  "collectionTtlCapped": false,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+  "error": "ssh exited 1: see build.log",
+  "hydrationSeconds": 202.999,
+  "name": "putgd-0c329b0692ca-ubuntu26.04-02818a97bfa24edb",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:26.800Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:06:45.876Z",
+    "id": "bx_2mxrfaus",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "137.74.205.128:19033",
+    "vcpu": 8
+  },
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "02818a97bfa24edb",
+  "sandboxId": "bx_2mxrfaus",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [
+      "bx_yxz2d7mn"
+    ],
+    "verified": true
+  },
+  "state": "failed",
+  "totalSeconds": 667.484,
+  "transport": {
+    "bytes": 10240,
+    "compression": "none",
+    "kind": "tar",
+    "sha256": "e524ebd2e4e0b250533fc5c9917901d72f1424df2572010a1ae91ff28a07d73f"
+  },
+  "ttlSeconds": 10800,
+  "type": "large"
+}

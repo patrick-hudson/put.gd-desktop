@@ -1,0 +1,18 @@
+{
+  "codeHead": "b02ad2dd4391725dc924a7218dad5dfc33fd3bc0",
+  "reviewedHead": "ca13f37828331c00f2731e91dd099133ca4d61cd",
+  "placement": "workstation; light Python unit tests and fake CLI only",
+  "realBoatCommands": 0,
+  "realSandboxStarts": 0,
+  "controllerSha256": "a9f6c3bbc6692c869012801103b951b05b126189f7e206ad56116e114669c22d",
+  "testsSha256": "d37cb9863ac6ef2ab3fcbbe8acc2b873f84ab974299aeb6d262679874a15af4c",
+  "reviewerOriginals": {
+    "scen2.sh": "b437d6c708df4419a87a39edb98ebf01372248f9a6dd098e4449363581ff0063",
+    "scen1.sh": "85a7fa3c0d50c41505c5da5303ae77c0c899554f1081e71a5cfc66ff63f1bcea",
+    "peer.py": "ec9f6d7c043b083f8654af5f5b154b02c053c548d1a137ddf771559632eb137c",
+    "common.py": "a031f20d93191465a0722c2262b55907a0f2e941a02e283aafe34d9c0b9b38ab",
+    "worker.py": "ba1a9212adfe7c24f3dddde9b2f822655f11e7770aa0e7689f20f14838689c5e",
+    "boat": "d4169036332b7e8c20e65933c4a23b994a8904231e79d1683628a6ebd7261524"
+  },
+  "fixtureProofCommandCheckedAgainstSavedScriptAndSentinel": true
+}
