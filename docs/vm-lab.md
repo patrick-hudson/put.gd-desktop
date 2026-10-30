@@ -268,6 +268,12 @@ indexes. Its hook intentionally exits unsuccessfully; that expected apt exit is
 checked through the installed helper's postconditions. The normal update/install
 runs only under the bounded supervisor. `helper.json` records
 the verified hash and staging route; `staging.log` retains the hook result.
+If another apt process holds `/var/lib/apt/lists/lock`, staging fails promptly
+with the holder PID and process name reported by apt (for example, apt-daily
+or Mint Update may be active). Wait for that process to finish before retrying;
+the controller does not stop it. Failed staging also attempts to copy
+`staging.log` into the host attempt directory, with a 10-second collection
+timeout. A missing log or disconnected guest does not replace the original error.
 
 This uses authority already granted to apt in the disposable guest. It never
 changes the host, golden, bootstrap key or `authorized_keys`, and needs no guest
@@ -299,7 +305,9 @@ through binary verification after successful package-manager completion. Upload
 failure before the helper starts, or a later collection/verification failure after
 a successful package-manager report, releases only that job's lock. Unresolved or
 failed package-manager attempts retain it. A refused retry reports the held job
-ID and its result/progress state without creating another host evidence directory.
+ID, summarized result/progress state, UTC start time from the job marker, and
+guest `result.json` path without creating another host evidence directory.
+The complete report, including owned process identities, stays in the evidence file.
 If the supervisor produces no progress within 15 seconds, installation fails early
 and points to `supervisor.log` (which may itself be missing); the lock stays held
 because a lost launch reply does not prove no process started.
