@@ -83,11 +83,13 @@ def _failure_frame(function):
     def capture(ctx):
         try:
             return function(ctx)
-        except Exception:
+        except Exception as error:
             try:
                 _frame(ctx, 'after-failure')
             except Exception:
                 pass  # The core also retains a full-screen failure witness.
+            if isinstance(error, RecipeBlocked) and error.issue is None and str(error).startswith("control:"):
+                raise RecipeBlocked(str(error) + " (#712)", issue=712) from error
             raise
     return capture
 
