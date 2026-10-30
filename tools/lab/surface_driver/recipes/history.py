@@ -9,8 +9,8 @@ Fixture requests (all data is synthetic, private and reset before each recipe):
 * history_paging: {total: int}; >50 separate rows, default page size 50.
 * history_retry_upload / history_retry_local: {id, name, operation_id}; use the
   tray_progress.py failed-upload/local-save setup, with the fault removed.
-* history_active_uploads: {operation_ids: [id, id]}; stalled local moto uploads.
-* history_delete: {id, name}; disposable moto receipt with an unchanged local copy.
+* history_active_uploads: {operation_ids: [id, id]}; stalled loopback S3 uploads.
+* history_delete: {id, name}; disposable loopback S3 receipt with an unchanged local copy.
 * history_saved_copy: {id, name, path}; completed save-as in the private profile.
 * history_window: {header_drag_point: [screen_x, screen_y]}; a current-build
   blank header hit target and normal 1320x880 shell, with room to move/grow.
@@ -350,7 +350,7 @@ def retry_upload(ctx):
 def active_banner(ctx):
     data = ctx.fixture('history_active_uploads')
     _open(ctx)
-    ctx.expect(_state(ctx)['activeOperationCount'] == len(data['operation_ids']) >= 2, 'known stalled moto operations')
+    ctx.expect(_state(ctx)['activeOperationCount'] == len(data['operation_ids']) >= 2, 'known stalled loopback operations')
     _frame(ctx, 'before', 'history-many-active')
     ctx.click('historyMoreActive', window='history')
     ctx.wait(lambda: _state(ctx)['query']['uploadStatus'] == 'uploading', 'More active filters running uploads')
@@ -399,7 +399,7 @@ def delete_remote(ctx):
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['remoteStatus'] == original['remoteStatus'], 'Cancel preserves remote state')
     ctx.click('deleteHistoryRemote', window='history')
     ctx.click('confirmActionButton', window='confirmAction')
-    final = ctx.wait(lambda: (d if (d := _result(ctx.call('history.detail', {'id': row['id']})))['remoteStatus'] in ('removed', 'already_missing') else None), 'recorded moto object deleted', timeout=60)
+    final = ctx.wait(lambda: (d if (d := _result(ctx.call('history.detail', {'id': row['id']})))['remoteStatus'] in ('removed', 'already_missing') else None), 'recorded loopback object deleted', timeout=60)
     ctx.expect(final['id'] == original['id'] and final['local'] == original['local'], 'deletion preserves history and local copy')
     _frame(ctx, 'after', '48-history-deletion-recovery')
 
@@ -550,7 +550,7 @@ def launcher_history(ctx):
     ctx.review('ui.viewState reports helper readiness, not active page; verify second launcher raised History in the saved frame.')
 
 
-@recipe('mcp.inspect', needs=('history-row',))
+@recipe('mcp.inspect')
 def mcp_inspect(ctx):
     ctx.view('ui.show', {'view': 'history'})
     ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'History helper ready')
@@ -569,13 +569,13 @@ BLOCKED = {
     'history.list': 'Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.',
     'history.filters': 'Needs full date/MIME/destination/state fixture matrix and dynamic + Filter menu capture; clear-filters recipe exercises one upload filter only.',
     'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; baseline catalog alone cannot resolve all states.',
-    'history.row-menu': 'Needs fresh cancel/retry/local-copy/deletion row variants and dynamic menu inventory; key-menu proves only Copy details, links lane owns link actions.',
-    'history.edit-again': 'Needs retained-image editor fixture with editor ID and immutable-source oracle; opening alone does not prove edit-again semantics.',
+    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants and verified runtime row menus are still missing (#675/#712); link opening stays with links.',
+    'history.edit-again': 'Retained history images now exist; GUI Edit still needs a returned editor identity and an immutable-source oracle to prove the new editing session (#675).',
     'history.retry-deletion': 'Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.',
-    'history.save-diagnostics': 'Needs failed-row diagnostics fixture and private diagnostics directory/archive manifest oracle.',
+    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle and verified runtime menu controls (#675).',
     'history.local-copy-settings': 'Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.',
-    'history.empty-states': 'Needs empty-history and injected load-failure fixtures; search recipe covers only No matching items.',
-    'history.compact': 'Needs configured compact geometry and Back to list/gallery control capture; baseline width is not guaranteed by Context.',
+    'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup (#675).',
+    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls after the #718 drag blocker is resolved.',
     'shell.app-menu': 'Needs application-menu capture with dynamic actions; baseline history catalog contains its button only.',
     'shell.app-menu-capture-help': 'Needs capture-help dialog control inventory and close oracle.',
     'shell.app-menu-quit': 'Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.',
@@ -597,13 +597,13 @@ BLOCKED = {
     'shell.action-recovery-banner': 'Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.',
     'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
-    'shell.first-launch': 'Needs new resident with no configuration under private XDG roots; cannot reset a shared Context resident.',
-    'cli.launcher-background': 'Needs stopped-resident fixture, tray-absent variant and lifecycle reset; Context.cli currently documents putgd ARGS only.',
+    'shell.first-launch': 'app-profile(first_launch=True) now provides lifecycle reset; the full initial Settings/no-output contract still needs live selected-page and warning-strip assertions (#675).',
+    'cli.launcher-background': 'Launcher routing is implemented; background start still needs a stopped-resident/tray-absent lifecycle fixture and the 10-second fallback oracle (#675).',
     'cli.action-invoke': 'Needs native source and six action completion fixtures; capture/record selectors cannot be left active.',
-    'cli.history': 'Needs fresh operation/delete/share fixtures for the composite CLI history.*, operation.*, delete.*, share.inspect interaction.',
+    'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures (#675).',
     'mcp.perform-action': 'Needs native source and six action completion fixtures for perform_action.',
-    'mcp.operations': 'Needs independent failed/local-save/active operation fixtures and clipboard oracle for get/retry/copy/cancel tool matrix.',
-    'mcp.history': 'Needs fresh deletion/diagnostics/preview fixtures; composite ID also lists link tools assigned to links lane and requires coordinator scope clarification.',
+    'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle (#675).',
+    'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane (#675).',
 }
 
 
