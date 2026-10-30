@@ -204,7 +204,7 @@ class DialogRecipes(unittest.TestCase):
             for backend in dialogs.BACKENDS:
                 with self.subTest(scenario=scenario, backend=backend):
                     ctx = FakeContext(backend)
-                    blocked = scenario == 'failure-strip'
+                    blocked = scenario == 'failure-strip' or scenario in dialogs.BACKENDS and scenario != backend
                     if blocked:
                         with self.assertRaises(RecipeBlocked):
                             dialogs._run(ctx, backend, scenario)

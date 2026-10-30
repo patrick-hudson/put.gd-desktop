@@ -225,6 +225,8 @@ def _run(ctx, backend, scenario):
         ctx.fixture('chooser-failure')
         ctx.blocked('Chooser failure fixture did not provide a production Failed result', issue=671)
     _backend(ctx, backend)
+    if scenario in BACKENDS and scenario != backend:
+        ctx.blocked(scenario + ' backend state does not exist in a ' + backend + ' run')
     files = _files(ctx)
     if scenario in ('output-folder', 'portal', 'fallback', 'cancel', 'mcp.file-dialogs'):
         _output(ctx, backend, files, mcp=scenario == 'mcp.file-dialogs', cancel_only=scenario == 'cancel')
