@@ -1,0 +1,564 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-v3",
+    "package": "deb",
+    "destination": "local",
+    "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "placement_details": {
+      "boat_sandbox_id": "bx_k238wh6f",
+      "run_id": "3384d1cf-dafc-465e-a884-fbae07b83773",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/e4/work/lab-runs/c1",
+      "session_root": "/tmp/sd-4777f959",
+      "socket": "/tmp/sd-4777f959/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 117024,
+      "start": "239186",
+      "boot": "4ac4b665-1c79-403b-bf04-73712fccd8b1",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1262,
+      "start": 752,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "d3460860-8d1f-4d30-b39a-bf29348cccfa"
+      },
+      {
+        "operationId": "863e0231-0857-4e89-9254-e7de3427bccf"
+      },
+      {
+        "operationId": "c5357569-c8e3-4bba-8a15-ef948a44d797"
+      },
+      {
+        "operationId": "909d0e2e-5ea6-4415-a9a4-6456e4d886fa"
+      },
+      {
+        "operationId": "26a27098-307a-4bfa-8f87-86c24535faf2"
+      },
+      {
+        "operationId": "2a6666ed-1c31-4cd1-a47a-ee025728fb02"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed"
+  },
+  "interactions": [
+    {
+      "interaction": "editor.destination",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "operationId=d3460860-8d1f-4d30-b39a-bf29348cccfa; editor operationId=d3460860-8d1f-4d30-b39a-bf29348cccfa; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645656, tolerance=0.025): actual=/home/user/o4cf/frames/editor.destination/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.646340, tolerance=0.025): actual=/home/user/o4cf/frames/editor.destination/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.destination/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.destination/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456563614215101,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6463400613770001,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.destination",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:11:11Z"
+    },
+    {
+      "interaction": "editor.cancel",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "operationId=863e0231-0857-4e89-9254-e7de3427bccf; editor operationId=863e0231-0857-4e89-9254-e7de3427bccf; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645656, tolerance=0.025): actual=/home/user/o4cf/frames/editor.discard/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.853122, tolerance=0.025): actual=/home/user/o4cf/frames/editor.discard/02-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.631430, tolerance=0.025): actual=/home/user/o4cf/frames/editor.discard/03-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.discard/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456563614215101,
+          "tolerance": 0.025
+        },
+        {
+          "label": "question",
+          "path": "frames/editor.discard/02-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.853122394851942,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/03-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6314296436854311,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:11:41Z"
+    },
+    {
+      "interaction": "confirm.editor-discard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "operationId=863e0231-0857-4e89-9254-e7de3427bccf; editor operationId=863e0231-0857-4e89-9254-e7de3427bccf; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645656, tolerance=0.025): actual=/home/user/o4cf/frames/editor.discard/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.853122, tolerance=0.025): actual=/home/user/o4cf/frames/editor.discard/02-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.631430, tolerance=0.025): actual=/home/user/o4cf/frames/editor.discard/03-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.discard/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456563614215101,
+          "tolerance": 0.025
+        },
+        {
+          "label": "question",
+          "path": "frames/editor.discard/02-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.853122394851942,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/03-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6314296436854311,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:11:41Z"
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "operationId=c5357569-c8e3-4bba-8a15-ef948a44d797; editor operationId=c5357569-c8e3-4bba-8a15-ef948a44d797; line width 2/4/8 read back on the placed mark; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645656, tolerance=0.025): actual=/home/user/o4cf/frames/editor.style_controls/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.640875, tolerance=0.025): actual=/home/user/o4cf/frames/editor.style_controls/02-width.png reference=/home/user/ui-catalog/22-editor-arrow-style.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456563614215101,
+          "tolerance": 0.025
+        },
+        {
+          "label": "width",
+          "path": "frames/editor.style_controls/02-width.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6408753437814791,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.style_controls/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:12:17Z"
+    },
+    {
+      "interaction": "mcp.editor",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "editor operationId=909d0e2e-5ea6-4415-a9a4-6456e4d886fa; operationId=909d0e2e-5ea6-4415-a9a4-6456e4d886fa; editor operationId=26a27098-307a-4bfa-8f87-86c24535faf2; operationId=26a27098-307a-4bfa-8f87-86c24535faf2; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645339, tolerance=0.025): actual=/home/user/o4cf/frames/editor.mcp_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.447203, tolerance=0.025): actual=/home/user/o4cf/frames/editor.mcp_editor/02-after.png reference=/home/user/ui-catalog/27-editor-saved.png; catalog mismatch (distance=0.446515, tolerance=0.025): actual=/home/user/o4cf/frames/editor.mcp_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6453392601963127,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.4472028697261462,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44651548012275405,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:13:32Z"
+    },
+    {
+      "interaction": "mcp.editor-output",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "editor operationId=909d0e2e-5ea6-4415-a9a4-6456e4d886fa; operationId=909d0e2e-5ea6-4415-a9a4-6456e4d886fa; editor operationId=26a27098-307a-4bfa-8f87-86c24535faf2; operationId=26a27098-307a-4bfa-8f87-86c24535faf2; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645339, tolerance=0.025): actual=/home/user/o4cf/frames/editor.mcp_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.447203, tolerance=0.025): actual=/home/user/o4cf/frames/editor.mcp_editor/02-after.png reference=/home/user/ui-catalog/27-editor-saved.png; catalog mismatch (distance=0.446515, tolerance=0.025): actual=/home/user/o4cf/frames/editor.mcp_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6453392601963127,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.4472028697261462,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44651548012275405,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:13:32Z"
+    },
+    {
+      "interaction": "editor.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4cf/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=2a6666ed-1c31-4cd1-a47a-ee025728fb02; editor operationId=2a6666ed-1c31-4cd1-a47a-ee025728fb02; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.446515, tolerance=0.025): actual=/home/user/o4cf/frames/editor.window_chrome/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.853122, tolerance=0.025): actual=/home/user/o4cf/frames/editor.window_chrome/02-close-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.618979, tolerance=0.025): actual=/home/user/o4cf/frames/editor.window_chrome/03-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44651548012275405,
+          "tolerance": 0.025
+        },
+        {
+          "label": "close-question",
+          "path": "frames/editor.window_chrome/02-close-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.853122394851942,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.618979131819992,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.window_chrome",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:14:23Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [
+      {
+        "file_index": 7,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 12,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 14,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 18,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 24,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 25,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 26,
+        "action": "moved-to-private-quarantine"
+      }
+    ],
+    "passed": false,
+    "files": 29,
+    "pngs": 24,
+    "image_audit": "ocr-and-known-regions",
+    "findings": [
+      {
+        "file_index": 7,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 12,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 14,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 18,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 24,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 25,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 26,
+        "kind": "png-text-registered-secret"
+      }
+    ]
+  }
+}

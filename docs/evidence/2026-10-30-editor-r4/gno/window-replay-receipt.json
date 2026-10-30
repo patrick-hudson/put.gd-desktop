@@ -1,0 +1,371 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "ubuntu-gnome-v4",
+    "package": "deb",
+    "destination": "local",
+    "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "placement_details": {
+      "boat_sandbox_id": "bx_k48yxtyc",
+      "run_id": "ca69a5b4-8e71-4c68-9c03-155dc4eb73c1",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/e4/work/lab-runs/g1",
+      "session_root": "/tmp/sd-0556d0f6",
+      "socket": "/tmp/sd-0556d0f6/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "x11-selection-bridge",
+      "pid": 149800,
+      "start": "360972",
+      "boot": "9e068036-0d3d-4c78-906f-1f42fe05fbae",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "operation_ids": [
+      {
+        "operationId": "6214480d-dfd4-4dda-832c-7c9a2b06d469"
+      },
+      {
+        "operationId": "eab6f950-09c5-4b37-b01d-77e6f1b09b92"
+      },
+      {
+        "operationId": "6a320fc9-52f7-4529-a5b6-84a37ee86913"
+      },
+      {
+        "operationId": "47dc5175-4428-4b6e-aa93-198704bd61ae"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.destination",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gf/receipt.json",
+      "note": "operationId=6214480d-dfd4-4dda-832c-7c9a2b06d469; editor operationId=6214480d-dfd4-4dda-832c-7c9a2b06d469",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4gf/frames/editor.destination/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.647394, tolerance=0.025): actual=/home/user/o4gf/frames/editor.destination/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.destination/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.destination/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6473936420924403,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.destination",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:21:15Z"
+    },
+    {
+      "interaction": "editor.cancel",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gf/receipt.json",
+      "note": "operationId=eab6f950-09c5-4b37-b01d-77e6f1b09b92; editor operationId=eab6f950-09c5-4b37-b01d-77e6f1b09b92",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4gf/frames/editor.discard/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.853079, tolerance=0.025): actual=/home/user/o4gf/frames/editor.discard/02-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.631426, tolerance=0.025): actual=/home/user/o4gf/frames/editor.discard/03-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.discard/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "question",
+          "path": "frames/editor.discard/02-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.8530794991263831,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/03-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6314264741021857,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:21:52Z"
+    },
+    {
+      "interaction": "confirm.editor-discard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gf/receipt.json",
+      "note": "operationId=eab6f950-09c5-4b37-b01d-77e6f1b09b92; editor operationId=eab6f950-09c5-4b37-b01d-77e6f1b09b92",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4gf/frames/editor.discard/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.853079, tolerance=0.025): actual=/home/user/o4gf/frames/editor.discard/02-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.631426, tolerance=0.025): actual=/home/user/o4gf/frames/editor.discard/03-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.discard/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "question",
+          "path": "frames/editor.discard/02-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.8530794991263831,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/03-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6314264741021857,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:21:52Z"
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gf/receipt.json",
+      "note": "operationId=6a320fc9-52f7-4529-a5b6-84a37ee86913; editor operationId=6a320fc9-52f7-4529-a5b6-84a37ee86913; line width 2/4/8 read back on the placed mark",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4gf/frames/editor.style_controls/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.640872, tolerance=0.025): actual=/home/user/o4gf/frames/editor.style_controls/02-width.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.436042, tolerance=0.025): actual=/home/user/o4gf/frames/editor.style_controls/03-after.png reference=/home/user/ui-catalog/26e-editor-text-stepper-1060.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "width",
+          "path": "frames/editor.style_controls/02-width.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6408724670274323,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/03-after.png",
+          "window": "editor",
+          "reference": "26e-editor-text-stepper-1060",
+          "distance": 0.4360417012205121,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:22:54Z"
+    },
+    {
+      "interaction": "editor.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gf/receipt.json",
+      "note": "operationId=47dc5175-4428-4b6e-aa93-198704bd61ae; editor operationId=47dc5175-4428-4b6e-aa93-198704bd61ae; timeout: raise restores minimized editor",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4gf/frames/editor.window_chrome/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.window_chrome/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.window_chrome",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:23:41Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 23,
+    "pngs": 18,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}
