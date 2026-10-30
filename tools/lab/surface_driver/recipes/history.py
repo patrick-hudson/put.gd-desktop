@@ -1294,6 +1294,26 @@ def _exercise_command(ctx, action, dispatch, *, external_focus=True):
                 script = 'python3 -c ' + shlex.quote('from pathlib import Path;assert Path(' + repr(path) + ').read_text() == ' + repr(source.text))
                 ctx.expect(ctx.shell(script)['returncode'] == 0, 'saved clipboard bytes match the synthetic source')
         ctx.frame('completed-' + action)
+    except (RecipeBlocked, RecipeFailed):
+        if action in ('region', 'edit', 'record'):
+            # Retain only the owned operation's status and fixed selector names.
+            # These diagnostics distinguish a failed backend from a missing
+            # native placement/focus witness without reading foreign windows.
+            try:
+                state = _result(ctx.call('operation.inspect', {'id': identity}))
+                captions = ('Capture region', 'Recording region')
+                nodes = [node for caption in captions for node in ctx.accessible(
+                    {'owned': True, 'name': caption, 'visible': True, 'showing': True})]
+                ctx.note('selector failure diagnostic=' + json.dumps({
+                    'state': state.get('state'), 'phase': state.get('phase'),
+                    'errorCode': (state.get('error') or {}).get('code'),
+                    'itemErrorCodes': [(item.get('error') or {}).get('code') for item in state.get('items', [])],
+                    'nativeSelectors': [{key: node.get(key) for key in (
+                        'name', 'role', 'rect', 'coordinate_space', 'coordinate_error', 'owned', 'pid')}
+                        for node in nodes]}, sort_keys=True))
+            except Exception as diagnostic_error:
+                ctx.note('selector failure diagnostic unavailable: ' + type(diagnostic_error).__name__)
+        raise
     finally:
         ctx.call('operation.cancel', {'id': identity})
 
