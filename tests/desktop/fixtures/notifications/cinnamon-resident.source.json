@@ -1,0 +1,7 @@
+{
+  "issue": 808,
+  "sourceLogSha256": "d823c7ad8bb9808cf96304678fb8b04a1caf8979128eba3044fd337114424cd6",
+  "captureSha256": "86530302049d64613ebef95112f963db2379801a56487a8670c8b6960669226f",
+  "summary": "Local save failed",
+  "scope": "Exact two private-family dbus-monitor blocks; no values rewritten"
+}

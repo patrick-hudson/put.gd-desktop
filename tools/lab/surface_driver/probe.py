@@ -1199,6 +1199,19 @@ def windows(query):
             (row.get('ancestors') and row['ancestors'][-1]['role']=='application')]
 
 
+def notifier_item(item):
+    """Watcher identity: bus/path (KDE), bus@/path (GNOME), or just bus."""
+    service, separator, suffix = str(item).partition('/')
+    if separator and service.endswith('@'):
+        service = service[:-1]
+    path = '/'+suffix if separator else '/StatusNotifierItem'
+    unique = r':[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+'
+    named = r'[A-Za-z_-][A-Za-z0-9_-]*(?:\.[A-Za-z_-][A-Za-z0-9_-]*)+'
+    if not re.fullmatch('(?:'+unique+'|'+named+')',service) or not re.fullmatch(r'/(?:[A-Za-z0-9_]+(?:/[A-Za-z0-9_]+)*)?',path):
+        raise ValueError('invalid StatusNotifierWatcher item identity')
+    return service,path
+
+
 def tray(query):
     """Read-only SNI properties belonging to the private resident family."""
     import dbus
@@ -1209,12 +1222,20 @@ def tray(query):
     daemon = dbus.Interface(bus.get_object('org.freedesktop.DBus','/org/freedesktop/DBus'),'org.freedesktop.DBus')
     rows = []
     for item in items:
-        service, separator, suffix = str(item).partition('/')
-        path = '/'+suffix if separator else '/StatusNotifierItem'
-        pid = int(daemon.GetConnectionUnixProcessID(service))
-        if not owned(pid) or query.get('pid') not in (None,pid):
+        try:
+            service,path = notifier_item(item)
+            pid = int(daemon.GetConnectionUnixProcessID(service))
+            if not owned(pid) or query.get('pid') not in (None,pid):
+                continue
+            properties = dbus.Interface(bus.get_object(service,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
+            # A stale item or an owner change during the property request must
+            # never contaminate the private-family observation.
+            if int(daemon.GetConnectionUnixProcessID(service))!=pid or not owned(pid):
+                continue
+        except (dbus.DBusException,OSError,ValueError):
+            # A watcher can retain an item after its owner exited. Continue to
+            # the actual private resident; outer watcher failures still fail.
             continue
-        properties = dbus.Interface(bus.get_object(service,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
         pixmaps = []
         for width,height,data in properties.get('IconPixmap',[]):
             payload = bytes(data)
