@@ -501,29 +501,6 @@ class EventRecipes(unittest.TestCase):
         self.assertIn('recording.cancel', methods)
         self.assertEqual(ctx.settings['document']['limits']['maxFileBytes'], 'auto')
 
-    def test_manual_multipart_notice_cannot_count_as_an_automatic_toast(self):
-        ctx = Fake()
-        ctx.fixtures['events.incomplete-multipart'] = {'address': '127.0.0.1', 'operationId': 'op-1', 'itemId': 'item-1'}
-        ctx.op['items'] = [{'artifact': {'id': 'item-1'}, 'error': {'details': {'incompleteUploadReported': True}}}]
-        original_call = ctx.call
-        ctx.call = lambda method, params=None: ({
-            'incompleteUploads': [{'operationId': 'op-1', 'itemId': 'item-1', 'error': {'code': 'denied'}, 'reported': False}],
-            'incompleteUploadNotice': {'count': 1, 'notified': False}}
-            if method == 'cache.clear' else original_call(method, params))
-        with self.assertRaisesRegex(RecipeBlocked, 'automatic-cleanup fixture') as blocked:
-            events.incomplete_uploads_kept(ctx)
-        self.assertEqual(blocked.exception.issue, 682)
-        self.assertTrue(any(a[:2] == ('frame', 'after') for a in ctx.actions))
-
-    def test_multipart_checks_exact_item_not_any_failure(self):
-        ctx = Fake()
-        ctx.fixtures['events.incomplete-multipart'] = {'address': '127.0.0.1', 'operationId': 'op-1', 'itemId': 'item-1'}
-        ctx.op['items'] = [{'artifact': {'id': 'item-1'}}]
-        original_call = ctx.call
-        ctx.call = lambda method, params=None: ({'incompleteUploads': [{'operationId': 'OTHER', 'itemId': 'item-1', 'error': {'code': 'denied'}, 'reported': True}]}
-                                                if method == 'cache.clear' else original_call(method, params))
-        with self.assertRaisesRegex(RecipeFailed, 'exact item'):
-            events.incomplete_uploads_kept(ctx)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ from tools.lab.surface_driver.api import Context, RecipeBlocked, recipe
 
 # Unimplemented event controllers are declarations, not simulated coverage.
 BLOCKED = {
+    'event.incomplete-uploads-kept': 'Needs a core-owned cleanup-eligible multipart journal and automatic cleanup trigger: the current fresh failed upload is retained for Retry, and manual cache.clear intentionally does not emit the event toast.',
     'event.autostart-login': 'Needs a guest re-login controller, masked console login, and private XDG autostart propagation; executing start.sh is not login evidence.',
     'event.session-logout': 'Needs a guest logout/re-login controller retaining the old resident PID/start identity and saved console frames; ui.quit is not logout evidence.',
     'event.resident-retired': 'Needs a resident tied to an ended real logind session and a fresh login launcher; changing XDG_SESSION_ID does not create an ended session.',
@@ -692,40 +693,6 @@ def recording_budget_stop(ctx: Context):
         finally:
             current = _result(ctx, 'settings.get')
             _result(ctx, 'settings.patch', {'expectedRevision': current['metadata']['observedRevision'], 'patch': {'limits': {'maxFileBytes': old_limit}}})
-
-
-@recipe('event.incomplete-uploads-kept', needs=('events.incomplete-multipart',), destinations=('local', 's3'), desktop_drawn=True)
-def incomplete_uploads_kept(ctx: Context):
-    """Real local S3 abort denial, not a fabricated resident notification.
-
-    Fixture runs a loopback S3 server with AbortMultipartUpload denied and has
-    driven a real interrupted multipart upload into the journal through the
-    resident. It supplies operationId/itemId and owns request receipts verifying
-    CreateMultipartUpload, uploaded parts, then the denied abort during cleanup.
-    """
-    _guest(ctx)
-    f = _fixture(ctx, 'events.incomplete-multipart')
-    ctx.expect(f['address'] == '127.0.0.1', 'multipart denial only on local S3 fixture')
-    ctx.expect(ctx.destination in ('local', 's3'), 'loopback S3 multipart fixture selected')
-    ctx.note('Incomplete multipart operation: ' + f['operationId'] + '; item: ' + f['itemId'])
-    op = _operation(ctx, f['operationId'])
-    ctx.expect(any(i['artifact']['id'] == f['itemId'] for i in op['items']), 'exact multipart item is journalled')
-    ctx.view('ui.show', {'view': 'history'})
-    ctx.wait(lambda: _window_ready(ctx, 'history'), 'history helper maps before multipart frame', timeout=15)
-    ctx.frame('before', window='history')
-    outcome = _result(ctx, 'cache.clear')
-    kept = [i for i in outcome['incompleteUploads'] if i['operationId'] == f['operationId'] and i['itemId'] == f['itemId']]
-    ctx.expect(len(kept) == 1 and kept[0]['error'], 'denied abort is retained for exact item')
-    ctx.expect(kept[0]['reported'] is False, 'fresh retained item was not reported before this cleanup')
-    ctx.expect(outcome['incompleteUploadNotice']['count'] >= 1, 'cleanup exposes incomplete upload notice')
-    ctx.expect(outcome['incompleteUploadNotice']['notified'] is False, 'manual cleanup returns its notice without a tray toast')
-    retained = _operation(ctx, f['operationId'])
-    item = next(i for i in retained['items'] if i['artifact']['id'] == f['itemId'])
-    ctx.expect(item['error']['details']['incompleteUploadReported'] is True, 'cleanup checkpoints the exact item reporting flag')
-    ctx.frame('after', window='history')
-    ctx.review('Core must retain the local S3 request journal and independent multipart listing; resident metadata alone cannot prove server retention.')
-    ctx.blocked('Manual cache.clear denial and retained reporting flag verified; the event toast requires a core-owned automatic-cleanup fixture (manual cleanup intentionally does not notify)', issue=682)
-
 
 
 def _declare_blocked(interaction, reason):
