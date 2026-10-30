@@ -1136,9 +1136,13 @@ def output_summary(ctx):
     # live summary name changes with that configuration, unlike the catalog.
     _click_history_node(ctx, {'name': 'Mixed outputs'})
     _wait_menu(ctx, 'Change output')
+    menu = _wait_window(ctx, 'captureOutputMenu')
+    # OutputLabel is a custom QWidget, not a QLabel. Bind its accessible
+    # names to the owned popup without assuming a native label role.
     rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
-                           'pid': ctx.geometry('history')['pid'], 'role': 'label'})
-    labels = [n['name'] for n in rows]
+                           'pid': ctx.geometry('history')['pid'],
+                           'within': [menu[k] for k in ('x', 'y', 'width', 'height')]})
+    labels = [n.get('name', '') for n in rows]
     ctx.expect(any(n.startswith('Default: ') for n in labels), 'popup exposes inherited output')
     ctx.expect(any(n.startswith('Upload clipboard: ') and 'Synthetic 1' in n for n in labels),
                'popup exposes the exact clipboard exception destination')

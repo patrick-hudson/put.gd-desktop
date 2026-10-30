@@ -756,6 +756,25 @@ class HistoryRecipeTests(unittest.TestCase):
         for entry in LANE:
             self.assertTrue(set(entry.needs) <= set(FACTORIES), entry.name)
 
+    def test_output_summary_observes_custom_widget_text_inside_its_popup(self):
+        class PopupContext(FakeContext):
+            def fixture(self, name):
+                if name == 'settings-action-routes':
+                    return SimpleNamespace(profile_ids=['route-0', 'route-1'], add=lambda *args: None)
+                return super().fixture(name)
+            def accessible(self, query):
+                # The production OutputLabel QWidget has no native label role.
+                if query.get('role') == 'label' or query.get('within') != [300, 400, 480, 200]:
+                    return []
+                return [{'role': 'panel', 'name': 'Default: Local only'},
+                        {'role': 'panel', 'name': 'Upload clipboard: Shared link · Synthetic 1'}]
+        ctx = PopupContext()
+        with patch.object(ctx, 'click'), patch.object(history, '_open'), patch.object(history, '_frame'), \
+             patch.object(history, '_click_history_node'), patch.object(history, '_wait_menu'), \
+             patch.object(history, '_capture_settings'), patch.object(history, '_wait_window',
+                 return_value=dict(x=300, y=400, width=480, height=200)):
+            history.output_summary(ctx)
+
     def test_dynamic_row_alias_is_restored_when_a_double_click_is_refused(self):
         class RowContext(FakeContext):
             def accessible(self, query):
