@@ -227,7 +227,7 @@ def _clipboard(ctx, image=False):
     ctx.wait(lambda: ctx.clipboard_text() == fixture.text, 'synthetic clipboard ownership')
 
 
-def _local_upload(ctx):
+def _local_input(ctx):
     _clipboard(ctx)
     previous = {o['id'] for o in _recent(ctx)}
     # Emit the toast through real input without spending its short draw window
@@ -235,7 +235,11 @@ def _local_upload(ctx):
     binding = ctx.call('ui.snapshot')['diagnostics'].get('shortcuts', {}).get('bindings', {}).get('clipboard', {})
     ctx.expect(binding.get('bound'), 'clipboard shortcut is natively bound')
     ctx.keys(CHORDS['clipboard'])
-    return _settled(ctx, _new_operation(ctx, previous, 'clipboard'))
+    return previous
+
+
+def _local_upload(ctx):
+    return _settled(ctx, _new_operation(ctx, _local_input(ctx), 'clipboard'))
 
 
 def _notice(ctx, summary, body=None, exclude=()):
@@ -516,7 +520,8 @@ def _action(ctx, notice, action):
     current = next(n for n in ctx.notifications() if n.get('id') == notice['id'])
     ctx.expect(any(e.get('action') == action for e in current.get('action_events', [])),
                'ActionInvoked belongs to the exact notification ID and action')
-    ctx.note('notification=' + str(notice['id']) + ' action=' + action)
+    ctx.note('notification action=' + action + ' evidence=' + json.dumps({k: current.get(k) for k in
+             ('id', 'sender', 'server', 'at', 'action_events', 'closed')}))
     return current
 
 
@@ -544,8 +549,7 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
         folder = root + '/diagnostics'
         _shell(ctx, 'mkdir -m ' + ('500' if denied else '700') + ' -- ' + shlex.quote(folder))
         _patch(ctx, {'preferences': {'diagnostics': {'debugLogging': False, 'packageFolder': folder}}})
-        op = _local_upload(ctx)
-        ctx.expect(op['state'] == 'failed', 'local obstruction produced the diagnostic source operation')
+        previous = _local_input(ctx)
         notice = _notice(ctx, 'Local save failed')
         if resident:
             expected = _profile(ctx)['resident_notifications']
@@ -555,11 +559,16 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
                 ctx.expect(notice.get('timeout') == 0, 'resident action banner has no server timeout')
         _action(ctx, notice, 'save-diagnostics')
         result = _notice(ctx, 'put.gd — diagnostics not saved' if denied else 'put.gd — diagnostics saved')
-        if reveal:
-            _action(ctx, result, 'show-in-folder')
-            _host_opened(ctx, 'diagnostics-folder', result.get('at', 0))
-        else:
+        if denied:
             _drawn_notice(ctx, result)
+        else:
+            # Consume the one banner slot immediately, before inspecting the
+            # journal/package or taking a frame. Both shells serialize banners.
+            _action(ctx, result, 'show-in-folder')
+            if reveal:
+                _host_opened(ctx, 'diagnostics-folder', result.get('at', 0))
+        op = _settled(ctx, _new_operation(ctx, previous, 'clipboard'))
+        ctx.expect(op['state'] == 'failed', 'local obstruction produced the diagnostic source operation')
         if denied:
             ctx.expect(not _shell(ctx, 'find ' + shlex.quote(folder) + " -maxdepth 1 -name '*.zip' -print"),
                        'failed diagnostics produced no package')
@@ -572,10 +581,6 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
             ctx.wait(lambda: next((n.get('closed') for n in ctx.notifications() if n.get('id') == notice['id']), None),
                      'used notification closed after the action')
         ctx.frame('after')
-        if not denied and not reveal:
-            # Consume the resident result through its real button so it cannot
-            # occupy the shell's one banner slot in the next recipe.
-            _action(ctx, result, 'show-in-folder')
 
 
 @recipe('notification.save-diagnostics', 'notification.diagnostics-saved', desktop_drawn=True)
@@ -718,6 +723,7 @@ def uploading(ctx):
 
 @recipe('notification.upload-complete', desktop_drawn=True)
 def upload_complete(ctx):
+    _ready(ctx)
     fixture = ctx.fixture('upload')
     notice = _notice(ctx, 'Upload complete')
     # Click immediately: the server serializes short-lived banners.
