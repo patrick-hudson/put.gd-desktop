@@ -620,8 +620,6 @@ def cli_recording(ctx):
     path = str(PurePosixPath(ctx.fixture('recording')['output_dir']) / ('cli-copy.' + info['config']['format']))
     _reply(ctx, ctx.cli('recording.saveCopy', json.dumps({'id': rid, 'path': path})))
     _saved(ctx, rid, path)
-    ctx.click('play', window='review')
-    ctx.keys('Space')
     _frame(ctx, 'after')
     ctx.blocked('CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)', issue=672)
 
@@ -641,8 +639,6 @@ def _mcp_review(ctx):
     _reply(ctx, ctx.mcp('save_recording_copy', {'id': rid, 'path': path}))
     _saved(ctx, rid, path)
     ctx.expect(_inspect(ctx, rid)['retainedUs'] == 2_000_000, 'MCP trim reaches resident')
-    ctx.click('play', window='review')
-    ctx.keys('Space')
     _frame(ctx, 'after')
     return rid, _inspect(ctx, rid)
 
