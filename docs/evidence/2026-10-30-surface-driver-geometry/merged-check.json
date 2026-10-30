@@ -1,0 +1,209 @@
+{
+  "schemaVersion": 1,
+  "coreCommit": "37217c45b1db8d8e8500770d96cdd562e9ae1347",
+  "mergedBase": "bb3012c0b7650ca1db044f33582a4022c3400345",
+  "peerCommit": "fe423c0192373424bde6414b5eb65a94629f52a9",
+  "guestRunId": "6374dbf7-6e0e-4f27-b529-ae648ad249ce",
+  "unitTests": {
+    "passed": 97,
+    "logSha256": "f71b4cd8828cec2df638831d1194106c373f6075b4bd35eff15ebb2292a4d6b2",
+    "source": "Exact branch source, before recomposing peer probe/context methods for live check."
+  },
+  "coreDemo": {
+    "functional": "passed",
+    "recipes": 3,
+    "rows": [
+      {
+        "interaction": "editor.tool-text",
+        "desktop": "mint-cinnamon-x11",
+        "package": "deb",
+        "functional": "passed",
+        "visual": "frames",
+        "receipt": "/home/user/e/demo-merged/receipt.json",
+        "note": "operationId=4a209b39-e296-4ac0-b1fc-fe1a397e9c19",
+        "host": "boat",
+        "placement": "boat",
+        "guest": "cinnamon-x11",
+        "destination": "local",
+        "frames": [
+          {
+            "label": "before",
+            "path": "frames/core_demo.text_tool/00-before.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "text-tool",
+            "path": "frames/core_demo.text_tool/01-text-tool.png",
+            "window": "editor",
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "after",
+            "path": "frames/core_demo.text_tool/02-after.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          }
+        ],
+        "recipe": "core_demo.text_tool",
+        "build": "550a3b808d5a485ad3033df4128e8e0542d91e19",
+        "at": "2026-10-30T02:52:13Z"
+      },
+      {
+        "interaction": "editor.tool-redact",
+        "desktop": "mint-cinnamon-x11",
+        "package": "deb",
+        "functional": "passed",
+        "visual": "frames",
+        "receipt": "/home/user/e/demo-merged/receipt.json",
+        "note": "operationId=a0d16b54-94a9-440a-83f1-0a728728cb7e",
+        "host": "boat",
+        "placement": "boat",
+        "guest": "cinnamon-x11",
+        "destination": "local",
+        "review": true,
+        "review_reason": "catalog mismatch (distance=0.149620, tolerance=0.025): actual=/home/user/e/demo-merged/frames/core_demo.redact_tool/01-redact-tool.png reference=/home/user/cat/20-editor-redact.png",
+        "frames": [
+          {
+            "label": "before",
+            "path": "frames/core_demo.redact_tool/00-before.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "redact-tool",
+            "path": "frames/core_demo.redact_tool/01-redact-tool.png",
+            "window": "editor",
+            "reference": "20-editor-redact",
+            "distance": 0.14961983507859536,
+            "tolerance": 0.025
+          },
+          {
+            "label": "after",
+            "path": "frames/core_demo.redact_tool/02-after.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          }
+        ],
+        "recipe": "core_demo.redact_tool",
+        "build": "550a3b808d5a485ad3033df4128e8e0542d91e19",
+        "at": "2026-10-30T02:52:19Z"
+      },
+      {
+        "interaction": "editor.undo",
+        "desktop": "mint-cinnamon-x11",
+        "package": "deb",
+        "functional": "passed",
+        "visual": "frames",
+        "receipt": "/home/user/e/demo-merged/receipt.json",
+        "note": "operationId=015605ad-e472-4d2b-9f0d-e70c02e9ffe0",
+        "host": "boat",
+        "placement": "boat",
+        "guest": "cinnamon-x11",
+        "destination": "local",
+        "frames": [
+          {
+            "label": "before",
+            "path": "frames/core_demo.undo_redo/00-before.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "redone",
+            "path": "frames/core_demo.undo_redo/01-redone.png",
+            "window": "editor",
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "after",
+            "path": "frames/core_demo.undo_redo/02-after.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          }
+        ],
+        "recipe": "core_demo.undo_redo",
+        "build": "550a3b808d5a485ad3033df4128e8e0542d91e19",
+        "at": "2026-10-30T02:52:26Z"
+      },
+      {
+        "interaction": "editor.redo",
+        "desktop": "mint-cinnamon-x11",
+        "package": "deb",
+        "functional": "passed",
+        "visual": "frames",
+        "receipt": "/home/user/e/demo-merged/receipt.json",
+        "note": "operationId=015605ad-e472-4d2b-9f0d-e70c02e9ffe0",
+        "host": "boat",
+        "placement": "boat",
+        "guest": "cinnamon-x11",
+        "destination": "local",
+        "frames": [
+          {
+            "label": "before",
+            "path": "frames/core_demo.undo_redo/00-before.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "redone",
+            "path": "frames/core_demo.undo_redo/01-redone.png",
+            "window": "editor",
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          },
+          {
+            "label": "after",
+            "path": "frames/core_demo.undo_redo/02-after.png",
+            "window": null,
+            "reference": null,
+            "distance": null,
+            "tolerance": null
+          }
+        ],
+        "recipe": "core_demo.undo_redo",
+        "build": "550a3b808d5a485ad3033df4128e8e0542d91e19",
+        "at": "2026-10-30T02:52:26Z"
+      }
+    ],
+    "rootCleanup": {
+      "errors": [],
+      "root": "/tmp/sd-g-demo-merged",
+      "removed": true
+    },
+    "visualReview": "redact synthetic reference mismatch retained"
+  },
+  "driverFilesSha256": {
+    "target.py": "abd5e0349362dcf365becf12dc4754906849fe4755d7d50ac3c0000e59d226e7",
+    "context.py": "f5279d5fd7aacef58a3376a6aacf0bcb952aa6107faaf6b35d159ebd077219ff",
+    "probe.py": "3b7b5e4c9493369abde20efe9e5853e293372ee5a23f91f1e67a921b48405210",
+    "catalog.py": "97764ea80c1e73ab1746d607fb4a5b038b16a9fd58b4678d6f927674ac1d6e4e",
+    "profiles/control-names.json": "995ce9eb3c20fc942f123e251eb701dc7f87b195628d30527169d458f7a2059c"
+  },
+  "socketPreflight": {
+    "stdout": "{\"schemaVersion\": 1, \"passed\": true, \"limitBytesExcludingNul\": 107, \"paths\": [{\"path\": \"/tmp/sd-g-demo-merged/runtime/putgd/session.sock\", \"utf8Bytes\": 48, \"passed\": true}, {\"path\": \"/home/user/sdg/work/lab-runs/g2/qmp.sock\", \"utf8Bytes\": 40, \"passed\": true}]}\n"
+  },
+  "archive": {
+    "sha256": "744223641a43ff7fd9a40adff9646968df3ba2c4de55b4607e0888740acd253f",
+    "verifiedFiles": 47
+  },
+  "pictureSha256": "bc8c72b2d100a8593bffeb07832dfdc79479fcf193c577456150e122d661fd13"
+}
