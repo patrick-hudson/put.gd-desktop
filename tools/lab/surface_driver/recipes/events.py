@@ -427,19 +427,26 @@ def switch_older(ctx: Context):
 def display_changed(ctx: Context):
     """Change real guest topology while the production region selector is open."""
     _guest(ctx)
+    observation = ctx.profile.get('selector_accessible', {}).get('query')
+    if not isinstance(observation, dict):
+        ctx.blocked('Core selector observation profile is unavailable; needs the owned-focus/Shell hook from PR #767 (tracked by #682)', issue=682)
     controllers = _fixture(ctx, 'events.controllers')
     identity = _result(ctx, 'action.invoke', {'action': 'region'})['operationId']
     terminal = False
     try:
         ctx.wait(lambda: _operation(ctx, identity)['state'] == 'acquiring', 'region selection is acquiring')
-        try:
-            bounds = ctx.wait(lambda: _window_ready(ctx, 'region'), 'native selector maps', timeout=10)
-        except Exception:
-            ctx.blocked('Native selector geometry is unavailable; topology event requires a visibly open selector', issue=750)
-        ctx.expect(bounds['width'] > 0 and bounds['height'] > 0, 'live selector has nonempty geometry')
+        def selector():
+            nodes = ctx.accessible(dict(observation, name='Capture region'))
+            if len(nodes) > 1:
+                ctx.blocked('Native selector observation is ambiguous', issue=682)
+            return nodes[0] if nodes else None
+        node = ctx.wait(selector, 'live native selector observation', timeout=10)
+        rect = node.get('rect')
+        if not isinstance(rect, (list, tuple)) or len(rect) != 4 or rect[2] <= 0 or rect[3] <= 0:
+            ctx.blocked('Native selector observation has no usable display bounds', issue=682)
         ctx.frame('selector-before-display-change')
         # Pick a different size from the live selector, not a fixed assumed mode.
-        size = '1280x720+0+0' if bounds['width'] != 1280 else '1600x900+0+0'
+        size = '1280x720+0+0' if rect[2] != 1280 else '1600x900+0+0'
         changed = controllers['display_change'](size)
         ctx.expect(changed['ok'], 'QMP and native output readback verify topology mutation')
         op = ctx.wait(lambda: (o if (o := _operation(ctx, identity))['state'] in ('failed', 'cancelled') else None),

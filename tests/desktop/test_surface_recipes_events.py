@@ -143,6 +143,32 @@ class EventRecipes(unittest.TestCase):
         ctx.geometry = ambiguous
         with self.assertRaises(RecipeBlocked): events._window_ready(ctx, 'history')
 
+    def test_display_gate_requires_the_core_selector_observer_profile(self):
+        ctx = Fake()
+        with self.assertRaisesRegex(RecipeBlocked, 'PR #767') as blocked:
+            events.display_changed(ctx)
+        self.assertEqual(blocked.exception.issue, 682)
+        self.assertEqual(ctx.actions, [])
+
+    def test_display_uses_native_accessible_observation_not_window_geometry(self):
+        ctx = Fake()
+        ctx.profile = {'selector_accessible': {'query': {'owned': True}}}
+        ctx.op.update(state='acquiring', items=[])
+        original_call = ctx.call
+        ctx.call = lambda method, params=None: ({'operationId': 'op-1'} if method == 'action.invoke' else original_call(method, params))
+        def inaccessible_window(role): raise AssertionError('raw selector is not a QWindow')
+        ctx.geometry = inaccessible_window
+        queries = []
+        ctx.accessible = lambda query: queries.append(query) or [{'rect': [0, 0, 1280, 800]}]
+        def change(size):
+            ctx.actions.append(('display_change', size))
+            ctx.op.update(state='failed', error={'code': 'display_changed'})
+            return {'ok': True}
+        ctx.fixture = lambda name: {'display_change': change}
+        events.display_changed(ctx)
+        self.assertEqual(queries, [{'owned': True, 'name': 'Capture region'}])
+        self.assertIn(('display_change', '1600x900+0+0'), ctx.actions)
+
     def test_exact_ownership_once(self):
         owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
         actual = [i for r in REGISTRY if r.function.__module__ == events.__name__ for i in r.interactions]
