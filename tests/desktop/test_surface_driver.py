@@ -243,6 +243,11 @@ class Running(unittest.TestCase):
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
         self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
+        target.close=lambda:['cleanup incomplete']
+        args[args.index('--out')+1]=str(self.path/'run-error')
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+            self.assertEqual(main(args),2)
+        self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
 
     def test_cleanup_attempts_quit_when_monitor_transport_fails(self):
         target=Target.__new__(Target)
@@ -255,6 +260,23 @@ class Running(unittest.TestCase):
         self.assertEqual(calls,[('ui.quit',)])
         self.assertFalse(target.started)
         self.assertEqual(errors,['notification monitor cleanup unavailable'])
+
+    def test_resident_operation_identity_is_retained(self):
+        self.ctx.target.cli=lambda *args,**kwargs:{'returncode':0,'stderr':'','stdout':
+            json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
+        self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
+        self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
+
+    def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
+        from types import SimpleNamespace
+        target=Target.__new__(Target)
+        target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=105
+        calls=[]
+        target.physical=SimpleNamespace(ssh=lambda *args:calls.append(args) or json.dumps({'ok':True,'state':'expired','expiresInSeconds':0}))
+        target.run=self.path
+        with patch('tools.lab.surface_driver.target.time.monotonic',return_value=110):
+            with self.assertRaisesRegex(RecipeBlocked,'no longer held'):target.heartbeat()
+        self.assertEqual(len(calls),1)
 
     def test_notification_correlation(self):
         raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
