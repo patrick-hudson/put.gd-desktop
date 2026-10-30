@@ -53,6 +53,8 @@ def desktop_transport(function):
     def invoke(*args, **kwargs):
         try:
             args[0].heartbeat(force=True)
+            if verify := getattr(args[0], '_verify_endpoints', None):
+                verify()
             return function(*args, **kwargs)
         except RecipeBlocked:
             raise

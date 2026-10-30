@@ -3,7 +3,9 @@
 import dataclasses
 import importlib
 import json
+import os
 from pathlib import Path
+import socket
 import subprocess
 import sys
 import tempfile
@@ -18,7 +20,7 @@ from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.context import DriverContext, parse_notifications
 from tools.lab.surface_driver.profiles import load_profile, merge
 from tools.lab.surface_driver.receipts import write_receipts
-from tools.lab.surface_driver.run import discover, guard_target, main, run_recipes, validate_recipes
+from tools.lab.surface_driver.run import discover, guard_target, main, run_recipes, validate_recipes, verify_physical_endpoints
 from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
@@ -688,6 +690,11 @@ signal time=100.5 sender=:1.3 -> destination=(null destination) serial=22 interf
 
 
 class TargetSafety(unittest.TestCase):
+    def setUp(self):
+        endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
+        self.endpoint_check=endpoint_check.start()
+        self.addCleanup(endpoint_check.stop)
+
     def arguments(self, host='f44', placement='native', session='owned-session'):
         return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test')
 
@@ -713,7 +720,8 @@ class TargetSafety(unittest.TestCase):
                             allowed = (builder and host==profile and placement=='native' and session) or (profile=='guest' and placement!='native') or (profile=='boat' and host=='boat' and placement=='boat')
                             command=b'qemu-system-x86_64\0-qmp\0unix:/tmp/sd-guard/qmp.sock,server=on,wait=off\0'
                             reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':'bx_test','hydrated':True}}))
-                            with patch.object(lab,'verify_owned_guest',return_value={'pid':123}),patch.object(Path,'read_bytes',return_value=command),patch.object(Path,'read_text',return_value='boot-id\n'),patch('tools.lab.surface_driver.run.subprocess.run',return_value=reply):
+                            proof=SimpleNamespace(stdout=json.dumps({'exitCode':0,'stdout':'boot-id\n'}))
+                            with patch.object(lab,'verify_owned_guest',return_value={'pid':123}),patch.object(Path,'read_bytes',return_value=command),patch.object(Path,'read_text',return_value='boot-id\n'),patch('tools.lab.surface_driver.run.subprocess.run',side_effect=lambda command,**kwargs:reply if command[1]=='info' else proof):
                                 if allowed:
                                     guard_target(args,target)
                                 else:
@@ -752,10 +760,18 @@ class TargetSafety(unittest.TestCase):
                 ('bx_test',True,'different',False),('bx_test',True,'boot-id',True)):
             target.physical.ssh.return_value=remote_boot
             reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':identity,'hydrated':hydrated}}))
-            with patch('tools.lab.surface_driver.run.subprocess.run',return_value=reply),patch.object(Path,'read_text',return_value='boot-id\n'):
+            proof=SimpleNamespace(stdout=json.dumps({'exitCode':0,'stdout':'boot-id\n'}))
+            with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=[reply,proof]),patch.object(Path,'read_text',return_value='boot-id\n'):
                 if allowed:guard_target(args,target)
                 else:
                     with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        # A supplied BOAT_ID and matching local SSH boot identity do not prove
+        # that the runner is the authenticated sandbox.
+        reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':'bx_test','hydrated':True}}))
+        for witness in ({'exitCode':0,'stdout':'other-boot'}, {'exitCode':1,'stdout':'boot-id'}):
+            proof=SimpleNamespace(stdout=json.dumps(witness))
+            with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=[reply,proof]),patch.object(Path,'read_text',return_value='boot-id\n'):
+                with self.assertRaises(RecipeBlocked):guard_target(args,target)
         with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=FileNotFoundError):
             with self.assertRaises(RecipeBlocked):guard_target(args,target)
         for malformed in ('not-json', '[]', '{}', '{"sandbox":null}'):
@@ -812,6 +828,17 @@ class TargetSafety(unittest.TestCase):
             target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps(reply)))
             with self.assertRaises(RecipeBlocked):target.require_lock('f44','owned-session')
 
+    def test_endpoint_rebinding_blocks_the_next_input(self):
+        target=Target.__new__(Target);target.run=Path('/tmp/sd-guard');target.info={}
+        target.physical=SimpleNamespace(config={'host':'192.168.68.70','user':'patrick'})
+        target.heartbeat=Mock();target._rfb=Mock()
+        guard_target(self.arguments(),target)
+        self.endpoint_check.assert_called_once_with(target)
+        self.endpoint_check.side_effect=[None,RecipeBlocked('endpoint changed')]
+        target.key(['t'])
+        with self.assertRaises(RecipeBlocked):target.key(['t'])
+        target._rfb.key.assert_called_once_with('t')
+
     def test_native_host_input_still_works_under_a_held_lock(self):
         with tempfile.TemporaryDirectory() as td:
             target=Target.__new__(Target);target.run=Path(td)
@@ -826,6 +853,108 @@ class TargetSafety(unittest.TestCase):
                 with self.assertRaises(RecipeBlocked):target.key(['t'])
                 self.assertEqual(key.call_count,1)
             self.assertEqual(target.physical.ssh.call_count,3)
+
+
+class EndpointSafety(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.run=Path(self.temp.name)
+        self.path=self.run/'qmp.sock'
+        self.assertLessEqual(len(str(self.path).encode('utf-8')),107)
+        self.listener=socket.socket(socket.AF_UNIX)
+        self.listener.bind(str(self.path));self.listener.listen()
+        self.addCleanup(self.listener.close)
+        self.target=SimpleNamespace(run=self.run,physical=SimpleNamespace(
+            config={'host':'192.168.68.70','user':'patrick','known_hosts':'/pins','vnc_port':5970},
+            ssh=lambda run,command:'1000' if command=='id -u' else 'boot-id'))
+        self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins',
+                   '-L','127.0.0.1:5970:127.0.0.1:5901',
+                   '-L',str(self.path)+':/run/user/1000/putgd-lab-input.sock','patrick@192.168.68.70']
+        self.executable='ssh';self.owner=os.getuid();self.rows=True
+        original_stat=Path.stat;original_read=Path.read_bytes;original_link=Path.readlink;original_text=Path.read_text
+        def proc_stat(path,*args,**kwargs):
+            return SimpleNamespace(st_uid=self.owner) if path==Path('/proc/123') else original_stat(path,*args,**kwargs)
+        def proc_read(path):
+            return '\0'.join(self.argv).encode() if path==Path('/proc/123/cmdline') else original_read(path)
+        def proc_link(path):
+            return Path('/usr/bin/'+self.executable) if path==Path('/proc/123/exe') else original_link(path)
+        def proc_text(path,*args,**kwargs):
+            return 'boot-id' if path==Path('/proc/sys/kernel/random/boot_id') else original_text(path,*args,**kwargs)
+        def listeners(command,**kwargs):
+            self.assertEqual(command[0],'ss')
+            address='127.0.0.1:5970' if '-ltnp' in command else str(self.path)
+            return SimpleNamespace(stdout='LISTEN 0 128 '+address+' * users:(("ssh",pid=123,fd=4))' if self.rows else '')
+        for patcher in (patch.object(Path,'stat',proc_stat),patch.object(Path,'read_bytes',proc_read),
+                        patch.object(Path,'readlink',proc_link),patch.object(Path,'read_text',proc_text),
+                        patch('tools.lab.surface_driver.run.subprocess.run',side_effect=listeners)):
+            patcher.start();self.addCleanup(patcher.stop)
+
+    def test_both_pinned_forwarded_endpoints_are_accepted(self):
+        verify_physical_endpoints(self.target)
+
+    def test_mismatched_vnc_qmp_host_pins_and_remote_command_are_rejected(self):
+        original=list(self.argv)
+        for old,new in (('patrick@192.168.68.70','patrick@192.168.68.69'),
+                        ('127.0.0.1:5970:127.0.0.1:5901','127.0.0.1:5970:127.0.0.1:5900'),
+                        (str(self.path)+':/run/user/1000/putgd-lab-input.sock',str(self.path)+':/another/qmp.sock'),
+                        ('UserKnownHostsFile=/pins','UserKnownHostsFile=/other-pins')):
+            self.argv=[new if value==old else value for value in original]
+            with self.subTest(replaced=old):
+                with self.assertRaisesRegex(RecipeBlocked,'endpoint binding'):verify_physical_endpoints(self.target)
+        self.argv=original+['remote-command','patrick@192.168.68.70']
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_unknown_or_unowned_listener_is_rejected(self):
+        self.rows=False
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+        self.rows=True;self.owner=os.getuid()+1
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+        self.owner=os.getuid();self.executable='socat'
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_regular_file_or_indirect_input_socket_is_rejected(self):
+        self.path.unlink();self.path.write_text('not a socket')
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+        self.path.unlink();self.path.symlink_to(self.run/'another.sock')
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_direct_native_vnc_requires_the_same_authenticated_machine(self):
+        self.path.unlink();self.executable='w0vncserver'
+        verify_physical_endpoints(self.target)
+        self.target.physical.ssh=lambda *args:'another-boot'
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_direct_host_input_requires_its_exact_socket(self):
+        # The native VNC and Python input listeners have separate PIDs in a
+        # real session; select their executable/argv per ss query here.
+        socket_argument=str(self.path)
+        def listeners(command,**kwargs):
+            if '-ltnp' in command:
+                self.executable='w0vncserver'
+                address='127.0.0.1:5970'
+            else:
+                self.executable='python3.12';address=str(self.path)
+                self.argv=['python3','/lab/host_input.py','serve','--socket',socket_argument]
+            return SimpleNamespace(stdout='LISTEN 0 128 '+address+' * users:(("server",pid=123,fd=4))')
+        with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=listeners):
+            verify_physical_endpoints(self.target)
+            socket_argument=str(self.path)+'-other'
+            with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_unverifiable_endpoints_block_main_before_resident_or_capture(self):
+        self.target.info={'id':'fake','profile':'cinnamon-x11'}
+        self.target.root='/tmp/sd-fake';self.target.socket='/tmp/sd-fake/runtime/putgd/session.sock'
+        self.target.require_lock=Mock();self.target.start=Mock();self.target.identity=Mock()
+        self.target.screenshot=Mock();self.target.close=Mock(return_value=[])
+        self.argv[-1]='patrick@192.168.68.69'
+        args=['--desktop','mint-cinnamon-x11','--host','f44','--placement','native','--lock-session','owned',
+              '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
+              '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
+              '--coverage',str(self.run/'coverage.json')]
+        with patch('tools.lab.surface_driver.run.Target',return_value=self.target):
+            self.assertEqual(main(args),2)
+        self.target.require_lock.assert_called_once_with('f44','owned')
+        for operation in (self.target.start,self.target.identity,self.target.screenshot):operation.assert_not_called()
 
 
 class CoreDemoCleanup(unittest.TestCase):

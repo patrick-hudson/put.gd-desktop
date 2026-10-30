@@ -7,12 +7,14 @@ lifecycle and VNC wall forwarding stay with lab.py and the campaign owner.
 import argparse
 import dataclasses
 import fnmatch
+import getopt
 import importlib
 import json
 import os
 from pathlib import Path
 import re
 import signal
+import stat
 import subprocess
 import sys
 import time
@@ -26,6 +28,71 @@ from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import stamp, write_receipts
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
+
+
+def verify_physical_endpoints(target):
+    """Bind local listeners to the pinned SSH host, never trust a port/path label."""
+    config = target.physical.config
+    try:
+        port = config['vnc_port']
+        if type(port) is not int or not 1024 <= port <= 65535:
+            raise ValueError('invalid VNC port')
+        remote_vnc = 5901 if config['host'] == '192.168.68.70' or config['host'] in ('127.0.0.1', '::1') else 5900
+        endpoints = [('vnc', '127.0.0.1:'+str(port), '127.0.0.1:'+str(port)+':127.0.0.1:'+str(remote_vnc))]
+        socket = target.run / 'qmp.sock'
+        if socket.is_symlink():
+            raise ValueError('indirect input socket')
+        if socket.exists():
+            info = socket.stat()
+            if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
+                raise ValueError('input socket is not owned')
+            uid = target.physical.ssh(target.run, 'id -u').strip()
+            if not uid.isdecimal():
+                raise ValueError('unknown remote account')
+            endpoints.append(('input', str(socket), str(socket)+':/run/user/'+uid+'/putgd-lab-input.sock'))
+        for kind, address, forward in endpoints:
+            command = ['ss', '-H', '-ltnp', 'sport = :'+str(port)] if kind == 'vnc' else ['ss', '-H', '-lxnp']
+            reply = subprocess.run(command, check=True, capture_output=True, text=True, timeout=10)
+            lines = [line for line in reply.stdout.splitlines() if address in line.split()]
+            pids = {pid for line in lines for pid in re.findall(r'pid=(\d+)', line)}
+            if len(pids) != 1:
+                raise ValueError('listener owner unavailable or ambiguous')
+            process = Path('/proc') / pids.pop()
+            if process.stat().st_uid != os.getuid():
+                raise ValueError('listener is not owned')
+            arguments = [value.decode() for value in (process/'cmdline').read_bytes().split(b'\0') if value]
+            executable = (process/'exe').readlink().name.lower()
+            if executable == 'ssh':
+                options, rest = getopt.getopt(arguments[1:], '1246AaCfGgKkMNnqsTtVvXxYyB:b:c:D:E:e:F:I:i:J:L:l:m:O:o:p:Q:R:S:W:w:')
+                values = dict(options)
+                pins = [value for option, value in options if option == '-o']
+                if (rest != [config['user']+'@'+config['host']] or '-N' not in values
+                        or int(values.get('-p', 22)) != config.get('ssh_port', 22)
+                        or 'StrictHostKeyChecking=yes' not in pins
+                        or 'UserKnownHostsFile='+config['known_hosts'] not in pins
+                        or ('-L', forward) not in options):
+                    raise ValueError('forward does not bind the authenticated host')
+            else:
+                # Direct listeners are allowed only when the pinned SSH host
+                # is this runner, and the listener is a native desktop server.
+                boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
+                if not boot or target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip() != boot:
+                    raise ValueError('direct listener is on a different host')
+                if kind == 'vnc':
+                    if executable not in ('x11vnc', 'x0vncserver', 'x0tigervnc', 'w0vncserver', 'wayvnc'):
+                        raise ValueError('unverified desktop server')
+                elif not (executable.startswith('python3') and any(Path(a).name == 'host_input.py' for a in arguments)
+                          and 'serve' in arguments and '--socket' in arguments
+                          and arguments[arguments.index('--socket')+1] == address):
+                    raise ValueError('unverified host-input server')
+    except (OSError, ValueError, KeyError, IndexError, UnicodeError, getopt.GetoptError,
+            subprocess.SubprocessError, lab.LabError) as error:
+        raise RecipeBlocked('physical VNC/input endpoint binding cannot be verified') from error
+
+
+def guard_physical_endpoints(target):
+    verify_physical_endpoints(target)
+    target._verify_endpoints = lambda: verify_physical_endpoints(target)
 
 
 def guard_target(args, target):
@@ -45,19 +112,25 @@ def guard_target(args, target):
             if not args.lock_session:
                 raise RecipeBlocked('physical desktop input requires its held --lock-session')
             target.require_lock(builder, args.lock_session)
+            guard_physical_endpoints(target)
             return
         # A label, profile name or supplied sandbox id is not identity evidence.
         # Permit a boat head only on that sandbox's own runner, over local SSH.
         if args.host == 'boat' and args.placement == 'boat' and args.boat_id:
             if config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22:
                 try:
-                    reply = subprocess.run(['boat', 'info', 'self', '--json'], check=True,
+                    reply = subprocess.run(['boat', 'info', args.boat_id, '--json'], check=True,
                                            capture_output=True, text=True, timeout=15)
                     info = json.loads(reply.stdout)['sandbox']
                     if info.get('id') == args.boat_id and info.get('hydrated') is True:
+                        witness = subprocess.run(['boat', 'exec', args.boat_id, '--json', '--',
+                                                  'cat', '/proc/sys/kernel/random/boot_id'], check=True,
+                                                 capture_output=True, text=True, timeout=20)
+                        proof = json.loads(witness.stdout)
                         boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
                         observed = target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip()
-                        if boot and observed == boot:
+                        if boot and proof.get('exitCode') == 0 and proof.get('stdout', '').strip() == boot == observed:
+                            guard_physical_endpoints(target)
                             return
                 except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError, lab.LabError):
                     pass
