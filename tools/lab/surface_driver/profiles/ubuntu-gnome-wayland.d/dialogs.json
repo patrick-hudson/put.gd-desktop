@@ -12,6 +12,9 @@
         ],
         "folder_accept_keys": [
           "Alt+S"
+        ],
+        "open_accept_keys": [
+          "Alt+S"
         ]
       },
       "fallback": {

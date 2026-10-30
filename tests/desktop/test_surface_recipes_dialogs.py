@@ -48,6 +48,7 @@ class FakeContext(Context):
         self.selected_all = False
         self.folder_accept_race = False
         self.stale_folder_open = False
+        self.open_requires_select = False
 
     def fixture(self, name):
         if name == 'chooser-failure':
@@ -189,7 +190,9 @@ class FakeContext(Context):
                 self.selected_all = True
             if 'Escape' in sequence:
                 self._finish('cancelled')
-            elif 'Return' in sequence:
+            elif 'Alt+S' in sequence and self.open_requires_select:
+                self._finish('chosen')
+            elif 'Return' in sequence and not (self.open_requires_select and self.dialog['mode'] == 'open'):
                 self._finish('chosen')
 
     def type_text(self, text):
@@ -322,6 +325,13 @@ class DialogRecipes(unittest.TestCase):
         dialogs.cancel_portal(ctx)
         self.assertGreaterEqual(len(queries), 2)
         self.assertTrue(all(q.get('owned') is False for q in queries))
+
+    def test_nautilus_open_selects_path_before_accepting(self):
+        ctx = FakeContext('portal')
+        ctx.open_requires_select = True
+        ctx.profile['dialogs']['backends']['portal']['open_accept_keys'] = ['Alt+S']
+        dialogs.edit_image_portal(ctx)
+        self.assertIn(('keys', ('Alt+S',)), ctx.inputs)
 
     def test_failure_recipe_uses_core_fixture_before_backend_launch(self):
         for backend in dialogs.BACKENDS:

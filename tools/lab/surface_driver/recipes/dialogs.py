@@ -155,9 +155,12 @@ def _input(ctx, backend, path, mode, inspect):
         ctx.wait(contains_path, 'desktop chooser contains the typed path')
     _frame(ctx, 'path-entered', backend)
     ctx.keys('Return')
-    if backend == 'portal' and mode == 'folder' and inspect()['open']:
+    settings = ctx.profile['dialogs']['backends'][backend]
+    accept_keys = (settings['folder_accept_keys'] if mode == 'folder' else
+                   settings.get(mode + '_accept_keys', [])) if backend == 'portal' else []
+    if accept_keys and inspect()['open']:
         try:
-            ctx.keys(*ctx.profile['dialogs']['backends'][backend]['folder_accept_keys'])
+            ctx.keys(*accept_keys)
         except RecipeBlocked as error:
             # Return can accept an already completed folder path. If the
             # chooser closes between inspect and the next guarded key, no
@@ -168,7 +171,7 @@ def _input(ctx, backend, path, mode, inspect):
                     last.get('status') == 'chosen' and last.get('backend') == backend and
                     _same_path(last.get('path'), path, mode)):
                 raise
-            ctx.note('Return completed the exact folder choice before the optional accept key')
+            ctx.note('Return completed the exact choice before the optional accept key')
 
 
 def _exercise(ctx, backend, mode, request, consumer, path, *, mcp=False):
