@@ -608,8 +608,11 @@ def x11_unmanaged_foreground(query):
             'obscuring_window_id': None if ok else focus}
 
 
+SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
+
+
 def shell_hit(query):
-    """GNOME Shell's compositor-owned AT-SPI stage pick, not an app-local pick."""
+    """The compositor shell's own AT-SPI stage pick (GNOME Shell, Cinnamon), not an app-local pick."""
     import pyatspi
     expected = query['desktop_node']
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
@@ -625,14 +628,14 @@ def shell_hit(query):
                     if node is None:
                         break
                     if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==expected['role']:
-                        return {'ok':True,'backend':'gnome-shell-at-spi-pick','obscuring_window':None}
+                        return {'ok':True,'backend':'shell-at-spi-pick','obscuring_window':None}
                     child = node.queryComponent().getAccessibleAtPoint(int(point[0]),int(point[1]),pyatspi.DESKTOP_COORDS)
                     if child == node:
                         break
                     node = child
             except (RuntimeError,NotImplementedError,AttributeError):
                 continue
-    return {'ok':False,'backend':'gnome-shell-at-spi-pick','obscuring_window':'GNOME Shell stage did not pick the expected notification control'}
+    return {'ok':False,'backend':'shell-at-spi-pick','obscuring_window':'compositor shell stage did not pick the expected notification control'}
 
 
 def foreground(query):
@@ -640,6 +643,11 @@ def foreground(query):
         watch_popups()
     except ImportError:
         pass
+    # Compositor-drawn content (notification banners) is not an X window: an
+    # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
+    # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
+    if query.get('desktop_node') and query.get('desktop_hit_test') in SHELL_PICKS:
+        return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_foreground(query)
     script = query.get('compositor_script')
@@ -652,8 +660,6 @@ def foreground(query):
         if not all(k in witness for k in ('ok', 'obscuring_window')):
             raise RuntimeError('profile compositor focus witness has invalid shape')
         return witness
-    if query.get('desktop_node') and query.get('desktop_hit_test')=='gnome-shell-at-spi':
-        return shell_hit(query)
     # AT-SPI focus alone cannot prove compositor stacking on Wayland. The
     # resident's public view-state currently has no focus/occlusion witness.
     # Do not invent those fields or accept an arbitrary frame as pixel proof.
