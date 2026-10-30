@@ -502,7 +502,8 @@ class StagingRecoveryContracts(unittest.TestCase):
 
     def test_dead_leader_with_live_session_reports_session_pids(self):
         # F3: the leader is reaped but its PID stays referenced as the session
-        # ID, so pidfd_open fails with EINVAL rather than ESRCH.
+        # ID. Kernels such as 6.14 then fail pidfd_open with EINVAL; others
+        # (the hosted CI runner) report ESRCH. Both must reach the session scan.
         member = None
         leader = subprocess.Popen(['setsid', 'sh', '-c',
             'while [ ! -e finish ]; do sleep .02; done & echo $!; exit 0'],
@@ -513,7 +514,7 @@ class StagingRecoveryContracts(unittest.TestCase):
             self.assertEqual(os.getsid(member), leader.pid)
             with self.assertRaises(OSError) as einval:
                 os.close(os.pidfd_open(leader.pid))
-            self.assertEqual(einval.exception.errno, errno.EINVAL)
+            self.assertIn(einval.exception.errno, (errno.EINVAL, errno.ESRCH))
             lab.write_json(self.remote / 'staging-process.json',
                            {'pid': leader.pid, 'sessionId': leader.pid, 'startTicks': 1})
             for mode in ('pidfd', 'missing', 'enosys'):
