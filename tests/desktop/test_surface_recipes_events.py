@@ -89,6 +89,7 @@ class Fake(Context):
         self.expect(result, what)
         return result
 
+    def geometry(self, window): return {'x': 0, 'y': 0, 'width': 1280, 'height': 800}
     def frame(self, label, window=None, reference=None): self.actions.append(('frame', label, window))
     def click(self, control, window, **kw):
         self.actions.append(('click', control, window))
@@ -133,6 +134,15 @@ class Fake(Context):
 
 
 class EventRecipes(unittest.TestCase):
+    def test_window_mapping_retries_only_absent_windows(self):
+        ctx = Fake()
+        def absent(window): raise RecipeBlocked('live window match is missing or ambiguous (0 matches)')
+        ctx.geometry = absent
+        self.assertIsNone(events._window_ready(ctx, 'history'))
+        def ambiguous(window): raise RecipeBlocked('live window match is missing or ambiguous (2 matches)')
+        ctx.geometry = ambiguous
+        with self.assertRaises(RecipeBlocked): events._window_ready(ctx, 'history')
+
     def test_exact_ownership_once(self):
         owners = json.loads((ROOT / 'tools/lab/surface_driver/ownership.json').read_text())['owners']
         actual = [i for r in REGISTRY if r.function.__module__ == events.__name__ for i in r.interactions]

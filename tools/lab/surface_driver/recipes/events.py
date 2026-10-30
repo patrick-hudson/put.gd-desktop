@@ -10,7 +10,7 @@ import json
 import shlex
 from urllib.parse import urlsplit
 
-from tools.lab.surface_driver.api import Context, recipe
+from tools.lab.surface_driver.api import Context, RecipeBlocked, recipe
 
 
 # Unimplemented event controllers are declarations, not simulated coverage.
@@ -56,6 +56,16 @@ def _notice(ctx: Context, text):
     return ctx.wait(lambda: next((n for n in ctx.notifications()
                                  if text.casefold() in (n.get('summary', '') + ' ' + n.get('body', '')).casefold()), None),
                     'notification: ' + text)
+
+
+def _window_ready(ctx: Context, window):
+    """Retry an acknowledged helper launch until its native window maps."""
+    try:
+        return ctx.geometry(window)
+    except RecipeBlocked as error:
+        if '0 matches' in str(error):
+            return None
+        raise
 
 
 def _failure_frame(ctx: Context):
@@ -251,6 +261,7 @@ def network_stall(ctx: Context):
         counters = json.loads(_shell(ctx, f'sudo -n /usr/sbin/nft -j list table inet {table}', 'read real packet-drop counters'))
         count = sum(expr['counter'].get('packets', 0) for row in counters['nftables']
                     for expr in row.get('rule', {}).get('expr', []) if 'counter' in expr)
+        ctx.note('Endpoint packet-drop witness: ' + str(count) + ' packets')
         ctx.expect(count > 0, 'nft actually dropped upload packets')
         ctx.expect(any(i.get('uploadStatus') in ('failed', 'unknown') and i.get('error', {}).get('code') for i in op['items']), 'inspect exposes per-item upload error or retained unknown outcome')
         if any(i.get('uploadStatus') == 'unknown' for i in op['items']):
@@ -415,7 +426,7 @@ def display_changed(ctx: Context):
     try:
         ctx.wait(lambda: _operation(ctx, identity)['state'] == 'acquiring', 'region selection is acquiring')
         try:
-            bounds = ctx.geometry('region')
+            bounds = ctx.wait(lambda: _window_ready(ctx, 'region'), 'native selector maps', timeout=10)
         except Exception:
             ctx.blocked('Native selector geometry is unavailable; topology event requires a visibly open selector', issue=750)
         ctx.expect(bounds['width'] > 0 and bounds['height'] > 0, 'live selector has nonempty geometry')
@@ -700,6 +711,7 @@ def incomplete_uploads_kept(ctx: Context):
     op = _operation(ctx, f['operationId'])
     ctx.expect(any(i['artifact']['id'] == f['itemId'] for i in op['items']), 'exact multipart item is journalled')
     ctx.view('ui.show', {'view': 'history'})
+    ctx.wait(lambda: _window_ready(ctx, 'history'), 'history helper maps before multipart frame', timeout=15)
     ctx.frame('before', window='history')
     outcome = _result(ctx, 'cache.clear')
     kept = [i for i in outcome['incompleteUploads'] if i['operationId'] == f['operationId'] and i['itemId'] == f['itemId']]
