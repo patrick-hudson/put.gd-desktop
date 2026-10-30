@@ -282,30 +282,39 @@ class CandidateContracts(unittest.TestCase):
         self.assertEqual(receipt['collectionError'], 'copy failed')
 
     def test_optional_legacy_benchmark_cannot_consume_collection_reserve(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            def run(argv, **kwargs):
-                if argv[0] == 'boat':
-                    kwargs['log'].write('{"id":"bx_owned"}\n')
-                return ''
-            def boat(*args, **kwargs):
-                if args[0] == 'info':
-                    return {'sandbox': {'hydrated': True, 'state': 'ready', 'sshEndpoint': 'host:22'}}
-                return {'stdout': 'ssh-ed25519 synthetic-key'}
-            # An exhausted build budget leaves the optional benchmark one second,
-            # while collect_artifacts independently retains its 150-second reserve.
-            args = argparse.Namespace(commit=SHA, type='large', ttl=180, benchmark_catalog_scp=True)
-            with patch.object(candidate, 'run', side_effect=run) as calls, \
-                 patch.object(candidate, 'boat', side_effect=boat), \
-                 patch.object(candidate, 'cleanup_workers', return_value={'verified': True}), \
-                 patch.object(candidate, 'collect_artifacts') as collection, \
-                 patch.object(candidate, 'verify_identity', return_value={}), \
-                 patch.object(candidate, 'inventory', return_value=[]):
-                result = candidate.build_worker('ui-catalog', args, Path(temporary), ('image', 'build', 'dev'))
-            self.assertEqual(result['state'], 'passed')
-            legacy = [call for call in calls.call_args_list if call.args[0][0] == 'scp']
-            self.assertEqual(len(legacy), 1)
-            self.assertEqual(legacy[0].kwargs['timeout'], 1)
-            self.assertEqual(collection.call_args.kwargs['timeout'], 1)
+        for fails in (False, True):
+            with self.subTest(benchmarkFails=fails), tempfile.TemporaryDirectory() as temporary:
+                def run(argv, **kwargs):
+                    if argv[0] == 'boat':
+                        kwargs['log'].write('{"id":"bx_owned"}\n')
+                    if fails and argv[0] == 'scp':
+                        raise TimeoutError('legacy deadline exceeded')
+                    return ''
+                def boat(*args, **kwargs):
+                    if args[0] == 'info':
+                        return {'sandbox': {'hydrated': True, 'state': 'ready', 'sshEndpoint': 'host:22'}}
+                    return {'stdout': 'ssh-ed25519 synthetic-key'}
+                # An exhausted build budget leaves the optional benchmark one second,
+                # while collect_artifacts independently retains its 150-second reserve.
+                args = argparse.Namespace(commit=SHA, type='large', ttl=180, benchmark_catalog_scp=True)
+                with patch.object(candidate, 'run', side_effect=run) as calls, \
+                     patch.object(candidate, 'boat', side_effect=boat), \
+                     patch.object(candidate, 'cleanup_workers', return_value={'verified': True}), \
+                     patch.object(candidate, 'collect_artifacts') as collection, \
+                     patch.object(candidate, 'verify_identity', return_value={}), \
+                     patch.object(candidate, 'inventory', return_value=[]):
+                    result = candidate.build_worker('ui-catalog', args, Path(temporary), ('image', 'build', 'dev'))
+                self.assertEqual(result['state'], 'passed')
+                self.assertEqual(result['legacyScpStatus'], 'failed' if fails else 'passed')
+                if fails:
+                    self.assertEqual(result['legacyScpError'], 'legacy deadline exceeded')
+                    self.assertNotIn('legacyScpBytesMatch', result)
+                collection.assert_called_once()
+                legacy = [call for call in calls.call_args_list if call.args[0][0] == 'scp']
+                self.assertEqual(len(legacy), 1)
+                self.assertEqual(legacy[0].kwargs['timeout'], 1)
+                self.assertEqual(collection.call_args.kwargs['timeout'], 1)
+
 
     def test_ssh_is_independent_of_user_config_and_disables_forwarding(self):
         options = candidate.ssh_options(Path('/private/pin'))
