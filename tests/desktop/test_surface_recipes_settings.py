@@ -227,6 +227,7 @@ class Fake(Context):
             return {'returncode': 0, 'stdout': json.dumps({'path': self.config_path, 'document': self.disk})}
         if script.startswith('printf %s '):
             self.clipboard = shlex.split(script)[2]
+            self.inputs.append(('clipboard', self.clipboard))
             return {'returncode': 0, 'stdout': ''}
         if 'private accessibility tree exceeded' in script:
             request = json.loads(shlex.split(script)[-1])
@@ -389,6 +390,18 @@ class Contracts(unittest.TestCase):
         click(ctx, 'archiveRoot')
         self.assertEqual(scrolled, [(1536, 520, -3)])
         self.assertEqual(ctx.focus, 'archiveRoot')
+
+    def test_template_clipboard_is_ready_before_selection(self):
+        ctx = Fake()
+        lane.replace(ctx, 'fileTemplate', 'surface-{name}.{ext}')
+        clipboard = next(i for i, event in enumerate(ctx.inputs) if event[0] == 'clipboard')
+        click = next(i for i, event in enumerate(ctx.inputs) if event[0] == 'click')
+        select = ctx.inputs.index(('keys', ('Ctrl+A',)))
+        paste = ctx.inputs.index(('keys', ('Ctrl+V',)))
+        self.assertLess(clipboard, click)
+        self.assertLess(click, select)
+        self.assertEqual(paste, select + 1)
+        self.assertEqual(ctx.document['naming']['fileTemplate'], 'surface-{name}.{ext}')
 
     def test_transient_geometry_gap_is_observed_before_input(self):
         ctx = Fake()

@@ -142,23 +142,27 @@ def choose(ctx, control, index):
 
 
 def replace(ctx, control, text):
-    if control == 'archiveRoot' or control.endswith('Template'):
-        live_click(ctx, control)
-    else:
-        ctx.click(control, window='settings')
-    ctx.keys('Ctrl+A')
-    if control.endswith('Template'):
+    paste = control.endswith('Template')
+    if paste:
         writer = ctx.profile.get('settings', {}).get('clipboard_write_command')
         if not writer:
             ctx.blocked('Template input requires the profile synthetic clipboard writer.')
         reply = ctx.shell('printf %s ' + shlex.quote(text) + ' | ' + writer + ' >/dev/null 2>&1')
         ctx.expect(reply['returncode'] == 0, 'synthetic template clipboard write succeeded')
         ctx.wait(lambda: ctx.clipboard_text() == text, 'synthetic template clipboard is ready')
+    if control == 'archiveRoot' or paste:
+        live_click(ctx, control)
+    else:
+        ctx.click(control, window='settings')
+    # Clipboard ownership changes can clear the X11 text selection. Prepare
+    # the clipboard first, then select and paste without an intervening probe.
+    ctx.keys('Ctrl+A')
+    if paste:
         ctx.keys('Ctrl+V')
     else:
         ctx.type_text(text)
     ctx.keys('Tab')
-    if control == 'archiveRoot' or control.endswith('Template'):
+    if control == 'archiveRoot' or paste:
         input_witness(ctx, ctx.geometry('settings'))
         ctx.frame('keys-after-' + control)
 
