@@ -118,11 +118,17 @@ while True:
         # AT-SPI state-change signals must be dispatched between observations;
         # a persistent interpreter must not keep stale accessible states.
         from gi.repository import GLib
+        import time
         context = GLib.MainContext.default()
-        for _ in range(200):
+        # A drawn shell banner animates at ~50 dispatches/s, so seconds between
+        # requests can queue hundreds. Drain all of it, bounded in count/time.
+        settle = time.monotonic() + 2
+        for _ in range(20000):
             if not context.pending():
                 break
             context.iteration(False)
+            if time.monotonic() > settle:
+                raise RuntimeError('accessibility events did not settle within the probe bound')
         else:
             raise RuntimeError('accessibility events did not settle within the probe bound')
         result = namespace[functions[request['probe']]](request['query'])
