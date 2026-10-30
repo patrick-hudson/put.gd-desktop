@@ -579,19 +579,24 @@ asyncio.run(main())
             target = title
         else:
             containers = [n for n in title.get('ancestors',[]) if n['role'] in ('notification','panel','alert') and n.get('rect')]
-            buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
-                                       'visible':True,'showing':True,'enabled':True})
-            target = None
-            # A title's nearest panel can contain just its text/icon. Select
-            # the smallest common ancestor which also contains one action.
-            for ancestor in reversed(containers):
-                container = ancestor['rect']
-                inside = [n for n in buttons if n.get('rect') and min(n['rect'][2:])>0 and
-                          container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
-                          container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
-                if len(inside)==1:
-                    target = inside[0]
-                    break
+            def button():
+                buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
+                                           'visible':True,'showing':True,'enabled':True})
+                # A title's nearest panel can contain just its text/icon. Select
+                # the smallest common ancestor which also contains one action.
+                for ancestor in reversed(containers):
+                    container = ancestor['rect']
+                    inside = [n for n in buttons if n.get('rect') and min(n['rect'][2:])>0 and
+                              container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
+                              container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
+                    if len(inside)==1:
+                        return inside[0]
+                return None
+            # GNOME Shell reveals a banner's buttons only once it expands on hover.
+            target, until = button(), time.monotonic()+2
+            while target is None and time.monotonic() < until:
+                time.sleep(.15)
+                target = button()
             if target is None:
                 raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
         previous = len(notice.get('action_events',[]))

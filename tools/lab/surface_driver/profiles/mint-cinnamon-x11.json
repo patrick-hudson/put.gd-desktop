@@ -124,5 +124,11 @@
         "application": "putgd*"
       }
     }
+  },
+  "selector_accessible": {
+    "query": {
+      "owned": true
+    },
+    "via": "run observer focus event: NativeRegionAccessible is not one of Qt's application children, so a tree walk misses it (#701)"
   }
 }

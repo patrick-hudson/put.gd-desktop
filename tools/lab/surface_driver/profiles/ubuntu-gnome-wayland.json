@@ -133,5 +133,11 @@
     "kind": "gnome-lab-witness",
     "shell_application": "gnome-shell*",
     "stage": "tools/lab/surface_driver/compositor/gnome-witness (lab guests only: compositor/stage-gnome-witness.sh, then guest_reboot.py)"
+  },
+  "selector_accessible": {
+    "query": {
+      "application": "gnome-shell*"
+    },
+    "via": "put.gd Shell extension St actor in gnome-shell's own tree"
   }
 }
