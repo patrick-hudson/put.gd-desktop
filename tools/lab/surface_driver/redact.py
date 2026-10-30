@@ -157,7 +157,7 @@ class Redactor:
             value, opaque = value.reveal(), True
         if isinstance(value, dict):
             for key, item in value.items():
-                identity = key in ('id', 'operationId', 'historyId', 'recordingId', 'shareOperationId', 'state', 'status', 'code', 'host', 'url_host', 'hash', 'sha256', 'length', 'present')
+                identity = key in STRUCTURAL_FIELDS or key in ('id', 'historyId', 'state', 'status', 'code', 'url_host', 'length', 'present', 'type', 'tool', 'mode', 'format', 'formats', 'category', 'sourceKind', 'mime', 'mimeType')
                 self.remember(item, opaque=not identity and (opaque or bool(SECRET_FIELD.search(str(key)))))
         elif isinstance(value, (list, tuple)):
             for item in value:
@@ -194,10 +194,13 @@ class Redactor:
                 except ValueError:
                     pass
 
-    def has_sensitive(self, value):
+    def has_sensitive_url(self, value):
         text = str(value)
-        return bool(any(not public_url(m[0] if '://' in m[0] else 'https://'+m[0]) for m in SHARE.finditer(text)) or any(not public_url(m[0]) for m in URL.finditer(text))
-                    or any(secret in text for secret in self._secrets))
+        if (any(not public_url(m[0] if '://' in m[0] else 'https://'+m[0]) for m in SHARE.finditer(text))
+                or any(not public_url(m[0]) for m in URL.finditer(text))):
+            return True
+        return any(variant in text for secret in self._secrets if URL.fullmatch(secret)
+                   for variant in (secret, secret.split('://', 1)[1]))
 
     def url(self, value):
         if isinstance(value, Sensitive):

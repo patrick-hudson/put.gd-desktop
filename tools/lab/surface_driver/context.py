@@ -72,7 +72,7 @@ class DriverContext(Context):
                 result=envelope['result']
                 self.evidence.redactor.remember(result, opaque=method in ('history.detail', 'share.inspect', 'operation.inspect'))
                 if method in ('history.detail', 'share.inspect', 'operation.inspect'):
-                    self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(response['stdout'])
+                    self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(response['stdout'])
                 for field in ('operationId','recordingId','shareOperationId'):
                     identity=result.get(field)
                     if isinstance(identity,str) and re.fullmatch('[A-Za-z0-9_-]{1,128}',identity) and identity not in self._noted_ids:
@@ -365,7 +365,7 @@ class DriverContext(Context):
     def type_text(self,text):
         self.evidence.redactor.remember(text, opaque=True)
         text = text.reveal() if isinstance(text, Sensitive) else text
-        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(text)
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(text)
         # Validate the whole string before sending any input.
         chords = [(['shift'] if c.isascii() and c.isupper() else []) + qcodes({' ':'Space','\n':'Return','\t':'Tab'}.get(c,c)) for c in text]
         if any(set(chord) & set(self._held_codes) for chord in chords):
@@ -396,7 +396,7 @@ class DriverContext(Context):
         self.evidence.redactor.remember(list(args))
         result = self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
         self.evidence.command('cli', result)
-        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(result.get('stdout', ''))
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(result.get('stdout', ''))
         try:
             self.evidence.redactor.remember(json.loads(result['stdout']))
         except (ValueError, KeyError):
@@ -408,7 +408,7 @@ class DriverContext(Context):
         self.evidence.redactor.remember(script)
         result = self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
         self.evidence.command('shell', result)
-        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive(result.get('stdout', ''))
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(result.get('stdout', ''))
         try:
             self.evidence.redactor.remember(json.loads(result['stdout']))
         except (ValueError, KeyError):

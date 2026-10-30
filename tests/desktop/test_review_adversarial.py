@@ -228,7 +228,7 @@ class Adv(unittest.TestCase):
         self.assertFalse(r.audit_literals)
         for url in ('https://put.gd', 'https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1029.1',
                     'https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#switching-channels'):
-            self.assertFalse(r.has_sensitive(url))
+            self.assertFalse(r.has_sensitive_url(url))
             r.remember(url)
         self.assertFalse(r.audit_literals)
         self.assertEqual(r.text('tolerance=0.025 rv726 text-tool'), 'tolerance=0.025 rv726 text-tool')
@@ -412,12 +412,22 @@ class Adv(unittest.TestCase):
         from tools.lab.surface_driver.redact import detected
         r=Redactor()
         path='/home/user/work/put.gd/src/tools/lab/surface_map/coverage/campaign.json'
-        self.assertFalse(r.has_sensitive(path))
+        self.assertFalse(r.has_sensitive_url(path))
         self.assertEqual(r.text(path),path)
         self.assertFalse(r.audit_literals)
         self.assertFalse(detected(path))
         self.assertTrue(detected('put.gd/'+TOKEN))
         self.assertTrue(detected('//put.gd/'+TOKEN))
+
+
+    def test_non_url_resident_values_do_not_blank_local_frames(self):
+        r=Redactor()
+        r.remember({'kind':'clipboard-image','format':'video/mp4','mode':'very-long-enum'},opaque=True)
+        self.assertFalse(r.audit_literals)
+        r.remember(Sensitive('synthetic-opaque-private-value'))
+        self.assertFalse(r.has_sensitive_url('synthetic-opaque-private-value'))
+        r.remember(Sensitive('https://custom.example.invalid/SyntheticObjectId726'))
+        self.assertTrue(r.has_sensitive_url('custom.example.invalid/SyntheticObjectId726'))
 
 
 if __name__ == '__main__':
