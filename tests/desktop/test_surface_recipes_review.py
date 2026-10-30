@@ -48,7 +48,10 @@ class FakeContext(Context):
                       'fileDialog': {'open': False}, 'savedCopy': {'path': '', 'current': False},
                       'maskOptions': {'open': False}, 'preview': {'error': None},
                       'adviceDialog': {'open': False}}
+        self.state['statusFacts'] = []
         self.menu = None
+        self.last_focus = None
+        self.chooser_path = ''
         self.last_click = None
         self.menu_index = 0
         self.clipboard = ''
@@ -146,9 +149,18 @@ class FakeContext(Context):
             self.clipboard = self.state['savedCopy']['path']
         elif control == 'text:Dismiss':
             self.state['savedCopy']['path'] = ''
+        elif control == 'text:Save a copy…':
+            self.state['fileDialog']['open'] = True
+
+    def focus(self, window, raise_window=True):
+        self.trace.append(('focus', window))
+        self.last_focus = window
+        return {}
 
     def keys(self, *keys):
         self.trace.append(('keys', keys))
+        if self.state['fileDialog']['open'] and self.last_focus != 'fileDialog':
+            raise RecipeFailed('file chooser must own guarded keyboard input')
         if not self.inputs_work:
             return
         for key in keys:
@@ -168,6 +180,9 @@ class FakeContext(Context):
                     self.info['config'] = self.state['format'].copy()
             elif key == 'Return' and self.state['armed']:
                 self.add_mask()
+            elif key == 'Return' and self.state['fileDialog']['open']:
+                self.state['fileDialog']['open'] = False
+                self.call('recording.saveCopy', {'id':'recording-id', 'path':self.chooser_path})
             elif key == 'Esc':
                 self.menu = None
                 self.state['armed'] = None
@@ -207,6 +222,8 @@ class FakeContext(Context):
 
     def type_text(self, text):
         self.trace.append(('type_text', text))
+        if self.state['fileDialog']['open']:
+            self.chooser_path = text
         if self.last_click == 'class:QSpinBox':
             self.info['edit']['masks'][0]['strength'] = int(text)
 
@@ -271,6 +288,14 @@ class ReviewRecipes(unittest.TestCase):
         review.window_close(ctx)
         self.assertFalse(ctx.state['discardConfirmation']['open'])
         self.assertEqual(ctx.info['state'], 'reviewing')
+        self.assertIn(('focus', 'confirmAction'), ctx.trace)
+
+    def test_save_copy_routes_keyboard_to_chooser(self):
+        ctx = FakeContext()
+        review.save_copy(ctx)
+        self.assertIn(('focus','fileDialog'), ctx.trace)
+        self.assertEqual(ctx.clipboard, '/tmp/r/out/user-copy.webm')
+        self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
 
     def test_mask_options_converts_and_decodes(self):
         ctx = FakeContext()
