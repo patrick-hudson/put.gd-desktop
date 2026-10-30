@@ -204,6 +204,11 @@ def _requires(ctx, capability):
         ctx.blocked('Need core destinations ' + capability + ' before changing this GUI state (#666).', issue=CORE_ISSUE)
 
 
+def _confirmation_capture(ctx, window):
+    if not ctx.profile.get('catalog_windows', {}).get(window):
+        ctx.blocked('Need an actual destination confirmation capture with a controls inventory (#722).', issue=722)
+
+
 def _state(ctx, control, key):
     row = _accessible(ctx, control)
     if key not in row:
@@ -364,13 +369,14 @@ def add(ctx):
 @_failure_frame
 def make_default(ctx):
     _, profiles = _open(ctx)
+    _confirmation_capture(ctx, 'confirmDestinationDefault')
     _requires(ctx, 'capture_state_contract')
     ctx.click('makeDefaultDestination', window='destinations')
     # First prove cancellation preserves routing, then confirm explicitly.
     ctx.keys('Escape')
     _saved(ctx, lambda doc: doc['captureDefaults']['destination'] == 'local', 'cancel untested default preserves routing')
     ctx.click('makeDefaultDestination', window='destinations')
-    ctx.click('confirmDiscard', window='confirmAction')
+    ctx.click('confirmDiscard', window='confirmDestinationDefault')
     _saved(ctx, lambda doc: doc['captureDefaults']['profileId'] == profiles[0]['id']
            and doc['captureDefaults']['destination'] == 'upload', 'confirmed untested default saved')
     _frame(ctx, 'after')
@@ -380,6 +386,7 @@ def make_default(ctx):
 @_failure_frame
 def remove(ctx):
     _, profiles = _open(ctx)
+    _confirmation_capture(ctx, 'confirmDestinationRemove')
     _requires(ctx, 'capture_state_contract')
     # Destination actions: Rename, Storage service submenu, Remove destination.
     def request():
@@ -389,7 +396,7 @@ def remove(ctx):
     ctx.keys('Escape')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'cancel removal retains destination')
     request()
-    ctx.click('confirmDiscard', window='confirmAction')
+    ctx.click('confirmDiscard', window='confirmDestinationRemove')
     _saved(ctx, lambda doc: doc['profiles'] == [], 'confirm removal leaves no profiles')
     ctx.expect(_state(ctx, 'destinationsEmpty', 'visible') is True, 'empty destination state visible')
     _frame(ctx, 'after')
@@ -451,6 +458,7 @@ def credential_lifecycle(ctx):
 @_failure_frame
 def conflict(ctx):
     _, profiles = _open(ctx)
+    _confirmation_capture(ctx, 'confirmDestinationReload')
     _requires(ctx, 'accessible_state_contract')
     _edit(ctx, 's3Bucket', 'invalid unsaved draft')
     ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid draft retained')
@@ -461,7 +469,7 @@ def conflict(ctx):
     ctx.keys('Escape')
     ctx.expect(_state(ctx, 'destinationConflictBanner', 'visible') is True, 'cancel reload keeps local draft')
     ctx.click('reloadDestinationConflict', window='destinations')
-    ctx.click('confirmDiscard', window='confirmAction')
+    ctx.click('confirmDiscard', window='confirmDestinationReload')
     ctx.wait(lambda: not _state(ctx, 'destinationConflictBanner', 'visible'), 'confirmed reload clears conflict')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'reload discards invalid draft and preserves accepted settings')
     _frame(ctx, 'after')

@@ -2,6 +2,7 @@
 """Recipe contract/safety tests. These are not graphical acceptance evidence."""
 from copy import deepcopy
 import json
+import fnmatch
 import os
 from pathlib import Path
 import subprocess
@@ -19,7 +20,9 @@ class FakeContext(Context):
         self.temporary = tempfile.TemporaryDirectory(prefix='sd-')
         self.root = Path(self.temporary.name)
         (self.root / 'putgd').mkdir(mode=0o700)
-        self.profile = {'destinations': {'accessible_state_contract': 1, 'capture_state_contract': 1}}
+        self.profile = {'destinations': {'accessible_state_contract': 1, 'capture_state_contract': 1},
+                        'catalog_windows': {name: ['unit-only-confirmation'] for name in
+                                            ('confirmDestinationRemove', 'confirmDestinationDefault', 'confirmDestinationReload')}}
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
         self.events = []
@@ -327,6 +330,28 @@ class DestinationsContracts(unittest.TestCase):
         ctx.commit_field = lambda: None
         with self.assertRaisesRegex(RecipeFailed, 'bucket autosaved'):
             lane.s3_fields(ctx)
+
+    def test_missing_confirmation_inventory_blocks_before_dialog_input(self):
+        ctx = self.context()
+        ctx.profile['catalog_windows'] = {}
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.make_default(ctx)
+        self.assertEqual(caught.exception.issue, 722)
+        self.assertFalse(any(e[:2] == ('click', 'makeDefaultDestination') for e in ctx.events))
+
+    def test_dialog_titles_are_portable_and_do_not_claim_missing_captures(self):
+        root = Path(__file__).resolve().parents[2] / 'tools/lab/surface_driver/profiles'
+        expected = {'confirmDestinationRemove': 'Remove destination',
+                    'confirmDestinationDefault': 'Use an untested destination',
+                    'confirmDestinationReload': 'Reload settings from file'}
+        fragments = list(root.glob('*.d/destinations.json'))
+        self.assertEqual(len(fragments), 9)
+        for path in fragments:
+            profile = json.loads(path.read_text())
+            for role, title in expected.items():
+                self.assertEqual(profile['window_titles'][role], title)
+                self.assertTrue(fnmatch.fnmatchcase(title, '*' + profile['window_titles'][role] + '*'))
+                self.assertNotIn(role, profile['catalog_windows'])
 
 
 if __name__ == '__main__':

@@ -1,14 +1,13 @@
 {
   "window_titles": {
     "destinations": "put.gd",
-    "confirmAction": "Remove destination|Use an untested destination|Reload settings"
+    "confirmDestinationRemove": "Remove destination",
+    "confirmDestinationDefault": "Use an untested destination",
+    "confirmDestinationReload": "Reload settings from file"
   },
   "catalog_windows": {
     "destinations": [
       "04-destinations-s3"
-    ],
-    "confirmAction": [
-      "19-editor-discard-confirm"
     ]
   }
 }
