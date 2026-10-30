@@ -759,6 +759,9 @@ asyncio.run(main())
         return self._accessible_pointer(query,None)
 
     def _desktop_guard(self, node, point):
+        failure = self.shell_failure(full=False)
+        if failure:
+            raise RecipeBlocked(failure, issue=814)
         witness = self._probe('foreground', {'desktop_node':node,'point':point,
                               'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
                               'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),

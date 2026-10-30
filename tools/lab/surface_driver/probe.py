@@ -911,6 +911,7 @@ def accessible(query, toplevel=False, detail=True):
                     identifier = accessible_id(node)
                     object_name = id_object_name(identifier, role)
                 row = {'window': window, 'application': application, 'name': name, 'role': server_role,
+                       'a11y_bus': getattr(node, 'bus', None), 'a11y_path': getattr(node, 'path', None),
                        'text': text, 'description': '' if protected or not detail else (node.description or ''),
                        'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
                        'owned': is_owned(pid), 'objectName': object_name, 'accessibleId': identifier,
@@ -1493,7 +1494,7 @@ def native_capture_process(pid):
         return False
 
 
-SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
+SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')
 
 
 def shell_cover(point, application):
@@ -1620,6 +1621,8 @@ def native_shell_role(value):
 
 def shell_witness_hit(query):
     """Bind the live AT-SPI node to the shell's actual picked actor and PID."""
+    if (query.get('compositor') or {}).get('kind') == 'kwin-script':
+        return plasma_witness_hit(query)
     expected = query['desktop_node']
     pick = compositor_pick(query['compositor'],query['point'])
     ok = (bool(query['shell_application']) and type(expected.get('pid')) is int and expected['pid'] > 0
@@ -1636,6 +1639,82 @@ def shell_witness_hit(query):
     return {'ok':bool(ok),'backend':'gnome-native-shell-pick',
             'obscuring_window':None if ok else (window.get('title') if window else
                 'native shell actor identity, role or bounds did not match the live desktop node')}
+
+
+def plasma_witness_hit(query):
+    """KWin proves the surface; Plasma's live component pick proves the actor.
+
+    Plasma exports Qt window-relative coordinates. Never treat its tree as a
+    GNOME stage or authorize a panel solely by its process/name/rectangle.
+    """
+    import pyatspi
+    bound_calls()
+    expected, point = query['desktop_node'], query['point']
+    window = compositor_pick(query['compositor'], point).get('window')
+    def refused(reason):
+        return {'ok': False, 'backend': 'kwin-plasma-pick', 'obscuring_window': reason}
+    if not window:
+        return refused('KWin picked no Plasma surface')
+    pid = expected.get('pid')
+    if (type(pid) is not int or pid <= 0 or plasma_pid() != pid
+            or not query.get('shell_application')
+            or not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application'])
+            or window['pid'] != pid or window['id'] != expected.get('window_id')):
+        return refused(window.get('title') or 'KWin surface does not own the Plasma node')
+    if not expected.get('a11y_bus') or not expected.get('a11y_path') or not expected.get('rect'):
+        return refused('Plasma node lacks a live accessibility identity or placed bounds')
+    connection = a11y_bus()
+    target = RawNode(connection, expected['a11y_bus'], expected['a11y_path'])
+    if target.get_process_id() != pid:
+        return refused('Plasma accessibility bus owner changed')
+    # Re-resolve this exact identity to reject stale names, roles and bounds.
+    rows = accessible({'pid':pid, 'application':query['shell_application'], 'name':glob_escape(expected['name']),
+                       'role':expected['role'], 'visible':True, 'showing':True, 'compositor':query['compositor']})
+    same = [r for r in rows if r.get('a11y_bus') == expected['a11y_bus']
+            and r.get('a11y_path') == expected['a11y_path'] and r.get('window_id') == window['id']
+            and r.get('rect') == expected['rect']]
+    if len(same) != 1:
+        return refused('Plasma actor changed or disappeared before input')
+    rect = expected['rect']
+    if not (rect[0] <= point[0] < rect[0]+rect[2] and rect[1] <= point[1] < rect[1]+rect[3]):
+        return refused('input point is outside the live Plasma actor')
+    # Translate using this surface's measured client area and raw top-level
+    # origin. getAccessibleAtPoint then supplies the deepest actor, not a
+    # same-process cover, a duplicate label or a guessed panel coordinate.
+    for app in desktop_root():
+        if app is None or app.get_process_id() != pid:
+            continue
+        for top in app:
+            if (top.name or '') != expected.get('window'):
+                continue
+            raw = extents(top)
+            content = window.get('content')
+            if not raw or not content or any(abs(a-b)>2 for a,b in zip(raw[2:],content[2:])):
+                continue
+            x, y = int(point[0]-content[0]+raw[0]), int(point[1]-content[1]+raw[1])
+            node = top
+            picked = []
+            for _ in range(50):
+                child = node.queryComponent().getAccessibleAtPoint(x,y,pyatspi.DESKTOP_COORDS)
+                if child is None or child == node:
+                    break
+                node = child
+                picked.append(node)
+            # The target may be a semantic parent of the picked text/icon.
+            if target in picked and all(n.get_process_id() == pid for n in picked):
+                return {'ok':True, 'backend':'kwin-plasma-pick', 'obscuring_window':None}
+    return refused('Plasma component pick did not reach the exact live actor')
+
+
+def glob_escape(value):
+    import glob
+    return glob.escape(value)
+
+
+def plasma_pid():
+    import dbus
+    bus = dbus.SessionBus()
+    return int(bus.get_unix_process_id('org.kde.plasmashell'))
 
 
 def shell_state(query):
@@ -1742,7 +1821,7 @@ def foreground(query):
     # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
     # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
     if query.get('desktop_node') and query.get('desktop_hit_test') in SHELL_PICKS:
-        if (query.get('compositor') or {}).get('kind') == 'gnome-lab-witness':
+        if (query.get('compositor') or {}).get('kind') in ('gnome-lab-witness', 'kwin-script'):
             return shell_witness_hit(query)
         return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':

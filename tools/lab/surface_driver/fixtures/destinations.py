@@ -1,13 +1,14 @@
 """Loopback-only destination profiles and an owned blank-password collection.
 
-Uses the GNOME Secret Service calls already used by lab_keyring.py, without
-moving the desktop's default alias or reading any existing item.
+Uses provider-specific collection creation without moving the desktop's default
+alias or reading any existing item.
 """
 import json
 from pathlib import Path
 
 from ..api import RecipeBlocked
 from .base import Fixture
+from .keyring import KDE_CREATE, KDE_SALT_CLEANUP
 
 # Query/return metadata only. Fake material is generated/read solely on target.
 KEYRING = '''import base64,json,os,secrets
@@ -30,12 +31,19 @@ def fake_keyring(scope):
     reference='putgd-lab-'+str(__import__('uuid').uuid4())
     path=scope.root+'/fake-input.json'
     scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000)
-    # No default-alias mutation: QtKeychain's libsecret lookup searches the
-    # unique reference in unlocked collections. Each item is explicitly owned.
-    created=scope.json(KEYRING+'''
-session=call(service,'org.freedesktop.Secret.Service','OpenSession',GLib.Variant('(sv)',('plain',GLib.Variant('s',''))),'(vo)')[1]
+    kde=ctx.profile.get('compositor',{}).get('kind')=='kwin-script'
+    label=('putgd-fixture-'+scope.token) if kde else ('putgd fixture '+scope.token)
+    create=KDE_CREATE if kde else '''
 collection=call(service,'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface','CreateWithMasterPassword',
  GLib.Variant('(a{sv}(oayays))',({'org.freedesktop.Secret.Collection.Label':GLib.Variant('s',LABEL)},(session,b'',b'','text/plain'))),'(o)')[0]
+'''
+    # No default-alias mutation: QtKeychain's libsecret lookup searches the
+    # unique reference in unlocked collections. Each item is explicitly owned.
+    created=scope.json((KEYRING+('''
+bus.call_sync('org.kde.secretservicecompat','/','org.freedesktop.DBus.Peer','Ping',None,None,Gio.DBusCallFlags.NONE,20000,None)
+''' if kde else '')+'''
+session=call(service,'org.freedesktop.Secret.Service','OpenSession',GLib.Variant('(sv)',('plain',GLib.Variant('s',''))),'(vo)')[1]
+'''+create+'''
 try:
  value={'accessKey':'SYNTHETIC'+secrets.token_hex(12),'secretKey':'synthetic-'+secrets.token_hex(24),'sessionToken':''}
  with open(os.open(PATH,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as f:json.dump(value,f)
@@ -46,17 +54,29 @@ try:
   'org.freedesktop.Secret.Item.Attributes':GLib.Variant('a{ss}',attrs)},(session,b'',secret,'text/plain'),False)),'(oo)')
  assert prompt=='/'
 except BaseException:
- call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')
+ try:
+  call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')
+ finally:
+  if KDE and salt.exists():
+   current=salt.lstat();assert (current.st_dev,current.st_ino)==(identity.st_dev,identity.st_ino)
+   salt.unlink()
  raise
-print(json.dumps({'collection':collection,'reference':REFERENCE}))
-'''.replace('LABEL',repr('putgd fixture '+scope.token)).replace('PATH',repr(path)).replace('REFERENCE',repr(reference)))
+metadata={'collection':collection,'reference':REFERENCE}
+if KDE:metadata.update(salt_device=identity.st_dev,salt_inode=identity.st_ino)
+print(json.dumps(metadata))
+''').replace('KDE',repr(kde)).replace('LABEL',repr(label)).replace('PATH',repr(path)).replace('REFERENCE',repr(reference)))
     scope.defer('fake keyring collection',lambda:scope.python(KEYRING+'''
 p=COLLECTION
 label=call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]
 assert label==LABEL
 prompt=call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]
 assert prompt=='/'
-'''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr('putgd fixture '+scope.token))))
+'''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr(label))))
+    if kde:
+        # Collection Delete removes only that wallet; verify the salt inode too.
+        scope.defer('owned wallet salt',lambda:scope.python(KEYRING+KDE_SALT_CLEANUP.replace('LABEL',repr(label))
+                    .replace('SALT_DEVICE',repr(created['salt_device'])).replace('SALT_INODE',repr(created['salt_inode']))),priority=-10)
+        scope.restart({'QTKEYCHAIN_BACKEND':'libsecret'})
     return Fixture(reference=reference,collection=created['collection'],credentials_file=path,blank_password=True,private=True)
 
 

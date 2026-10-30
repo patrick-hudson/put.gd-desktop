@@ -35,7 +35,8 @@
   "focus": {
     "backend": "compositor-witness",
     "raise_before_input": false,
-    "reason": "KWin stacking order, active window and clientGeometry from a read-only KWin script; no Wayland raise"
+    "reason": "KWin stacking order, active window and clientGeometry from a read-only KWin script; no Wayland raise",
+    "desktop_hit_test": "kwin-shell-at-spi"
   },
   "notifications": {
     "accessible": {
@@ -178,5 +179,9 @@
       },
       "backend_bus": "org.freedesktop.impl.portal.desktop.kde"
     }
+  },
+  "shell_health": {
+    "process": "plasmashell",
+    "crash_windows": []
   }
 }
