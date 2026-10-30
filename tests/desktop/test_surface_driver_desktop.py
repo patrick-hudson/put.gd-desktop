@@ -272,13 +272,17 @@ class NotificationPrivacy(unittest.TestCase):
                     parent.kill();parent.wait()
                     self.assertEqual(monitor.wait(timeout=10),0)
                     self.assertFalse(os.path.exists(path))
+                    def running(pid):
+                        # A reaped child can vanish between any two /proc reads.
+                        try:
+                            return Path('/proc/%d/stat'%pid).read_text().split(') ')[1][0]!='Z'
+                        except (FileNotFoundError, ProcessLookupError):
+                            return False
                     for child in children:
                         deadline=time.monotonic()+5
-                        while time.monotonic()<deadline and Path('/proc/%d'%child).exists() and \
-                                Path('/proc/%d/stat'%child).read_text().split(') ')[1][0]!='Z':
+                        while time.monotonic()<deadline and running(child):
                             time.sleep(.05)
-                        alive=Path('/proc/%d'%child).exists() and Path('/proc/%d/stat'%child).read_text().split(') ')[1][0]!='Z'
-                        self.assertFalse(alive,'monitor child %d outlived the channel'%child)
+                        self.assertFalse(running(child),'monitor child %d outlived the channel'%child)
                 finally:
                     for process in (parent,monitor):
                         if process.poll() is None:
