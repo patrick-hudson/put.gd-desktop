@@ -77,7 +77,7 @@ jobs:
       - name: Surface driver, map, fixture, redact and recipe contracts
         if: always()
         timeout-minutes: 1
-        run: python3 -m pytest -v tests/desktop/test_surface*.py --junitxml=build/contracts/surface-tests.xml
+        run: python3 -m pytest -v tests/desktop/test_surface*.py tests/desktop/test_review_adversarial.py --junitxml=build/contracts/surface-tests.xml
       - name: Cold-family observer contracts
         if: always()
         run: python3 tools/ci/contracts.py observer
