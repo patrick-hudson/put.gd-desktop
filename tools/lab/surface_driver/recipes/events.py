@@ -715,11 +715,16 @@ def incomplete_uploads_kept(ctx: Context):
     ctx.frame('before', window='history')
     outcome = _result(ctx, 'cache.clear')
     kept = [i for i in outcome['incompleteUploads'] if i['operationId'] == f['operationId'] and i['itemId'] == f['itemId']]
-    ctx.expect(len(kept) == 1 and kept[0]['error'] and kept[0]['reported'], 'denied abort is retained and reported for exact item')
+    ctx.expect(len(kept) == 1 and kept[0]['error'], 'denied abort is retained for exact item')
+    ctx.expect(kept[0]['reported'] is False, 'fresh retained item was not reported before this cleanup')
     ctx.expect(outcome['incompleteUploadNotice']['count'] >= 1, 'cleanup exposes incomplete upload notice')
-    _notice(ctx, 'incomplete')
+    ctx.expect(outcome['incompleteUploadNotice']['notified'] is False, 'manual cleanup returns its notice without a tray toast')
+    retained = _operation(ctx, f['operationId'])
+    item = next(i for i in retained['items'] if i['artifact']['id'] == f['itemId'])
+    ctx.expect(item['error']['details']['incompleteUploadReported'] is True, 'cleanup checkpoints the exact item reporting flag')
     ctx.frame('after', window='history')
     ctx.review('Core must retain the local S3 request journal and independent multipart listing; resident metadata alone cannot prove server retention.')
+    ctx.blocked('Manual cache.clear denial and retained reporting flag verified; the event toast requires a core-owned automatic-cleanup fixture (manual cleanup intentionally does not notify)', issue=682)
 
 
 
