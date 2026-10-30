@@ -55,6 +55,14 @@
         "application": "putgd*",
         "name": "Reload settings from file"
       }
+    },
+    "destinationActionsMenu": {
+      "owner": "destinations",
+      "popup": true
+    },
+    "destinationAddMenu": {
+      "owner": "destinations",
+      "popup": true
     }
   }
 }

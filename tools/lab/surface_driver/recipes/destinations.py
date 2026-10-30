@@ -210,9 +210,8 @@ def add_credentials(ctx):
 def rename(ctx):
     _, profiles = _open(ctx)
     ctx.click('destinationActions', window='destinations')
-    ctx.keys('Home', 'Return')  # Rename destination focuses/selects the title.
-    ctx.type_text('Renamed surface destination')
-    ctx.keys('Tab')
+    ctx.click('text:Rename destination', window='destinationActionsMenu')
+    _edit(ctx, 'destinationLabel', 'Renamed surface destination')
     _saved(ctx, lambda doc: doc['profiles'][0]['label'] == 'Renamed surface destination'
            and doc['profiles'][0]['id'] == profiles[0]['id'], 'rename autosaved without changing identity')
     _frame(ctx, 'after')
@@ -328,9 +327,10 @@ def drag_reorder(ctx):
 @_failure_frame
 def add(ctx):
     _open(ctx)
-    for menu_index, provider, label in ((0, 's3', 'Added S3'), (2, 'backblaze-b2', 'Added B2')):
+    for menu_label, provider, label in (('Amazon S3 / S3-compatible', 's3', 'Added S3'),
+                                        ('Backblaze B2', 'backblaze-b2', 'Added B2')):
         ctx.click('addS3Destination', window='destinations')
-        ctx.keys('Home', *(['Down'] * menu_index), 'Return')
+        ctx.click('text:' + menu_label, window='destinationAddMenu')
         ctx.click('class:QLineEdit', window='confirmDestinationName')
         ctx.keys('Ctrl+A')
         ctx.type_text(label)
@@ -364,10 +364,10 @@ def make_default(ctx):
 def remove(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationRemove')
-    # Destination actions: Rename, Storage service submenu, Remove destination.
+    # Resolve the actual live menu item before requesting its confirmation.
     def request():
         ctx.click('destinationActions', window='destinations')
-        ctx.keys('Home', 'Down', 'Down', 'Return')
+        ctx.click('text:Remove destination…', window='destinationActionsMenu')
     request()
     ctx.click('text:Cancel', window='confirmDestinationRemove')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'cancel removal retains destination')

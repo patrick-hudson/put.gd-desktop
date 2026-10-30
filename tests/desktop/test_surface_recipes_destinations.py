@@ -121,6 +121,13 @@ class FakeContext(Context):
         self.assert_event('click', control, window)
         self.focus = control
         self.pending = ''
+        if control == 'text:Rename destination':
+            self.focus = 'destinationLabel'
+        if control == 'text:Remove destination…':
+            self.dialog = 'remove'
+        if control in ('text:Amazon S3 / S3-compatible', 'text:Backblaze B2'):
+            self.dialog = 'add-b2' if control.endswith('Backblaze B2') else 'add-s3'
+            self.focus = 'nameDialog'
         if control == 'text:Cancel':
             self.dialog = None
         if control == 'class:QLineEdit':
@@ -357,6 +364,19 @@ class DestinationsContracts(unittest.TestCase):
 
     def test_lane_runs_with_local_destination(self):
         self.assertTrue(all(r.destinations == ('local',) for r in self.recipes()))
+
+    def test_unresolved_live_menu_blocks_before_rename_typing(self):
+        ctx = self.context()
+        click = ctx.click
+        def missing_menu(control, window, **kwargs):
+            if control == 'text:Rename destination':
+                raise RecipeBlocked('control: live menu item unavailable')
+            return click(control, window, **kwargs)
+        ctx.click = missing_menu
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.rename(ctx)
+        self.assertEqual(caught.exception.issue, 712)
+        self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
 
     def test_missing_confirmation_inventory_blocks_before_dialog_input(self):
         ctx = self.context()
