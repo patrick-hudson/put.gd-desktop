@@ -127,6 +127,10 @@ window.show_all();Gtk.main()
         assert compared and all(not r.review for r in compared)
         summary['core_demo']={'rows':[r.to_json() for r in rows], 'frames':len(masks),'non_black':True,
                               'comparison_reviewed_ok':len(compared),'human_review':'pending'}
+    except BaseException as error:
+        summary['failure_type']=type(error).__name__
+        target.screenshot(args.out/'failure.png')  # Full mask; never persist unexpected raw pixels.
+        raise
     finally:
         if pid:
             target.execute('kill '+str(pid)+' 2>/dev/null || true')

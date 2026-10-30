@@ -383,5 +383,19 @@ class Adv(unittest.TestCase):
         self.assertIn('no visible pixels', rows[0].review_reason)
 
 
+    def test_mixed_case_percent_and_hex_tokens_and_encoded_forged_spans(self):
+        r=Redactor();r.remember({'directUrl':PUTGD})
+        percent=''.join(('%%%02X' % b) if n%2 else ('%%%02x' % b) for n,b in enumerate(TOKEN.encode()))
+        hexadecimal=''.join(c.upper() if n%2 else c.lower() for n,c in enumerate(TOKEN.encode().hex()))
+        self.out.mkdir()
+        for encoded in (percent, hexadecimal, base64.b64encode(TOKEN.encode()).decode()):
+            (self.out/'leak.log').write_text(encoded)
+            result=scan_run(self.out,literals=r.audit_literals)
+            self.assertIn('registered-secret',{f['kind'] for f in result['findings']})
+            self.assertNotEqual(r.text(encoded),encoded)
+            span='[url '+json.dumps({'host':encoded,'hash':'0'*64,'length':1,'present':True})+']'
+            self.assertNotIn(encoded,r.text(span))
+
+
 if __name__ == '__main__':
     unittest.main()

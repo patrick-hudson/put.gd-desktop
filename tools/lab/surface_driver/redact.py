@@ -217,12 +217,17 @@ class Redactor:
             return '[redacted]'
         value = str(value).replace('\\/', '/')
         def scrub(part):
+            part = unquote(part)
+            self.remember(part)
             part = AWS.sub('[redacted AWS key]', part)
             part = MARKER.sub('[redacted session/authorization]', part)
             if replace_secrets:
                 for secret in sorted(self._secrets, key=len, reverse=True):
+                    part = re.sub(re.escape(secret.encode().hex()), '[redacted]', part, flags=re.I)
                     for spelling in sorted(spellings(secret), key=len, reverse=True):
                         part = part.replace(spelling, '[redacted]')
+            # Decoding may expose a public documentation URL not in the secret registry.
+            part = URL.sub(lambda m: '[url '+json.dumps(self.url(m[0]), sort_keys=True)+']', part)
             return part
         # Keep safe derivatives outside substring replacement too: a one-letter
         # typed secret must not damage a salted hash or its JSON field names.
@@ -238,7 +243,8 @@ class Redactor:
                     and type(d['length']) is int and d['length'] >= 0 and type(d['present']) is bool
                     and (d['host'] is None or isinstance(d['host'], str)
                          and not URL.search(d['host']) and not AWS.search(d['host']) and not MARKER.search(d['host'])))
-                if valid and not any(secret in match.group() for secret in self._secrets):
+                if (valid and not any(secret in match.group() for secret in self._secrets)
+                        and not detected(json.dumps(d, ensure_ascii=False), self._secrets)):
                     spans.append((match.start(), match.end(), match.group()))
             except (ValueError, TypeError, KeyError):
                 pass
@@ -390,9 +396,10 @@ def decoded_forms(text):
 
 def detected(text, literals=()):
     kinds = set()
-    for value in decoded_forms(text):
+    candidates = tuple(decoded_forms(text))
+    for value in candidates:
         kinds.update(patterns(value))
-    if any(spelling in text for literal in literals for spelling in spellings(literal)):
+    if any(spelling in candidate for literal in literals for spelling in spellings(literal) for candidate in candidates):
         kinds.add('registered-secret')
     return sorted(kinds)
 
