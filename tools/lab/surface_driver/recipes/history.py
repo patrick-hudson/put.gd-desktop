@@ -792,6 +792,32 @@ def escape_details(ctx):
 
 
 
+@recipe('shell.autosave-status', needs=('settings-save-failure',))
+def autosave_status(ctx):
+    fault = ctx.fixture('settings-save-failure')
+    ctx.view('ui.show', {'view': 'settings'})
+    ctx.click('settingsSection0', window='settings')
+    before = _result(ctx.call('settings.get'))
+    enabled = before['document']['preferences']['notifications']
+    _frame(ctx, 'before', None)
+    ctx.click('notifications', window='settings')
+    def refused():
+        rows = _nodes(ctx, name='Settings save status')
+        return rows[0] if len(rows) == 1 and rows[0].get('description') else None
+    ctx.wait(refused, 'shell save status carries the refused-save explanation')
+    ctx.expect(_result(ctx.call('settings.get'))['document'] == before['document'],
+               'refused write preserves the accepted configuration')
+    ctx.frame('changes-not-saved')
+    fault.restore()
+    ctx.click('retryAutosave', window='settings')
+    ctx.wait(lambda: _result(ctx.call('settings.get'))['document']['preferences']['notifications'] != enabled,
+             'real Retry saving commits the pending edit')
+    ctx.wait(lambda: all(not n.get('description') for n in _nodes(ctx, name='Settings save status')),
+             'accepted save clears the shell failure explanation')
+    _frame(ctx, 'after', None)
+    ctx.review('Inspect the status-band captions in saved frames: Settings save automatically and Changes not saved.')
+
+
 @recipe('history.save-diagnostics', needs=('history_retry_upload', 'app-profile'))
 def save_diagnostics(ctx):
     row = _row(ctx, 'history_retry_upload')
@@ -1141,10 +1167,9 @@ BLOCKED = {
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
     'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness.',
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
-    'shell.action-recovery-banner': 'Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.',
-    'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
+    'shell.action-recovery-banner': 'settings-no-output covers Change output; no controlled rejected-action fixtures yet supply Keep local copies and Review destination variants for the complete banner matrix.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
-    'cli.launcher-background': 'The launcher descriptor exists, but Context.cli still routes leading flags to putgd-cli; stopped-resident/tray-absent lifecycle and the 10-second fallback oracle are also missing.',
+    'cli.launcher-background': 'Context.cli still dispatches launcher flags to putgd-cli; a deterministic absent-tray backend fixture is also required for the 10-second Settings fallback.',
     'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures.',
     'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle.',
     'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane.',
