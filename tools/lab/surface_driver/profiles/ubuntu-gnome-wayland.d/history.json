@@ -26,5 +26,14 @@
       "owner": "history",
       "popup": true
     }
+  },
+  "history_window_query": {
+    "name": "put.gd",
+    "role": "frame",
+    "visible": true
+  },
+  "history_hidden_window_query": {
+    "name": "put.gd",
+    "role": "frame"
   }
 }

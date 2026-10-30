@@ -484,7 +484,14 @@ def maximize(ctx):
 
 def _main_windows(ctx, include_hidden=False):
     """Inspect only the private family's exact main-window title."""
-    return ctx.windows({'title': r'^put\.gd$', 'include_hidden': include_hidden})
+    key = 'history_hidden_window_query' if include_hidden else 'history_window_query'
+    return ctx.windows(ctx.profile.get(key, {'title': r'^put\.gd$', 'include_hidden': include_hidden}))
+
+
+def _minimized(window):
+    """X11 inventory and native AT-SPI use different minimized-state names."""
+    states = window.get('states', {})
+    return bool(states.get('minimized') or states.get('iconified'))
 
 
 @recipe('shell.window-minimize', needs=('history-row',))
@@ -494,12 +501,12 @@ def minimize(ctx):
     _frame(ctx, 'before')
     ctx.click('windowMinimize', window='history')
     try:
-        ctx.wait(lambda: any(w.get('states', {}).get('minimized') for w in _main_windows(ctx, True)),
+        ctx.wait(lambda: any(_minimized(w) for w in _main_windows(ctx, True)),
                  'window manager confirms minimized shell')
         ctx.frame('minimized')
     finally:
         ctx.view('ui.show', {'view': 'history'})
-    ctx.wait(lambda: any(not w.get('states', {}).get('minimized') for w in _main_windows(ctx)),
+    ctx.wait(lambda: any(not _minimized(w) for w in _main_windows(ctx)),
              'resident restores the minimized window')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
                'resident and history survive minimize')

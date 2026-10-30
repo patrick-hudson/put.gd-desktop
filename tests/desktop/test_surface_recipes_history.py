@@ -467,6 +467,22 @@ class HistoryRecipeTests(unittest.TestCase):
                 self.assertFalse(ctx.minimized)
                 self.assertEqual(ctx.events[-1], ('view', 'ui.show', {'view': 'history'}))
 
+    def test_native_window_observation_uses_accessible_query_and_iconified_state(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        class NativeContext(FakeContext):
+            profile = load_profile('ubuntu-gnome-wayland')
+            def windows(self, query=None):
+                self.assert_native_query(query)
+                if self.closed or (self.minimized and query.get('visible')):
+                    return []
+                return [{'states': {'iconified': self.minimized}}]
+            def assert_native_query(self, query):
+                if set(query) - {'name', 'role', 'visible'} or query['name'] != 'put.gd':
+                    raise AssertionError('X11 query sent to native accessibility inventory')
+        for action in (history.minimize, history.close_window):
+            with self.subTest(action=action.__name__):
+                action(NativeContext(('history-row',)))
+
     def test_read_only_command_entries_do_not_require_pointer_geometry(self):
         for action, needs in ((history.cli_version, ('launcher',)),
                               (history.mcp_inspect, ('history-row',))):
