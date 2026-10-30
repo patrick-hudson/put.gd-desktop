@@ -829,9 +829,11 @@ class WaylandGeometryProbe(unittest.TestCase):
         row = {'role': 'frame', 'name': 'put.gd', 'visible': True, 'showing': True, 'rect': [0, 0, 10, 10],
                'pid': 7, 'states': {}, 'ancestors': [{'role': 'application'}]}
         with patch.dict(probe.os.environ, {'XDG_SESSION_TYPE': 'wayland'}), \
-             patch.object(probe, 'accessible', side_effect=lambda q: seen.append(q) or [row]):
+             patch.object(probe, 'accessible', side_effect=lambda q, **kw: seen.append((q, kw)) or [row]):
             self.assertEqual(probe.geometry({'title': '^put\\.gd$', 'compositor': {'kind': 'x'}})['pid'], 7)
-        self.assertTrue(seen[0]['visible'] and seen[0]['showing'] and seen[0]['owned'])
+        query, options = seen[0]
+        self.assertTrue(query['visible'] and query['showing'] and query['owned'])
+        self.assertTrue(options.get('toplevel'))  # windows are application children only (#805)
 
 
 class NaFinalBytes(Base):
