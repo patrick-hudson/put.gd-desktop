@@ -55,6 +55,27 @@ images. `cinnamon-x11` trusts only the workstation's `work/lab-bootstrap/identit
 All images were standalone qcow2 files with 32 GiB virtual disks when offloaded.
 That is not a permanent integrity guarantee, so recheck the hash before use.
 
+### Verified Boat snapshot copies
+
+The Boat copies use profile directories below
+`/home/user/work/put.gd/work/lab-images/`. A directory's profile name is not the
+source image identity from the inventory above:
+
+| Saved snapshot | Canonical disk in a fresh fork | Source image identity | SHA-256 |
+| --- | --- | --- | --- |
+| `putgd-lab-ubuntu-gnome-v2` | `gnome-wayland/image.qcow2` | `gnome-provisioned-20261016` (provisioned Ubuntu GNOME/Wayland) | `563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb` |
+| `putgd-lab-cinnamon` | `cinnamon-x11/image.qcow2` | `cinnamon-x11` | `4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da` |
+| `putgd-build-base` | `cinnamon-x11/image.qcow2` | `cinnamon-x11` | `4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da` |
+
+In particular, the Boat `gnome-wayland/` directory contains a verified copy of
+**`gnome-provisioned-20261016`**, not the historical unprovisioned `gnome-wayland`
+image with digest `ffb4aecd…`. The v2 preparation copied the standalone disk into
+this canonical root without moving or deleting the source; both the copied bytes
+and the source inventory digest were checked. The older
+`putgd-lab-ubuntu-gnome` snapshot remains preserved with its original outside-root
+path and is superseded for new runs. See [Boat candidate builds](boat-candidates.md#lab-snapshots)
+for placement, receipts and the guarded cleanup root.
+
 The sealed Windows bundles are listed in [Windows lab](windows-vm-lab.md#base-storage-and-restore).
 
 The Aurora goldens are named directories rather than `transfer-<id>/`, and each

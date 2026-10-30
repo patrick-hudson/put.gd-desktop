@@ -115,7 +115,9 @@ transport archives and failed collection evidence are retained. Packing, transfe
 and extraction share the finite collection budget. For a before/after measurement
 on identical catalog bytes, add `--benchmark-catalog-scp`: it first copies the same
 output with legacy recursive SCP, then records `legacyScpSeconds`, the batched
-`collectionSeconds` and an equality check of both per-file inventories.
+`collectionSeconds` and an equality check of both per-file inventories. A failed
+optional benchmark records `legacyScpStatus: failed` and `legacyScpError` while
+still attempting primary archive collection; a partial legacy tree is not compared.
 The completed manifest and checksums are saved before final status output;
 a closed stdout does not turn a completed run into a missing manifest.
 
@@ -158,6 +160,8 @@ new output directory each time. Preserve logs/receipts before retrying and follo
 ## Lab snapshots
 
 Use `putgd-lab-ubuntu-gnome-v2` for Ubuntu GNOME guests. Its immutable golden is
+a verified copy of inventory image
+`gnome-provisioned-20261016`, stored at
 `/home/user/work/put.gd/work/lab-images/gnome-wayland/image.qcow2` (SHA-256
 `563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb`). It was copied
 and verified in a fresh fork before any overlay referenced the canonical path;
@@ -165,7 +169,9 @@ the original golden and the old `putgd-lab-ubuntu-gnome` snapshot remain intact.
 The older snapshot keeps its GNOME golden outside the canonical root and is
 superseded; do not use that old path for new runs. The v2 preparation evidence is
 under `/home/user/fix721-evidence`; its `golden.json` identifies the canonical
-path and source digest.
+path and source digest. The [Boat copy inventory](remote-golden-images.md#verified-boat-snapshot-copies)
+maps this profile directory to the provisioned image; it is not the historical
+unprovisioned image named `gnome-wayland`.
 
 `putgd-lab-cinnamon` and `putgd-build-base` already keep their Cinnamon golden at
 `/home/user/work/put.gd/work/lab-images/cinnamon-x11/image.qcow2` (SHA-256
