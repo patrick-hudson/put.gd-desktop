@@ -124,10 +124,10 @@ class Context:
         """Click a control resolved from the current build's NAME.controls.json, mapped onto the live window."""
         raise NotImplementedError
 
-    def click_at(self, x: int, y: int, button: str = 'left') -> None:
+    def click_at(self, x: int, y: int, button: str = 'left', head: Optional[int] = None) -> None:
         raise NotImplementedError
 
-    def drag(self, start: tuple, end: tuple, button: str = 'left', steps: int = 12) -> None:
+    def drag(self, start: tuple, end: tuple, button: str = 'left', steps: int = 12, head: Optional[int] = None) -> None:
         raise NotImplementedError
 
     def keys(self, *sequence: str) -> None:
@@ -137,7 +137,7 @@ class Context:
     def type_text(self, text: str) -> None:
         raise NotImplementedError
 
-    def scroll(self, x: int, y: int, clicks: int) -> None:
+    def scroll(self, x: int, y: int, clicks: int, head: Optional[int] = None) -> None:
         raise NotImplementedError
 
     # Commands that are themselves the interaction (cli.*, mcp.*)
@@ -150,11 +150,87 @@ class Context:
 
     # Desktop-drawn content (no catalog reference)
     def accessible(self, query: dict) -> list[dict]:
-        """AT-SPI query on the target desktop; RecipeBlocked when the profile marks AT-SPI unavailable."""
+        """Read-only AT-SPI query. Unknown fields fail closed; filters are ANDed.
+
+        name/text/description/application/window: case-sensitive globs; role:
+        lowercase AT-SPI role (spaces); pid: integer; objectName: exact exported
+        accessible ID; owned: private XDG family; visible/showing/enabled: bool;
+        states: {state: bool}; within: [x,y,width,height] (center containment).
+        Missing exported object IDs never match by name.
+        Results: name, role, text, description, states (bool map), rect
+        [x,y,width,height] or null, bounds {x,y,width,height} or null, pid,
+        application, window, owned, objectName, accelerator, attributes,
+        visible/showing/enabled, protected, popup and ancestors. Coordinates are
+        AT-SPI DESKTOP_COORDS as reported by the server. Profiles record
+        geometry gaps; pointer input requires an independent compositor witness.
+        Password text is never read. RecipeBlocked when unavailable, including profile gaps.
+        """
+        raise NotImplementedError
+
+    def windows(self, query: Optional[dict] = None) -> list[dict]:
+        """Read-only visible window inventory, private family by default; [] means absent.
+
+        X11 title is a regex; include_hidden includes minimized windows.
+        Wayland uses accessible() filters. Window states
+        include minimized/maximized on X11 and the AT-SPI state map on Wayland.
+        """
+        raise NotImplementedError
+
+    def focus(self, window: str, raise_window: bool = True) -> dict:
+        """Select and verify an input target; optionally raise it using desktop policy.
+
+        Every input rechecks focus/stacking. Obstruction is RecipeFailed naming
+        the window; unavailable witnesses are RecipeBlocked. Wayland requires
+        a profile compositor_script until a resident focus witness exists.
+        """
+        raise NotImplementedError
+
+    def double_click(self, control: str, window: str, button: str = 'left') -> None:
+        """One double-click gesture with live geometry and a foreground check."""
+        raise NotImplementedError
+
+    def hover(self, x: int, y: int, head: Optional[int] = None) -> None:
+        """Move the real pointer on the selected head, checking the target first."""
+        raise NotImplementedError
+
+    def held_keys(self, *keys: str):
+        """Context manager holding guest QMP keys across drag/scroll; always releases.
+
+        Physical held keys are blocked pending input-agent scoped cleanup.
+        VNC-only AltGr chords are blocked before dispatch."""
+        raise NotImplementedError
+
+    def click_accessible(self, query: dict, button: str = 'left') -> dict:
+        """Real pointer click on one live desktop node with explicit ownership.
+
+        Requires pid/application/owned in query and a compositor hit-test.
+        Never calls AT-SPI doAction or D-Bus Activate.
+        """
+        raise NotImplementedError
+
+    def hover_accessible(self, query: dict) -> dict:
+        """Move the real pointer over one owned desktop node, verifying its hit-test."""
+        raise NotImplementedError
+
+    def notification_action(self, identity: int, action: str = 'default') -> None:
+        """Real input to a drawn notification, correlated to ActionInvoked by ID."""
+        raise NotImplementedError
+
+    def tray(self) -> list[dict]:
+        """Read-only private-family SNI identities, tooltips and icon-pixmap hashes.
+
+        Rows include pid/service/path/id/title/status/icon_name/icon_pixmaps/
+        tooltip/menu. Menu activation still requires real desktop input.
+        """
         raise NotImplementedError
 
     def notifications(self) -> list[dict]:
-        """Notifications seen on the session bus since the recipe started (summary, body, actions, id)."""
+        """Notify observations since recipe start (not proof of a drawn popup).
+
+        Rows contain summary/body/actions/id, sender/server unique bus owners,
+        timeout, hints/resident, replaces_id, at, action_events [{action,at}],
+        and closed (null or {reason,at}). IDs correlate with replies/signals.
+        """
         raise NotImplementedError
 
     def clipboard_text(self) -> str:
@@ -165,7 +241,7 @@ class Context:
         raise NotImplementedError
 
     # Fixtures shared between recipes in one run (an upload, a recording, a history row)
-    def fixture(self, name: str) -> Any:
+    def fixture(self, name: str, **options: Any) -> Any:
         raise NotImplementedError
 
     # Evidence and verdicts

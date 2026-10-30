@@ -1,0 +1,46 @@
+{
+  "sourceCommit": "cf4f4525afc519a3e86f32fd7c1bdde3f55fda2a",
+  "baseCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+  "kind": "synthetic offline surface-map browser acceptance; no app or desktop acceptance",
+  "capturedAt": "2026-10-29T23:14:21.466626+00:00",
+  "browser": "Google Chrome 156.0.8078.47",
+  "viewport": [
+    1900,
+    1000
+  ],
+  "python": "Python 3.12.3",
+  "pytest": "9.2.0",
+  "playwright": "1.64.1",
+  "checks": {
+    "contract": "passed: 9 desktops, 22 surfaces, 394 interactions",
+    "pytest": "32 passed, 391 subtests passed, 1 pre-existing failure",
+    "baselinePytest": "22 passed, 386 subtests passed, 1 same failure",
+    "followup": "https://github.com/patrick-hudson/put.gd-desktop/issues/661"
+  },
+  "screenshots": {
+    "review-annotated.png": "78f45d6b6e7208611032a1914fc950a43030fbe2ca7d80eba4013820b81cb32f",
+    "hosts-annotated.png": "d17218ec8e19ba57f68afe52bec0e9909db1599a9dfffe31e28e9f08cda493d4",
+    "filtered-annotated.png": "1bc97739ec9d43f12fcb9c26742ed5e1bcda1437190c3ecbd727ec89cd0b8b97"
+  },
+  "annotationCorrection": {
+    "at": "2026-10-29T23:23:02.551755+00:00",
+    "originalCaptureSha256": "6faf3473f258dc551bbc176a5a4d2f60982dfa4c4da60cd462374264dce9519d",
+    "box2": [
+      22,
+      217,
+      928,
+      293
+    ],
+    "number2": [
+      900,
+      221
+    ],
+    "receiptRegionUnchangedPixels": [
+      25,
+      298,
+      930,
+      315
+    ],
+    "note": "Original capture/source unchanged; box 2 ends above receipt, number moved to empty upper right."
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T00:00:00Z",
+      "functional": "passed",
+      "visual": "reviewed-ok"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "fedora-gnome-wayland",
+      "package": "rpm",
+      "source": "mark",
+      "at": "2026-10-29T00:00:00Z",
+      "functional": "failed",
+      "visual": "reviewed-wrong"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "neon-kde-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T00:00:00Z",
+      "functional": "failed"
+    }
+  ]
+}
