@@ -730,12 +730,12 @@ def maximize(ctx):
     _window_buttons_ready(ctx)
     original = ctx.geometry('history')
     _frame(ctx, 'before')
-    ctx.click('windowMaximize', window='history')
+    _click_history_node(ctx, {'name': 'Maximize', 'role': 'push button'})
     enlarged = ctx.wait(lambda: (g if (g := ctx.geometry('history'))['width'] > original['width'] else None), 'Maximize enlarges shell')
     ctx.expect(enlarged['height'] >= original['height'], 'maximized height grows')
     ctx.call('ui.viewState')
     _frame(ctx, 'maximized')
-    ctx.click('windowMaximize', window='history')
+    _click_history_node(ctx, {'name': 'Restore', 'role': 'push button'})
     ctx.wait(lambda: ctx.geometry('history') == original, 'Restore returns exact original geometry')
     _frame(ctx, 'after')
 
@@ -778,7 +778,7 @@ def minimize(ctx):
     row = _row(ctx)
     _window_buttons_ready(ctx)
     _frame(ctx, 'before')
-    ctx.click('windowMinimize', window='history')
+    _click_history_node(ctx, {'name': 'Minimize', 'role': 'push button'})
     try:
         ctx.wait(lambda: any(_minimized(w) for w in _main_windows(ctx, True)),
                  'window manager confirms minimized shell')
@@ -798,7 +798,7 @@ def close_window(ctx):
     row = _row(ctx)
     _window_buttons_ready(ctx)
     _frame(ctx, 'before')
-    ctx.click('windowClose', window='history')
+    _click_history_node(ctx, {'name': 'Close window', 'role': 'push button'})
     try:
         ctx.wait(lambda: not _main_windows(ctx), 'closed shell has no visible main window')
         ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
@@ -847,7 +847,7 @@ def launcher_history(ctx):
     epoch = _result(ctx.call('ui.snapshot'))['residentEpoch']
     for flag in ('--history', '--activity'):
         _window_buttons_ready(ctx)
-        ctx.click('windowClose', window='history')
+        _click_history_node(ctx, {'name': 'Close window', 'role': 'push button'})
         ctx.wait(lambda: not _main_windows(ctx), 'shell is hidden before second launcher')
         ctx.frame('closed-' + flag)
         reply = _launcher(ctx, flag)

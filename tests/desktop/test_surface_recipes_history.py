@@ -159,6 +159,8 @@ class FakeContext(Context):
             'text:More selection actions': 'historySelectionMore', 'text:Add a history filter': 'historyAddFilter', 'text:Advanced original receipt details': 'historyDetails',
             'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
             'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
+            'text:Maximize': 'windowMaximize', 'text:Restore': 'windowMaximize',
+            'text:Minimize': 'windowMinimize', 'text:Close window': 'windowClose',
             'text:Clear selection': 'historyClearSelection', 'text:Clear filters': 'historyClearFilters',
             'text:Keep uploading': 'historyKeepUploading', 'text:Cancel 2 uploads': 'historyConfirmCancelAll',
             'text-glob:* more active': 'historyMoreActive', 'text-glob:Cancel this upload:*': 'cancelBannerOperation',
@@ -340,11 +342,11 @@ class FakeContext(Context):
         self.menu = 'header'
 
     def accessible(self, query):
-        if query.get('role') == 'push button' and query.get('name') in ('Cancel', 'Keep uploading', 'Cancel 2 uploads', 'Delete * file*', 'Clear temporary files', 'Clear history records'):
+        if query.get('role') == 'push button' and query.get('name') in ('Cancel', 'Keep uploading', 'Cancel 2 uploads', 'Delete * file*', 'Clear temporary files', 'Clear history records', 'Maximize', 'Restore', 'Minimize', 'Close window'):
             if query.get('pid') != 123 or not query.get('owned') or not query.get('within'):
                 raise AssertionError('confirmation input must constrain native owner and dialog bounds')
             self.pending_button = query['name']
-            self.pending_button_window = 'historyCancelAllConfirmation' if query['name'] in ('Keep uploading', 'Cancel 2 uploads') else 'historyConfirmAction'
+            self.pending_button_window = 'history' if query['name'] in ('Maximize', 'Restore', 'Minimize', 'Close window') else 'historyCancelAllConfirmation' if query['name'] in ('Keep uploading', 'Cancel 2 uploads') else 'historyConfirmAction'
             return [{'rect': [600, 600, 100, 40]}]
         if query.get('name') == 'Clear filters' and query.get('role') == 'push button':
             return [{'name': 'Clear filters', 'rect': [1200, 250, 100, 40]}]
@@ -545,6 +547,16 @@ class HistoryRecipeTests(unittest.TestCase):
         ctx.windows = windows
         with self.assertRaises(RecipeBlocked):
             history._main_windows(ctx)
+
+    def test_chrome_uses_owned_native_names_when_catalog_control_is_absent(self):
+        class NoCatalogChrome(FakeContext):
+            def click(self, control, window='history', button='left'):
+                if control in ('windowMaximize', 'windowMinimize', 'windowClose'):
+                    raise AssertionError('catalog chrome cannot be resolved in this native toolkit')
+                return super().click(control, window, button)
+        for function in (history.maximize, history.minimize, history.close_window):
+            with self.subTest(function=function.__name__):
+                function(NoCatalogChrome(('history-row',)))
 
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
