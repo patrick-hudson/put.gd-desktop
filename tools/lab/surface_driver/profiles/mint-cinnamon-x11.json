@@ -159,6 +159,12 @@
       "cinnamon",
       "muffin",
       "cinnamon-launch"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "bottom",
+        "height": 48
+      }
     ]
   }
 }

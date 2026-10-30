@@ -962,6 +962,9 @@ asyncio.run(main())
                 shown = [w for w in windows if not w.get('minimized')]
                 is_browser = lambda w: bool(browser.get('title') and re.search(browser['title'], w.get('title') or ''))
                 allowed = [w for w in shown if w.get('owned') or is_browser(w)]
+                # The shell draws its panels/dock above every normal window;
+                # a foreign desktop/background window's mask stops there.
+                chrome = self._areas(config.get('shell_areas', []), image, head)
                 for other in shown:
                     if is_browser(other) and not other.get('owned'):
                         x, y, w, h = other['rect']
@@ -971,7 +974,8 @@ asyncio.run(main())
                     else:
                         above = [a['rect'] for a in allowed if a.get('stack') is not None and other.get('stack') is not None
                                  and a['stack'] > other['stack']]
-                        regions += [self._to_head(piece, head) for piece in subtract(other['rect'], above)]
+                        pieces = [self._to_head(piece, head) for piece in subtract(other['rect'], above)]
+                        regions += [piece for box in pieces for piece in subtract(box, chrome)]
                 if any(self._leaks(other.get('title')) for other in windows):
                     regions += self._areas(config.get('window_list_panels', [{'anchor': 'bottom', 'height': 1}]), image, head)
                 regions += self._secret_regions(head)

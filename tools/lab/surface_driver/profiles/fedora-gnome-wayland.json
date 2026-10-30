@@ -150,6 +150,16 @@
     },
     "shell_processes": [
       "gnome-shell"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "top",
+        "height": 40
+      },
+      {
+        "anchor": "left",
+        "width": 72
+      }
     ]
   }
 }

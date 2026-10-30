@@ -161,7 +161,7 @@ class F1OwnedWindowOnly(Base):
     def test_declared_desktop_masks_foreign_windows_except_under_allowed_ones(self):
         # A foreign app window carrying links (the GNOME live case), partly
         # under an owned window; the shell's own window and the desktop stay.
-        ctx = self.context(evidence=dict(EVIDENCE, shell_processes=['gnome-shell']))
+        ctx = self.context(evidence=dict(EVIDENCE, shell_processes=['gnome-shell'], shell_areas=[{'anchor': 'left', 'width': 8}]))
         ctx.sensitive(SHARE)
         ctx._probe = FakeDesktop([
             {'id': '5', 'title': '', 'pid': 3, 'process': 'gnome-shell', 'owned': False, 'rect': [0, 0, 120, 8], 'stack': 9},
@@ -174,6 +174,19 @@ class F1OwnedWindowOnly(Base):
         self.assertEqual(image.getpixel((60, 50)), (255, 255, 255))    # owned window above it kept
         self.assertEqual(image.getpixel((40, 4)), (255, 255, 255))     # shell-drawn top bar kept
         self.assertEqual(image.getpixel((5, 70)), (255, 255, 255))     # desktop background kept
+
+    def test_declared_desktop_keeps_shell_chrome_over_a_foreign_background(self):
+        # GNOME's desktop-icons window covers the screen; the top bar and dock
+        # the shell draws over it stay, the rest of that window is masked.
+        ctx = self.context(evidence=dict(EVIDENCE, shell_areas=[{'anchor': 'top', 'height': 8}, {'anchor': 'left', 'width': 8}]))
+        ctx.sensitive(SHARE)
+        ctx._probe = FakeDesktop([{'id': '2', 'title': 'Desktop Icons', 'pid': 40, 'process': 'gjs', 'owned': False,
+                                   'rect': [0, 0, 120, 80], 'stack': 0}, owned_window((60, 30, 40, 30), stack=1)])
+        image = self.pixels(ctx, ctx.frame('desktop', desktop_safe='synthetic desktop'))
+        self.assertEqual(image.getpixel((50, 4)), (255, 255, 255))    # top bar
+        self.assertEqual(image.getpixel((4, 50)), (255, 255, 255))    # dock
+        self.assertEqual(image.getpixel((30, 50)), (0, 0, 0))         # foreign background window
+        self.assertEqual(image.getpixel((80, 45)), (255, 255, 255))   # owned window above it
 
     def test_rectangle_subtraction(self):
         from tools.lab.surface_driver.context import subtract

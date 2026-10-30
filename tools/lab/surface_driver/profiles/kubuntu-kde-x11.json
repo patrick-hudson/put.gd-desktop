@@ -147,6 +147,12 @@
       "plasmashell",
       "kwin_wayland",
       "kwin_x11"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "bottom",
+        "height": 52
+      }
     ]
   }
 }
