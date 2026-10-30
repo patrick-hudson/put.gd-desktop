@@ -313,16 +313,30 @@ python3 tools/lab/lab.py recover-staging --run "$lab_run" \
   --job install-0123456789abcdef0123456789abcdef
 ```
 
-This command authenticates the owned running overlay, rejects a changed lock
-token and any package-supervisor progress/result, and repeats the bounded guest
-lifetime check before releasing that token. Both ordinary and abandoned recovery
+This command first takes the host's `install.lock` flock in the run directory
+without waiting. An `install` controller holds that lock from guest lock
+acquisition until it returns. The kernel drops it when the controller exits for
+any reason. While the controller is alive, recovery refuses. That includes the
+window after successful staging while it writes `helper.json`, uploads
+`package.deb` and launches the supervisor, when the guest shows no
+supervisor progress yet. A second `install` on the same run is refused the same
+way. The command then authenticates the owned running overlay, rejects a changed
+lock token and any package-supervisor progress/result, and repeats the bounded
+guest lifetime check before releasing that token.
+
+The root package supervisor also admits itself under `install-guard`. It starts
+only while its own job holds `install-active`, and writes `progress.json` before
+releasing the guard. Recovery's guarded release requires that `progress.json` is
+absent. Either recovery refuses, or a delayed supervisor start finds the token
+gone (or replaced), exits with `Install supervisor refused to start`, and writes
+no progress or result. The supervisor never runs without the lock. Both ordinary and abandoned recovery
 require a verifiable session leader identity and no live process in the recorded
 session. They enumerate `/proc/<pid>/stat` session IDs (field 6), including
 root-owned staging descendants. Missing identity, unreadable process information
 or incomplete enumeration (including restricted procfs mounts) refuses recovery.
 
 If an abrupt controller death or interrupted receipt write left no host
-`staging-failed.json`, recovery reconstructs the staging identity from the guest's
+`staging-failed.json` and the controller has exited, recovery reconstructs the staging identity from the guest's
 `staging-process.json` under the same ownership, token, supervisor and lifetime
 guards. Missing guest metadata cannot authorize recovery. The command saves
 `staging-recovery.json` in the host job directory and preserves the install-time
@@ -342,16 +356,32 @@ python3 tools/lab/lab.py recover-staging --run "$lab_run" \
 `staging.lock` flock, a valid recorded session leader PID that is dead or has
 different `/proc` start ticks, and a complete scan proving no live process has
 the recorded session ID. Killing the wrapper can free its flock while privileged
-children still run; those children keep recovery blocked until they exit. Zombie
-or exited processes do not count as live. A held flock, live matching leader,
+children still run. Children that remain in the staging session keep recovery
+blocked until they exit. Zombie or exited processes do not count as live.
+
+The session scan has one limit. A live wrapper waits, as subreaper, for every
+descendant. That includes descendants that called `setsid()`, which keeps
+ordinary recovery blocked. After the wrapper is killed, though, a descendant
+that left the session with `setsid()` is not visible to the scan. `--abandoned`
+can then release `install-active` while it runs. The in-tree staging commands
+start no such process: the hook runs only `install`, `sha256sum`, `printf`,
+`chmod` and `visudo`, `apt-get update` with empty sources runs no dpkg, and
+sudo's `use_pty` has no effect without a terminal. The remaining risk is a
+guest's own APT Pre-Invoke hook daemonizing. The `staging-abandoned` report
+states this limit in its `limit` field. If the guest's hooks can daemonize,
+inspect its process list before retrying. Cgroup-based tracking is
+[#780](https://github.com/patrick-hudson/put.gd-desktop/issues/780). A held flock, live matching leader,
 live session member, missing/malformed identity or uncertain inspection retains
 `install-active`. Older receipts without a session ID cannot prove abandonment;
 preserve the run for investigation.
 
 On guests without Python 3.9's `os.pidfd_open`, or where the kernel returns
 `ENOSYS` for that API, leader identity checks fall back to `/proc` start ticks
-and process state. Other inspection failures remain unknown and cannot authorize
-abandonment. The command never signals a process. It fences delayed starts,
+and process state. `pidfd_open` `EINVAL` means the leader exited but its PID is
+still in use as the ID of a session with live members. Recovery counts the
+leader as dead and refuses, with those member PIDs from the session scan in the
+report and the error. Other inspection failures remain unknown and cannot
+authorize abandonment. The command never signals a process. It fences delayed starts,
 records a `staging-abandoned` report in the host's `staging-recovery.json`, and
 clears only the matching install token. The missing terminal receipt remains
 missing; recovery proves session quiescence rather than a successful helper
