@@ -793,7 +793,7 @@ def parse_notifications(text,since=0):
                 action_strings = strings(actions[1]) if actions else []
                 timeout = re.findall(r'^\s*int32 (-?\d+)',block,re.M)
                 hints = {}
-                for entry in re.findall(r'dict entry \((.*?)\)',block,re.S):
+                for entry in re.findall(r'dict entry\s*\((.*?)\)',block,re.S):
                     key = strings(entry)
                     value = re.search(r'variant\s+(boolean|int32|uint32|byte|double) (true|false|[-0-9.]+)',entry)
                     if key and value:

@@ -10,48 +10,9 @@ from .uploads import submit
 
 
 def feed(scope, older=False):
-    ctx=scope.ctx
-    ctx.fixture('app-profile')
-    root=ctx.target.root+'/state/feed-'+scope.token[:8]
-    scope.python('from pathlib import Path\nPath('+repr(root)+').mkdir(mode=0o700)')
-    scope.defer('update feed directory',lambda:scope.python('import shutil\nshutil.rmtree('+repr(root)+')'))
-    # Port zero chosen in the guest, metadata in the owned directory. No logs of
-    # requests, release URLs, user-agent or arbitrary browser query strings.
-    code='''from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
-from pathlib import Path
-class H(SimpleHTTPRequestHandler):
- def __init__(self,*a,**kw):super().__init__(*a,directory=ROOT,**kw)
- def log_message(self,*a):pass
-s=ThreadingHTTPServer(('127.0.0.1',0),H)
-Path(PORT).write_text(str(s.server_address[1]))
-s.serve_forever()
-'''.replace('ROOT',repr(root)).replace('PORT',repr(scope.root+'/feed-port'))
-    scope.launch(['python3','-c',code],name='feed')
-    def port():
-        result=ctx.shell('cat '+shlex.quote(scope.root+'/feed-port')+' 2>/dev/null')
-        return int(result['stdout']) if result['stdout'].strip().isdigit() else None
-    port=ctx.wait(port,'guest update feed',timeout=10)
-    url='http://127.0.0.1:'+str(port)+'/'
-    scope.restart({'PUTGD_UPDATE_FEED_URL':url,'PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'})
-    snapshot=ctx.call('ui.snapshot')
-    # Identify the authenticated private socket peer, without a process-name scan.
-    pid=scope.json('''import json,os,socket,struct
-from pathlib import Path
-with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as peer:
- peer.connect(__SOCKET__)
- pid,uid,gid=struct.unpack('3i',peer.getsockopt(socket.SOL_SOCKET,socket.SO_PEERCRED,struct.calcsize('3i')))
-assert uid==os.getuid() and pid>1
-p=Path('/proc')/str(pid)
-assert p.stat().st_uid==os.getuid() and Path(os.readlink(p/'exe')).name=='putgd'
-print(json.dumps(pid))
-'''.replace('__SOCKET__',repr(ctx.target.socket)))
-    status=ctx.call('update.status')
-    channel=status.get('channel') or 'stable'
-    version='26.101.1' if older else '99.1231.999'
-    document={'schema':1,'channel':channel,'release':{'version':version,'tag':'v'+version,'assets':{}}}
-    scope.python('from pathlib import Path\nPath('+repr(root+'/'+channel+'.json')+').write_text('+repr(json.dumps(document))+')')
-    return Fixture(url=url,root=root,residentPid=pid,version=version,channel=channel,
-                   supported=status.get('build',{}).get('supported',False),residentEpoch=snapshot.get('residentEpoch'))
+    # Retain the Python helper entry point as well as the fixture registry name.
+    from .updates import feed as update_feed
+    return update_feed(scope,older=older)
 
 
 def storage(scope):

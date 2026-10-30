@@ -730,7 +730,9 @@ def label(value):
     return (value or '').split('\t')[0].replace('&&', '\0').replace('&', '').replace('\0', '&')
 
 
-CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', 'toggle button', 'menu'),
+# Qt 6.4 QAccessibleToolButton::role returns CheckBox for a checkable
+# toolbutton without a menu (including the editor's recent-color swatches).
+CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', 'toggle button', 'check box', 'menu'),
                'QLineEdit': ('text', 'entry'), 'QSpinBox': ('spin button',),
                'QComboBox': ('combo box',), 'QMenu': ('menu', 'popup menu'),
                'QCheckBox': ('check box',), 'QAction': ('menu item', 'check menu item', 'radio menu item')}
@@ -763,7 +765,12 @@ def selector_matches(row, selector, candidates):
         return 1
     if selector.startswith('text-glob:') and fnmatch.fnmatchcase(live, selector[10:]):
         return 1
-    return 1 if any(live in candidate_labels(c) for c in candidates) else None
+    # A label's text can equal a named combo's accessibleName on Qt 6.4.
+    # Apply each matching candidate's class semantics; coordinates never break
+    # ties. Unknown catalog classes retain the existing label-only contract.
+    return 1 if any(live in candidate_labels(c) and
+                    (c.get('class') not in CLASS_ROLES or row['role'] in CLASS_ROLES[c['class']])
+                    for c in candidates) else None
 
 
 def control_geometry(query):
@@ -1374,6 +1381,28 @@ def windows(query):
             (row.get('ancestors') and row['ancestors'][-1]['role']=='application')]
 
 
+def notifier_item(item):
+    """Watcher identity: bus/path (KDE), bus@/path (GNOME), or just bus."""
+    service, separator, suffix = str(item).partition('/')
+    if separator and service.endswith('@'):
+        service = service[:-1]
+    path = '/'+suffix if separator else '/StatusNotifierItem'
+    unique = r':[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+'
+    named = r'[A-Za-z_-][A-Za-z0-9_-]*(?:\.[A-Za-z_-][A-Za-z0-9_-]*)+'
+    if not re.fullmatch('(?:'+unique+'|'+named+')',service) or not re.fullmatch(r'/(?:[A-Za-z0-9_]+(?:/[A-Za-z0-9_]+)*)?',path):
+        raise ValueError('invalid StatusNotifierWatcher item identity')
+    return service,path
+
+
+def notifier_process(pid):
+    """Pin the same-user process start across an SNI property request."""
+    directory='/proc/'+str(pid)
+    if os.stat(directory).st_uid!=os.getuid():
+        raise ValueError('notifier belongs to another account')
+    with open(directory+'/stat') as stream:
+        return stream.read().split(') ',1)[1].split()[19]
+
+
 def tray(query):
     """Read-only SNI properties belonging to the private resident family."""
     import dbus
@@ -1384,18 +1413,29 @@ def tray(query):
     daemon = dbus.Interface(bus.get_object('org.freedesktop.DBus','/org/freedesktop/DBus'),'org.freedesktop.DBus')
     rows = []
     for item in items:
-        service, separator, suffix = str(item).partition('/')
-        path = '/'+suffix if separator else '/StatusNotifierItem'
-        pid = int(daemon.GetConnectionUnixProcessID(service))
-        if not owned(pid) or query.get('pid') not in (None,pid):
+        try:
+            service,path = notifier_item(item)
+            owner = str(daemon.GetNameOwner(service))
+            pid = int(daemon.GetConnectionUnixProcessID(owner))
+            if not owned(pid) or query.get('pid') not in (None,pid):
+                continue
+            start = notifier_process(pid)
+            properties = dbus.Interface(bus.get_object(owner,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
+            # A stale item or an owner change during the property request must
+            # never contaminate the private-family observation.
+            if (str(daemon.GetNameOwner(service))!=owner or int(daemon.GetConnectionUnixProcessID(owner))!=pid
+                    or notifier_process(pid)!=start or not owned(pid)):
+                continue
+        except (dbus.DBusException,OSError,ValueError):
+            # A watcher can retain an item after its owner exited. Continue to
+            # the actual private resident; outer watcher failures still fail.
             continue
-        properties = dbus.Interface(bus.get_object(service,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
         pixmaps = []
         for width,height,data in properties.get('IconPixmap',[]):
             payload = bytes(data)
             pixmaps.append({'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()})
         tooltip = properties.get('ToolTip',('',[],'',''))
-        rows.append({'pid':pid,'service':service,'path':path,'id':str(properties.get('Id','')),
+        rows.append({'pid':pid,'start':start,'owner':owner,'service':service,'path':path,'id':str(properties.get('Id','')),
                      'title':str(properties.get('Title','')),'status':str(properties.get('Status','')),
                      'icon_name':str(properties.get('IconName','')),'icon_pixmaps':pixmaps,
                      'tooltip':{'title':str(tooltip[2]),'text':str(tooltip[3])},'menu':str(properties.get('Menu',''))})

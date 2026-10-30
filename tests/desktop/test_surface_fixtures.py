@@ -448,7 +448,7 @@ class Fixtures(unittest.TestCase):
         scope=self.ctx.manager.scope;original=scope.json
         def metadata(code,**kwargs):
             ast.parse(code)
-            if 'SO_PEERCRED' in code:return 42
+            if 'SO_PEERCRED' in code:return {'pid':42,'start':'owned-start'}
             return original(code,**kwargs)
         with patch.object(scope,'json',metadata):
             value=self.ctx.fixture('events.update-feed')
