@@ -1,0 +1,7 @@
+apt=3.2.0
+kwin-common=4:6.6.6-0ubuntu0.1
+kwin-wayland=4:6.6.6-0ubuntu0.1
+openssh-server=1:10.2p1-2ubuntu3.7
+plasma-discover=6.6.6-0ubuntu0.1
+plasma-workspace=4:6.6.6-0ubuntu0.1
+sddm=0.21.0+git20250502.4fe234b-2ubuntu3

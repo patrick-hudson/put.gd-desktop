@@ -1,0 +1,37 @@
+{
+  "aptConfig": "/etc/apt/apt.conf.d/zz-putgd-lab-no-auto-upgrades",
+  "periodic": {
+    "APT::Periodic::Download-Upgradeable-Packages": "0",
+    "APT::Periodic::Enable": "0",
+    "APT::Periodic::Unattended-Upgrade": "0",
+    "APT::Periodic::Update-Package-Lists": "0"
+  },
+  "scope": "owned disposable guest only",
+  "units": {
+    "apt-daily-upgrade.service": {
+      "ActiveState": "inactive",
+      "LoadState": "masked",
+      "UnitFileState": "masked"
+    },
+    "apt-daily-upgrade.timer": {
+      "ActiveState": "inactive",
+      "LoadState": "masked",
+      "UnitFileState": "masked"
+    },
+    "apt-daily.service": {
+      "ActiveState": "inactive",
+      "LoadState": "masked",
+      "UnitFileState": "masked"
+    },
+    "apt-daily.timer": {
+      "ActiveState": "inactive",
+      "LoadState": "masked",
+      "UnitFileState": "masked"
+    },
+    "unattended-upgrades.service": {
+      "ActiveState": "inactive",
+      "LoadState": "masked",
+      "UnitFileState": "masked"
+    }
+  }
+}

@@ -9,12 +9,14 @@ versions and build identities.
 | `putgd-build-base-v3` | `ubuntu24.04` | `ubuntu24.04` DEB | Build worker |
 | `putgd-lab-cinnamon-v3` | `ubuntu24.04` | `ubuntu24.04` DEB | Mint 22.3 / Cinnamon X11 |
 | `putgd-lab-ubuntu-gnome-v4` | `ubuntu24.04` | `ubuntu26.04` DEB | Ubuntu 26.04 / Qt 6.10 / GNOME Wayland |
+| `putgd-lab-kubuntu-kde-v1` | `ubuntu24.04` | `ubuntu26.04` DEB | Kubuntu 26.04 / Qt 6.10.2 / Plasma Wayland |
 
 The original `putgd-build-base`, `putgd-lab-cinnamon`,
 `putgd-lab-ubuntu-gnome`, `putgd-lab-ubuntu-gnome-v2` and `putgd-lab-aurora`
 remain intact. The intermediate `putgd-build-base-v2`,
 `putgd-lab-cinnamon-v2` and `putgd-lab-ubuntu-gnome-v3` also remain intact;
-the three names above supersede their build/Cinnamon/GNOME roles. Aurora v2
+the first three names above supersede their build/Cinnamon/GNOME roles. KDE v1 adds a new role.
+Aurora v2
 was deferred in [#769](https://github.com/patrick-hudson/put.gd-desktop/issues/769)
 until its Toolbx tools can be proved visible to the host probes without an
 rpm-ostree change. These are Boat development caches, not physical-desktop,
@@ -22,9 +24,8 @@ performance, memory or release acceptance.
 
 ## Build the correct guest package
 
-The GNOME worker is Ubuntu 24.04, but its guest is Ubuntu 26.04. A host-built
-Noble DEB cannot be installed in that guest. Use the candidate builder's native
-package target, which selects the target distro's digest-pinned container from
+The GNOME and KDE workers are Ubuntu 24.04, but their guests are Ubuntu 26.04.
+A host-built Noble DEB cannot be installed in those guests. Use the candidate builder's native package target, which selects the target distro's digest-pinned container from
 that exact commit's `.github/workflows/package.yml`:
 
 ```sh
@@ -48,7 +49,7 @@ contracts run with `python3 tests/desktop/test_boat_snapshots.py` and
 `python3 tests/desktop/test_boat_candidate.py`. All builds and VMs run on Boat;
 only control, editing and these unit tests run on the workstation.
 
-Agree the start budget and keep at most three workers active. Create a preparation
+Agree the start budget and keep at most two workers active. Create a preparation
 worker with `boat new --from OLD_NAME --type large --ttl 14400 --no-env`,
 reuse it for every retry, and wait for `boat info` to report `hydrated: true`.
 Record bare-metal placement, capacity, identity and TTL. Pin the worker's
@@ -143,6 +144,15 @@ controller checkout allows a documented lab lifecycle fix to be tested while
 preserving the exact built/package source; record both commits. The final lab
 snapshots use #787's merged controller commit, recorded in their manifests.
 
+For KDE select `kde-wayland`, `ubuntu26.04` and its audited DEB. KDE v1 uses
+`kde-provisioned-20261016` as its original input, with the original builder and
+S3 copies preserved. Its source has `plasma.desktop` under Wayland sessions and
+no X11 session; [#883](https://github.com/patrick-hudson/put.gd-desktop/issues/883)
+tracks an independent X11-capable golden. An `xcb` client in Wayland is not
+native X11 evidence. KWin needs no installed lab witness: the driver loads a
+one-shot read-only script per observation in each disposable overlay (see
+[prerequisites](surface-driver-prerequisites.md)).
+
 The probe contract is the exact `origin/feat/surface-driver-core`
 `provision-probes.sh` revision recorded by the recipe, plus the requested
 `tesseract-ocr`. It covers xdotool, xclip, wl-paste/wl-copy, Python AT-SPI,
@@ -176,6 +186,23 @@ its exact UID/PID/start identity; fresh-fork checks only read the override and
 require no Update Manager process, so lanes need no per-run process kill.
 The override is recorded as `guestSessionPolicy.mintUpdate` in the manifest.
 This addresses the foreground-guard interference seen by #785.
+
+KDE v1 disables Discover's lab-user notifier autostart and sets
+`~/.config/PlasmaDiscoverUpdates` → `Global/UseUnattendedUpdates=false`, with
+`kreadconfig6` readback. The lab user's KWallet is disabled to avoid prompts.
+The production preflight persists and verifies Plasma lock/idle/power settings.
+To prevent [#885](https://github.com/patrick-hudson/put.gd-desktop/issues/885),
+the image also masks and stops `apt-daily.timer`, `apt-daily-upgrade.timer`,
+`apt-daily.service`, `apt-daily-upgrade.service` and
+`unattended-upgrades.service`. Root-owned
+`/etc/apt/apt.conf.d/zz-putgd-lab-no-auto-upgrades` sets the four recorded
+`APT::Periodic` controls to zero. Setup uses the existing no-sources apt hook,
+adds no sudo rule/helper, and clears failure state only for these units.
+Fresh checks require masked/inactive units and the effective apt/Discover
+values without repairing them. This policy is recorded under
+`guestSessionPolicy` in the manifest; it does not change older saved snapshots.
+The [KDE evidence](evidence/2026-10-30-boat-kde-snapshot/README.md) binds the named
+snapshot, exact package/controller, fresh `core_demo` results and cleanup.
 
 The held-overlay check keeps the exact disk inode open, proves guarded cleanup
 refuses and leaves it present, releases only that owned holder, then proves

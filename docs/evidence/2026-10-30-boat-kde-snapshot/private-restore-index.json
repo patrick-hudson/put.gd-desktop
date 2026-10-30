@@ -1,0 +1,47 @@
+{
+  "private": true,
+  "sourceWorktree": "/home/patrick/.t3/worktrees/put.gd/t3-612b4ad1",
+  "files": {
+    "parent-evidence.tar.gz": {
+      "sha256": "c236ae71a661fd2d1c3de81fb89f5ded236f5b9929803bd35de509dc8d548997",
+      "bytes": 1178000
+    },
+    "parent-export.json": {
+      "sha256": "ab54f7756f1ef72146b38ced88b71f2c4c4d3012e99da2fb1af67af62164149c",
+      "bytes": 207
+    },
+    "publication.json": {
+      "sha256": "5d9751dcf189ab16e8c984129105167bffb81fe9bca130a46dc7989bb1e320a5",
+      "bytes": 23620
+    },
+    "final-manifest.json": {
+      "sha256": "81187b93fdf06c8a00e5b842c091f66df547b288c3015f40a1667947c6fed06d",
+      "bytes": 21604
+    },
+    "initial-manifest.json": {
+      "sha256": "c2e7ca458f0819f9a132583f4e0c6d0a6380bc0488a33a32efe7bd7f97d38865",
+      "bytes": 19768
+    },
+    "fresh-evidence.tar.gz": {
+      "sha256": "3ba083e650765d46632d773adebc6b8fd91aaf932d06df4afecfe91305785add",
+      "bytes": 3442368
+    },
+    "fresh-export.json": {
+      "sha256": "8b89134ac6e57b4c5410e04b1d458adbc1ed068b6ecb55b8ecf0e545cb1cdde4",
+      "bytes": 206
+    },
+    "verification-summary.json": {
+      "sha256": "026332c676bed9764e575cf4239a86cc873e894e84923c973eb4e6087e991b5a",
+      "bytes": 1278
+    },
+    "proof-final.py": {
+      "sha256": "ab460e91671bbb3ac79a76f82730d1897ec1268627178cc4d520824dd58842ae",
+      "bytes": 7868
+    },
+    "deletion-audit.json": {
+      "sha256": "b5a090da5ad8783063252df2b5f98f61739679c1831260a2d77e43d55d3026e4",
+      "bytes": 264
+    }
+  },
+  "instructions": "Verify each archive SHA-256, extract with a safe tar data filter, then verify every entry against its index.json."
+}

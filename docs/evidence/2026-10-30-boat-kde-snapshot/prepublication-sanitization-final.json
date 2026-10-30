@@ -1,0 +1,11 @@
+{
+  "placement": "boat",
+  "retiredDisposablePrivateKeysRemoved": [
+    "kp1",
+    "kp2",
+    "kp3"
+  ],
+  "curlConfigAbsent": true,
+  "awsCredentialFileAbsent": true,
+  "protonSessionLent": false
+}

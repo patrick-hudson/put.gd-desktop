@@ -1,0 +1,14 @@
+{
+  "placement": "boat",
+  "workers": [
+    "bx_3gf9zr9k",
+    "bx_e53gcugq",
+    "bx_t6yqdzj3"
+  ],
+  "allWorkersDeleted": true,
+  "totalStarts": 3,
+  "peakConcurrent": 2,
+  "wallTunnelsStopped": true,
+  "wallTilesRemoved": true,
+  "isolatedAgentStopped": true
+}

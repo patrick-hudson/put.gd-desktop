@@ -1,0 +1,7 @@
+{
+  "format": "deb",
+  "installEvidence": "/home/user/kde-driver/work/lab-runs/kw2/install-68855ce745a6416a834c99b6888e7de5",
+  "sha256": "969c6899a1297b056ef45b2eb3c69150af7fbd554db8fcde5959172dc8a998cd",
+  "status": "installed",
+  "timedOut": false
+}

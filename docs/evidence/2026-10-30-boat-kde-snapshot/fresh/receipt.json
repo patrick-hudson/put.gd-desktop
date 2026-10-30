@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": null,
+    "package": "deb",
+    "destination": "local",
+    "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+    "placement_details": {
+      "boat_sandbox_id": "bx_3gf9zr9k",
+      "run_id": "40af54e3-3230-44cd-9a76-3a5c645cd2c1",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/user/kde-driver/work/lab-runs/kw2",
+      "session_root": "/tmp/sd-c7edeef6",
+      "socket": "/tmp/sd-c7edeef6/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "qmp"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.2481",
+      "commitCount": 2481,
+      "dirty": false,
+      "gitCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "gitTree": "d823723c8759dae8db7c57cee59476ac7a3b4f90",
+      "packageVersion": "26.1030.2481~dev+g6ad9f957e654",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.2481-dev+g6ad9f957e654"
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/kde-evidence/fresh-wayland-final/recipes/receipt.json",
+      "note": "operationId=ade039a5-3b98-44d2-82d5-5f76dcb08db7",
+      "host": "boat",
+      "placement": "boat",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.text_tool/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "text-tool",
+          "path": "frames/core_demo.text_tool/01-text-tool.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.text_tool/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.text_tool",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T13:34:50Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/kde-evidence/fresh-wayland-final/recipes/receipt.json",
+      "note": "operationId=9d1aa495-d67b-4ce6-b4e5-0525eed0ab79",
+      "host": "boat",
+      "placement": "boat",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.213110, tolerance=0.025): actual=/home/user/kde-evidence/fresh-wayland-final/recipes/frames/core_demo.redact_tool/01-redact-tool.png reference=/home/user/kde-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.redact_tool/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redact-tool",
+          "path": "frames/core_demo.redact_tool/01-redact-tool.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.21311013423290465,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.redact_tool/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.redact_tool",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T13:35:12Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/kde-evidence/fresh-wayland-final/recipes/receipt.json",
+      "note": "operationId=1357583b-1546-4735-a467-70678192bf72",
+      "host": "boat",
+      "placement": "boat",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.undo_redo/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redone",
+          "path": "frames/core_demo.undo_redo/01-redone.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T13:35:36Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/kde-evidence/fresh-wayland-final/recipes/receipt.json",
+      "note": "operationId=1357583b-1546-4735-a467-70678192bf72",
+      "host": "boat",
+      "placement": "boat",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/core_demo.undo_redo/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "redone",
+          "path": "frames/core_demo.undo_redo/01-redone.png",
+          "window": "editor",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/core_demo.undo_redo/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "core_demo.undo_redo",
+      "build": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+      "at": "2026-10-30T13:35:36Z"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "placement": "boat",
+  "sandbox": "bx_t6yqdzj3",
+  "reason": "masked timers retained failed state; next fresh kp3 policy and app-start checks passed with scoped reset-failed",
+  "recipeCommit": "729ffea26c91296f25003458d14e25d6f1db8b73",
+  "recipeSha256": "0c7c6367b07566b5fc0db19ee1939e69d8962617d99268c8746d55648268fdc1",
+  "visualScope": "saved launch/preflight frames before the policy refusal"
+}
