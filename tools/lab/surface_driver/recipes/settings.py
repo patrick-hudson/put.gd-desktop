@@ -1049,6 +1049,10 @@ def browse(ctx):
     try:
         dialogs._ready(ctx, inspect, backend, 'folder')
         dialogs._input(ctx, backend, files['folder'], 'folder', inspect)
+        # QFileDialog may navigate into an existing typed directory on Return.
+        # Complete its real Choose action before asserting the exact result.
+        if inspect()['open']:
+            ctx.click('text:Choose', window='putgdFileDialog')
         selected = ctx.wait(lambda: (s if not s['open'] else None)
                             if (s := inspect()) else None, 'folder chooser completed')
         ctx.expect(selected['last']['status'] == 'chosen' and
