@@ -42,10 +42,7 @@
       }
     },
     "historyConfirmAction": {
-      "title": "^(Delete from destination|Clear history records|Clear temporary files)$",
-      "accessible": {
-        "owned": true
-      }
+      "title": "^(Delete from destination|Clear history records|Clear temporary files)$"
     },
     "historySaveDialog": {
       "title": "^Save original file as$"

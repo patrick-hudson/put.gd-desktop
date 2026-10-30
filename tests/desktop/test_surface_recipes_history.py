@@ -151,7 +151,7 @@ class FakeContext(Context):
 
     def click(self, control, window, button='left', offset=None):
         aliases = {
-            'text:Add a history filter': 'historyAddFilter', 'text:Advanced original receipt details': 'historyDetails',
+            'text:More selection actions': 'historySelectionMore', 'text:Add a history filter': 'historyAddFilter', 'text:Advanced original receipt details': 'historyDetails',
             'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
             'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
             'text:Clear selection': 'historyClearSelection', 'text:Clear filters': 'historyClearFilters',
@@ -167,7 +167,7 @@ class FakeContext(Context):
         }
         control = aliases.get(control, control)
         self.events.append(('click', control, window, button))
-        self.focused_control = control
+        self.focused_control = 'historySearch' if control == 'historyList' and self.fault == 'list-cannot-focus' else control
         if control == 'applicationMenu':
             self.menu = 'app'
         elif control == 'text:Capture actions':
@@ -181,7 +181,7 @@ class FakeContext(Context):
             self.grid = False
             self.details = False
         elif control == 'historyList':
-            self.selected = ['image-1']
+            self.selected = [] if self.fault == 'row-click-no-effect' else ['image-1']
             self.details = self.grid and button == 'left'
         elif control == 'historyClearFilters':
             self.query['uploadStatus'] = ''
@@ -311,6 +311,11 @@ class FakeContext(Context):
             raise AssertionError('chooser must be visible before binding input')
 
     def click_accessible(self, query, button='left'):
+        if query.get('role') == 'list item':
+            if not query.get('owned') or query.get('pid') != 123 or query.get('within') != [320, 200, 800, 650]:
+                raise AssertionError('row input requires the owned live list bounds')
+            self.events.append(('delegate', copy.deepcopy(query)))
+            return self.click('historyList', 'history', button)
         if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
             return self.click('historyChoiceuploadStatus', 'history', button)
         if not query.get('owned') or query.get('name') != 'Expand preview' or query.get('pid') != 123:
@@ -326,7 +331,9 @@ class FakeContext(Context):
 
     def accessible(self, query):
         if query.get('name') == 'History items and upload activity':
-            return [{'name': query['name'], 'states': {'focused': True}}] if self.focused_control == 'historyList' else []
+            if query.get('states', {}).get('focused') and self.focused_control != 'historyList':
+                return []
+            return [{'name': query['name'], 'rect': [320, 200, 800, 650], 'pid': 123, 'states': {'focused': self.focused_control == 'historyList'}}]
         if query.get('name') == 'Expand preview':
             return [{'name': 'Expand preview', 'role': role, 'pid': 123, 'rect': [100, 100, 40, 40]} for role in ('icon', 'push button')]
         if query.get('role') == 'menu item':
@@ -556,7 +563,7 @@ class HistoryRecipeTests(unittest.TestCase):
             def windows(self, query=None):
                 raise AssertionError('geometry must not send X11 title queries')
             def accessible(self, query):
-                if set(query) - {'owned', 'visible', 'showing', 'pid', 'within', 'name', 'states'}:
+                if set(query) - {'owned', 'visible', 'showing', 'pid', 'within', 'name', 'states', 'role'}:
                     raise AssertionError('unsupported accessible header query')
                 return super().accessible(query)
         for action in (history.header_drag, history.edge_resize):
@@ -612,6 +619,17 @@ class HistoryRecipeTests(unittest.TestCase):
                     self.assertIn('setAccessibleName("' + label + '")', source)
                     self.assertEqual(selector_matches({'name': label, 'objectName': ''}, control,
                                                       catalog.candidates(control, 'history')), 1)
+
+    def test_single_row_click_uses_its_live_delegate_bounds(self):
+        ctx = FakeContext(('history-row',))
+        history._row(ctx)
+        queries = [e[1] for e in ctx.events if e[0] == 'delegate']
+        self.assertEqual(len(queries), 1)
+        self.assertEqual(queries[0]['within'], [320, 200, 800, 650])
+        self.assertEqual(queries[0]['pid'], 123)
+        self.assertEqual(queries[0]['role'], 'list item')
+        with self.assertRaisesRegex(RecipeFailed, 'fixture row is selected'):
+            history._row(FakeContext(('history-row',), fault='row-click-no-effect'))
 
     def test_unverified_list_focus_never_receives_navigation_or_activation(self):
         ctx = FakeContext(('history-row',), fault='list-cannot-focus')

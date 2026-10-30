@@ -94,9 +94,17 @@ def _row(ctx, fixture='history-row'):
     ctx.expect(detail['id'] == row['id'] and detail['name'] == row['name'], 'fixture has the expected identity')
     _search(ctx, row['name'])
     ctx.wait(lambda: _state(ctx)['rows'] == 1, 'unique fixture row is shown')
-    _focus_items(ctx)
-    ctx.keys('Home')
+    pid = ctx.geometry('history')['pid']
+    lists = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid,
+                            'name': 'History items and upload activity'})
+    if len(lists) != 1 or not lists[0].get('rect'):
+        ctx.blocked('The uniquely searched History list has no unambiguous live bounds.', issue=675)
+    # The query has exactly one row. Target its actual delegate inside the live
+    # list, rather than blank viewport space or an unselected Home focus item.
+    ctx.click_accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid,
+                          'role': 'list item', 'within': lists[0]['rect']})
     ctx.wait(lambda: row['id'] in _state(ctx)['selectedIds'], 'fixture row is selected with real input')
+    _focus_items(ctx)
     return row
 
 
@@ -110,7 +118,9 @@ def _details(ctx):
     # an observable open/close transition at both compact and full widths.
     _gallery(ctx)
     _focus_items(ctx)
-    ctx.keys('Home', 'Return')
+    ctx.keys('Home', 'Ctrl+A')
+    ctx.wait(lambda: _state(ctx)['selectedRows'] == 1, 'keyboard selects the unique gallery row')
+    ctx.keys('Return')
     ctx.wait(lambda: _state(ctx)['detailsOpen'] and _state(ctx)['inspectorVisible'], 'selected details open')
 
 
@@ -260,7 +270,7 @@ def multi_select(ctx):
     ctx.expect(state['selectionSummary']['bytes'] == data['bytes'], 'selection summary adds bytes exactly')
     _size(ctx, data['bytes'], 'Total size')
     _frame(ctx, 'selected', '41a-history-selection-inspector')
-    ctx.click('historySelectionMore', window='history')
+    ctx.click('text:More selection actions', window='history')
     ctx.click('text:Clear selection', window='historySelectionMore')
     ctx.wait(lambda: _state(ctx)['selectedRows'] == 0, 'Clear selection menu clears both rows')
     _frame(ctx, 'after')
@@ -698,7 +708,9 @@ def enter_details(ctx):
     _gallery(ctx)
     _frame(ctx, 'before', GALLERY)
     _focus_items(ctx)
-    ctx.keys('Home', 'Return')
+    ctx.keys('Home', 'Ctrl+A')
+    ctx.wait(lambda: _state(ctx)['selectedRows'] == 1, 'keyboard selects the unique gallery row')
+    ctx.keys('Return')
     ctx.wait(lambda: _state(ctx)['detailsOpen'], 'Return opens single selected row details')
     ctx.expect(row['id'] in _state(ctx)['selectedIds'], 'details belong to selected history ID')
     _frame(ctx, 'after', '55-history-gallery-details')
