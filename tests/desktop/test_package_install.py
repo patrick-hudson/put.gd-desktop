@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -64,6 +65,40 @@ print(json.dumps({'result': result, 'queries': queries}))
             assert (Path(directory) / 'progress.json').is_file()
             assert (Path(directory) / 'result.json').is_file()
             return json.loads(result.stdout), (Path(directory) / 'apt.log').read_text()
+
+    def test_root_supervisor_scope_check_before_admission(self):
+        spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        from unittest.mock import patch
+        job = 'install-' + 'a' * 32
+        unit = 'putgd-supervisor-' + job + '.scope'
+        path = '/system.slice/' + unit
+        record = {'tracking': 'cgroup-v2', 'cgroup': {'unit': unit, 'path': path}}
+        def read(target, *a, **kw):
+            return json.dumps(record) if target.name == 'supervisor-process.json' else '0::' + path
+        with patch.object(Path, 'cwd', return_value=Path('/private/' + job)), \
+                patch.object(Path, 'read_text', read):
+            helper.verify_scope()
+            helper.verify_scope(required=True)
+            record['cgroup']['path'] += '/escaped'
+            with self.assertRaisesRegex(ValueError, 'left its dedicated cgroup'):
+                helper.verify_scope()
+        record['cgroup']['path'] = '/user.slice/user-1000.slice/user@1000.service/app.slice/' + unit
+        with patch.object(Path, 'cwd', return_value=Path('/private/' + job)), patch.object(Path, 'read_text',
+                lambda target, *a, **kw: json.dumps(record) if target.name == 'supervisor-process.json'
+                else '0::' + record['cgroup']['path']):
+            helper.verify_scope()  # A historical optional scope record remains readable.
+            with self.assertRaisesRegex(ValueError, 'left its dedicated cgroup'):
+                helper.verify_scope(required=True)
+        with patch.object(Path, 'read_text', side_effect=FileNotFoundError()):
+            helper.verify_scope()  # Legacy callers remain supported.
+            with self.assertRaisesRegex(ValueError, 'Missing supervisor scope identity'):
+                helper.verify_scope(required=True)
+        with patch.object(Path, 'read_text', return_value='{"tracking":"session"}'):
+            helper.verify_scope()
+            with self.assertRaisesRegex(ValueError, 'did not enter its dedicated cgroup'):
+                helper.verify_scope(required=True)
 
     def test_output_rejects_symlinks_and_hardlinks_without_truncating_target(self):
         spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')
@@ -229,6 +264,82 @@ os.read(fd, 2)
     def test_bad_package_state_cannot_certify_successful_command(self):
         output, _ = self.run_supervisor('pass', 2, 2, 'Status: install ok unpacked\n')
         self.assertFalse(output['result']['ok'])
+
+
+
+class ScopeLauncherContracts(unittest.TestCase):
+    """F5: the only scope authority granted to the lab user is this fixed launcher."""
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location('package_scope', ROOT / 'tools/lab/package_scope.py')
+        self.scope = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.scope)
+        self.user = self.scope.pwd.struct_passwd(('lab', 'x', 1000, 1000, '', '/home/lab', '/bin/sh'))
+        self.job = 'install-' + 'e' * 32
+
+    def launch(self, argv, uid='1000', euid=0):
+        environment = {} if uid is None else {'SUDO_UID': uid}
+        with patch.dict(self.scope.os.environ, environment, clear=True), \
+                patch.object(self.scope.os, 'geteuid', return_value=euid), \
+                patch.object(self.scope.pwd, 'getpwuid', return_value=self.user), \
+                patch.object(self.scope.os, 'execv', side_effect=SystemExit('exec')) as execute:
+            try:
+                self.scope.main(['package_scope.py', *argv])
+            except SystemExit as stop:
+                if str(stop) != 'exec':
+                    return str(stop), None
+            return None, execute.call_args.args
+
+    def test_every_systemd_run_argument_is_fixed_and_the_command_runs_as_the_caller(self):
+        for kind in ('staging', 'supervisor'):
+            refusal, (path, arguments) = self.launch([kind, self.job, '--property=User=root', '--', 'sh'])
+            self.assertIsNone(refusal)
+            self.assertEqual(path, '/usr/bin/systemd-run')
+            separator = arguments.index('/usr/bin/env')
+            self.assertEqual(arguments[:separator], [
+                '/usr/bin/systemd-run', '--system', '--scope', '--quiet', '--slice=system.slice',
+                '--property=Delegate=yes', f'--unit=putgd-{kind}-{self.job}.scope', '--expand-environment=no', '--',
+                '/usr/bin/setpriv', '--reuid=1000', '--regid=1000', '--init-groups', '--'])
+            # Caller-chosen words reach only the unprivileged command, after a clean env.
+            self.assertEqual(arguments[separator:], ['/usr/bin/env', '-i', 'HOME=/home/lab', 'USER=lab',
+                'LOGNAME=lab', 'PATH=' + self.scope.PATH, '--property=User=root', '--', 'sh'])
+
+    def test_refuses_other_units_root_callers_and_direct_use(self):
+        for argv in (['other', self.job, 'sh'], ['staging', 'install-' + 'E' * 32, 'sh'],
+                     ['staging', self.job + '.scope', 'sh'], ['staging', '../' + self.job, 'sh'],
+                     ['staging', self.job], ['staging'], []):
+            with self.subTest(argv=argv):
+                refusal, call = self.launch(argv)
+                self.assertIn('refused', refusal)
+                self.assertIsNone(call)
+        for uid, euid in (('0', 0), (None, 0), ('1000', 1000)):
+            with self.subTest(uid=uid, euid=euid):
+                refusal, call = self.launch(['staging', self.job, 'sh'], uid=uid, euid=euid)
+                self.assertIn('refused', refusal)
+                self.assertIsNone(call)
+
+    def test_probe_proves_root_execution_without_creating_a_unit(self):
+        import contextlib, io
+        with patch.dict(self.scope.os.environ, {'SUDO_UID': '1000'}, clear=True), \
+                patch.object(self.scope.os, 'geteuid', return_value=0), \
+                patch.object(self.scope.pwd, 'getpwuid', return_value=self.user), \
+                patch.object(self.scope.os, 'access', return_value=True), \
+                patch.object(self.scope.os, 'execv') as execute, \
+                contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(self.scope.main(['package_scope.py', '--probe']), 0)
+        execute.assert_not_called()
+        self.assertEqual(output.getvalue(), 'putgd-lab-scope-ready\n')
+        refusal, call = self.launch(['--probe'], euid=1000)
+        self.assertIn('refused', refusal)
+
+    def test_bootstrap_grants_the_launcher_never_systemd_run(self):
+        script = (ROOT / 'tools/lab/bootstrap-guest.sh').read_text()
+        grant = next(line for line in script.splitlines() if 'NOPASSWD' in line)
+        self.assertNotIn('systemd-run', grant)
+        self.assertIn('/usr/local/lib/putgd-lab/package_scope.py', grant)
+        self.assertIn('install -m 755 "$(dirname "$0")/package_scope.py" /usr/local/lib/putgd-lab/package_scope.py',
+                      script)
+        self.assertTrue(os.access(ROOT / 'tools/lab/package_scope.py', os.X_OK))
+        self.assertEqual((ROOT / 'tools/lab/package_scope.py').read_text().splitlines()[0], '#!/usr/bin/python3 -I')
 
 
 if __name__ == '__main__':
