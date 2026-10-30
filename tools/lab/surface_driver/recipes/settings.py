@@ -140,10 +140,10 @@ def saved(ctx, path, value, section):
     ctx.expect(state(ctx)['settings']['section'] == section, 'expected Settings page remains active')
 
 
-def scroll_click(ctx, control, window='settings'):
+def scroll_click(ctx, control, window='settings', *, after_window=None):
     """Search clipped controls with real wheel input; core verifies every hit."""
     if window == 'settings' and control in ctx.profile.get('settings', {}).get('live_controls', {}):
-        return live_click(ctx, control)
+        return live_click(ctx, control, after_window=after_window)
     for attempt in range(16):
         try:
             return ctx.click(control, window=window)
@@ -730,8 +730,13 @@ def about_close_recipe(identifier, key):
         else:
             ctx.click('closeAbout', window='about')
         ctx.frame('about-after-close')
-        ctx.wait(lambda: not visible(ctx, '^About put.gd$'), 'About closes')
-        ctx.wait(lambda: visible(ctx, '^put.gd$'), 'main window stays visible')
+        consecutive = 0
+        def settled():
+            nonlocal consecutive
+            closed = not visible(ctx, '^About put.gd$') and bool(visible(ctx, '^put.gd$'))
+            consecutive = consecutive + 1 if closed else 0
+            return consecutive >= 3
+        ctx.wait(settled, 'About stays closed and the main window stays visible')
         ctx.frame('about-closed')
     close.__name__ = identifier.replace('.', '_').replace('-', '_')
 
@@ -791,7 +796,7 @@ def reset_limits(ctx):
     ctx.use_catalog('settings', 'settings-resource-limits-expanded')
     # Return must choose the safe default, and Escape must cancel too.
     for answer in ('Return', 'Esc', None):
-        scroll_click(ctx, 'resetAdvancedDefaults')
+        scroll_click(ctx, 'resetAdvancedDefaults', after_window='settingsConfirm')
         ctx.wait(lambda: visible(ctx, '^Reset limits to defaults$'), 'reset confirmation opens')
         ctx.use_catalog('settingsConfirm', 'confirm-reset-limits')
         ctx.focus('settingsConfirm')
@@ -822,14 +827,14 @@ def reload_confirmation(ctx):
     # An invalid edit preserves a draft while the external revision arrives.
     replace(ctx, 'recentActivityLimit', 'not-a-number')
     fixture['external_change']({'preferences': {'notifications': not original}})
-    scroll_click(ctx, 'reloadSettings')
+    scroll_click(ctx, 'reloadSettings', after_window='settingsConfirm')
     ctx.wait(lambda: visible(ctx, '^Reload settings from file$'), 'reload confirmation opens')
     ctx.use_catalog('settingsConfirm', '53-reload-confirm')
     ctx.focus('settingsConfirm')
     ctx.frame('reload-before', window='settingsConfirm', reference='53-reload-confirm')
     ctx.keys('Esc')
     ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload canceled')
-    scroll_click(ctx, 'reloadSettings')
+    scroll_click(ctx, 'reloadSettings', after_window='settingsConfirm')
     ctx.focus('settingsConfirm')
     ctx.click('text:Reload from file', window='settingsConfirm')
     ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload accepted')
