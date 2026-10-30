@@ -952,7 +952,7 @@ def save_diagnostics(ctx):
     row = _row(ctx, 'history_retry_upload')
     root = ctx.fixture('app-profile').output_dir
     _frame(ctx, 'before')
-    ctx.click('saveHistoryDiagnostics', window='history')
+    _click_history_node(ctx, {'name': 'Save diagnostics for this upload', 'role': 'push button'})
     import shlex
     code = """import hashlib,json,zipfile
 from pathlib import Path
@@ -986,7 +986,7 @@ def local_copy_settings(ctx):
     detail = _result(ctx.call('history.detail', {'id': row['id']}))
     ctx.expect(detail['local']['status'] != 'saved', 'fixture has no successfully retained local copy')
     _frame(ctx, 'before')
-    ctx.click('historyChangeLocalCopies', window='history')
+    _click_history_node(ctx, {'name': 'Local-copy settings', 'role': 'push button'})
     _capture_settings(ctx)
     _frame(ctx, 'after', None)
 
@@ -1092,7 +1092,7 @@ def output_warning(ctx):
     _frame(ctx, 'before')
     ctx.expect(bool(_nodes(ctx, name='New captures have no output. Choose a destination or turn on Keep a local copy.')),
                'accepted no-output configuration produces the actual warning strip')
-    ctx.click('chooseCommandOutput', window='history')
+    _click_history_node(ctx, {'name': 'Change output', 'role': 'push button'})
     _capture_settings(ctx)
     ctx.expect(not _nodes(ctx, objectName='chooseCommandOutput'), 'Capture page owns recovery after navigation')
     _frame(ctx, 'after', None)
@@ -1107,7 +1107,7 @@ def first_launch(ctx):
     _frame(ctx, 'before', None)
     ctx.expect(bool(_nodes(ctx, name='New captures have no output. Choose a destination or turn on Keep a local copy.')),
                'first launch explains that no output is configured')
-    ctx.click('chooseCommandOutput', window='history')
+    _click_history_node(ctx, {'name': 'Change output', 'role': 'push button'})
     _capture_settings(ctx)
     _frame(ctx, 'after', None)
 
@@ -1216,9 +1216,9 @@ def _shell_command_recipe(interaction, action):
             ctx.fixture('selector-desktop').command('raise')
         _open(ctx)
         _frame(ctx, 'before')
-        _exercise_command(ctx, action, lambda _: ctx.click('text:' + {
+        _exercise_command(ctx, action, lambda _: _click_history_node(ctx, {'name': {
             'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
-            'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}[action], window='history'), external_focus=False)
+            'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}[action], 'role': 'push button'}), external_focus=False)
         _open(ctx)
         _frame(ctx, 'after')
     command.__name__ = 'command_' + action
@@ -1267,7 +1267,7 @@ def edit_again(ctx):
     before = digest()
     _frame(ctx, 'before')
     previous = {o['id'] for o in _recent(ctx)}
-    ctx.click('editHistoryImage', window='history')
+    _click_history_node(ctx, {'name': 'Edit image…', 'role': 'push button'})
     operation = _new_operation(ctx, previous, 'edit')
     identity = operation['id']
     try:
