@@ -171,18 +171,18 @@ def _cancel_region(ctx, oid, key="Esc"):
     ctx.expect(not op.get("items"), "cancel creates no artifact")
 
 
-def _open_record(ctx, entire=False):
+def _open_record(ctx, entire=False, rect=None):
     caps = _call(ctx, "recording.capabilities")
     if not caps.get("formats"):
         ctx.blocked("This desktop has no recording formats")
     target = {"kind": "region"}
-    if entire:
-        target["rect"] = _screen(ctx)
+    if entire or rect is not None:
+        target["rect"] = _screen(ctx) if entire else rect
     opened = _result(ctx.view("recording.prepare", {"target": target, "format": "mp4", "codec": "h264", "fps": 15, "audio": {"system": False}}))
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]
     ctx.note("Recording operation " + rid)
-    if entire:
+    if "rect" in target:
         _state(ctx, rid, "ready")
     else:
         ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
@@ -234,10 +234,13 @@ def _cancel_record(ctx, rid):
 
 
 def _ready(ctx, entire=False):
-    rid = _open_record(ctx, entire)
+    # Prepare the bar's surface, independently of the selector input/readback
+    # gate. Selection gestures have their own recipes; every bar transition
+    # below still comes from real input, never recording.start/pause/stop.
+    rect = _screen(ctx) if entire else _half(_screen(ctx))
+    rid = _open_record(ctx, rect=rect)
     try:
-        if not entire:
-            _choose(ctx, rid, _half(_screen(ctx)))
+        ctx.expect(_inspect(ctx, rid)["target"]["rect"] == rect, "bar setup uses the requested synthetic region")
     except Exception:
         _cancel_record(ctx, rid)
         raise

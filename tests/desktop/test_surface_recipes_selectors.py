@@ -109,7 +109,7 @@ class FakeContext(Context):
             entire = "rect" in target
             self.recordings[rid] = {"recordingId": rid, "state": "ready" if entire else "preparing", "selecting": not entire,
                                     "target": target, "config": {"format": "mp4", "codec": "h264", "audio": {"system": False}},
-                                    "overlayPlacement": "handle" if entire else "outside", "durationUs": 0, "lastExport": None,
+                                    "overlayPlacement": "handle" if target.get("rect") == self.env["screens"][0] else "outside", "durationUs": 0, "lastExport": None,
                                     "error": {"code": "", "message": "", "details": {}}}
             self.surface = "bar" if entire else "recsel"
             self.selection = None
@@ -389,7 +389,7 @@ class SelectorRecipes(unittest.TestCase):
             ctx._record()["target"]["rect"][0] += 1
         ctx.drag = shifted_drag
         with self.assertRaisesRegex(RecipeFailed, "chosen recording bounds"):
-            selectors.bar_recording(ctx)
+            selectors.recording_output(ctx)
         self.assertIn("chosen-recording-area", [f[0] for f in ctx.frames])
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
 
@@ -507,6 +507,17 @@ class SelectorRecipes(unittest.TestCase):
                 self.assertFalse(ctx.inputs)
                 self.assertTrue(all(op["state"] == "cancelled" for op in ctx.operations.values()))
                 self.assertEqual(ctx.document, ctx.original)
+
+    def test_bar_controls_are_independent_of_selector_focus(self):
+        ctx = FakeContext()
+        def refused(*args, **kwargs):
+            raise RecipeBlocked("selector readback unavailable")
+        ctx.focus = refused
+        selectors.bar_recording(ctx)
+        self.assertIn(("click", "record", "bar-ready"), ctx.inputs)
+        self.assertIn(("click", "stop", "bar-recording"), ctx.inputs)
+        self.assertFalse(any(kind == "drag" for kind, *rest in ctx.inputs))
+        self.assertEqual(ctx.document, ctx.original)
 
     def test_unavailable_fixture_is_blocked(self):
         ctx = FakeContext()
