@@ -86,6 +86,16 @@ def state(ctx):
 
 
 def opened(ctx, section):
+    if ctx.profile.get('session') == 'wayland':
+        # Prove native input is available before restarting a fixture family.
+        # Missing compositor coordinates/focus remain blocked, never bypassed
+        # with XWayland or application-local accessibility actions.
+        persisted(ctx)
+        result(ctx, ctx.view('ui.show', {'view': 'settings'}))
+        try:
+            ctx.focus('settings')
+        except RecipeBlocked as error:
+            ctx.blocked('Native Wayland Settings input preflight: ' + error.reason, issue=750)
     ctx.fixture('settings')
     persisted(ctx)  # fail closed before any mutation, including resident setup
     # The primary catalog has a working local output and the dark scheme.
@@ -323,10 +333,7 @@ def category_folders(ctx):
     try:
         for category in ('images', 'videos', 'text', 'other'):
             target = root.rstrip('/') + '/surface-' + category
-            scroll_click(ctx, 'folder' + category.title())
-            ctx.keys('Ctrl+A')
-            ctx.type_text(target)
-            ctx.keys('Tab')
+            replace(ctx, 'folder' + category.title(), target)
             saved(ctx, 'archive.folders.' + category, target, 1)
         frame(ctx, 'after', 1)
     finally:

@@ -181,7 +181,7 @@ def click(ctx, control):
     witness = observe(ctx, geometry)
     ctx.expect(abs(witness['x'] - point[0]) <= 1 and abs(witness['y'] - point[1]) <= 1,
                'pointer reached the live Settings control')
-    if control == 'archiveRoot' or control.endswith('Template'):
+    if query['role'] == 'text':
         ctx.wait(lambda: any(row.get('focused') for row in controls(ctx, query, owner['pid'])),
                  'intended Settings field has keyboard focus: ' + control)
         ctx.note('settings field keyboard focus: ' + control)

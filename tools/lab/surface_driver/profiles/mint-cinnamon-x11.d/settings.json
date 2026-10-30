@@ -159,6 +159,22 @@
       "recentActivityLimit": {
         "name": "Items in recent list",
         "role": "text"
+      },
+      "folderImages": {
+        "name": "Images",
+        "role": "text"
+      },
+      "folderVideos": {
+        "name": "Recordings",
+        "role": "text"
+      },
+      "folderText": {
+        "name": "Clipboard text",
+        "role": "text"
+      },
+      "folderOther": {
+        "name": "Other files",
+        "role": "text"
       }
     },
     "theme_references": {

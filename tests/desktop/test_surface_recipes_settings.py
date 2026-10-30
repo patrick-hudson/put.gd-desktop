@@ -285,7 +285,8 @@ class Fake(Context):
             if query['name'] == 'Copy build details': return [{'name': query['name']}] if self.about_expanded else []
             if query['name'] == 'Commit': return [{'description': self.build['gitCommit']}]
             return [{'text': self.build['version'].split('-')[0]}]
-        control = next(k for k, v in self.profile['settings']['live_controls'].items() if v == query)
+        matches = [k for k, v in self.profile['settings']['live_controls'].items() if v == query]
+        control = 'folderText' if 'folderText' in matches and self.category_expanded else matches[0]
         # Status insertion shifts controls; a stale point must not hit a field.
         shift = 50 if self.recording_action or any('Esc' in str(i) for i in self.inputs) else 0
         rectangle = [700, 240 + shift, 180, 36]
@@ -569,6 +570,16 @@ class Contracts(unittest.TestCase):
         self.assertEqual(profile['catalog_windows']['settings'], list(lane.REFERENCES))
         self.assertIn('1440 960', profile['settings']['prepare_script'])
         self.assertNotIn('mint-cinnamon', Path(lane.__file__).read_text())
+
+    def test_wayland_guard_blocks_before_fixture_mutation(self):
+        ctx = Fake()
+        ctx.profile = dict(ctx.profile, session='wayland')
+        ctx.focus = lambda *a, **k: ctx.blocked('compositor witness unavailable')
+        ctx.fixture = lambda *a, **k: self.fail('fixture must not mutate before native input preflight')
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.opened(ctx, 0)
+        self.assertEqual(caught.exception.issue, 750)
+        self.assertEqual(ctx.inputs, [])
 
     def test_actual_private_config_guard(self):
         with tempfile.TemporaryDirectory() as directory:
