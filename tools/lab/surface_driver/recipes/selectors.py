@@ -141,6 +141,8 @@ def _open_region(ctx, edit=False, accessible=True):
     except (RecipeBlocked, RecipeFailed) as error:
         ctx.frame("selector-readback-unavailable")
         observed = _op(ctx, oid)
+        if observed["state"] == "failed":
+            ctx.expect(False, "capture failed before selector input: " + observed.get("error", {}).get("code", "unknown"))
         if observed["state"] in ("accepted", "acquiring"):
             # Cleanup only; a blocked input is never represented as a cancel pass.
             _call(ctx, "operation.cancel", {"id": oid})
@@ -180,16 +182,18 @@ def _open_record(ctx, entire=False):
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]
     ctx.note("Recording operation " + rid)
-    try:
-        if entire:
-            _state(ctx, rid, "ready")
-        else:
-            ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
+    if entire:
+        _state(ctx, rid, "ready")
+    else:
+        ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
+        try:
             ctx.focus("recsel", raise_window=False)
-    except (RecipeBlocked, RecipeFailed) as error:
-        ctx.frame("recording-selector-readback-unavailable")
-        _cancel_record(ctx, rid)
-        ctx.blocked("Recording selector input/readback unavailable (#701/#705): " + str(error), issue=701)
+        except (RecipeBlocked, RecipeFailed) as error:
+            ctx.frame("recording-selector-readback-unavailable")
+            observed = _inspect(ctx, rid)
+            _cancel_record(ctx, rid)
+            ctx.expect(observed["state"] != "failed", "recording failed before selector input")
+            ctx.blocked("Recording selector input/readback unavailable (#701/#705): " + str(error), issue=701)
     return rid
 
 
