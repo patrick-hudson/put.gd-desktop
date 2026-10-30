@@ -57,7 +57,7 @@ class Catalog:
             raise RecipeBlocked('catalog reference missing: ' + str(path))
         return path
 
-    def resolve(self, selector, window, capture=None):
+    def _matches(self, selector, window, capture=None):
         names = [capture] if capture else self.profile.get('catalog_windows', {}).get(window, [])
         if isinstance(names, str):
             names = [names]
@@ -67,8 +67,17 @@ class Catalog:
         for name in names:
             inventory = self.inventories.get(name, {})
             for control in inventory.get('controls', []):
-                if control_matches(control, selector) and control.get('enabled', True):
+                if control_matches(control, selector):
                     found.append((name, inventory, control))
+        return found
+
+    def candidates(self, selector, window, capture=None):
+        """Semantic hints for live resolution; never select a runtime menu by coordinates."""
+        return [control for _,_,control in self._matches(selector, window, capture)]
+
+    def resolve(self, selector, window, capture=None):
+        found = [v for v in self._matches(selector, window, capture)
+                 if v[2].get('enabled', True) and v[2].get('visible', True)]
         # Different states often have identical shared controls. Only collapse
         # identical layout + rectangle; never pick arbitrarily among real choices.
         unique = {(v[1]['width'], v[1]['height'], tuple(v[2]['rect'])): v for v in found}
