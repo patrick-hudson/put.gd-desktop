@@ -787,13 +787,13 @@ def reset_limits(ctx):
     for answer in ('Return', 'Esc', None):
         scroll_click(ctx, 'resetAdvancedDefaults')
         ctx.wait(lambda: visible(ctx, '^Reset limits to defaults$'), 'reset confirmation opens')
-        ctx.use_catalog('confirmAction', 'confirm-reset-limits')
-        ctx.focus('confirmAction')
-        ctx.frame('reset-confirm-' + str(answer), window='confirmAction', reference='confirm-reset-limits')
+        ctx.use_catalog('settingsConfirm', 'confirm-reset-limits')
+        ctx.focus('settingsConfirm')
+        ctx.frame('reset-confirm-' + str(answer), window='settingsConfirm', reference='confirm-reset-limits')
         if answer:
             ctx.keys(answer)
         else:
-            ctx.click('text:Reset limits', window='confirmAction')
+            ctx.click('text:Reset limits', window='settingsConfirm')
         ctx.wait(lambda: not visible(ctx, '^Reset limits to defaults$'), 'reset confirmation closes')
         if answer:
             ctx.expect(persisted(ctx) == baseline and get(ctx)['document'] == baseline,
@@ -818,14 +818,14 @@ def reload_confirmation(ctx):
     fixture['external_change']({'preferences': {'notifications': not original}})
     scroll_click(ctx, 'reloadSettings')
     ctx.wait(lambda: visible(ctx, '^Reload settings from file$'), 'reload confirmation opens')
-    ctx.use_catalog('confirmAction', '53-reload-confirm')
-    ctx.focus('confirmAction')
-    ctx.frame('reload-before', window='confirmAction', reference='53-reload-confirm')
+    ctx.use_catalog('settingsConfirm', '53-reload-confirm')
+    ctx.focus('settingsConfirm')
+    ctx.frame('reload-before', window='settingsConfirm', reference='53-reload-confirm')
     ctx.keys('Esc')
     ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload canceled')
     scroll_click(ctx, 'reloadSettings')
-    ctx.focus('confirmAction')
-    ctx.click('text:Reload from file', window='confirmAction')
+    ctx.focus('settingsConfirm')
+    ctx.click('text:Reload from file', window='settingsConfirm')
     ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload accepted')
     saved(ctx, 'preferences.notifications', not original, 3)
     ctx.expect(not state(ctx)['settings'].get('conflict'), 'reload clears conflict')

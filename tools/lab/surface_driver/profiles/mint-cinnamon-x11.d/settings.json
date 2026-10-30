@@ -2,7 +2,8 @@
   "window_titles": {
     "settings": "^put.gd$",
     "diagnostics": "^Create diagnostics package$",
-    "about": "^About put.gd$"
+    "about": "^About put.gd$",
+    "settingsConfirm": "^(Reset limits to defaults|Reload settings from file|Clear logs)$"
   },
   "settings": {
     "prepare_script": "set -eu\nbusctl --user set-property org.a11y.Bus /org/a11y/bus org.a11y.Status IsEnabled b true\nbusctl --user set-property org.a11y.Bus /org/a11y/bus org.a11y.Status ScreenReaderEnabled b true\nsettings_output=$(xrandr --query | awk '/ connected primary / {print $1; exit}')\ntest -n \"$settings_output\" && xrandr --output \"$settings_output\" --mode 1920x1080\ntest -n \"$settings_window\" && xdotool windowsize \"$settings_window\" 1440 960 windowmove \"$settings_window\" 120 40\nxdotool windowactivate --sync \"$settings_window\" windowraise \"$settings_window\"",
