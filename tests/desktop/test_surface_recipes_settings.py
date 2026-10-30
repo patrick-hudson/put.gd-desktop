@@ -823,7 +823,7 @@ class Contracts(unittest.TestCase):
         ctx.fixture = lambda *a, **k: self.fail('fixture must not mutate before native input preflight')
         with self.assertRaises(RecipeBlocked) as caught:
             lane.opened(ctx, 0)
-        self.assertEqual(caught.exception.issue, 750)
+        self.assertEqual(caught.exception.issue, lane.CORE_ISSUE)
         self.assertEqual(ctx.inputs, [])
 
     def test_wayland_about_lifecycle_uses_native_inventory_queries(self):

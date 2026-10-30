@@ -95,7 +95,7 @@ def opened(ctx, section, *, fixture='settings', keep_output=True):
         try:
             ctx.focus('settings')
         except RecipeBlocked as error:
-            ctx.blocked('Native Wayland Settings input preflight: ' + error.reason, issue=750)
+            ctx.blocked('Native Wayland Settings input preflight: ' + error.reason, issue=CORE_ISSUE)
     ctx.fixture(fixture)
     persisted(ctx)  # fail closed before any mutation, including resident setup
     # The primary catalog has a working local output and the dark scheme.
