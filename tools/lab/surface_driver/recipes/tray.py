@@ -29,6 +29,16 @@ CHORDS = {
 FIXTURE_TITLE = 'put.gd independent synthetic paint / paste fixture'
 
 
+def _frame(ctx, label, **options):
+    if ctx.destination == 'local' and ctx.placement in ('boat', 'guest') and ctx.profile.get('guest'):
+        options['desktop_safe'] = 'Disposable guest; only synthetic fixture content and loopback publications; no live account or credentials'
+    return ctx.frame(label, **options)
+
+
+def _focus(ctx, window):
+    return ctx.focus(window, raise_window=ctx.profile.get('session') != 'wayland')
+
+
 def _profile(ctx):
     return ctx.profile.get('tray', {})
 
@@ -154,9 +164,12 @@ def _begin(ctx, *, show_ui=True):
 def _page(ctx, name):
     def selected():
         node = _node(ctx, name, 'page tab')
-        if 'selected' not in node:
+        states = node.get('states', {})
+        if 'selected' in node:
+            return node['selected']
+        if 'selected' not in states and 'checked' not in states:
             ctx.blocked('AT-SPI needs the selected state to prove page navigation', 670)
-        return node['selected']
+        return bool(states.get('selected') or states.get('checked'))
     ctx.wait(selected, 'selected main page: ' + name)
 
 
@@ -198,7 +211,7 @@ def _menu_frame(ctx, label, capture='full'):
     # reference= would crop the current Qt window and hide the interaction.
     # Catalog identity is a review hint, never a desktop pixel comparator.
     reference = _profile(ctx).get('references', {}).get(capture)
-    ctx.frame(label)
+    _frame(ctx, label)
     if reference:
         ctx.note('desktop catalog reference=' + reference)
 
@@ -291,22 +304,24 @@ def _notice(ctx, summary, body=None, exclude=()):
 
 @recipe('tray.activate', desktop_drawn=True)
 def activate(ctx):
-    if _profile(ctx).get('activation_clicks', 1) != 1:
-        ctx.blocked('GNOME tray activation requires an atomic guarded desktop double-click', 831)
     _begin(ctx)
-    ctx.frame('before')
-    _icon_input(ctx)
+    _frame(ctx, 'before')
+    if _profile(ctx).get('activation_clicks', 1) == 2:
+        _icon(ctx)
+        ctx.double_click_accessible(_profile(ctx)['icon'])
+    else:
+        _icon_input(ctx)
     state = ctx.call('ui.history', {'action': 'inspect'})
     ctx.expect(isinstance(state, dict) and bool(state), 'History inspector answers after tray activation')
     _page(ctx, 'History')
-    ctx.frame('after')
+    _frame(ctx, 'after')
 
 
 @recipe('tray.context-menu', desktop_drawn=True)
 def context_menu(ctx):
     background = _profile(ctx).get('menu_prepare_background', False)
     _begin(ctx, show_ui=not background)
-    ctx.frame('before')
+    _frame(ctx, 'before')
     opened = False
     try:
         _menu(ctx)
@@ -347,9 +362,9 @@ def _navigation(interaction, label, target):
                 ctx.expect(state.get('open'), 'edit image file chooser is open')
             if target == 'about':
                 _node(ctx, 'About put.gd', 'dialog')
-                ctx.focus('trayAbout')
+                _focus(ctx, 'trayAbout')
                 about_focused = True
-            ctx.frame('after')
+            _frame(ctx, 'after')
         finally:
             if about_focused:
                 ctx.keys('Esc')
@@ -395,16 +410,16 @@ def edit_file(ctx):
     try:
         state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
         ctx.expect(state.get('open'), 'real tray input opened the image chooser')
-        ctx.focus('fileDialog')
+        _focus(ctx, 'fileDialog')
         focused = True
-        ctx.frame('after')
+        _frame(ctx, 'after')
     finally:
         if focused:
             ctx.keys('Esc')
 
 
 def _action_recipe(interaction, action, shortcut=False, menu_open=False):
-    @recipe(interaction, desktop_drawn=True)
+    @recipe(interaction, desktop_drawn=True, timeout=300 if action == 'record' and shortcut else 120)
     def action_recipe(ctx):
         with _local(ctx, desktop_menu=not shortcut):
             if shortcut:
@@ -415,6 +430,7 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                                 _profile(ctx).get('shortcut_reason', 'desktop channel unavailable'),
                                 _profile(ctx).get('shortcut_issue'))
                 binding = status.get('bindings', {}).get(action, {})
+                ctx.note('native shortcut channel=' + str(status.get('channel')) + ' binding=' + json.dumps(binding, sort_keys=True))
                 if not binding.get('bound'):
                     helper = diagnostics.get('capabilities', {}).get('source', {}).get('helper', {})
                     ctx.note('native binding=' + json.dumps(binding))
@@ -425,7 +441,7 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                 ctx.expect(binding.get('bound'), 'test shortcut bound: ' + action)
             if action == 'window':
                 ctx.fixture('selector-desktop')
-                ctx.focus('trayFixture')
+                _focus(ctx, 'trayFixture')
             if action == 'clipboard':
                 _clipboard(ctx)
             previous = {o['id'] for o in _recent(ctx)}
@@ -441,29 +457,23 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                 ctx.expect(operation['state'] not in {'failed', 'interrupted'}, 'selector opened without an error')
                 if menu_open:
                     ctx.expect(not _nodes(ctx, 'Quit put.gd', 'menu item'), 'shortcut closed tray menu')
-                ctx.frame('after')
+                _frame(ctx, 'after')
                 # If targeting is refused, fixture teardown owns selector
                 # cleanup; never retry keyboard input through a failed guard.
-                try:
-                    ctx.focus('recsel' if action == 'record' else 'region')
-                    ctx.keys('Esc')
-                except RecipeFailed as error:
-                    if 'override-redirect target does not take keyboard focus' in str(error):
-                        ctx.note(str(error))
-                        ctx.blocked('Native selector owns a keyboard grab, but the X11 foreground guard requires X input focus', 802)
-                    raise
+                _focus(ctx, 'recsel' if action == 'record' else 'region')
+                ctx.keys('Esc')
                 # A real cancellation also establishes that the shortcut did
                 # not merely admit work which failed before showing a selector.
                 settled = _settled(ctx, operation)
                 ctx.expect(settled['state'] == 'cancelled', 'selector cancelled through real Escape input')
-                if action == 'record':
-                    ctx.blocked('Initial recording selector was cancelled; full start/stop/raise toggle needs an owned active-recording fixture', 670)
+                if action == 'record' and shortcut:
+                    _record_toggle(ctx)
             else:
                 settled = _settled(ctx, operation)
                 ctx.expect(settled['state'] == 'completed' and settled.get('items'), 'local action completed')
                 ctx.expect(all(i.get('uploadStatus') == 'local_only' and i.get('local', {}).get('status') == 'saved'
                                for i in settled['items']), 'every output saved locally without publication')
-                ctx.frame('after')
+                _frame(ctx, 'after')
     action_recipe.__name__ = interaction.replace('.', '_').replace('-', '_')
     return action_recipe
 
@@ -494,7 +504,7 @@ def edit_clipboard(ctx):
             state = ctx.call('editor.inspect', {'id': operation['id']})
             ctx.expect(state.get('phase') == 'editing' and (state.get('width'), state.get('height')) == (96, 64),
                        'real-input operation opened the known synthetic 96×64 clipboard image')
-            ctx.frame('after')
+            _frame(ctx, 'after')
         finally:
             ctx.call('editor.cancel', {'id': operation['id']})
 
@@ -507,41 +517,42 @@ def saved_locally(ctx):
         ctx.expect(all(i['local']['status'] == 'saved' and i['uploadStatus'] == 'local_only' for i in op['items']),
                    'saved-local toast agrees with operation inspection')
         _drawn_notice(ctx, _notice(ctx, 'Saved locally', 'Saved locally'))
-        ctx.frame('after')
+        _frame(ctx, 'after')
 
 
-@recipe('notification.local-save-failed', 'tray.icon-attention', desktop_drawn=True)
+@recipe('tray.icon-attention', desktop_drawn=True)
 def local_failure_attention(ctx):
-    with _local(ctx, failure=True, notification_only=True) as root:
-        op = _local_upload(ctx, notification_only=True)
-        ctx.expect(op['state'] == 'failed' and op['items'], 'regular file obstruction caused local save failure')
-        ctx.expect(all(i['uploadStatus'] == 'local_only' and i['local']['status'] == 'failed' for i in op['items']),
-                   'attention is authorized by observed local-only failure (tray_progress.py)')
-        _drawn_notice(ctx, _notice(ctx, 'Local save failed'))
-        ctx.frame('failure-notification')
-        _menu(ctx)
-        _node(ctx, 'Local save needs attention', 'menu item')
-        _menu_frame(ctx, 'latched-attention')
-        # Repair only the obstruction created above; retry keeps original identity.
-        _shell(ctx, 'rm -- ' + shlex.quote(root + '/tray-blocked') + '\nmkdir -m 700 -- ' +
-               shlex.quote(root + '/tray-blocked') + '\n')
-        ctx.call('operation.retryLocalSave', {'id': op['id']})
-        retried = _settled(ctx, op)
-        ctx.expect(retried['id'] == op['id'] and all(i['local']['status'] == 'saved' for i in retried['items']),
-                   'local retry retains operation identity and saves each item')
-        _node(ctx, 'Local save needs attention', 'menu item')
-        _press(ctx, 'Local save needs attention', 'menu item')
-        # Unlike the failed-upload branch, local-save attention goes directly
-        # to Settings → Capture → Local copies via actionRecovery.
-        ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1,
-                 'local-save attention opens Capture settings')
-        _menu(ctx)
-        try:
-            ctx.expect(not _nodes(ctx, 'Local save needs attention', 'menu item'), 'attention click clears the latch')
-            ctx.frame('after')
-            ctx.review('Compare the saved panel danger glyph/! badge with idle; AT-SPI exposes labels, not icon pixels')
-        finally:
-            _dismiss_menu(ctx)
+    fixture = ctx.fixture('tray-attention')
+    original = fixture.operation_id
+    _menu(ctx)
+    _node(ctx, 'Local save needs attention', 'menu item')
+    _frame(ctx, 'latched-attention')
+    fixture.retry()
+    retried = _settled(ctx, fixture.state)
+    ctx.expect(retried['id'] == original and all(i['local']['status'] == 'saved' for i in retried['items']), 'retry retains operation and saves each item')
+    _node(ctx, 'Local save needs attention', 'menu item')
+    _press(ctx, 'Local save needs attention', 'menu item')
+    ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 1, 'attention opens local-copy settings')
+    _menu(ctx)
+    try:
+        ctx.expect(not _nodes(ctx, 'Local save needs attention', 'menu item'), 'attention click clears latch')
+        _frame(ctx, 'after')
+        ctx.review('Compare the panel danger glyph and badge with idle')
+    finally:
+        _dismiss_menu(ctx)
+
+
+@recipe('notification.local-save-failed', desktop_drawn=True)
+def local_save_failed_notice(ctx):
+    with _local(ctx, failure=True, notification_only=True):
+        previous = _local_input(ctx, notification_only=True)
+        notice = _notice(ctx, 'Local save failed')
+        _drawn_notice(ctx, notice)
+        op = _settled(ctx, _new_operation(ctx, previous, 'clipboard'))
+        ctx.expect(op['state'] == 'failed' and op['items'], 'genuine local obstruction failed the operation')
+        ctx.expect(all(i['uploadStatus'] == 'local_only' and i['local']['status'] == 'failed' for i in op['items']), 'failed local copies were not published')
+        ctx.expect('save-diagnostics' in notice.get('actions', []), 'native failure banner offers diagnostics')
+        _frame(ctx, 'after')
 
 
 @recipe('tray.menu-attention', desktop_drawn=True)
@@ -563,7 +574,7 @@ def notifications_off(ctx):
         ctx.call('ui.snapshot')
         ctx.expect(not [n for n in ctx.notifications() if identity(n) not in old_ids
                         and n.get('summary') == 'Saved locally'], 'operation toast suppressed')
-        ctx.frame('after')
+        _frame(ctx, 'after')
 
 
 def _action(ctx, notice, action):
@@ -631,7 +642,7 @@ def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
         if resident:
             ctx.wait(lambda: next((n.get('closed') for n in ctx.notifications() if n.get('id') == notice['id']), None),
                      'used notification closed after the action')
-        ctx.frame('after')
+        _frame(ctx, 'after')
 
 
 @recipe('notification.save-diagnostics', 'notification.diagnostics-saved', desktop_drawn=True)
@@ -662,36 +673,34 @@ def recording_stopped(ctx):
     state = ctx.call('recording.inspect', {'id': fixture.recording_id})
     ctx.expect(state['state'] == 'reviewing' and state.get('stopReason') == 'budget',
                'budget stop retains the exact recording for private review')
-    ctx.frame('after')
+    _frame(ctx, 'after')
 
 
-@recipe('notification.incomplete-uploads', desktop_drawn=True)
+@recipe('notification.incomplete-uploads', desktop_drawn=True, timeout=300)
 def incomplete_uploads(ctx):
     fixture = ctx.fixture('upload-incomplete')
     notice = _notice(ctx, 'put.gd — incomplete uploads left')
     _drawn_notice(ctx, notice)
     state = ctx.call('operation.inspect', {'id': fixture.operationId})
     ctx.expect(state['state'] in ('failed', 'partial'), 'multipart failure retained its exact operation')
-    ctx.frame('after')
+    _frame(ctx, 'after')
 
 
 @recipe('tray.scroll-noop', desktop_drawn=True)
 def scroll_noop(ctx):
-    if _profile(ctx).get('activation_clicks', 1) != 1:
-        ctx.blocked('Desktop wheel input needs a live shell-node foreground guard', 831)
     _begin(ctx)
     _page(ctx, 'Settings')
     before = {o['id'] for o in _recent(ctx)}
     point = _point(ctx, _icon(ctx))
-    ctx.frame('before')
+    _frame(ctx, 'before')
     _icon_input(ctx, button='middle')
-    ctx.scroll(*point, clicks=2)
-    ctx.scroll(*point, clicks=-2)
+    ctx.scroll_accessible(_profile(ctx)['icon'], clicks=2)
+    ctx.scroll_accessible(_profile(ctx)['icon'], clicks=-2)
     _shell(ctx, "python3 -c 'import time; time.sleep(1)'\n")
     ctx.expect({o['id'] for o in _recent(ctx)} == before, 'middle click/scroll admit no operation')
     ctx.expect(not _nodes(ctx, 'Quit put.gd', 'menu item'), 'middle click/scroll open no tray menu')
     _page(ctx, 'Settings')
-    ctx.frame('after')
+    _frame(ctx, 'after')
 
 
 @recipe('tray.icon-idle', desktop_drawn=True)
@@ -700,7 +709,7 @@ def idle(ctx):
     # app-profile starts a fresh private resident; there is no prior attention
     # latch to clear. Observe all menu labels together instead of repeatedly
     # walking the shell tree for names which should be absent.
-    ctx.frame('before')
+    _frame(ctx, 'before')
     ctx.expect(all(o['state'] in TERMINAL for o in _recent(ctx)), 'resident has no active operation')
     _menu(ctx)
     try:
@@ -719,7 +728,7 @@ def idle(ctx):
         ctx.expect('Cancel upload' not in names, 'idle menu has no cancel-upload row')
         ctx.expect(not names.intersection({'Local save needs attention', 'Destination needs attention',
                    'Capture needs attention', 'Action needs attention'}), 'idle menu has no attention latch')
-        ctx.frame('after')
+        _frame(ctx, 'after')
         ctx.review('Saved panel frame needs glyph/tint review; menu metadata cannot establish icon pixels')
     finally:
         _dismiss_menu(ctx)
@@ -739,7 +748,7 @@ def tooltip(ctx):
         ctx.wait(lambda: ctx.accessible(policy), 'drawn shell tooltip', timeout=5)
     except RecipeFailed:
         ctx.blocked('SNI tooltip metadata is available, but the drawn tooltip is absent from shell accessibility', 670)
-    ctx.frame('after')
+    _frame(ctx, 'after')
 
 
 @recipe('tray.menu-shortcut-suffix', desktop_drawn=True)
@@ -788,24 +797,228 @@ def upload_complete(ctx):
     _action(ctx, notice, 'default')
     ctx.expect(fixture.state['state'] == 'completed', 'loopback publication completed')
     _host_opened(ctx, 'notification-link', notice.get('at', 0))
-    ctx.frame('after')
+    _frame(ctx, 'after')
 
 
-def _drawn_notice(ctx, notice):
+def _drawn_notice(ctx, notice, *, by_body=False):
     policy = ctx.profile.get('notifications', {}).get('accessible')
     if not policy:
         ctx.blocked('Notification profile has no shell ownership selector', 670)
     def drawn():
-        name = ctx.profile.get('notifications', {}).get('title_name_glob', '{summary}').replace('{summary}', glob.escape(notice['summary']))
-        nodes = ctx.accessible({**policy, 'name': name, 'visible': True, 'showing': True})
+        name = (glob.escape(__import__('html').unescape(notice.get('body', ''))) if by_body else
+                ctx.profile.get('notifications', {}).get('title_name_glob', '{summary}').replace('{summary}', glob.escape(notice['summary'])))
+        ctx.expect(bool(name), 'notification has an observable body or title')
         def on_screen(node):
             rect = node.get('rect')
             if isinstance(rect, dict):
                 rect = [rect[k] for k in ('x', 'y', 'width', 'height')]
             return rect and min(rect[:2]) >= 0 and min(rect[2:]) > 0
-        return any(on_screen(n) for n in nodes)
+        for field in ('text', 'name') if by_body else ('name',):
+            nodes = ctx.accessible({**policy, field: name, 'visible': True, 'showing': True})
+            if any(on_screen(n) for n in nodes):
+                return True
+        return False
     ctx.wait(drawn, 'drawn shell popup: ' + notice['summary'],
              timeout=ctx.profile.get('notifications', {}).get('draw_seconds', 3))
+
+
+def _icon_signature(ctx):
+    rows = ctx.tray()
+    ctx.expect(len(rows) == 1 and rows[0].get('icon_pixmaps'), 'one private SNI with icon pixels')
+    return json.dumps(rows[0]['icon_pixmaps'], sort_keys=True)
+
+
+def _record_toggle(ctx):
+    active = ctx.fixture('tray-active-recording')
+    _focus(ctx, 'trayFixture')
+    ctx.keys(CHORDS['record'])
+    ctx.wait(lambda: active.inspect().get('state') == 'reviewing', 'record shortcut stops the same recording', timeout=40)
+    previous = {o['id'] for o in _recent(ctx)}
+    other = ctx.fixture('settings-focus-loss')
+    _focus(ctx, other.role)
+    ctx.keys(CHORDS['record'])
+    # Validate activation without raising the review window ourselves.
+    ctx.focus('review', raise_window=False)
+    ctx.expect(active.inspect()['state'] == 'reviewing', 'toggle raises existing review')
+    ctx.expect({o['id'] for o in _recent(ctx)} == previous, 'raise admits no new operation')
+    _frame(ctx, 'raised-review')
+
+
+@recipe('tray.icon-recording', desktop_drawn=True, timeout=240)
+def recording_icon(ctx):
+    active = ctx.fixture('tray-active-recording')
+    ctx.wait(lambda: active.inspect().get('state') == 'recording', 'recording phase')
+    recording = _icon_signature(ctx)
+    _frame(ctx, 'recording')
+    active.pause()
+    ctx.wait(lambda: active.inspect().get('state') == 'paused', 'paused recording phase')
+    ctx.wait(lambda: _icon_signature(ctx) != recording, 'paused badge differs from recording dot')
+    _frame(ctx, 'paused')
+    active.resume()
+    ctx.wait(lambda: active.inspect().get('state') == 'recording', 'same recording resumes')
+    ctx.wait(lambda: _icon_signature(ctx) == recording, 'recording dot restored')
+    active.stop()
+    ctx.review('Compare native dot and pause bars in the saved panel frames')
+
+
+@recipe('tray.menu-cancel-upload', desktop_drawn=True, timeout=300)
+def cancel_uploads(ctx):
+    active = ctx.fixture('tray-two-uploads')
+    _begin(ctx, show_ui=False)
+    expected = set(active.operation_ids)
+    ctx.expect(len(expected) == 2 and all(o['state'] not in TERMINAL for o in active.inspect()), 'two independent uploads are active')
+    _menu(ctx)
+    _press(ctx, 'Cancel all uploads…', 'menu item')
+    state = ctx.wait(lambda: (v if (v := ctx.call('ui.history', {'action': 'inspect'})).get('cancelAllConfirmation', {}).get('open') else None), 'native cancel-all confirmation')
+    ctx.expect(set(state['cancelAllConfirmation']['operationIds']) == expected, 'confirmation identifies exactly the two owned uploads')
+    _frame(ctx, 'confirmation')
+    _focus(ctx, 'confirm')
+    ctx.click('historyConfirmCancelAll', window='confirm')
+    ctx.wait(lambda: all(o['state'] == 'cancelled' for o in active.inspect()), 'both confirmed uploads cancelled', timeout=75)
+    _frame(ctx, 'cancelled')
+
+
+@recipe('tray.menu-update-available', desktop_drawn=True, timeout=240)
+def update_available(ctx):
+    ctx.fixture('tray-update-available')
+    _begin(ctx, show_ui=False)
+    status = ctx.call('update.status')
+    label = 'Update available: ' + status['result']['latest']
+    _menu(ctx)
+    _press(ctx, label, 'menu item')
+    ctx.wait(lambda: ctx.call('ui.viewState').get('settings', {}).get('section') == 0, 'Updates page opened')
+    _frame(ctx, 'after')
+
+
+@recipe('tray.menu-quit', desktop_drawn=True)
+def quit_resident(ctx):
+    lifecycle = ctx.fixture('resident-lifecycle')
+    _begin(ctx, show_ui=False)
+    _menu(ctx)
+    _press(ctx, 'trayMenuAction-33617f924b4aa7fb', 'menu item')
+    ctx.wait(lifecycle.stopped, 'real Quit releases the private socket')
+    _frame(ctx, 'quit')
+    restarted = lifecycle.launch()
+    ctx.expect(restarted != lifecycle.initial, 'fresh authenticated resident PID/start identity')
+    _ready(ctx)
+    _frame(ctx, 'restored')
+
+
+@recipe('tray.qt-fallback', desktop_drawn=True)
+def qt_fallback(ctx):
+    graphical = ctx.fixture('tray-qt-fallback')
+    ctx.expect(graphical.graphical and graphical.native_session == ctx.profile['session'], 'real QApplication preserves native desktop')
+    ctx.wait(lambda: len(ctx.tray()) == 1, 'graphical Qt tray item registered before its toast')
+    with _local(ctx, failure=True, notification_only=True):
+        previous = _local_input(ctx, notification_only=True)
+        notice = _notice(ctx, 'Local save failed')
+        ctx.expect('save-diagnostics' not in notice.get('actions', []), 'Qt fallback toast has no action buttons')
+        _drawn_notice(ctx, notice)
+        _settled(ctx, _new_operation(ctx, previous, 'clipboard'))
+        _frame(ctx, 'toast')
+        if _profile(ctx).get('activation_clicks', 1) == 2:
+            _icon(ctx); ctx.double_click_accessible(_profile(ctx)['icon'])
+        else:
+            _icon_input(ctx)
+        _page(ctx, 'History')
+        _frame(ctx, 'history')
+
+
+@recipe('shortcut.over-open-menu', desktop_drawn=True)
+def other_client_menu(ctx):
+    popup = ctx.fixture('shortcut-other-menu')
+    ctx.expect(bool(popup.observe()), 'separate owned popup is visible')
+    _frame(ctx, 'other-client-menu')
+    if not popup.keyboard_grab_verified:
+        ctx.blocked('Real other-client popup exists, but its native keyboard-grab ownership is not witnessed', 670)
+    ctx.blocked('Native grabbed-popup key targeting is not exposed by this fixture', 670)
+
+
+@recipe('shortcut.ignored-while-recording', desktop_drawn=True)
+def recorder_ignores_shortcut(ctx):
+    recorder = ctx.fixture('shortcut-settings-recorder')
+    _patch(ctx, {'actions': {'clipboard': {'shortcut': CHORDS['clipboard']}}})
+    ctx.wait(lambda: ctx.call('ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard'].get('bound'),
+             'native clipboard binding ready before recorder')
+    before = recorder.no_operation_baseline()
+    recorder.start('region')
+    previous = {o['id'] for o in _recent(ctx)}
+    ctx.keys(CHORDS['clipboard'])
+    ctx.wait(lambda: not ((recorder.recording_status() or {}).get('text') or '').startswith('Press shortcut'), 'recorder consumed the chord')
+    ctx.expect({o['id'] for o in _recent(ctx)} == previous, 'recorded chord admitted no operation')
+    after = recorder.no_operation_baseline()
+    ctx.expect(after == before, 'native shortcut recorder leaves operations and history unchanged')
+    _frame(ctx, 'recorded')
+
+
+@recipe('shortcut.paused-while-settings-records', desktop_drawn=True)
+def recorder_releases_grabs(ctx):
+    recorder = ctx.fixture('shortcut-settings-recorder')
+    _patch(ctx, {'actions': {name: {'shortcut': chord} for name, chord in CHORDS.items()}})
+    def bindings_ready():
+        bindings = recorder.status()['bindings']
+        return bindings if all(bindings.get(name, {}).get('bound') for name in CHORDS) else None
+    before = ctx.wait(bindings_ready, 'native bindings ready before shortcut recording')
+    expected = {k for k,v in before.items() if v.get('bound')}
+    ctx.expect(bool(expected), 'native bindings are present before recording')
+    recorder.start('region')
+    state = recorder.status()['bindings']
+    ctx.expect(all(state[k].get('state') == 'recording' and state[k].get('bound') is False for k in expected), 'native grabs released during recording')
+    recorder.cancel()
+    ctx.wait(lambda: all(recorder.status()['bindings'][k].get('bound') for k in expected), 'all native grabs restored')
+    _frame(ctx, 'restored')
+
+
+@recipe('shortcut.layout-change', desktop_drawn=True)
+def keyboard_layout_change(ctx):
+    with _local(ctx):
+        _patch(ctx, {'actions': {'clipboard': {'shortcut': 'Ctrl+Shift+Y'}}})
+        _clipboard(ctx)
+        layout = ctx.fixture('shortcut-keyboard-layout', layout='de')
+        ctx.wait(lambda: layout.shortcuts()['bindings']['clipboard'].get('bound'), 'letter shortcut rebound on German layout')
+        previous = {o['id'] for o in _recent(ctx)}
+        # QMP's physical US Z key produces Y on the owned German X11 map.
+        ctx.keys('Ctrl+Shift+Z')
+        op = _settled(ctx, _new_operation(ctx, previous, 'clipboard'))
+        ctx.expect(op['state'] == 'completed', 'rebound physical letter key invokes clipboard')
+        layout.restore()
+        ctx.wait(lambda: layout.shortcuts()['bindings']['clipboard'].get('bound'), 'binding restored with original map')
+        _frame(ctx, 'after')
+
+
+@recipe('notification.action-rejected', desktop_drawn=True)
+def action_rejected(ctx):
+    ctx.fixture('settings-no-output')
+    _patch(ctx, {'actions': {'clipboard': {'shortcut': CHORDS['clipboard']}}})
+    ctx.view('ui.show', {'view': 'settings'})
+    _clipboard(ctx)
+    before = {o['id'] for o in _recent(ctx)}
+    ctx.wait(lambda: ctx.call('ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard'].get('bound'),
+             'native clipboard binding available')
+    ctx.keys(CHORDS['clipboard'])
+    notice = _notice(ctx, 'put.gd')
+    # The app title also names the tray icon; require the actual error body.
+    _drawn_notice(ctx, notice, by_body=True)
+    ctx.expect({o['id'] for o in _recent(ctx)} == before, 'rejected action admits no operation')
+    _frame(ctx, 'rejected')
+
+
+@recipe('notification.upload-failed', desktop_drawn=True, timeout=240)
+def upload_failed_notice(ctx):
+    failed = ctx.fixture('tray-failed')
+    ctx.expect(failed.state['state'] in ('failed', 'partial'), 'loopback write fault fails the owned upload')
+    notice = _notice(ctx, 'Completed with a problem', body='Upload failed')
+    ctx.expect(bool(notice.get('body')), 'failure notice includes a reason')
+    _drawn_notice(ctx, notice)
+    _frame(ctx, 'failed-upload')
+    before = {n['id'] for n in ctx.notifications()}
+    cancelled = ctx.fixture('tray-cancelled')
+    ctx.expect(cancelled.state['state'] == 'cancelled', 'separate upload was cancelled')
+    fresh = [n for n in ctx.notifications() if n.get('id') not in before]
+    ctx.expect(not any(any(message in n.get('body', '') for message in ('Upload failed', 'Upload interrupted')) for n in fresh),
+               'cancelled upload emits no failure toast')
+    _frame(ctx, 'cancelled-without-failure-toast')
+    ctx.blocked('Failed-upload and cancellation variants exercised; interrupted upload with retained local copy still needs a core fixture', 670)
 
 
 # Explicit declarations are independent rows, so unavailable scenarios never
@@ -813,19 +1026,8 @@ def _drawn_notice(ctx, notice):
 # tracker; no provider session is borrowed to cover an offline-only campaign.
 BLOCKED = {
     'tray.icon-complete': 'upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling',
-    'tray.icon-recording': 'recording fixture ends at review; needs active/paused state holds and icon-pixel sampling',
-    'tray.menu-cancel-upload': 'Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls',
-    'tray.menu-update-available': 'Needs a stable-tagged local build with isolated update-result fixture; no live update query',
-    'tray.menu-quit': 'Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane',
-    'tray.qt-fallback': 'Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray',
-    'shortcut.over-open-menu': 'Needs an independently owned other-client popup fixture with keyboard-grab witness',
-    'shortcut.ignored-while-recording': 'Needs current-build shortcut recorder controls plus a bounded no-operation observation window',
-    'shortcut.paused-while-settings-records': 'Needs native shortcut-grab observation during recorder focus and restoration',
     'shortcut.locked-session': 'Needs core-owned visible session lock/unlock lifecycle and protected login handling',
-    'shortcut.layout-change': 'Needs isolated keyboard-layout change/restore and native rebinding witness',
     'notification.completed-with-problem': 'Needs offline mixed-success batch fixture with inspected per-item outcomes',
-    'notification.upload-failed': 'tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants',
-    'notification.action-rejected': 'Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus',
     'notification.in-flight-limit': 'Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts',
 }
 
@@ -833,9 +1035,9 @@ BLOCKED = {
 def _blocked_recipe(interaction, reason):
     @recipe(interaction, desktop_drawn=True)
     def unavailable(ctx):
-        ctx.frame('before')
+        _frame(ctx, 'before')
         ctx.note(reason)
-        ctx.frame('after')
+        _frame(ctx, 'after')
         ctx.blocked(reason, _profile(ctx).get('fixture_issue'))
     unavailable.__name__ = interaction.replace('.', '_').replace('-', '_')
     return unavailable

@@ -19,7 +19,9 @@
       "uploading": "00-tray-menu-uploading",
       "proton-busy": "00-tray-menu-proton-busy",
       "edit": "00-tray-edit-submenu"
-    }
+    },
+    "notification_prepare_cli": true,
+    "menu_prepare_background": true
   },
   "windows": {
     "trayFixture": {
