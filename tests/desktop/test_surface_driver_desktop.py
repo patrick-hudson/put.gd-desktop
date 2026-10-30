@@ -296,5 +296,20 @@ class ShellChrome(unittest.TestCase):
         self.assertFalse(result['ok']);self.assertIn('notification',result['obscuring_window'])
 
 
+class LockedProbe(unittest.TestCase):
+    def test_raising_probe_forces_the_lock_heartbeat(self):
+        from tools.lab.surface_driver.target import Target, probe_mutates
+        self.assertTrue(probe_mutates('foreground',{'raise':True}))
+        self.assertFalse(probe_mutates('foreground',{'raise':False}))
+        self.assertFalse(probe_mutates('accessible',{'raise':True}))
+        target=Target.__new__(Target)
+        calls=[];target.heartbeat=lambda force=False:calls.append(force)
+        target._probe_failed=True
+        for name,query in (('foreground',{'raise':True}),('geometry',{})):
+            with self.assertRaises(Exception):
+                target.probe(name,query,'source')
+        self.assertEqual(calls,[True,False])
+
+
 if __name__=='__main__':
     unittest.main()

@@ -50,7 +50,7 @@ class Geometry(unittest.TestCase):
         target = Target.__new__(Target)
         target.physical = None
         target.info = {'heads': [{}, {}]}
-        target.heartbeat = lambda: None
+        target.heartbeat = lambda force=False: None
         target._outputs = [{'width': 1280, 'height': 800, 'x': 0, 'y': 0},
                            {'width': 1024, 'height': 768, 'x': 1280, 'y': 0}]
         sent = []
@@ -162,7 +162,7 @@ if __name__=='__main__':main()
         target = Target.__new__(Target)
         target.physical = None
         target.run = Path('/owned/run')
-        target.heartbeat = lambda:None
+        target.heartbeat = lambda force=False: None
         target.session = lambda *a,**kw:'{}'
         target.prefix = lambda:'export PATH=/usr/bin:/bin\n'
         target._probe_process = target._probe_source = None
@@ -202,7 +202,7 @@ if __name__=='__main__':main()
                     time.sleep(.03)
                 events.append((button,down))
         target = Target.__new__(Target)
-        target.heartbeat = lambda:None
+        target.heartbeat = lambda force=False: None
         target.vnc = lambda:Vnc()
         def deadline(*_):raise RecipeFailed('forced scroll deadline')
         previous = signal.signal(signal.SIGALRM,deadline)

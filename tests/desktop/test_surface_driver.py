@@ -865,7 +865,9 @@ class TargetSafety(unittest.TestCase):
                 getattr(target,method)(*arguments)
                 with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
                 self.assertEqual(target.physical.ssh.call_count,2)
-                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),1)
+                # A VNC wheel click is one press plus its release (#736).
+                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),
+                                 2 if method=='scroll_vnc' else 1)
 
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
