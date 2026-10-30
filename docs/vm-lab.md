@@ -378,7 +378,7 @@ the recorded session ID. Killing the wrapper can free its flock while privileged
 children still run. Children that remain in the staging session keep recovery
 blocked until they exit. Zombie or exited processes do not count as live.
 
-The session scan has one limit. A live wrapper waits, as subreaper, for every
+The session scan has two limits. First, a live wrapper waits, as subreaper, for every
 descendant. That includes descendants that called `setsid()`, which keeps
 ordinary recovery blocked. After the wrapper is killed, though, a descendant
 that left the session with `setsid()` is not visible to the scan. `--abandoned`
@@ -386,10 +386,16 @@ can then release `install-active` while it runs. The in-tree staging commands
 start no such process: the hook runs only `install`, `sha256sum`, `printf`,
 `chmod` and `visudo`, `apt-get update` with empty sources runs no dpkg, and
 sudo's `use_pty` has no effect without a terminal. The remaining risk is a
-guest's own APT Pre-Invoke hook daemonizing. The `staging-abandoned` report
-states this limit in its `limit` field. If the guest's hooks can daemonize,
-inspect its process list before retrying. Cgroup-based tracking is
-[#780](https://github.com/patrick-hudson/put.gd-desktop/issues/780). A held flock, live matching leader,
+guest's own APT Pre-Invoke hook daemonizing. Second, the `/proc` scan is not
+atomic. Two consecutive empty passes make a miss unlikely, but a member that
+keeps forking and exiting could evade both. Proving the session empty would
+mean freezing it. Recovery never signals, and a cgroup is not available yet.
+The `staging-abandoned` report states both limits in its `limit` field. If the
+guest's hooks can daemonize, inspect its process list before retrying.
+Cgroup-based tracking, whose `cgroup.events` `populated` flag is atomic, is
+[#780](https://github.com/patrick-hudson/put.gd-desktop/issues/780).
+
+A held flock, live matching leader,
 live session member, missing/malformed identity or uncertain inspection retains
 `install-active`. Older receipts without a session ID cannot prove abandonment;
 preserve the run for investigation.
