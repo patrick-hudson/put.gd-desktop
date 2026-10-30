@@ -1,0 +1,410 @@
+{
+  "passed": true,
+  "placement": "boat",
+  "results": [
+    {
+      "case": "production-staging",
+      "identity": {
+        "pid": 11415,
+        "sessionId": 11415,
+        "startTicks": 188597,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-a1e6093a29644f82afeabcac341f425c.scope",
+          "unit": "putgd-staging-install-a1e6093a29644f82afeabcac341f425c.scope",
+          "device": 30,
+          "inode": 53288,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+        }
+      },
+      "recovery": {
+        "pid": 11415,
+        "sessionId": 11415,
+        "startTicks": 188597,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-a1e6093a29644f82afeabcac341f425c.scope",
+          "unit": "putgd-staging-install-a1e6093a29644f82afeabcac341f425c.scope",
+          "device": 30,
+          "inode": 53288,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+        },
+        "exitCode": 0,
+        "finished": true,
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 11415,
+          "sessionId": 11415,
+          "startTicks": 188597,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-a1e6093a29644f82afeabcac341f425c.scope",
+            "unit": "putgd-staging-install-a1e6093a29644f82afeabcac341f425c.scope",
+            "device": 30,
+            "inode": 53288,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+          }
+        },
+        "sessionPids": [],
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "state": "staging-finished"
+      }
+    },
+    {
+      "case": "setsid-root-grandchild-wrapper-and-controller-sigkill",
+      "identity": {
+        "pid": 11535,
+        "sessionId": 11535,
+        "startTicks": 188989,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope",
+          "unit": "putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope",
+          "device": 30,
+          "inode": 54489,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+        }
+      },
+      "escaped": {
+        "pid": 11544,
+        "uid": 0,
+        "sessionId": 11544,
+        "startTicks": 188995,
+        "cgroup": "0::/system.slice/putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope"
+      },
+      "controllerKilled": {
+        "pid": 51610,
+        "startTicks": 282532
+      },
+      "wrapperUid": 1000,
+      "held": {
+        "finished": false,
+        "state": "staging-outcome-unknown",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 11535,
+          "sessionId": 11535,
+          "startTicks": 188989,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope",
+            "unit": "putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope",
+            "device": 30,
+            "inode": 54489,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": true,
+        "cgroupGone": false
+      },
+      "eventsObserved": [
+        "populated 1\nfrozen 0\n",
+        "populated 0\nfrozen 0\n"
+      ],
+      "recovery": {
+        "finished": true,
+        "state": "staging-abandoned",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 11535,
+          "sessionId": 11535,
+          "startTicks": 188989,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope",
+            "unit": "putgd-staging-install-6ae17343d9184077964b2e979c96ed4d.scope",
+            "device": 30,
+            "inode": 54489,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true
+      },
+      "visual": {
+        "path": "setsid-survivor.png",
+        "sha256": "b9ab9b7aa0479dddeb851ee5e2dd29fdd5d75219c444eedefeb3ea018a8bb5df"
+      }
+    },
+    {
+      "case": "root-supervisor-scope-and-real-admission",
+      "identity": {
+        "pid": 11845,
+        "sessionId": 11845,
+        "startTicks": 193316,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-supervisor-install-815d8e3111c2401797d9509dabf6f02f.scope",
+          "unit": "putgd-supervisor-install-815d8e3111c2401797d9509dabf6f02f.scope",
+          "device": 30,
+          "inode": 56472,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+        }
+      },
+      "root": {
+        "uid": 0,
+        "cgroup": "0::/system.slice/putgd-supervisor-install-815d8e3111c2401797d9509dabf6f02f.scope",
+        "admitted": true,
+        "requiredScope": true
+      },
+      "recoveryRefusedAfterAdmission": true
+    },
+    {
+      "case": "existing-scope-name-collision",
+      "exitCode": 1,
+      "existingHolder": {
+        "pid": 12172,
+        "cgroup": "0::/system.slice/putgd-staging-install-dd42a7e6c8554dfebe5963b0d788ac3d.scope"
+      },
+      "commandDidNotRun": true,
+      "recovery": {
+        "finished": true,
+        "state": "staging-not-started"
+      }
+    },
+    {
+      "case": "logout-controller-sigkill-detached-watchdog",
+      "controllerKilled": {
+        "pid": 52140,
+        "startTicks": 288679
+      },
+      "rootSupervisor": {
+        "pid": 12576,
+        "startTicks": 195388,
+        "cgroup": "0::/system.slice/putgd-supervisor-install-b9a639e5ee674799ad11b29cf6a2827a.scope"
+      },
+      "logoutCommand": "cinnamon-session-quit",
+      "lingerEnabled": false,
+      "terminatedDesktopSessions": [
+        "c5"
+      ],
+      "loginEndResults": [
+        {
+          "session": "c5",
+          "alreadyGone": false,
+          "killExit": 1,
+          "terminateExit": 0
+        }
+      ],
+      "userManagerSnapshots": [
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "513 1000 lab  - - closing no -\n530    0 root - - active  no -\n",
+          "secondsAfterControllerKill": 1.3392970859999878
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "533   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 2.923120906999884
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "534   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 4.480005005999828
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "535   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 6.062592474000212
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "536   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 7.621789954000178
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "537   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 9.19544235100011
+        },
+        {
+          "managerState": "active",
+          "supervisorAlive": true,
+          "sessions": "538   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 10.74172894100002
+        },
+        {
+          "managerState": "deactivating",
+          "supervisorAlive": true,
+          "sessions": "539   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 12.427311183999791
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "540   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 13.9866293770001
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "541   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 15.544607639999867
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "542   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 17.12951906699982
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "543   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 18.67849775800005
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "544   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 20.226264568999795
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "545   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 21.777257500999895
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "546   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 23.303482971999983
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "547   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 24.84259674699979
+        },
+        {
+          "managerState": "inactive",
+          "supervisorAlive": true,
+          "sessions": "548   0 root    -     - active no -\n c6 113 lightdm seat0 - active no -\n",
+          "secondsAfterControllerKill": 26.44074330400008
+        }
+      ],
+      "managerAfterResult": "inactive",
+      "result": {
+        "schemaVersion": 1,
+        "timeoutSeconds": 180,
+        "recoverySeconds": 60,
+        "timedOut": false,
+        "aborted": false,
+        "ownedProcesses": [
+          {
+            "pid": 12577,
+            "startTicks": 195390
+          },
+          {
+            "pid": 12580,
+            "startTicks": 195410
+          },
+          {
+            "pid": 12586,
+            "startTicks": 195429
+          },
+          {
+            "pid": 12606,
+            "startTicks": 195501
+          },
+          {
+            "pid": 12607,
+            "startTicks": 195501
+          },
+          {
+            "pid": 12618,
+            "startTicks": 195571
+          },
+          {
+            "pid": 12619,
+            "startTicks": 195571
+          },
+          {
+            "pid": 12626,
+            "startTicks": 195578
+          },
+          {
+            "pid": 12706,
+            "startTicks": 196078
+          },
+          {
+            "pid": 12709,
+            "startTicks": 196135
+          },
+          {
+            "pid": 12710,
+            "startTicks": 196135
+          }
+        ],
+        "exitCodes": [
+          0,
+          0
+        ],
+        "elapsedSeconds": 37.36084400600021,
+        "remainingPids": [],
+        "dpkgStatus": {
+          "exitCode": 0,
+          "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.0.780\nDescription: Synthetic disposable watchdog lifetime fixture\n",
+          "stderr": ""
+        },
+        "dpkgAudit": {
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "ok": true
+      },
+      "wrapperTerminal": {
+        "pid": 12574,
+        "sessionId": 12574,
+        "startTicks": 195382,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-supervisor-install-b9a639e5ee674799ad11b29cf6a2827a.scope",
+          "unit": "putgd-supervisor-install-b9a639e5ee674799ad11b29cf6a2827a.scope",
+          "device": 30,
+          "inode": 60907,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "371dc611-d793-49ad-b01f-337e55b5aeea"
+        },
+        "exitCode": 0,
+        "finished": true
+      },
+      "visual": {
+        "path": "logged-out-watchdog-alive.png",
+        "sha256": "a6aa90dc95b81b7ad1a67ccbc61084817af4db206210dcba4d9355d174a56138"
+      },
+      "terminalFixtureLockAcknowledged": true
+    }
+  ]
+}

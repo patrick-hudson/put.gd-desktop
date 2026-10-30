@@ -1,0 +1,30 @@
+[
+  {
+    "operation": {
+      "attemptCount": 1,
+      "completedAt": "2026-10-30T09:34:04.633Z",
+      "expectedBy": null,
+      "id": "bdop_6e2cf8912f014da5b233854c95520540",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-30T09:33:55.321Z",
+      "stage": "completed",
+      "status": "completed",
+      "targetId": "bx_ecm5jez9"
+    }
+  },
+  {
+    "operation": {
+      "attemptCount": 1,
+      "completedAt": "2026-10-30T09:34:03.894Z",
+      "expectedBy": null,
+      "id": "bdop_cd2baffda6b34fb684485db35304140f",
+      "kind": "sandbox",
+      "reason": "explicit",
+      "requestedAt": "2026-10-30T09:33:55.575Z",
+      "stage": "completed",
+      "status": "completed",
+      "targetId": "bx_9gerfjdw"
+    }
+  }
+]

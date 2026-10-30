@@ -1,0 +1,2340 @@
+{
+  "passed": true,
+  "placement": "boat",
+  "results": [
+    {
+      "case": "fallback-first-install",
+      "tracking": {
+        "staging-tracking.json": {
+          "tracking": "session",
+          "fallbackReason": "scope launcher /usr/local/lib/putgd-lab/package_scope.py is not installed"
+        },
+        "supervisor-tracking.json": {
+          "tracking": "cgroup-v2",
+          "manager": "system",
+          "unit": "putgd-supervisor-install-25ad6454fb4a47a1848db9538505f8fe.scope"
+        }
+      },
+      "grant": "lab ALL=(root) NOPASSWD: /usr/local/lib/putgd-lab/package_install.py, /usr/local/lib/putgd-lab/package_scope.py\nroot 755\n0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8  /usr/local/lib/putgd-lab/package_scope.py\n",
+      "result": {
+        "schemaVersion": 1,
+        "timeoutSeconds": 300,
+        "recoverySeconds": 60,
+        "timedOut": false,
+        "aborted": false,
+        "ownedProcesses": [
+          {
+            "pid": 3957,
+            "startTicks": 2750
+          },
+          {
+            "pid": 4021,
+            "startTicks": 2770
+          },
+          {
+            "pid": 4031,
+            "startTicks": 2785
+          },
+          {
+            "pid": 4032,
+            "startTicks": 2786
+          },
+          {
+            "pid": 4040,
+            "startTicks": 2801
+          },
+          {
+            "pid": 4051,
+            "startTicks": 2870
+          },
+          {
+            "pid": 4072,
+            "startTicks": 2884
+          },
+          {
+            "pid": 4075,
+            "startTicks": 2884
+          },
+          {
+            "pid": 4098,
+            "startTicks": 2909
+          },
+          {
+            "pid": 4099,
+            "startTicks": 2909
+          },
+          {
+            "pid": 4103,
+            "startTicks": 2909
+          },
+          {
+            "pid": 4114,
+            "startTicks": 2920
+          },
+          {
+            "pid": 4116,
+            "startTicks": 2920
+          },
+          {
+            "pid": 4130,
+            "startTicks": 2923
+          }
+        ],
+        "exitCodes": [
+          0,
+          0
+        ],
+        "elapsedSeconds": 2.0580650909999996,
+        "remainingPids": [],
+        "dpkgStatus": {
+          "exitCode": 0,
+          "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.780.3\nDescription: Synthetic disposable #780 lifetime fixture\n",
+          "stderr": ""
+        },
+        "dpkgAudit": {
+          "exitCode": 0,
+          "stdout": "",
+          "stderr": ""
+        },
+        "ok": true
+      },
+      "controllerWarning": [
+        "Guest staging uses session-only tracking: scope launcher /usr/local/lib/putgd-lab/package_scope.py is not installed. Session-scan limits apply."
+      ],
+      "lockAfter": null
+    },
+    {
+      "case": "supervisor-stop-session",
+      "phase": "supervisor",
+      "loginEnd": {
+        "mode": "stop-session",
+        "command": "systemctl stop session-47.scope",
+        "output": "exit=0",
+        "seconds": 0.17019094699992365
+      },
+      "job": "install-d9d6c48017a4470e9186600d15cba470",
+      "identities": {
+        "wrapper": {
+          "pid": 5166,
+          "ppid": 5164,
+          "sessionId": 5166,
+          "startTicks": 3446,
+          "uid": 1000,
+          "comm": "python3",
+          "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+        },
+        "launchChain": [
+          {
+            "pid": 5164,
+            "ppid": 5154,
+            "sessionId": 5154,
+            "startTicks": 3440,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5154,
+            "ppid": 1,
+            "sessionId": 5154,
+            "startTicks": 3434,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/user.slice/user-1000.slice/session-47.scope"
+          }
+        ],
+        "loginScope": "session-47.scope",
+        "scopeMembers": [
+          {
+            "pid": 5164,
+            "ppid": 5154,
+            "sessionId": 5154,
+            "startTicks": 3440,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5166,
+            "ppid": 5164,
+            "sessionId": 5166,
+            "startTicks": 3446,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5167,
+            "ppid": 5166,
+            "sessionId": 5166,
+            "startTicks": 3447,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5171,
+            "ppid": 5167,
+            "sessionId": 5166,
+            "startTicks": 3447,
+            "uid": 0,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5274,
+            "ppid": 5171,
+            "sessionId": 5166,
+            "startTicks": 3472,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5337,
+            "ppid": 5274,
+            "sessionId": 5337,
+            "startTicks": 3507,
+            "uid": 0,
+            "comm": "dpkg",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5338,
+            "ppid": 5337,
+            "sessionId": 5337,
+            "startTicks": 3509,
+            "uid": 0,
+            "comm": "putgd.postinst",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          },
+          {
+            "pid": 5343,
+            "ppid": 5338,
+            "sessionId": 5337,
+            "startTicks": 3560,
+            "uid": 0,
+            "comm": "sleep",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope"
+          }
+        ],
+        "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n47 1000 lab  -     5082 user          -    no -\n54    0 root -     5436 user          -    no -\n"
+      },
+      "afterLoginEnd": [
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n56    0 root -     5533 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n57    0 root -     5620 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n58    0 root -     5664 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n59    0 root -     5707 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n60    0 root -     5753 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n61    0 root -     5797 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n62    0 root -     5840 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n63    0 root -     5892 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n64    0 root -     5938 user          -    no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n10    0 root -     3116 manager-early -    no -\n 2 1000 lab  -     1340 manager       -    no -\n65    0 root -     5982 user          -    no -\n"
+        }
+      ],
+      "refusedWhileRunning": "recover-staging refused install-d9d6c48017a4470e9186600d15cba470: the install supervisor has started and session processes are still running: PIDs [5166, 5167, 5171, 5274] (supervisor-running); install-active blocks retries. Inspect ~/putgd-lab/install-d9d6c48017a4470e9186600d15cba470/supervisor-process.json, progress.json and result.json.",
+      "terminal": {
+        "result.json": {
+          "schemaVersion": 1,
+          "timeoutSeconds": 300,
+          "recoverySeconds": 60,
+          "timedOut": false,
+          "aborted": false,
+          "ownedProcesses": [
+            {
+              "pid": 5199,
+              "startTicks": 3451
+            },
+            {
+              "pid": 5274,
+              "startTicks": 3472
+            },
+            {
+              "pid": 5292,
+              "startTicks": 3490
+            },
+            {
+              "pid": 5337,
+              "startTicks": 3507
+            },
+            {
+              "pid": 5338,
+              "startTicks": 3509
+            },
+            {
+              "pid": 5340,
+              "startTicks": 3509
+            },
+            {
+              "pid": 5343,
+              "startTicks": 3560
+            },
+            {
+              "pid": 5496,
+              "startTicks": 3610
+            },
+            {
+              "pid": 5618,
+              "startTicks": 3660
+            },
+            {
+              "pid": 5619,
+              "startTicks": 3710
+            },
+            {
+              "pid": 5659,
+              "startTicks": 3761
+            },
+            {
+              "pid": 5662,
+              "startTicks": 3811
+            },
+            {
+              "pid": 5663,
+              "startTicks": 3861
+            },
+            {
+              "pid": 5705,
+              "startTicks": 3911
+            },
+            {
+              "pid": 5706,
+              "startTicks": 3962
+            },
+            {
+              "pid": 5751,
+              "startTicks": 4012
+            },
+            {
+              "pid": 5752,
+              "startTicks": 4062
+            },
+            {
+              "pid": 5755,
+              "startTicks": 4112
+            },
+            {
+              "pid": 5795,
+              "startTicks": 4163
+            },
+            {
+              "pid": 5796,
+              "startTicks": 4213
+            },
+            {
+              "pid": 5838,
+              "startTicks": 4263
+            },
+            {
+              "pid": 5839,
+              "startTicks": 4314
+            },
+            {
+              "pid": 5871,
+              "startTicks": 4364
+            },
+            {
+              "pid": 5886,
+              "startTicks": 4414
+            },
+            {
+              "pid": 5891,
+              "startTicks": 4464
+            },
+            {
+              "pid": 5933,
+              "startTicks": 4515
+            },
+            {
+              "pid": 5937,
+              "startTicks": 4565
+            },
+            {
+              "pid": 5975,
+              "startTicks": 4616
+            },
+            {
+              "pid": 5980,
+              "startTicks": 4666
+            },
+            {
+              "pid": 5981,
+              "startTicks": 4717
+            },
+            {
+              "pid": 6023,
+              "startTicks": 4767
+            },
+            {
+              "pid": 6024,
+              "startTicks": 4817
+            },
+            {
+              "pid": 6065,
+              "startTicks": 4867
+            },
+            {
+              "pid": 6101,
+              "startTicks": 4918
+            },
+            {
+              "pid": 6102,
+              "startTicks": 4968
+            },
+            {
+              "pid": 6103,
+              "startTicks": 5018
+            },
+            {
+              "pid": 6104,
+              "startTicks": 5068
+            },
+            {
+              "pid": 6105,
+              "startTicks": 5119
+            },
+            {
+              "pid": 6106,
+              "startTicks": 5169
+            },
+            {
+              "pid": 6107,
+              "startTicks": 5219
+            },
+            {
+              "pid": 6108,
+              "startTicks": 5270
+            },
+            {
+              "pid": 6109,
+              "startTicks": 5320
+            },
+            {
+              "pid": 6110,
+              "startTicks": 5370
+            },
+            {
+              "pid": 6115,
+              "startTicks": 5421
+            },
+            {
+              "pid": 6117,
+              "startTicks": 5471
+            },
+            {
+              "pid": 6118,
+              "startTicks": 5521
+            },
+            {
+              "pid": 6119,
+              "startTicks": 5571
+            },
+            {
+              "pid": 6120,
+              "startTicks": 5622
+            },
+            {
+              "pid": 6121,
+              "startTicks": 5672
+            },
+            {
+              "pid": 6122,
+              "startTicks": 5722
+            },
+            {
+              "pid": 6149,
+              "startTicks": 5773
+            },
+            {
+              "pid": 6150,
+              "startTicks": 5823
+            },
+            {
+              "pid": 6151,
+              "startTicks": 5873
+            },
+            {
+              "pid": 6152,
+              "startTicks": 5924
+            },
+            {
+              "pid": 6153,
+              "startTicks": 5974
+            },
+            {
+              "pid": 6154,
+              "startTicks": 6024
+            },
+            {
+              "pid": 6155,
+              "startTicks": 6075
+            },
+            {
+              "pid": 6156,
+              "startTicks": 6125
+            },
+            {
+              "pid": 6157,
+              "startTicks": 6175
+            },
+            {
+              "pid": 6158,
+              "startTicks": 6226
+            },
+            {
+              "pid": 6159,
+              "startTicks": 6276
+            },
+            {
+              "pid": 6160,
+              "startTicks": 6326
+            },
+            {
+              "pid": 6161,
+              "startTicks": 6377
+            },
+            {
+              "pid": 6166,
+              "startTicks": 6427
+            },
+            {
+              "pid": 6168,
+              "startTicks": 6477
+            },
+            {
+              "pid": 6169,
+              "startTicks": 6528
+            },
+            {
+              "pid": 6170,
+              "startTicks": 6578
+            },
+            {
+              "pid": 6171,
+              "startTicks": 6628
+            },
+            {
+              "pid": 6172,
+              "startTicks": 6678
+            },
+            {
+              "pid": 6173,
+              "startTicks": 6729
+            },
+            {
+              "pid": 6174,
+              "startTicks": 6779
+            },
+            {
+              "pid": 6175,
+              "startTicks": 6829
+            },
+            {
+              "pid": 6176,
+              "startTicks": 6880
+            },
+            {
+              "pid": 6177,
+              "startTicks": 6930
+            },
+            {
+              "pid": 6178,
+              "startTicks": 6980
+            },
+            {
+              "pid": 6179,
+              "startTicks": 7031
+            },
+            {
+              "pid": 6180,
+              "startTicks": 7081
+            },
+            {
+              "pid": 6181,
+              "startTicks": 7131
+            },
+            {
+              "pid": 6182,
+              "startTicks": 7182
+            },
+            {
+              "pid": 6183,
+              "startTicks": 7232
+            },
+            {
+              "pid": 6184,
+              "startTicks": 7282
+            },
+            {
+              "pid": 6185,
+              "startTicks": 7333
+            },
+            {
+              "pid": 6186,
+              "startTicks": 7383
+            },
+            {
+              "pid": 6192,
+              "startTicks": 7433
+            },
+            {
+              "pid": 6193,
+              "startTicks": 7484
+            },
+            {
+              "pid": 6194,
+              "startTicks": 7534
+            },
+            {
+              "pid": 6195,
+              "startTicks": 7584
+            },
+            {
+              "pid": 6199,
+              "startTicks": 7634
+            },
+            {
+              "pid": 6200,
+              "startTicks": 7685
+            },
+            {
+              "pid": 6201,
+              "startTicks": 7735
+            },
+            {
+              "pid": 6202,
+              "startTicks": 7785
+            },
+            {
+              "pid": 6203,
+              "startTicks": 7835
+            },
+            {
+              "pid": 6204,
+              "startTicks": 7886
+            },
+            {
+              "pid": 6331,
+              "startTicks": 7936
+            },
+            {
+              "pid": 6496,
+              "startTicks": 7991
+            },
+            {
+              "pid": 6506,
+              "startTicks": 7992
+            },
+            {
+              "pid": 6508,
+              "startTicks": 7992
+            },
+            {
+              "pid": 6517,
+              "startTicks": 7993
+            }
+          ],
+          "exitCodes": [
+            0,
+            0
+          ],
+          "elapsedSeconds": 45.64926087400001,
+          "remainingPids": [],
+          "dpkgStatus": {
+            "exitCode": 0,
+            "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.780.3\nDescription: Synthetic disposable #780 lifetime fixture\n",
+            "stderr": ""
+          },
+          "dpkgAudit": {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "ok": true
+        },
+        "supervisor-result.json": {
+          "pid": 5166,
+          "sessionId": 5166,
+          "startTicks": 3446,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+            "unit": "putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+            "device": 30,
+            "inode": 16353,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          },
+          "exitCode": 0,
+          "finished": true
+        }
+      },
+      "recovery": {
+        "finished": true,
+        "state": "supervisor-finished",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 5166,
+          "sessionId": 5166,
+          "startTicks": 3446,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+            "unit": "putgd-supervisor-install-d9d6c48017a4470e9186600d15cba470.scope",
+            "device": 30,
+            "inode": 16353,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "result": {
+          "ok": true,
+          "aborted": false,
+          "timedOut": false,
+          "exitCodes": [
+            0,
+            0
+          ],
+          "remainingPids": [],
+          "error": null
+        }
+      },
+      "lockAfter": null
+    },
+    {
+      "case": "supervisor-terminate-user",
+      "phase": "supervisor",
+      "loginEnd": {
+        "mode": "terminate-user",
+        "command": "loginctl terminate-user lab",
+        "output": "exit=0",
+        "seconds": 0.2416407219999428
+      },
+      "job": "install-08eca8a0e56c4c088f70e50cb9a8bb32",
+      "identities": {
+        "wrapper": {
+          "pid": 7331,
+          "ppid": 7323,
+          "sessionId": 7331,
+          "startTicks": 8373,
+          "uid": 1000,
+          "comm": "python3",
+          "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+        },
+        "launchChain": [
+          {
+            "pid": 7323,
+            "ppid": 7313,
+            "sessionId": 7313,
+            "startTicks": 8365,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7313,
+            "ppid": 1,
+            "sessionId": 7313,
+            "startTicks": 8357,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/user.slice/user-1000.slice/session-89.scope"
+          }
+        ],
+        "loginScope": "session-89.scope",
+        "scopeMembers": [
+          {
+            "pid": 7323,
+            "ppid": 7313,
+            "sessionId": 7313,
+            "startTicks": 8365,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7331,
+            "ppid": 7323,
+            "sessionId": 7331,
+            "startTicks": 8373,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7334,
+            "ppid": 7331,
+            "sessionId": 7331,
+            "startTicks": 8373,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7341,
+            "ppid": 7334,
+            "sessionId": 7331,
+            "startTicks": 8374,
+            "uid": 0,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7423,
+            "ppid": 7341,
+            "sessionId": 7331,
+            "startTicks": 8400,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7501,
+            "ppid": 7423,
+            "sessionId": 7501,
+            "startTicks": 8452,
+            "uid": 0,
+            "comm": "dpkg",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7502,
+            "ppid": 7501,
+            "sessionId": 7501,
+            "startTicks": 8454,
+            "uid": 0,
+            "comm": "putgd.postinst",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          },
+          {
+            "pid": 7552,
+            "ppid": 7502,
+            "sessionId": 7501,
+            "startTicks": 8505,
+            "uid": 0,
+            "comm": "sleep",
+            "cgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope"
+          }
+        ],
+        "sessions": " 1 1000 lab  seat0 1289 user          tty2 no -\n 2 1000 lab  -     1340 manager       -    no -\n69    0 root -     6215 manager-early -    no -\n89 1000 lab  -     7229 user          -    no -\n96    0 root -     7583 user          -    no -\n"
+      },
+      "afterLoginEnd": [
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": " 1  1000 lab         seat0 1289 user          tty2 no -\n 2  1000 lab         -     1340 manager       -    no -\n69     0 root        -     6215 manager-early -    no -\n98     0 root        -     7696 user          -    no -\n99 60578 gdm-greeter -     7914 manager-early -    no -\nc1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "  1  1000 lab         seat0 1289 user          tty2 no -\n100     0 root        -     8159 user          -    no -\n  2  1000 lab         -     1340 manager       -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "deactivating",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "101     0 root        -     8515 user          -    no -\n  2  1000 lab         -     1340 manager       -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "deactivating",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "102     0 root        -     8762 user          -    no -\n  2  1000 lab         -     1340 manager       -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "deactivating",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "103     0 root        -     8805 user          -    no -\n  2  1000 lab         -     1340 manager       -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "deactivating",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "104     0 root        -     8851 user          -    no -\n  2  1000 lab         -     1340 manager       -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "failed",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "105     0 root        -     8906 user          -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "failed",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "106     0 root        -     8950 user          -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "failed",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "107     0 root        -     8993 user          -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "failed",
+          "wrapperCgroup": "0::/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "108     0 root        -     9036 user          -    no -\n 69     0 root        -     6215 manager-early -    no -\n 99 60578 gdm-greeter -     7914 manager-early -    no -\n c1 60578 gdm-greeter seat0 7710 greeter       tty1 no -\n"
+        }
+      ],
+      "refusedWhileRunning": "recover-staging refused install-08eca8a0e56c4c088f70e50cb9a8bb32: the install supervisor has started and session processes are still running: PIDs [7331, 7334, 7341, 7423] (supervisor-running); install-active blocks retries. Inspect ~/putgd-lab/install-08eca8a0e56c4c088f70e50cb9a8bb32/supervisor-process.json, progress.json and result.json.",
+      "terminal": {
+        "result.json": {
+          "schemaVersion": 1,
+          "timeoutSeconds": 300,
+          "recoverySeconds": 60,
+          "timedOut": false,
+          "aborted": false,
+          "ownedProcesses": [
+            {
+              "pid": 7366,
+              "startTicks": 8380
+            },
+            {
+              "pid": 7423,
+              "startTicks": 8400
+            },
+            {
+              "pid": 7491,
+              "startTicks": 8432
+            },
+            {
+              "pid": 7501,
+              "startTicks": 8452
+            },
+            {
+              "pid": 7502,
+              "startTicks": 8454
+            },
+            {
+              "pid": 7504,
+              "startTicks": 8454
+            },
+            {
+              "pid": 7552,
+              "startTicks": 8505
+            },
+            {
+              "pid": 7685,
+              "startTicks": 8555
+            },
+            {
+              "pid": 7919,
+              "startTicks": 8605
+            },
+            {
+              "pid": 8047,
+              "startTicks": 8656
+            },
+            {
+              "pid": 8140,
+              "startTicks": 8706
+            },
+            {
+              "pid": 8215,
+              "startTicks": 8756
+            },
+            {
+              "pid": 8323,
+              "startTicks": 8807
+            },
+            {
+              "pid": 8559,
+              "startTicks": 8858
+            },
+            {
+              "pid": 8674,
+              "startTicks": 8908
+            },
+            {
+              "pid": 8748,
+              "startTicks": 8959
+            },
+            {
+              "pid": 8803,
+              "startTicks": 9009
+            },
+            {
+              "pid": 8804,
+              "startTicks": 9059
+            },
+            {
+              "pid": 8807,
+              "startTicks": 9110
+            },
+            {
+              "pid": 8847,
+              "startTicks": 9160
+            },
+            {
+              "pid": 8848,
+              "startTicks": 9210
+            },
+            {
+              "pid": 8892,
+              "startTicks": 9261
+            },
+            {
+              "pid": 8893,
+              "startTicks": 9311
+            },
+            {
+              "pid": 8928,
+              "startTicks": 9361
+            },
+            {
+              "pid": 8948,
+              "startTicks": 9411
+            },
+            {
+              "pid": 8949,
+              "startTicks": 9462
+            },
+            {
+              "pid": 8991,
+              "startTicks": 9512
+            },
+            {
+              "pid": 8992,
+              "startTicks": 9562
+            },
+            {
+              "pid": 9034,
+              "startTicks": 9613
+            },
+            {
+              "pid": 9035,
+              "startTicks": 9663
+            },
+            {
+              "pid": 9038,
+              "startTicks": 9713
+            },
+            {
+              "pid": 9078,
+              "startTicks": 9764
+            },
+            {
+              "pid": 9079,
+              "startTicks": 9814
+            },
+            {
+              "pid": 9117,
+              "startTicks": 9864
+            },
+            {
+              "pid": 9353,
+              "startTicks": 9914
+            },
+            {
+              "pid": 9362,
+              "startTicks": 9965
+            },
+            {
+              "pid": 9363,
+              "startTicks": 10015
+            },
+            {
+              "pid": 9364,
+              "startTicks": 10065
+            },
+            {
+              "pid": 9365,
+              "startTicks": 10116
+            },
+            {
+              "pid": 9366,
+              "startTicks": 10166
+            },
+            {
+              "pid": 9367,
+              "startTicks": 10216
+            },
+            {
+              "pid": 9368,
+              "startTicks": 10266
+            },
+            {
+              "pid": 9369,
+              "startTicks": 10317
+            },
+            {
+              "pid": 9370,
+              "startTicks": 10367
+            },
+            {
+              "pid": 9371,
+              "startTicks": 10417
+            },
+            {
+              "pid": 9372,
+              "startTicks": 10468
+            },
+            {
+              "pid": 9373,
+              "startTicks": 10518
+            },
+            {
+              "pid": 9374,
+              "startTicks": 10568
+            },
+            {
+              "pid": 9375,
+              "startTicks": 10619
+            },
+            {
+              "pid": 9376,
+              "startTicks": 10669
+            },
+            {
+              "pid": 9377,
+              "startTicks": 10719
+            },
+            {
+              "pid": 9401,
+              "startTicks": 10770
+            },
+            {
+              "pid": 9402,
+              "startTicks": 10820
+            },
+            {
+              "pid": 9403,
+              "startTicks": 10870
+            },
+            {
+              "pid": 9404,
+              "startTicks": 10920
+            },
+            {
+              "pid": 9405,
+              "startTicks": 10971
+            },
+            {
+              "pid": 9406,
+              "startTicks": 11021
+            },
+            {
+              "pid": 9407,
+              "startTicks": 11071
+            },
+            {
+              "pid": 9408,
+              "startTicks": 11122
+            },
+            {
+              "pid": 9409,
+              "startTicks": 11172
+            },
+            {
+              "pid": 9410,
+              "startTicks": 11222
+            },
+            {
+              "pid": 9411,
+              "startTicks": 11273
+            },
+            {
+              "pid": 9412,
+              "startTicks": 11323
+            },
+            {
+              "pid": 9413,
+              "startTicks": 11373
+            },
+            {
+              "pid": 9414,
+              "startTicks": 11424
+            },
+            {
+              "pid": 9415,
+              "startTicks": 11474
+            },
+            {
+              "pid": 9416,
+              "startTicks": 11524
+            },
+            {
+              "pid": 9417,
+              "startTicks": 11575
+            },
+            {
+              "pid": 9418,
+              "startTicks": 11625
+            },
+            {
+              "pid": 9419,
+              "startTicks": 11675
+            },
+            {
+              "pid": 9420,
+              "startTicks": 11725
+            },
+            {
+              "pid": 9421,
+              "startTicks": 11776
+            },
+            {
+              "pid": 9429,
+              "startTicks": 11826
+            },
+            {
+              "pid": 9431,
+              "startTicks": 11876
+            },
+            {
+              "pid": 9435,
+              "startTicks": 11927
+            },
+            {
+              "pid": 9436,
+              "startTicks": 11977
+            },
+            {
+              "pid": 9437,
+              "startTicks": 12027
+            },
+            {
+              "pid": 9438,
+              "startTicks": 12078
+            },
+            {
+              "pid": 9439,
+              "startTicks": 12128
+            },
+            {
+              "pid": 9440,
+              "startTicks": 12178
+            },
+            {
+              "pid": 9441,
+              "startTicks": 12229
+            },
+            {
+              "pid": 9442,
+              "startTicks": 12279
+            },
+            {
+              "pid": 9443,
+              "startTicks": 12329
+            },
+            {
+              "pid": 9444,
+              "startTicks": 12379
+            },
+            {
+              "pid": 9445,
+              "startTicks": 12430
+            },
+            {
+              "pid": 9446,
+              "startTicks": 12480
+            },
+            {
+              "pid": 9447,
+              "startTicks": 12530
+            },
+            {
+              "pid": 9448,
+              "startTicks": 12581
+            },
+            {
+              "pid": 9449,
+              "startTicks": 12631
+            },
+            {
+              "pid": 9450,
+              "startTicks": 12681
+            },
+            {
+              "pid": 9451,
+              "startTicks": 12732
+            },
+            {
+              "pid": 9452,
+              "startTicks": 12782
+            },
+            {
+              "pid": 9453,
+              "startTicks": 12832
+            },
+            {
+              "pid": 9454,
+              "startTicks": 12883
+            },
+            {
+              "pid": 9468,
+              "startTicks": 12933
+            },
+            {
+              "pid": 9742,
+              "startTicks": 13000
+            },
+            {
+              "pid": 9752,
+              "startTicks": 13002
+            },
+            {
+              "pid": 9754,
+              "startTicks": 13002
+            },
+            {
+              "pid": 9768,
+              "startTicks": 13005
+            },
+            {
+              "pid": 9769,
+              "startTicks": 13010
+            }
+          ],
+          "exitCodes": [
+            0,
+            0
+          ],
+          "elapsedSeconds": 46.53360723899999,
+          "remainingPids": [],
+          "dpkgStatus": {
+            "exitCode": 0,
+            "stdout": "Package: putgd\nStatus: install ok installed\nPriority: optional\nSection: graphics\nMaintainer: put.gd lab <lab@invalid>\nArchitecture: all\nVersion: 99.780.3\nDescription: Synthetic disposable #780 lifetime fixture\n",
+            "stderr": ""
+          },
+          "dpkgAudit": {
+            "exitCode": 0,
+            "stdout": "",
+            "stderr": ""
+          },
+          "ok": true
+        },
+        "supervisor-result.json": {
+          "pid": 7331,
+          "sessionId": 7331,
+          "startTicks": 8373,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+            "unit": "putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+            "device": 30,
+            "inode": 21967,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          },
+          "exitCode": 0,
+          "finished": true
+        }
+      },
+      "recovery": {
+        "finished": true,
+        "state": "supervisor-finished",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 7331,
+          "sessionId": 7331,
+          "startTicks": 8373,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+            "unit": "putgd-supervisor-install-08eca8a0e56c4c088f70e50cb9a8bb32.scope",
+            "device": 30,
+            "inode": 21967,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "result": {
+          "ok": true,
+          "aborted": false,
+          "timedOut": false,
+          "exitCodes": [
+            0,
+            0
+          ],
+          "remainingPids": [],
+          "error": null
+        }
+      },
+      "lockAfter": null
+    },
+    {
+      "case": "staging-stop-session",
+      "phase": "staging",
+      "loginEnd": {
+        "mode": "stop-session",
+        "command": "systemctl stop session-130.scope",
+        "output": "exit=0",
+        "seconds": 0.2205731479999713
+      },
+      "job": "install-9c502e4076a0447ba61bb3108f2442bd",
+      "identities": {
+        "wrapper": {
+          "pid": 10356,
+          "ppid": 10355,
+          "sessionId": 10356,
+          "startTicks": 13328,
+          "uid": 1000,
+          "comm": "python3",
+          "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+        },
+        "launchChain": [
+          {
+            "pid": 10355,
+            "ppid": 10348,
+            "sessionId": 10348,
+            "startTicks": 13320,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10348,
+            "ppid": 10347,
+            "sessionId": 10348,
+            "startTicks": 13311,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/user.slice/user-1000.slice/session-130.scope"
+          }
+        ],
+        "loginScope": "session-130.scope",
+        "scopeMembers": [
+          {
+            "pid": 10355,
+            "ppid": 10348,
+            "sessionId": 10348,
+            "startTicks": 13320,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10356,
+            "ppid": 10355,
+            "sessionId": 10356,
+            "startTicks": 13328,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10357,
+            "ppid": 10356,
+            "sessionId": 10356,
+            "startTicks": 13328,
+            "uid": 1000,
+            "comm": "sh",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10362,
+            "ppid": 10357,
+            "sessionId": 10356,
+            "startTicks": 13329,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10364,
+            "ppid": 10362,
+            "sessionId": 10356,
+            "startTicks": 13330,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10365,
+            "ppid": 10364,
+            "sessionId": 10356,
+            "startTicks": 13330,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10369,
+            "ppid": 10365,
+            "sessionId": 10356,
+            "startTicks": 13331,
+            "uid": 0,
+            "comm": "sh",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          },
+          {
+            "pid": 10371,
+            "ppid": 10369,
+            "sessionId": 10356,
+            "startTicks": 13331,
+            "uid": 0,
+            "comm": "gate",
+            "cgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope"
+          }
+        ],
+        "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n130  1000 lab         -     10275 user          -    no -\n133     0 root        -     10469 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+      },
+      "afterLoginEnd": [
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n135     0 root        -     10548 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n136     0 root        -     10589 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n137     0 root        -     10630 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n138     0 root        -     10671 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n139     0 root        -     10712 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n140     0 root        -     10753 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n141     0 root        -     10794 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "110  1000 lab         -     9085  manager       -    no -\n113     0 root        -     9461  manager-early -    no -\n142     0 root        -     10835 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "113     0 root        -     9461  manager-early -    no -\n143     0 root        -     10876 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "113     0 root        -     9461  manager-early -    no -\n144     0 root        -     10946 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        }
+      ],
+      "refusedWhileRunning": "Staging install-9c502e4076a0447ba61bb3108f2442bd remains held (staging-running); install-active blocks retries. Inspect ~/putgd-lab/install-9c502e4076a0447ba61bb3108f2442bd/staging-process.json and staging-result.json; staging session processes are still running: PIDs [10356, 10357, 10362, 10364, 10365, 10369, 10371].",
+      "terminal": {
+        "staging-result.json": {
+          "pid": 10356,
+          "sessionId": 10356,
+          "startTicks": 13328,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+            "unit": "putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+            "device": 30,
+            "inode": 29725,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          },
+          "exitCode": 0,
+          "finished": true
+        }
+      },
+      "recovery": {
+        "pid": 10356,
+        "sessionId": 10356,
+        "startTicks": 13328,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "unit": "putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+          "device": 30,
+          "inode": 29725,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+        },
+        "exitCode": 0,
+        "finished": true,
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 10356,
+          "sessionId": 10356,
+          "startTicks": 13328,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+            "unit": "putgd-staging-install-9c502e4076a0447ba61bb3108f2442bd.scope",
+            "device": 30,
+            "inode": 29725,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          }
+        },
+        "sessionPids": [],
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "state": "staging-finished"
+      },
+      "lockAfter": null
+    },
+    {
+      "case": "staging-terminate-user",
+      "phase": "staging",
+      "loginEnd": {
+        "mode": "terminate-user",
+        "command": "loginctl terminate-user lab",
+        "output": "exit=0",
+        "seconds": 0.19706883099979677
+      },
+      "job": "install-5f481519527a42679e6d5ce8f5e860a1",
+      "identities": {
+        "wrapper": {
+          "pid": 12101,
+          "ppid": 12096,
+          "sessionId": 12101,
+          "startTicks": 18098,
+          "uid": 1000,
+          "comm": "python3",
+          "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+        },
+        "launchChain": [
+          {
+            "pid": 12096,
+            "ppid": 12058,
+            "sessionId": 12058,
+            "startTicks": 18090,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12058,
+            "ppid": 12057,
+            "sessionId": 12058,
+            "startTicks": 18082,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/user.slice/user-1000.slice/session-163.scope"
+          }
+        ],
+        "loginScope": "session-163.scope",
+        "scopeMembers": [
+          {
+            "pid": 12096,
+            "ppid": 12058,
+            "sessionId": 12058,
+            "startTicks": 18090,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12101,
+            "ppid": 12096,
+            "sessionId": 12101,
+            "startTicks": 18098,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12102,
+            "ppid": 12101,
+            "sessionId": 12101,
+            "startTicks": 18099,
+            "uid": 1000,
+            "comm": "sh",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12107,
+            "ppid": 12102,
+            "sessionId": 12101,
+            "startTicks": 18099,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12109,
+            "ppid": 12107,
+            "sessionId": 12101,
+            "startTicks": 18100,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12110,
+            "ppid": 12109,
+            "sessionId": 12101,
+            "startTicks": 18100,
+            "uid": 0,
+            "comm": "apt-get",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12114,
+            "ppid": 12110,
+            "sessionId": 12101,
+            "startTicks": 18101,
+            "uid": 0,
+            "comm": "sh",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          },
+          {
+            "pid": 12116,
+            "ppid": 12114,
+            "sessionId": 12101,
+            "startTicks": 18101,
+            "uid": 0,
+            "comm": "gate",
+            "cgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope"
+          }
+        ],
+        "sessions": "146  1000 lab         -     10992 manager       -    no -\n149     0 root        -     11299 manager-early -    no -\n163  1000 lab         -     12020 user          -    no -\n167     0 root        -     12214 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+      },
+      "afterLoginEnd": [
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n169     0 root        -     12292 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n170     0 root        -     12363 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n171     0 root        -     12404 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n172     0 root        -     12445 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n173     0 root        -     12486 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n174     0 root        -     12527 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n175     0 root        -     12568 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n176     0 root        -     12609 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n177     0 root        -     12650 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "inactive",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "149     0 root        -     11299 manager-early -    no -\n178     0 root        -     12691 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        }
+      ],
+      "refusedWhileRunning": "Staging install-5f481519527a42679e6d5ce8f5e860a1 remains held (staging-running); install-active blocks retries. Inspect ~/putgd-lab/install-5f481519527a42679e6d5ce8f5e860a1/staging-process.json and staging-result.json; staging session processes are still running: PIDs [12101, 12102, 12107, 12109, 12110, 12114, 12116].",
+      "terminal": {
+        "staging-result.json": {
+          "pid": 12101,
+          "sessionId": 12101,
+          "startTicks": 18098,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+            "unit": "putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+            "device": 30,
+            "inode": 34667,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          },
+          "exitCode": 0,
+          "finished": true
+        }
+      },
+      "recovery": {
+        "pid": 12101,
+        "sessionId": 12101,
+        "startTicks": 18098,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "unit": "putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+          "device": 30,
+          "inode": 34667,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+        },
+        "exitCode": 0,
+        "finished": true,
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 12101,
+          "sessionId": 12101,
+          "startTicks": 18098,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+            "unit": "putgd-staging-install-5f481519527a42679e6d5ce8f5e860a1.scope",
+            "device": 30,
+            "inode": 34667,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          }
+        },
+        "sessionPids": [],
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "state": "staging-finished"
+      },
+      "lockAfter": null
+    },
+    {
+      "case": "setsid-root-survivor",
+      "job": "install-41f39ec238d14bb69f242b5dacbf84f9",
+      "daemon": {
+        "pid": 13862,
+        "uid": 0,
+        "sessionId": 13861,
+        "startTicks": 22879,
+        "cgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope"
+      },
+      "identities": {
+        "wrapper": {
+          "pid": 13844,
+          "ppid": 13843,
+          "sessionId": 13844,
+          "startTicks": 22873,
+          "uid": 1000,
+          "comm": "python3",
+          "cgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope"
+        },
+        "launchChain": [
+          {
+            "pid": 13843,
+            "ppid": 13812,
+            "sessionId": 13812,
+            "startTicks": 22866,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope"
+          },
+          {
+            "pid": 13812,
+            "ppid": 13806,
+            "sessionId": 13812,
+            "startTicks": 22858,
+            "uid": 1000,
+            "comm": "sudo",
+            "cgroup": "0::/user.slice/user-1000.slice/session-197.scope"
+          }
+        ],
+        "loginScope": "session-197.scope",
+        "scopeMembers": [
+          {
+            "pid": 13843,
+            "ppid": 13812,
+            "sessionId": 13812,
+            "startTicks": 22866,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope"
+          },
+          {
+            "pid": 13844,
+            "ppid": 13843,
+            "sessionId": 13844,
+            "startTicks": 22873,
+            "uid": 1000,
+            "comm": "python3",
+            "cgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope"
+          },
+          {
+            "pid": 13862,
+            "ppid": 13844,
+            "sessionId": 13861,
+            "startTicks": 22879,
+            "uid": 0,
+            "comm": "gate",
+            "cgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope"
+          }
+        ],
+        "sessions": "180  1000 lab         -     12737 manager       -    no -\n183     0 root        -     13039 manager-early -    no -\n197  1000 lab         -     13762 user          -    no -\n201     0 root        -     13980 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+      },
+      "loginEnd": {
+        "mode": "stop-session",
+        "command": "systemctl stop session-197.scope",
+        "output": "exit=0",
+        "seconds": 0.200946316999989
+      },
+      "afterLoginEnd": [
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "180  1000 lab         -     12737 manager       -    no -\n183     0 root        -     13039 manager-early -    no -\n203     0 root        -     14059 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "180  1000 lab         -     12737 manager       -    no -\n183     0 root        -     13039 manager-early -    no -\n204     0 root        -     14100 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "180  1000 lab         -     12737 manager       -    no -\n183     0 root        -     13039 manager-early -    no -\n205     0 root        -     14141 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "180  1000 lab         -     12737 manager       -    no -\n183     0 root        -     13039 manager-early -    no -\n206     0 root        -     14182 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        },
+        {
+          "wrapperAlive": true,
+          "launchChainAlive": [
+            false,
+            false
+          ],
+          "loginScope": "inactive",
+          "userManager": "active",
+          "wrapperCgroup": "0::/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+          "scopeEvents": "populated 1",
+          "sessions": "180  1000 lab         -     12737 manager       -    no -\n183     0 root        -     13039 manager-early -    no -\n207     0 root        -     14223 user          -    no -\n 99 60578 gdm-greeter -     7914  manager-early -    no -\n c1 60578 gdm-greeter seat0 7710  greeter       tty1 no -\n"
+        }
+      ],
+      "refusedWhilePopulated": [
+        "Staging install-41f39ec238d14bb69f242b5dacbf84f9 remains held (staging-outcome-unknown); install-active blocks retries. Inspect ~/putgd-lab/install-41f39ec238d14bb69f242b5dacbf84f9/staging-process.json and staging-result.json; staging cgroup remains populated.",
+        "Staging install-41f39ec238d14bb69f242b5dacbf84f9 remains held (staging-outcome-unknown); install-active blocks retries. Inspect ~/putgd-lab/install-41f39ec238d14bb69f242b5dacbf84f9/staging-process.json and staging-result.json; staging cgroup remains populated."
+      ],
+      "eventsObserved": [
+        "populated 1",
+        "gone"
+      ],
+      "recovery": {
+        "finished": true,
+        "state": "staging-abandoned",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 13844,
+          "sessionId": 13844,
+          "startTicks": 22873,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/system.slice/putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+            "unit": "putgd-staging-install-41f39ec238d14bb69f242b5dacbf84f9.scope",
+            "device": 30,
+            "inode": 39623,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "13f4c067-17aa-48dc-99a9-64135f6f933b"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true
+      }
+    }
+  ],
+  "linger": "Linger=no",
+  "source": {
+    "tools/lab/package_install.py": "3fc92b7c0012f118b012cf92cb84111c520e8d8404f23617aae0a0a1e6230436",
+    "tools/lab/package_scope.py": "0980dab78118b6136dfeb734d854c7e0e82e0c40fc615247d4262a874609a5d8",
+    "tools/lab/package_staging.py": "0d8fb816393c5aa0d99d7c0f13ecded17055aaae494e85153627b720a42037ac",
+    "tools/lab/lab.py": "ae6e98b7527102088b59d71d27f07d720762a11da082fbcc2d1beecdb1fb4e70",
+    "tools/lab/staging_acceptance.py": "743d8d20ae7d4ed0e40b8e909bd88d60db14557b6efd510a9a12d7066d27b79f"
+  },
+  "state": {
+    "schemaVersion": 1,
+    "id": "b518d0aa-2a9f-40ac-9438-09fc034118d6",
+    "profile": "gnome-wayland",
+    "guest_user": "lab",
+    "ssh_port": 22220,
+    "vnc_display": 20,
+    "acceleration": "kvm",
+    "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+    "golden_sha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+    "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+    "known_hosts": "/home/user/c780/work/lab-runs/c1/known_hosts",
+    "overlay": "/home/user/c780/work/lab-runs/c1/disk.qcow2",
+    "pid": 81989
+  }
+}
