@@ -859,7 +859,7 @@ def default_destination(ctx):
         saved(ctx, 'captureDefaults.profileId', profile_id, 1)
         ctx.wait(lambda: routing(ctx)['default']['profileId'] == profile_id,
                  'default destination is reflected in the live route')
-        for action in ('region', 'window', 'desktop', 'clipboard', 'edit'):
+        for action in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record'):
             ctx.expect(routing(ctx)[action]['inherited'] is True and
                        routing(ctx)[action]['profileId'] == profile_id,
                        action + ' inherits the selected destination')
@@ -929,6 +929,12 @@ def capture_exceptions(ctx):
         ctx.wait(lambda: routing(ctx)[action]['inherited'], action + ' exception removed')
         ctx.expect(routing(ctx)[action]['profileId'] == routing(ctx)['region' if action == 'record' else 'default']['profileId'],
                    action + ' output inherits again')
+        if action == 'record':
+            ctx.wait(lambda: not any(k in get(ctx)['document']['actions']['record'] for k in ('destination', 'profileId', 'publicationMode')), 'record exception overrides are removed')
+        else:
+            saved(ctx, 'actions.' + action + '.destination', 'default', 1)
+            saved(ctx, 'actions.' + action + '.profileId', None, 1)
+            saved(ctx, 'actions.' + action + '.publicationMode', 'default', 1)
         persisted(ctx)
 
 
