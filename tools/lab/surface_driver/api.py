@@ -21,6 +21,17 @@ Recipes never fork per desktop. Per-desktop differences (tolerances, input
 backend, notification server, browser, known gaps) live in
 `profiles/<desktop-id>.json` and fragments `profiles/<desktop-id>.d/<lane>.json`,
 read through `ctx.profile`.
+
+Trust boundary for live destinations (S3, B2, Proton). The secret-safe
+evidence gate (gate.py) protects what the driver writes against
+misconfiguration and accident: it admits a live context only for a proven
+disposable placement, an exact clean build, that build's pinned catalog and a
+working OCR, and run_recipes refuses contexts it did not admit. It does not
+defend against recipe code. Recipes and fixtures run in the driver's process
+and are reviewed source: one could replace `DriverContext.live_gate`, set
+`_live_admitted`, or move data out through `ctx.call`, `ctx.cli`, `ctx.shell`
+or `ctx.mcp` (which reach the resident and the target directly). Review recipe
+changes for that; never run unreviewed recipe code against a live destination.
 """
 from __future__ import annotations
 
