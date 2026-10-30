@@ -311,20 +311,27 @@ print(json.dumps(ids))
     # Session-manager logout can leave a closing logind session occupied by
     # desktop agents. End that exact recorded login too: otherwise user@ never
     # stops and the watchdog lifetime condition has not actually been tested.
-    end_login="""import json,subprocess,sys
-session=sys.argv[1]
-assert session.isalnum()
-probe=subprocess.run(['loginctl','show-session',session,'--property=User','--value'],text=True,capture_output=True)
-record={'session':session,'alreadyGone':probe.returncode!=0}
-if probe.returncode==0:
-    assert probe.stdout.strip()=='1000'
+    end_logins="""import json,subprocess
+rows=subprocess.check_output(['loginctl','list-sessions','--no-legend'],text=True).splitlines()
+records=[]
+for row in rows:
+    fields=row.split()
+    if len(fields)<3 or fields[1]!='1000':continue
+    session=fields[0];assert session.isalnum()
+    probe=subprocess.run(['loginctl','show-session',session,'-p','User','-p','Class','-p','Type','-p','State','-p','Leader'],text=True,capture_output=True)
+    properties=dict(line.split('=',1) for line in probe.stdout.splitlines() if '=' in line)
+    if properties.get('User')!='1000' or properties.get('Class') in ('manager','manager-early'):continue
+    record={'session':session,'properties':properties}
     record['killExit']=subprocess.run(['loginctl','kill-session','--signal=KILL',session],capture_output=True).returncode
     record['terminateExit']=subprocess.run(['loginctl','terminate-session',session],capture_output=True).returncode
-print(json.dumps(record))
+    records.append(record)
+print(json.dumps(records))
 """
-    ended_logins=[json.loads(root_guest('python3 -c '+shlex.quote(end_login)+' '+shlex.quote(session)+'\n'))
-                  for session in desktop_sessions]
-    save('desktop-login-ended.json',ended_logins)
+    # sudo's scope-launch client can remain in a closing SSH login after the
+    # controller dies. End every exact owned user login, including that client,
+    # without stopping the user manager itself. PID 1 must then stop it normally.
+    ended_logins=json.loads(root_guest('python3 -c '+shlex.quote(end_logins)+'\n'))
+    save('last-login-ended.json',ended_logins)
 
     snapshots=[];inactive_at=None
     deadline=time.monotonic()+90
