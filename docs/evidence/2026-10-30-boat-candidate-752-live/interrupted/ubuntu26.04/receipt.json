@@ -1,0 +1,57 @@
+{
+  "artifact": "ubuntu26.04",
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_vjg77375"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-ubuntu26.04-eda9d5e1835a48ad",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_6c321a2d6598429a8ff77c2851963bce",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:03:51.590Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_vjg77375"
+        },
+        "sandboxId": "bx_vjg77375"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793333148.1383073
+  },
+  "cleanupQualification": "Boat new returned no sandbox ID; absence was observed only during the bounded recovery window. A later create cannot be ruled out; TTL bounds compute and an orphan sweep or --cleanup must reconcile any worker that appears later.",
+  "cleanupVerified": "qualified",
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "error": "Controller cancelled or deadline exceeded: boat",
+  "lateCreateRuledOut": false,
+  "name": "putgd-0c329b0692ca-ubuntu26.04-eda9d5e1835a48ad",
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "eda9d5e1835a48ad",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [
+      "bx_2mxrfaus",
+      "bx_yxz2d7mn"
+    ],
+    "verified": true
+  },
+  "state": "failed",
+  "totalSeconds": 120.581,
+  "ttlSeconds": 10800,
+  "type": "large"
+}

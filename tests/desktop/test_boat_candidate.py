@@ -389,7 +389,8 @@ class CandidateContracts(unittest.TestCase):
                  patch.object(candidate, 'cleanup_workers', return_value=cleanup) as cleaner:
                 result = candidate.build_worker('appimage', args, Path(temporary), ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
-            self.assertTrue(result['cleanupVerified'])
+            self.assertEqual(result['cleanupVerified'], 'qualified')
+            self.assertFalse(result['lateCreateRuledOut'])
             self.assertEqual(result['cleanup']['deletedIds'], ['bx_orphan'])
             self.assertEqual(cleaner.call_args.args, ('putgd-aaaaaaaaaaaa-appimage-0123456789abcdef', None))
             self.assertGreater(cleaner.call_args.kwargs['recovery_seconds'], 119)
@@ -535,7 +536,8 @@ with (root/'lock').open('a') as lock:
                 result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
             self.assertIn('boat exited -15', result['error'])
-            self.assertTrue(result['cleanupVerified'])
+            self.assertEqual(result['cleanupVerified'], 'qualified')
+            self.assertFalse(result['lateCreateRuledOut'])
             self.assertGreaterEqual(clock[0], 30)
             service = json.loads((root / 'service.json').read_text())
             created = [e['create'] for e in service['events'] if 'create' in e]
@@ -588,7 +590,8 @@ with (root/'lock').open('a') as lock:
                 result = candidate.build_worker('appimage', args, root, ('image', 'build', 'release'))
             self.assertEqual(result['state'], 'failed')
             self.assertIn('create timed out', result['error'])
-            self.assertTrue(result['cleanupVerified'])
+            self.assertEqual(result['cleanupVerified'], 'qualified')
+            self.assertFalse(result['lateCreateRuledOut'])
             service = json.loads((root / 'service.json').read_text())
             self.assertEqual(service['sandboxes'], [], result)
             self.assertEqual(result['cleanup']['deletedIds'], ['bx_0'])
@@ -610,6 +613,56 @@ with (root/'lock').open('a') as lock:
             self.assertTrue(result['cleanupVerified'])
             self.assertEqual(json.loads((root / 'service.json').read_text())['sandboxes'], [])
             self.assertLess(clock[0], 10)
+
+    def test_no_id_cannot_rule_out_create_after_cleanup_observation_window(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            clock = [0]
+            def create(argv, **kwargs):
+                clock[0] = 4
+                raise TimeoutError('create timed out without an ID')
+            def sleep(seconds):
+                clock[0] += seconds
+            def listing():
+                # The real service may accept a create after our bounded wait.
+                return ([{'id': 'late', 'name': candidate.worker_name(SHA, 'appimage', 'd' * 16)}]
+                        if clock[0] >= 36 else [])
+            args = argparse.Namespace(commit=SHA, type='large', ttl=10800, run_nonce='d' * 16)
+            with patch.object(candidate, 'run', side_effect=create), \
+                 patch.object(candidate, 'cleanup_orphans', return_value={'verified': True}), \
+                 patch.object(candidate, 'all_sandboxes', side_effect=listing), \
+                 patch.object(candidate, 'CREATE_TIMEOUT', 4), \
+                 patch.object(candidate, 'time', SimpleNamespace(
+                     monotonic=lambda: clock[0], sleep=sleep, time=lambda: 0)):
+                result = candidate.build_worker('appimage', args, Path(temporary), ('image', 'build', 'release'))
+            self.assertEqual(clock[0], 34)
+            self.assertTrue(result['cleanup']['verified'])  # absence was observed
+            self.assertEqual(result['cleanupVerified'], 'qualified')
+            self.assertFalse(result['lateCreateRuledOut'])
+            self.assertIn('no sandbox ID', result['cleanupQualification'])
+            self.assertEqual(result['state'], 'failed')
+            clock[0] = 36
+            self.assertEqual(listing()[0]['id'], 'late')
+
+    def test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / 'out'
+            limits = {'canStart': True, 'maxActiveSandboxes': 10, 'activeSandboxes': 0,
+                      'starts': {p: {'remaining': 10} for p in ('minute', 'hour', 'day')},
+                      'machineTypes': [{'type': 'large', 'available': True}]}
+            snapshots = {'named': [{'name': 'putgd-build-base', 'snapshotId': 'test', 'createdAt': 'test'}]}
+            receipt = {'artifact': 'appimage', 'state': 'passed', 'cleanupVerified': 'qualified',
+                       'name': 'unresolved-create', 'files': []}
+            with patch.object(candidate, 'boat', side_effect=[limits, snapshots]), \
+                 patch.object(candidate, 'load_workflows', return_value=({}, {})), \
+                 patch.object(candidate, 'recipe', return_value=('image', 'script', 'release')), \
+                 patch.object(candidate, 'build_worker', return_value=receipt), \
+                 patch.object(candidate.signal, 'signal'), \
+                 patch.object(candidate, 'safe_print'):
+                code = candidate.main([SHA, '--output', str(output), '--artifact', 'appimage'])
+            manifest = json.loads((output / 'manifest.json').read_text())
+            self.assertEqual(code, 1)
+            self.assertFalse(manifest['passed'])
+            self.assertEqual(manifest['ownedSandboxesRemaining'], ['unresolved-create'])
 
     @unittest.skipUnless(yaml, 'requires python3-yaml')
     def test_fixture_package_has_test_only_summary_and_long_description(self):
