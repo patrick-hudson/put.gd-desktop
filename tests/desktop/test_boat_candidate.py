@@ -185,7 +185,7 @@ class CandidateContracts(unittest.TestCase):
                             'starts': {p: {'remaining': 10} for p in ('minute', 'hour', 'day')},
                             'machineTypes': [{'type': 'large', 'available': True}]}
                 self.assertEqual(command, 'snapshots')
-                return {'named': [{'name': 'putgd-build-base', 'snapshotId': 'snapshot-exact', 'createdAt': 'test'}]}
+                return {'named': [{'name': 'putgd-build-base-v2', 'snapshotId': 'snapshot-exact', 'createdAt': 'test'}]}
             def worker(target, args, root, specification):
                 artifact = root / target / 'artifacts'
                 artifact.mkdir(parents=True)
