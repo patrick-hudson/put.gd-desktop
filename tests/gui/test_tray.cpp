@@ -1,5 +1,6 @@
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/TrayCatalog.h"
+#include "fixtures/CatalogLabels.h"
 #include "fixtures/FakeRecordingBackend.h"
 #include "ui/TrayController.h"
 #include "app/LocalServer.h"
@@ -70,6 +71,16 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ void catalogMessageLabelsPreserveTheirActualFocusPolicy(){
+  for(const auto& name:{"qt_msgbox_label","qt_msgbox_informativelabel"}){
+   QLabel label("Confirmation text");label.setObjectName(name);label.setFocusPolicy(Qt::NoFocus);
+   QCOMPARE(catalogLabelKind(label),QString("label"));
+   label.setFocusPolicy(Qt::StrongFocus);QCOMPARE(catalogLabelKind(label),QString("focusable"));
+   label.setText("<a href='https://example.invalid'>Help</a>");label.setTextInteractionFlags(Qt::LinksAccessibleByMouse);
+   QCOMPARE(catalogLabelKind(label),QString("link"));
+  }
+  QLabel ordinary("Ordinary text");ordinary.setObjectName("ordinaryLabel");ordinary.setFocusPolicy(Qt::NoFocus);QVERIFY(catalogLabelKind(ordinary).isEmpty());
+ }
  void catalogRowsRemainStableAcrossStatesAndSkipSeparators(){
   QMenu menu;
   auto* status=menu.addAction("Uploading 1 file…");status->setObjectName("trayUploadStatus");status->setVisible(false);
@@ -85,7 +96,7 @@ private slots:
   }
   QCOMPARE(idle->first().toObject()["name"].toString(),QString("region"));
   QCOMPARE(idle->last().toObject()["text"].toString(),QString("Capture region && edit: Shared link"));
-  QVERIFY(!idle->at(1).toObject()["name"].toString().startsWith("trayMenuRow"));
+  QVERIFY(idle->at(1).toObject()["name"].toString().startsWith("trayMenuAction-"));
   about->setObjectName("explicitAbout");const auto named=take();QVERIFY(named);QCOMPARE(named->at(2).toObject()["name"].toString(),QString("explicitAbout"));
  }
  void catalogProviderReleaseBeforeOrAfterUploadCompletesExactlyOnce(){
