@@ -131,7 +131,7 @@ def ensure_accessible(ctx):
     ctx.frame('accessibility-after-reopen')
 
 
-def click(ctx, control):
+def click(ctx, control, *, after_window=None):
     """Resolve each click anew, including scroll/status/disclosure layout changes."""
     options = ctx.profile.get('settings', {})
     if not options.get('foreground_script'):
@@ -178,7 +178,15 @@ def click(ctx, control):
                                                    'point': point, 'geometry': geometry}, sort_keys=True))
     observe(ctx, geometry)
     ctx.click_at(*point)
+    if after_window:
+        def ready():
+            try:
+                return ctx.geometry(after_window)
+            except RecipeBlocked:
+                return None
+        geometry = ctx.wait(ready, 'owned dialog opened by ' + control)
     witness = observe(ctx, geometry)
+    ctx.expect(witness['pid'] == owner['pid'], 'input stayed in the owned Settings helper')
     ctx.expect(abs(witness['x'] - point[0]) <= 1 and abs(witness['y'] - point[1]) <= 1,
                'pointer reached the live Settings control')
     if query['role'] == 'text':

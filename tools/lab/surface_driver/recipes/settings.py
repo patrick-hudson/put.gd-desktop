@@ -463,7 +463,7 @@ def shortcut_backspace(ctx):
 @recipe('advanced.desktop-support')
 def desktop_support(ctx):
     opened(ctx, 3)
-    result(ctx, ctx.view('ui.diagnostics', {'action': 'setDesktopDetails', 'enabled': False}))
+    call(ctx, 'ui.diagnostics', {'action': 'setDesktopDetails', 'enabled': False})
     frame(ctx, 'before', 3)
     live_click(ctx, 'desktopSupportDetailsToggle')
     ctx.wait(lambda: call(ctx, 'ui.diagnostics', {'action': 'inspect'})['desktopSupport']['expanded'],
@@ -511,7 +511,7 @@ def package_frame(ctx, label):
 def package_options(ctx):
     opened(ctx, 3)
     frame(ctx, 'before', 3)
-    live_click(ctx, 'createDiagnosticsPackage')
+    live_click(ctx, 'createDiagnosticsPackage', after_window='diagnostics')
     ctx.use_catalog('diagnostics', '58-diagnostics-package')
     ctx.wait(lambda: package(ctx).get('open') and not package(ctx).get('previewing'), 'package opened by real click')
     package_frame(ctx, 'before-options')
