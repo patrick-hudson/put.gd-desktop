@@ -43,6 +43,8 @@ def _state(ctx):
 
 
 def _frame(ctx, label, reference=LIST, window='history'):
+    if window:
+        _wait_window(ctx, window)
     ctx.frame(label, window=window, reference=reference)
 
 
@@ -91,7 +93,9 @@ def _wait_window(ctx, window):
     def observed():
         try:
             return ctx.geometry(window)
-        except RecipeBlocked:
+        except RecipeBlocked as error:
+            if 'live window match is missing or ambiguous' not in error.reason:
+                raise
             return None
     try:
         return ctx.wait(observed, 'live ' + window + ' window settles')

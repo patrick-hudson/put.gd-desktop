@@ -601,12 +601,21 @@ class HistoryRecipeTests(unittest.TestCase):
         def geometry(window):
             calls.append(window)
             if len(calls) < 3:
-                raise RecipeBlocked('new dialog not mapped yet')
+                raise RecipeBlocked('geometry: RuntimeError: live window match is missing or ambiguous (0 matches)')
             return ctx.window
         ctx.geometry = geometry
         self.assertEqual(history._wait_window(ctx, 'historyConfirmAction'), ctx.window)
         self.assertEqual(calls, ['historyConfirmAction'] * 3)
         self.assertFalse(ctx.events)
+
+    def test_window_wait_preserves_unavailable_native_probe_errors(self):
+        ctx = FakeContext()
+        def geometry(window):
+            raise RecipeBlocked('geometry: RuntimeError: fresh accessibility probe timed out')
+        ctx.geometry = geometry
+        with self.assertRaisesRegex(RecipeBlocked, 'fresh accessibility probe timed out'):
+            history._frame(ctx, 'before')
+        self.assertFalse(ctx.frames)
 
     def test_cancel_all_targets_the_counted_button_without_matching_dialog_title(self):
         class CountedContext(FakeContext):
