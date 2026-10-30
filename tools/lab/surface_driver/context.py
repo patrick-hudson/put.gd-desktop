@@ -119,7 +119,7 @@ class DriverContext(Context):
     def _probe(self, name, query):
         self._check_time()
         compositor = self.profile.get('compositor')
-        if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows'):
+        if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows','resize'):
             # Wayland AT-SPI extents are window-relative: the compositor witness
             # places them on the desktop and answers focus/hit-tests.
             query = dict(query, compositor=compositor)
@@ -128,7 +128,21 @@ class DriverContext(Context):
         script = 'python3 - '+shlex.quote(json.dumps({'probe':name,'query':query}))+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
         persistent = getattr(self.target, 'probe', None)
         if persistent:
-            result = persistent(name, query, source, timeout=min(15,max(.1,self._deadline-time.monotonic())))
+            remaining = self._deadline-time.monotonic()
+            if remaining <= 0:
+                raise RecipeFailed('recipe deadline exceeded before '+name+' probe; no request sent')
+            try:
+                result = persistent(name, query, source, timeout=min(15,remaining))
+            except RecipeBlocked as error:
+                if remaining < 15 and time.monotonic() >= self._deadline:
+                    raise RecipeBlocked('recipe deadline exhausted during '+name+' probe; '+error.reason) from error
+                raise
+            except RecipeFailed:
+                # SIGALRM can beat the transport's own deadline. Keep the
+                # original verdict, with the outstanding request's state.
+                if detail := getattr(self.target,'_probe_failure',None):
+                    self.note('probe interruption: '+detail)
+                raise
         else:
             result = self.shell(script)
             if result['returncode']:
@@ -180,7 +194,7 @@ class DriverContext(Context):
         """Read-only shell window inventory, scoped to the private family by default."""
         return self._probe('windows', {'owned': True, **(query or {})})
 
-    def focus(self, window, raise_window=True):
+    def focus(self, window, raise_window=False):
         """Select an input target and verify/optionally raise it before input."""
         owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
         self._current_window, self._popup = owner, None
@@ -261,6 +275,9 @@ class DriverContext(Context):
             # A just-mapped target may not be active yet (#750): the probe may
             # activate it once if the foreground is 0 or the same private process.
             query['settle'] = True
+            # NativeRegionAccessible's focused bit is the capture helper's
+            # successful keyboard-grab reply, rather than X input focus.
+            query['keyboard_grab'] = role == 'region'
         if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
@@ -390,14 +407,21 @@ class DriverContext(Context):
         self._guard(point=self._global_point(x,y,head))
         self.target.pointer(x,y,w,h,head=head)
 
-    def drag(self,start,end,button='left',steps=12,head=None):
+    def drag(self,start,end,button='left',steps=12,head=None,*,require_resize=False):
         if steps < 1:
             raise ValueError('drag steps must be positive')
         head = self._input_head if head is None else head
         w,h = self._dimensions(head)
         if any(not 0 <= x < w or not 0 <= y < h for x,y in (start,end)):
             raise RecipeBlocked('drag point outside selected head')
+        resize_before = resize_target = None
+        if require_resize:
+            if self.profile.get('compositor',{}).get('kind') != 'gnome-lab-witness':
+                raise RecipeBlocked('resize-start witness unavailable for this compositor')
+            resize_target = self.geometry(self._current_window)
         witness = self._guard(point=self._global_point(*start,head))
+        if require_resize:
+            resize_before = self._probe('resize', {})
         unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
         last = start
         with armed(self.review):
@@ -413,6 +437,22 @@ class DriverContext(Context):
                     self.target.pointer(x,y,w,h,head=head)
                     last = (x,y)
                     time.sleep(.025)
+                    if require_resize and step == 1:
+                        from .probe import resize_started
+                        deadline = min(self._deadline, time.monotonic()+2)
+                        while True:
+                            after = self._probe('resize', {})
+                            try:
+                                proof = resize_started(resize_before, after, resize_target)
+                            except (RuntimeError, KeyError, TypeError) as error:
+                                raise RecipeBlocked('resize-start witness invalid: '+str(error)) from error
+                            if proof:
+                                self.note('resize-start '+json.dumps(dict(proof,epoch=after['epoch']),sort_keys=True))
+                                break
+                            if time.monotonic() >= deadline:
+                                raise RecipeBlocked('resize-start not witnessed: Mutter emitted no new interactive resize begin '
+                                                    'for window '+str(resize_target['window_id'])+' after guarded press and first motion')
+                            time.sleep(.05)
             finally:
                 if self._press_open or not self.target.physical:
                     self._release_pointer(last,w,h,button,head)
@@ -585,10 +625,30 @@ asyncio.run(main())
     def click_accessible(self, query, button='left'):
         return self._accessible_pointer(query,button)
 
+    def double_click_accessible(self, query, button='left'):
+        self._click_count = 2
+        try:
+            return self._accessible_pointer(query,button)
+        finally:
+            self._click_count = 1
+
+    def scroll_accessible(self, query, clicks):
+        if type(clicks) is not int:
+            raise ValueError('desktop wheel clicks must be an integer')
+        return self._accessible_pointer(query,None,wheel=clicks)
+
     def hover_accessible(self, query):
         return self._accessible_pointer(query,None)
 
-    def _accessible_pointer(self, query, button, node=None):
+    def _desktop_guard(self, node, point):
+        witness = self._probe('foreground', {'desktop_node':node,'point':point,
+                              'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
+                              'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
+                              'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
+        if not witness.get('ok'):
+            raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
+
+    def _accessible_pointer(self, query, button, node=None, *, wheel=None):
         """Real pointer input to one visible desktop node, with a fresh hit-test.
 
         This is for desktop-drawn content (notifications/tray/browser), not a
@@ -610,17 +670,17 @@ asyncio.run(main())
             node = nodes[0]
         x,y,w,h = node['rect']
         point = (x+w/2,y+h/2)
-        witness = self._probe('foreground', {'desktop_node':node,'point':point,
-                              'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
-                              'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
-                              'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
-        if not witness.get('ok'):
-            raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
+        self._desktop_guard(node,point)
         mapped = self._map_geometry({'x':point[0],'y':point[1], 'coordinate_space':
                                       'framebuffer' if self.profile['session']=='x11' else 'logical'})
         scale = mapped.get('scale',1)
         px,py = (round((point[i]-mapped.get(('screen_x','screen_y')[i],0))*scale) for i in (0,1))
-        if button is None:
+        if wheel is not None:
+            for index in range(abs(wheel)):
+                if index:
+                    self._desktop_guard(node,point)
+                self._pointer_click(px,py,'wheel-up' if wheel>0 else 'wheel-down',mapped['head'],guarded=True)
+        elif button is None:
             w,h = self._dimensions(mapped['head'])
             if not 0 <= px < w or not 0 <= py < h:
                 raise RecipeBlocked('desktop hover point outside selected head')
