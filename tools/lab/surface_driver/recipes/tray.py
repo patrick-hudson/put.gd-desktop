@@ -1,8 +1,7 @@
 """Real-input tray/notification/shortcut recipes; never activate a D-Bus action.
 
 Desktop node selectors live in profile fragments. AT-SPI is an observation
-channel only: clicks use its live screen rectangle, never doAction(). Synthetic
-clipboard data comes from the existing independent desktop fixture's key path.
+channel only: clicks use its live screen rectangle, never doAction(). Synthetic clipboard owners and settings rollback come from core fixtures.
 The local scenarios mirror tray_progress.py's regular-file archive obstruction.
 """
 from __future__ import annotations
@@ -44,6 +43,8 @@ def _nodes(ctx, name, role=None):
     query = {'name': name}
     if role:
         query['role'] = role
+    if menu_policy:
+        query['application'] = _profile(ctx)['icon']['application']
     def on_screen(node):
         rect = node.get('rect', node.get('bounds'))
         if not rect:
@@ -84,8 +85,9 @@ def _point(ctx, node):
 # through live shell nodes; catalog rectangles never authorize desktop input.
 CONTROLS = {
     'trayOutputSummary': 'Local only', 'trayChangeOutput': 'Change output…',
-    **LABELS, 'edit-sources': 'Edit image', 'edit-clipboard': 'Edit clipboard image',
-    'edit-file': 'Edit an image file…', 'history': 'History',
+    **LABELS, **{'trayOutput' + a: label + ': Local only' for a, label in LABELS.items()},
+    'trayCancelUpload': 'Cancel upload', 'edit-sources': 'Edit image', 'trayMenuAction-3deabb1a41ce13d8': 'Edit clipboard image',
+    'trayMenuAction-672f6057ec40f3b4': 'Edit an image file…', 'history': 'History',
     'destinations': 'Destinations', 'preferences': 'Settings',
     'trayMenuAction-362db4ee39b59aea': 'About put.gd',
     'trayMenuAction-33617f924b4aa7fb': 'Quit put.gd',
@@ -151,10 +153,13 @@ def _menu(ctx):
 
 
 def _menu_frame(ctx, label, capture='full'):
-    # Use the capture name only once the catalog lane supplies it in a profile.
-    # Desktop-rendered menus have no meaningful pixel equality with Qt QMenu.
+    # Keep the full desktop, including the shell menu and panel icon. Passing
+    # reference= would crop the current Qt window and hide the interaction.
+    # Catalog identity is a review hint, never a desktop pixel comparator.
     reference = _profile(ctx).get('references', {}).get(capture)
-    ctx.frame(label, reference=reference)
+    ctx.frame(label)
+    if reference:
+        ctx.note('desktop catalog reference=' + reference)
 
 
 def _patch(ctx, patch):
@@ -302,7 +307,7 @@ def output_submenu(ctx):
         try:
             _press(ctx, 'trayOutputSummary', 'menu item')
             for action, label in LABELS.items():
-                node = _node(ctx, label + ': Local only', 'menu item')
+                node = _node(ctx, CONTROLS['trayOutput' + action], 'menu item')
                 if 'enabled' not in node:
                     ctx.blocked('AT-SPI needs the enabled state to prove informational output rows are disabled', 670)
                 ctx.expect(node.get('enabled') is False, 'output row is informational: ' + action)
@@ -317,7 +322,7 @@ def edit_file(ctx):
     _menu(ctx)
     _press(ctx, 'edit-sources', 'menu item')
     _menu_frame(ctx, 'before')
-    _press(ctx, 'edit-file', 'menu item')
+    _press(ctx, 'trayMenuAction-672f6057ec40f3b4', 'menu item')
     try:
         state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
         ctx.expect(state.get('open'), 'real tray input opened the image chooser')
@@ -391,7 +396,7 @@ def edit_clipboard(ctx):
         _menu(ctx)
         _press(ctx, 'edit-sources', 'menu item')
         _menu_frame(ctx, 'before')
-        _press(ctx, 'edit-clipboard', 'menu item')
+        _press(ctx, 'trayMenuAction-3deabb1a41ce13d8', 'menu item')
         operation = _new_operation(ctx, previous, 'edit')
         operation = ctx.wait(lambda: (o if (o := ctx.call('operation.inspect', {'id': operation['id']}))
                                       ['state'] == 'editing' else None), 'clipboard image editor')
@@ -597,10 +602,10 @@ BLOCKED = {
     'shortcut.locked-session': 'Needs core-owned visible session lock/unlock lifecycle and protected login handling',
     'shortcut.layout-change': 'Needs isolated keyboard-layout change/restore and native rebinding witness',
     'notification.completed-with-problem': 'Needs offline mixed-success batch fixture with inspected per-item outcomes',
-    'notification.upload-failed': 'Needs offline failed/interrupted upload fixture with retained local-copy variants',
+    'notification.upload-failed': 'tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants',
     'notification.action-rejected': 'Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus',
-    'notification.recording-stopped': 'Needs controlled recording byte-budget fixture to trigger resident budgetStopped signal',
-    'notification.incomplete-uploads': 'Needs retained incomplete-upload journal fixture to trigger cleanup notice safely',
+    'notification.recording-stopped': 'recording-budget-stop is available; drawn popup/recording-stop identity correlation awaits desktop worker (#670)',
+    'notification.incomplete-uploads': 'upload-incomplete is available; drawn cleanup-notice identity correlation awaits desktop worker (#670)',
     'notification.in-flight-limit': 'Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts',
 }
 

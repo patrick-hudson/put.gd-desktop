@@ -355,7 +355,8 @@ class TrayRecipesTest(unittest.TestCase):
         ctx = FakeContext()
         ctx.profile['tray']['references'] = {'full': '00-tray-menu'}
         tray.context_menu(ctx)
-        self.assertIn(('frame', 'after', '00-tray-menu'), ctx.events)
+        self.assertIn(('frame', 'after', None), ctx.events)
+        self.assertIn(('note', 'desktop catalog reference=00-tray-menu'), ctx.events)
 
     def test_hidden_notification_candidates_are_not_pointer_targets(self):
         ctx = FakeContext()
@@ -388,13 +389,14 @@ class TrayRecipesTest(unittest.TestCase):
         self.assertIn(('fixture', 'events.clipboard'), ctx.events)
         self.assertFalse(any(e[0] == 'shell' and 'mktemp' in e[1] for e in ctx.events))
 
-    def test_catalog_rows_are_the_published_stable_ids(self):
-        path = ROOT / 'docs/evidence/catalog-tray-confirm/2026-10-29/catalog/00-tray-menu-idle.controls.json'
-        rows = json.loads(path.read_text())['controls']
-        ids = {r['name'] for r in rows}
-        for key in ('trayOutputSummary', 'trayChangeOutput', *tray.LABELS, 'history', 'preferences'):
-            self.assertIn(key, ids)
-            self.assertIn(key, tray.CONTROLS)
+    def test_catalog_ids_match_published_action_identity_rules(self):
+        import hashlib
+        for label in ('About put.gd', 'Quit put.gd', 'Edit clipboard image', 'Edit an image file…'):
+            identity = 'trayMenuAction-' + hashlib.sha256(label.encode()).hexdigest()[:16]
+            self.assertEqual(tray.CONTROLS[identity], label)
+        source = (ROOT / 'src/ui/TrayController.cpp').read_text()
+        for identity in ('trayOutputSummary', 'trayChangeOutput', 'trayCancelUpload'):
+            self.assertIn('setObjectName("' + identity + '")', source)
 
     def test_about_dialog_is_closed_after_its_evidence_frame(self):
         ctx = FakeContext()
