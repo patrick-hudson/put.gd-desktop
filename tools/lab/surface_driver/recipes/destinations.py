@@ -441,7 +441,10 @@ def unlock_credentials(ctx):
     def available():
         return ctx.call('setup.credentialHint', {'profileId': identity,
                         'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available']
-    ctx.expect(not available(), 'new profile identity starts with no cached credentials')
+    if available():
+        ctx.blocked('The loopback fixture pre-unlocks its keychain reference; cache identity is the '
+                    'reference, not the profile ID. Need an uncached guest fixture for explicit unlock (#666).',
+                    issue=666)
     # Keychain profiles can be ready-to-test while still locked, so their
     # header Add credentials action is hidden. Scroll to the real unlock row.
     geometry = ctx.geometry('destinations')
@@ -457,8 +460,8 @@ def unlock_credentials(ctx):
 @recipe('destinations.test', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def test_connection(ctx):
-    # Unique profile identity exercises the GUI unlock before a real loopback
-    # test; fixture setup is never counted as the tested interaction.
+    # The fixture pre-unlocks the owned reference. That setup is never
+    # counted as a GUI unlock or connection-test interaction.
     _, profiles = _open(ctx, saved_credentials=True)
     # Keychain profiles can be ready-to-test while still locked, so their
     # header Add credentials action is hidden. Scroll to the real unlock row.
@@ -466,10 +469,9 @@ def test_connection(ctx):
     ctx.scroll(geometry['x'] + geometry['width'] - 32,
                geometry['y'] + geometry['height']//2, -30)
     ctx.use_catalog('destinations', '09-stored-credential-hint')
-    ctx.click('text:Unlock saved credentials', window='destinations')
-    ctx.wait(lambda: ctx.call('setup.credentialHint', {'profileId': profiles[0]['id'],
-                     'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available'],
-             'fake credentials unlocked')
+    ctx.expect(ctx.call('setup.credentialHint', {'profileId': profiles[0]['id'],
+               'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available'],
+               'loopback fixture supplied cached fake credentials')
     ctx.click('testDestination', window='destinations')
     ctx.wait(lambda: 'Connection successful.' in _state(ctx, 'destinationStatus', 'text'),
              'loopback test upload, link and cleanup succeeded', timeout=45)

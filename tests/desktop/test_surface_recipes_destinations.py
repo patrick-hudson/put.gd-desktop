@@ -50,6 +50,7 @@ class FakeContext(Context):
         self.assert_event('fixture', name)
         if name != 'destinations':
             raise RecipeBlocked('missing fixture')
+        self.available = True  # Real loopback fixture pre-unlocks this reference.
         return deepcopy(self.f)
 
     def assert_event(self, *values):
@@ -274,7 +275,7 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(len(actual), len(set(actual)))
 
     def test_all_recipes_input_assertions_and_referenced_frames(self):
-        blocked = {'credential_lifecycle'}
+        blocked = {'credential_lifecycle', 'unlock_credentials'}
         for r in self.recipes():
             with self.subTest(recipe=r.name):
                 ctx = self.context()
@@ -361,6 +362,14 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(caught.exception.issue, 666)
         self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
         self.assertFalse(any(e[0] == 'shell' and 'fake-input' in e[1] for e in ctx.events))
+
+    def test_preunlocked_reference_cannot_count_as_explicit_gui_unlock(self):
+        ctx = self.context()
+        with self.assertRaises(RecipeBlocked) as caught:
+            lane.unlock_credentials(ctx)
+        self.assertEqual(caught.exception.issue, 666)
+        self.assertIn('pre-unlocks', str(caught.exception))
+        self.assertFalse(any(e[:2] == ('click', 'text:Unlock saved credentials') for e in ctx.events))
 
     def test_lane_runs_with_local_destination(self):
         self.assertTrue(all(r.destinations == ('local',) for r in self.recipes()))
