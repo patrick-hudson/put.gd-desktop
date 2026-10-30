@@ -806,6 +806,7 @@ def reset_limits(ctx):
         else:
             ctx.click('text:Reset limits', window='settingsConfirm')
         ctx.wait(lambda: not visible(ctx, '^Reset limits to defaults$'), 'reset confirmation closes')
+        result(ctx, ctx.view('ui.show', {'view': 'settings'}))
         if answer:
             ctx.expect(persisted(ctx) == baseline and get(ctx)['document'] == baseline,
                        'safe default and Escape preserve all settings')
@@ -823,6 +824,11 @@ def reset_limits(ctx):
 def reload_confirmation(ctx):
     fixture = ctx.fixture('settings-conflict')
     opened(ctx, 3)
+    call(ctx, 'ui.diagnostics', {'action': 'setDesktopDetails', 'enabled': False})
+    live_click(ctx, 'desktopSupportDetailsToggle')
+    ctx.wait(lambda: call(ctx, 'ui.diagnostics', {'action': 'inspect'})['desktopSupport']['expanded'],
+             'configuration actions are disclosed')
+    ctx.use_catalog('settings', 'settings-desktop-support-expanded')
     original = get(ctx)['document']['preferences']['notifications']
     # An invalid edit preserves a draft while the external revision arrives.
     replace(ctx, 'recentActivityLimit', 'not-a-number')
@@ -834,6 +840,7 @@ def reload_confirmation(ctx):
     ctx.frame('reload-before', window='settingsConfirm', reference='53-reload-confirm')
     ctx.keys('Esc')
     ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload canceled')
+    result(ctx, ctx.view('ui.show', {'view': 'settings'}))
     scroll_click(ctx, 'reloadSettings', after_window='settingsConfirm')
     ctx.focus('settingsConfirm')
     ctx.click('text:Reload from file', window='settingsConfirm')
