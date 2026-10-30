@@ -7,6 +7,11 @@ import json
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+import base64
+import hashlib
+from types import SimpleNamespace
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -31,6 +36,10 @@ class FakeContext(Context):
     profile = {}
 
     def __init__(self, heads=1):
+        self._output = tempfile.TemporaryDirectory(prefix="selectors-unit-")
+        self.out = Path(self._output.name) / "evidence"
+        self.out.mkdir()
+        self.target = SimpleNamespace(root="/tmp/selectors-unit", execute=lambda script, timeout=60: FakeContext.shell(self, script, timeout))
         self.pattern_commands = []
         self.env = {"command": self.pattern_commands.append, "screens": [[0, 0, 1280, 800], [1280, 0, 1024, 768]][:heads],
                     "output_dir": "/tmp/sel-artifacts", "record_helper": "/opt/test/putgd-record"}
@@ -47,7 +56,7 @@ class FakeContext(Context):
         self.head = 0
         self.question = False
         self.audio_intent = False
-        self.bar = dict(x=170, y=650, width=850, height=100, scale=1)
+        self.bar = dict(x=170, y=650, width=850, height=100, scale=1, pid=4242)
         self.frames = []
         self.inputs = []
         self.calls = []
@@ -58,6 +67,8 @@ class FakeContext(Context):
         self.last_size = None
 
     def fixture(self, name):
+        if name == "loopback-s3":
+            return {"isolated": True, "loopback": True, "address": "127.0.0.1", "profile_id": "synthetic-loopback"}
         assert name == "selector-desktop"
         return self.env
 
@@ -86,8 +97,10 @@ class FakeContext(Context):
         if method == "settings.patch":
             assert params["expectedRevision"] == str(self.revision), "stale configuration write"
             for route in params["patch"].get("actions", {}).values():
-                if "profileId" in route:
+                if "profileId" in route and route.get("destination") == "local":
                     assert route["profileId"] is None, "local profile reference must be JSON null"
+                if route.get("destination") == "upload":
+                    assert route.get("profileId") == "synthetic-loopback", "only the isolated fixture may upload"
             merge(self.document, copy.deepcopy(params["patch"]))
             self.revision += 1
             return {"acceptedRevision": str(self.revision)}
@@ -149,6 +162,9 @@ class FakeContext(Context):
     def accessible(self, query):
         if self.no_accessibility:
             return []
+        if self.surface == "format" and query.get("name") in selectors.FORMAT_LABELS.values():
+            return [{"name": query["name"], "role": "list item", "pid": 4242,
+                     "enabled": True, "visible": True, "showing": True, "rect": [30, 40, 200, 40]}]
         if query["name"] == "Discard this recording?":
             return [{"name": query["name"], "rect": [10, 10, 300, 24] if self.question else [0, 0, 0, 0]}]
         if query["name"] != {"region": "Capture region", "recsel": "Recording region"}.get(self.surface):
@@ -215,6 +231,13 @@ class FakeContext(Context):
         else:
             raise AssertionError(control)
 
+    def click_accessible(self, query, button="left"):
+        assert self.surface == "format" and query["owned"] and query["pid"] == 4242 and query["role"] == "list item"
+        self.inputs.append(("accessible_click", query["name"]))
+        fmt, codec = next(pair for pair, label in selectors.FORMAT_LABELS.items() if label == query["name"])
+        self._record()["config"].update(format=fmt, codec=codec, audio={"system": self.audio_intent and fmt not in ("gif", "webp")})
+        self.surface = "bar"
+
     def _cancel(self):
         if self.surface == "recsel":
             self._record().update(state="cancelled", selecting=False)
@@ -250,7 +273,8 @@ class FakeContext(Context):
             op = self.operations[self.active]
             op["state"] = "editing" if op["action"] == "edit" else "completed"
             self.last_size = rect[2:]
-            op["items"] = [{"local": {"status": "saved", "path": "/tmp/synthetic.png"}, "uploadStatus": "not_requested"}]
+            uploaded = self.document["actions"]["region"]["destination"] == "upload"
+            op["items"] = [{"local": {"status": "saved", "path": "/tmp/synthetic.png"}, "uploadStatus": "uploaded" if uploaded else "not_requested"}]
             self.surface = "editor" if op["action"] == "edit" else "history"
 
     def keys(self, *sequence):
@@ -300,6 +324,11 @@ class FakeContext(Context):
                 self.selection[axis] += distance * (1 if direction in ("Right", "Down") else -1)
 
     def shell(self, script, timeout=60):
+        if "SD_RETAIN" in script:
+            data = b"\0\0\0\x10ftypunit" if "if 'mp4'==" in script else b"\x89PNG\r\n\x1a\nunit"
+            if "SD_RETAIN_BYTES" in script:
+                return {"returncode": 0, "stdout": base64.b64encode(data).decode()}
+            return {"returncode": 0, "stdout": json.dumps({"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})}
         if "--motion" in script:
             return {"returncode": 0, "stdout": f"motion={self.motion}\n"}
         if "struct.unpack" in script:
@@ -343,7 +372,7 @@ class SelectorRecipes(unittest.TestCase):
             with self.subTest(recipe=item.name):
                 heads = 2 if item.function in (selectors.region_heads, selectors.recording_keyboard) else 1
                 ctx = FakeContext(heads)
-                if item.function in (selectors.region_upload, selectors.bar_hidden):
+                if item.function == selectors.bar_hidden:
                     with self.assertRaises(RecipeBlocked):
                         item.function(ctx)
                 else:
@@ -353,6 +382,142 @@ class SelectorRecipes(unittest.TestCase):
                 self.assertEqual(ctx.document, ctx.original)
                 forbidden = {"recording.start", "recording.pause", "recording.resume", "recording.stop", "recording.select", "recording.overlay", "action.invoke", "editor.open"}
                 self.assertFalse(forbidden & {m for m, _ in ctx.calls})
+
+    def test_upload_requires_isolated_loopback_before_selector_input(self):
+        ctx = FakeContext()
+        original = ctx.fixture
+        ctx.fixture = lambda name: ({"isolated": True, "loopback": True, "address": "example.test"}
+                                    if name == "loopback-s3" else original(name))
+        with self.assertRaisesRegex(RecipeFailed, "isolated guest loopback"):
+            selectors.region_upload(ctx)
+        self.assertFalse(ctx.inputs)
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_functional_artifact_transport_must_match_its_hash(self):
+        ctx = FakeContext()
+        ctx.shell = lambda *a, **k: {"returncode": 0, "stdout": json.dumps({"data": "dW5pdA==", "bytes": 4, "sha256": "0" * 64})}
+        with self.assertRaisesRegex(RecipeFailed, "transport hash"):
+            selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertFalse(ctx.out.with_name(ctx.out.name + "-functional").exists())
+
+    def test_functional_payload_never_enters_command_evidence(self):
+        ctx = FakeContext()
+        calls = []
+        original = ctx.shell
+        def metadata(script, timeout=60):
+            calls.append(script)
+            return original(script, timeout)
+        ctx.shell = metadata
+        selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("SD_RETAIN_BYTES", calls[0])
+        self.assertFalse((ctx.out / "functional").exists())
+        self.assertTrue(list(ctx.out.with_name(ctx.out.name + "-functional").glob("*.png")))
+
+    def test_original_artifact_export_refuses_physical_targets(self):
+        ctx = FakeContext()
+        ctx.target.physical = object()
+        ctx.shell = lambda *a, **k: self.fail("physical payloads must be refused before reading")
+        with self.assertRaises(RecipeBlocked) as caught:
+            selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertEqual(caught.exception.issue, 717)
+
+    def test_desktop_declaration_is_limited_to_local_disposable_guests(self):
+        for placement, destination, guest, allowed in (("boat", "local", "unit", True),
+                                                     ("guest", "local", "unit", True),
+                                                     ("native", "local", "unit", False),
+                                                     ("boat", "s3", "unit", False),
+                                                     ("boat", "local", None, False)):
+            with self.subTest(placement=placement, destination=destination, guest=guest):
+                ctx = FakeContext()
+                ctx.placement, ctx.destination, ctx.profile = placement, destination, {"guest": guest}
+                frames = []
+                ctx.frame = lambda label, **options: frames.append(options)
+                selectors._frame(ctx, "synthetic")
+                self.assertEqual(bool(frames[0].get("desktop_safe")), allowed)
+
+    def test_wayland_preparation_uses_core_consent_and_closes_monitor(self):
+        ctx = FakeContext()
+        ctx.profile = {"session": "wayland"}
+        events = []
+        class OwnedScope:
+            def __init__(self, target):
+                self.ctx = target
+                self.initialized = False
+            def initialize(self):
+                self.initialized = True
+                events.append("initialize")
+            def close(self):
+                events.append("cleanup")
+                return []
+        def start(scope):
+            self.assertTrue(scope.initialized, "the monitor must not create a directory before Scope.initialize")
+            events.append("monitor-before-prepare")
+            return object()
+        def ready(scope, rid, watch, timeout):
+            self.assertEqual(timeout, 45)
+            self.assertTrue(any(m == "recording.prepare" for m, _ in ctx.calls))
+            events.append("core-consent-ready")
+            return scope.ctx.recordings[rid]
+        with patch.object(selectors, "Scope", OwnedScope), patch.object(selectors.consent, "start", start), patch.object(selectors.consent, "await_ready", ready):
+            with selectors._local(ctx):
+                rid = selectors._open_record(ctx, rect=[320, 200, 640, 400])
+                selectors._cancel_record(ctx, rid)
+        self.assertEqual(events, ["initialize", "monitor-before-prepare", "core-consent-ready", "cleanup"])
+        self.assertIsNone(ctx._selectors_consent)
+        self.assertFalse(ctx.inputs)
+
+    def test_selector_mapping_wait_retries_only_absent_windows(self):
+        ctx = FakeContext()
+        calls = []
+        def focus(*args, **kwargs):
+            calls.append(args[0])
+            if len(calls) == 1:
+                raise RecipeBlocked("geometry: RuntimeError: live window match is missing or ambiguous (0 matches)")
+        ctx.focus = focus
+        ctx.wait = lambda predicate, *a, **k: predicate() or predicate()
+        selectors._focus_selector(ctx, "region")
+        self.assertEqual(calls, ["region", "region"])
+        calls.clear()
+        def ambiguous(*args, **kwargs):
+            calls.append(args[0])
+            raise RecipeBlocked("geometry: RuntimeError: live window match is missing or ambiguous (2 matches)")
+        ctx.focus = ambiguous
+        with self.assertRaisesRegex(RecipeBlocked, "2 matches"):
+            selectors._focus_selector(ctx, "recsel")
+        self.assertEqual(calls, ["recsel"])
+
+    def test_format_popup_uses_owned_item_clicks_without_parent_keys(self):
+        ctx = FakeContext()
+        selectors.bar_options(ctx)
+        self.assertEqual(len([i for i in ctx.inputs if i[0] == "accessible_click"]), 6)
+        self.assertFalse(any(i[0] == "key" for i in ctx.inputs))
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_discard_buttons_do_not_depend_on_keyboard_focus(self):
+        ctx = FakeContext()
+        ctx.keys = lambda *a: self.fail("pointer discard coverage must not depend on Escape")
+        selectors.bar_discard(ctx)
+        self.assertTrue(any(i[:2] == ("click", "keepRecording") for i in ctx.inputs))
+        self.assertTrue(any(i[:2] == ("click", "discardRecording") for i in ctx.inputs))
+        self.assertEqual(ctx.document, ctx.original)
+
+    def test_api_only_overlay_block_does_not_prepare_a_capture(self):
+        ctx = FakeContext()
+        ctx.fixture = lambda *a: self.fail("an API-only declaration needs no capture fixture")
+        with self.assertRaises(RecipeBlocked) as caught:
+            selectors.bar_hidden(ctx)
+        self.assertEqual(caught.exception.issue, 664)
+        self.assertFalse(ctx.inputs)
+        self.assertFalse(ctx.calls)
+
+    def test_return_capture_is_independent_of_drag_transport(self):
+        ctx = FakeContext()
+        ctx.drag = lambda *a, **k: self.fail("Return capture must not depend on a drag")
+        selectors.region_enter(ctx)
+        self.assertIn(("key", "Return"), ctx.inputs)
+        self.assertTrue(ctx.out.with_name(ctx.out.name + "-functional").is_dir())
+        self.assertEqual(ctx.document, ctx.original)
 
     def test_all_references_exist_in_catalog_source(self):
         source = (ROOT / "tests/gui/ui_catalog.cpp").read_text()
@@ -503,7 +668,7 @@ class SelectorRecipes(unittest.TestCase):
                 def refused(*args, **kwargs):
                     raise RecipeBlocked("live window match is missing or ambiguous")
                 ctx.focus = refused
-                with self.assertRaisesRegex(RecipeBlocked, "#701"):
+                with self.assertRaisesRegex(RecipeBlocked, "#942"):
                     function(ctx)
                 self.assertFalse(ctx.inputs)
                 self.assertTrue(all(op["state"] == "cancelled" for op in ctx.operations.values()))
@@ -536,7 +701,7 @@ class SelectorRecipes(unittest.TestCase):
             ctx.click = ctx.drag = refused
             with self.assertRaises(RecipeBlocked) as caught:
                 function(ctx)
-            self.assertEqual(caught.exception.issue, 705)
+            self.assertEqual(caught.exception.issue, 664)
             self.assertIn("bar-input-refused", [f[0] for f in ctx.frames])
             self.assertFalse(ctx.inputs)
 
@@ -556,7 +721,7 @@ class SelectorRecipes(unittest.TestCase):
         ctx.focus = refused
         with self.assertRaises(RecipeBlocked) as caught:
             selectors.bar_drag(ctx)
-        self.assertEqual(caught.exception.issue, 705)
+        self.assertEqual(caught.exception.issue, 664)
         self.assertFalse(ctx.inputs)
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
 
@@ -575,7 +740,7 @@ class SelectorRecipes(unittest.TestCase):
         ctx.call, ctx.drag = call, drag
         with self.assertRaises(RecipeBlocked) as caught:
             selectors.bar_drag(ctx)
-        self.assertEqual(caught.exception.issue, 714)
+        self.assertEqual(caught.exception.issue, 664)
         self.assertEqual([row for row in ctx.inputs if row[0] == "drag"], [("drag", (512, 102), (542, 102))])
         self.assertTrue(all(r["state"] == "cancelled" for r in ctx.recordings.values()))
         self.assertEqual(ctx.document, ctx.original)
