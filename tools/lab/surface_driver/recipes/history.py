@@ -1081,10 +1081,11 @@ def _selected_page(ctx, label):
     if any(n.get('states', {}).get('selected') for n in _nodes(ctx, role='page tab', name=label)):
         return True
     # Some Qt versions omit the native tab's selected projection. Require one
-    # unambiguous visible page body instead; hidden pages must not count.
-    witnesses = {'History': {'name': 'All items', 'role': 'list item'},
+    # unambiguous visible page container instead. Qt 6.4 can retain SHOWING on
+    # virtual QListWidget items after their actual container becomes hidden.
+    witnesses = {'History': {'name': 'Show history items', 'role': 'list'},
                  'Destinations': {'name': 'Add destination', 'role': 'push button'},
-                 'Settings': {'name': 'General', 'role': 'list item'}}
+                 'Settings': {'name': 'Settings categories', 'role': 'list'}}
     visible = {page: len(_nodes(ctx, **query)) == 1 for page, query in witnesses.items()}
     return visible.get(label, False) and sum(visible.values()) == 1
 
@@ -1160,24 +1161,27 @@ def output_summary(ctx):
              if a.get('pid') == pid and a.get('role', '').lower().replace('_', ' ').replace('-', ' ')
              in ('menu', 'popup menu') and a.get('rect') and min(a['rect'][2:]) > 0]
     ctx.expect(bool(menus), 'output action has a native menu ancestor with live desktop bounds')
-    # OutputLabel is a custom QWidget. Its text is scoped to the placed menu
-    # ancestor; an untitled QMenu is not an independent geometry() window.
+    # Read native label/widget-action text inside the placed menu ancestor.
+    # An untitled QMenu is not an independent geometry() window.
     rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
                            'pid': pid, 'within': menus[-1]['rect']})
-    labels = [n.get('name', '') for n in rows]
-    if not any(n.startswith('Default: ') for n in labels):
+    labels = [line.strip() for node in rows for field in ('name', 'text')
+              for line in (node.get(field) or '').splitlines()]
+    default_prefixes = ('Default: ', 'Default output: ')
+    if not any(n.startswith(default_prefixes) for n in labels):
         # Fixed synthetic captions only: distinguish missing popup descendants
         # from an incorrectly scoped menu rectangle without dumping a tree.
         public = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid})
-        public = [node for node in public if node.get('name', '').startswith(('Default: ', 'Upload clipboard: '))
+        public = [node for node in public if any((node.get(field) or '').startswith(
+            default_prefixes + ('Upload clipboard: ',)) for field in ('name', 'text'))
                   or node.get('name') in ('Exceptions', 'Change output')]
         ctx.note('Output popup witness=' + json.dumps({
             'menuBounds': menus[-1]['rect'],
-            'scopedLabels': [name for name in labels if name.startswith(('Default: ', 'Upload clipboard: '))],
+            'scopedLabels': [name for name in labels if name.startswith(default_prefixes + ('Upload clipboard: ',))],
             'publicNodes': [{key: node.get(key) for key in (
-                'name', 'role', 'rect', 'popup', 'coordinate_space', 'coordinate_error', 'objectName')}
+                'name', 'text', 'role', 'rect', 'popup', 'coordinate_space', 'coordinate_error', 'objectName')}
                 for node in public]}, sort_keys=True))
-    ctx.expect(any(n.startswith('Default: ') for n in labels), 'popup exposes inherited output')
+    ctx.expect(any(n.startswith(default_prefixes) for n in labels), 'popup exposes inherited output')
     ctx.expect(any(n.startswith('Upload clipboard: ') and 'Synthetic 1' in n for n in labels),
                'popup exposes the exact clipboard exception destination')
     ctx.frame('output-popup')

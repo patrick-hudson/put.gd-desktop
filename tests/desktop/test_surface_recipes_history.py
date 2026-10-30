@@ -643,7 +643,7 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_navigation_can_use_one_visible_body_when_tab_selection_is_absent(self):
         ctx = FakeContext()
-        visible = {'All items'}
+        visible = {'Show history items'}
         def accessible(query):
             if query['role'] == 'page tab':
                 return [{'states': {}}]
@@ -651,9 +651,14 @@ class HistoryRecipeTests(unittest.TestCase):
         ctx.accessible = accessible
         self.assertTrue(history._selected_page(ctx, 'History'))
         self.assertFalse(history._selected_page(ctx, 'Settings'))
-        visible.clear();visible.add('General')
+        visible.clear();visible.add('Settings categories')
         self.assertTrue(history._selected_page(ctx, 'Settings'))
         self.assertFalse(history._selected_page(ctx, 'History'))
+        # Cinnamon's hidden virtual General item still says SHOWING, while
+        # the actual Settings list is hidden and Destinations is visible.
+        visible.clear();visible.update(('General', 'Add destination'))
+        self.assertTrue(history._selected_page(ctx, 'Destinations'))
+        self.assertFalse(history._selected_page(ctx, 'Settings'))
 
     def test_navigation_does_not_guess_when_multiple_page_bodies_are_showing(self):
         ctx = FakeContext()
@@ -766,17 +771,22 @@ class HistoryRecipeTests(unittest.TestCase):
                 if query.get('name') == 'Change output' and query.get('role') == 'menu item':
                     return [{'pid': 123, 'popup': {'pid': 123}, 'coordinate_space': 'desktop', 'rect': [300, 540, 480, 60],
                              'ancestors': [{'pid': 123, 'role': 'popup menu', 'rect': [300, 400, 480, 200]}]}]
-                # The production OutputLabel QWidget has no native label role.
+                # Native text can belong to the widget action, without a label role.
                 if query.get('role') == 'label' or query.get('within') != [300, 400, 480, 200]:
                     return []
-                return [{'role': 'panel', 'name': 'Default: Local only'},
-                        {'role': 'panel', 'name': 'Upload clipboard: Shared link · Synthetic 1'}]
-        ctx = PopupContext()
-        with patch.object(ctx, 'click'), patch.object(history, '_open'), patch.object(history, '_frame'), \
-             patch.object(history, '_click_history_node'), patch.object(history, '_wait_menu'), \
-             patch.object(history, '_capture_settings'), patch.object(history, '_wait_window',
-                 side_effect=AssertionError('an untitled runtime popup has no standalone window')):
-            history.output_summary(ctx)
+                if self.native_form == 'widgets':
+                    return [{'role': 'panel', 'name': 'Default: Local only'},
+                            {'role': 'panel', 'name': 'Upload clipboard: Shared link · Synthetic 1'}]
+                return [{'role': 'menu item', self.native_form:
+                         'Default output: Local only\nUpload clipboard: Shared link · Synthetic 1'}]
+        for native_form in ('widgets', 'name', 'text'):
+            ctx = PopupContext()
+            ctx.native_form = native_form
+            with patch.object(ctx, 'click'), patch.object(history, '_open'), patch.object(history, '_frame'), \
+                 patch.object(history, '_click_history_node'), patch.object(history, '_wait_menu'), \
+                 patch.object(history, '_capture_settings'), patch.object(history, '_wait_window',
+                     side_effect=AssertionError('an untitled runtime popup has no standalone window')):
+                history.output_summary(ctx)
 
     def test_dynamic_row_alias_is_restored_when_a_double_click_is_refused(self):
         class RowContext(FakeContext):
