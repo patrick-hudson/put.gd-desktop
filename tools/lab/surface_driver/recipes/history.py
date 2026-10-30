@@ -86,6 +86,28 @@ def _focus_items(ctx):
     ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=675)
 
 
+def _click_history_node(ctx, query):
+    """Click an app child through its live bounds and the normal window guard."""
+    box = ctx.geometry('history')
+    nodes = ctx.accessible(dict(query, owned=True, visible=True, showing=True, enabled=True, pid=box['pid']))
+    if len(nodes) != 1 or not nodes[0].get('rect'):
+        ctx.blocked('History input requires one owned, enabled native child with live bounds.', issue=675)
+    node = nodes[0]
+    x, y, width, height = node['rect']
+    point = (x + width / 2, y + height / 2)
+    if (min(width, height) <= 0 or node.get('coordinate_space') == 'window-relative'
+            or not box['x'] <= point[0] < box['x'] + box['width']
+            or not box['y'] <= point[1] < box['y'] + box['height']):
+        ctx.blocked('History child has no verified desktop point inside its live window.', issue=675)
+    # accessible() returns desktop coordinates; click_at() takes head pixels.
+    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    point = tuple(round((value - box.get(origin, 0)) * scale)
+                  for value, origin in zip(point, ('screen_x', 'screen_y')))
+    ctx.focus('history', raise_window=False)
+    ctx.click_at(*point, head=box.get('head', 0))
+    return node
+
+
 def _row(ctx, fixture='history-row'):
     data = ctx.fixture(fixture)
     row = data.row if fixture == 'history-row' else data['image'] if fixture == 'history_rows' else data
@@ -101,8 +123,7 @@ def _row(ctx, fixture='history-row'):
         ctx.blocked('The uniquely searched History list has no unambiguous live bounds.', issue=675)
     # The query has exactly one row. Target its actual delegate inside the live
     # list, rather than blank viewport space or an unselected Home focus item.
-    ctx.click_accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid,
-                          'role': 'list item', 'within': lists[0]['rect']})
+    _click_history_node(ctx, {'role': 'list item', 'within': lists[0]['rect']})
     ctx.wait(lambda: row['id'] in _state(ctx)['selectedIds'], 'fixture row is selected with real input')
     _focus_items(ctx)
     return row
@@ -192,7 +213,7 @@ def clear_filters(ctx):
     ctx.click('historyFiltersExpanded', window='history')
     ctx.click('text:Add a history filter', window='history')
     ctx.click('text:Upload state', window='historyAddFilterMenu')
-    ctx.click_accessible({'owned': True, 'visible': True, 'name': 'Upload state', 'role': 'combo box'})
+    _click_history_node(ctx, {'name': 'Upload state', 'role': 'combo box'})
     ctx.keys('Home', 'Down', 'Return')
     ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']), 'upload filter applied')
     _frame(ctx, 'filtered', '40-history-filters-active')
@@ -209,9 +230,7 @@ def clear_filters(ctx):
 def _click_preview(ctx, button=False):
     # Both are exposed as buttons. The large image accepts keyboard focus;
     # its small expand glyph deliberately has Qt::NoFocus.
-    ctx.click_accessible({'owned': True, 'visible': True, 'showing': True,
-                          'pid': ctx.geometry('history')['pid'], 'name': 'Expand preview',
-                          'states': {'focusable': not button}})
+    _click_history_node(ctx, {'name': 'Expand preview', 'states': {'focusable': not button}})
 
 
 @recipe('history.preview', 'history.expand-preview', needs=('history-row',))

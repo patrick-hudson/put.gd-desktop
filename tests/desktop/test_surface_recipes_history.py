@@ -311,21 +311,16 @@ class FakeContext(Context):
             raise AssertionError('chooser must be visible before binding input')
 
     def click_accessible(self, query, button='left'):
-        if query.get('role') == 'list item':
-            if not query.get('owned') or query.get('pid') != 123 or query.get('within') != [320, 200, 800, 650]:
-                raise AssertionError('row input requires the owned live list bounds')
-            self.events.append(('delegate', copy.deepcopy(query)))
-            return self.click('historyList', 'history', button)
-        if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
-            return self.click('historyChoiceuploadStatus', 'history', button)
-        if not query.get('owned') or query.get('name') != 'Expand preview' or query.get('pid') != 123:
-            raise AssertionError('preview click must constrain private family and observed pid')
-        if query.get('states') not in ({'focusable': True}, {'focusable': False}):
-            raise AssertionError('image and its glyph share their button role')
-        control = 'historyPreview' if query['states']['focusable'] else 'expandHistoryPreview'
-        self.click(control, 'history', button)
+        raise AssertionError('app children must use the normal guarded window input path')
 
     def click_at(self, x, y, button='left', head=None):
+        if (x, y) == (720, 220):
+            self.events.append(('delegate', copy.deepcopy(self.last_delegate_query)))
+            return self.click('historyList', 'history', button)
+        if (x, y) == (1220, 220):
+            return self.click('historyChoiceuploadStatus', 'history', button)
+        if (x, y) in ((1220, 420), (1320, 420)):
+            return self.click('historyPreview' if x == 1220 else 'expandHistoryPreview', 'history', button)
         self.events.append(('click', 'header', 'history', button))
         self.menu = 'header'
 
@@ -334,8 +329,17 @@ class FakeContext(Context):
             if query.get('states', {}).get('focused') and self.focused_control != 'historyList':
                 return []
             return [{'name': query['name'], 'rect': [320, 200, 800, 650], 'pid': 123, 'states': {'focused': self.focused_control == 'historyList'}}]
+        if query.get('role') == 'list item':
+            if not query.get('owned') or query.get('pid') != 123 or query.get('within') != [320, 200, 800, 650]:
+                raise AssertionError('row input requires the owned live list bounds')
+            self.last_delegate_query = query
+            return [{'rect': [320, 200, 800, 40]}]
+        if query.get('name') == 'Upload state' and query.get('role') == 'combo box':
+            return [{'rect': [1200, 200, 40, 40]}]
         if query.get('name') == 'Expand preview':
-            return [{'name': 'Expand preview', 'role': role, 'pid': 123, 'rect': [100, 100, 40, 40]} for role in ('icon', 'push button')]
+            if query.get('states') not in ({'focusable': True}, {'focusable': False}):
+                raise AssertionError('image and glyph share their button role')
+            return [{'rect': [1200 if query['states']['focusable'] else 1300, 400, 40, 40]}]
         if query.get('role') == 'menu item':
             return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else set())]
         if query.get('name') == 'Capture actions':
@@ -563,7 +567,7 @@ class HistoryRecipeTests(unittest.TestCase):
             def windows(self, query=None):
                 raise AssertionError('geometry must not send X11 title queries')
             def accessible(self, query):
-                if set(query) - {'owned', 'visible', 'showing', 'pid', 'within', 'name', 'states', 'role'}:
+                if set(query) - {'owned', 'visible', 'showing', 'enabled', 'pid', 'within', 'name', 'states', 'role'}:
                     raise AssertionError('unsupported accessible header query')
                 return super().accessible(query)
         for action in (history.header_drag, history.edge_resize):
@@ -579,6 +583,17 @@ class HistoryRecipeTests(unittest.TestCase):
             {'name': 'Application menu', 'role': 'push button', 'rect': [100, 80, 1400, 40]}]
         with self.assertRaisesRegex(RecipeBlocked, 'no verified blank header'):
             history._header_point(ctx, ctx.window)
+
+    def test_app_child_input_refuses_ambiguous_or_unplaced_native_bounds(self):
+        for nodes in ([], [{'rect': [500, 300, 20, 20]}] * 2,
+                      [{'rect': [500, 300, 20, 20], 'coordinate_space': 'window-relative'}],
+                      [{'rect': [0, 0, 20, 20]}]):
+            with self.subTest(nodes=nodes):
+                ctx = FakeContext()
+                ctx.accessible = lambda query: nodes
+                with self.assertRaises(RecipeBlocked):
+                    history._click_history_node(ctx, {'name': 'Expand preview'})
+                self.assertFalse(any(e[0] in ('click', 'focus') for e in ctx.events))
 
     def test_native_window_observation_uses_accessible_query_and_iconified_state(self):
         from tools.lab.surface_driver.profiles import load_profile
