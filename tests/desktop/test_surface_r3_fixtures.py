@@ -73,6 +73,10 @@ class Round3(fixture_tests.Fixtures):
         value=self.ctx.fixture('settings-input-events')
         with self.assertRaises(RuntimeError):value.overlap('1','2')
         self.assertEqual(events,[('down',('Ctrl','Shift','1')),('key','2'),('up',('Ctrl','Shift','1'))])
+        events.clear()
+        with self.assertRaises(RuntimeError):value.shifted_digit(1)
+        self.assertEqual(events,[('down',('Shift',)),('key','1'),('up',('Shift',))])
+        with self.assertRaises(ValueError):value.shifted_digit('!')
 
     def test_unavailable_and_pending_are_never_invented(self):
         for name in ('settings-binding-unavailable','settings-binding-pending','settings-binding-unsupported'):

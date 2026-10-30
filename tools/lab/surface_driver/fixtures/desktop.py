@@ -54,8 +54,14 @@ def input_events(scope):
     def altgr(key='E'):
         with ctx.held_keys('AltGr'):
             ctx.keys(key)
+    def shifted_digit(digit):
+        digit=str(digit)
+        if len(digit)!=1 or digit not in '0123456789':
+            raise ValueError('shifted_digit needs one physical digit')
+        with ctx.held_keys('Shift'):
+            ctx.keys(digit)
     return Fixture(overlap=overlap,altgr=altgr,
-                   shifted_digit=lambda digit:overlap(str(digit),'A',('Shift',)))
+                   shifted_digit=shifted_digit)
 
 
 def binding(scope, state='conflict'):
