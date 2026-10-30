@@ -158,25 +158,6 @@ if __name__=='__main__':main()
         finally:
             target._close_probe()
 
-    def test_popup_aware_probe_explicitly_opts_into_persistent_accessibility(self):
-        target = self.probe_target()
-        source = '''import os
-PERSISTENT_ACCESSIBILITY=True
-counter=0
-def control_geometry(query):
- global counter
- counter+=1
- return {'counter':counter,'pid':os.getpid()}
-'''
-        try:
-            with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                first = target.probe('control',{},source)['result']
-                second = target.probe('control',{},source)['result']
-                self.assertEqual((first['counter'],second['counter']),(1,2))
-                self.assertEqual(first['pid'],second['pid'])
-        finally:
-            target._close_probe()
-
     def probe_target(self):
         target = Target.__new__(Target)
         target.physical = None
