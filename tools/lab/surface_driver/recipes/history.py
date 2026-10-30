@@ -634,8 +634,16 @@ def header_drag(ctx):
     ctx.call('ui.viewState')
     _frame(ctx, 'after')
     ctx.drag((start[0] + moved['x'] - box['x'], start[1] + moved['y'] - box['y']), start)
-    ctx.wait(lambda: all(ctx.geometry('history')[key] == box[key] for key in ('x', 'y')), 'header drag restores original position')
+    ctx.wait(lambda: ((g := ctx.geometry('history')) and all(g[key] == box[key] for key in ('x', 'y', 'width', 'height'))), 'header drag restores original rectangle')
     ctx.blocked('Header movement and restoration are verified; the composite also requires double-click maximize/restore at this blank span, but Context has no atomic point double-click.', issue=904)
+
+
+def _resize_point(ctx, box):
+    # Ui::WindowEdges has 10x10 corner grips. Their center is inside the live
+    # client even when the outermost corner pixel is rounded/transparent.
+    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    return tuple(round((box[axis] + box[extent] - 5 - box.get(origin, 0)) * scale)
+                 for axis, extent, origin in (('x', 'width', 'screen_x'), ('y', 'height', 'screen_y')))
 
 
 @recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row',), timeout=180)
@@ -643,14 +651,14 @@ def edge_resize(ctx):
     _row(ctx)
     box = ctx.geometry('history')
     _frame(ctx, 'before')
-    edge = (box['x'] + box['width'] - 1, box['y'] + box['height'] - 1)
+    edge = _resize_point(ctx, box)
     ctx.drag(edge, (edge[0] - 600, edge[1] - 500))
     resized = ctx.wait(lambda: (g if ((g := ctx.geometry('history'))['width'], g['height']) != (box['width'], box['height']) else None), 'edge drag resizes shell')
     scale = box.get('scale', 1)
     ctx.expect(resized['width'] == round(1060 * scale) and resized['height'] == round(680 * scale), 'shell respects 1060 by 680 logical minimum')
     ctx.call('ui.viewState')
     _frame(ctx, 'after', COMPACT)
-    new_edge = (resized['x'] + resized['width'] - 1, resized['y'] + resized['height'] - 1)
+    new_edge = _resize_point(ctx, resized)
     ctx.drag(new_edge, edge)
 
 
@@ -940,7 +948,7 @@ def compact_details(ctx):
     row = _row(ctx)
     box = ctx.geometry('history')
     _frame(ctx, 'before')
-    edge = (box['x'] + box['width'] - 1, box['y'] + box['height'] - 1)
+    edge = _resize_point(ctx, box)
     ctx.drag(edge, (edge[0] - 600, edge[1] - 500))
     ctx.wait(lambda: _state(ctx)['layout'] == 'compact', 'real resize enters compact History layout')
     try:
@@ -957,7 +965,7 @@ def compact_details(ctx):
             ctx.expect(bool(_nodes(ctx, name='History items and upload activity')), 'Back restores the native list')
     finally:
         now = ctx.geometry('history')
-        ctx.drag((now['x'] + now['width'] - 1, now['y'] + now['height'] - 1), edge)
+        ctx.drag(_resize_point(ctx, now), edge)
     ctx.click('historyListMode', window='history')
     _frame(ctx, 'after')
 
