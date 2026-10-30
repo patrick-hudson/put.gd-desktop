@@ -22,8 +22,10 @@ the normal dev presets, dynamically linked distro Qt, and the official AWS SDK.
 | Nightly `26.1030.2536-dev+gfdc52414043a` | `fdc52414043a78b17148ed31f73fdf5b4573af5f` | 114/114, 141.05 s |
 | Head `26.1030.2537-dev+g382a623c5ad0` | `382a623c5ad0a14d53bc3efbd3ce1264d16d12b7` | 114/114, 138.21 s |
 
-The new test-only regression patch was injected into nightly for the red test:
-Escape then Ctrl+1 fails; the saved-copy menu control passes. The patch was removed
+The new test-only regression patch was injected into nightly for the red test.
+On nightly every Zoom menu key fails after every dismissal: Ctrl+0, Ctrl+1, Ctrl++ and
+Ctrl+- × Escape, outside click and choosing an item (12 failures; the independent
+validation reproduced them). The saved-copy menu control passes. The patch was removed
 before the clean nightly build, full suite and DEB. At the head, all 30 combinations
 pass: Zoom and Saved copy actions menus × Escape, outside click and choosing an
 item × Ctrl+0, Ctrl+1, Ctrl++, Ctrl+= and Ctrl+-. The additional window-scope control
@@ -62,11 +64,11 @@ sent Ctrl+1 once. `editor.inspect` read:
 
 Nightly failure, sandbox `bx_mq3wnphn`, app `fdc52414043a`:
 
-![Nightly remains at Fit 98% after Escape and one Ctrl+1](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/90b519b03ec338c9be9632507c67a6cc3a362cd9/docs/evidence/2026-10-30-editor-zoom-shortcuts-806/nightly-result.png)
+![Nightly remains at Fit 98% after Escape and one Ctrl+1](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/b3adcc5e77b09d876c135f0bdeed5aaf1d9c9173/docs/evidence/2026-10-30-editor-zoom-shortcuts-806/nightly-result-annotated.png)
 
 Head pass, same sandbox/overlay, app `382a623c5ad0`:
 
-![Head reaches 100% after Escape and one Ctrl+1](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/90b519b03ec338c9be9632507c67a6cc3a362cd9/docs/evidence/2026-10-30-editor-zoom-shortcuts-806/head-result.png)
+![Head reaches 100% after Escape and one Ctrl+1](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/b3adcc5e77b09d876c135f0bdeed5aaf1d9c9173/docs/evidence/2026-10-30-editor-zoom-shortcuts-806/head-result-annotated.png)
 
 The head additionally passed all five zoom keys after both Escape and outside-click
 dismissal: ten native QMP cases. Native item-selection coverage is **inconclusive**:
@@ -94,3 +96,6 @@ are indexed in results.json. Named snapshots and immutable goldens are preserved
 
 This is scoped bug evidence. It does not establish physical hardware, performance,
 memory, another compositor, or full release acceptance.
+
+The pictures are cropped to the editor with the zoom label boxed; the raw
+full-desktop frames are kept beside them as `nightly-result.png` and `head-result.png`.
