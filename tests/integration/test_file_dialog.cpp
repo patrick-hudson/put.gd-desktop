@@ -45,12 +45,16 @@ class FakeChooser final:public QObject,protected QDBusContext {
  Q_CLASSINFO("D-Bus Interface","org.freedesktop.portal.FileChooser")
  Q_PROPERTY(uint version READ version)
 public:
- enum class Answer { Choose, Cancel, Fail, Wait, NoReply };
+ // Close: Response 2 later, as GTK and GNOME answer Escape or the window's
+ // close button (#781). Fail: Response 2 at once, as the portal answers a
+ // backend that fails. Error: the call itself errors.
+ enum class Answer { Choose, Cancel, Close, Fail, Error, Wait, NoReply };
  explicit FakeChooser(QDBusConnection peer):peer_(peer){}
  uint version()const{return versionValue;}
  uint versionValue=4;
  Answer answer=Answer::Choose;
  QString uri;
+ int delayMs=20; // how long the chooser stays open before its Response
  QString method,parent,title,handle;
  QVariantMap options;
  int calls=0;
@@ -71,8 +75,9 @@ private:
   request=new FakeRequest(this);request->setProperty("path",handle);
   peer_.registerObject(handle,request,QDBusConnection::ExportAllSlots);
   if(answer==Answer::NoReply){setDelayedReply(true);return {};}
+  if(answer==Answer::Error){sendErrorReply("org.freedesktop.portal.Error.Failed","The backend could not open a chooser");return {};}
   const auto code=answer==Answer::Choose?0u:answer==Answer::Cancel?1u:2u;
-  if(answer!=Answer::Wait)QTimer::singleShot(20,this,[this,code]{respond(code,code==0?QVariantMap{{"uris",QStringList{uri}}}:QVariantMap{});});
+  if(answer!=Answer::Wait)QTimer::singleShot(answer==Answer::Fail?20:delayMs,this,[this,code]{respond(code,code==0?QVariantMap{{"uris",QStringList{uri}}}:QVariantMap{});});
   return QDBusObjectPath(handle);
  }
  QDBusConnection peer_;
@@ -111,7 +116,7 @@ private slots:
   FileDialog::setPortalCallTimeoutMs(400);
  }
  void cleanupTestCase(){delete window_;unregisterPortal();}
- void init(){qunsetenv("PUTGD_FILE_DIALOG");chooser_->answer=FakeChooser::Answer::Choose;chooser_->versionValue=4;chooser_->calls=0;chooser_->uri.clear();registerPortal();}
+ void init(){qunsetenv("PUTGD_FILE_DIALOG");chooser_->answer=FakeChooser::Answer::Choose;chooser_->versionValue=4;chooser_->calls=0;chooser_->delayMs=20;chooser_->uri.clear();FileDialog::setPortalFailureWindowMs(250);registerPortal();}
  void cleanup(){for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QFileDialog*>(widget))dialog->reject();QApplication::processEvents();}
 
  void saveAsksThePortalAndReturnsTheLocalPath(){
@@ -155,6 +160,28 @@ private slots:
   QCOMPARE(dialog.state()["last"].toObject()["status"].toString(),QString("cancelled"));
   QCOMPARE(last_.status,FileDialog::Result::Status::Cancelled);QVERIFY(last_.error.isEmpty());
  }
+ // #781: Escape in the GTK chooser (Cinnamon, GNOME) answers Response 2, not 1.
+ void closingThePortalChooserIsACancel_data(){QTest::addColumn<int>("mode");for(const auto mode:{FileDialog::Mode::Open,FileDialog::Mode::Save,FileDialog::Mode::Folder})QTest::newRow(qPrintable(QString::number(int(mode))))<<int(mode);}
+ void closingThePortalChooserIsACancel(){
+  QFETCH(int,mode);
+  // Well past the default failure window, as a person's Escape is.
+  chooser_->answer=FakeChooser::Answer::Close;chooser_->delayMs=1500;
+  FileDialog dialog(window_);bool fellBack=false;
+  connect(&dialog,&FileDialog::stateChanged,this,[&]{fellBack=fellBack||dialog.fallbackDialog()||dialog.state()["backend"].toString()=="fallback";});
+  QCOMPARE(run(dialog,{FileDialog::Mode(mode),"Pick",{},{},{}},5000).value_or("none"),QString());
+  QVERIFY(!fellBack);QVERIFY(!dialog.fallbackDialog());QVERIFY(!dialog.isOpen());
+  QCOMPARE(last_.status,FileDialog::Result::Status::Cancelled);QVERIFY(last_.path.isEmpty());QVERIFY(last_.error.isEmpty());
+  const auto last=dialog.state()["last"].toObject();
+  QCOMPARE(last["status"].toString(),QString("cancelled"));QCOMPARE(last["backend"].toString(),QString("portal"));QVERIFY(last["fallbackReason"].isNull());
+  PUTGD_TRY_VERIFY(!QApplication::activeModalWidget());
+  // Nothing opens afterwards either.
+  const auto noChooser=[&]{
+   if(dialog.fallbackDialog())return false;
+   for(auto* widget:QApplication::topLevelWidgets())if(qobject_cast<QFileDialog*>(widget)&&widget->isVisible())return false;
+   return true;
+  };
+  PUTGD_VERIFY_STEADY(!fellBack&&noChooser(),200);
+ }
  void whileOpenTheWindowIsBlockedAndCancelClosesTheRequest(){
   chooser_->answer=FakeChooser::Answer::Wait;
   FileDialog dialog(window_);bool answered=false;QString answer="unset";
@@ -181,8 +208,9 @@ private slots:
   delete dialog;
   PUTGD_TRY_COMPARE(chooser_->request->closed,1);QVERIFY(!answered);
  }
+ // A 2 before any chooser could have been seen is the portal failing.
  void portalFailureFallsBack(){
-  chooser_->answer=FakeChooser::Answer::Fail;
+  chooser_->answer=FakeChooser::Answer::Fail;FileDialog::setPortalFailureWindowMs(5000);
   FileDialog dialog(window_);bool answered=false;
   QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",{},"a.png",{}},[&](const FileDialog::Result&){answered=true;}));
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);QVERIFY(!answered);
@@ -190,6 +218,15 @@ private slots:
   QCOMPARE(fallback->acceptMode(),QFileDialog::AcceptSave);
   fallback->reject();QVERIFY(answered);
   QCOMPARE(dialog.state()["last"].toObject()["backend"].toString(),QString("fallback"));
+ }
+ void portalErrorFallsBack(){
+  chooser_->answer=FakeChooser::Answer::Error;
+  FileDialog dialog(window_);bool answered=false;
+  QVERIFY(dialog.open({FileDialog::Mode::Open,"Edit",{},{},{}},[&](const FileDialog::Result&){answered=true;}));
+  auto* fallback=waitForFallback(dialog);QVERIFY(fallback);QVERIFY(!answered);
+  QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("org.freedesktop.portal.Error.Failed"));
+  QCOMPARE(fallback->fileMode(),QFileDialog::ExistingFile);
+  fallback->reject();QVERIFY(answered);
  }
  void noPortalFallsBack(){
   unregisterPortal();

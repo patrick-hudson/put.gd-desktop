@@ -1,0 +1,68 @@
+FFTraceback (most recent call last):
+  File "<string>", line 7, in <module>
+  File "/tmp/old780-XCRX/wt/tools/lab/package_staging.py", line 150, in run
+    code = process.wait()
+           ^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2053, in _wait
+    (pid, sts) = self._try_wait(0)
+                 ^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2011, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+FFFF
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='pid', signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 881, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2354632 == 2354632
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='pid', signal='SIGHUP')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 881, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2354635 == 2354635
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='pid', signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 881, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2354638 == 2354638
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='group', signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 881, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2354654 == 2354654
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='group', signal='SIGHUP')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 881, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2354657 == 2354657
+
+======================================================================
+FAIL: test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 902, in test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable
+    self.assertNotEqual(identity['pid'], client.pid)
+AssertionError: 2354660 == 2354660
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.546s
+
+FAILED (failures=6)

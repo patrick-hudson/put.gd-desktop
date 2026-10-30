@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/user/b780/tools/lab/staging_acceptance.py", line 316, in <module>
+    root_guest('test "$(loginctl show-session '+session+' --property=User --value)" = 1000\n'
+  File "/home/user/b780/tools/lab/staging_acceptance.py", line 189, in root_guest
+    return lab.command(root_args+['sh','-s'],input='set -eu\n'+script,timeout=timeout).stdout
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/user/b780/tools/lab/lab.py", line 88, in command
+    raise LabError(f'{Path(str(args[0])).name} failed (exit {result.returncode})')
+lab.LabError: ssh failed (exit 1)

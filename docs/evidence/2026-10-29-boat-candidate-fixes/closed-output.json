@@ -1,0 +1,15 @@
+{
+  "controllerCommit": "eaf90bbd33776dff8fce922f35505b6898bb2b30",
+  "results": [
+    {
+      "closedStream": "stdout",
+      "exitCode": 0,
+      "otherOutputEmpty": true
+    },
+    {
+      "closedStream": "stderr",
+      "exitCode": 0,
+      "otherOutputEmpty": true
+    }
+  ]
+}

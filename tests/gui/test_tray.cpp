@@ -1,4 +1,6 @@
 #include "fixtures/U2Fixtures.h"
+#include "fixtures/TrayCatalog.h"
+#include "fixtures/CatalogLabels.h"
 #include "fixtures/FakeRecordingBackend.h"
 #include "ui/TrayController.h"
 #include "app/LocalServer.h"
@@ -9,6 +11,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QMenu>
+#include <QLabel>
 #include <QJsonDocument>
 #include <QPointer>
 #include <QSignalSpy>
@@ -68,6 +71,45 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ void catalogMessageLabelsPreserveTheirActualFocusPolicy(){
+  for(const auto& name:{"qt_msgbox_label","qt_msgbox_informativelabel"}){
+   QLabel label("Confirmation text");label.setObjectName(name);label.setFocusPolicy(Qt::NoFocus);
+   QCOMPARE(catalogLabelKind(label),QString("label"));
+   label.setFocusPolicy(Qt::StrongFocus);QCOMPARE(catalogLabelKind(label),QString("focusable"));
+   label.setText("<a href='https://example.invalid'>Help</a>");label.setTextInteractionFlags(Qt::LinksAccessibleByMouse);
+   QCOMPARE(catalogLabelKind(label),QString("link"));
+  }
+  QLabel ordinary("Ordinary text");ordinary.setObjectName("ordinaryLabel");ordinary.setFocusPolicy(Qt::NoFocus);QVERIFY(catalogLabelKind(ordinary).isEmpty());
+ }
+ void catalogRowsRemainStableAcrossStatesAndSkipSeparators(){
+  QMenu menu;
+  auto* status=menu.addAction("Uploading 1 file…");status->setObjectName("trayUploadStatus");status->setVisible(false);
+  menu.addSeparator();auto* capture=menu.addAction("Capture region");capture->setData("region");
+  auto* about=menu.addAction("About put.gd");menu.addAction("Quit put.gd");
+  auto* output=new QWidgetAction(&menu);output->setObjectName("trayOutputedit");output->setText("Capture region & edit: Shared link");output->setDefaultWidget(new QLabel(output->text()));menu.addAction(output);
+  auto take=[&]{menu.ensurePolished();menu.resize(menu.sizeHint());menu.show();QApplication::processEvents();return catalogMenuRows(menu);};
+  const auto idle=take();QVERIFY(idle);QCOMPARE(idle->size(),4);
+  status->setVisible(true);const auto uploading=take();QVERIFY(uploading);QCOMPARE(uploading->size(),5);
+  for(const auto& row:*idle){const auto control=row.toObject();QVERIFY(control["kind"]!="separator");bool found=false;
+   for(const auto& candidate:*uploading)if(candidate.toObject()["text"]==control["text"]){QCOMPARE(candidate.toObject()["name"],control["name"]);found=true;}
+   QVERIFY(found);
+  }
+  QCOMPARE(idle->first().toObject()["name"].toString(),QString("region"));
+  QCOMPARE(idle->last().toObject()["text"].toString(),QString("Capture region && edit: Shared link"));
+  QVERIFY(idle->at(1).toObject()["name"].toString().startsWith("trayMenuAction-"));
+  about->setObjectName("explicitAbout");const auto named=take();QVERIFY(named);QCOMPARE(named->at(2).toObject()["name"].toString(),QString("explicitAbout"));
+ }
+ void catalogProviderReleaseBeforeOrAfterUploadCompletesExactlyOnce(){
+  for(bool early:{false,true}){
+   TrayCatalogProvider provider;int completions=0;QString code;
+   if(early)provider.release();
+   // upload() runs on a worker in OperationService, release() on the UI thread.
+   std::thread worker([&]{provider.upload({},[&](UploadResult result){++completions;code=result.error.code;});});worker.join();
+   QCOMPARE(provider.held(),!early);provider.release();provider.release();
+   QCOMPARE(completions,1);QCOMPARE(code,QString("proton_account_busy"));QVERIFY(!provider.held());
+  }
+ }
+
  void residentThemeScopeRestoresTheEnvironmentForChildren() {
   // Views and helpers inherit the environment; only the resident's own
   // QApplication construction may see the generic theme override.
@@ -418,15 +460,24 @@ private slots:
   const auto red=Ui::icon("tray",Theme::trayTints(false).error,-2).pixmap(24,24).toImage();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   putgd::test::settle(3100);
-  bool failedRetryDone=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);failedRetryDone=true;});PUTGD_TRY_VERIFY(failedRetryDone);
+  auto* recovery=tray->contextMenu()->findChild<QAction*>("trayFailedUploads");
+  recovery->trigger();QCOMPARE(tray->toolTip(),idleTooltip);
+  // The failed attempt must reach the tray before its reply. A second async
+  // inspect could otherwise re-latch it after acknowledgement and success.
+  bool failedRetryDone=false;operations.retryLocalSave(id,[&](Error e,QJsonObject result){
+   failedRetryDone=true;QVERIFY(!e);
+   QCOMPARE(result["items"].toArray()[0].toObject()["local"].toObject()["status"].toString(),QString("failed"));
+   QCOMPARE(tray->icon().pixmap(24,24).toImage(),red);
+   QVERIFY(recovery->isVisible());QCOMPARE(recovery->property("operationId").toString(),id);
+  });PUTGD_TRY_VERIFY(failedRetryDone);
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),red);
   QVERIFY(QFile::remove(blocker));QVERIFY(QDir().mkpath(blocker));
-  tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->trigger();
+  recovery->trigger();
   bool done=false;operations.retryLocalSave(id,[&](Error e,QJsonObject){QVERIFY(!e);done=true;});
   QVERIFY(tray->toolTip().contains("Saving local copy"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
   QCOMPARE(store.operation(id).state,prior.state);
-  PUTGD_TRY_VERIFY(done);QCOMPARE(tray->toolTip(),idleTooltip);QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
+  PUTGD_TRY_VERIFY(done);QCOMPARE(tray->toolTip(),idleTooltip);QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);QVERIFY(!recovery->isVisible());
   const auto retried=store.operation(id);QCOMPARE(retried.items[0].local.status,QString("saved"));QCOMPARE(provider->uploads.load(),1);
   QCOMPARE(retried.state,prior.state);QCOMPARE(retried.copyStatus,prior.copyStatus);
   auto before=prior.items[0].toJson(),after=retried.items[0].toJson();before.remove("local");after.remove("local");QCOMPARE(after,before);
