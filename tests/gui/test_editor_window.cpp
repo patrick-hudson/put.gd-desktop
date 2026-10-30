@@ -13,6 +13,7 @@
 #endif
 #include <algorithm>
 #include <QClipboard>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QImageReader>
@@ -504,6 +505,30 @@ private slots:
   auto* font=window.findChild<QFontComboBox*>("textFont");QVERIFY(font);QVERIFY(font->count()>0);
   font->setCurrentIndex(font->count()-1);QCOMPARE(doc.find(id)->fontFamily,font->currentFont().family());
   QVERIFY(window.findChild<QToolButton*>("customColor"));
+ }
+ void customColorSwatchNamesStayStableAndUniqueImmediatelyAfterRebuild(){
+  const bool nativeDialogsDisabled=QApplication::testAttribute(Qt::AA_DontUseNativeDialogs);
+  QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+  auto restore=qScopeGuard([nativeDialogsDisabled]{QApplication::setAttribute(Qt::AA_DontUseNativeDialogs,nativeDialogsDisabled);});
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  window.selectTool(Tool::Arrow);
+  auto* custom=window.findChild<QToolButton*>("customColor");QVERIFY(custom);
+  auto pick=[&](const QColor& color){
+   QTimer::singleShot(0,&window,[&]{auto* dialog=window.findChild<QColorDialog*>();QVERIFY(dialog);dialog->setCurrentColor(color);dialog->accept();});
+   custom->click();
+  };
+  auto checkNames=[&]{
+   const auto swatches=window.findChildren<QToolButton*>(QRegularExpression("^recentColorSwatch_"));
+   QCOMPARE(swatches.size(),window.recentColors().size());
+   for(const auto& color:window.recentColors()){
+    const auto matches=window.findChildren<QToolButton*>("recentColorSwatch_"+color.mid(1));
+    QCOMPARE(matches.size(),1);QCOMPARE(matches.first()->property("swatchColor").value<QColor>(),QColor(color));
+   }
+  };
+  pick(QColor("#123456"));QCOMPARE(window.recentColors(),QStringList({"#123456"}));checkNames();
+  pick(QColor("#abcdef"));QCOMPARE(window.recentColors(),QStringList({"#abcdef","#123456"}));checkNames();
+  // No event processing between a rebuild and its name checks: retired widgets still await deleteLater().
+  pick(QColor("#123456"));QCOMPARE(window.recentColors(),QStringList({"#123456","#abcdef"}));checkNames();
  }
  void textSizeControlFollowsACornerDrag(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
