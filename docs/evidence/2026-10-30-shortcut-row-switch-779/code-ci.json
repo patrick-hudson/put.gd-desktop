@@ -1,0 +1,126 @@
+{
+  "headRefOid": "3907e2ebc069ffe0acf024f6eeccd18342185b5b",
+  "mergeStateStatus": "UNKNOWN",
+  "statusCheckRollup": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:35:33Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893777502",
+      "name": "changes",
+      "startedAt": "2026-10-30T04:35:23Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:37:26Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893777751",
+      "name": "contracts",
+      "startedAt": "2026-10-30T04:35:24Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:43:16Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893836270",
+      "name": "linux (24.04)",
+      "startedAt": "2026-10-30T04:35:35Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:43:24Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893836229",
+      "name": "linux (26.04)",
+      "startedAt": "2026-10-30T04:35:35Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:35:34Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893837266",
+      "name": "sanitizers (clang ASan/UBSan)",
+      "startedAt": "2026-10-30T04:35:34Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:42:13Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893836323",
+      "name": "portable (windows-2022)",
+      "startedAt": "2026-10-30T04:35:36Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:35:34Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893837580",
+      "name": "packages",
+      "startedAt": "2026-10-30T04:35:34Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:43:25Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123896093390",
+      "name": "prune caches",
+      "startedAt": "2026-10-30T04:43:25Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:35:34Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123893838236",
+      "name": "pipewire",
+      "startedAt": "2026-10-30T04:35:34Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:43:29Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41003703489/job/123896091734",
+      "name": "CI",
+      "startedAt": "2026-10-30T04:43:26Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:35:10Z",
+      "conclusion": "NEUTRAL",
+      "detailsUrl": "https://www.cubic.dev/pr/patrick-hudson/put.gd-desktop/pull/783",
+      "name": "cubic \u00b7 AI code reviewer",
+      "startedAt": "2026-10-30T04:35:07Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-30T04:43:32Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://app.coderabbit.ai/change-stack/patrick-hudson/put.gd-desktop/pull/783",
+      "name": "CodeRabbit",
+      "startedAt": "2026-10-30T04:35:29Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ]
+}

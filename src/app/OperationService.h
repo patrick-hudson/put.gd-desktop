@@ -172,7 +172,9 @@ signals:
  void observationsChanged();
  void storageActivityChanged();
  // An attempt failed outside normal terminal-result delivery (e.g. local retry).
- void operationError(const QString& operationId);
+ // Deliver its durable snapshot with the signal: inspecting it asynchronously
+ // can report an already acknowledged failure after a subsequent retry.
+ void operationError(const QString& operationId,const QJsonObject& operation);
  // A terminal/copy result is durably observable; progress never emits this.
  void resultReady(const QString& id);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);

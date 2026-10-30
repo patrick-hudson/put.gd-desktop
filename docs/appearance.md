@@ -128,7 +128,15 @@ panel (or the reverse) keeps a visible icon. The resident
 - Anything else: dark, the tint put.gd always used.
 
 It re-reads them when `~/.config` changes on Plasma and on the portal's
-`SettingChanged`. The resident's own session environment matters: it needs the
+`SettingChanged`. Cinnamon's XApp portal does not serve `org.cinnamon.theme`, so
+on Cinnamon the resident also follows dconf's change notice
+(`ca.desrt.dconf.Writer` `Notify`) for that schema: a desktop theme picked on its
+own (Themes, Advanced settings, Desktop) re-tints the tray too
+([#702](https://github.com/patrick-hudson/put.gd-desktop/issues/702),
+[evidence](evidence/2026-10-29-cinnamon-panel-theme-702/README.md)). The theme
+is read with `gsettings`, which reads dconf's database under the resident's own
+`XDG_CONFIG_HOME`: a lab run with a private configuration home must share the
+session's `~/.config/dconf` for this, as the events recipe does. The resident's own session environment matters: it needs the
 session's `XDG_CONFIG_DIRS` and `XDG_DATA_DIRS`. Lab tools that start it over SSH
 through `tools/lab/lab.py`'s `guest_session` take both from the desktop shell's
 environment (#243). Dark panels get `#9BBCFF` (idle), `#62D69B` (uploading),

@@ -1,0 +1,14 @@
+{
+  "archiveSha256": "f969698ffbecab62e175b81a968aaf8d65cb68fba845df3848516107a4b1c3c5",
+  "archiveIndexSha256": "510c954f9905023174584da5e1f3ccb718843b0e4d69eb979d7de7fb388e6d5b",
+  "verifiedFiles": 126,
+  "restoredAndVerified": true,
+  "privateArchive": "work/lab716-evidence/lab716-evidence-final.tgz",
+  "restoreIndex": "retained-716/archive-index.json",
+  "codeCommit": "0227cfa28565086dd79d2ac8f93407d0429f3513",
+  "completedOverlays": [
+    "c1",
+    "c2",
+    "c3"
+  ]
+}

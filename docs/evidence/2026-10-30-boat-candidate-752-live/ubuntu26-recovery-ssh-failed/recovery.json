@@ -1,0 +1,23 @@
+{
+  "containerImage": "ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7",
+  "error": "ssh exited 255: see build.log",
+  "finishedAt": 1793333820.4679945,
+  "originalFailedSandboxId": "bx_2mxrfaus",
+  "originalFailure": "npm ECONNRESET during Proton runtime provisioning; original controller result remains failed",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:25.765Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:06:37.813Z",
+    "id": "bx_jw76a9k5",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "5.196.81.183:19039",
+    "vcpu": 8
+  },
+  "runNonce": "02818a97bfa24edb",
+  "sandboxId": "bx_jw76a9k5",
+  "scope": "manual Ubuntu 26.04 recovery on retained run-A catalog worker in a separate clean checkout/build; no new sandbox",
+  "source": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "startedAt": 1793333818.46703,
+  "state": "failed"
+}

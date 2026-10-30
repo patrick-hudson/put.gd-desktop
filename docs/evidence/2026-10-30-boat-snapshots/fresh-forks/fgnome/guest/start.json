@@ -1,0 +1,9 @@
+{
+  "resident": {
+    "pid": 4856,
+    "sha256": "02b1267cd1cf4df5770e668cbcda8e61bdc57668bc208e668de9b2534bad36a1",
+    "startTicks": 4354
+  },
+  "source": "gnome-wayland",
+  "status": "started"
+}

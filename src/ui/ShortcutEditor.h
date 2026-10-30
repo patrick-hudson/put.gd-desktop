@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QKeySequence>
 #include <QSet>
+#include <QPointer>
 #include "core/Error.h"
 #include <functional>
 #include <memory>
@@ -48,6 +49,7 @@ private:
  QKeySequence chord_;
  QSet<quint64> pressed_;
  quint64 recordingGeneration_=0;
- bool recordingReady_=false;
+ bool recordingReady_=false,pendingMouseFocusCancel_=false;
+ QPointer<QPushButton> canceledMouseRelease_;
 };
 }

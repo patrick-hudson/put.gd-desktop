@@ -1,0 +1,226 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "b11aca45-2e70-455f-989b-b3505b2f7221",
+  "result": {
+    "editor": {
+      "admissionPixels": 24000000,
+      "available": true,
+      "commands": [
+        "inspect",
+        "apply",
+        "preview",
+        "saveCopy",
+        "fileDialog",
+        "view",
+        "submit",
+        "cancel",
+        "raise"
+      ],
+      "fileFormats": [
+        "png",
+        "jpeg"
+      ],
+      "open": false,
+      "output": "png",
+      "shapes": [
+        "redact",
+        "blur",
+        "arrow",
+        "rectangle",
+        "text",
+        "highlight"
+      ],
+      "sources": [
+        "region",
+        "window",
+        "desktop",
+        "clipboard",
+        "file"
+      ]
+    },
+    "providers": {
+      "backblaze-b2": {
+        "conditionalCreate": true,
+        "conditionalDelete": false,
+        "conditionalReplace": false,
+        "delete": true,
+        "deletionEffect": "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.",
+        "maximumNameBytes": 1023,
+        "maximumObjectBytes": 10000000000000,
+        "privateUploads": false,
+        "sharing": false,
+        "stat": true,
+        "urls": true,
+        "versionAddressing": true
+      },
+      "proton-drive": {
+        "conditionalCreate": true,
+        "conditionalDelete": false,
+        "conditionalReplace": false,
+        "delete": false,
+        "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+        "maximumNameBytes": 255,
+        "maximumObjectBytes": null,
+        "privateUploads": true,
+        "sharing": true,
+        "stat": true,
+        "urls": true,
+        "versionAddressing": false
+      },
+      "s3": {
+        "conditionalCreate": true,
+        "conditionalDelete": true,
+        "conditionalReplace": true,
+        "delete": true,
+        "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+        "maximumNameBytes": 1024,
+        "maximumObjectBytes": 5497558138880,
+        "privateUploads": false,
+        "sharing": false,
+        "stat": true,
+        "urls": true,
+        "versionAddressing": true
+      }
+    },
+    "recording": {
+      "active": null,
+      "audio": {
+        "microphone": false,
+        "system": false
+      },
+      "available": false,
+      "codecs": {},
+      "commands": [
+        "prepare",
+        "start",
+        "pause",
+        "resume",
+        "stop",
+        "cancel",
+        "inspect",
+        "select",
+        "raise",
+        "overlay",
+        "edit",
+        "preview",
+        "review",
+        "saveCopy",
+        "upload"
+      ],
+      "editCommands": [
+        "setTrim",
+        "resetTrim",
+        "addMask",
+        "updateMask",
+        "removeMask"
+      ],
+      "formats": [],
+      "limits": {
+        "animationMaxEdge": 1280,
+        "animationMaxUs": 60000000,
+        "maxFileBytes": 1099511627776,
+        "maxMasks": 64
+      },
+      "maskKinds": [
+        "blur",
+        "solid"
+      ],
+      "overlayExclusion": {},
+      "reason": "recording_not_probed",
+      "states": [
+        "preparing",
+        "ready",
+        "starting",
+        "recording",
+        "paused",
+        "stopping",
+        "reviewing",
+        "exporting",
+        "submitted",
+        "cancelled",
+        "failed"
+      ],
+      "targets": [],
+      "timeUnit": "microseconds"
+    },
+    "source": {
+      "adapter": "cinnamon-x11",
+      "capture": {
+        "desktop": {
+          "available": true,
+          "consent": "none",
+          "mode": "visible-pixels"
+        },
+        "region": {
+          "available": true,
+          "consent": "none",
+          "mode": "visible-pixels"
+        },
+        "window": {
+          "available": true,
+          "consent": "none",
+          "mode": "visible-pixels"
+        }
+      },
+      "clipboard": {
+        "available": false,
+        "import": "asynchronous-x11-selection",
+        "result": "qt-ownership",
+        "types": [
+          "files",
+          "image",
+          "text"
+        ]
+      },
+      "shortcuts": {
+        "available": false,
+        "bindings": {
+          "clipboard": {
+            "bound": false,
+            "error": "shortcut_unavailable",
+            "requested": ""
+          },
+          "desktop": {
+            "bound": false,
+            "error": "shortcut_unavailable",
+            "requested": "Ctrl+Shift+3"
+          },
+          "edit": {
+            "bound": false,
+            "error": "shortcut_unavailable",
+            "requested": ""
+          },
+          "record": {
+            "bound": false,
+            "error": "shortcut_unavailable",
+            "requested": ""
+          },
+          "region": {
+            "bound": false,
+            "error": "shortcut_unavailable",
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "bound": false,
+            "error": "shortcut_unavailable",
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "keyPaths": {
+          "lastActivation": {},
+          "passive": false,
+          "raw": {
+            "available": false,
+            "xinput": ""
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": 1
+}

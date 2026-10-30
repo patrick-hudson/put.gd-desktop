@@ -1,0 +1,16 @@
+..putgd-staging-fallback {"tracking": "session", "fallbackReason": "passwordless sudo for scope launcher probe failed"}
+putgd-staging-fallback {"tracking": "session", "fallbackReason": "passwordless sudo for scope launcher probe failed"}
+..............Traceback (most recent call last):
+  File "<string>", line 7, in <module>
+  File "/home/patrick/.t3/worktrees/put.gd/t3-1bf68b31/tools/lab/package_staging.py", line 168, in run
+    waiter = detach()
+             ^^^^^^^^
+  File "/home/patrick/.t3/worktrees/put.gd/t3-1bf68b31/tools/lab/package_staging.py", line 153, in detach
+    code = os.waitstatus_to_exitcode(os.waitpid(child, 0)[1])
+                                     ^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+.........................
+----------------------------------------------------------------------
+Ran 41 tests in 10.751s
+
+OK

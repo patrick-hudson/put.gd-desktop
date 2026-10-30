@@ -1,0 +1,23 @@
+{
+  "placement": "boat",
+  "files": {
+    "tools/lab/lab.py": "0e0817d3dcbf1b88320392f0c7c83885881d4107d819c3915acfe73f3bc7f20e",
+    "tools/lab/package_staging.py": "32123e656667f70f23e8c1c32b504e605f855f2fba1a1af87b2855d78868c916",
+    "tools/lab/package_install.py": "7014397025219f6c6655586786168a958dbd9ed0f29fe9ad98addb9e06895263"
+  },
+  "state": {
+    "schemaVersion": 1,
+    "id": "1b2c02a2-3197-449f-9a7c-70f029fe33df",
+    "profile": "cinnamon-x11",
+    "guest_user": "lab",
+    "ssh_port": 22220,
+    "vnc_display": 20,
+    "acceleration": "kvm",
+    "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+    "golden_sha256": "518e3e45034c459e91118f95e3987971e19ea346486ab8219970b8484a892e48",
+    "bootstrap_key": "/home/user/snapshot-bootstrap/identity.pub",
+    "known_hosts": "/home/user/i780/work/lab-runs/c1/known_hosts",
+    "overlay": "/home/user/i780/work/lab-runs/c1/disk.qcow2",
+    "pid": 27690
+  }
+}

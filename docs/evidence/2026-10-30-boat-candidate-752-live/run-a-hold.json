@@ -1,0 +1,6 @@
+{
+  "pid": 1766383,
+  "signal": "SIGSTOP",
+  "time": 1793333684.5512407,
+  "reason": "preserve original npm ECONNRESET failure and existing workers while assessing same-worker recovery; no extra starts"
+}

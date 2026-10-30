@@ -1,0 +1,7 @@
+{
+  "availableBytes": 89136037888,
+  "availableInodes": 8709524,
+  "filesystem": "ext2/ext3:ef53",
+  "placement": "boat",
+  "requiredReserveBytes": 10737418240
+}
