@@ -1,0 +1,46 @@
+{
+  "windows": {
+    "editorColour": {
+      "title": "^Custom color$"
+    },
+    "editorSavedMenu": {
+      "title": ".*",
+      "owner": "editor",
+      "popup": true
+    }
+  },
+  "control_names": {
+    "lineWidth": [
+      "Line width"
+    ],
+    "textFont": [
+      "Font"
+    ],
+    "colorSwatchRed": [
+      "Color Red"
+    ],
+    "colorSwatchOrange": [
+      "Color Orange"
+    ],
+    "colorSwatchYellow": [
+      "Color Yellow"
+    ],
+    "colorSwatchGreen": [
+      "Color Green"
+    ],
+    "colorSwatchBlue": [
+      "Color Blue"
+    ],
+    "colorSwatchWhite": [
+      "Color White"
+    ],
+    "colorSwatchBlack": [
+      "Color Black"
+    ]
+  },
+  "editor": {
+    "restore_maximized_keys": [
+      "Alt+F10"
+    ]
+  }
+}

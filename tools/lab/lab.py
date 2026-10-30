@@ -89,22 +89,62 @@ def command(args, timeout=60, check=True, input=None):
     return result
 
 
+def connect_unix(path, timeout):
+    """Connect within one deadline, including Linux AF_UNIX backlog pressure.
+
+    Python timeout sockets use O_NONBLOCK. Unlike TCP's EINPROGRESS, a full
+    Unix listener queue returns EAGAIN immediately, without waiting for the
+    configured timeout. Retry only this pre-connection failure, never a QMP
+    write or reply: input dispatch may already have happened in those cases.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('Unix socket connection timed out')
+        peer = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            peer.settimeout(remaining)
+            peer.connect(str(path))
+            peer.settimeout(timeout)
+            return peer
+        except BlockingIOError:
+            peer.close()
+            time.sleep(min(.01, max(0, deadline - time.monotonic())))
+        except BaseException:
+            peer.close()
+            raise
+
+
 class QMP:
-    def __init__(self, path, timeout=10):
-        self.socket = socket.socket(socket.AF_UNIX)
-        self.socket.settimeout(timeout)
-        self.socket.connect(str(path))
-        self.stream = self.socket.makefile('rwb')
-        self.events = []
-        self.sequence = 0
-        greeting = self._read()
-        if 'QMP' not in greeting:
+    def __init__(self, path, timeout=10, deadline=None):
+        # deadline (time.monotonic()): one budget for connect, greeting and
+        # every reply, instead of ``timeout`` per step.
+        self.deadline = deadline
+        self.socket = connect_unix(path, timeout if deadline is None else min(timeout, deadline - time.monotonic()))
+        self.stream = None
+        try:
+            self.stream = self.socket.makefile('rwb')
+            self.events = []
+            self.sequence = 0
+            greeting = self._read()
+            if 'QMP' not in greeting:
+                raise LabError('Missing QMP greeting')
+            self.version = greeting['QMP']['version']
+            self.execute('qmp_capabilities')
+        except BaseException:
             self.close()
-            raise LabError('Missing QMP greeting')
-        self.version = greeting['QMP']['version']
-        self.execute('qmp_capabilities')
+            raise
+
+    def _budget(self):
+        if self.deadline is not None:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('QMP deadline exceeded')
+            self.socket.settimeout(remaining)
 
     def _read(self):
+        self._budget()
         line = self.stream.readline(1024 * 1024)
         if not line or not line.endswith(b'\n'):
             raise LabError('QMP closed or oversized reply')
@@ -115,6 +155,7 @@ class QMP:
         request = {'execute': name, 'id': self.sequence}
         if arguments is not None:
             request['arguments'] = arguments
+        self._budget()
         self.stream.write(json.dumps(request).encode() + b'\n')
         self.stream.flush()
         while True:
@@ -129,8 +170,11 @@ class QMP:
             return reply['return']
 
     def close(self):
-        self.stream.close()
-        self.socket.close()
+        try:
+            if self.stream is not None:
+                self.stream.close()
+        finally:
+            self.socket.close()
 
     def __enter__(self):
         return self
@@ -871,11 +915,13 @@ def reset(run):
     return {'status': 'stopped', 'evidence': str(run)}
 
 
-def input_events(run, events, head=None):
+def input_events(run, events, head=None, timeout=None):
+    """Send QMP input events. ``timeout``: total seconds, connect to reply."""
     arguments = {'events': events}
     if head is not None:
         arguments.update(device='video0', head=head)
-    with QMP(Path(run) / 'qmp.sock') as qmp:
+    budget = {} if timeout is None else {'timeout': timeout, 'deadline': time.monotonic() + timeout}
+    with QMP(Path(run) / 'qmp.sock', **budget) as qmp:
         qmp.execute('input-send-event', arguments)
 
 

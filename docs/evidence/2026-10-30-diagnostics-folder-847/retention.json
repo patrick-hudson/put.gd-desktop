@@ -1,0 +1,31 @@
+{
+  "archive": "work/847/issue847-live-evidence.tar.gz",
+  "sha256": "6182ff1ee4dc6360d9ca7e6d65ccf857e399872647c5e2c587e6245f0ee9f064",
+  "bytes": 156402665,
+  "members": 599,
+  "manifestSha256": "7a632ad52129d9a040d857a7ac0c0849a1837442a2ca1b5709fcc3bc46ddc710",
+  "transferVerified": true,
+  "sourceMembersVerified": true,
+  "overlayCleanupSha256": "deb05f29a73141967658ec394fcfbb254b8dc8d39a046b016064299629a98c5e",
+  "sandbox": "bx_n3uk8bvu",
+  "deletion": {
+    "attemptCount": 1,
+    "completedAt": "2026-10-30T11:47:14.736Z",
+    "expectedBy": null,
+    "id": "bdop_e30c453b46084bdc8eaaf950e1943079",
+    "kind": "sandbox",
+    "reason": "explicit",
+    "requestedAt": "2026-10-30T11:46:44.453Z",
+    "stage": "completed",
+    "status": "completed",
+    "targetId": "bx_n3uk8bvu"
+  },
+  "oldSandbox": {
+    "id": "bx_w33yd877",
+    "deletedByCoordinator": true,
+    "issue": 865
+  },
+  "wallEntryRemoved": true,
+  "tunnelStopped": true,
+  "bootstrapAgentStopped": true
+}

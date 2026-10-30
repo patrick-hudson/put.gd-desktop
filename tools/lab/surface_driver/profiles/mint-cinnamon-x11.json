@@ -13,8 +13,7 @@
   },
   "session": "x11",
   "known_gaps": [
-    "Catalogs are synthetic content; desktop drawn surfaces require human review",
-    "Runtime context/row menu controls were not exposed by the live AT-SPI resolver in two boat attempts (#675)"
+    "Catalogs are synthetic content; desktop drawn surfaces require human review"
   ],
   "window_titles": {
     "history": "^put\\.gd$",
@@ -33,16 +32,21 @@
     "recsel": ".*"
   },
   "catalog_windows": {},
+  "shell_health": {
+    "process": "cinnamon",
+    "crash_windows": [
+      "^Cinnamon just crashed"
+    ]
+  },
   "focus": {
     "backend": "ewmh",
-    "raise_before_input": false
+    "raise_before_input": false,
+    "desktop_hit_test": "shell-at-spi"
   },
   "notifications": {
     "accessible": {
       "application": "cinnamon*"
-    },
-    "actions_available": false,
-    "reason": "Two boat guest attempts: Cinnamon AT-SPI banner extents did not match the on-screen banner; default/button input is unverified (#670)"
+    }
   },
   "windows": {
     "editor.canvas": {
@@ -126,5 +130,11 @@
         "application": "putgd*"
       }
     }
+  },
+  "selector_accessible": {
+    "query": {
+      "owned": true
+    },
+    "via": "run observer focus event: NativeRegionAccessible is not one of Qt's application children, so a tree walk misses it (#701)"
   }
 }
