@@ -244,6 +244,49 @@ class NotificationPrivacy(unittest.TestCase):
         self.assertIn('popup_watch',source)
         self.assertIn('NotificationFilter',source)
 
+    def test_monitor_exits_with_the_probe_channel_and_takes_its_children(self):
+        # #817's lifetime binding on the socket monitor: once the run's probe
+        # channel is gone, the watcher and dbus-monitor end and the socket goes.
+        import json,os,signal,subprocess,time
+        for server in (':1.42',None):
+            with self.subTest(server=server),tempfile.TemporaryDirectory() as temp:
+                temp=Path(temp);(temp/'bin').mkdir()
+                stub=temp/'bin'/'dbus-monitor';stub.write_text('#!/bin/sh\nexec sleep 60\n');stub.chmod(0o700)
+                watcher=temp/'watcher.py';watcher.write_text('import time\ntime.sleep(60)\n')
+                parent=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)'])
+                path=str(temp/'notify.sock')
+                code=('import sys; sys.path.insert(0,%r); sys.argv[0]=%r\n'
+                      'from tools.lab.surface_driver.probe import notification_monitor, process_start\n'
+                      'notification_monitor({"server":%r,"socket":%r,"parent":{"pid":%d,"start":process_start(%d)}})\n'
+                      )%(str(ROOT),str(watcher),server,path,parent.pid,parent.pid)
+                monitor=subprocess.Popen([sys.executable,'-c',code],env=dict(os.environ,PATH=str(temp/'bin')+':'+os.environ['PATH']))
+                children=[]
+                try:
+                    deadline=time.monotonic()+10
+                    while time.monotonic()<deadline and len(children)<(2 if server else 1):
+                        time.sleep(.1)
+                        children=[int(c) for c in Path('/proc/%d/task/%d/children'%(monitor.pid,monitor.pid)).read_text().split()]
+                    self.assertEqual(len(children),2 if server else 1)
+                    self.assertTrue(os.path.exists(path))
+                    self.assertIsNone(monitor.poll())  # channel alive: keeps running
+                    parent.kill();parent.wait()
+                    self.assertEqual(monitor.wait(timeout=10),0)
+                    self.assertFalse(os.path.exists(path))
+                    for child in children:
+                        deadline=time.monotonic()+5
+                        while time.monotonic()<deadline and Path('/proc/%d'%child).exists() and \
+                                Path('/proc/%d/stat'%child).read_text().split(') ')[1][0]!='Z':
+                            time.sleep(.05)
+                        alive=Path('/proc/%d'%child).exists() and Path('/proc/%d/stat'%child).read_text().split(') ')[1][0]!='Z'
+                        self.assertFalse(alive,'monitor child %d outlived the channel'%child)
+                finally:
+                    for process in (parent,monitor):
+                        if process.poll() is None:
+                            process.kill();process.wait()
+                    for child in children:
+                        try:os.kill(child,signal.SIGKILL)
+                        except OSError:pass
+
 
 class FakeNode(list):
     def __init__(self,name,role,rect,pid=50,children=()):

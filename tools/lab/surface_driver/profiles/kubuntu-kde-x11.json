@@ -154,5 +154,11 @@
         "height": 52
       }
     ]
+  },
+  "recording": {
+    "consent": {
+      "kind": "none",
+      "reason": "X11 capture reads the X server (ximagesrc); no portal consent dialog may appear"
+    }
   }
 }

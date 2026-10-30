@@ -1,0 +1,10 @@
+{"event": "start", "mode": "trigger", "unique": ":1.204", "pid": 16423, "runtime": "/run/user/1000", "t": 1793351234.056}
+{"event": "armed", "monitor_pid": 16428, "t": 1793351234.057}
+{"event": "trigger", "seen": true, "t": 1793351254.937}
+{"event": "response", "handle": "/org/freedesktop/portal/desktop/request/1_204/obs_c16423", "code": 0, "sender": ":1.72", "t": 1793351255.086}
+{"event": "session", "session": "/org/freedesktop/portal/desktop/session/1_204/obss16423", "t": 1793351255.108}
+{"event": "response", "handle": "/org/freedesktop/portal/desktop/request/1_204/obs_s16423", "code": 0, "sender": ":1.72", "t": 1793351256.398}
+{"event": "selected", "code": 0, "t": 1793351256.418}
+{"event": "start-sent", "handle": "/org/freedesktop/portal/desktop/request/1_204/obs_x16423", "t": 1793351256.421}
+{"event": "start-result", "handle": "/org/freedesktop/portal/desktop/request/1_204/obs_x16423", "code": null, "consented": false, "held_seconds": 60.0, "t": 1793351316.433}
+{"event": "session-closed", "t": 1793351316.687}

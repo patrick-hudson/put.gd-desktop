@@ -1,8 +1,23 @@
 #!/bin/sh
 # Stage probes only inside a disposable guest/sandbox, never in a golden.
+# Never boot or modify an existing golden or replace a named boat snapshot.
+#
+# --disposable stages the general probe tools before sealing a NEW golden
+# from a disposable guest.
+# --recording-overlay stages only the recording fixture's media dependency
+# (GStreamer's GTK3 sink for the visible pattern, #784) in a disposable run
+# overlay. It is never sealed into a golden or snapshot; it fails closed when
+# the package or the gtksink element is unavailable.
 set -eu
+if [ "${1:-}" = --recording-overlay ]; then
+  sudo -n apt-get update
+  sudo -n apt-get install -y --no-install-recommends \
+    gstreamer1.0-gtk3 gir1.2-gstreamer-1.0 gir1.2-gtk-3.0 python3-gi
+  python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; Gst.init(None); assert Gst.ElementFactory.find('gtksink'), 'gtksink missing'"
+  exit 0
+fi
 if [ "${1:-}" != --disposable ]; then
-  echo 'usage: provision-probes.sh --disposable (never run on goldens)' >&2
+  echo 'usage: provision-probes.sh --disposable | --recording-overlay (disposable guests and overlays only; never run on goldens)' >&2
   exit 2
 fi
 sudo -n apt-get update

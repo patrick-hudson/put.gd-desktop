@@ -1,0 +1,30 @@
+{
+  "note": "baseline-recovery.json copied report before close; this independent post-check is the completion proof",
+  "pids": [
+    {
+      "pid": 79275,
+      "start": "355372",
+      "alive": false
+    },
+    {
+      "pid": 73909,
+      "start": "342283",
+      "alive": false
+    }
+  ],
+  "after": {
+    "text/plain": {
+      "bytes": 48,
+      "sha256": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "text/html": {
+      "bytes": 31,
+      "sha256": "0387e3cedca1a97f4d156e661118485240807e2cd5e10882e1e7d3368de205bb"
+    },
+    "application/x-putgd-860": {
+      "bytes": 256,
+      "sha256": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+    }
+  },
+  "byteExact": true
+}

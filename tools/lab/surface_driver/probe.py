@@ -21,7 +21,7 @@ import time
 WINDOW_ROLES = ('frame', 'dialog', 'window', 'file chooser', 'alert')
 POPUP_ROLES = ('menu', 'popup menu', 'tool tip')
 QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'window',
-              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor'}
+              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor', 'coordinates'}
 
 
 def owned(pid):
@@ -47,8 +47,8 @@ def matches(row, query):
     for key, value in query.items():
         if key not in QUERY_KEYS:
             raise ValueError('unknown accessibility query key: ' + key)
-        if key == 'compositor':
-            continue  # placement input, not a row filter
+        if key in ('compositor', 'coordinates'):
+            continue  # placement inputs, not row filters
         if key in ('name', 'text', 'description', 'application', 'window'):
             if not fnmatch.fnmatchcase(row.get(key, ''), value):
                 return False
@@ -587,10 +587,10 @@ def shift(rect, placement):
     return [rect[0] + placement['dx'], rect[1] + placement['dy'], rect[2], rect[3]] if rect else rect
 
 
-def extents(node):
+def extents(node, kind=None):
     import pyatspi
     try:
-        value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
+        value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS if kind is None else kind)
     except (NotImplementedError, RuntimeError):
         return None
     return list(value) if value is not None else None
@@ -608,6 +608,15 @@ def accessible(query):
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
     wayland = os.environ.get('XDG_SESSION_TYPE') == 'wayland'
     placement = WaylandPlacement(query['compositor']) if wayland and query.get('compositor') else None
+    # GTK4 on Wayland answers screen extents as (0,0) for every node; its
+    # window-relative extents are real. Only a query that asks reads them.
+    kind = None
+    if query.get('coordinates') == 'window':
+        if not wayland or placement is None:
+            raise RuntimeError('window-relative extents need a Wayland compositor witness')
+        kind = pyatspi.WINDOW_COORDS
+    elif query.get('coordinates') not in (None, 'screen'):
+        raise ValueError('coordinates must be screen or window')
     tops = {}
     def place(row):
         """Desktop coordinates for a Wayland client row, or None with a reason."""
@@ -679,7 +688,7 @@ def accessible(query):
             if role in WINDOW_ROLES or (ancestors and ancestors[-1]['role']=='application' and role not in POPUP_ROLES):
                 window, popup = name, None
                 if placement is not None and not placement.absolute(application):
-                    tops[(pid, name)] = extents(node)
+                    tops[(pid, name)] = extents(node, kind)
             state_set = node.getState()
             states = {}
             for key in ('visible', 'showing', 'enabled', 'sensitive', 'active', 'focused', 'focusable',
@@ -694,7 +703,7 @@ def accessible(query):
             # Extents/attributes/text are one D-Bus round trip each: fetch them
             # only for rows that can match and for popups. Ancestor rectangles
             # are filled in for matched rows only (a shell tree has ~2000 nodes).
-            rect = extents(node) if potential or role in POPUP_ROLES else UNREAD
+            rect = extents(node, kind) if potential or role in POPUP_ROLES else UNREAD
             if role in POPUP_ROLES and states['showing']:
                 popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid}
             if potential:
@@ -726,7 +735,7 @@ def accessible(query):
                     # Translate before matching: 'within' is in desktop coordinates.
                     for ancestor in ancestors:
                         if ancestor['rect'] is UNREAD:
-                            ancestor['rect'] = extents(ancestor['_node'])
+                            ancestor['rect'] = extents(ancestor['_node'], kind)
                     row['ancestors'] = [dict(a) for a in ancestors]  # shifted copies; children keep originals
                     row['coordinate_space'], reason = place(row)
                     if reason:
@@ -737,7 +746,7 @@ def accessible(query):
                 if matches(row, query):
                     for ancestor in row['ancestors']:
                         if ancestor['rect'] is UNREAD:
-                            ancestor['rect'] = extents(ancestor['_node'])
+                            ancestor['rect'] = extents(ancestor['_node'], kind)
                     matches_.append(row)
             if depth < 50:
                 ancestry = ancestors + [{'name':name,'role':server_role,'rect':rect,'pid':pid,'_node':node}]
@@ -1696,6 +1705,37 @@ class NotificationFilter:
         return False
 
 
+def process_start(pid):
+    try:
+        with open('/proc/%d/stat' % int(pid)) as stream:
+            return stream.read().split(') ', 1)[1].split()[19]
+    except (OSError, ValueError, IndexError, TypeError):
+        return None
+
+
+def server_pid(query):
+    """The persistent probe server's own identity; it exits when its SSH channel drops."""
+    return {'pid': os.getpid(), 'start': process_start(os.getpid())}
+
+
+def compositor_windows_probe(query):
+    return compositor_windows(query['compositor'])
+
+
+def follow_channel(query):
+    """Terminate this monitor (SIGTERM → its own cleanup) once the run's probe channel is gone."""
+    parent = query.get('parent')
+    if not parent:
+        return
+    import signal
+    import threading
+    def watch():
+        while process_start(parent.get('pid')) == parent.get('start'):
+            time.sleep(1)
+        os.kill(os.getpid(), signal.SIGTERM)
+    threading.Thread(target=watch, daemon=True).start()
+
+
 def sender_pid(sender):
     reply = run('gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path',
                 '/org/freedesktop/DBus', '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', sender)
@@ -1752,6 +1792,9 @@ def notification_monitor(query):
             pass
         sys.exit(0)
     signal.signal(signal.SIGTERM, stop)
+    # Bound to the run's probe channel (query['parent']): when it is gone the
+    # SIGTERM above ends the watcher, dbus-monitor and the socket.
+    follow_channel(query)
     if not query.get('server'):
         watcher.wait()
         stop()
@@ -1826,13 +1869,146 @@ def notification_read(query):
     return {'alive': alive, 'text': b''.join(chunks).decode('utf-8', 'replace')}
 
 
+PORTAL_REQUEST_PREFIX = '/org/freedesktop/portal/desktop/request/'
+PORTAL_MARKER_INTERFACE = 'org.putgd.LabPortalMonitor'
+PORTAL_RULES = ("type='method_call',interface='org.freedesktop.portal.ScreenCast'",
+                "type='method_call',interface='org.freedesktop.impl.portal.ScreenCast'",
+                "type='method_call',interface='org.freedesktop.impl.portal.RemoteDesktop'",
+                "type='method_call',interface='org.freedesktop.impl.portal.Request',member='Close'",
+                "type='signal',interface='org.freedesktop.portal.Request',member='Response'",
+                "type='signal',interface='" + PORTAL_MARKER_INTERFACE + "',member='Marker'")
+
+
+def portal_request_path(sender, token):
+    """xdg-desktop-portal's request object path for a caller's handle_token."""
+    return PORTAL_REQUEST_PREFIX + sender.lstrip(':').replace('.', '_') + '/' + token
+
+
+class PortalFilter:
+    """ScreenCast consent bookkeeping from dbus-monitor blocks; no payload text.
+
+    Keeps one JSON record per relevant message: the private family's own
+    org.freedesktop.portal.ScreenCast calls (sender proven owned, with the
+    handle_token's request path), every frontend→backend impl ScreenCast or
+    RemoteDesktop call (request handle, app id and the backend's process),
+    impl Request.Close, Request::Response codes and this run's marker.
+    Options dictionaries, restore tokens and stream properties are dropped.
+    """
+    def __init__(self, sender_owned, backend):
+        self.sender_owned, self.backend = sender_owned, backend
+
+    def record(self, block):
+        header = block.split('\n', 1)[0]
+        def field(name):
+            found = re.search(r'\b' + name + r'=(\S+?);?(?:\s|$)', header)
+            return found[1] if found else None
+        sender, destination, path = field('sender'), field('destination'), field('path')
+        interface, member = field('interface'), field('member')
+        at = re.search(r'\btime=([0-9.]+)', header)
+        at = float(at[1]) if at else None
+        if not sender or not interface or not member:
+            return None
+        objects = re.findall(r'^\s*object path "([^"]*)"', block, re.M)
+        strings = re.findall(r'^\s*string "((?:[^"\\]|\\.)*)"', block, re.M)
+        if header.startswith('method call') and interface == 'org.freedesktop.portal.ScreenCast':
+            if not self.sender_owned(sender):
+                return None
+            token = re.search(r'string "handle_token"\s*variant\s+string "([A-Za-z0-9_]{1,128})"', block)
+            return {'kind': 'public', 'member': member, 'sender': sender, 'at': at,
+                    'handle': portal_request_path(sender, token[1]) if token else None,
+                    'token': token[1] if token else None}
+        if header.startswith('method call') and interface in ('org.freedesktop.impl.portal.ScreenCast',
+                                                              'org.freedesktop.impl.portal.RemoteDesktop'):
+            handle = objects[0] if objects and objects[0].startswith(PORTAL_REQUEST_PREFIX) else None
+            # impl Start/SelectSources: (handle, session, app_id, parent_window, options)
+            app_id = strings[0] if handle and member in ('Start', 'SelectSources', 'SelectDevices') and strings else None
+            pid, executable = self.backend(destination)
+            return {'kind': 'impl', 'interface': interface.rsplit('.', 1)[1], 'member': member, 'sender': sender,
+                    'destination': destination, 'handle': handle, 'app_id': app_id, 'at': at,
+                    'backend_pid': pid, 'backend_exe': executable}
+        if header.startswith('method call') and interface == 'org.freedesktop.impl.portal.Request' and member == 'Close':
+            return {'kind': 'close', 'sender': sender, 'handle': path, 'at': at}
+        if header.startswith('signal') and interface == 'org.freedesktop.portal.Request' and member == 'Response':
+            code = re.search(r'^\s*uint32 (\d+)', block, re.M)
+            return {'kind': 'response', 'sender': sender, 'destination': destination, 'handle': path,
+                    'code': int(code[1]) if code else None, 'at': at}
+        if header.startswith('signal') and interface == PORTAL_MARKER_INTERFACE:
+            # Attachment proof only: the sender (gdbus emit) has exited before
+            # its pid could be read; the fixture matches a random token instead.
+            return {'kind': 'marker', 'token': strings[0] if strings else '', 'at': at}
+        return None
+
+
+def process_executable(pid):
+    try:
+        return os.path.basename(os.readlink('/proc/%d/exe' % pid))
+    except (OSError, TypeError):
+        return None
+
+
+def portal_monitor(query):
+    """Long-running ScreenCast consent observer for one fixture, until terminated."""
+    import select
+    import signal
+    def die_with_parent():
+        ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+    owners, backends = {}, {}
+    def sender_owned(sender):
+        if sender not in owners:
+            try:
+                owners[sender] = owned(sender_pid(sender))
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                owners[sender] = False
+        return owners[sender]
+    def backend(name):
+        if name not in backends:
+            try:
+                pid = sender_pid(name) if name else None
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                pid = None
+            backends[name] = (pid, process_executable(pid))
+        return backends[name]
+    keeper = PortalFilter(sender_owned, backend)
+    child = subprocess.Popen(['dbus-monitor', '--session', *PORTAL_RULES], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
+    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), sys.exit(0)))
+    follow_channel(query)
+    descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    buffer, block, written = b'', [], [0]
+    def flush():
+        record = keeper.record(''.join(block)) if block else None
+        block.clear()
+        if record is not None and written[0] < 1024 * 1024:
+            line = (json.dumps(record, sort_keys=True) + '\n').encode()
+            written[0] += len(line)
+            os.write(descriptor, line)
+    while True:
+        ready, _, _ = select.select([child.stdout], [], [], .05)
+        if not ready:
+            flush()
+            continue
+        chunk = os.read(child.stdout.fileno(), 65536)
+        if not chunk:
+            flush()
+            break
+        buffer += chunk
+        while b'\n' in buffer:
+            raw, buffer = buffer.split(b'\n', 1)
+            line = raw.decode('utf-8', 'replace') + '\n'
+            if line[:1] not in (' ', '\t', '\n') and block:
+                flush()
+            block.append(line)
+    return {'exit': child.wait()}
+
+
 def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
                     'foreground': foreground, 'windows': windows, 'tray':tray, 'layout': layout, 'resize':resize_witness,
                     'notification_monitor': notification_monitor, 'notification_read': notification_read,
-                    'popup_watch': popup_watch, 'shell_state': shell_state}[request['probe']]
+                    'popup_watch': popup_watch, 'portal_monitor': portal_monitor, 'server_pid': server_pid,
+                    'shell_state': shell_state, 'compositor_windows': compositor_windows_probe}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))

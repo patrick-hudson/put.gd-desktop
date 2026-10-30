@@ -1,0 +1,53 @@
+{
+  "driverHead": "32892d2d2e4378cd035e19b2e83e0b5af314c621",
+  "before": {
+    "text/plain;charset=utf-8": {
+      "bytes": 48,
+      "sha256": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "text/plain": {
+      "bytes": 48,
+      "sha256": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    }
+  },
+  "keeper": {
+    "pid": 73654,
+    "start": "234832",
+    "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+    "uid": 1000,
+    "state": "R",
+    "parent": 73653,
+    "protocol": "putgd-clipboard-lease-v1",
+    "source_sha256": "e8b5419d777fe9896f3fde7d2f1f566747bba84e2046f13d718eb719968c7b87"
+  },
+  "replacementAccepted": true,
+  "replacementVisible": true,
+  "deferredDeadline": true,
+  "after": {
+    "text/plain;charset=utf-8": {
+      "bytes": 48,
+      "sha256": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "text/plain": {
+      "bytes": 48,
+      "sha256": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    }
+  },
+  "byteExact": true,
+  "report": {
+    "restored_and_stopped": true,
+    "reviews": [
+      "Disposable GNOME clipboard restoration preserves text/plain;charset=utf-8; other MIME types were not restorable: text/plain"
+    ],
+    "ready": true,
+    "preserved_mimes": [
+      "text/plain;charset=utf-8"
+    ],
+    "transport": "x11-selection-bridge",
+    "pid": 73654,
+    "start": "234832",
+    "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+    "reaped_pids": []
+  },
+  "cleanupErrors": []
+}

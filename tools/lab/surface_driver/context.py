@@ -682,7 +682,8 @@ asyncio.run(main())
         from .target import checked_socket
         root = self.target.root
         program, path = root+'/notification-monitor.py', checked_socket(root+'/notify.sock')
-        request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'socket':path}})
+        request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'socket':path,
+                                                                       'parent':self._channel_identity()}})
         source = Path(__file__).with_name('probe.py').read_text()
         # The program file is the probe source only; filtered notification
         # blocks stay in the monitor's memory and leave it over its 0600 socket.
@@ -693,6 +694,16 @@ asyncio.run(main())
             self.target.monitor_pid = int(result['stdout'].strip())
             ready = 'kill -0 '+str(self.target.monitor_pid)+' && test -S '+shlex.quote(path)
             self.wait(lambda: self.shell(ready)['returncode'] == 0, 'memory notification monitor ready', 5)
+
+    def _channel_identity(self):
+        """The persistent probe server's PID + start time: run monitors exit with
+        it when the guest SSH channel drops. None for one-shot probe targets."""
+        if not getattr(self.target, 'probe', None):
+            return None
+        try:
+            return self._probe('server_pid', {})
+        except RecipeBlocked:
+            return None
 
     def notifications(self):
         if not self.target.monitor_pid:

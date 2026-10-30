@@ -1,0 +1,71 @@
+[
+  {
+    "signal": "SIGTERM",
+    "runnerPid": 95891,
+    "runnerExit": 0,
+    "keeper": {
+      "pid": 71640,
+      "start": "303703",
+      "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+      "argv": [
+        "python3",
+        "/tmp/sd-5f227f36/clipboard-keeper.py",
+        "/tmp/sd-5f227f36",
+        "--disposable"
+      ],
+      "uid": 1000,
+      "state": "R",
+      "parent": 71639,
+      "protocol": "putgd-clipboard-lease-v1",
+      "source_sha256": "e8b5419d777fe9896f3fde7d2f1f566747bba84e2046f13d718eb719968c7b87"
+    },
+    "keeperAlive": false,
+    "byteExact": true,
+    "before": {
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+      "text/html": "0387e3cedca1a97f4d156e661118485240807e2cd5e10882e1e7d3368de205bb",
+      "application/x-putgd-860": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+    },
+    "after": {
+      "application/x-putgd-860": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+      "text/html": "0387e3cedca1a97f4d156e661118485240807e2cd5e10882e1e7d3368de205bb",
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "frame": "v2-head-kill-SIGTERM.png"
+  },
+  {
+    "signal": "SIGKILL",
+    "runnerPid": 95999,
+    "runnerExit": -9,
+    "keeper": {
+      "pid": 72410,
+      "start": "305588",
+      "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+      "argv": [
+        "python3",
+        "/tmp/sd-a8b82ac6/clipboard-keeper.py",
+        "/tmp/sd-a8b82ac6",
+        "--disposable"
+      ],
+      "uid": 1000,
+      "state": "R",
+      "parent": 72409,
+      "protocol": "putgd-clipboard-lease-v1",
+      "source_sha256": "e8b5419d777fe9896f3fde7d2f1f566747bba84e2046f13d718eb719968c7b87"
+    },
+    "keeperAlive": false,
+    "byteExact": true,
+    "before": {
+      "application/x-putgd-860": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880",
+      "text/html": "0387e3cedca1a97f4d156e661118485240807e2cd5e10882e1e7d3368de205bb",
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+    },
+    "after": {
+      "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+      "text/html": "0387e3cedca1a97f4d156e661118485240807e2cd5e10882e1e7d3368de205bb",
+      "application/x-putgd-860": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+    },
+    "frame": "v2-head-kill-SIGKILL.png",
+    "cleanupErrors": []
+  }
+]
