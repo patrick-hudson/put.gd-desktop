@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 2,
+  "entries": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "host": "d69",
+      "placement": "guest"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "host": "d69",
+      "placement": "guest"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "ubuntu-gnome-x11",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "host": "d69",
+      "placement": "guest"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "host": "d69",
+      "placement": "guest"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "debian-kde-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "host": "d69",
+      "placement": "native"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "aurora-kde-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "passed",
+      "visual": "reviewed-ok",
+      "host": "d69",
+      "placement": "guest"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "neon-kde-wayland",
+      "package": "deb",
+      "source": "mark",
+      "at": "2026-10-29T23:21:42Z",
+      "functional": "failed",
+      "visual": "reviewed-wrong",
+      "host": "d69",
+      "placement": "guest"
+    }
+  ]
+}

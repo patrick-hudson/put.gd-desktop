@@ -25,7 +25,104 @@
     "about": "About",
     "destinations": "^put\\.gd$",
     "updates": "^put\\.gd$",
-    "bar": "^put\\.gd recording controls$"
+    "bar": "^put\\.gd recording controls$",
+    "fileDialog": ".*",
+    "putgdFileDialog": ".*",
+    "region": ".*",
+    "recsel": ".*"
   },
-  "catalog_windows": {}
+  "catalog_windows": {},
+  "focus": {
+    "backend": "profile-compositor",
+    "raise_before_input": false,
+    "reason": "Requires compositor_script returning verified focus/stacking; public resident view-state does not expose focus"
+  },
+  "notifications": {
+    "accessible": {
+      "application": "plasmashell*"
+    }
+  },
+  "windows": {
+    "editor.canvas": {
+      "owner": "editor",
+      "accessible": {
+        "name": "Image being edited"
+      }
+    },
+    "fileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "putgdFileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser",
+        "application": "putgd*"
+      }
+    },
+    "region": {
+      "title": ".*",
+      "accessible": {
+        "name": "Capture region",
+        "application": "putgd*"
+      }
+    },
+    "recsel": {
+      "title": ".*",
+      "accessible": {
+        "name": "Recording region",
+        "application": "putgd*"
+      }
+    },
+    "historyContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyRowMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "maskOptionsMenu": {
+      "owner": "review",
+      "popup": true
+    },
+    "confirmAction": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirm": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationDefault": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationReload": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    },
+    "confirmDestinationRemove": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    }
+  }
 }
