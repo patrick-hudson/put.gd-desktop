@@ -349,6 +349,14 @@ class Fixtures(unittest.TestCase):
             self.assertEqual(dict(value)['name'],'synthetic.png')
             self.assertTrue(value.get('link'));self.assertEqual(value.name,'synthetic.png')
             self.assertEqual(calls,['publish'])
+
+    def test_tagged_release_matches_the_links_lane_page_contract(self):
+        original=self.ctx.call
+        link={'version':'26.1029.1','kind':'stable','url':'https://github.com/patrick-hudson/put.gd-desktop/releases/tag/v26.1029.1'}
+        self.ctx.call=lambda method,params=None:{'diagnostics':{'release':link}} if method=='ui.snapshot' else original(method,params)
+        value=self.ctx.fixture('release')
+        self.assertEqual(value.release_kind,'stable')
+        self.assertEqual(value.expect,{'kind':'local','name':link['version'],'preview':False,'url_host':'github.com','text':link['version']})
     def test_runner_cleans_fixture_after_failed_recipe_and_marks_cleanup_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             context=SimpleNamespace(begin=lambda r:None,frame=lambda *a,**k:None,frames=[],reviews=[],notes=[],review=lambda v:None,note=lambda v:None)

@@ -37,4 +37,7 @@ def release(scope):
     link=build.get('releaseLink') or scope.ctx.call('ui.snapshot').get('diagnostics',{}).get('release')
     if not isinstance(link,dict) or not link.get('url'):
         raise RecipeBlocked('running untagged build has no release link; fixture will not relabel it',issue=691)
-    return Fixture(expect={'kind':'release','name':link.get('version'),'preview':False,'url_host':'github.com','text':link.get('version')})
+    # The links lane accepts only s3/proton/local page expectations. A release
+    # page uses its ordinary-page matcher, constrained to the actual host/text.
+    return Fixture(release_kind=link.get('kind'),
+                   expect={'kind':'local','name':link.get('version'),'preview':False,'url_host':'github.com','text':link.get('version')})
