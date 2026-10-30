@@ -498,12 +498,14 @@ def cli_settings(ctx):
     ctx.expect(current['document'] == persisted(ctx), 'CLI reads persisted configuration')
     result(ctx, ctx.cli('settings.validate', json.dumps({'document': current['document']})))
     expected = not current['document']['preferences']['notifications']
-    result(ctx, ctx.cli('settings.patch', json.dumps({'patch': {'preferences': {'notifications': expected}},
-                       'expectedRevision': current['metadata']['observedRevision']})))
-    saved(ctx, 'preferences.notifications', expected, 0)
-    result(ctx, ctx.cli('settings.reload'))
-    frame(ctx, 'after', 0)
-    patch(ctx, {'preferences': {'notifications': not expected}})
+    try:
+        result(ctx, ctx.cli('settings.patch', json.dumps({'patch': {'preferences': {'notifications': expected}},
+                           'expectedRevision': current['metadata']['observedRevision']})))
+        saved(ctx, 'preferences.notifications', expected, 0)
+        result(ctx, ctx.cli('settings.reload'))
+        frame(ctx, 'after', 0)
+    finally:
+        patch(ctx, {'preferences': {'notifications': not expected}})
     ctx.blocked('Partial CLI settings evidence saved; settings.save, reorderProfiles and setup.* need isolated multi-profile/setup fixtures.', issue=CORE_ISSUE)
 
 
@@ -538,12 +540,14 @@ def mcp_configuration(ctx):
     frame(ctx, 'before', 0)
     old = get(ctx)
     expected = not old['document']['preferences']['notifications']
-    result(ctx, ctx.mcp('patch_configuration', {'patch': {'preferences': {'notifications': expected}},
-                       'expected_revision': old['metadata']['observedRevision']}))
-    saved(ctx, 'preferences.notifications', expected, 0)
-    result(ctx, ctx.mcp('reload_configuration'))
-    frame(ctx, 'after', 0)
-    patch(ctx, {'preferences': {'notifications': not expected}})
+    try:
+        result(ctx, ctx.mcp('patch_configuration', {'patch': {'preferences': {'notifications': expected}},
+                           'expected_revision': old['metadata']['observedRevision']}))
+        saved(ctx, 'preferences.notifications', expected, 0)
+        result(ctx, ctx.mcp('reload_configuration'))
+        frame(ctx, 'after', 0)
+    finally:
+        patch(ctx, {'preferences': {'notifications': not expected}})
     ctx.blocked('Partial MCP configuration evidence saved; reorder_destinations/move_destination need isolated multi-profile fixture.', issue=CORE_ISSUE)
 
 

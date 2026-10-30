@@ -25,6 +25,10 @@ while stack and visited < 6000:
     node, depth = stack.pop()
     visited += 1
     try:
+        # Hidden tabs contain thousands of descendants. They cannot receive
+        # this input; keep offscreen-but-visible controls so scrolling can find them.
+        if depth and not node.getState().contains(pyatspi.STATE_VISIBLE):
+            continue
         name, role = node.name or '', node.getRoleName()
         if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
             rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
