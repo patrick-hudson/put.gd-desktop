@@ -356,11 +356,9 @@ def key_menu(ctx):
         ctx.wait(lambda: _state(ctx)['selectedIds'] == [row['id']], 'current keyboard row has exact receipt identity')
         _frame(ctx, 'selected-' + key)
         ctx.keys(key)
-        _wait_window(ctx, 'historyRowMenu')
+        _wait_menu(ctx, 'Copy details')
         ctx.frame('menu-' + key)
-        ctx.click('text:Copy details', window='historyRowMenu')
-        detail = json.loads(ctx.clipboard_text())
-        ctx.expect(any(item['id'] == row['id'] for item in detail['records']), 'keyboard row menu copies selected receipt')
+        _copied_row_details(ctx, row)
     _frame(ctx, 'after')
 
 
@@ -550,6 +548,27 @@ def _header_point(ctx, box):
 
 def _menu_names(ctx):
     return {n.get('name') for n in ctx.accessible({'owned': True, 'visible': True, 'role': 'menu item'})}
+
+
+def _wait_menu(ctx, *names):
+    # Runtime menus are resolved by click() through their owner. geometry()
+    # deliberately addresses toplevel windows and cannot locate an untitled
+    # QMenu as an independent native window.
+    pid = ctx.geometry('history')['pid']
+    return ctx.wait(lambda: set(names) <= {n.get('name') for n in ctx.accessible(
+        {'owned': True, 'pid': pid, 'visible': True, 'showing': True, 'enabled': True, 'role': 'menu item'})},
+        'owned runtime menu actions are visible: ' + ', '.join(names))
+
+
+def _copied_row_details(ctx, row):
+    ctx.click('text:Copy details', window='historyRowMenu')
+    def copied():
+        try:
+            value = json.loads(ctx.clipboard_text())
+        except (ValueError, TypeError):
+            return None
+        return value if isinstance(value, dict) and any(r.get('id') == row['id'] for r in value.get('records', [])) else None
+    return ctx.wait(copied, 'keyboard row menu copies selected receipt')
 
 
 def _application_menu(ctx):
@@ -980,7 +999,7 @@ def quit_application(ctx):
     _open(ctx)
     _frame(ctx, 'before')
     ctx.click('applicationMenu', window='history')
-    _wait_window(ctx, 'applicationMenuPopup')
+    _wait_menu(ctx, 'Quit put.gd')
     ctx.click('text:Quit put.gd', window='applicationMenuPopup')
     ctx.wait(lifecycle.stopped, 'private resident socket removed after real Quit')
     ctx.frame('quit')
@@ -997,7 +1016,7 @@ def output_summary(ctx):
     _open(ctx)
     _frame(ctx, 'before')
     ctx.click('captureOutputSummary', window='history')
-    _wait_window(ctx, 'captureOutputMenu')
+    _wait_menu(ctx, 'Change output')
     rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
                            'pid': ctx.geometry('history')['pid'], 'role': 'label'})
     labels = [n['name'] for n in rows]
@@ -1065,10 +1084,9 @@ def list_gestures(ctx):
     _focus_items(ctx)
     ctx.keys('Home')
     ctx.click_accessible(query, button='right')
-    _wait_window(ctx, 'historyRowMenu')
+    _wait_menu(ctx, 'Copy details')
     ctx.frame('context-menu')
-    ctx.click('text:Copy details', window='historyRowMenu')
-    copied = json.loads(ctx.clipboard_text())
+    copied = _copied_row_details(ctx, row)
     ctx.expect([r['id'] for r in copied['records']] == [row['id']], 'right-click menu acts on exact row')
     _frame(ctx, 'after')
 

@@ -204,6 +204,7 @@ class FakeContext(Context):
         elif control == 'historyPrevious':
             self.query['offset'] = 0
         elif control == 'text:Copy details':
+            self.menu = None
             self.clipboard = json.dumps({'records': [{'id': 'wrong' if self.fault == 'wrong-details' else 'image-1'}]})
         elif control == 'saveHistoryAsAction':
             self.chooser = True
@@ -304,6 +305,8 @@ class FakeContext(Context):
                     self.details = False
             elif key == 'Space' and self.focused_control == 'historyPreview':
                 self.preview = True
+            elif key in ('Menu', 'Shift+F10'):
+                self.menu = 'row'
             elif key == 'Ctrl+C' and self.focused_control == 'historyDetails':
                 self.clipboard = json.dumps(self.detail())
 
@@ -357,7 +360,7 @@ class FakeContext(Context):
                 raise AssertionError('image and glyph share their button role')
             return [{'rect': [1200 if query['states']['focusable'] else 1300, 400, 40, 40]}]
         if query.get('role') == 'menu item':
-            return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else set())]
+            return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else {'Copy details'} if self.menu == 'row' else set())]
         if query.get('name') == 'Capture actions':
             return [{'name': 'Capture actions'}] if self.help else []
         if query.get('role') == 'page tab':
@@ -799,6 +802,10 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_popup_frames_do_not_require_a_native_menu_window(self):
         class PopupContext(FakeContext):
+            def geometry(self, window):
+                if window.endswith(('Menu', 'Popup')):
+                    raise AssertionError('runtime menus resolve through their owner, never standalone geometry')
+                return super().geometry(window)
             def frame(self, label, window=None, reference=None):
                 if window and (window.endswith('Menu') or window.endswith('Popup')):
                     raise AssertionError('runtime popup is not an independently titled window')
