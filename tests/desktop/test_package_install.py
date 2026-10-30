@@ -132,7 +132,7 @@ child = subprocess.Popen([sys.executable, '-c', {child!r}, sys.argv[1], str(os.g
 wait_for_progress(sys.argv[1], lambda p: {{os.getpid(), child.pid}} <=
                   {{identity['pid'] for identity in p.get('ownedProcesses', [])}})
 print(json.dumps({{'parent': os.getpid(), 'child': child.pid}}), flush=True)
-''', .2, 3)
+''', 2, 3)
         result = output['result']
         self.assertTrue(result['timedOut'])
         self.assertTrue(result['ok'], result)
@@ -187,7 +187,7 @@ import select
 fd = int(os.environ['PUTGD_TEST_RELEASE_FD'])
 assert select.select([fd], [], [], 5)[0], 'supervisor did not take snapshot'
 os.read(fd, 2)
-''', .2, 3, setup=setup)
+''', 2, 3, setup=setup)
         result = output['result']
         self.assertTrue(result['timedOut'], result)
         self.assertTrue(result['ok'], result)
