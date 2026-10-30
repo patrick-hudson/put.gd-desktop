@@ -121,6 +121,10 @@ class FakeContext(Context):
         self.assert_event('click', control, window)
         self.focus = control
         self.pending = ''
+        if control == 'text:Cancel':
+            self.dialog = None
+        if control == 'class:QLineEdit':
+            self.focus = 'nameDialog'
         if control == 'confirmDiscard':
             if self.dialog == 'default':
                 self.document['captureDefaults'] = {
@@ -134,7 +138,7 @@ class FakeContext(Context):
             else:
                 raise AssertionError('confirmation was not opened')
             self.dialog = None
-        if control == 'unlockCredentials':
+        if control == 'text:Unlock saved credentials':
             self.available = True
         if control == 'testDestination':
             self.tested = True
@@ -373,6 +377,8 @@ class DestinationsContracts(unittest.TestCase):
             profile = json.loads(path.read_text())
             for role, title in expected.items():
                 self.assertEqual(profile['window_titles'][role], title)
+                self.assertEqual(profile['windows'][role]['title'], title)
+                self.assertEqual(profile['windows'][role]['accessible']['name'], title)
                 self.assertTrue(fnmatch.fnmatchcase(title, '*' + profile['window_titles'][role] + '*'))
                 self.assertEqual(profile['catalog_windows'][role], [{
                     'confirmDestinationRemove': 'confirm-remove-destination',

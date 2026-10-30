@@ -261,6 +261,7 @@ def service(ctx):
 def advanced_connection(ctx):
     _, profiles = _open(ctx)
     ctx.click('advancedSettings', window='destinations')
+    ctx.use_catalog('destinations', '62-destination-connection-expanded')
     _edit(ctx, 's3StorageClass', 'STANDARD_IA')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['storageClass'] == 'STANDARD_IA', 'storage class saved')
     ctx.click('s3StorageClassReset', window='destinations')
@@ -328,6 +329,7 @@ def add(ctx):
     for menu_index, provider, label in ((0, 's3', 'Added S3'), (2, 'backblaze-b2', 'Added B2')):
         ctx.click('addS3Destination', window='destinations')
         ctx.keys('Home', *(['Down'] * menu_index), 'Return')
+        ctx.click('class:QLineEdit', window='confirmDestinationName')
         ctx.keys('Ctrl+A')
         ctx.type_text(label)
         ctx.keys('Return')
@@ -345,8 +347,8 @@ def make_default(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationDefault')
     ctx.click('makeDefaultDestination', window='destinations')
-    # First prove cancellation preserves routing, then confirm explicitly.
-    ctx.keys('Escape')
+    # Target the modal itself; foreground guards must never type through it.
+    ctx.click('text:Cancel', window='confirmDestinationDefault')
     _saved(ctx, lambda doc: doc['captureDefaults']['destination'] == 'local', 'cancel untested default preserves routing')
     ctx.click('makeDefaultDestination', window='destinations')
     ctx.click('confirmDiscard', window='confirmDestinationDefault')
@@ -365,7 +367,7 @@ def remove(ctx):
         ctx.click('destinationActions', window='destinations')
         ctx.keys('Home', 'Down', 'Down', 'Return')
     request()
-    ctx.keys('Escape')
+    ctx.click('text:Cancel', window='confirmDestinationRemove')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'cancel removal retains destination')
     request()
     ctx.click('confirmDiscard', window='confirmDestinationRemove')
@@ -430,7 +432,8 @@ def unlock_credentials(ctx):
                         'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available']
     ctx.expect(not available(), 'new profile identity starts with no cached credentials')
     ctx.click('addDestinationCredentials', window='destinations')
-    ctx.click('unlockCredentials', window='destinations')
+    ctx.use_catalog('destinations', '09-stored-credential-hint')
+    ctx.click('text:Unlock saved credentials', window='destinations')
     ctx.wait(available, 'explicit unlock loads the owned fake keyring item')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'unlock preserves credential references')
     _frame(ctx, 'after', '09-stored-credential-hint')
@@ -443,7 +446,8 @@ def test_connection(ctx):
     # test; fixture setup is never counted as the tested interaction.
     _, profiles = _open(ctx, saved_credentials=True)
     ctx.click('addDestinationCredentials', window='destinations')
-    ctx.click('unlockCredentials', window='destinations')
+    ctx.use_catalog('destinations', '09-stored-credential-hint')
+    ctx.click('text:Unlock saved credentials', window='destinations')
     ctx.wait(lambda: ctx.call('setup.credentialHint', {'profileId': profiles[0]['id'],
                      'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available'],
              'fake credentials unlocked')
@@ -465,7 +469,7 @@ def conflict(ctx):
     ctx.wait(lambda: _state(ctx, 'destinationConflictBanner', 'visible'), 'external edit raises conflict banner')
     _frame(ctx, 'conflict', '52-destinations-conflict')
     ctx.click('reloadDestinationConflict', window='destinations')
-    ctx.keys('Escape')
+    ctx.click('text:Cancel', window='confirmDestinationReload')
     ctx.expect(_state(ctx, 'destinationConflictBanner', 'visible') is True, 'cancel reload keeps local draft')
     ctx.click('reloadDestinationConflict', window='destinations')
     ctx.click('confirmDiscard', window='confirmDestinationReload')
