@@ -1000,7 +1000,7 @@ def command_tooltips(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('history.save-diagnostics', needs=('history_retry_upload', 'app-profile'))
+@recipe('history.save-diagnostics', needs=('history_retry_upload', 'app-profile'), timeout=240)
 def save_diagnostics(ctx):
     row = _row(ctx, 'history_retry_upload')
     root = ctx.fixture('app-profile').output_dir
@@ -1132,7 +1132,9 @@ def output_summary(ctx):
     routes.add('clipboard', routes.profile_ids[1])
     _open(ctx)
     _frame(ctx, 'before')
-    ctx.click('captureOutputSummary', window='history')
+    # This fixture adds a clipboard route different from the default. The
+    # live summary name changes with that configuration, unlike the catalog.
+    _click_history_node(ctx, {'name': 'Mixed outputs'})
     _wait_menu(ctx, 'Change output')
     rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
                            'pid': ctx.geometry('history')['pid'], 'role': 'label'})
