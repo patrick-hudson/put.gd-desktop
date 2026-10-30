@@ -36,7 +36,7 @@ class Scope:
         result = self.ctx.shell("python3 - <<'SD_FIXTURE_PY'\n" + code + '\nSD_FIXTURE_PY\n', timeout=timeout)
         if result['returncode']:
             # Neither stderr nor command payloads cross the evidence boundary.
-            raise RecipeBlocked('fixture target command failed (details retained privately on target)')
+            raise RecipeBlocked('fixture target command failed')
         return result['stdout']
 
     def json(self, code, **kwargs):
@@ -149,10 +149,14 @@ if p.exists():
             self.finalizers.sort(key=lambda item: item[0])
             while self.finalizers:
                 _, label, function = self.finalizers.pop()
+                if label == 'owned directory' and self.errors:
+                    self.errors.append('owned directory retained after cleanup failure')
+                    continue
                 try:
                     function()
                 except Exception as error:
                     self.errors.append(label+': '+type(error).__name__)
         finally:
             self.ctx._deadline = previous
-        return self.errors
+        errors, self.errors = self.errors, []
+        return errors

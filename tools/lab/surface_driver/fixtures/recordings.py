@@ -87,3 +87,39 @@ def controls(scope):
     path=scope.ctx.catalog.directory/'30-review.controls.json'
     if not path.is_file():raise RecipeBlocked('current-build review controls inventory missing',issue=672)
     return Fixture(json.loads(path.read_text()))
+
+
+def preview_error(scope):
+    """Latch a genuine decoder failure, then restore bytes before real Retry."""
+    value=scope.ctx.fixture('recording')
+    root=scope.ctx.call('diagnostics').get('locations',{}).get('data',{}).get('path')
+    from pathlib import PurePosixPath
+    if not isinstance(root,str) or not PurePosixPath(root).is_relative_to(PurePosixPath(scope.ctx.target.root)/'data'):
+        raise RecipeBlocked('decoder fault requires the exact owned recording data root',issue=672)
+    working=root+'/recording/'+value.id+'/working.mkv'
+    backup=scope.root+'/decoder-backup.mkv'
+    scope.python('''import os
+from pathlib import Path
+p=Path(WORKING);backup=Path(BACKUP)
+assert p.resolve()==p and p.is_file() and not backup.exists()
+os.rename(p,backup)
+try:
+ with open(p,'xb') as f:f.write(b'synthetic invalid media')
+except BaseException:
+ os.rename(backup,p)
+ raise
+'''.replace('WORKING',repr(working)).replace('BACKUP',repr(backup)))
+    def restore():
+        scope.python('''import os
+from pathlib import Path
+p=Path(WORKING);backup=Path(BACKUP)
+if backup.exists():
+ assert backup.resolve()==backup and p.resolve()==p
+ os.replace(backup,p)
+'''.replace('WORKING',repr(working)).replace('BACKUP',repr(backup)))
+    scope.defer('decoder working bytes',restore,priority=300)
+    scope.ctx.call('recording.review',{'id':value.id,'action':'seek','time':1_000_000})
+    scope.ctx.wait(lambda:scope.ctx.call('recording.review',{'id':value.id,'action':'inspect'})['preview'].get('error'),
+                   'genuine decoder preview failure',timeout=20)
+    restore()
+    return Fixture(value,decoder_fault_restored=True)

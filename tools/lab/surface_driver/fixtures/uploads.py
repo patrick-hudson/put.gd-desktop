@@ -12,6 +12,9 @@ def track(scope, method, identity):
         # Already completed/cancelled/cleared is harmless; transport failure isn't.
         if reply['returncode'] and not reply.get('stdout'):
             raise RecipeFailed('fixture operation cleanup transport unavailable')
+        if method == 'operation.cancel':
+            scope.ctx.wait(lambda:scope.ctx.call('operation.inspect',{'id':identity}).get('state') in TERMINAL,
+                           'owned operation settles before fixture cleanup',timeout=20)
     scope.defer('owned '+method,cleanup,priority=100)
 
 

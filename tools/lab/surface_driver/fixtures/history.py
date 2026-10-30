@@ -28,9 +28,20 @@ def active(scope):
 
 
 def saved_copy(scope):
+    ctx=scope.ctx
+    ctx.fixture('file-dialog-fallback')
     row=submit(scope)
-    # History's Save a copy is driven by the recipe that tests it. A retained
-    # synthetic independent copy is enough for preservation witnesses.
     path=scope.root+'/out/saved-copy.png'
-    scope.python('import shutil\nshutil.copyfile('+repr(row.path)+','+repr(path)+')')
+    ctx.view('ui.show',{'view':'history'})
+    ctx.call('ui.history',{'action':'select','ids':[row.id]})
+    ctx.call('ui.fileDialog',{'dialog':'historySaveAs','action':'open','id':row.id})
+    ctx.wait(lambda:ctx.call('ui.fileDialog',{'dialog':'historySaveAs','action':'inspect'}).get('open'),
+             'fixture Save a copy chooser',timeout=15)
+    ctx.keys('Ctrl+L');ctx.type_text(path);ctx.keys('Return')
+    state=ctx.wait(lambda:(s if (s:=ctx.call('ui.history',{'action':'inspect'})).get('copyJob',{}).get('status')=='saved' else None),
+                   'production Save a copy completes',timeout=30)
+    if state.get('savedPath')!=path:
+        from ..api import RecipeFailed
+        raise RecipeFailed('Save a copy completed at an unexpected fixture path')
+    scope.python('import hashlib\nfrom pathlib import Path\nassert hashlib.sha256(Path('+repr(row.path)+').read_bytes()).digest()==hashlib.sha256(Path('+repr(path)+').read_bytes()).digest()')
     return Fixture(row,path=path)

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 import threading
 import time
 from types import SimpleNamespace
@@ -14,6 +15,9 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT))
 
 from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
@@ -101,6 +105,67 @@ class Fixtures(unittest.TestCase):
     def tearDown(self):
         errors=self.ctx.manager.close();self.restart.stop();self.temp.cleanup()
         self.assertEqual(errors,[])
+    def test_external_config_controller_uses_atomic_revision_guard(self):
+        from tools.lab.surface_driver.fixtures.events import config_change
+        self.ctx.fixture('app-profile')
+        path=self.root/'config/putgd/config.json'
+        path.parent.mkdir(mode=0o700,exist_ok=True)
+        path.write_text(json.dumps(self.ctx.document));path.chmod(0o600)
+        original=self.ctx.call
+        def call(method,params=None):
+            result=original(method,params)
+            if method=='settings.get':result['metadata']['observedRevision']=hashlib.sha256(path.read_bytes()).hexdigest()
+            return result
+        self.ctx.call=call
+        config_change(self.ctx.manager.scope,{'preferences':{'notifications':False}})
+        self.assertFalse(json.loads(path.read_text())['preferences']['notifications'])
+        self.assertFalse(Path(str(path)+'.lock').exists())
+        self.assertFalse(list(path.parent.glob('.fixture-config-*')))
+
+    def test_recording_family_cancels_both_ids_and_removes_clips(self):
+        scope=self.ctx.manager.scope;commands=[]
+        def capture(s,scene,**kw):
+            identity='recording-'+str(len(commands));commands.append(identity)
+            path=s.root+'/working/'+identity+'.mkv';s.write(path,b'synthetic clip')
+            from tools.lab.surface_driver.fixtures.uploads import track
+            track(s,'recording.cancel',identity)
+            return identity,path
+        scene=Fixture(command=lambda v:None)
+        with patch.dict(FACTORIES,{'events.recording-source':lambda s:scene}),patch.object(recordings,'capture',capture):
+            self.ctx._ids={}
+            value=self.ctx.fixture('recording')
+            self.assertTrue(Path(value.working_path).exists())
+            self.assertTrue(Path(value.frozen_path).exists())
+            self.ctx.manager.close()
+        self.assertFalse(Path(value.working_path).exists())
+        cancelled=[p['id'] for m,p in self.ctx.calls if m=='recording.cancel']
+        self.assertTrue(set(commands).issubset(cancelled))
+
+    def test_keyring_generation_never_changes_default_or_reads_existing_items(self):
+        scope=self.ctx.manager.scope;scope.initialize();scripts=[]
+        with patch.object(scope,'json',lambda code:scripts.append(code) or {'collection':'/owned','reference':'owned'}),patch.object(scope,'python',lambda code:scripts.append(code) or ''):
+            self.ctx.fixture('fake-keyring');self.ctx.manager.close()
+        source='\n'.join(scripts)
+        self.assertIn('CreateWithMasterPassword',source)
+        self.assertIn("'CreateItem'",source)
+        self.assertNotIn('SetAlias',source);self.assertNotIn('GetSecret',source)
+        self.assertIn("'Delete'",source)
+
+    def test_quota_family_failure_runs_owned_unmount_only(self):
+        from tools.lab.surface_driver.fixtures import events
+        self.ctx.fixture('app-profile');commands=[]
+        original=self.ctx.shell
+        def shell(script,timeout=60):
+            if 'sudo -n mount' in script or 'sudo -n umount' in script:
+                commands.append(script);return {'returncode':0,'stdout':'','stderr':''}
+            return original(script,timeout)
+        self.ctx.shell=shell
+        descriptor=self.ctx.fixture('events.record-storage')
+        self.ctx.manager.close()
+        self.assertTrue(any('umount -- '+descriptor.mountPath in c for c in commands))
+        # The test's mount is mocked; remove its owned empty directory explicitly.
+        Path(descriptor.mountPath).rmdir()
+
     def test_recipe_contract_names(self):
         names={'image','upload','history','history-row','local-history','recording','recording-review','review-controls','destination','mcp','live','release','notification_upload','destinations','selector-desktop','diagnostics-upload','file-dialog-portal','file-dialog-fallback','history_rows','history_pair','history_paging','history_retry_upload','history_retry_local','history_active_uploads','history_delete','history_saved_copy','history_window','launcher','recording-export-failure','recording-budget-stop','recording-preview-error','events.slow-upload','events.update-feed','events.older-update-feed','events.update-notification','events.record-storage','events.import-storage','events.recording-source','events.incomplete-multipart','events.browser-handler','events.software-updates-handler'}
         self.assertFalse(names-FACTORIES.keys())
@@ -164,7 +229,7 @@ class Fixtures(unittest.TestCase):
         scope.defer('first',lambda:seen.append('first'),priority=1)
         self.assertEqual(scope.close(),['broken: ValueError'])
         self.assertEqual(seen,['first','broken','last'])
-        self.assertEqual(self.ctx.manager.close(),['broken: ValueError'])
+        self.assertEqual(self.ctx.manager.close(),[])
     def test_partial_factory_failure_and_outer_close(self):
         def fail(scope):
             scope.initialize();scope.write(scope.root+'/partial',b'synthetic')
@@ -174,7 +239,7 @@ class Fixtures(unittest.TestCase):
         self.assertFalse(list(self.root.glob('fx-*')))
         self.assertEqual(self.ctx.target.close(),[])
     def test_unknown_fixture_and_live_provider_are_specific_blocks(self):
-        for name,issue in [('live-provider',669),('chooser-failure',671),('recording-preview-error',672),('tray-proton-busy',670)]:
+        for name,issue in [('live-provider',669),('chooser-failure',671),('tray-proton-busy',670)]:
             with self.subTest(name=name),self.assertRaises(RecipeBlocked) as caught:self.ctx.fixture(name)
             self.assertEqual(caught.exception.issue,issue)
         with self.assertRaisesRegex(RecipeBlocked,'unknown fixture'):self.ctx.fixture('misspelled')

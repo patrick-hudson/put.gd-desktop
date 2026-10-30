@@ -112,17 +112,66 @@ def controllers(scope):
         if result['returncode']:raise RecipeBlocked('guest nft controller unavailable',issue=682)
         scope.defer('owned nft table',lambda:checked(ctx.shell('sudo -n nft delete table inet '+table)))
         return table
-    def display(*args,**kwargs):
-        # QMP can hotplug a second virtual device, but a device command alone
-        # does not establish compositor topology. Require 2a's verified adapter.
-        adapter=getattr(ctx.target,'change_display',None)
-        if not adapter:raise RecipeBlocked('display event requires verified QMP topology/restore adapter from 2a',issue=682)
-        restore=adapter(*args,**kwargs)
-        scope.defer('display topology',restore)
+    def display(spec):
+        from tools.lab import lab
+        target=ctx.target
+        if target.physical:
+            raise RecipeBlocked('QMP display controller requires a guest transport',issue=682)
+        backend=lab.layout_backend(lab.load_profile(target.info['profile']))
+        observed=lab.guest_outputs(target.run,backend)
+        original=lab.format_layout([{k:o[k] for k in ('x','y','width','height')} for o in observed['outputs'] if o.get('enabled',True)])
+        def restore():
+            if not lab.layout(target.run,original,settle=10)['ok']:
+                raise RecipeBlocked('guest display topology did not restore',issue=682)
+        scope.defer('display topology',restore,priority=250)
+        changed=lab.layout(target.run,spec,settle=10)
+        if not changed['ok']:
+            raise RecipeBlocked('guest QMP/native display mutation was not verified',issue=682)
+        ctx._screen_dimensions.clear()
+        return changed
     def relogin():
         raise RecipeBlocked('re-login requires core-owned visible console and protected login input; no ui.quit substitution',issue=682)
-    return Fixture(network_stall=stall,display_change=display,relogin=relogin,config_path=ctx.target.root+'/config/putgd/config.json')
+    return Fixture(network_stall=stall,display_change=display,relogin=relogin,config_change=lambda patch:config_change(scope,patch),config_path=ctx.target.root+'/config/putgd/config.json')
 
 
 def checked(reply):
     if reply['returncode']:raise RecipeBlocked('OS-event cleanup failed')
+
+
+def config_change(scope, patch):
+    """Atomic external edit, with a revision/QLockFile guard, for conflict tests."""
+    ctx=scope.ctx
+    ctx.fixture('app-profile')
+    current=ctx.call('settings.get')
+    path=current['metadata']['path']
+    code=r"""import hashlib,json,os,socket,tempfile
+from pathlib import Path
+p=Path(PATH)
+assert p.resolve()==p and p.is_relative_to(Path(os.environ['XDG_CONFIG_HOME']).resolve())
+lock=Path(str(p)+'.lock')
+fd=os.open(lock,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
+try:
+ os.write(fd,('%d\npython3\n%s\n'%(os.getpid(),socket.gethostname())).encode())
+ raw=p.read_bytes();assert hashlib.sha256(raw).hexdigest()==REVISION
+ doc=json.loads(raw)
+ def merge(a,b):
+  for k,v in b.items():
+   if isinstance(v,dict) and isinstance(a.get(k),dict):merge(a[k],v)
+   else:a[k]=v
+ merge(doc,PATCH)
+ tmp,name=tempfile.mkstemp(dir=p.parent,prefix='.fixture-config-')
+ try:
+  with os.fdopen(tmp,'w') as out:json.dump(doc,out);out.flush();os.fsync(out.fileno())
+  os.replace(name,p)
+ finally:
+  if os.path.exists(name):os.unlink(name)
+finally:
+ os.close(fd);lock.unlink()
+"""
+    scope.python(code.replace('PATH',repr(path)).replace('REVISION',repr(current['metadata']['observedRevision'])).replace('PATCH',repr(patch)))
+    return Fixture(config_path=path,previous_revision=current['metadata']['observedRevision'])
+
+
+def conflict(scope):
+    profile=scope.ctx.fixture('app-profile')
+    return Fixture(profile,external_change=lambda patch:config_change(scope,patch))
