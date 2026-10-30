@@ -621,6 +621,21 @@ class Contracts(unittest.TestCase):
         self.assertEqual(caught.exception.issue, 750)
         self.assertEqual(ctx.inputs, [])
 
+    def test_wayland_about_lifecycle_uses_native_inventory_queries(self):
+        from tools.lab.surface_driver.probe import QUERY_KEYS
+        for identifier in ('about.close', 'about.key-esc'):
+            with self.subTest(identifier=identifier):
+                ctx = Fake()
+                ctx.profile = dict(ctx.profile, session='wayland')
+                def inventory(query):
+                    self.assertLessEqual(set(query), QUERY_KEYS)
+                    name = query.get('name')
+                    return [{'name': name}] if (name == 'put.gd' or
+                        name == 'About put.gd' and ctx.about_visible) else []
+                ctx.windows = inventory
+                next(r for r in RECIPES if identifier in r.interactions).function(ctx)
+                self.assertFalse(ctx.about_visible)
+
     def test_actual_private_config_guard(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

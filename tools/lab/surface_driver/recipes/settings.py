@@ -676,6 +676,11 @@ def mcp_diagnostics(ctx):
 
 
 def visible(ctx, title):
+    if ctx.profile.get('session') == 'wayland':
+        # Native inventory uses the accessibility query contract. These lane
+        # callers supply exact titles; X11 keeps its EWMH title expression.
+        name = title.removeprefix('^').removesuffix('$')
+        return ctx.windows({'name': name, 'visible': True, 'showing': True})
     return ctx.windows({'title': title})
 
 

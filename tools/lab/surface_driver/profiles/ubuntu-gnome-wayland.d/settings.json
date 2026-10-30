@@ -5,6 +5,20 @@
     "diagnostics": "^Create diagnostics package$",
     "settingsConfirm": "^(Reset limits to defaults|Reload settings from file|Clear logs)$"
   },
+  "windows": {
+    "settings": {
+      "accessible": {"name": "put.gd", "visible": true, "showing": true}
+    },
+    "about": {
+      "accessible": {"name": "About put.gd", "visible": true, "showing": true}
+    },
+    "diagnostics": {
+      "accessible": {"name": "Create diagnostics package", "visible": true, "showing": true}
+    },
+    "settingsConfirm": {
+      "accessible": {"role": "alert", "visible": true, "showing": true}
+    }
+  },
   "settings": {
     "theme_references": {
       "dark": "07-settings-general",
