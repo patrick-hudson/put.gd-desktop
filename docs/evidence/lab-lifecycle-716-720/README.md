@@ -4,7 +4,24 @@ Code PR: [#727](https://github.com/patrick-hudson/put.gd-desktop/pull/727).
 Documentation PR: [#729](https://github.com/patrick-hudson/put.gd-desktop/pull/729), to merge after the code.
 This is package-install and disposable-overlay lifecycle evidence, not product desktop or release acceptance.
 
-The final controller/supervisor source is recorded in [source-identity.json](source-identity.json).
+## Follow-up after independent validation
+
+The campaign below is historical evidence at `0227cfa2`, not the final source
+of #727. It did not prove install compatibility with an unchanged existing
+golden: its overlays had been manually bootstrapped with the new helper.
+Independent validation found that current goldens lack that helper. The final
+controller instead stages and hash-verifies it through the run's SSH connection
+and existing passwordless apt rule, preserving keys and immutable goldens.
+Staging disables repository sources and list cleanup; normal apt work remains
+under the supervisor. It also adds held-job diagnostics, early missing-supervisor
+failure, both socket-path checks, symlink-safe root output, and legacy-run
+retirement guidance. The final-source follow-up acceptance and private evidence
+archive identity are recorded in the [code PR's acceptance comment](https://github.com/patrick-hudson/put.gd-desktop/pull/727).
+This does not upgrade the earlier runs into final-source evidence.
+
+## Original campaign
+
+The original controller/supervisor source is recorded in [source-identity.json](source-identity.json).
 The input is the named snapshot's existing 116 MiB Debug DEB,
 `0.1.1~dev.907+g0071acafc975`, SHA-256
 `f5bd05537d8e2931f464fe0a54a52dd638f6fd3b32b2134dfef5785812d1c5ec`.
@@ -24,7 +41,7 @@ an unrelated process stays alive. Other tests cover incomplete package state,
 unavailable dpkg queries with durable recovery receipts, safe lock release,
 no duplicate launch after a lost SSH reply, RPM rejection before guest work,
 noncanonical paths creating nothing, canonical paths reaching launch, and
-symlink rejection. `tools/lab/overlay_cleanup.py` is unchanged from the base.
+symlink rejection. `tools/lab/overlay_cleanup.py` was unchanged from the base in that original campaign.
 
 ## Boat runs
 
@@ -53,7 +70,7 @@ The package resolves its real Qt 6.4.2/GStreamer dependencies from distro reposi
   remaining owned PIDs. The controller waited for the original install and
   verified package/binary state without starting a replacement. [Curated receipt](run-c2.json).
 
-- `c3`, final controller/supervisor commit
+- `c3`, original campaign controller/supervisor commit
   `0227cfa28565086dd79d2ac8f93407d0429f3513`, CLI
   `--install-timeout 180 --install-recovery-timeout 900`: **406.83 seconds**.
   Recovered after the 180-second budget, apt exits `[0,0]`, clean dpkg state,
