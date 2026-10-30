@@ -47,7 +47,7 @@ session = os.environ.get('XDG_SESSION_TYPE')
 commands = ['python3', 'dbus-monitor', 'gdbus']
 commands += ['xdotool', 'xprop', 'xwininfo', 'xclip', 'xrandr'] if session == 'x11' else ['wl-paste', 'wl-copy']
 missing = [name for name in commands if not shutil.which(name)]
-for module, package in [('pyatspi', 'python3-pyatspi'), ('PyQt6.QtGui', 'python3-pyqt6')]:
+for module, package in [('pyatspi', 'python3-pyatspi'), ('dbus', 'python3-dbus'), ('PyQt6.QtGui', 'python3-pyqt6')]:
     try:
         importlib.import_module(module)
     except (ImportError, ValueError):
