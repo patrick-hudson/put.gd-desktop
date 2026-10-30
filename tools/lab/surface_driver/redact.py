@@ -2,7 +2,8 @@
 
 Audit a completed run with ``python3 -m tools.lab.surface_driver.redact RUN``.
 OCR is a mandatory pre-write guard for visible pixels and an evidence audit,
-never a product feature. Remote runs and registered secrets require tesseract.
+never a product feature. Local runs also need host tesseract: disposable/local
+placement does not prove that observed or typed content contains no secrets.
 """
 from __future__ import annotations
 
@@ -206,7 +207,12 @@ class Redactor:
         return frozenset(self._secrets)
 
     def remember(self, value, *, opaque=False, force=False):
-        """Register raw leaves and URL components before handing results to recipes."""
+        """Register links and credential fields/markers before recipes see data.
+
+        opaque is reserved for known secret values (e.g. secret controls and
+        explicit Sensitive values), never whole notification/MCP observations.
+        Ordinary text is still scanned, including nested JSON text content.
+        """
         if isinstance(value, Sensitive):
             value, opaque, force = value.reveal(), True, True
         if isinstance(value, dict):
@@ -220,6 +226,15 @@ class Redactor:
         elif isinstance(value, str):
             if opaque and distinctive(value) and (force or not public_url(value)):
                 self._secrets.add(value)
+            self._secrets.update(match[0] for match in AWS.finditer(value))
+            for match in MARKER.finditer(value):
+                token = match[0]
+                if not re.match(r'bearer\s', token, re.I):
+                    token = re.split(r'[:=]', token, maxsplit=1)[-1].strip(' \"\'')
+                token = re.sub(r'^(?:bearer|basic|aws4-hmac-sha256)\s+', '', token, flags=re.I)
+                for spelling in (token, unquote(token)):
+                    if distinctive(spelling):
+                        self._secrets.add(spelling)
             try:
                 decoded = json.loads(value)
                 if isinstance(decoded, (dict, list, str)) and decoded != value:
@@ -386,6 +401,16 @@ def rect(value):
 
 
 _OCR_CACHE = {}
+
+
+def require_host_ocr():
+    """Fail before a run touches its target or writes evidence; no raw data."""
+    if not (ocr := shutil.which('tesseract')):
+        from .api import RecipeBlocked
+        raise RecipeBlocked('host OCR unavailable: install tesseract-ocr (tesseract on Fedora) '
+                            'on the surface-driver host, not only in the guest; '
+                            'local and live graphical evidence both require it')
+    return ocr
 
 
 def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=()):

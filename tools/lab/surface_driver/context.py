@@ -12,7 +12,7 @@ from .catalog import Catalog, compare, image_modules
 from .critical import armed, critical, entry
 from .target import input_release, qcodes
 from .receipts import Evidence
-from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect
+from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect, require_host_ocr
 
 # Seconds; a cleanup call's own budget may not grow past this.
 CLEANUP_TIMEOUT_CAP = 600
@@ -38,6 +38,8 @@ class DriverContext(Context):
                 raise LiveEvidenceRefused('live destination '+str(self.destination)+' blocked by secret-safe evidence: '
                                           +', '.join(blockers))
             self._live_admitted = True
+        else:
+            require_host_ocr()
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
         self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
@@ -87,7 +89,7 @@ class DriverContext(Context):
                 raise RecipeBlocked('production CLI returned no JSON envelope') from error
             if envelope.get('ok'):
                 result=envelope['result']
-                self.evidence.redactor.remember(result, opaque=method in ('history.detail', 'share.inspect', 'operation.inspect'))
+                self.evidence.redactor.remember(result)
                 if method in ('history.detail', 'share.inspect', 'operation.inspect'):
                     self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(response['stdout'])
                 for field in ('operationId','recordingId','shareOperationId'):
@@ -190,12 +192,25 @@ class DriverContext(Context):
         """
         redactor = self.evidence.redactor
         redactor.remember(value)
-        # Lists of rows (accessible), a layout's windows, or one row (control).
-        rows = (value if isinstance(value, list) else value.get('windows', [value]) if isinstance(value, dict) else [])
+        # Rows can be nested in a layout or an MCP content envelope. Only a
+        # secret control's value is opaque; its name/description stay text.
+        def rows(item):
+            if isinstance(item, dict):
+                yield item
+                for child in item.values():
+                    yield from rows(child)
+            elif isinstance(item, (list, tuple)):
+                for child in item:
+                    yield from rows(child)
+            elif isinstance(item, str):
+                try:
+                    decoded = json.loads(item)
+                except ValueError:
+                    return
+                if isinstance(decoded, (dict, list)):
+                    yield from rows(decoded)
         names = None
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
+        for row in rows(value):
             if names is None:
                 names = self._secret_names()
             if (row.get('protected') or row.get('role') == 'password text' or row.get('objectName') in names
@@ -203,7 +218,7 @@ class DriverContext(Context):
                 # The field's value, never its label: labels are public UI text.
                 if isinstance(row.get('text'), str) and row['text']:
                     redactor.remember(Sensitive(row['text']))
-        if redactor.has_sensitive_url(json.dumps(value, default=str)):
+        if redactor.audit_literals or redactor.has_sensitive_url(json.dumps(value, default=str)):
             self._sensitive_seen = True
 
     def _window_query(self, window):
@@ -662,8 +677,7 @@ asyncio.run(main())
         if result['returncode']:
             raise RecipeBlocked('official MCP client/helper unavailable or failed; configure mcp_python and mcp_helper in profile')
         value = json.loads(result['stdout'])
-        self.evidence.redactor.remember(value, opaque=True)
-        self._sensitive_seen = True
+        self._observed(value)
         return value
 
     def accessible(self,query):
@@ -721,10 +735,9 @@ asyncio.run(main())
         if not reply.get('alive'):
             raise RecipeBlocked('session bus refused notification monitoring or dbus-monitor is unavailable')
         rows = parse_notifications(reply['text'],self._notifications_since)
-        # Bodies can carry links: register every returned field before any
-        # recipe can format it, and treat every later frame as sensitive.
-        self.evidence.redactor.remember(rows, opaque=True)
-        self._sensitive_seen = True
+        # Scan every field for links/credentials without registering public
+        # summaries, action labels or whole bodies as opaque secrets.
+        self._observed(rows)
         return rows
 
     def click_accessible(self, query, button='left'):
