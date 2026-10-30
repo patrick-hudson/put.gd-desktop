@@ -157,6 +157,9 @@ class FakeTarget:
         self.pointer_events = []
     def screenshot(self, path, head=0):
         Path(path).write_bytes(b'png')
+    def capture_image(self, head=0):
+        from PIL import Image
+        return Image.new('RGB', (1280, 800), 'white')
     def pointer(self, x, y, w, h, down=None, button='left', head=0):
         self.pointer_events.append((x, y, down))
     def cli(self, *args, timeout=60):

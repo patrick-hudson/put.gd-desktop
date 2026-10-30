@@ -80,6 +80,10 @@
 using namespace putgd;
 using namespace putgd::test;
 namespace {
+// The real build this binary was compiled from (the generated build-info.json),
+// not the fixed identity linked for stable renders: the surface driver's live
+// gate binds a catalog to that exact commit. Empty when unreadable (refused).
+QJsonObject sourceBuild(){QFile file(QStringLiteral(PUTGD_SOURCE_BUILD_INFO));if(!file.open(QIODevice::ReadOnly))return {};return QJsonDocument::fromJson(file.readAll()).object();}
 bool checkSteppers(QWidget& window){
  for(auto* spin:window.findChildren<QAbstractSpinBox*>()){
   if(!spin->isVisibleTo(&window)||spin->buttonSymbols()==QAbstractSpinBox::NoButtons)continue;
@@ -697,7 +701,7 @@ int main(int argc,char** argv){
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
- QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures},
+ QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"build",sourceBuild()},{"qtVersion",QString::fromLatin1(qVersion())},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures},
   // What this run covered, and every image it wrote (not all are captures),
   // so a partial render cannot pass for a complete one.
   {"scope",QJsonObject{{"review",

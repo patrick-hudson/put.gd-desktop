@@ -317,14 +317,18 @@ counter=0
 def control_geometry(query):
  global counter
  counter+=1
- return {'counter':counter,'pid':os.getpid()}
+ return {'counter':counter,'pid':os.getpid(),'argv':sys.argv,'query':query}
 def main():
  print(json.dumps({'ok':True,'result':control_geometry(json.loads(sys.argv[1])['query'])}))
 if __name__=='__main__':main()
 '''
         try:
             with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
-                first = target.probe('control',{},source)['result']
+                first = target.probe('control',{'title':'synthetic-private-title-726'},source)['result']
+                self.assertNotIn('synthetic-private-title-726',repr(target._probe_process.args))
+                self.assertNotIn(source,repr(target._probe_process.args))
+                self.assertEqual(first['argv'],['-'])
+                self.assertEqual(first['query'],{'title':'synthetic-private-title-726'})
                 channel = target._probe_process.pid
                 second = target.probe('control',{},source)['result']
                 self.assertEqual((first['counter'],second['counter']),(1,1))

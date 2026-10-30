@@ -77,7 +77,7 @@ jobs:
       - name: Surface driver, map, fixture, redact and recipe contracts
         if: always()
         timeout-minutes: 1
-        run: python3 -m pytest -v tests/desktop/test_surface*.py --junitxml=build/contracts/surface-tests.xml
+        run: python3 -m pytest -v tests/desktop/test_surface*.py tests/desktop/test_review_adversarial.py --junitxml=build/contracts/surface-tests.xml
       - name: Cold-family observer contracts
         if: always()
         run: python3 tools/ci/contracts.py observer
@@ -257,7 +257,11 @@ jobs:
         # (tools/lab/surface_map). The nightly workflow publishes the map
         # rendered from this artifact to map.put.gd.
         if: matrix.distribution == '26.04'
-        run: python3 tools/lab/surface_map/surface_map.py check --catalog build/dev/ui-catalog/dark
+        run: |
+          python3 tools/lab/surface_map/surface_map.py check --catalog build/dev/ui-catalog/dark
+          # The surface driver's live gate admits only catalogs whose secret-control
+          # states equal this pin; a UI change must update it in the same commit.
+          python3 -m tools.lab.surface_driver.gate check-catalog build/dev/ui-catalog/dark
       - name: Preserve the UI catalog
         if: matrix.distribution == '26.04'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

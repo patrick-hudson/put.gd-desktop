@@ -26,6 +26,8 @@ from tools.lab.surface_driver.run import discover, guard_target, main, native_en
 from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
+sys.path.insert(0,str(ROOT/'tests/desktop'))
+from surface_live_fixture import pinned, write_catalog
 from tools.lab import lab
 try:
     from PIL import Image
@@ -91,8 +93,8 @@ class Mapping(unittest.TestCase):
 
 class FakeTarget:
     root='/tmp/sd-test';socket=root+'/runtime/putgd/session.sock';physical=None
-    def screenshot(self,path,head=0):
-        Image.new('RGB',(20,10),'white').save(path)
+    def capture_image(self,head=0):
+        return Image.new('RGB',(20,10),'white')
     def cli(self,*args,timeout=60):
         return {'returncode':0,'stdout':'{"ok":true,"result":{"ready":true}}','stderr':''}
     def execute(self,script,timeout=60):
@@ -102,9 +104,17 @@ class FakeTarget:
 
 class Running(unittest.TestCase):
     def setUp(self):
+        self.ocr_patch = patch('tools.lab.surface_driver.redact.ocr_text', return_value='')
+        self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
+        self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
+        self.which_patch.start(); self.addCleanup(self.which_patch.stop)
+        # The real self-test needs tesseract; LiveEvidence tests cover it directly.
+        self.selftest_patch = patch('tools.lab.surface_driver.redact.ocr_self_test', return_value=True)
+        self.selftest_patch.start(); self.addCleanup(self.selftest_patch.stop)
         self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
-        self.ctx=DriverContext(FakeTarget(),self.env,load_profile(self.env['desktop']),self.path,self.path)
+        profile=load_profile(self.env['desktop'])
+        self.ctx=DriverContext(FakeTarget(),self.env,profile,self.path,self.path)
     def tearDown(self):self.temp.cleanup()
 
     @unittest.skipUnless(Image,'requires python3-pil')
@@ -164,18 +174,21 @@ class Running(unittest.TestCase):
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_visual_within_and_outside_tolerance(self):
-        Image.new('RGB',(20,10),'white').save(self.path/'good.png')
-        Image.new('RGB',(20,10),'black').save(self.path/'bad.png')
-        self.assertEqual(compare(self.path/'good.png',self.path/'good.png',.025),0)
-        self.assertEqual(compare(self.path/'good.png',self.path/'bad.png',.025),1)
+        catalog=self.path/'catalog';catalog.mkdir()
+        self.ctx.catalog=Catalog(catalog,{})
+        Image.new('RGB',(20,10),'white').save(catalog/'good.png')
+        Image.new('RGB',(20,10),'black').save(catalog/'bad.png')
+        self.assertEqual(compare(catalog/'good.png',catalog/'good.png',.025),0)
+        self.assertEqual(compare(catalog/'good.png',catalog/'bad.png',.025),1)
         self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1}
         def good(ctx):ctx.frame('match',window='editor',reference='good')
         def bad(ctx):ctx.frame('mismatch',window='editor',reference='bad')
-        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),good),Recipe(('editor.redo',),bad)],self.env,self.path,'test',self.path/'coverage.json')
+        self.ctx.out=self.path/'run';self.ctx.evidence.out=self.ctx.out
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),good),Recipe(('editor.redo',),bad)],self.env,self.ctx.out,'test',self.path/'coverage.json')
         self.assertEqual(rows[0].visual,'reviewed-ok');self.assertFalse(rows[0].review)
         self.assertEqual(rows[1].visual,'frames');self.assertTrue(rows[1].review)
-        self.assertIn(str(self.path/'bad.png'),rows[1].review_reason)
-        self.assertIn(str(self.path/'frames'),rows[1].review_reason)
+        self.assertIn(str(catalog/'bad.png'),rows[1].review_reason)
+        self.assertIn(str(self.ctx.out/'frames'),rows[1].review_reason)
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_desktop_drawn_never_compares(self):
@@ -258,18 +271,67 @@ class Running(unittest.TestCase):
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
     def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
+        from tools.lab.surface_driver import run as runner, receipts, context, redact
+        write_catalog(self.path)
+        pin = pinned(self.path); pin.start(); self.addCleanup(pin.stop)
+        self.assertEqual(runner.secret_safe_evidence_blockers('boat', self.path, 'abcdef012345'), [])
+        failures = ((redact.shutil, 'which'), (receipts, 'Redactor'), (receipts, 'save_frame'),
+                    (receipts, 'scan_run'), (redact, 'ocr_text'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
+        for destination in ('s3','b2','proton'):
+            for module, name in failures:
+                with self.subTest(destination=destination, missing=name):
+                    out=self.path/('live-'+destination+'-'+name)
+                    args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
+                          '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
+                          '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef012345','--out',str(out)]
+                    replacement = (lambda *a:None) if name == 'which' else None
+                    with patch.object(module,name,replacement), patch.object(runner,'Target') as target:
+                        with self.assertRaises(SystemExit) as raised:
+                            runner.main(args)
+                        target.assert_not_called()
+                    self.assertIn('blocked by secret-safe evidence',str(raised.exception))
+                    self.assertFalse(out.exists())
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_main_allows_live_destinations_with_the_complete_evidence_pipeline(self):
         from tools.lab.surface_driver import run as runner
-        self.assertFalse(runner.LIVE_DESTINATIONS_ENABLED)
         for destination in ('s3','b2','proton'):
             with self.subTest(destination=destination):
-                out=self.path/('live-'+destination)
+                target=FakeTarget();target.info={'id':'run-id','profile':'cinnamon-x11'};target.run=self.path
+                target.start=lambda:None;target.close=lambda:None
+                target.identity=lambda:{'session_type':'x11','desktop':'X-Cinnamon'}
+                def cli(method,*args,**kw):
+                    result=({'build':{'gitCommit':'abcdef0123456789abcdef0123456789abcdef01','dirty':False}} if method=='ui.snapshot'
+                            else {'metadata':{'observedRevision':'revision'}} if method=='settings.get' else {})
+                    return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
+                target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
+                # The desktop shell baseline (#857) runs before the recipes, on the admitted context.
+                shell={'process':'cinnamon','instances':[{'pid':5,'start':1,'dumping':False}],'crash_windows':[],'cores':[]}
+                target.probe=lambda name,query,source,timeout=15:{'ok':True,'result':shell} if name=='shell_state' else {'ok':False,'error':name}
+                touched=[]
+                recipe=Recipe(('editor.undo',),lambda ctx:touched.append(ctx.destination),destinations=(destination,))
+                out=self.path/('admitted-'+destination)
                 args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
                       '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
-                      '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out)]
-                with self.assertRaises(SystemExit) as raised:
-                    runner.main(args)
-                self.assertIn('disabled until secret-safe evidence',str(raised.exception))
-                self.assertFalse(out.exists())
+                      '--recipes','core_demo','--catalog',str(write_catalog(self.path/'catalog')),'--build','abcdef012345','--out',str(out),
+                      '--coverage',str(out/'coverage.json')]
+                with patch.object(runner,'Target',return_value=target),patch.object(runner,'guard_target'),patch.object(runner,'discover',return_value=[recipe]), \
+                        patch.object(runner,'prove_disposable'),pinned(self.path/'catalog'):
+                    self.assertEqual(runner.main(args),0)
+                self.assertEqual(touched,[destination])
+                receipt=json.loads((out/'receipt.json').read_text())
+                self.assertTrue(receipt['secret_scan']['passed'])
+                self.assertEqual(receipt['environment']['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_live_gate_refuses_a_present_but_nonworking_ocr_executable(self):
+        from tools.lab.surface_driver import run as runner, redact
+        self.ocr_patch.stop();self.selftest_patch.stop()
+        with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],1,b'',b'')):
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef012345'))
+        # Exits 0 but reads nothing: still refused (blind OCR).
+        with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'',b'')):
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef012345'))
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
@@ -279,7 +341,7 @@ class Running(unittest.TestCase):
         calls=[]
         def cli(*args,timeout=60):
             calls.append(args)
-            result={'ui.snapshot':{'build':{'gitCommit':'abcdef','dirty':False}},
+            result={'ui.snapshot':{'build':{'gitCommit':'abcdef0123456789abcdef0123456789abcdef01','dirty':False}},
                     'settings.get':{'metadata':{'observedRevision':'revision'}}}.get(args[0],{})
             return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
         target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
@@ -288,7 +350,7 @@ class Running(unittest.TestCase):
         recipe=Recipe(('editor.undo',),lambda c:None)
         args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
               '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
-              '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
+              '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef012345','--out',str(self.path/'run'),
               '--coverage',str(self.path/'main-coverage.json')]
         with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),0)
@@ -297,7 +359,7 @@ class Running(unittest.TestCase):
         self.assertTrue(mutation['patch']['archive']['root'].startswith(target.root))
         self.assertTrue(mutation['patch']['archive']['keepUploads'])
         environment=json.loads((self.path/'run/receipt.json').read_text())['environment']
-        self.assertEqual(environment['observed_build']['gitCommit'],'abcdef')
+        self.assertEqual(environment['observed_build']['gitCommit'],'abcdef0123456789abcdef0123456789abcdef01')
         self.assertEqual(environment['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
@@ -343,6 +405,10 @@ class Running(unittest.TestCase):
             json.dumps({'ok':True,'result':{'operationId':'test-operation-123'}})}
         self.ctx.call('editor.open',{'source':'file','path':'/tmp/synthetic.png'})
         self.assertEqual(self.ctx.notes,['operationId=test-operation-123'])
+        self.ctx.evidence.redactor.remember('e', opaque=True)
+        write_receipts(self.path,self.env,[],'test',self.path/'coverage.json',evidence=self.ctx.evidence)
+        receipt=json.loads((self.path/'receipt.json').read_text())
+        self.assertEqual(receipt['environment']['operation_ids'],[{'operationId':'test-operation-123'}])
 
     def test_cached_heartbeat_does_not_allow_input_past_expiry(self):
         from types import SimpleNamespace
@@ -1003,7 +1069,7 @@ class TargetSafety(unittest.TestCase):
                 target.start=Mock(side_effect=unsafe_start)
                 args=['--desktop','mint-cinnamon-x11','--host',host,'--placement',placement,
                       '--host-profile',str(root/'pinned.json'),'--boat-id','bx_test','--package','deb',
-                      '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',
+                      '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef012345',
                       '--out',str(root/str(number)),'--coverage',str(root/'coverage.json')]
                 if session:args+=['--lock-session',session]
                 with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
@@ -1213,7 +1279,7 @@ class EndpointSafety(unittest.TestCase):
         self.argv[-1]='patrick@192.168.68.69'
         args=['--desktop','mint-cinnamon-x11','--host','f44','--placement','native','--lock-session','owned',
               '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
-              '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
+              '--catalog',str(self.run),'--build','abcdef012345','--out',str(self.run/'result'),
               '--coverage',str(self.run/'coverage.json')]
         with patch('tools.lab.surface_driver.run.Target',return_value=self.target),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)

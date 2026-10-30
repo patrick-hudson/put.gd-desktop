@@ -21,6 +21,17 @@ Recipes never fork per desktop. Per-desktop differences (tolerances, input
 backend, notification server, browser, known gaps) live in
 `profiles/<desktop-id>.json` and fragments `profiles/<desktop-id>.d/<lane>.json`,
 read through `ctx.profile`.
+
+Trust boundary for live destinations (S3, B2, Proton). The secret-safe
+evidence gate (gate.py) protects what the driver writes against
+misconfiguration and accident: it admits a live context only for a proven
+disposable placement, an exact clean build, that build's pinned catalog and a
+working OCR, and run_recipes refuses contexts it did not admit. It does not
+defend against recipe code. Recipes and fixtures run in the driver's process
+and are reviewed source: one could replace `DriverContext.live_gate`, set
+`_live_admitted`, or move data out through `ctx.call`, `ctx.cli`, `ctx.shell`
+or `ctx.mcp` (which reach the resident and the target directly). Review recipe
+changes for that; never run unreviewed recipe code against a live destination.
 """
 from __future__ import annotations
 
@@ -394,8 +405,37 @@ class Context:
         raise NotImplementedError
 
     # Evidence and verdicts
-    def frame(self, label: str, window: Optional[str] = None, reference: Optional[str] = None) -> Frame:
-        """Save a frame. With `reference`, the runner compares it with that catalog capture."""
+    def frame(self, label: str, window: Optional[str] = None, reference: Optional[str] = None, *,
+              desktop_safe: Optional[str] = None) -> Frame:
+        """Save a frame. With `reference`, the runner compares it with that catalog capture.
+
+        Live destinations (and local runs once a link was seen) keep only the
+        owned `window`'s pixels; a desktop frame is fully masked unless
+        `desktop_safe` states why everything on the desktop is safe to keep.
+        """
+        raise NotImplementedError
+
+    def sensitive(self, value: Any) -> Any:
+        """Wrap memory-only data; str/repr/JSON redact it; reveal() explicitly unwraps."""
+        raise NotImplementedError
+
+    def url_evidence(self, value: Any) -> dict:
+        """Only host, run-salted hash, length and presence may leave memory.
+
+        Use this for every link a recipe reports, including failure messages:
+        ``raise RecipeFailed('History link differs: %s' % ctx.url_evidence(url))``.
+        Never format a link, a path/token taken from one, or a scheme-less
+        host/path into notes or messages; the runner redacts link-shaped text
+        by pattern as a backstop, but registered values are the contract.
+        """
+        raise NotImplementedError
+
+    def sensitive_region(self, region: Iterable[float], *, head: int = 0) -> None:
+        """Persistently guard a framebuffer x/y/width/height before exposing a secret."""
+        raise NotImplementedError
+
+    def sensitive_control(self, control: str, window: str) -> None:
+        """Persistently guard a catalog control with current live/AT-SPI geometry."""
         raise NotImplementedError
 
     def expect(self, condition: Any, what: str) -> None:

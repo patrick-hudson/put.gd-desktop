@@ -110,9 +110,9 @@ import json, os, subprocess, sys
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
-             'foreground':'foreground', 'windows':'windows', 'tray':'tray',
-             'notification_log':'notification_log', 'server_pid':'server_pid', 'resize':'resize_witness',
-             'shell_state':'shell_state'}
+             'foreground':'foreground', 'windows':'windows', 'tray':'tray', 'layout':'layout',
+             'notification_read':'notification_read', 'server_pid':'server_pid', 'resize':'resize_witness',
+             'shell_state':'shell_state', 'compositor_windows':'compositor_windows_probe'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:
@@ -130,11 +130,14 @@ while True:
                  (name == 'foreground' and (query.get('keyboard_grab') or
                   (bool(query.get('shell_cover')) and query.get('point') is not None))) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
-                  name in ('geometry','foreground','windows','compositor_windows')))
+                  name in ('geometry','foreground','windows','layout','compositor_windows')))
         if fresh:
             try:
-                child = subprocess.run([sys.executable,'-c',SOURCE,json.dumps(request)],
-                                       stdin=subprocess.DEVNULL, capture_output=True,
+                child_source = ("__name__ = 'surface_driver_probe'\n" + SOURCE +
+                                "\nimport json\nprint(json.dumps({'ok':True,'result':" +
+                                functions[name] + '(' + repr(query) + ")}))\n")
+                child = subprocess.run([sys.executable,'-'],
+                                       input=child_source, capture_output=True,
                                        text=True, timeout=12)
             except subprocess.TimeoutExpired:
                 raise RuntimeError('fresh accessibility probe timed out') from None
@@ -208,7 +211,6 @@ class Target:
         self.socket = checked_socket(self.root + '/runtime/putgd/session.sock')
         checked_socket(str(self.run / 'qmp.sock'))
         self.started = False
-        self._created_root = False
         self.bin_dir = bin_dir
         self.app_executable = app_executable
         self.monitor_pid = None
@@ -299,7 +301,7 @@ class Target:
         # Shell commands include resident launch, raises and CLI mutations. Treat
         # every physical execute as mutating rather than infer safety from text.
         self.heartbeat(force=bool(self.physical))
-        code = 'import subprocess,json\np=subprocess.run('+repr(script)+',shell=True,text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
+        code = 'import subprocess,json\np=subprocess.run(["sh","-s"],input='+repr(script)+',text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
         except (lab.LabError, subprocess.TimeoutExpired, ValueError) as error:
@@ -349,6 +351,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if result['returncode']:
             raise RecipeBlocked('could not start isolated resident')
         self.started = True
+        self._owns_root = True
         deadline = time.monotonic() + 25
         while True:
             response = self.cli('capabilities')
@@ -389,7 +392,12 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             self.clipboard_pid = None
 
     def cli(self, *args, timeout=60):
-        return self.execute(shlex.join(['putgd-cli','--socket',self.socket,*args]), timeout)
+        # JSON never becomes a process argument, including in the CLI child.
+        if not args:
+            raise RecipeBlocked('CLI method required')
+        payload = args[1] if len(args) > 1 else '{}'
+        code = 'import subprocess,sys\np=subprocess.run('+repr(['putgd-cli','--socket',self.socket,'--params-stdin',args[0]])+',input='+repr(payload.encode())+',stdout=subprocess.PIPE,stderr=subprocess.PIPE)\nsys.stdout.buffer.write(p.stdout);sys.stderr.buffer.write(p.stderr);sys.exit(p.returncode)\n'
+        return self.execute("python3 - <<'SD_CLI'\n"+code+'SD_CLI\n', timeout)
 
     def probe(self, name, query, source, timeout=15):
         """One owned SSH channel, with a fresh native witness for every request.
@@ -415,11 +423,15 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             script = "python3 - <<'SD_PROBE_ENV'\nimport os,json\nprint(json.dumps({k:os.environ[k] for k in " + repr(keys) + " if k in os.environ}))\nSD_PROBE_ENV\n"
             native = json.loads(self.session(script, timeout=timeout))
             command = 'set -eu\n' + ''.join('export '+k+'='+shlex.quote(v)+'\n' for k,v in native.items())
-            command += self.prefix() + 'exec python3 -u -c ' + shlex.quote('SOURCE='+repr(source)+chr(10)+PROBE_SERVER)
+            # A static bootstrap reads the server source from stdin; source and
+            # queries never enter either the SSH or guest process command line.
+            bootstrap = "import json,sys;exec(compile(json.loads(sys.stdin.buffer.readline()),'surface_probe_server','exec'))"
+            command += self.prefix() + 'exec python3 -u -c ' + shlex.quote(bootstrap)
             args = self.physical.ssh_arguments + [self.physical.endpoint] if self.physical else lab.ssh_args(self.run)
             self._probe_process = subprocess.Popen(args+[command], stdin=subprocess.PIPE,
                                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
             self._probe_source = source
+            self._probe_bootstrap = (json.dumps('SOURCE='+repr(source)+chr(10)+PROBE_SERVER)+'\n').encode()
         elif source != self._probe_source:
             self._probe_failed = True
             raise RecipeBlocked('desktop probe source changed during the run; start a new identified run')
@@ -433,6 +445,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         if time.monotonic() >= deadline:
             raise RecipeBlocked(name+' probe budget exhausted before dispatch; no request sent')
         try:
+            payload = getattr(self, '_probe_bootstrap', b'') + payload
+            self._probe_bootstrap = b''
             remaining_payload = memoryview(payload)
             while remaining_payload:
                 sent = process.stdin.write(remaining_payload)
@@ -587,12 +601,25 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             lab.pointer(self.run,x,y,width,height,down,button)
 
     @desktop_transport
-    def screenshot(self, path, head=0):
+    def capture_image(self, head=0):
+        """Read pixels through shared VNC, with no raw QMP witness on disk."""
         Image,_,_ = image_modules()
-        witness = self.physical.screenshot(self.run, 'sd-'+uuid.uuid4().hex[:8], head) if self.physical else lab.screenshot(self.run,'sd-'+uuid.uuid4().hex[:8],head)
-        with Image.open(witness['path']) as im:
-            im.save(path)
-        return witness
+        port = self.physical.config['vnc_port'] if self.physical else 5900+self.info['vnc_display']+head
+        if self.info.get('heads'):
+            port = next(row['port'] for row in self.info['heads'] if row['head']==head)
+        client = rfb.RFB(port)
+        try:
+            width, height, pixels = client.frame()
+            return Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX')
+        finally:
+            client.close()
+
+    def screenshot(self, path, head=0):
+        # Legacy direct callers have no sensitivity geometry: fail closed with
+        # a full mask. DriverContext uses capture_image and registers its masks.
+        from .redact import save_frame
+        image = self.capture_image(head)
+        return save_frame(image, path, [(0,0,image.width,image.height)], fallback=True)
 
     @desktop_transport
     def scroll_vnc(self, x, y, clicks):
@@ -672,6 +699,8 @@ shutil.rmtree(root)
                     errors.append('private session root cleanup refused')
                 else:
                     self._created_root=False
+                    self._owns_root=False
+                    self.private_cleanup = 'resident-log-and-state-root-removed'
             except RecipeBlocked:
                 errors.append('private session root cleanup unavailable')
         return errors

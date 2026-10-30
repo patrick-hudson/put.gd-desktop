@@ -28,6 +28,7 @@ from tools.lab.surface_driver.fixtures import clipboard, destinations, dialogs, 
 from tools.lab.surface_driver.fixtures.profile import seed_profile, seeded_config
 from tools.lab.surface_driver.fixtures.s3_server import Server
 from tools.lab.surface_driver.run import run_recipes
+from tools.lab.surface_driver.receipts import Evidence
 
 
 class Context:
@@ -96,7 +97,9 @@ class Context:
         return {'returncode':0,'stdout':json.dumps({'ok':True,'result':self.call(method,json.loads(params))}),'stderr':''}
 
 
-class Fixtures(unittest.TestCase):
+class FixtureCase(unittest.TestCase):
+    """Private roots and a Context; the round-3 and tray suites reuse it without
+    re-running Fixtures' tests (they were collected three times)."""
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix='sd-')
         self.root=Path(self.temp.name);self.root.chmod(0o700)
@@ -106,6 +109,9 @@ class Fixtures(unittest.TestCase):
     def tearDown(self):
         errors=self.ctx.manager.close();self.restart.stop();self.temp.cleanup()
         self.assertEqual(errors,[])
+
+
+class Fixtures(FixtureCase):
     def test_external_config_controller_uses_atomic_revision_guard(self):
         from tools.lab.surface_driver.fixtures.events import config_change
         self.ctx.fixture('app-profile')
@@ -351,7 +357,7 @@ class Fixtures(unittest.TestCase):
         for sig in (signal.SIGTERM,signal.SIGHUP):
             with self.subTest(signal=sig),tempfile.TemporaryDirectory() as directory:
                 notes=[];cleaned=[];ran=[]
-                context=SimpleNamespace(begin=lambda r:None,frame=lambda *a:None,frames=[],reviews=[],notes=notes,
+                context=SimpleNamespace(evidence=Evidence(directory),begin=lambda r:None,frame=lambda *a:None,frames=[],reviews=[],notes=notes,
                                         review=lambda v:None,note=notes.append,_cleanup_fixtures=lambda:cleaned.append(True) or [])
                 def interrupted(ctx):os.kill(os.getpid(),sig)
                 def later(ctx):ran.append(True)
@@ -366,7 +372,7 @@ class Fixtures(unittest.TestCase):
     def test_recipe_cleanup_interrupt_still_unwinds_fixture_finalizers(self):
         with tempfile.TemporaryDirectory() as directory:
             cleaned=[]
-            context=SimpleNamespace(begin=lambda r:None,frame=lambda *a:None,frames=[],reviews=[],notes=[],
+            context=SimpleNamespace(evidence=Evidence(directory),begin=lambda r:None,frame=lambda *a:None,frames=[],reviews=[],notes=[],
                                     review=lambda v:None,note=lambda v:None,_cleanup_fixtures=lambda:cleaned.append(True) or [])
             def recipe(ctx):pass
             def interrupt(ctx):raise KeyboardInterrupt
@@ -629,7 +635,7 @@ class Fixtures(unittest.TestCase):
         self.assertEqual(value.expect,{'kind':'local','name':link['version'],'preview':False,'url_host':'github.com','text':link['version']})
     def test_runner_cleans_fixture_after_failed_recipe_and_marks_cleanup_failure(self):
         with tempfile.TemporaryDirectory() as directory:
-            context=SimpleNamespace(begin=lambda r:None,frame=lambda *a,**k:None,frames=[],reviews=[],notes=[],review=lambda v:None,note=lambda v:None)
+            context=SimpleNamespace(evidence=Evidence(directory),begin=lambda r:None,frame=lambda *a,**k:None,frames=[],reviews=[],notes=[],review=lambda v:None,note=lambda v:None)
             cleaned=[]
             context.note=context.notes.append
             context._cleanup_fixtures=lambda:cleaned.append(True) or ['owned mount: RecipeBlocked']

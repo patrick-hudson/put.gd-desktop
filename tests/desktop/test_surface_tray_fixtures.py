@@ -11,7 +11,7 @@ from tools.lab.surface_driver.fixtures import FACTORIES,resident,tray
 from tools.lab.surface_driver.fixtures.base import Fixture,Scope
 
 
-class TrayFixtures(fixture_tests.Fixtures):
+class TrayFixtures(fixture_tests.FixtureCase):
     def test_incomplete_alias_waits_for_real_automatic_cleanup(self):
         automatic=Mock(return_value={'trigger':'automatic'})
         value=Fixture(operationId='owned',itemId='owned-item',automatic_cleanup=automatic)

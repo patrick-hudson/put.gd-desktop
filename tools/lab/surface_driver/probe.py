@@ -638,6 +638,9 @@ def accessible(query):
             return 'window-relative', str(error)
         placed = shift(row['rect'], where)
         if not placement.inside(placed, where['frame']):
+            # Scrolled past the window edge: not an input target, but evidence
+            # masking still needs where it would be drawn (clipped by the crop).
+            row['unclipped_rect'] = placed
             return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
         row['rect'] = placed
         row['window_id'] = where['window_id']
@@ -933,7 +936,10 @@ def geometry(query):
             found = [w for w in found if w['x'] <= px < w['x']+w['width'] and w['y'] <= py < w['y']+w['height']]
     else:
         compositor = {'compositor': query['compositor']} if query.get('compositor') else {}
-        rows = accessible({'owned': True, **query.get('accessible', {}), **compositor})
+        # Only visible, showing windows are kept below; pruning hidden subtrees
+        # (other pages) keeps a big window's walk inside the probe deadline
+        # (Settings on GNOME: 1469 nodes, 38 s, versus 92 showing, 3 s).
+        rows = accessible({'owned': True, 'visible': True, 'showing': True, **query.get('accessible', {}), **compositor})
         found, unplaced = [], []
         for row in rows:
             top = row['role'] in WINDOW_ROLES or (row.get('ancestors') and row['ancestors'][-1]['role']=='application')
@@ -1541,6 +1547,48 @@ def foreground(query):
     raise RuntimeError('Wayland compositor focus/stacking witness unavailable; configure focus.compositor_script')
 
 
+def process_name(pid):
+    try:
+        with open('/proc/%d/comm' % int(pid)) as stream:
+            return stream.read().strip()
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+def layout(query):
+    """Every visible desktop window: frame rectangle, pid, ownership, title, stacking.
+
+    Evidence masking reads this to find non-owned windows over an owned
+    window; a larger stack is higher, None is unknown (treated as above).
+    X11: the server's root-child order. Wayland: the compositor witness's own
+    stacking; without one this raises (fail closed).
+    """
+    rows = []
+    if os.environ.get('XDG_SESSION_TYPE') == 'x11':
+        # The X server's own stacking of the root's children (xwininfo prints
+        # the top-most first). Each client is ranked by its top-level ancestor,
+        # which covers WM frames, override-redirect windows and helper windows
+        # the WM keeps below every client (e.g. Muffin's guard window).
+        tops = [str(int(v, 16)) for v in re.findall(r'^\s+(0x[0-9a-fA-F]+)', run('xwininfo', '-root', '-children'), re.M)]
+        rank = {wid: len(tops)-index for index, wid in enumerate(tops)}
+        for w in x11_windows({'title': '.*', 'owned': False}):
+            frame = w.get('frame') or {k: w[k] for k in ('x', 'y', 'width', 'height')}
+            chain = x11_ancestors(w['window_id'])
+            if len(chain) == 1 and w['window_id'] not in rank:
+                continue  # the root window itself (xdotool search matches it)
+            top = chain[-2] if len(chain) > 1 else chain[-1]
+            rows.append({'id': w['window_id'], 'title': w['name'], 'pid': w['pid'], 'process': process_name(w['pid']),
+                         'owned': bool(w['pid'] and owned(w['pid'])),
+                         'rect': [frame['x'], frame['y'], frame['width'], frame['height']],
+                         'stack': rank.get(top), 'minimized': w['states']['minimized']})
+        return {'windows': rows, 'coordinate_space': 'framebuffer'}
+    for w in compositor_windows(query.get('compositor'))['windows']:
+        rows.append({'id': str(w['id']), 'title': w.get('title') or '', 'pid': w.get('pid'), 'process': process_name(w.get('pid')),
+                     'owned': bool(w.get('pid') and owned(w['pid'])), 'rect': list(w['frame']),
+                     'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden'))})
+    return {'windows': rows, 'coordinate_space': 'logical'}
+
+
 def windows(query):
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_windows(query)
@@ -1670,6 +1718,10 @@ def server_pid(query):
     return {'pid': os.getpid(), 'start': process_start(os.getpid())}
 
 
+def compositor_windows_probe(query):
+    return compositor_windows(query['compositor'])
+
+
 def follow_channel(query):
     """Terminate this monitor (SIGTERM → its own cleanup) once the run's probe channel is gone."""
     parent = query.get('parent')
@@ -1694,20 +1746,58 @@ def sender_pid(sender):
 def notification_monitor(query):
     """Long-running desktop observer for one run, until terminated.
 
-    Filters dbus-monitor into query['log'] (when a notification server owner
-    was resolved) and runs popup_watch as a child that dies with it.
+    Keeps the filtered dbus-monitor blocks (when a notification server owner
+    was resolved) in a bounded in-memory buffer, served to this account over
+    query['socket'] (mode 0600). Notification bodies never reach a file. Runs
+    popup_watch as a child that dies with it.
     """
+    import collections
     import select
     import signal
+    import socket
+    import threading
     def die_with_parent():
         ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
     watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch', 'query': {}})],
                                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                                preexec_fn=die_with_parent)
+    kept, lock, children = collections.deque(maxlen=4096), threading.Lock(), [watcher]
+    path = query['socket']
+    server = socket.socket(socket.AF_UNIX)
+    previous = os.umask(0o177)
+    try:
+        server.bind(path)
+    finally:
+        os.umask(previous)
+    os.chmod(path, 0o600)
+    server.listen(4)
+    def serve():
+        while True:
+            connection, _ = server.accept()
+            with connection:
+                with lock:
+                    data = b''.join(kept)
+                connection.settimeout(3)
+                try:
+                    connection.sendall(data)
+                except OSError:
+                    pass
+    threading.Thread(target=serve, daemon=True).start()
+    def stop(*_):
+        for child in children:
+            child.terminate()
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, stop)
+    # Bound to the run's probe channel (query['parent']): when it is gone the
+    # SIGTERM above ends the watcher, dbus-monitor and the socket.
+    follow_channel(query)
     if not query.get('server'):
-        signal.signal(signal.SIGTERM, lambda *_: (watcher.terminate(), sys.exit(0)))
-        follow_channel(query)
-        return {'exit': watcher.wait()}
+        watcher.wait()
+        stop()
     owners = {}
     def sender_owned(sender):
         if sender not in owners:
@@ -1722,13 +1812,12 @@ def notification_monitor(query):
              "type='signal',interface='" + NOTIFY_INTERFACE + "',sender='" + query['server'] + "'"]
     child = subprocess.Popen(['dbus-monitor', '--session', *rules], stdout=subprocess.PIPE,
                              stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
-    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), watcher.terminate(), sys.exit(0)))
-    follow_channel(query)
-    descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    children.append(child)
     buffer, block = b'', []
     def flush():
         if block and keeper.keep(''.join(block)):
-            os.write(descriptor, ''.join(block).encode())
+            with lock:
+                kept.append(''.join(block).encode()[:65536])
         block.clear()
     while True:
         # dbus-monitor ends a message only by starting the next one; an idle
@@ -1748,24 +1837,36 @@ def notification_monitor(query):
             if line[:1] not in (' ', '\t', '\n') and block:
                 flush()
             block.append(line)
-    return {'exit': child.wait()}
+    child.wait()
+    stop()
 
 
-def notification_log(query):
-    """Read the filtered log written by this run's own monitor (bounded)."""
+def notification_read(query):
+    """Read this run's own in-memory monitor over its private socket (bounded)."""
+    import socket
+    import stat as stat_
     try:
         os.kill(int(query['pid']), 0)
         alive = True
     except (OSError, ValueError, TypeError):
         alive = False
-    try:
-        with open(query['log'], 'rb') as stream:
-            data = stream.read(8 * 1024 * 1024 + 1)
-    except FileNotFoundError:
-        data = b''
-    if len(data) > 8 * 1024 * 1024:
-        raise RuntimeError('notification log exceeded 8 MiB')
-    return {'alive': alive, 'text': data.decode('utf-8', 'replace')}
+    chunks, size = [], 0
+    if alive:
+        info = os.lstat(query['socket'])
+        if not stat_.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077:
+            raise RuntimeError('notification monitor socket is not private to this account')
+        with socket.socket(socket.AF_UNIX) as connection:
+            connection.settimeout(5)
+            connection.connect(query['socket'])
+            while True:
+                data = connection.recv(65536)
+                if not data:
+                    break
+                size += len(data)
+                if size > 8 * 1024 * 1024:
+                    raise RuntimeError('notification memory exceeded 8 MiB')
+                chunks.append(data)
+    return {'alive': alive, 'text': b''.join(chunks).decode('utf-8', 'replace')}
 
 
 PORTAL_REQUEST_PREFIX = '/org/freedesktop/portal/desktop/request/'
@@ -1904,11 +2005,10 @@ def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
-                    'foreground': foreground, 'windows': windows, 'tray':tray, 'resize':resize_witness,
-                    'notification_monitor': notification_monitor, 'notification_log': notification_log,
+                    'foreground': foreground, 'windows': windows, 'tray':tray, 'layout': layout, 'resize':resize_witness,
+                    'notification_monitor': notification_monitor, 'notification_read': notification_read,
                     'popup_watch': popup_watch, 'portal_monitor': portal_monitor, 'server_pid': server_pid,
-                    'shell_state': shell_state,
-                    'compositor_windows': lambda query: compositor_windows(query['compositor'])}[request['probe']]
+                    'shell_state': shell_state, 'compositor_windows': compositor_windows_probe}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))

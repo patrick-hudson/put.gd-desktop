@@ -94,6 +94,16 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             result = await server.call_tool(name, args)
             self.assertIn('invalid_request', str(result), name)
 
+    async def test_parameters_use_stdin_without_process_argument_exposure(self):
+        from unittest.mock import AsyncMock, patch
+        process = AsyncMock()
+        process.communicate.return_value = (b'{}', b'')
+        with patch('asyncio.create_subprocess_exec', return_value=process) as start:
+            await CliAdapter().call('share.inspect', {'link': 'synthetic-secret-opaque'})
+        self.assertIn('--params-stdin', start.call_args.args)
+        self.assertNotIn('synthetic-secret-opaque', repr(start.call_args.args))
+        self.assertIn(b'synthetic-secret-opaque', process.communicate.call_args.args[0])
+
     async def test_malformed_timeout_and_unavailable_cli(self):
         with tempfile.TemporaryDirectory(prefix='putgd mcp ') as directory:
             script = Path(directory) / 'fake cli'

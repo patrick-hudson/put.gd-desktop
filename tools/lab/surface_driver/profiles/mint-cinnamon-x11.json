@@ -137,6 +137,42 @@
     },
     "via": "run observer focus event: NativeRegionAccessible is not one of Qt's application children, so a tree walk misses it (#701)"
   },
+  "evidence": {
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; in declared desktop frames non-owned windows other than browsers and the shell's own processes are masked, browser chrome is masked from live window geometry, and window-list panels only when a window title carries a link or registered value.",
+    "notification_areas": [
+      {
+        "anchor": "top-right",
+        "width": 520,
+        "height": 0.5
+      },
+      {
+        "anchor": "bottom-right",
+        "width": 520,
+        "height": 0.5
+      }
+    ],
+    "window_list_panels": [
+      {
+        "anchor": "bottom",
+        "height": 48
+      }
+    ],
+    "browser": {
+      "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
+      "chrome_height": 170
+    },
+    "shell_processes": [
+      "cinnamon",
+      "muffin",
+      "cinnamon-launch"
+    ],
+    "shell_areas": [
+      {
+        "anchor": "bottom",
+        "height": 48
+      }
+    ]
+  },
   "recording": {
     "consent": {
       "kind": "none",
