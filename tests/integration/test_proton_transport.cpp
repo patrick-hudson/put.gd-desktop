@@ -1,7 +1,7 @@
-#include <QElapsedTimer>
-#include <thread>
 #include <chrono>
+#include <thread>
 #include <QJsonDocument>
+#include "fixtures/Waits.h"
 #include "storage/proton/OutputBudget.h"
 #include "storage/proton/ProtonProvider.h"
 #include "core/HostEnvironment.h"
@@ -11,6 +11,7 @@
 #include <QFile>
 #include <QLockFile>
 #include <QScopeGuard>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QUuid>
 #include <unistd.h>
@@ -20,6 +21,7 @@
 using namespace putgd;
 class ProtonTransportTest:public QObject {
  Q_OBJECT
+ using Clock=std::chrono::steady_clock;
  static Destination destination(const QString& fixture="auth") {
   auto settings=ProtonProvider::defaults();settings["fixture"]=fixture;settings["requestTimeoutMs"]=1000;
   return {"proton-drive","synthetic","revision",settings,{{"mode","keychain"},{"reference","putgd/proton/transport-"+QUuid::createUuid().toString(QUuid::WithoutBraces)}}};
@@ -28,18 +30,36 @@ class ProtonTransportTest:public QObject {
   UploadRequest req;req.destination=d;req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";
   req.progress=std::move(progress);UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
  }
+ static bool requestReceived(const QString& path,const QByteArray& method) {
+  QFile marker(path);return marker.open(QIODevice::ReadOnly)&&marker.readAll()==method;
+ }
+ static void finishFixture(const QString& path) {
+  // Assertion-failure teardown must also unblock a broken cancellation path.
+  QFile stop(path+".stop");if(stop.open(QIODevice::WriteOnly))stop.close();
+ }
 private slots:
  void nameCheckPropagatesCancellationToHelper() {
+  QTemporaryDir dir;QVERIFY(dir.isValid());const auto received=dir.filePath("received");
   ProtonProvider provider;auto d=destination("timeout");d.settings["requestTimeoutMs"]=120000;
+  d.settings["receivedFile"]=received;
+  d.settings["expectedParentPid"]=QCoreApplication::applicationPid();
   auto cancellation=std::make_shared<std::atomic_bool>(false);
-  std::jthread cancel([cancellation]{std::this_thread::sleep_for(std::chrono::milliseconds(200));cancellation->store(true);});
-  NameCheck result;QElapsedTimer elapsed;elapsed.start();
-  provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);
-  QVERIFY(elapsed.elapsed()<2000);QCOMPARE(result.status,QString("inconclusive"));
+  NameCheck result;std::atomic_bool completed=false;Clock::time_point finished;
+  std::jthread worker([&]{provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);finished=Clock::now();completed.store(true);});
+  auto cancelOnExit=qScopeGuard([&]{cancellation->store(true);finishFixture(received);});
+  // Account-lock persistence can take longer than 200 ms (#577). Prove the
+  // request reached the helper before testing cancellation after dispatch.
+  PUTGD_TRY_VERIFY(requestReceived(received,"checkName"));
+  const auto cancelledAt=Clock::now();cancellation->store(true);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(completed.load(),2000);worker.join();
+  // Polling may observe completion late; measure when the worker actually ended.
+  QVERIFY(finished>=cancelledAt);QVERIFY(finished-cancelledAt<std::chrono::seconds(2));QCOMPARE(result.status,QString("inconclusive"));
   QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));
   QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+  QVERIFY(QFile::remove(received));
   provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);
   QCOMPARE(result.error.code,QString("operation_cancelled"));
+  QVERIFY(!QFileInfo::exists(received));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
  }
 
  // #518: inside an AppImage the helper got AppRun's library path, so the host libsecret it loads
@@ -157,7 +177,19 @@ private slots:
   ProtonOutputBudget flood;QVERIFY(flood.consume(ProtonOutputBudget::MaximumBurstBytes,0));QVERIFY(!flood.consume(1,0));ProtonOutputBudget frame;QVERIFY(!frame.consume(ProtonOutputBudget::MaximumBurstBytes+1,24LL*60*60*1000));
  }
  void reconciliationCancellationStopsExtendedRequest(){
-  ProtonProvider provider;UploadRequest request;request.destination=destination("timeout");request.requestTimeoutMs=30000;request.cancellation=std::make_shared<std::atomic_bool>(false);std::jthread cancel([flag=request.cancellation]{std::this_thread::sleep_for(std::chrono::milliseconds(200));flag->store(true);});StatResult result;QElapsedTimer elapsed;elapsed.start();provider.reconcile(request,[&](StatResult value){result=value;});QVERIFY(elapsed.elapsed()<2000);QCOMPARE(result.status,QString("unknown"));QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+  QTemporaryDir dir;QVERIFY(dir.isValid());const auto received=dir.filePath("received");
+  ProtonProvider provider;UploadRequest request;request.destination=destination("timeout");request.destination.settings["receivedFile"]=received;request.requestTimeoutMs=30000;request.cancellation=std::make_shared<std::atomic_bool>(false);
+  request.destination.settings["expectedParentPid"]=QCoreApplication::applicationPid();
+  StatResult result;std::atomic_bool completed=false;Clock::time_point finished;
+  std::jthread worker([&]{provider.reconcile(request,[&](StatResult value){result=value;});finished=Clock::now();completed.store(true);});
+  auto cancelOnExit=qScopeGuard([&]{request.cancellation->store(true);finishFixture(received);});
+  PUTGD_TRY_VERIFY(requestReceived(received,"reconcile"));
+  const auto cancelledAt=Clock::now();request.cancellation->store(true);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(completed.load(),2000);worker.join();
+  QVERIFY(finished>=cancelledAt);QVERIFY(finished-cancelledAt<std::chrono::seconds(2));QCOMPARE(result.status,QString("unknown"));QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+  QVERIFY(QFile::remove(received));
+  provider.reconcile(request,[&](StatResult value){result=value;});
+  QCOMPARE(result.error.code,QString("operation_cancelled"));QVERIFY(!QFileInfo::exists(received));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
  }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));
