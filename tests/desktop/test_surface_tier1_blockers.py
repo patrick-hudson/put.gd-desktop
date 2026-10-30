@@ -1,6 +1,7 @@
 """Targeted refusal regressions; these synthetic tests are not desktop proof."""
 from pathlib import Path
 import json
+import io
 import os
 import sys
 import tempfile
@@ -18,6 +19,15 @@ from tests.desktop.test_surface_live_evidence import Base
 
 
 class SelectorMapping(unittest.TestCase):
+    def test_appimage_helper_needs_the_verified_extracted_binary_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-kde-region'
+            binary.parent.mkdir(parents=True);binary.write_bytes(b'synthetic trusted binary')
+            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=None):
+                for data,expected in ((b'foreign same-name binary',False),(b'synthetic trusted binary',True)):
+                    with patch('builtins.open',return_value=io.BytesIO(data)):
+                        self.assertEqual(probe.selector_process(7),expected)
+
     def test_wayland_selector_checks_the_next_drag_point_before_motion(self):
         ctx=DriverContext.__new__(DriverContext)
         ctx._input_head=0;ctx._current_window='region';ctx._press_open=False;ctx.profile={}

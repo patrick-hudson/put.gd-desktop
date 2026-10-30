@@ -1,8 +1,8 @@
 """Guest-only Secret Service for synthetic KDE loopback credentials.
 
-No default KWallet, alias, real item or desktop identity is changed. The distro
-GNOME daemon supplies the Secret Service API on an otherwise unowned bus name,
-with private storage and an exact PID/start-time cleanup lease.
+No default KWallet, alias, real item or desktop identity is changed. An existing
+ksecretd keeps its name and serves one unique disposable blank wallet. Otherwise
+the distro GNOME daemon uses private storage and an exact process cleanup lease.
 """
 from ..api import RecipeBlocked
 

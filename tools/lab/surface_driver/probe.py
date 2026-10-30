@@ -1601,11 +1601,23 @@ def native_capture_process(pid):
 
 def selector_process(pid):
     import shutil
+    import hashlib
+    from pathlib import Path
     for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
         try:
             expected = shutil.which(name)
             if expected and os.path.samefile('/proc/'+str(pid)+'/exe', expected):
                 return True
+        except OSError:
+            pass
+        # The mounted AppImage and the lab's hash-verified extracted copy
+        # have different inodes. Match executable bytes, never just a name.
+        bundled = Path.home()/'putgd-lab/appimage/squashfs-root/usr/bin'/name
+        try:
+            if bundled.is_file() and not bundled.is_symlink():
+                with bundled.open('rb') as expected, open('/proc/'+str(pid)+'/exe', 'rb') as actual:
+                    if hashlib.file_digest(expected, 'sha256').digest() == hashlib.file_digest(actual, 'sha256').digest():
+                        return True
         except OSError:
             pass
     return False

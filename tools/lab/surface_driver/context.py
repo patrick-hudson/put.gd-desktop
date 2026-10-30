@@ -1146,8 +1146,8 @@ asyncio.run(main())
     def _frame_regions(self, image, head, geometry=None, role=None, desktop_safe=None):
         """Masks for one capture; (regions, fallback, guard).
 
-        Before anything sensitive is seen (local runs) only declared regions
-        apply. Afterwards, and always for live destinations, only the owned
+        Local synthetic runs mask declared regions and secret fields. For
+        live destinations, only the owned
         window's own pixels may be kept: desktop-level frames are fully masked
         unless the recipe declares their content safe, non-owned windows over
         the owned window and the profile's notification areas are masked, and
