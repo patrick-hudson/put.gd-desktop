@@ -54,10 +54,10 @@ def run_group(group, output):
     (output / (group + '-contracts.log')).write_text('\n'.join(log))
     (output / (group + '-contracts.json')).write_text(json.dumps(
         {'suites': results, 'scope': GROUPS[group]['scope']}, indent=2) + '\n')
-    failures = [(result, output) for result, output in zip(results, log) if result['exitCode']]
+    failures = [(result, text) for result, text in zip(results, log) if result['exitCode']]
     # The job log names each failing case and its traceback, not only the suite.
-    for _, output in failures:
-        print(output, file=sys.stderr, flush=True)
+    for _, text in failures:
+        print(text, file=sys.stderr, flush=True)
     for failure, _ in failures:
         print('Failed: ' + ' '.join(failure['command']), file=sys.stderr)
     return failures[0][0]['exitCode'] if failures else 0
