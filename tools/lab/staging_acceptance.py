@@ -250,7 +250,7 @@ lab.command(['dpkg-deb','--build',package_root,package])
 
 # Disable autologin in the overlay so logout really leaves no lab login.
 # Retain hashes and changed keys, never complete authentication configuration.
-configure_autologin="""import hashlib,json,re
+configure_autologin=r"""import hashlib,json,re
 from pathlib import Path
 files=[Path('/etc/gdm3/custom.conf'),Path('/etc/gdm3/daemon.conf'),Path('/etc/gdm/custom.conf'),Path('/etc/lightdm/lightdm.conf')]
 files+=list(Path('/etc/lightdm/lightdm.conf.d').glob('*.conf'))
