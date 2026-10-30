@@ -33,7 +33,11 @@ Channels:
 | Exceptions | A registered token in `RecipeFailed`, scheme-less B2 and custom links in `RecipeFailed`, and `Authorization: Bearer` plus the presigned URL in a `RuntimeError`. |
 
 Driver: [`driver/live.py`](driver/live.py). It reads the values from a
-private file, so the raw values are not committed.
+private file, so the raw values are not committed. Since #726's gate round
+(third validation), constructing its live `DriverContext` runs the
+secret-safe evidence gate and records `live_admitted`; the runs below predate
+that enforcement. A later short live check of the gate itself is recorded in
+[`gate-check/`](gate-check/README.md).
 
 ## Runs
 

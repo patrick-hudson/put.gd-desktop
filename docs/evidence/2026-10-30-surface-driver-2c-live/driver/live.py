@@ -3,6 +3,9 @@
 Usage (from the PR checkout): python3 sd726_live.py --run RUN --out OUT --catalog CATALOG
        --boat-id ID --desktop PROFILE --build COMMIT [--positions top,bottom]
 
+COMMIT is the exact clean commit (12-40 hex) of both the installed package and
+the catalog; the catalog's secret-control states must equal the committed pin.
+
 Plants a fake share link, a B2 link, a presigned URL and a custom-endpoint link
 in History rows (real loopback-S3 uploads with fake public URL bases), put.gd
 notifications (both Cinnamon positions), the clipboard, a hovered tooltip, a
@@ -124,7 +127,13 @@ def main():
 
     try:
         target.start()
+        # Live evidence goes through the gate: constructing a context for a
+        # non-local destination runs secret_safe_evidence_blockers (placement,
+        # exact 12-40 hex --build, pinned catalog, random-token OCR self-test)
+        # and raises LiveEvidenceRefused before anything is written; run_recipes
+        # refuses any context the gate did not admit.
         ctx = DriverContext(target, environment, profile, args.catalog, args.out/'live')
+        summary['live_admitted'] = ctx._live_admitted
         ctx._deadline = time.monotonic()+600
         if cinnamon:
             found = ctx.shell('pgrep -x mintUpdate')['stdout'].split()
