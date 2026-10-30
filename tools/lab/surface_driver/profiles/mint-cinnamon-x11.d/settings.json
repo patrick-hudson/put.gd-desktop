@@ -18,12 +18,14 @@
         "role": "text"
       },
       "namingMode": {
-        "name": "Naming",
-        "role": "combo box"
+        "name": "*",
+        "role": "combo box",
+        "label": "Naming"
       },
       "collisionPolicy": {
-        "name": "When a name exists",
-        "role": "combo box"
+        "name": "*",
+        "role": "combo box",
+        "label": "When a name exists"
       },
       "fileTemplate": {
         "name": "Copied & uploaded files",

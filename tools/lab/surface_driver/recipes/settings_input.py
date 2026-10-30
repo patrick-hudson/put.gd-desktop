@@ -20,7 +20,7 @@ for app in pyatspi.Registry.getDesktop(0):
             apps.append(app)
     except (RuntimeError, AttributeError):
         pass
-stack, rows, visited = [(app, 0) for app in apps], [], 0
+stack, rows, anchors, visited = [(app, 0) for app in apps], [], [], 0
 while stack and visited < 6000:
     node, depth = stack.pop()
     visited += 1
@@ -30,6 +30,8 @@ while stack and visited < 6000:
         if depth and not node.getState().contains(pyatspi.STATE_VISIBLE):
             continue
         name, role = node.name or '', node.getRoleName()
+        if query.get('label') == name and role == 'label':
+            anchors.append(list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)))
         if fnmatch.fnmatchcase(name, query['name']) and role == query['role']:
             rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
             rows.append({'pid': pid, 'name': name, 'role': role, 'rect': rect})
@@ -38,6 +40,11 @@ while stack and visited < 6000:
     except (RuntimeError, AttributeError, NotImplementedError):
         pass
 assert not stack, 'private accessibility tree exceeded the bounded scan'
+if query.get('label'):
+    assert len(anchors) <= 1, 'ambiguous Settings row label'
+    rows = [row for row in rows if any(row['rect'][0] >= x + width
+            and row['rect'][1] <= y + height / 2 < row['rect'][1] + row['rect'][3]
+            for x, y, width, height in anchors)]
 print(json.dumps(rows))
 '''
 
@@ -143,7 +150,8 @@ def click(ctx, control):
     # The right end of a keycap contains its independent Clear button.
     point = (round(x + width / 3), round(y + height / 2))
     ctx.frame('input-before-' + control)
-    ctx.note('settings live target: ' + json.dumps({'control': control, 'rect': [x, y, width, height],
+    ctx.note('settings live target: ' + json.dumps({'control': control, 'accessible_name': matches[0].get('name'),
+                                                   'rect': [x, y, width, height],
                                                    'point': point, 'geometry': geometry}, sort_keys=True))
     observe(ctx, geometry)
     ctx.click_at(*point)

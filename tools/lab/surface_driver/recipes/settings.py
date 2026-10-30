@@ -338,9 +338,7 @@ def binding(ctx, action, chord):
     ctx.wait(matches, action + ' binding confirmed by desktop')
 
 
-@recipe('shortcuts-page.field', 'shortcuts-page.record', 'shortcuts-page.clear',
-        'shortcuts-page.key-esc', 'shortcuts-page.key-backspace', timeout=360)
-def shortcut_recording(ctx):
+def shortcut_campaign(ctx, check):
     opened(ctx, 2)
     original = get(ctx)['document']['actions']
     frame(ctx, 'before', 2)
@@ -349,39 +347,59 @@ def shortcut_recording(ctx):
             control = 'record' + action.title() + 'Shortcut'
             chord = 'Ctrl+Alt+Shift+9'
             live_click(ctx, control)
-            # Pausing is acknowledged asynchronously. Observe it before sending keys.
-            ctx.wait(lambda: recording(ctx, action),
-                     'shortcut recorder pauses the desktop channel')
-            ctx.keys('Esc')
-            ctx.wait(lambda: not recording(ctx, action), 'Escape ends shortcut recording')
-            saved(ctx, 'actions.' + action + '.shortcut', original[action]['shortcut'], 2)
-            live_click(ctx, control)
-            ctx.wait(lambda: recording(ctx, action), 'recorder ready')
-            ctx.keys(chord)
-            saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
-            binding(ctx, action, chord)
-            # Clicking the keycap a second time cancels, retaining the binding.
-            live_click(ctx, control)
-            ctx.wait(lambda: recording(ctx, action), 'recorder ready')
-            live_click(ctx, control)
-            ctx.wait(lambda: not recording(ctx, action), 'second keycap click cancels recording')
-            saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
-            live_click(ctx, 'clear' + action.title() + 'Shortcut')
-            saved(ctx, 'actions.' + action + '.shortcut', '', 2)
-            live_click(ctx, control)
-            ctx.wait(lambda: recording(ctx, action), 'recorder ready')
-            ctx.keys(chord)
-            saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
-            live_click(ctx, control)
-            ctx.wait(lambda: recording(ctx, action), 'recorder ready')
-            ctx.keys('Backspace')
-            ctx.wait(lambda: not recording(ctx, action), 'Backspace ends shortcut recording')
-            saved(ctx, 'actions.' + action + '.shortcut', '', 2)
+            ctx.wait(lambda: recording(ctx, action), 'shortcut recorder pauses the desktop channel')
+            if check == 'escape':
+                ctx.keys('Esc')
+                ctx.wait(lambda: not recording(ctx, action), 'Escape ends shortcut recording')
+                saved(ctx, 'actions.' + action + '.shortcut', original[action]['shortcut'], 2)
+            else:
+                ctx.keys(chord)
+                saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
+                binding(ctx, action, chord)
+                if check == 'clear':
+                    live_click(ctx, 'clear' + action.title() + 'Shortcut')
+                    saved(ctx, 'actions.' + action + '.shortcut', '', 2)
+                elif check in ('record', 'backspace'):
+                    live_click(ctx, control)
+                    ctx.wait(lambda: recording(ctx, action), 'recorder ready')
+                    if check == 'record':
+                        live_click(ctx, control)
+                        ctx.wait(lambda: not recording(ctx, action), 'second keycap click cancels recording (app issue #731)')
+                        saved(ctx, 'actions.' + action + '.shortcut', chord, 2)
+                    else:
+                        ctx.keys('Backspace')
+                        ctx.wait(lambda: not recording(ctx, action), 'Backspace ends shortcut recording')
+                        saved(ctx, 'actions.' + action + '.shortcut', '', 2)
+            frame(ctx, 'after-' + action, 2)
             patch(ctx, {'actions': {action: original[action]}})
-        frame(ctx, 'after', 2)
     finally:
         ctx.keys('Esc')
         patch(ctx, {'actions': original})
+
+
+@recipe('shortcuts-page.field', timeout=360)
+def shortcut_field(ctx):
+    shortcut_campaign(ctx, 'field')
+
+
+@recipe('shortcuts-page.record', timeout=360)
+def shortcut_recording(ctx):
+    shortcut_campaign(ctx, 'record')
+
+
+@recipe('shortcuts-page.clear', timeout=360)
+def shortcut_clear(ctx):
+    shortcut_campaign(ctx, 'clear')
+
+
+@recipe('shortcuts-page.key-esc', timeout=360)
+def shortcut_escape(ctx):
+    shortcut_campaign(ctx, 'escape')
+
+
+@recipe('shortcuts-page.key-backspace', timeout=360)
+def shortcut_backspace(ctx):
+    shortcut_campaign(ctx, 'backspace')
 
 
 @recipe('advanced.desktop-support')
