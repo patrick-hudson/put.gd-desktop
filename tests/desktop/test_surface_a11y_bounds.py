@@ -97,7 +97,8 @@ def settings_window():
     rail = prefix + '.settingsRail.settingsNavigation'
     general = Node('General', 'list item', [16, 124, 184, 38], identifier=rail)
     capture = Node('Capture', 'list item', [16, 162, 184, 38], identifier=rail)
-    navigation = Node('', 'list', [16, 124, 184, 152], identifier=rail, children=[general, capture])
+    navigation = Node('Settings categories', 'list', [16, 124, 184, 152], identifier='Settings categories',
+                      children=[general, capture])
     column = prefix + '.QWidget.settingsTabs.QScrollArea.generalPreferenceColumn'
     heading = Node('General', 'label', [248, 124, 760, 36], identifier=column + '.settingsPageHeadingGeneral')
     label = Node('Launch at login', 'label', [264, 221, 688, 36], identifier=column + '.QWidget.QLabel')
@@ -201,10 +202,13 @@ class QtAccessibleId(Walk):
         self.assertEqual(row['rect'], [67 + 968, 32 + 227, 24, 24])
 
     def test_class_names_and_container_ids_are_not_object_names(self):
-        self.assertEqual(probe.id_object_name('A.b.QWidget.QLabel', 'A.b.QWidget'), '')
-        self.assertEqual(probe.id_object_name('A.b.putgd::Ui::Surface', 'A.b'), '')
-        self.assertEqual(probe.id_object_name('A.rail.settingsNavigation', 'A.rail.settingsNavigation'), '')
-        self.assertEqual(probe.id_object_name('', 'A'), '')
+        self.assertEqual(probe.id_object_name('A.b.QWidget.QLabel', 'label'), '')
+        self.assertEqual(probe.id_object_name('A.b.putgd::Ui::Surface', 'filler'), '')
+        self.assertEqual(probe.id_object_name('', 'check box'), '')
+        # Observed: the list reports 'Settings categories', its rows the view's path.
+        for role in ('list item', 'page tab', 'table cell', 'tree item'):
+            self.assertEqual(probe.id_object_name('A.rail.settingsNavigation', role), '')
+        self.assertEqual(probe.id_object_name('A.b.PreferenceValue.launchAtLogin', 'check box'), 'launchAtLogin')
 
     def test_view_rows_need_name_and_role(self):
         # A view row repeats its list's id; 'General' is also the page heading.

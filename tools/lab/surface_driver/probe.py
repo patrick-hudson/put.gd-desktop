@@ -51,14 +51,19 @@ def accessible_id(node):
         return ''
 
 
-def id_object_name(identifier, parent_identifier):
+# Qt item interfaces (QAccessibleTableCell, header cells, QAccessibleTabButton)
+# are not QObjects: their AccessibleId is the view's or tab bar's own path.
+ITEM_ROLES = ('list item', 'table cell', 'tree item', 'page tab', 'column header', 'row header', 'table row')
+
+
+def id_object_name(identifier, role):
     """objectName from Qt's AT-SPI AccessibleId (Qt 6.10 exports no objectName attribute, #819).
 
     Qt joins the object ancestry as 'QApplication.window.….objectName' and
-    uses the class name for objects without one. Items of a view (list rows,
-    page tabs) repeat their container's id: they have no objectName of their own.
+    uses the class name for objects without one; view items carry their
+    view's path. Neither names the row itself.
     """
-    if not identifier or identifier == parent_identifier:
+    if not identifier or role in ITEM_ROLES:
         return ''
     last = identifier.rsplit('.', 1)[-1]
     return '' if '::' in last or re.match(r'Q[A-Z]', last) else last
@@ -634,10 +639,7 @@ def accessible(query, toplevel=False, detail=True):
                 identifier = ''
                 if not object_name:
                     identifier = accessible_id(node)
-                    parent = ancestors[-1] if ancestors else {}
-                    if identifier and parent.get('_node') is not None and '_id' not in parent:
-                        parent['_id'] = accessible_id(parent['_node'])
-                    object_name = id_object_name(identifier, parent.get('_id'))
+                    object_name = id_object_name(identifier, role)
                 row = {'window': window, 'application': application, 'name': name, 'role': role,
                        'text': text, 'description': '' if protected or not detail else (node.description or ''),
                        'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
