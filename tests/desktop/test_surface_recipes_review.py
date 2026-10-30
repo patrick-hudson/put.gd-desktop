@@ -326,6 +326,20 @@ class ReviewRecipes(unittest.TestCase):
         self.assertEqual(len(polls), 2)
         self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
 
+    def test_saved_waits_while_first_export_is_not_yet_accepted(self):
+        ctx = FakeContext()
+        ctx.info['lastExport'] = None
+        inspect = review._inspect
+        polls = []
+        def completing(context, rid):
+            polls.append(rid)
+            if len(polls) == 2:
+                context.call('recording.saveCopy', {'id':rid, 'path':'/tmp/new.webm'})
+            return inspect(context, rid)
+        with patch.object(review, '_inspect', side_effect=completing):
+            review._saved(ctx, 'recording-id', '/tmp/new.webm')
+        self.assertEqual(len(polls), 2)
+
     def test_status_retry_uses_fault_fixture_and_decodes(self):
         ctx = FakeContext()
         path = '/tmp/r/out/retry.webm'

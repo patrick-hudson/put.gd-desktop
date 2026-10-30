@@ -266,8 +266,8 @@ def _verify(ctx, rid, path, info=None):
 
 def _saved(ctx, rid, path):
     info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))['state'] == 'reviewing'
-                            and s.get('lastExport', {}).get('path') == path
-                            and s.get('lastExport', {}).get('status') in ('saved', 'failed') else None),
+                            and (s.get('lastExport') or {}).get('path') == path
+                            and (s.get('lastExport') or {}).get('status') in ('saved', 'failed') else None),
                     'export finishes at requested path', timeout=180)
     ctx.expect(info['lastExport'].get('path') == path, 'copy export matches requested path')
     ctx.expect(info['lastExport'].get('revision') == info['edit']['revision'], 'copy export matches current edit revision')
