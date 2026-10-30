@@ -1,0 +1,678 @@
+{
+ "mint-cinnamon-x11 (final head b9bf39d5, fresh overlay)": {
+  "checks": {
+   "default": {
+    "passed": true,
+    "resident_log": {
+     "message": "Opened on the host",
+     "target": "notification-link",
+     "route": "portal",
+     "opened": true
+    }
+   },
+   "buttons": {
+    "passed": true,
+    "resident_log": {
+     "message": "Opened on the host",
+     "target": "diagnostics-folder",
+     "route": "file-manager",
+     "opened": true
+    }
+   },
+   "row-menu": {
+    "passed": true,
+    "items": [
+     {
+      "name": "Delete from destination…",
+      "role": "menu item",
+      "rect": [
+       455,
+       502,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Copy details",
+      "role": "menu item",
+      "rect": [
+       455,
+       461,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Edit image…",
+      "role": "menu item",
+      "rect": [
+       455,
+       420,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Open in browser",
+      "role": "menu item",
+      "rect": [
+       455,
+       388,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Copy link",
+      "role": "menu item",
+      "rect": [
+       455,
+       356,
+       217,
+       32
+      ]
+     }
+    ],
+    "popup": {
+     "name": "",
+     "role": "popup menu",
+     "rect": [
+      449,
+      350,
+      229,
+      190
+     ],
+     "pid": 6739
+    },
+    "clipboard_has_operation": true
+   },
+   "context-menu": {
+    "passed": true,
+    "items": [
+     {
+      "name": "Select All\tCtrl+A",
+      "role": "menu item",
+      "rect": [
+       778,
+       358,
+       250,
+       32
+      ]
+     },
+     {
+      "name": "Delete",
+      "role": "menu item",
+      "rect": [
+       778,
+       317,
+       250,
+       32
+      ]
+     },
+     {
+      "name": "Paste\tCtrl+V",
+      "role": "menu item",
+      "rect": [
+       778,
+       285,
+       250,
+       32
+      ]
+     },
+     {
+      "name": "Copy\tCtrl+C",
+      "role": "menu item",
+      "rect": [
+       778,
+       253,
+       250,
+       32
+      ]
+     },
+     {
+      "name": "Cut\tCtrl+X",
+      "role": "menu item",
+      "rect": [
+       778,
+       221,
+       250,
+       32
+      ]
+     },
+     {
+      "name": "Redo\tCtrl+Shift+Z",
+      "role": "menu item",
+      "rect": [
+       778,
+       180,
+       250,
+       32
+      ]
+     },
+     {
+      "name": "Undo\tCtrl+Z",
+      "role": "menu item",
+      "rect": [
+       778,
+       148,
+       250,
+       32
+      ]
+     }
+    ],
+    "popup": {
+     "name": "",
+     "role": "popup menu",
+     "rect": [
+      772,
+      142,
+      262,
+      254
+     ],
+     "pid": 6739
+    },
+    "field_after": ""
+   },
+   "occlusion": {
+    "passed": true,
+    "refusal": "input target 'editor' is obscured by 'Core 2a obstruction' (window 79691824)",
+    "canvas": {
+     "x": 50,
+     "y": 158,
+     "width": 659,
+     "height": 456,
+     "scale": 1,
+     "pid": 7610,
+     "coordinate_space": "framebuffer",
+     "head": 0
+    },
+    "raise_witness": {
+     "ok": true,
+     "active": "77594630",
+     "target": "77594630",
+     "stacking": [
+      "69206019",
+      "73400326",
+      "79691824",
+      "77594630"
+     ],
+     "obscuring_window": "unknown foreground window",
+     "obscuring_window_id": null,
+     "backend": "ewmh"
+    },
+    "tool_before": "redact"
+   },
+   "selector": {
+    "passed": true,
+    "rows": [
+     {
+      "name": "Capture region",
+      "role": "panel",
+      "description": "No region selected. Entire display · 1280 × 800 px · Enter to capture · Esc to cancel\nDrag to select · Arrows move · Shift+arrows resize\nSaves locally",
+      "rect": [
+       0,
+       0,
+       1280,
+       800
+      ],
+      "pid": 8186
+     }
+    ]
+   },
+   "notification-privacy": {
+    "passed": true,
+    "foreign_marker_lines_in_log": [],
+    "own_rows": [
+     [
+      "privacy-1793332507-own put.gd",
+      6
+     ]
+    ],
+    "foreign_server_ids": [
+     "4",
+     "5"
+    ]
+   }
+  },
+  "build": {
+   "version": "26.1030.2342-dev+g550a3b808d5a",
+   "gitCommit": "550a3b808d5a485ad3033df4128e8e0542d91e19"
+  },
+  "os": {
+   "ID": "linuxmint",
+   "VERSION_ID": "22.3",
+   "VARIANT_ID": null
+  },
+  "session": "x11",
+  "desktop": "X-Cinnamon"
+ },
+ "ubuntu-gnome-wayland (9f0c0e44 harness)": {
+  "checks": {
+   "default": {
+    "passed": true,
+    "resident_log": {
+     "message": "Opened on the host",
+     "target": "notification-link",
+     "route": "portal",
+     "opened": true
+    }
+   },
+   "buttons": {
+    "passed": true,
+    "resident_log": {
+     "message": "Opened on the host",
+     "target": "diagnostics-folder",
+     "route": "file-manager",
+     "opened": true
+    }
+   },
+   "row-menu": {
+    "passed": true,
+    "items": [
+     {
+      "name": "Delete from destination…",
+      "role": "menu item",
+      "rect": [
+       500,
+       551,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Copy details",
+      "role": "menu item",
+      "rect": [
+       500,
+       510,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Edit image…",
+      "role": "menu item",
+      "rect": [
+       500,
+       469,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Open in browser",
+      "role": "menu item",
+      "rect": [
+       500,
+       437,
+       217,
+       32
+      ]
+     },
+     {
+      "name": "Copy link",
+      "role": "menu item",
+      "rect": [
+       500,
+       405,
+       217,
+       32
+      ]
+     }
+    ],
+    "popup": {
+     "name": "putgd-ui",
+     "role": "popup menu",
+     "rect": [
+      427,
+      367,
+      229,
+      190
+     ],
+     "pid": 13336
+    },
+    "clipboard_has_operation": true
+   },
+   "context-menu": {
+    "passed": true,
+    "items": [
+     {
+      "name": "Select All\tCtrl+A",
+      "role": "menu item",
+      "rect": [
+       778,
+       390,
+       280,
+       32
+      ]
+     },
+     {
+      "name": "Delete",
+      "role": "menu item",
+      "rect": [
+       778,
+       349,
+       280,
+       32
+      ]
+     },
+     {
+      "name": "Paste\tCtrl+V",
+      "role": "menu item",
+      "rect": [
+       778,
+       317,
+       280,
+       32
+      ]
+     },
+     {
+      "name": "Copy\tCtrl+C",
+      "role": "menu item",
+      "rect": [
+       778,
+       285,
+       280,
+       32
+      ]
+     },
+     {
+      "name": "Cut\tCtrl+X",
+      "role": "menu item",
+      "rect": [
+       778,
+       253,
+       280,
+       32
+      ]
+     },
+     {
+      "name": "Redo\tCtrl+Shift+Z",
+      "role": "menu item",
+      "rect": [
+       778,
+       212,
+       280,
+       32
+      ]
+     },
+     {
+      "name": "Undo\tCtrl+Z",
+      "role": "menu item",
+      "rect": [
+       778,
+       180,
+       280,
+       32
+      ]
+     }
+    ],
+    "popup": {
+     "name": "putgd-ui",
+     "role": "popup menu",
+     "rect": [
+      705,
+      142,
+      292,
+      254
+     ],
+     "pid": 13336
+    },
+    "field_after": ""
+   },
+   "occlusion": {
+    "passed": true,
+    "refusal": "input target 'editor' is obscured by 'Core 2a obstruction' (window 1368989126)",
+    "canvas": {
+     "x": 223,
+     "y": 214,
+     "width": 659,
+     "height": 456,
+     "scale": 1,
+     "pid": 13881,
+     "coordinate_space": "logical",
+     "head": 0
+    },
+    "raise_witness": {
+     "ok": true,
+     "backend": "gnome-lab-witness-focus",
+     "target": 1368989125,
+     "obscuring_window": null,
+     "obscuring_window_id": null
+    },
+    "tool_before": "redact"
+   },
+   "selector": {
+    "passed": true,
+    "rows": [
+     {
+      "name": "Capture region",
+      "role": "panel",
+      "description": "No region selected. Entire display · 1280 × 800 px · Enter to capture · Esc to cancel\nDrag to select · Arrows move · Shift+arrows resize\nSaves locally",
+      "rect": [
+       0,
+       0,
+       1280,
+       800
+      ],
+      "pid": 1786
+     }
+    ]
+   },
+   "wayland-geometry": {
+    "passed": true,
+    "panel_refusal": "input target 'editor' is obscured by 'shell panelCenter' (window None)",
+    "editor": {
+     "x": 223,
+     "y": 106,
+     "width": 900,
+     "height": 620,
+     "window_id": 1368989129,
+     "coordinate_space": "logical"
+    },
+    "canvas": {
+     "x": 223,
+     "y": 214,
+     "width": 659,
+     "height": 456,
+     "scale": 1,
+     "pid": 14878,
+     "coordinate_space": "logical",
+     "head": 0
+    },
+    "text_button": [
+     [
+      [
+       435,
+       170,
+       36,
+       36
+      ],
+      "desktop",
+      1368989129
+     ]
+    ],
+    "tool_before": "redact"
+   }
+  },
+  "build": {
+   "version": "26.1029.2229-nightly",
+   "gitCommit": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0"
+  },
+  "os": {
+   "ID": "ubuntu",
+   "VERSION_ID": "26.04",
+   "VARIANT_ID": null
+  },
+  "session": "wayland",
+  "desktop": "ubuntu:GNOME"
+ },
+ "kubuntu-kde-wayland (f44 guest, ab049a37)": {
+  "checks": {
+   "wayland-geometry": {
+    "passed": true,
+    "panel_refusal": "input target 'editor' is obscured by 'plasmashell' (window {e5078273-606f-43d1-9e12-a54e8282c242})",
+    "editor": {
+     "x": 190,
+     "y": 63,
+     "width": 900,
+     "height": 620,
+     "window_id": "{dde26735-c789-49c6-a82f-52bbddc544d3}",
+     "coordinate_space": "logical"
+    },
+    "canvas": {
+     "x": 190,
+     "y": 171,
+     "width": 659,
+     "height": 456,
+     "scale": 1,
+     "pid": 15184,
+     "coordinate_space": "logical",
+     "head": 0
+    },
+    "text_button": [
+     [
+      [
+       402,
+       127,
+       36,
+       36
+      ],
+      "desktop",
+      "{dde26735-c789-49c6-a82f-52bbddc544d3}"
+     ]
+    ],
+    "tool_before": "redact"
+   }
+  },
+  "build": {
+   "version": "26.1029.2229-nightly",
+   "gitCommit": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0"
+  },
+  "os": {
+   "ID": "ubuntu",
+   "VERSION_ID": "26.04",
+   "VARIANT_ID": null
+  },
+  "session": "wayland",
+  "desktop": "KDE"
+ },
+ "issue-750 ten fresh-overlay core_demo runs (driver 55d8564d)": [
+  {
+   "run": 1,
+   "runId": "d6274737-2390-4bf5-9f19-a3dfd2c481f6",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 2,
+   "runId": "f0bba53c-bbf0-42eb-a38a-8e984db3b36c",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 3,
+   "runId": "323964ff-d5a6-4081-900b-6ca674d174b1",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 4,
+   "runId": "40161b3c-c25c-4867-aac0-f885244e34e9",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 5,
+   "runId": "2dab7784-e377-4b7c-b62b-1c5f89dd4e37",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 6,
+   "runId": "647fe6f5-6a79-4fdb-93fd-80c93bbef210",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 7,
+   "runId": "42f5ccc1-81dc-42ba-a8b4-85cdef586a7e",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 8,
+   "runId": "49e13e5a-98fb-4fb6-9c3c-907636644758",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 9,
+   "runId": "08f057e8-6a2f-44c4-9ed7-d29baf839d0a",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  },
+  {
+   "run": 10,
+   "runId": "1ffbb6e0-f169-4549-8287-014c34d7d957",
+   "rows": {
+    "editor.tool-text": "passed",
+    "editor.tool-redact": "passed",
+    "editor.undo": "passed",
+    "editor.redo": "passed"
+   },
+   "refusals": 0
+  }
+ ],
+ "core_demo on final head b9bf39d5": {
+  "editor.tool-text": "passed",
+  "editor.tool-redact": "passed",
+  "editor.undo": "passed",
+  "editor.redo": "passed"
+ }
+}

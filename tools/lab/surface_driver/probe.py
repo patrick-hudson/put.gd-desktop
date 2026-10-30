@@ -4,7 +4,9 @@ accessible query fields are ANDed: name/text/description/application/window are
 case-sensitive globs; role is normalized lowercase with spaces; pid, objectName,
 owned, visible/showing/enabled and states constrain ownership/state. Unknown keys
 are rejected. rect remains [x,y,width,height] in desktop coordinates; bounds is
-its named equivalent. Protected text is never read.
+its named equivalent. On Wayland, client rows are placed through the query's
+'compositor' witness (WaylandPlacement); unplaceable rows carry a null rect and
+coordinate_error instead of window-relative numbers. Protected text is never read.
 """
 import ctypes
 import ctypes.util
@@ -19,7 +21,7 @@ import time
 WINDOW_ROLES = ('frame', 'dialog', 'window', 'file chooser', 'alert')
 POPUP_ROLES = ('menu', 'popup menu', 'tool tip')
 QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'window',
-              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within'}
+              'objectName', 'owned', 'visible', 'showing', 'enabled', 'states', 'within', 'compositor'}
 
 
 def owned(pid):
@@ -30,14 +32,22 @@ def owned(pid):
         return False
 
 
+# at-spi2-core renamed ATSPI_ROLE_PUSH_BUTTON's name to "button" (Qt 6.10 on
+# GNOME 50 reports it); older servers say "push button". One canonical name.
+ROLE_SYNONYMS = {'button': 'push button'}
+
+
 def normalize_role(role):
-    return role.lower().replace('_', ' ').replace('-', ' ')
+    role = role.lower().replace('_', ' ').replace('-', ' ')
+    return ROLE_SYNONYMS.get(role, role)
 
 
 def matches(row, query):
     for key, value in query.items():
         if key not in QUERY_KEYS:
             raise ValueError('unknown accessibility query key: ' + key)
+        if key == 'compositor':
+            continue  # placement input, not a row filter
         if key in ('name', 'text', 'description', 'application', 'window'):
             if not fnmatch.fnmatchcase(row.get(key, ''), value):
                 return False
@@ -57,18 +67,456 @@ def matches(row, query):
     return True
 
 
+def popup_file():
+    runtime = os.environ.get('XDG_RUNTIME_DIR')
+    return runtime + '/putgd-lab-popups.json' if runtime else None
+
+
+def popup_watch(query):
+    """Long-running: record the private family's showing popup menus.
+
+    Qt lists only non-Qt::Popup top-level windows as application children, so a
+    context or row menu opened with QMenu::exec() is unreachable by a tree walk.
+    Qt does emit object:state-changed:showing for it (ObjectShow) once a
+    listener is registered. This process listens for the whole run and keeps
+    {bus, path, pid} of owned showing popups in a private runtime file; every
+    (fresh) accessible() walks those popups live over the a11y bus.
+    """
+    import pyatspi
+    import signal
+    path, current, focus = popup_file(), {}, {}
+    def write():
+        temporary = path + '.tmp'
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            os.write(descriptor, json.dumps(list(current.values()) + list(focus.values())).encode())
+        finally:
+            os.close(descriptor)
+        os.replace(temporary, path)
+    def changed(event):
+        try:
+            node = event.source
+            pid = node.get_process_id()
+            if not owned(pid):
+                return
+            bus = node.app.bus_name
+            key = bus + node.path
+            if event.type.endswith(':focused'):
+                # Widgets parented to a view's viewport (History's row "More
+                # actions" button) are outside Qt's accessible tree too; the
+                # focused one is found here.
+                if not event.detail1:
+                    if key not in focus:
+                        return
+                    focus.clear()
+                else:
+                    focus.clear()
+                    focus[key] = {'bus': bus, 'path': node.path, 'pid': pid, 'focus': True}
+            elif normalize_role(node.getRoleName()) not in POPUP_ROLES:
+                return
+            elif event.detail1:
+                current[key] = {'bus': bus, 'path': node.path, 'pid': pid}
+            elif current.pop(key, None) is None:
+                return
+            write()
+        except Exception:
+            pass
+    write()
+    pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing', 'object:state-changed:focused')
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    pyatspi.Registry.start()
+    return {}
+
+
+class RawNode:
+    """A live accessible addressed by (bus name, path) on the a11y bus.
+
+    Implements just the pyatspi node surface accessible() uses, so a popup
+    known only from the watcher's file is walked with the same code. Every
+    property is a direct D-Bus call: nothing is cached across probes.
+    """
+    ACCESSIBLE = 'org.a11y.atspi.Accessible'
+
+    def __init__(self, connection, bus, path, pid):
+        self.connection, self.bus, self.path, self.pid = connection, bus, path, pid
+        self._object = connection.get_object(bus, path, introspect=False)
+
+    def _call(self, interface, method, *args):
+        import dbus
+        try:
+            return self._object.get_dbus_method(method, interface)(*args, timeout=3)
+        except dbus.DBusException as error:
+            raise NotImplementedError(str(error)) from error
+
+    def _property(self, name):
+        return str(self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, name))
+
+    @property
+    def name(self):
+        return self._property('Name')
+
+    @property
+    def description(self):
+        return self._property('Description')
+
+    def getRoleName(self):
+        return str(self._call(self.ACCESSIBLE, 'GetRoleName'))
+
+    def get_process_id(self):
+        return self.pid
+
+    def getAttributes(self):
+        return [str(k) + ':' + str(v) for k, v in self._call(self.ACCESSIBLE, 'GetAttributes').items()]
+
+    def getState(self):
+        words = [int(word) for word in self._call(self.ACCESSIBLE, 'GetState')]
+        class States:
+            def contains(self, state):
+                index = int(state)
+                return bool(index // 32 < len(words) and words[index // 32] >> (index % 32) & 1)
+        return States()
+
+    def queryComponent(self):
+        return self
+
+    def getExtents(self, coordinates):
+        import dbus
+        return tuple(int(v) for v in self._call('org.a11y.atspi.Component', 'GetExtents', dbus.UInt32(int(coordinates))))
+
+    def queryText(self):
+        raise NotImplementedError
+
+    def queryAction(self):
+        raise NotImplementedError
+
+    def __iter__(self):
+        return iter([RawNode(self.connection, str(bus), str(path), self.pid)
+                     for bus, path in self._call(self.ACCESSIBLE, 'GetChildren')])
+
+    def parent(self):
+        bus, path = self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, 'Parent')
+        return RawNode(self.connection, str(bus), str(path), self.pid) if str(path) != '/org/a11y/atspi/null' else None
+
+    def window(self):
+        """Name of the top-level accessible (child of the application root) above this node."""
+        node = self
+        for _ in range(40):
+            parent = node.parent()
+            if parent is None:
+                return ''
+            if parent.path.endswith('/accessible/root'):
+                return node.name
+            node = parent
+        return ''
+
+
+def popup_roots(query):
+    """Extra walk roots for the watcher's showing popups, with the same app scoping."""
+    path = popup_file()
+    try:
+        with open(path) as stream:
+            entries = json.load(stream)
+    except (OSError, TypeError, ValueError):
+        return []
+    if not entries:
+        return []
+    import dbus
+    import pyatspi
+    session = dbus.SessionBus()
+    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
+    connection = dbus.bus.BusConnection(str(address))
+    roots = []
+    for entry in entries:
+        pid = entry['pid']
+        if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
+            continue
+        try:
+            node = RawNode(connection, entry['bus'], entry['path'], pid)
+            states = node.getState()
+            if not states.contains(pyatspi.STATE_SHOWING) or (entry.get('focus') and not states.contains(pyatspi.STATE_FOCUSED)):
+                continue
+            name = RawNode(connection, entry['bus'], '/org/a11y/atspi/accessible/root', pid).name
+            window = node.window() if entry.get('focus') else ''
+        except NotImplementedError:
+            continue
+        if query.get('application') and not fnmatch.fnmatchcase(name, query['application']):
+            continue
+        app = {'name': name, 'role': 'application', 'rect': None, 'pid': pid}
+        # Depth 3 keeps the walk from treating a focused widget as a top-level window.
+        roots.append(((pid, entry['path']), (node, 3 if entry.get('focus') else 2, window, name, None,
+                      [app, {'name': window, 'role': 'frame', 'rect': None, 'pid': pid}] if entry.get('focus') else [app])))
+    return roots
+
+
+UNREAD = object()
+
+# Mutter window types for popup surfaces (MetaWindowType: DROPDOWN_MENU,
+# POPUP_MENU, TOOLTIP, COMBO); KWin reports popup/menu flags instead.
+POPUP_WINDOW_TYPES = {8, 9, 10, 13}
+
+
+def compositor_windows(compositor):
+    """The compositor's own window list: frame/buffer rects, pid, focus, stacking."""
+    kind = (compositor or {}).get('kind')
+    if kind == 'gnome-lab-witness':
+        import dbus
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return json.loads(str(witness.Windows(dbus_interface='org.putgd.LabWitness', timeout=3)))
+    if kind == 'kwin-script':
+        return kwin_windows()
+    raise RuntimeError('no compositor window witness configured for this Wayland profile')
+
+
+def compositor_activate(compositor, window_id):
+    """Explicit raise for focus(raise_window=True) on Wayland: the compositor's own activation."""
+    kind = (compositor or {}).get('kind')
+    if kind == 'gnome-lab-witness':
+        import dbus
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return bool(witness.Activate(dbus.UInt64(window_id), dbus_interface='org.putgd.LabWitness', timeout=3))
+    raise RuntimeError('this compositor witness cannot raise windows')
+
+
+def compositor_pick(compositor, point):
+    """The compositor's hit-test at a desktop point: {window, chain}."""
+    kind = (compositor or {}).get('kind')
+    if kind == 'gnome-lab-witness':
+        import dbus
+        witness = dbus.SessionBus().get_object('org.gnome.Shell', '/org/putgd/LabWitness')
+        return json.loads(str(witness.Pick(int(point[0]), int(point[1]), dbus_interface='org.putgd.LabWitness', timeout=3)))
+    if kind == 'kwin-script':
+        return kwin_pick(point)
+    raise RuntimeError('no compositor hit-test witness configured for this Wayland profile')
+
+
+_KWIN = None
+KWIN_SCRIPT = r"""
+const rect = g => [Math.round(g.x), Math.round(g.y), Math.round(g.width), Math.round(g.height)];
+const list = workspace.stackingOrder;
+const windows = [];
+for (let i = 0; i < list.length; i++) {
+    const w = list[i];
+    windows.push({id: w.internalId.toString(), title: w.caption, pid: w.pid, wm_class: w.resourceClass,
+                  frame: rect(w.frameGeometry), content: rect(w.clientGeometry), focus: w.active,
+                  minimized: w.minimized, hidden: !!w.hidden, popup: !!w.popupWindow, dock: !!w.dock,
+                  desktop: !!w.desktopWindow, normal: !!w.normalWindow, notification: !!(w.notification || w.criticalNotification),
+                  stack: i, transient_for: w.transientFor ? w.transientFor.internalId.toString() : null});
+}
+callDBus(RECEIVER, RECEIVER_PATH, "org.putgd.LabWitness", "Report", JSON.stringify({windows: windows}));
+"""
+
+
+def kwin_windows():
+    """KWin's own stacking order through a one-shot read-only KWin script.
+
+    The script reports back over D-Bus to a private receiver name owned by
+    this probe process; it is unloaded afterwards. clientGeometry is KWin's
+    exact content rect, so no decoration split is guessed.
+    """
+    import tempfile
+    import dbus
+    import dbus.bus
+    import dbus.service
+    import dbus.mainloop.glib
+    from gi.repository import GLib
+    global _KWIN
+    if _KWIN is None:
+        # One private connection per process, owning a private receiver name.
+        bus = dbus.bus.BusConnection(dbus.bus.BUS_SESSION, mainloop=dbus.mainloop.glib.DBusGMainLoop())
+        receiver = 'org.putgd.LabWitness.p%d' % os.getpid()
+        _KWIN = {'bus': bus, 'receiver': receiver, 'name': dbus.service.BusName(receiver, bus), 'calls': 0}
+    bus, receiver = _KWIN['bus'], _KWIN['receiver']
+    _KWIN['calls'] += 1
+    object_path = '/r%d' % _KWIN['calls']
+    loop, reply = GLib.MainLoop(), {}
+    class Receiver(dbus.service.Object):
+        @dbus.service.method('org.putgd.LabWitness', in_signature='s')
+        def Report(self, text):
+            reply['text'] = str(text)
+            loop.quit()
+    handler = Receiver(bus, object_path)
+    plugin = 'putgd-lab-witness-%d' % os.getpid()
+    with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as stream:
+        stream.write('const RECEIVER = ' + json.dumps(receiver) + ';\nconst RECEIVER_PATH = ' + json.dumps(object_path) + ';\n' + KWIN_SCRIPT)
+        path = stream.name
+    scripting = dbus.Interface(bus.get_object('org.kde.KWin', '/Scripting'), 'org.kde.kwin.Scripting')
+    try:
+        try:
+            identifier = int(scripting.loadScript(path, plugin, signature='ss'))
+        except dbus.DBusException:
+            identifier = int(scripting.loadScript(path, signature='s'))  # older one-argument form
+        script = bus.get_object('org.kde.KWin', '/Scripting/Script%d' % identifier)
+        dbus.Interface(script, 'org.kde.kwin.Script').run()
+        GLib.timeout_add(3000, loop.quit)
+        loop.run()
+    finally:
+        try:
+            scripting.unloadScript(plugin)
+        except dbus.DBusException:
+            pass
+        os.unlink(path)
+        handler.remove_from_connection()
+    if 'text' not in reply:
+        raise RuntimeError('KWin witness script did not report within 3 s')
+    document = json.loads(reply['text'])
+    for window in document['windows']:
+        window['minimized'] = window['minimized'] or window['hidden']
+        window['type'] = 9 if window['popup'] else 0
+    return document
+
+
+def kwin_pick(point):
+    """Topmost visible KWin window containing the point (panels and notifications included)."""
+    x, y = point
+    for window in reversed(kwin_windows()['windows']):
+        if window['minimized'] or window['desktop']:
+            continue
+        fx, fy, fw, fh = window['frame']
+        if fx <= x < fx + fw and fy <= y < fy + fh:
+            return {'window': window, 'chain': []}
+    return {'window': None, 'chain': [{'name': 'desktop'}]}
+
+
+class WaylandPlacement:
+    """Wayland clients report AT-SPI extents relative to their own window.
+
+    Qt places a top-level at (0,0) and its children relative to the content
+    origin; it cannot know where the compositor put it. Map each client
+    window to the compositor's frame (same pid, title, plausible size), split
+    client-side decorations symmetrically (left=right=bottom, title bar on
+    top), and refuse anything implausible instead of guessing.
+    """
+    MAX_SIDE, MAX_TOP = 24, 120
+
+    def __init__(self, compositor):
+        self.compositor = compositor
+        self.shell = compositor.get('shell_application', '')
+        self._windows, self._cache = None, {}
+
+    def windows(self):
+        if self._windows is None:
+            self._windows = [w for w in compositor_windows(self.compositor)['windows'] if not w.get('minimized')]
+        return self._windows
+
+    def absolute(self, application):
+        return bool(self.shell) and fnmatch.fnmatchcase(application or '', self.shell)
+
+    def toplevel(self, pid, title, rect):
+        key = ('top', pid, title, tuple(rect))
+        if key not in self._cache:
+            self._cache[key] = self._toplevel(pid, title, rect)
+        return self._cache[key]
+
+    def _toplevel(self, pid, title, rect):
+        x, y, width, height = rect
+        found = [w for w in self.windows() if w['pid'] == pid and w['title'] == title and
+                 w.get('type') not in POPUP_WINDOW_TYPES and
+                 0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
+        if len(found) != 1:
+            raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)'
+                               % (title, pid, width, height, len(found)))
+        frame = found[0]['frame']
+        content = found[0].get('content')
+        if content:
+            # The compositor knows the client area exactly (KWin clientGeometry).
+            if abs(content[2] - width) > 2 or abs(content[3] - height) > 2:
+                raise RuntimeError('compositor content %s does not match %r content %dx%d' % (content, title, width, height))
+            return {'dx': content[0] - x, 'dy': content[1] - y, 'window_id': found[0]['id'], 'frame': frame}
+        horizontal, vertical = frame[2] - width, frame[3] - height
+        side = horizontal // 2
+        top = vertical - side
+        if horizontal % 2 or side > self.MAX_SIDE or not 0 <= top <= self.MAX_TOP:
+            raise RuntimeError('implausible decoration split for %r: frame %s vs content %dx%d' % (title, frame, width, height))
+        return {'dx': frame[0] + side - x, 'dy': frame[1] + top - y, 'window_id': found[0]['id'], 'frame': frame}
+
+    def popup(self, pid, rect):
+        key = ('popup', pid, tuple(rect))
+        if key not in self._cache:
+            found = [w for w in self.windows() if w['pid'] == pid and w.get('type') in POPUP_WINDOW_TYPES and
+                     abs(w['frame'][2] - rect[2]) <= 2 and abs(w['frame'][3] - rect[3]) <= 2]
+            if len(found) != 1:
+                raise RuntimeError('compositor popup window for pid %s (%dx%d) is missing or ambiguous (%d matches)'
+                                   % (pid, rect[2], rect[3], len(found)))
+            frame = found[0]['frame']
+            self._cache[key] = {'dx': frame[0] - rect[0], 'dy': frame[1] - rect[1], 'window_id': found[0]['id'], 'frame': frame}
+        return self._cache[key]
+
+    def inside(self, rect, frame):
+        return (frame[0] - 1 <= rect[0] and frame[1] - 1 <= rect[1] and
+                rect[0] + rect[2] <= frame[0] + frame[2] + 1 and rect[1] + rect[3] <= frame[1] + frame[3] + 1)
+
+
+def shift(rect, placement):
+    return [rect[0] + placement['dx'], rect[1] + placement['dy'], rect[2], rect[3]] if rect else rect
+
+
+def extents(node):
+    import pyatspi
+    try:
+        value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
+    except (NotImplementedError, RuntimeError):
+        return None
+    return list(value) if value is not None else None
+
+
 def accessible(query):
     import pyatspi
+    owners = {}
+    def is_owned(pid):
+        if pid not in owners:
+            owners[pid] = owned(pid)
+        return owners[pid]
     unknown = set(query) - QUERY_KEYS
     if unknown:
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
+    wayland = os.environ.get('XDG_SESSION_TYPE') == 'wayland'
+    placement = WaylandPlacement(query['compositor']) if wayland and query.get('compositor') else None
+    tops = {}
+    def place(row):
+        """Desktop coordinates for a Wayland client row, or None with a reason."""
+        if not wayland or not row['rect']:
+            return 'desktop', None
+        if placement is None:
+            return 'window-relative', 'no compositor window witness for this Wayland profile'
+        if placement.absolute(row['application']):
+            return 'desktop', None
+        try:
+            if row['popup']:
+                where = placement.popup(row['pid'], row['popup']['rect'])
+            else:
+                top = tops.get((row['pid'], row['window']))
+                if top is None:
+                    return 'window-relative', 'top-level window %r was not observed' % row['window']
+                where = placement.toplevel(row['pid'], row['window'], top)
+        except RuntimeError as error:
+            return 'window-relative', str(error)
+        placed = shift(row['rect'], where)
+        if not placement.inside(placed, where['frame']):
+            return 'window-relative', 'placed rectangle %s falls outside compositor frame %s' % (placed, where['frame'])
+        row['rect'] = placed
+        row['window_id'] = where['window_id']
+        for ancestor in row['ancestors']:
+            if ancestor.get('rect') not in (None, UNREAD) and ancestor.get('role') != 'application':
+                ancestor['rect'] = shift(ancestor['rect'], where)
+        return 'desktop', None
     matches_ = []
     stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
+    # LIFO: popup roots go first so the ordinary tree is walked before them;
+    # a popup already reached there (a button's own menu) is not walked twice.
+    extra = popup_roots(query)
+    stack[:0] = [root for _, root in extra]
+    extra_keys = {id(root[0]): key for key, root in extra}
+    seen = set()
     visited, truncated = 0, False
     while stack and visited < 20000:
         node, depth, window, application, popup, ancestors = stack.pop()
         visited += 1
         try:
+            if id(node) in extra_keys:
+                if extra_keys[id(node)] in seen:
+                    continue
+            elif extra_keys:
+                seen.add((node.get_process_id(), node.path))
             role, name = normalize_role(node.getRoleName()), node.name or ''
             pid = node.get_process_id()
             # Do not walk unrelated applications for owned-control queries.
@@ -82,7 +530,8 @@ def accessible(query):
                     continue
             if role in WINDOW_ROLES or (ancestors and ancestors[-1]['role']=='application' and role not in POPUP_ROLES):
                 window, popup = name, None
-            attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
+                if placement is not None and not placement.absolute(application):
+                    tops[(pid, name)] = extents(node)
             state_set = node.getState()
             states = {}
             for key in ('visible', 'showing', 'enabled', 'sensitive', 'active', 'focused', 'focusable',
@@ -94,41 +543,56 @@ def accessible(query):
             potential = all(not query.get(key) or fnmatch.fnmatchcase(value, query[key])
                             for key,value in (('name',name),('application',application),('window',window)))
             potential = potential and (not query.get('role') or role==normalize_role(query['role']))
-            rect = None
-            try:
-                rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
-            except (NotImplementedError, RuntimeError):
-                pass
+            # Extents/attributes/text are one D-Bus round trip each: fetch them
+            # only for rows that can match and for popups. Ancestor rectangles
+            # are filled in for matched rows only (a shell tree has ~2000 nodes).
+            rect = extents(node) if potential or role in POPUP_ROLES else UNREAD
             if role in POPUP_ROLES and states['showing']:
                 popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid}
-            protected = role == 'password text'
-            text = ''
-            if potential and not protected:
+            if potential:
+                attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
+                protected = role == 'password text'
+                text = ''
+                if not protected:
+                    try:
+                        interface = node.queryText()
+                        text = interface.getText(0, min(interface.characterCount, 65536))
+                    except (NotImplementedError, RuntimeError):
+                        pass
+                accelerator = ''
                 try:
-                    interface = node.queryText()
-                    text = interface.getText(0, min(interface.characterCount, 65536))
+                    action = node.queryAction()
+                    accelerator = ';'.join(action.getKeyBinding(i) for i in range(action.nActions))
                 except (NotImplementedError, RuntimeError):
                     pass
-            accelerator = ''
-            try:
-                if not potential:
-                    raise NotImplementedError
-                action = node.queryAction()
-                accelerator = ';'.join(action.getKeyBinding(i) for i in range(action.nActions))
-            except (NotImplementedError, RuntimeError):
-                pass
-            object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
-            row = {'window': window, 'application': application, 'name': name, 'role': role,
-                   'text': text, 'description': '' if protected else (node.description or ''),
-                   'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
-                   'owned': owned(pid), 'objectName': object_name, 'accelerator': accelerator,
-                   'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
-                   'protected': protected, 'popup': popup, 'ancestors': ancestors}
-            row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
-            if matches(row, query):
-                matches_.append(row)
+                object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
+                row = {'window': window, 'application': application, 'name': name, 'role': role,
+                       'text': text, 'description': '' if protected else (node.description or ''),
+                       'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
+                       'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
+                       'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
+                       'protected': protected, 'popup': popup, 'ancestors': ancestors}
+                row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
+                row['coordinate_space'], reason = 'desktop', None
+                if wayland:
+                    # Translate before matching: 'within' is in desktop coordinates.
+                    for ancestor in ancestors:
+                        if ancestor['rect'] is UNREAD:
+                            ancestor['rect'] = extents(ancestor['_node'])
+                    row['ancestors'] = [dict(a) for a in ancestors]  # shifted copies; children keep originals
+                    row['coordinate_space'], reason = place(row)
+                    if reason:
+                        row['coordinate_error'] = reason
+                        row['rect'] = row['bounds'] = None
+                    elif row['rect']:
+                        row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), row['rect']))
+                if matches(row, query):
+                    for ancestor in row['ancestors']:
+                        if ancestor['rect'] is UNREAD:
+                            ancestor['rect'] = extents(ancestor['_node'])
+                    matches_.append(row)
             if depth < 50:
-                ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid}]
+                ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid,'_node':node}]
                 stack.extend((child, depth + 1, window, application, popup, ancestry) for child in node if child is not None)
             elif getattr(node,'childCount',0):
                 truncated = True
@@ -136,6 +600,8 @@ def accessible(query):
             continue
     if stack or truncated:
         raise RuntimeError('accessibility scan exceeded bounded tree size/depth')
+    for row in matches_:
+        row['ancestors'] = [{k: (None if v is UNREAD else v) for k, v in a.items() if k != '_node'} for a in row['ancestors']]
     return matches_
 
 
@@ -149,39 +615,45 @@ CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', '
                'QCheckBox': ('check box',), 'QAction': ('menu item', 'check menu item', 'radio menu item')}
 
 
+def candidate_labels(candidate):
+    """Every label a catalog control can carry live: aliases, accessibleName, toolTip, text."""
+    values = list(candidate.get('accessibleNames') or [])
+    values += [candidate.get(key) for key in ('accessibleName', 'toolTip', 'text')]
+    return {label(value) for value in values if isinstance(value, str) and label(value)}
+
+
 def selector_matches(row, selector, candidates):
-    name = row.get('objectName')
-    if selector.startswith('text:'):
-        return label(row['name']) == selector[5:]
-    if selector.startswith('text-glob:'):
-        return fnmatch.fnmatchcase(label(row['name']), selector[10:])
+    """Match rank for one live row: 0 exported objectName, 1 label, None no match.
+
+    The live objectName wins. Labels come from the selector itself (text:/
+    text-glob:) and from every catalog candidate's aliases, accessibleName,
+    toolTip and text, so "List" also finds "Show history as a list".
+    Rectangle/layout equality is never a substitute for runtime state.
+    """
+    name, live = row.get('objectName'), label(row.get('name'))
     if selector.startswith('class:'):
-        return row['role'] in CLASS_ROLES.get(selector[6:], ())
-    if selector.startswith('glob:') and name:
-        return fnmatch.fnmatchcase(name, selector[5:])
-    if name and name == selector:
-        return True
-    # Catalog semantics identify unnamed live Qt accessibles. Rectangle/layout
-    # equality is never used as a substitute for runtime state.
-    return any((c.get('name') and c['name'] == name) or
-               (c.get('text') and label(c['text']) == label(row['name'])) for c in candidates)
+        return 1 if row['role'] in CLASS_ROLES.get(selector[6:], ()) else None
+    if name and (selector == name or (selector.startswith('glob:') and fnmatch.fnmatchcase(name, selector[5:])) or
+                 any(c.get('name') == name for c in candidates)):
+        return 0
+    if not live:
+        return None
+    if selector.startswith('text:') and live == selector[5:]:
+        return 1
+    if selector.startswith('text-glob:') and fnmatch.fnmatchcase(live, selector[10:]):
+        return 1
+    return 1 if any(live in candidate_labels(c) for c in candidates) else None
 
 
 def control_geometry(query):
+    # No name prefilter: catalog text often differs from the live accessible
+    # name, and objectName matches must not be filtered out by labels.
     filters = {'owned':True,'visible':True,'showing':True,
-               **({'pid':query['pid']} if query.get('pid') else {})}
-    selector = query.get('selector','')
-    if selector.startswith('text:'):
-        import glob
-        filters['name'] = glob.escape(selector[5:])
-    elif selector.startswith('text-glob:'):
-        filters['name'] = selector[10:]
-    else:
-        labels = {label(c.get('text')) for c in query.get('candidates',[]) if c.get('text')}
-        if len(labels)==1:
-            import glob
-            filters['name'] = glob.escape(next(iter(labels)))
+               **({'pid':query['pid']} if query.get('pid') else {}),
+               **({'compositor':query['compositor']} if query.get('compositor') else {})}
     rows = accessible(filters)
+    unplaced = [row for row in rows if row.get('coordinate_error') and
+                (selector_matches(row, query.get('selector',''), query.get('candidates', [])) is not None)]
     selected = []
     for row in rows:
         if not (row['visible'] and row['showing'] and row['enabled'] and row['rect'] and
@@ -192,15 +664,20 @@ def control_geometry(query):
         if query.get('popup') and not row['popup']:
             continue
         if query.get('objectName'):
-            match = row['objectName'] == query['objectName']
+            rank = 0 if row['objectName'] == query['objectName'] else None
         else:
-            match = selector_matches(row, query['selector'], query.get('candidates', []))
-        if match:
-            selected.append(row)
+            rank = selector_matches(row, query['selector'], query.get('candidates', []))
+        if rank is not None:
+            selected.append((rank, row))
+    if selected:
+        best = min(rank for rank, _ in selected)
+        selected = [row for rank, row in selected if rank == best]
     # An open menu takes precedence over a same-label sidebar/button.
     popups = [row for row in selected if row['popup']]
     if popups:
         selected = popups
+    if not selected and unplaced:
+        raise RuntimeError('owned live control has no desktop placement: ' + unplaced[0]['coordinate_error'])
     if len(selected) != 1:
         raise RuntimeError('owned live control is missing, hidden, disabled or ambiguous (' + str(len(selected)) + ' matches)')
     return selected[0]
@@ -212,6 +689,35 @@ def run(*args):
 
 def xprop(wid, prop):
     return run('xprop', '-id', str(wid), prop).partition('=')[2].strip()
+
+
+def xwininfo(wid):
+    raw = run('xwininfo', '-id', str(wid))
+    def field(label):
+        found = re.search(r'^\s*' + re.escape(label) + r':\s*(-?\d+|yes|no)\s*$', raw, re.M)
+        if not found:
+            raise ValueError('xwininfo omitted ' + label)
+        return found[1]
+    return {'x': int(field('Absolute upper-left X')), 'y': int(field('Absolute upper-left Y')),
+            'width': int(field('Width')), 'height': int(field('Height')),
+            'override_redirect': field('Override Redirect State') == 'yes'}
+
+
+def x11_focus_owner():
+    """X input focus (keyboard target), which override-redirect windows never take from EWMH."""
+    xlib = ctypes.CDLL(ctypes.util.find_library('X11'))
+    xlib.XOpenDisplay.argtypes = [ctypes.c_char_p]; xlib.XOpenDisplay.restype = ctypes.c_void_p
+    xlib.XGetInputFocus.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int)]
+    xlib.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = xlib.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError('cannot open X11 display for input focus')
+    try:
+        focus, revert = ctypes.c_ulong(), ctypes.c_int()
+        xlib.XGetInputFocus(display, ctypes.byref(focus), ctypes.byref(revert))
+        return str(focus.value)
+    finally:
+        xlib.XCloseDisplay(display)
 
 
 def x11_windows(query):
@@ -229,8 +735,11 @@ def x11_windows(query):
                 pid = None
             if query.get('owned', True) and (pid is None or not owned(pid)):
                 continue
-            raw = run('xdotool', 'getwindowgeometry', '--shell', wid)
-            values = dict(line.split('=', 1) for line in raw.splitlines() if '=' in line)
+            # xdotool's location translates the child's offset inside a WM
+            # frame a second time (native decorated dialogs land 1x title bar
+            # low). xwininfo reports the server's absolute client origin.
+            info = xwininfo(wid)
+            values = {'X': info['x'], 'Y': info['y'], 'WIDTH': info['width'], 'HEIGHT': info['height']}
             state = xprop(wid, '_NET_WM_STATE')
             extents = [int(v) for v in re.findall(r'\d+',xprop(wid,'_NET_FRAME_EXTENTS'))]
             frame = None
@@ -241,6 +750,7 @@ def x11_windows(query):
             found.append({'x': int(values['X']), 'y': int(values['Y']), 'width': int(values['WIDTH']),
                           'height': int(values['HEIGHT']), 'scale': 1, 'pid': pid, 'window_id': wid,
                           'name': run('xdotool', 'getwindowname', wid), 'coordinate_space': 'framebuffer', 'frame':frame,
+                          'override_redirect': info['override_redirect'],
                           'states': {'active':wid==active, 'minimized': '_NET_WM_STATE_HIDDEN' in state,
                                      'maximized': all(v in state for v in ('MAXIMIZED_VERT', 'MAXIMIZED_HORZ'))}})
         except (subprocess.CalledProcessError, ValueError, OSError):
@@ -261,17 +771,23 @@ def geometry(query):
             px, py = query['point']
             found = [w for w in found if w['x'] <= px < w['x']+w['width'] and w['y'] <= py < w['y']+w['height']]
     else:
-        rows = accessible({'owned': True, **query.get('accessible', {})})
-        found = []
+        compositor = {'compositor': query['compositor']} if query.get('compositor') else {}
+        rows = accessible({'owned': True, **query.get('accessible', {}), **compositor})
+        found, unplaced = [], []
         for row in rows:
             top = row['role'] in WINDOW_ROLES or (row.get('ancestors') and row['ancestors'][-1]['role']=='application')
             if not top or not re.search(query['title'], row['name']):
                 continue
+            if row.get('coordinate_error') and row['visible'] and row['showing']:
+                unplaced.append(row['name'] + ': ' + row['coordinate_error'])
             if not row['visible'] or not row['showing'] or not row['rect'] or min(row['rect'][2:]) <= 0:
                 continue
             found.append(dict(zip(('x', 'y', 'width', 'height'), row['rect'])) |
                          {'scale': query.get('scale', 1), 'pid': row['pid'], 'name': row['name'],
-                          'coordinate_space': 'logical', 'states': row['states']})
+                          'coordinate_space': 'logical', 'states': row['states'],
+                          **({'window_id': row['window_id']} if row.get('window_id') is not None else {})})
+        if not found and unplaced:
+            raise RuntimeError('Wayland window cannot be placed on the desktop: ' + '; '.join(unplaced))
     if len(found) != 1:
         raise RuntimeError('live window match is missing or ambiguous (' + str(len(found)) + ' matches)')
     return found[0]
@@ -358,6 +874,43 @@ def x11_hit(point):
             xlib.XSetErrorHandler(previous_handler)
 
 
+def x11_active():
+    ids = re.findall(r'0x[0-9a-fA-F]+', run('xprop', '-root', '_NET_ACTIVE_WINDOW'))
+    value = str(int(ids[-1], 16)) if ids else '0'
+    return value
+
+
+def x11_settle(target, bound=2.5):
+    """Let a just-mapped target become active before it is judged (#750).
+
+    Right after a window maps, _NET_ACTIVE_WINDOW can still be 0 or another
+    window of the same private process. Only then: activate the target once
+    and wait, bounded, for the window manager to settle. A foreign active
+    window is never displaced: the caller reports it as the obstruction. The
+    caller then re-observes stacking and the hit-test from scratch.
+    """
+    wid = str(target['window_id'])
+    deadline, activated = time.monotonic() + bound, False
+    while True:
+        active = x11_active()
+        if active == wid:
+            return True
+        if active != '0':
+            try:
+                owner = int(run('xdotool', 'getwindowpid', active))
+            except (subprocess.CalledProcessError, ValueError):
+                owner = None
+            if owner is None or owner != target.get('pid'):
+                return False
+        if time.monotonic() >= deadline:
+            return False
+        if not activated:
+            subprocess.run(['xdotool', 'windowactivate', '--sync', wid], timeout=2,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            activated = True
+        time.sleep(.1)
+
+
 def x11_foreground(query):
     if query.get('desktop_node'):
         hit = x11_hit(query['point'])
@@ -365,6 +918,17 @@ def x11_foreground(query):
                 'obscuring_window':hit['name'], 'obscuring_window_id':hit['path'][-1] if hit['path'] else None}
     target = query['geometry']
     wid = str(target['window_id'])
+    if target.get('override_redirect'):
+        return x11_unmanaged_foreground(query)
+    point = query.get('point')
+    if point and query.get('shell_cover'):
+        # Shell-drawn chrome over the point refuses input before any stacking read.
+        cover = shell_cover(point, query['shell_cover'])
+        if cover:
+            return {'ok': False, 'backend': 'shell-at-spi-cover', 'target': wid, 'obscuring_window': cover,
+                    'obscuring_window_id': None}
+    if query.get('settle'):
+        x11_settle(target)
     if query.get('raise'):
         subprocess.run(['xdotool', 'windowactivate', '--sync', wid], check=True, timeout=3,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -417,8 +981,122 @@ def x11_foreground(query):
             'obscuring_window_id': obscurer.get('window_id'), 'backend': 'ewmh'}
 
 
+def x11_pointer():
+    """Root pointer position and button mask (XQueryPointer), without moving it."""
+    xlib = ctypes.CDLL(ctypes.util.find_library('X11'))
+    window_t = ctypes.c_ulong
+    xlib.XOpenDisplay.argtypes = [ctypes.c_char_p]; xlib.XOpenDisplay.restype = ctypes.c_void_p
+    xlib.XDefaultRootWindow.argtypes = [ctypes.c_void_p]; xlib.XDefaultRootWindow.restype = window_t
+    xlib.XQueryPointer.argtypes = [ctypes.c_void_p, window_t, ctypes.POINTER(window_t), ctypes.POINTER(window_t),
+                                   ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int),
+                                   ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_uint)]
+    xlib.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = xlib.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError('cannot open X11 display for pointer state')
+    try:
+        root, child = window_t(), window_t()
+        rx, ry, wx, wy, mask = ctypes.c_int(), ctypes.c_int(), ctypes.c_int(), ctypes.c_int(), ctypes.c_uint()
+        xlib.XQueryPointer(display, xlib.XDefaultRootWindow(display), ctypes.byref(root), ctypes.byref(child),
+                           ctypes.byref(rx), ctypes.byref(ry), ctypes.byref(wx), ctypes.byref(wy), ctypes.byref(mask))
+        return rx.value, ry.value, mask.value
+    finally:
+        xlib.XCloseDisplay(display)
+
+
+def x11_ancestors(wid):
+    chain = [str(wid)]
+    for _ in range(12):
+        parent = re.search(r'Parent window id:\s*(0x[0-9a-fA-F]+)', run('xwininfo', '-id', chain[-1], '-tree'))
+        if not parent or int(parent[1], 16) in (0, int(chain[-1])):
+            break
+        chain.append(str(int(parent[1], 16)))
+    return chain
+
+
+def x11_unmanaged_foreground(query):
+    """Owned override-redirect windows (recording bar, selector covers).
+
+    They are outside EWMH stacking and never become _NET_ACTIVE_WINDOW, so the
+    witness is the server hit-test: pointer input needs the target in the
+    path at the input point (focus() selects at its centre); during a held
+    drag, at the pointer's position. Keyboard input needs the X input focus
+    inside the target; a show-without-activating window
+    normally refuses it, naming where keys would really go.
+    """
+    target = query['geometry']
+    wid = str(target['window_id'])
+    if not owned(target.get('pid')):
+        return {'ok': False, 'backend': 'x11-unmanaged', 'obscuring_window': 'unowned override-redirect target',
+                'obscuring_window_id': wid}
+    point = query.get('point')
+    if point is None:
+        # A held button (drag in progress) means the implicit X grab routes
+        # motion to the pressed window, not the keyboard focus: hit-test the
+        # pointer's current position instead.
+        px, py, mask = x11_pointer()
+        if mask & (0x1f << 8):  # Button1Mask..Button5Mask
+            point = (px, py)
+    if point is not None:
+        hit = x11_hit(point)
+        ok = wid in hit['path']
+        return {'ok': ok, 'backend': 'x11-unmanaged-hit-test', 'target': wid,
+                'obscuring_window': None if ok else hit['name'],
+                'obscuring_window_id': None if ok else (hit['path'][-1] if hit['path'] else None)}
+    focus = x11_focus_owner()
+    ok = focus not in ('0', '1') and wid in x11_ancestors(focus)
+    name = ''
+    if not ok and focus not in ('0', '1'):
+        try:
+            name = run('xdotool', 'getwindowname', focus)
+        except subprocess.CalledProcessError:
+            pass
+    return {'ok': ok, 'backend': 'x11-input-focus', 'target': wid,
+            'obscuring_window': None if ok else 'keyboard focus ' + repr(name or 'unnamed window') +
+                ' (override-redirect target does not take keyboard focus)',
+            'obscuring_window_id': None if ok else focus}
+
+
+SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
+
+
+def shell_cover(point, application):
+    """Shell-drawn chrome over an X11 point (banners, panels, shell menus).
+
+    Muffin/Mutter X11 shells draw these in their stage, not as X windows, so
+    the server hit-test reaches the client beneath them. Ask the shell's own
+    AT-SPI pick: over client windows and bare desktop its deepest showing node
+    is a full-stage container; anything smaller is chrome on top.
+    """
+    import pyatspi
+    x, y = int(point[0]), int(point[1])
+    for app in pyatspi.Registry.getDesktop(0):
+        try:
+            if not app or not fnmatch.fnmatchcase(app.name or '', application):
+                continue
+            for window in app:
+                stage = list(window.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
+                node, chain = window.queryComponent().getAccessibleAtPoint(x, y, pyatspi.DESKTOP_COORDS), []
+                for _ in range(40):
+                    if node is None or not node.getState().contains(pyatspi.STATE_SHOWING):
+                        break
+                    chain.append((normalize_role(node.getRoleName()), node.name or '',
+                                  list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))))
+                    child = node.queryComponent().getAccessibleAtPoint(x, y, pyatspi.DESKTOP_COORDS)
+                    if child is None or child.path == node.path:
+                        break
+                    node = child
+                if chain and chain[-1][2] != stage:
+                    kind = next((role for role, _, _ in chain if role in ('notification', 'alert') + POPUP_ROLES), chain[-1][0])
+                    named = next((name for _, name, _ in reversed(chain) if name), '')
+                    return (app.name or 'shell') + ' ' + kind + (' ' + repr(named) if named else '') + ' at ' + str(chain[-1][2])
+        except (RuntimeError, NotImplementedError, AttributeError):
+            continue
+    return None
+
+
 def shell_hit(query):
-    """GNOME Shell's compositor-owned AT-SPI stage pick, not an app-local pick."""
+    """The compositor shell's own AT-SPI stage pick (GNOME Shell, Cinnamon), not an app-local pick."""
     import pyatspi
     expected = query['desktop_node']
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
@@ -434,19 +1112,65 @@ def shell_hit(query):
                     if node is None:
                         break
                     if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==expected['role']:
-                        return {'ok':True,'backend':'gnome-shell-at-spi-pick','obscuring_window':None}
+                        return {'ok':True,'backend':'shell-at-spi-pick','obscuring_window':None}
                     child = node.queryComponent().getAccessibleAtPoint(int(point[0]),int(point[1]),pyatspi.DESKTOP_COORDS)
                     if child == node:
                         break
                     node = child
             except (RuntimeError,NotImplementedError,AttributeError):
                 continue
-    return {'ok':False,'backend':'gnome-shell-at-spi-pick','obscuring_window':'GNOME Shell stage did not pick the expected notification control'}
+    return {'ok':False,'backend':'shell-at-spi-pick','obscuring_window':'compositor shell stage did not pick the expected notification control'}
+
+
+def witness_foreground(query):
+    """Wayland focus/occlusion from the compositor's own state (read-only witness).
+
+    Pointer input: the compositor's hit-test at the point must be the target
+    window (or, with an open popup, a window of the same client). Keyboard
+    input: the focused window must be the target or its transient. Shell
+    chrome or another client at the point refuses input and is named.
+    """
+    compositor, target, point = query['compositor'], query['geometry'], query.get('point')
+    wid = target.get('window_id')
+    if wid is None:
+        raise RuntimeError('Wayland target has no compositor window identity')
+    if query.get('raise'):
+        if not compositor_activate(compositor, wid):
+            raise RuntimeError('compositor no longer has the target window')
+        deadline = time.monotonic() + 2.5
+        while time.monotonic() < deadline and not any(w['id'] == wid and w.get('focus') for w in compositor_windows(compositor)['windows']):
+            time.sleep(.1)
+    if point is not None:
+        pick = compositor_pick(compositor, point)
+        window = pick.get('window')
+        ok = bool(window) and (window['id'] == wid or (bool(query.get('popup')) and window['pid'] == target.get('pid')))
+        if ok:
+            return {'ok': True, 'backend': compositor['kind'] + '-pick', 'target': wid, 'obscuring_window': None}
+        if window:
+            name = window['title'] or window['wm_class'] or 'untitled window'
+        else:
+            chrome = [c for c in pick.get('chain', []) if c.get('name') or c.get('accessible')]
+            name = 'shell ' + ((chrome[0].get('name') or chrome[0].get('accessible')) if chrome else 'chrome')
+        return {'ok': False, 'backend': compositor['kind'] + '-pick', 'target': wid, 'obscuring_window': name,
+                'obscuring_window_id': window['id'] if window else None}
+    windows = compositor_windows(compositor)['windows']
+    focused = [w for w in windows if w.get('focus')]
+    ok = bool(focused) and (focused[0]['id'] == wid or (focused[0]['pid'] == target.get('pid') and focused[0].get('transient_for') == wid))
+    return {'ok': ok, 'backend': compositor['kind'] + '-focus', 'target': wid,
+            'obscuring_window': None if ok else (focused[0]['title'] or focused[0]['wm_class'] if focused else 'no focused window'),
+            'obscuring_window_id': None if ok or not focused else focused[0]['id']}
 
 
 def foreground(query):
+    # Compositor-drawn content (notification banners) is not an X window: an
+    # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
+    # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
+    if query.get('desktop_node') and query.get('desktop_hit_test') in SHELL_PICKS:
+        return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_foreground(query)
+    if query.get('compositor') and query.get('geometry'):
+        return witness_foreground(query)
     script = query.get('compositor_script')
     if script:
         result = subprocess.run(script, shell=True, input=json.dumps(query), text=True,
@@ -457,8 +1181,6 @@ def foreground(query):
         if not all(k in witness for k in ('ok', 'obscuring_window')):
             raise RuntimeError('profile compositor focus witness has invalid shape')
         return witness
-    if query.get('desktop_node') and query.get('desktop_hit_test')=='gnome-shell-at-spi':
-        return shell_hit(query)
     # AT-SPI focus alone cannot prove compositor stacking on Wayland. The
     # resident's public view-state currently has no focus/occlusion witness.
     # Do not invent those fields or accept an arbitrary frame as pixel proof.
@@ -500,11 +1222,143 @@ def tray(query):
     return rows
 
 
+NOTIFY_INTERFACE = 'org.freedesktop.Notifications'
+
+
+class NotificationFilter:
+    """Keep only the private family's own notification traffic (finding 8).
+
+    dbus-monitor sees every application's Notify replies and every
+    ActionInvoked/NotificationClosed signal the server broadcasts. A block is
+    kept only when it is a put.gd Notify from a private-family sender, the
+    server's reply to that exact call, or a server signal for an ID that reply
+    returned. Everything else is dropped before it reaches the log.
+    """
+    def __init__(self, server, sender_owned):
+        self.server, self.sender_owned = server, sender_owned
+        self.pending, self.ids = {}, set()
+
+    def keep(self, block):
+        header = block.split('\n', 1)[0]
+        sender = re.search(r'\bsender=(\S+)', header)
+        sender = sender[1] if sender else None
+        if header.startswith('method call') and 'member=Notify' in header:
+            serial = re.search(r'\bserial=(\d+)', header)
+            app = re.search(r'^\s*string "((?:[^"\\]|\\.)*)"', block, re.M)
+            if serial and sender and app and app[1] == 'put.gd' and self.sender_owned(sender):
+                if len(self.pending) >= 256:
+                    self.pending.pop(next(iter(self.pending)))
+                self.pending[(sender, serial[1])] = True
+                return True
+            return False
+        if header.startswith('method return'):
+            serial = re.search(r'\breply_serial=(\d+)', header)
+            destination = re.search(r'\bdestination=(\S+)', header)
+            identity = re.search(r'^\s*uint32 (\d+)', block, re.M)
+            key = (destination[1], serial[1]) if serial and destination else None
+            if sender == self.server and key in self.pending and identity:
+                del self.pending[key]
+                self.ids.add(int(identity[1]))
+                return True
+            return False
+        if header.startswith('signal') and sender == self.server and 'interface=' + NOTIFY_INTERFACE in header:
+            identity = re.search(r'^\s*uint32 (\d+)', block, re.M)
+            if identity and int(identity[1]) in self.ids:
+                if 'member=NotificationClosed' in header:
+                    self.ids.discard(int(identity[1]))
+                return True
+        return False
+
+
+def sender_pid(sender):
+    reply = run('gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path',
+                '/org/freedesktop/DBus', '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', sender)
+    found = re.search(r'uint32 (\d+)', reply)
+    return int(found[1]) if found else None
+
+
+def notification_monitor(query):
+    """Long-running desktop observer for one run, until terminated.
+
+    Filters dbus-monitor into query['log'] (when a notification server owner
+    was resolved) and runs popup_watch as a child that dies with it.
+    """
+    import select
+    import signal
+    def die_with_parent():
+        ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+    watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch', 'query': {}})],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               preexec_fn=die_with_parent)
+    if not query.get('server'):
+        signal.signal(signal.SIGTERM, lambda *_: (watcher.terminate(), sys.exit(0)))
+        return {'exit': watcher.wait()}
+    owners = {}
+    def sender_owned(sender):
+        if sender not in owners:
+            try:
+                owners[sender] = owned(sender_pid(sender))
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                owners[sender] = False
+        return owners[sender]
+    keeper = NotificationFilter(query['server'], sender_owned)
+    rules = ["type='method_call',interface='" + NOTIFY_INTERFACE + "',member='Notify',arg0='put.gd'",
+             "type='method_return',sender='" + query['server'] + "'",
+             "type='signal',interface='" + NOTIFY_INTERFACE + "',sender='" + query['server'] + "'"]
+    child = subprocess.Popen(['dbus-monitor', '--session', *rules], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
+    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), watcher.terminate(), sys.exit(0)))
+    descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    buffer, block = b'', []
+    def flush():
+        if block and keeper.keep(''.join(block)):
+            os.write(descriptor, ''.join(block).encode())
+        block.clear()
+    while True:
+        # dbus-monitor ends a message only by starting the next one; an idle
+        # gap completes the current block so the last signal is not delayed.
+        ready, _, _ = select.select([child.stdout], [], [], .05)
+        if not ready:
+            flush()
+            continue
+        chunk = os.read(child.stdout.fileno(), 65536)
+        if not chunk:
+            flush()
+            break
+        buffer += chunk
+        while b'\n' in buffer:
+            raw, buffer = buffer.split(b'\n', 1)
+            line = raw.decode('utf-8', 'replace') + '\n'
+            if line[:1] not in (' ', '\t', '\n') and block:
+                flush()
+            block.append(line)
+    return {'exit': child.wait()}
+
+
+def notification_log(query):
+    """Read the filtered log written by this run's own monitor (bounded)."""
+    try:
+        os.kill(int(query['pid']), 0)
+        alive = True
+    except (OSError, ValueError, TypeError):
+        alive = False
+    try:
+        with open(query['log'], 'rb') as stream:
+            data = stream.read(8 * 1024 * 1024 + 1)
+    except FileNotFoundError:
+        data = b''
+    if len(data) > 8 * 1024 * 1024:
+        raise RuntimeError('notification log exceeded 8 MiB')
+    return {'alive': alive, 'text': data.decode('utf-8', 'replace')}
+
+
 def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
-                    'foreground': foreground, 'windows': windows, 'tray':tray}[request['probe']]
+                    'foreground': foreground, 'windows': windows, 'tray':tray,
+                    'notification_monitor': notification_monitor, 'notification_log': notification_log,
+                    'popup_watch': popup_watch}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))
