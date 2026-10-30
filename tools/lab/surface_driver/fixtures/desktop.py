@@ -78,6 +78,28 @@ def binding(scope, state='conflict'):
         bindings=current.get('bindings',{})
         if any(value.get('state')==state or value.get('error')=='shortcut_'+state for value in bindings.values()) or (state=='unavailable' and current.get('available') is False):
             return Fixture(state=state,observe=lambda:shortcut_status(ctx),controlled=False)
+        if state=='unavailable' and ctx.profile.get('session')=='wayland' and (ctx.profile.get('compositor') or {}).get('kind')=='gnome-lab-witness':
+            # This is the app's own native helper in a disposable guest. Keep
+            # the separate compositor witness and all other extensions intact.
+            uuid='putgd@put.gd'
+            enabled=scope.json("import json\nfrom gi.repository import Gio\nprint(json.dumps("+repr(uuid)+" in Gio.Settings.new('org.gnome.shell').get_strv('enabled-extensions')))")
+            if not enabled:
+                raise RecipeBlocked('native app helper is not enabled; existing extension state preserved',issue=681)
+            restored=False
+            def restore():
+                nonlocal restored
+                if not restored:
+                    if ctx.shell('gnome-extensions enable '+uuid)['returncode']:
+                        raise RecipeBlocked('owned native app helper did not re-enable',issue=681)
+                    scope.restart({})
+                    ctx.wait(lambda:shortcut_status(ctx).get('available') is True,'native shortcut helper restored',timeout=25)
+                    restored=True
+            scope.defer('native app shortcut helper',restore,priority=700)
+            if ctx.shell('gnome-extensions disable '+uuid)['returncode']:
+                raise RecipeBlocked('owned native app helper could not be disabled',issue=681)
+            scope.restart({})
+            ctx.wait(lambda:shortcut_status(ctx).get('available') is False,'native shortcut helper unavailable',timeout=20)
+            return Fixture(state=state,observe=lambda:shortcut_status(ctx),controlled=True,release=restore,helper_uuid=uuid)
         raise RecipeBlocked('requested native shortcut state '+state+' is absent; no production state injection or substituted desktop identity is used',issue=681)
     shortcut='Ctrl+Shift+F12'
     scope.patch({'actions':{'region':{'shortcut':shortcut}}})

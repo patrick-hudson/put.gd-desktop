@@ -324,6 +324,9 @@ class Context:
           environment labels and diagnostics replies are never substituted.
           observe() reads ui.snapshot.diagnostics.shortcuts unchanged; X11
           conflicts use error='shortcut_conflict', not a fabricated state.
+          In a disposable GNOME lab guest, unavailable disables only the
+          already-enabled putgd@put.gd helper, then restores it and verifies
+          native availability. The independent compositor witness stays enabled.
         * locked-keyring: unique blank-password synthetic collection,
           lock()/unlock(); no personal item/default alias is read or changed.
         * events.update-feed / settings-update-feed: url/root/residentPid,

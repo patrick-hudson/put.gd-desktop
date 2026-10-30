@@ -107,6 +107,21 @@ class Round3(fixture_tests.Fixtures):
         self.assertIs(value.observe(),native)
         self.assertFalse(value.controlled)
 
+    def test_native_gnome_unavailable_restores_only_the_owned_app_helper(self):
+        self.ctx.fixture('app-profile');scope=self.ctx.manager.scope
+        self.ctx.profile.update(session='wayland',compositor={'kind':'gnome-lab-witness'})
+        native={'available':True};commands=[];original=self.ctx.shell
+        def shell(command,**kwargs):
+            if command.startswith('gnome-extensions '):
+                commands.append(command);native['available']=' enable ' in command
+                return {'returncode':0,'stdout':'','stderr':''}
+            return original(command,**kwargs)
+        with patch.object(desktop,'shortcut_status',return_value=native),patch.object(scope,'json',return_value=True),patch.object(self.ctx,'shell',shell):
+            value=self.ctx.fixture('settings-binding-unavailable')
+            self.assertTrue(value.controlled);self.assertFalse(value.observe()['available'])
+            value.release();value.release();self.ctx.manager.close()
+        self.assertEqual(commands,['gnome-extensions disable putgd@put.gd','gnome-extensions enable putgd@put.gd'])
+
     def test_recording_label_and_disclosure_are_observations(self):
         nodes=[{'name':'Help','objectName':'help','role':'toggle button','states':{'checked':True,'expanded':False},'text':'Help'},
                {'name':'Visible help content','role':'label','text':'Visible help content'}]
