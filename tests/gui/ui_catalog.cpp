@@ -503,7 +503,11 @@ int main(int argc,char** argv){
   // destination too long to sit beside the actions wraps above them.
   editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link");
   editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
-  // A separate state verifies recent-colour selectors without changing the existing editor captures.
+  // Clear state 29's failure and the earlier saved-copy feedback before the swatches.
+  editor.viewCommand({{"action","keepEditing"}},code,message);if(!code.isEmpty())return 2;
+  editor.viewCommand({{"action","dismissSavedCopy"}},code,message);if(!code.isEmpty())return 2;
+  editor.setDestination("Private upload to Project archive");
+  const auto clean=editor.viewState();if(!clean["preparationFailure"].isNull()||clean["saveFeedbackVisible"].toBool()||!clean["message"].isNull())return 2;
   editor.selectTool(editor::Tool::Arrow);editor.setRecentColors({"#123456","#abcdef"});if(!grab("29b-editor-recent-colours"))return 2;
   editor.allowClose();editor.close();
  }

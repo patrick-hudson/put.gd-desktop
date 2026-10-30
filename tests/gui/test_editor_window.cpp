@@ -514,8 +514,15 @@ private slots:
   window.selectTool(Tool::Arrow);
   auto* custom=window.findChild<QToolButton*>("customColor");QVERIFY(custom);
   auto pick=[&](const QColor& color){
-   QTimer::singleShot(0,&window,[&]{auto* dialog=window.findChild<QColorDialog*>();QVERIFY(dialog);dialog->setCurrentColor(color);dialog->accept();});
-   custom->click();
+   bool found=false;QTimer answer;answer.setSingleShot(true);
+   connect(&answer,&QTimer::timeout,&window,[&]{
+    auto* dialog=window.findChild<QColorDialog*>();found=dialog!=nullptr;
+    if(dialog){dialog->setCurrentColor(color);dialog->accept();return;}
+    // A failed lookup must still unwind the nested exec(), then fail the test.
+    for(auto* widget:QApplication::topLevelWidgets())
+     if(auto* modal=qobject_cast<QDialog*>(widget);modal&&modal->isVisible()&&modal->isModal())modal->reject();
+   });
+   answer.start(0);custom->click();return found;
   };
   auto checkNames=[&]{
    const auto swatches=window.findChildren<QToolButton*>(QRegularExpression("^recentColorSwatch_"));
@@ -525,10 +532,10 @@ private slots:
     QCOMPARE(matches.size(),1);QCOMPARE(matches.first()->property("swatchColor").value<QColor>(),QColor(color));
    }
   };
-  pick(QColor("#123456"));QCOMPARE(window.recentColors(),QStringList({"#123456"}));checkNames();
-  pick(QColor("#abcdef"));QCOMPARE(window.recentColors(),QStringList({"#abcdef","#123456"}));checkNames();
+  QVERIFY2(pick(QColor("#123456")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#123456"}));checkNames();
+  QVERIFY2(pick(QColor("#abcdef")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#abcdef","#123456"}));checkNames();
   // No event processing between a rebuild and its name checks: retired widgets still await deleteLater().
-  pick(QColor("#123456"));QCOMPARE(window.recentColors(),QStringList({"#123456","#abcdef"}));checkNames();
+  QVERIFY2(pick(QColor("#123456")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#123456","#abcdef"}));checkNames();
  }
  void textSizeControlFollowsACornerDrag(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
