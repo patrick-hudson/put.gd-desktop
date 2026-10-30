@@ -14,7 +14,7 @@ from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.fixtures import destinations
 from tools.lab.surface_driver.api import RecipeBlocked
 from tests.desktop.test_surface_fixtures import FixtureCase
-from tests.desktop.test_surface_shell_health import ShellCrashDetector, shell
+from tests.desktop import test_surface_shell_health as shell_tests
 
 
 class PlasmaPick(unittest.TestCase):
@@ -156,12 +156,12 @@ class WalletScript(unittest.TestCase):
 
 class PlasmaCrash(unittest.TestCase):
     def setUp(self):
-        ShellCrashDetector.setUp(self)
+        shell_tests.ShellCrashDetector.setUp(self)
         self.addCleanup(self.temp.cleanup)
         self.ctx.profile=load_profile('kubuntu-kde-wayland')
 
     def test_plasma_crash_refuses_shell_pointer_before_dispatch(self):
-        self.ctx.shell_baseline();self.state=shell(200)
+        self.ctx.shell_baseline();self.state=shell_tests.shell(200)
         with self.assertRaisesRegex(RecipeBlocked,'plasmashell pid 100 ended'):
             self.ctx._desktop_guard({'pid':100},[20,20])
 
