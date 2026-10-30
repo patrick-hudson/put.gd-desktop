@@ -142,7 +142,7 @@ def _hover_history_node(ctx, query):
     return node
 
 
-def _double_history_row(ctx):
+def _searched_row_node(ctx):
     box = ctx.geometry('history')
     lists = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
                             'name': 'History items and upload activity'})
@@ -152,8 +152,13 @@ def _double_history_row(ctx):
                            'role': 'list item', 'within': lists[0]['rect']})
     if len(rows) != 1 or not rows[0].get('name'):
         ctx.blocked('Double-click requires a uniquely searched native row with its exact accessible name.', issue=820)
+    return rows[0]
+
+
+def _double_history_row(ctx):
+    node = _searched_row_node(ctx)
     previous = ctx.profile.get('live_controls', {})
-    ctx.profile['live_controls'] = {**previous, 'historySearchedRow': {'name': rows[0]['name'], 'role': 'list item'}}
+    ctx.profile['live_controls'] = {**previous, 'historySearchedRow': {'name': node['name'], 'role': 'list item'}}
     try:
         ctx.double_click('historySearchedRow', window='history')
     finally:
@@ -924,8 +929,6 @@ def command_tooltips(ctx):
             _frame(ctx, 'before')
         config = _result(ctx.call('settings.get'))['document']
         for action, label in labels.items():
-            query = {'owned': True, 'visible': True, 'showing': True,
-                     'pid': ctx.geometry('history')['pid'], 'name': label, 'role': 'push button'}
             _hover_history_node(ctx, {'name': label, 'role': 'push button'})
             def tooltip():
                 rows = _nodes(ctx, role='tool tip')
@@ -1120,8 +1123,6 @@ def list_gestures(ctx):
     _details(ctx)
     ctx.keys('Esc')
     ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape closes Enter details')
-    query = {'owned': True, 'visible': True, 'showing': True,
-             'pid': ctx.geometry('history')['pid'], 'role': 'list item'}
     _double_history_row(ctx)
     ctx.wait(lambda: _state(ctx)['detailsOpen'], 'double-click opens exact selected delegate')
     ctx.expect(_state(ctx)['selectedIds'] == [row['id']], 'double-click preserves receipt identity')
@@ -1137,9 +1138,8 @@ def list_gestures(ctx):
     _focus_items(ctx)
     ctx.keys('Home')
     previous = ctx.profile.get('live_controls', {})
-    native = ctx.accessible(query)
-    ctx.expect(len(native) == 1 and bool(native[0].get('name')), 'one searched context row')
-    ctx.profile['live_controls'] = {**previous, 'historySearchedContextRow': {'name': native[0]['name'], 'role': 'list item'}}
+    node = _searched_row_node(ctx)
+    ctx.profile['live_controls'] = {**previous, 'historySearchedContextRow': {'name': node['name'], 'role': 'list item'}}
     try:
         ctx.click('historySearchedContextRow', window='history', button='right')
     finally:
