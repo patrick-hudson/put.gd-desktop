@@ -279,6 +279,43 @@ the controller does not stop it. Failed staging also attempts to copy
 `staging.log` into the host attempt directory, with a 10-second collection
 timeout. A missing log or disconnected guest does not replace the original error.
 
+Staging runs under a detached, unprivileged guest subreaper in that job's private
+`~/putgd-lab/install-<id>` directory. `staging-process.json` records its exact PID
+and `/proc` start ticks before any privileged work. `staging-result.json` is
+written only after the staging shell and all its descendants have exited. A
+lost SSH reply, timeout, or Ctrl-C therefore does not establish completion.
+Failed staging reconciles the same job for up to 30 seconds, independently of
+best-effort log collection. It records `staging-reconciliation.json` on the host
+when available and releases `install-active` only after proving completion (or
+fencing a launch that never started). The cancellation fence also prevents a
+delayed SSH command from starting after recovery. The controller never stops
+staging by process name or kills a privileged apt process through its
+unprivileged wrapper.
+
+If the guest is unreachable, staging is still running after the bounded wait,
+or the wrapper exited without a terminal receipt, the lock stays held and
+retries are refused. Inspect `staging-process.json`, `staging-result.json`,
+`staging-output.log` and `staging.log` for the reported job. When the same guest
+is reachable and staging has finished, use the exact job ID from the error:
+
+```sh
+python3 tools/lab/lab.py recover-staging --run "$lab_run" \
+  --job install-0123456789abcdef0123456789abcdef
+```
+
+This command requires the host job's `staging-failed.json`, authenticates the
+owned running overlay, rejects a changed lock token and any package-supervisor
+progress/result, and repeats the bounded guest lifetime check before releasing
+that token. It refuses a running or uncertain job. It does not resume the failed
+install; run `install` again after recovery succeeds. An abrupt controller death
+without a staging-failure receipt, or a dead wrapper with no terminal receipt,
+requires manual investigation of the exact PID/start identities and descendants;
+do not clear the lock merely because the wrapper PID is absent. Preserve the
+run if exit cannot be proved. These rules apply only to disposable overlays;
+immutable goldens and the separate package supervisor's recovery remain unchanged.
+See the [Cinnamon cancellation proof](evidence/2026-10-30-lab-staging-748/README.md)
+for the exact identities, refused retries, later successful install and cleanup.
+
 This uses authority already granted to apt in the disposable guest. It never
 changes the host, golden, bootstrap key or `authorized_keys`, and needs no guest
 password or console bootstrap rerun. Keep the golden immutable; provision a new
@@ -305,9 +342,10 @@ and copies completed evidence into the host run's matching directory. If the
 recovery window expires, the supervisor freezes and kills only descendants pinned
 by pidfds, then reports any remaining PIDs and package state. It never kills by
 name or retries apt. The guest `~/putgd-lab/install-active` lock blocks retries
-through binary verification after successful package-manager completion. Upload
-failure before the helper starts, or a later collection/verification failure after
-a successful package-manager report, releases only that job's lock. Unresolved or
+through binary verification after successful package-manager completion. A failure
+before staging is launched, confirmed staging completion before the supervisor
+starts, or a later collection/verification failure after a successful
+package-manager report releases only that job's lock. Unresolved or
 failed package-manager attempts retain it. A refused retry reports the held job
 ID, summarized result/progress state, UTC start time from the job marker, and
 guest `result.json` path without creating another host evidence directory.
