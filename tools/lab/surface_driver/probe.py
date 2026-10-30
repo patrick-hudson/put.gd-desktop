@@ -63,18 +63,86 @@ def matches(row, query):
     return True
 
 
+# Showing popup menus seen through AT-SPI events: {(pid, path): node}.
+_POPUPS = None
+
+
+def watch_popups():
+    """Track Qt popup menus, which the application's accessible children omit.
+
+    Qt lists only non-Qt::Popup top-level windows as application children, so a
+    context or row menu opened with QMenu::exec() is unreachable by a tree walk.
+    Qt does emit object:state-changed:showing for it (ObjectShow) once someone
+    listens. Only the persistent probe process lives long enough to hear it,
+    and it must register before the menu opens: every input guard probes
+    first, which registers it.
+    """
+    global _POPUPS
+    if _POPUPS is not None or __name__ != 'surface_driver_probe':
+        return
+    import pyatspi
+    _POPUPS = {}
+    def changed(event):
+        try:
+            node = event.source
+            if normalize_role(node.getRoleName()) not in POPUP_ROLES:
+                return
+            key = (node.get_process_id(), node.path)
+            if event.detail1:
+                _POPUPS[key] = node
+            else:
+                _POPUPS.pop(key, None)
+        except Exception:
+            pass
+    pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing')
+
+
+def popup_roots(query):
+    """Extra walk roots for showing popups, with the same application scoping."""
+    import pyatspi
+    roots = []
+    for key, node in list((_POPUPS or {}).items()):
+        try:
+            if not node.getState().contains(pyatspi.STATE_SHOWING):
+                _POPUPS.pop(key, None)
+                continue
+            app = node.get_application()
+            name, pid = app.name or '', key[0]
+        except Exception:
+            _POPUPS.pop(key, None)
+            continue
+        if query.get('application') and not fnmatch.fnmatchcase(name, query['application']):
+            continue
+        if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
+            continue
+        roots.append((key, (node, 2, '', name, None, [{'name': name, 'role': 'application', 'rect': None, 'pid': pid}])))
+    return roots
+
+
 def accessible(query):
     import pyatspi
     unknown = set(query) - QUERY_KEYS
     if unknown:
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
+    watch_popups()
     matches_ = []
     stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
+    # LIFO: popup roots go first so the ordinary tree is walked before them;
+    # a popup already reached there (a button's own menu) is not walked twice.
+    extra = popup_roots(query)
+    stack[:0] = [root for _, root in extra]
+    extra_keys = {id(root[0]): key for key, root in extra}
+    seen = set()
     visited, truncated = 0, False
     while stack and visited < 20000:
         node, depth, window, application, popup, ancestors = stack.pop()
         visited += 1
         try:
+            if id(node) in extra_keys:
+                if extra_keys[id(node)] in seen:
+                    continue
+            elif normalize_role(node.getRoleName()) in POPUP_ROLES:
+                seen.add((node.get_process_id(), node.path))
             role, name = normalize_role(node.getRoleName()), node.name or ''
             pid = node.get_process_id()
             # Do not walk unrelated applications for owned-control queries.
@@ -568,6 +636,10 @@ def shell_hit(query):
 
 
 def foreground(query):
+    try:
+        watch_popups()
+    except ImportError:
+        pass
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_foreground(query)
     script = query.get('compositor_script')
