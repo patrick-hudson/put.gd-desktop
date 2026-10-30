@@ -9,7 +9,7 @@ def backend(scope, name):
     env=dict(env)
     if any(k in env for k in ('DBUS_SESSION_BUS_ADDRESS','DISPLAY','WAYLAND_DISPLAY','XDG_RUNTIME_DIR')):
         raise RecipeBlocked('chooser fixture must preserve the native session buses and display',issue=671)
-    if name=='fallback':env['PUTGD_FILE_DIALOG']='fallback'
+    env['PUTGD_FILE_DIALOG']='fallback' if name=='fallback' else ''
     scope.restart(env)
     # Availability of the real session portal is observational, never a fake.
     if name=='portal':

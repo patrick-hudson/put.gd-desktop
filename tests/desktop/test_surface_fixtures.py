@@ -394,6 +394,8 @@ class Restart(unittest.TestCase):
         self.assertEqual(scope.close(),[])
         launches=[c for c in commands if c.startswith('nohup')]
         self.assertEqual(len(launches),3)
+        self.assertIn('PUTGD_FILE_DIALOG',launches[1])
+        self.assertIn('PUTGD_UPDATE_FEED_URL',launches[1])
         self.assertNotIn('PUTGD_FILE_DIALOG',launches[-1])
         self.assertNotIn('PUTGD_UPDATE_FEED_URL',launches[-1])
 

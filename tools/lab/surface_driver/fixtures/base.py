@@ -28,6 +28,7 @@ class Scope:
         self.errors = []
         self.values = {}
         self.initialized = False
+        self._environment = {}
 
     def defer(self, label, function, *, priority=0):
         self.finalizers.append((priority, label, function))
@@ -128,7 +129,11 @@ except (ProcessLookupError,FileNotFoundError):pass
     def restart(self, environment=None, *, before=None):
         """Restart only this private resident; keep the real desktop/portal bus."""
         target = self.ctx.target
-        if environment and not self.values.get('_resident_restore'):
+        if environment is None:
+            self._environment.clear()
+        else:
+            self._environment.update(environment)
+        if self._environment and not self.values.get('_resident_restore'):
             self.values['_resident_restore'] = True
             self.defer('resident environment', lambda: self.restart(), priority=-500)
         self.ctx.call('ui.quit')
@@ -138,8 +143,8 @@ except (ProcessLookupError,FileNotFoundError):pass
                       'private resident releases socket', timeout=15)
         if before:
             before()
-        env = ' '.join(shlex.quote(k+'='+v) for k,v in (environment or {}).items())
-        log = self.root+'/resident.log' if environment else target.root+'/app.log'
+        env = ' '.join(shlex.quote(k+'='+v) for k,v in self._environment.items())
+        log = self.root+'/resident.log' if self._environment else target.root+'/app.log'
         command = 'nohup env '+env+' '+shlex.quote(target.app_executable)+' --background >> '+shlex.quote(log)+' 2>&1 < /dev/null &'
         if self.ctx.shell(command)['returncode']:
             raise RecipeBlocked('cannot restart private fixture resident')

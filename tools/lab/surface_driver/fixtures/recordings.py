@@ -102,7 +102,7 @@ def recording(scope, *, automatic=False):
     ctx.call('recording.cancel',{'id':frozen})
     scene.command('resume')
     if automatic:
-        scope.patch({'limits':{'maxFileBytes':72*1024**2}})
+        scope.patch({'limits':{'maxFileBytes':65*1024**2}})
     identity,working_path=capture(scope,scene,automatic=automatic)
     ctx._ids['review']=identity
     ctx.call('recording.review',{'id':identity,'action':'pause'})
