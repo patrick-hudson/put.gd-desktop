@@ -243,11 +243,41 @@ class ObservationContracts(unittest.TestCase):
             if params['handle'] == 'closed':
                 raise browser._TargetError('Firefox protocol command failed')
         client.call = call
-        client.script = lambda *args: {'matched': True, 'url_host': '127.0.0.1', 'title': 'fixture.txt'}
+        def script(source, args=(), asynchronous=False):
+            return True if asynchronous else {'matched': True, 'url_host': '127.0.0.1', 'title': 'fixture.txt'}
+        client.script = script
         client.close = lambda: None
-        with patch.object(browser, '_Marionette', return_value=client):
+        with patch.object(browser, '_Marionette', return_value=client), patch.object(browser.time, 'sleep'):
             result = browser._target('observe', {**self.values, 'expect': {'name': 'fixture.txt'}})
         self.assertTrue(result['matched'])
+
+    def test_inspection_never_selects_tabs_and_waits_for_the_page_paint(self):
+        # Scanning with focus=True switched tabs; the frame then caught the
+        # newly selected tab before it painted (blank guest frames, #693).
+        calls = []
+        client = SimpleNamespace(close=lambda: None)
+        client.call = lambda method, params=None: (calls.append((method, params)),
+                                                   ['blank', 'page'] if method.endswith('GetWindowHandles') else None)[1]
+        selected = []
+        def script(source, args=(), asynchronous=False):
+            if asynchronous:
+                calls.append(('painted', None))
+                return True
+            handle = [p for m, p in calls if m == 'WebDriver:SwitchToWindow'][-1]['handle']
+            return {'matched': handle == 'page', 'url_host': '127.0.0.1', 'title': 'fixture.txt'}
+        client.script = script
+        with patch.object(browser, '_Marionette', return_value=client), patch.object(browser.time, 'sleep'):
+            self.assertTrue(browser._target('observe', {**self.values, 'expect': {'name': 'fixture.txt'}})['matched'])
+        switches = [p for m, p in calls if m == 'WebDriver:SwitchToWindow']
+        self.assertEqual(switches, [{'handle': 'blank', 'focus': False}, {'handle': 'page', 'focus': False}])
+        self.assertEqual(calls[-1], ('painted', None))
+
+    def test_unpainted_or_background_match_does_not_pass(self):
+        client = SimpleNamespace(close=lambda: None, call=lambda *args: ['page'] if args[0].endswith('GetWindowHandles') else None,
+                                 script=lambda source, args=(), asynchronous=False:
+                                     False if asynchronous else {'matched': True})
+        with patch.object(browser, '_Marionette', return_value=client):
+            self.assertEqual(browser._target('observe', {**self.values, 'expect': {}}), {})
 
     def test_non_mapping_browser_reply_does_not_pass(self):
         client = SimpleNamespace(call=lambda *args: ['good'] if args[0].endswith('GetWindowHandles') else None,

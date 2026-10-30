@@ -172,8 +172,8 @@ class _Marionette:
         result = value[3]
         return result["value"] if isinstance(result, dict) and set(result) == {"value"} else result
 
-    def script(self, source, args=()):
-        value = self.call('WebDriver:ExecuteScript', {
+    def script(self, source, args=(), asynchronous=False):
+        value = self.call('WebDriver:ExecuteAsyncScript' if asynchronous else 'WebDriver:ExecuteScript', {
             'script': source, 'args': list(args), 'newSandbox': True,
             'sandbox': 'default', 'line': 0, 'filename': 'surface-browser'})
         return value.get('value', value) if isinstance(value, dict) else value
@@ -214,7 +214,8 @@ const content = e.kind==='proton' ? text.includes(e.name) && media :
 const hostOK = e.url_host ? u.hostname===e.url_host :
                e.kind==='proton' ? /(^|\.)proton\.(me|ch)$/.test(u.hostname) : true;
 const matched = ['http:','https:'].includes(u.protocol) && hostOK && named &&
-  title.length>0 && document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height &&
+  title.length>0 && document.visibilityState==='visible' && document.hasFocus() &&
+  innerWidth>=screen.width && innerHeight>=screen.height &&
   document.readyState==='complete' && status<400 && !error &&
   content && (!e.preview || media || (e.kind!=='proton' && text.trim().length>0)) &&
   (!e.text || text.includes(e.text));
@@ -222,6 +223,14 @@ const matched = ['http:','https:'].includes(u.protocol) && hostOK && named &&
 // page-supplied token: the filename, when it is present in the actual title.
 return {matched, url_host: matched ? u.hostname : '',
   title: matched ? (title.includes(e.name) ? e.name : '[page title verified; redacted]') : ''};
+'''
+
+# Two animation frames after the match, so the selected tab is painted before
+# the runner's full-desktop frame (a just-switched tab paints blank first).
+_PAINTED = r'''
+const done = arguments[arguments.length - 1];
+requestAnimationFrame(() => requestAnimationFrame(() =>
+  done(document.visibilityState==='visible' && document.hasFocus())));
 '''
 
 
@@ -470,14 +479,20 @@ def _target(action, values):
         if action == 'observe':
             # Every top-level browsing context (tab) of the private instance.
             # blank navigated all earlier ones, so only a dispatched page matches.
+            # focus=False: inspecting a tab must not select it, so visibility
+            # and focus prove the dispatched page itself is in the foreground.
             for handle in client.call('WebDriver:GetWindowHandles'):
                 try:
-                    client.call('WebDriver:SwitchToWindow', {'handle': handle})
+                    client.call('WebDriver:SwitchToWindow', {'handle': handle, 'focus': False})
                     result = client.script(_OBSERVE, [values['expect']])
+                    if not (isinstance(result, dict) and result.get('matched')):
+                        continue
+                    if client.script(_PAINTED, asynchronous=True) is not True:
+                        continue
                 except _TargetError:
                     continue  # A closed/navigating tab must not hide a later match.
-                if isinstance(result, dict) and result.get('matched'):
-                    return result
+                time.sleep(.5)  # Compositor presentation after the content paint.
+                return result
             foreign = _foreign(transaction)
             if foreign:
                 # Recorded so restore stops exactly these processes.
