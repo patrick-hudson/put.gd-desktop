@@ -129,6 +129,18 @@ private slots:
   PUTGD_VERIFY_STEADY(events.layouts<64&&events.paints<64,1000);
   qInfo()<<"Idle Settings layout/paint events:"<<events.layouts<<events.paints;
  }
+ void emptyShortcutRecordingPromptFitsAndSettles(){
+  QWidget window;window.setFixedSize(760,900);auto* layout=new QVBoxLayout(&window);auto* editor=new ShortcutEditor;layout->addWidget(editor);
+  // Hold the surrounding geometry steady: the placeholder must be a sizing input itself.
+  editor->findChild<QWidget*>("shortcutPreferenceCard")->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+  auto* status=editor->findChild<QLabel*>("shortcutRecordingStatus");status->setText("Ready to record");status->setFixedHeight(status->fontMetrics().height());auto policy=status->sizePolicy();policy.setRetainSizeWhenHidden(true);status->setSizePolicy(policy);
+  auto actions=Settings::defaults()["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="";actions[name]=action;}
+  editor->setActions(actions);editor->setRecordingControl([](bool,auto reply){reply({});});PreferenceRows::alignChoices(&window);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* input=editor->editors().value("region");auto* record=editor->findChild<QPushButton*>("recordRegionShortcut");QVERIFY(input&&record);PUTGD_VERIFY_STEADY(input->placeholderText()=="Not set",100);const int idleWidth=input->width();QSignalSpy changed(input,&QLineEdit::textChanged);
+  record->click();QCOMPARE(input->placeholderText(),QString("Press shortcut…"));QCOMPARE(changed.count(),0);
+  PUTGD_TRY_VERIFY(input->contentsRect().width()>=input->fontMetrics().horizontalAdvance(input->placeholderText())+4);
+  editor->cancelRecording();PUTGD_TRY_COMPARE(input->width(),idleWidth);PUTGD_VERIFY_STEADY(input->width()==idleWidth,100);
+ }
  void updateChannelHelpReservesItsHeightAfterItAppears(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
   fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
@@ -136,7 +148,7 @@ private slots:
   auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");QVERIFY(channel&&source);
   for(int pass=0;pass<2;++pass){
    update={{"supported",true},{"check",true},{"channelSource","repository"},{"channel","nightly"},{"build",QJsonObject{{"version","26.1026.1-nightly"},{"channel","nightly"},{"supported",true}}},{"action",QJsonObject{{"kind","software-updates"},{"repository","managed"},{"file","/etc/yum.repos.d/putgd.repo"}}}};fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(source->isVisibleTo(window.settings()));
-   const auto fits=[&]{return source->mapTo(&window,QPoint()).y()>=channel->mapTo(&window,QPoint(0,channel->height())).y()&&source->parentWidget()->rect().contains(source->geometry());};
+   const auto fits=[&]{return source->mapTo(&window,QPoint()).y()>=channel->mapTo(&window,QPoint(0,channel->height())).y()&&source->parentWidget()->rect().contains(source->geometry())&&source->height()>=source->heightForWidth(source->width());};
    PUTGD_VERIFY_STEADY(fits(),200);
    update["channelSource"]="setting";fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(!source->isVisibleTo(window.settings()));
   }

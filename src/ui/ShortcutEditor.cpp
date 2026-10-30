@@ -100,7 +100,7 @@ void ShortcutEditor::setActions(const QJsonObject& actions){cancelRecording();fo
 void ShortcutEditor::startRecording(const QString& action){
  cancelRecording();recordingAction_=action;recordingReady_=false;chord_={};pressed_.clear();
  const auto generation=++recordingGeneration_;
- editors_[action]->setPlaceholderText("Press shortcut…");
+ editors_[action]->setPlaceholderText("Press shortcut…");if(promptChanged_)promptChanged_();
  recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
  // Keep focus on the clickable keycap. Focusing its mouse-transparent child
  // while making the button unfocusable lets a real click focus the surrounding
@@ -124,7 +124,7 @@ void ShortcutEditor::finishRecording(const QString& message){
  if(pendingMouseFocusCancel_)if(auto* button=qobject_cast<QPushButton*>(QApplication::focusWidget());recordButtons_.values().contains(button)){canceledMouseRelease_=button;button->setDown(false);}
  ++recordingGeneration_;recordingReady_=false;pendingMouseFocusCancel_=false;
  recordButtons_[recordingAction_]->setAccessibleDescription({});
- editors_[recordingAction_]->setPlaceholderText("Not set");recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
+ editors_[recordingAction_]->setPlaceholderText("Not set");recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();if(promptChanged_)promptChanged_();
  recordingStatus_->setText(message);
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns
