@@ -258,12 +258,16 @@ checksums and final notice auditing.
 The guest bootstrap installs the root-owned fixed supervisor at
 `/usr/local/lib/putgd-lab/package_install.py` and permits that command alongside
 `/usr/bin/apt-get` in the disposable guest's sudo rule. It never changes host
-privileges. Package dependency resolution uses distro repositories. Older goldens
-without this helper fail before apt starts: refresh bootstrap in a fresh disposable
+privileges. Package dependency resolution uses distro repositories. Missing or
+stale helper bytes fail before apt starts; the controller checks the installed
+helper against its own source SHA-256. Older goldens without this helper also
+fail before apt starts: refresh bootstrap in a fresh disposable
 overlay through its visible console, keeping both companion helpers beside the
 script. Preserve the immutable golden; provision a new golden for lasting updates.
 
-DEB `install` has a 900-second apt budget and a further 600-second recovery window.
+The VM apt path rejects RPM inputs; `physical.py` retains its existing dnf/RPM
+install path. DEB `install` has a 900-second apt budget and a further 600-second
+recovery window.
 Profiles can set positive integer `install_timeout` and
 `install_recovery_timeout` values; CLI `--install-timeout` and
 `--install-recovery-timeout` override them. The guest supervisor survives an SSH or
@@ -279,9 +283,11 @@ and copies completed evidence into the host run's matching directory. If the
 recovery window expires, the supervisor freezes and kills only descendants pinned
 by pidfds, then reports any remaining PIDs and package state. It never kills by
 name or retries apt. The guest `~/putgd-lab/install-active` lock blocks retries
-until the successful install and binary verification complete. On failure or a
-lost result, inspect the recorded job/result, reconcile the exact owned process
-identities and dpkg recovery state, and acknowledge recovery by removing only that
+through binary verification after successful package-manager completion. Upload
+failure before the helper starts, or a later collection/verification failure after
+a successful package-manager report, releases only that job's lock. Unresolved or
+failed package-manager attempts retain it. For those attempts, inspect the recorded
+job/result, reconcile the exact owned process identities and dpkg recovery state, and acknowledge recovery by removing only that
 job's lock before another install. Do not remove a lock while its supervisor or
 package descendants are still running; uninterruptible IO may require retaining
 the stopped run for investigation.
