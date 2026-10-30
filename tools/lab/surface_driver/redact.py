@@ -104,6 +104,12 @@ class Sensitive(str):
     def __reduce_ex__(self, protocol):
         raise TypeError('Sensitive cannot be pickled')
 
+    def __reduce__(self):
+        raise TypeError('Sensitive cannot be pickled')
+
+    def __getstate__(self):
+        raise TypeError('Sensitive state cannot be serialized')
+
     def __copy__(self):
         return '[redacted]'
 
@@ -350,7 +356,7 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
     path.write_bytes(encoded)
     path.chmod(0o600)
     return {'sha256': hashlib.sha256(encoded).hexdigest(), 'size': list(clean.size),
-            'regions': masks, 'fallback': fallback, 'guard': guard}
+            'regions': masks, 'fallback': fallback, 'guard': guard, 'visible_pixels': bool(clean.getbbox())}
 
 
 def patterns(text):

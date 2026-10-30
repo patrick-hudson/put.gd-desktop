@@ -108,14 +108,14 @@ window.show_all();Gtk.main()
             summary[kind]={'functional':'failed','scan':scan,'offender_removed':True}
 
         # Build a baseline using the same public fixture, then run the actual recipes.
-        from tools.lab.surface_driver.recipes.core_demo import opened
+        from tools.lab.surface_driver.recipes.core_demo import opened, cancelled
         preparation=DriverContext(target,dict(env),profile,catalog,args.out/'baseline')
         identity=opened(preparation)
         preparation.click('text:Redact',window='editor')
         preparation.wait(lambda:preparation.call('editor.view',{'id':identity}).get('tool')=='redact','baseline redact tool')
         frame=preparation.frame('baseline-redact',window='editor')
         (catalog/'20-editor-redact.png').write_bytes((preparation.out/frame.path).read_bytes())
-        preparation.call('editor.cancel',{'id':identity})
+        cancelled(preparation,identity)
         core=DriverContext(target,dict(env),profile,catalog,args.out/'core-demo')
         rows=run_recipes(core,discover('core_demo'),core.environment,core.out,'privacy726-core',core.out/'coverage.json')
         assert all(r.functional=='passed' for r in rows)

@@ -42,6 +42,7 @@ class Adv(unittest.TestCase):
         return [str(f.relative_to(self.out)) for f in self.out.rglob('*') if f.is_file() and needle.encode() in f.read_bytes()]
 
     def run_one(self, fn):
+        if Image is None: self.skipTest('requires python3-pil')
         sink = io.StringIO()
         with redirect_stdout(sink), redirect_stderr(sink):
             rows = run_recipes(self.ctx, [Recipe(('editor.undo',), fn)], self.env, self.out, 'c', self.out/'coverage.json')
@@ -254,6 +255,7 @@ class Adv(unittest.TestCase):
             self.assertFalse(result['passed'])
             self.assertIn('ocr-required-unavailable', {v['kind'] for v in result['findings']})
 
+    @unittest.skipUnless(Image, 'requires python3-pil')
     def test_quarantine_and_external_coverage_gate(self):
         external=self.out.parent/'external'/'coverage.json'
         def plant(ctx):
@@ -269,6 +271,7 @@ class Adv(unittest.TestCase):
             self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
             self.assertTrue(any(TOKEN.encode() in f.read_bytes() for f in directory.iterdir()))
 
+    @unittest.skipUnless(Image, 'requires python3-pil')
     def test_coverage_written_inside_run_and_scanned_before_copy(self):
         import tools.lab.surface_driver.run as runner
         external=self.out.parent/'external'/'coverage.json'
@@ -318,6 +321,7 @@ class Adv(unittest.TestCase):
         self.assertFalse((self.out/'leak.log').exists())
 
 
+    @unittest.skipUnless(Image, 'requires python3-pil')
     def test_mask_geometry_preserves_the_input_head(self):
         self.ctx._input_head=0
         self.ctx._sensitive_controls=[('tokenField','history')]
@@ -341,6 +345,7 @@ class Adv(unittest.TestCase):
         self.assertIn('shutil.rmtree',scripts[-1])
         self.assertFalse(target._owns_root)
 
+    @unittest.skipUnless(Image, 'requires python3-pil')
     def test_exported_coverage_copy_is_scanned_and_quarantined(self):
         import tools.lab.surface_driver.run as runner
         external=self.out.parent/'export'/'coverage.json'
@@ -355,6 +360,18 @@ class Adv(unittest.TestCase):
         self.assertFalse(external.exists())
         self.assertFalse(self.env['coverage_export']['copy_scan_passed'])
         self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['quarantine'])
+
+
+    @unittest.skipUnless(Image, 'requires python3-pil')
+    def test_black_frames_cannot_receive_visual_approval(self):
+        black=Image.new('RGB',(120,80),'black')
+        self.ctx.target.capture_image=lambda head=0:black
+        black.save(self.ctx.catalog.directory/'black.png')
+        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':120,'height':80,'scale':1}
+        def recipe(ctx):ctx.frame('black',window='editor',reference='black')
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),recipe)],self.env,self.out,'safe',self.out/'coverage.json')
+        self.assertNotEqual(rows[0].visual,'reviewed-ok')
+        self.assertIn('no visible pixels', rows[0].review_reason)
 
 
 if __name__ == '__main__':

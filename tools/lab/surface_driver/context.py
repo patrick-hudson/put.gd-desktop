@@ -740,6 +740,8 @@ asyncio.run(main())
             x=(x-geometry.get('screen_x',0))*scale;y=(y-geometry.get('screen_y',0))*scale
             crop = [x,y,w*scale,h*scale]
         metadata = self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
+        if not metadata['visible_pixels']:
+            self.review('frame has no visible pixels; visual approval withheld')
         if metadata['fallback']:
             self.review('frame fully masked: '+metadata.get('guard', 'sensitive geometry unavailable'))
         frame = Frame(label,str(path.relative_to(self.out)),role,reference)

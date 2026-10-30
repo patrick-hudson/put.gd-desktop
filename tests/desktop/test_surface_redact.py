@@ -360,7 +360,7 @@ class Secrets(unittest.TestCase):
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_transport_capture_uses_only_in_memory_rfb(self):
         target = Target.__new__(Target)
-        target.heartbeat = lambda: None
+        target.heartbeat = lambda **kw: None
         target.physical = None; target.info = {'vnc_display': 20}
         client = unittest.mock.Mock()
         client.frame.return_value = (2, 1, b'\xff\xff\xff\0'*2)
