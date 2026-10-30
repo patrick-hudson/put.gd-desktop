@@ -513,6 +513,30 @@ class LabContracts(unittest.TestCase):
                     self.assertIn('if [ "$(cat ~/putgd-lab/install-active/job)" = install-', releases[0])
                     self.assertFalse(any('nohup sudo' in script for script in scripts))
 
+    def test_install_staging_log_interrupt_survives_release_failure(self):
+        for interrupt in (KeyboardInterrupt(), SystemExit(2)):
+            for failure in (lab.LabError('ssh failed'), OSError('offline'), lab.subprocess.TimeoutExpired('ssh', 60)):
+                with self.subTest(interrupt=type(interrupt).__name__, failure=type(failure).__name__), \
+                        tempfile.TemporaryDirectory() as directory:
+                    run = Path(directory)
+                    lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+                    scripts, warning = [], io.StringIO()
+                    def ssh(_run, script):
+                        scripts.append(script)
+                        if 'rmdir' in script:
+                            raise failure
+                        return ''
+                    with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
+                            patch.object(lab, 'get', side_effect=interrupt), \
+                            patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('staging failure')), \
+                            contextlib.redirect_stderr(warning):
+                        with self.assertRaises(type(interrupt)) as caught:
+                            lab.install_package(run, 'synthetic.deb')
+                    self.assertIs(caught.exception, interrupt)
+                    self.assertEqual(sum('rmdir' in script for script in scripts), 1)
+                    self.assertFalse(any('nohup sudo' in script for script in scripts))
+                    self.assertIn('install-active may require reconciliation', warning.getvalue())
+
     def test_install_refused_retry_reports_held_job_without_orphan_evidence(self):
         self.check_install_refused_retry('aborted', 'result.json')
 
