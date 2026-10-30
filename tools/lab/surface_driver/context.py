@@ -889,14 +889,32 @@ asyncio.run(main())
     def tray(self):
         return self._probe('tray', {})
 
-    def clipboard_text(self):
+    def clipboard_text(self, *, expected_json=None):
         command = 'wl-paste --no-newline --type text' if self.profile['session']=='wayland' else 'xclip -selection clipboard -out'
         result = self.shell(command)
         if result['returncode']:
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
-        self.evidence.redactor.remember(result['stdout'], opaque=True)
+        value, verified = result['stdout'], False
+        if expected_json is not None:
+            def unique_object(pairs):
+                item = dict(pairs)
+                if len(item) != len(pairs):
+                    raise ValueError('duplicate JSON field')
+                return item
+            try:
+                decoded = json.loads(value, object_pairs_hook=unique_object)
+                canonical = lambda v: json.dumps(v, sort_keys=True, allow_nan=False)
+                verified = isinstance(expected_json, dict) and canonical(decoded) == canonical(expected_json)
+            except (TypeError, ValueError):
+                pass
+        # Only an exact local production observation avoids propagating opaque
+        # status to public names, hashes and UI copy (e.g. delete.cacheNotice).
+        # remember still scans every field for links, credentials and markers.
+        self.evidence.redactor.remember(value, opaque=self.destination != 'local' or not verified)
         self._sensitive_seen = True
-        return result['stdout']
+        if expected_json is not None and not verified:
+            raise RecipeFailed('clipboard JSON differs from the production observation')
+        return value
 
     def fixture(self, name, **options):
         if not hasattr(self, '_fixture_manager'):

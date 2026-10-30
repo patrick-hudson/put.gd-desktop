@@ -287,7 +287,13 @@ class Context:
         """
         raise NotImplementedError
 
-    def clipboard_text(self) -> str:
+    def clipboard_text(self, *, expected_json: Optional[dict] = None) -> str:
+        """Read clipboard text, registering unknown content as opaque secrets.
+
+        expected_json must be a production observation of the exact copied
+        receipt. A matching local copy uses structured secret-field/link
+        registration; live copies remain opaque. A mismatch fails closed.
+        """
         raise NotImplementedError
 
     def shell(self, script: str, timeout: float = 60.0, cleanup: bool = False) -> dict:
