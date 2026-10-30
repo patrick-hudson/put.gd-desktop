@@ -584,6 +584,10 @@ subprocess.run(['systemctl','disable',*units],check=True)
 subprocess.run(['systemctl','mask',*units],check=True)
 # Do not wait under apt's lists lock. Readback below waits after apt exits.
 subprocess.run(['systemctl','--no-block','stop',*units],check=True)
+# Masking an already loaded timer can mark it failed. Clear only these units.
+for unit in units:
+    if subprocess.check_output(['systemctl','show','--value','--property=ActiveState',unit],text=True).strip() == 'failed':
+        subprocess.run(['systemctl','reset-failed',unit],check=True)
 """.replace('UNITS', repr(KDE_APT_UNITS)).replace('SETTINGS', repr(KDE_APT_SETTINGS))
         hook = '/usr/bin/python3 -c ' + shlex.quote(root) + '; exit 1'
         setup = ('sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '

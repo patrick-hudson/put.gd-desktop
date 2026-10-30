@@ -123,6 +123,7 @@ class SnapshotContracts(unittest.TestCase):
         install = snapshots.kde_update_policy_script(True)
         self.assertIn('Dir::Etc::sourcelist=/dev/null', install)
         self.assertIn('APT::Update::Pre-Invoke::=', install)
+        self.assertIn('reset-failed', install)
         self.assertNotIn('sudoers', install)
         with tempfile.TemporaryDirectory() as temporary:
             config = Path(temporary) / 'policy'
@@ -138,10 +139,12 @@ class SnapshotContracts(unittest.TestCase):
                     fields = list(value); fields[4] = 0
                     return os.stat_result(fields)
                 return value
-            for state, value, passes in (('masked', '0', True), ('enabled', '0', False), ('masked', '1', False)):
+            for state, value, active, passes in (('masked', '0', 'inactive', True),
+                    ('enabled', '0', 'inactive', False), ('masked', '1', 'inactive', False),
+                    ('masked', '0', 'failed', False)):
                 def observed(args, **kwargs):
                     if args[0] == 'systemctl':
-                        return 'LoadState='+state+'\nActiveState=inactive\nUnitFileState='+state+'\n'
+                        return 'LoadState='+state+'\nActiveState='+active+'\nUnitFileState='+state+'\n'
                     return "value='"+value+"'\n"
                 with patch.object(Path, 'stat', owned_stat), patch('subprocess.check_output', side_effect=observed), \
                      contextlib.redirect_stdout(io.StringIO()):
