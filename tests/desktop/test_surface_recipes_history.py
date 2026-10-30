@@ -521,6 +521,16 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(ctx.window, original)
         self.assertFalse(any(e[0] == 'drag' for e in ctx.events))
 
+    def test_known_cinnamon_chrome_obstruction_withholds_all_window_button_input(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        for action in (history.maximize, history.minimize, history.close_window):
+            ctx = FakeContext(('history-row',))
+            ctx.profile = load_profile('mint-cinnamon-x11')
+            with self.assertRaises(RecipeBlocked) as error:
+                action(ctx)
+            self.assertEqual(error.exception.issue, 818)
+            self.assertFalse(ctx.events)
+
     def test_window_buttons_require_observed_effect_and_restore_on_failure(self):
         for action, fault in ((history.minimize, 'minimize-no-effect'),
                               (history.close_window, 'close-no-effect')):

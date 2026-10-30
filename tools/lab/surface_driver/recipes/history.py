@@ -555,8 +555,15 @@ def edge_resize(ctx):
     ctx.drag(new_edge, edge)
 
 
+def _window_buttons_ready(ctx):
+    gap = ctx.profile.get('history_window_buttons_blocked')
+    if gap:
+        ctx.blocked(gap['reason'], issue=gap['issue'])
+
+
 @recipe('shell.window-maximize', needs=('history-row',))
 def maximize(ctx):
+    _window_buttons_ready(ctx)
     _row(ctx)
     original = ctx.geometry('history')
     _frame(ctx, 'before')
@@ -585,6 +592,7 @@ def _minimized(window):
 @recipe('shell.window-minimize', needs=('history-row',))
 def minimize(ctx):
     """Minimize with the chrome button and observe the compositor state."""
+    _window_buttons_ready(ctx)
     row = _row(ctx)
     _frame(ctx, 'before')
     ctx.click('windowMinimize', window='history')
@@ -604,6 +612,7 @@ def minimize(ctx):
 @recipe('shell.window-close', needs=('history-row',))
 def close_window(ctx):
     """Close the shell and prove the resident still serves its original row."""
+    _window_buttons_ready(ctx)
     row = _row(ctx)
     _frame(ctx, 'before')
     ctx.click('windowClose', window='history')
