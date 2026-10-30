@@ -1,4 +1,5 @@
 #include "fixtures/U2Fixtures.h"
+#include "fixtures/TrayCatalog.h"
 #include "fixtures/FakeRecordingBackend.h"
 #include "ui/TrayController.h"
 #include "app/LocalServer.h"
@@ -9,6 +10,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QMenu>
+#include <QLabel>
 #include <QJsonDocument>
 #include <QPointer>
 #include <QSignalSpy>
@@ -68,6 +70,35 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ void catalogRowsRemainStableAcrossStatesAndSkipSeparators(){
+  QMenu menu;
+  auto* status=menu.addAction("Uploading 1 file…");status->setObjectName("trayUploadStatus");status->setVisible(false);
+  menu.addSeparator();auto* capture=menu.addAction("Capture region");capture->setData("region");
+  auto* about=menu.addAction("About put.gd");menu.addAction("Quit put.gd");
+  auto* output=new QWidgetAction(&menu);output->setObjectName("trayOutputedit");output->setText("Capture region & edit: Shared link");output->setDefaultWidget(new QLabel(output->text()));menu.addAction(output);
+  auto take=[&]{menu.ensurePolished();menu.resize(menu.sizeHint());menu.show();QApplication::processEvents();return catalogMenuRows(menu);};
+  const auto idle=take();QVERIFY(idle);QCOMPARE(idle->size(),4);
+  status->setVisible(true);const auto uploading=take();QVERIFY(uploading);QCOMPARE(uploading->size(),5);
+  for(const auto& row:*idle){const auto control=row.toObject();QVERIFY(control["kind"]!="separator");bool found=false;
+   for(const auto& candidate:*uploading)if(candidate.toObject()["text"]==control["text"]){QCOMPARE(candidate.toObject()["name"],control["name"]);found=true;}
+   QVERIFY(found);
+  }
+  QCOMPARE(idle->first().toObject()["name"].toString(),QString("region"));
+  QCOMPARE(idle->last().toObject()["text"].toString(),QString("Capture region && edit: Shared link"));
+  QVERIFY(!idle->at(1).toObject()["name"].toString().startsWith("trayMenuRow"));
+  about->setObjectName("explicitAbout");const auto named=take();QVERIFY(named);QCOMPARE(named->at(2).toObject()["name"].toString(),QString("explicitAbout"));
+ }
+ void catalogProviderReleaseBeforeOrAfterUploadCompletesExactlyOnce(){
+  for(bool early:{false,true}){
+   TrayCatalogProvider provider;int completions=0;QString code;
+   if(early)provider.release();
+   // upload() runs on a worker in OperationService, release() on the UI thread.
+   std::thread worker([&]{provider.upload({},[&](UploadResult result){++completions;code=result.error.code;});});worker.join();
+   QCOMPARE(provider.held(),!early);provider.release();provider.release();
+   QCOMPARE(completions,1);QCOMPARE(code,QString("proton_account_busy"));QVERIFY(!provider.held());
+  }
+ }
+
  void residentThemeScopeRestoresTheEnvironmentForChildren() {
   // Views and helpers inherit the environment; only the resident's own
   // QApplication construction may see the generic theme override.
