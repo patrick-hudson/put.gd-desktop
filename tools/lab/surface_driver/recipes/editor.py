@@ -121,7 +121,7 @@ def _tool(ctx, op, name, key=None):
     if key:
         ctx.keys(key)
     else:
-        ctx.click('text:' + name.title(), window='editor')
+        ctx.click('text:' + ('Select and move' if name=='select' else name.title()), window='editor')
     ctx.expect(_inspect(ctx, op)['view']['tool'] == name, f'{name} tool selected by real input')
 
 
@@ -229,7 +229,10 @@ def mark_history(ctx):
             ctx.expect(not _inspect(ctx, op)['shapes'], 'keyboard Undo removes mark')
             ctx.keys(redo)
             ctx.expect(_inspect(ctx, op)['shapes'] == first, 'keyboard Redo restores mark')
-        ctx.click('removeMark', window='editor')
+        _tool(ctx, op, 'select', 'V')
+        x,y,w,h = first[0]['rect']
+        ctx.click_at(*_point(ctx,op,x+w/2,y+h/2))
+        ctx.click('text:Remove mark', window='editor')
         ctx.expect(not _inspect(ctx, op)['shapes'], 'Remove selected mark control')
         for remove in ('Delete','Backspace'):
             _tool(ctx, op, 'redact', 'X')
@@ -321,19 +324,19 @@ def crop(ctx):
 def properties(ctx):
     with _session(ctx) as op:
         ctx.click('placeMark', window='editor')
-        ctx.click('editorGeometryDisclosure', window='editor')
+        ctx.click('text:Position and size', window='editor')
         ctx.expect(_inspect(ctx, op)['view']['geometryDetails']['open'], 'geometry disclosure opens')
-        for control, value in [('geometryX','30'), ('geometryY','40'), ('geometryWidth','100'), ('geometryHeight','80')]:
-            ctx.click(control, window='editor')
+        for control, value in [('X position','30'), ('Y position','40'), ('Width','100'), ('Height','80')]:
+            ctx.click('text:'+control+' in image pixels', window='editor')
             ctx.keys('Ctrl+A'); ctx.type_text(value); ctx.keys('Return')
         ctx.expect(_inspect(ctx, op)['shapes'][0]['rect'] == [30,40,100,80], 'real steppers update selected geometry')
         _frame(ctx, 'geometry', '26h-editor-geometry-expanded')
-        ctx.click('editorKeyboardHelp', window='editor')
+        ctx.click('text:Keyboard help', window='editor')
         ctx.expect(_inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help expands')
         _frame(ctx, 'help', '26d-editor-keyboard-help')
-        ctx.click('editorKeyboardHelp', window='editor')
+        ctx.click('text:Keyboard help', window='editor')
         ctx.expect(not _inspect(ctx, op)['view']['keyboardHelp']['open'], 'keyboard help collapses')
-        ctx.click('editorDestination', window='editor')
+        ctx.click('text:Save to the local archive', window='editor')
         ctx.expect(bool(_inspect(ctx, op)['view']['destination']['text']), 'destination identifies the isolated output')
         ctx.keys('Esc')
         _frame(ctx, 'after', '26-editor-selected')
@@ -342,7 +345,7 @@ def properties(ctx):
 @recipe('editor.zoom', 'editor.key-pan-alt', 'editor.mouse-pan', needs=IMAGE)
 def zoom_pan(ctx):
     with _session(ctx) as op:
-        ctx.click('editorZoom', window='editor')
+        ctx.click('text:Zoom', window='editor')
         _frame(ctx, 'menu', '26f-editor-zoom-menu')
         ctx.keys('Esc','Ctrl+1')
         ctx.expect(_inspect(ctx, op)['view']['zoomPercent'] == 100, 'actual size shortcut')
@@ -373,6 +376,7 @@ def discard(ctx):
         ctx.click('editorCancel', window='editor')
         ctx.expect(_inspect(ctx, op)['view']['discardConfirmation']['open'], 'dirty Cancel asks before discard')
         ctx.frame('question', window='confirm', reference='19-editor-discard-confirm')
+        ctx.focus('confirm', raise_window=False)
         ctx.keys('Esc')
         ctx.expect(_inspect(ctx, op)['shapes'] == shapes and not _inspect(ctx, op)['view']['discardConfirmation']['open'], 'Escape keeps edits')
         ctx.click('editorCancel', window='editor')
@@ -476,36 +480,6 @@ def _blocked_recipe(name, ids, reason):
     globals()[name] = pending
 
 
-@recipe('editor.mouse-square', 'editor.key-ctrl-cursor', 'editor.key-pan-space', 'editor.mouse-zoom', needs=IMAGE)
-def held_modifiers(ctx):
-    with _session(ctx) as op:
-        _tool(ctx, op, 'rectangle', 'R')
-        with ctx.held_keys('Shift'):
-            ctx.drag(_point(ctx, op, 80, 40), _point(ctx, op, 200, 100))
-        state = _inspect(ctx, op)
-        ctx.expect(len(state['shapes']) == 1 and abs(state['shapes'][0]['rect'][2]-state['shapes'][0]['rect'][3]) <= 1,
-                   'Shift drag constrains a square')
-        # Ctrl must draw through an existing mark rather than select/move it.
-        with ctx.held_keys('Ctrl'):
-            ctx.hover(*_point(ctx, op, 100, 60))
-            _frame(ctx, 'ctrl-cursor', '26-editor-selected')
-            ctx.drag(_point(ctx, op, 100, 60), _point(ctx, op, 180, 90))
-        ctx.expect(len(_inspect(ctx, op)['shapes']) == 2, 'Ctrl drag draws over the existing mark')
-        centre = _point(ctx, op, 320, 160)
-        before = _inspect(ctx, op)['view']['zoomPercent']
-        with ctx.held_keys('Ctrl'):
-            ctx.scroll(*centre, clicks=2)
-        ctx.expect(_inspect(ctx, op)['view']['zoomPercent'] > before, 'Ctrl wheel zooms at pointer')
-        _view(ctx, op, action='zoom', percent=400)
-        before = _inspect(ctx, op)['view']['visibleRect']
-        centre = _point(ctx, op, 320, 160)
-        with ctx.held_keys('Space'):
-            ctx.drag(centre, (centre[0]+60, centre[1]+30))
-        ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'Space drag pans without drawing')
-        ctx.expect(len(_inspect(ctx, op)['shapes']) == 2, 'held gestures preserve mark count')
-        _frame(ctx, 'after', '26-editor-selected')
-
-
 @recipe('editor.double-click-text', needs=IMAGE)
 def double_click(ctx):
     with _session(ctx) as op:
@@ -573,9 +547,11 @@ def style_controls(ctx):
 def custom_colour(ctx):
     with _session(ctx) as op:
         _tool(ctx,op,'rectangle','R')
-        ctx.click('customColor',window='editor')
-        ctx.frame('picker',window='editor',reference='22-editor-arrow-style')
+        ctx.click('text:Custom color',window='editor')
+        ctx.frame('picker',window='editorColour')
+        ctx.focus('editorColour', raise_window=False)
         ctx.keys('Esc')
+        ctx.focus('editor', raise_window=False)
         ctx.expect(_inspect(ctx,op)['phase']=='editing','custom picker cancel keeps editor private')
         _frame(ctx,'after','22-editor-arrow-style')
         ctx.blocked('Custom picker opened/cancelled; choosing a custom colour and recent swatch still needs native QColorDialog selectors',issue=CORE_ISSUE)
@@ -675,12 +651,16 @@ def save_copy(ctx):
         ctx.click('editorSaveCopy',window='editor')
         dialog = _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))
         ctx.expect(dialog['open'],'Save a copy button opens chooser')
-        _frame(ctx,'chooser-open','26-editor-selected')
+        ctx.frame('chooser-open',window='fileDialog')
+        ctx.focus('fileDialog', raise_window=False)
         ctx.keys('Esc')
+        ctx.focus('editor', raise_window=False)
         ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'], 'chooser cancels by Escape')
         ctx.keys('Ctrl+S')
         ctx.expect(_result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'Ctrl+S opens chooser')
+        ctx.focus('fileDialog', raise_window=False)
         ctx.keys('Esc')
+        ctx.focus('editor', raise_window=False)
         ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'], 'shortcut chooser cancels')
         ctx.expect(_inspect(ctx,op)['phase']=='editing','chooser cancellation never uploads')
         _frame(ctx,'after')
@@ -711,7 +691,9 @@ def save_feedback(ctx):
         ctx.expect(not _inspect(ctx,op)['view']['saveDetailsOpen'],'Details toggles closed')
         ctx.click('chooseAnotherLocation',window='editor')
         ctx.expect(_result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'recovery opens another location chooser')
+        ctx.focus('fileDialog', raise_window=False)
         ctx.keys('Esc')
+        ctx.focus('editor', raise_window=False)
         ctx.wait(lambda: not _result(ctx.call('editor.fileDialog',{'id':op,'action':'inspect'}))['open'],'recovery chooser cancelled')
         _frame(ctx,'after','28-editor-save-failed')
         ctx.blocked('Saved banner/copy/dismiss/failure/details/recovery checked; Show in folder and compact overflow actions need bounded file-manager/window fixtures',issue=CORE_ISSUE)
@@ -749,6 +731,55 @@ def window_chrome(ctx):
         ctx.click('windowClose',window='editor')
         ctx.expect(_inspect(ctx,op)['view']['discardConfirmation']['open'],'window Close asks before discarding')
         ctx.frame('close-question',window='confirm',reference='19-editor-discard-confirm')
+        ctx.focus('confirm', raise_window=False)
         ctx.keys('Esc')
+        ctx.focus('editor', raise_window=False)
         ctx.expect(_inspect(ctx,op)['phase']=='editing','Escape keeps editor after window Close')
         _frame(ctx,'after','26-editor-selected')
+
+
+@recipe('editor.mouse-square', 'editor.key-pan-space', 'editor.mouse-zoom', needs=IMAGE, timeout=240)
+def held_modifiers(ctx):
+    with _session(ctx) as op:
+        for kind in ('redact','blur','rectangle','highlight'):
+            _tool(ctx, op, kind)
+            with ctx.held_keys('Shift'):
+                ctx.drag(_point(ctx, op, 80, 40), _point(ctx, op, 200, 100))
+            state = _inspect(ctx, op)
+            ctx.expect(len(state['shapes']) == 1 and state['shapes'][0]['kind']==kind and
+                       abs(state['shapes'][0]['rect'][2]-state['shapes'][0]['rect'][3]) <= 1,
+                       'Shift drag constrains '+kind+' square')
+            _frame(ctx, 'square-'+kind, '26-editor-selected')
+            if kind!='highlight': ctx.keys('Delete')
+        _tool(ctx, op, 'rectangle', 'R')
+        # Ctrl must draw through an existing mark rather than select/move it.
+        with ctx.held_keys('Ctrl'):
+            ctx.hover(*_point(ctx, op, 100, 60))
+            _frame(ctx, 'ctrl-cursor', '26-editor-selected')
+            ctx.drag(_point(ctx, op, 100, 60), _point(ctx, op, 180, 90))
+        ctx.expect(len(_inspect(ctx, op)['shapes']) == 2, 'Ctrl drag draws over the existing mark')
+        centre = _point(ctx, op, 320, 160)
+        before = _inspect(ctx, op)['view']['zoomPercent']
+        with ctx.held_keys('Ctrl'):
+            ctx.scroll(*centre, clicks=2)
+        ctx.expect(_inspect(ctx, op)['view']['zoomPercent'] > before, 'Ctrl wheel zooms at pointer')
+        _view(ctx, op, action='zoom', percent=400)
+        before = _inspect(ctx, op)['view']['visibleRect']
+        centre = _point(ctx, op, 320, 160)
+        with ctx.held_keys('Space'):
+            ctx.drag(centre, (centre[0]+60, centre[1]+30))
+        ctx.expect(_inspect(ctx, op)['view']['visibleRect'] != before, 'Space drag pans without drawing')
+        ctx.expect(len(_inspect(ctx, op)['shapes']) == 2, 'held gestures preserve mark count')
+        _frame(ctx, 'after', '26-editor-selected')
+
+
+@recipe('editor.key-ctrl-cursor', needs=IMAGE)
+def ctrl_cursor(ctx):
+    with _session(ctx) as op:
+        _draw(ctx, op, 'rectangle')
+        ctx.hover(*_point(ctx, op, 470,80))
+        _frame(ctx, 'move-cursor', '26-editor-selected')
+        with ctx.held_keys('Ctrl'):
+            ctx.hover(*_point(ctx, op, 470,80))
+            _frame(ctx, 'draw-over-cursor', '26-editor-selected')
+        ctx.blocked('Ctrl hover delivered, but QMP screendumps omit the cursor glyph; a core cursor-shape witness is still required', issue=CORE_ISSUE)

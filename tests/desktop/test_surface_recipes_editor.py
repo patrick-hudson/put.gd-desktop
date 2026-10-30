@@ -80,10 +80,11 @@ class FakeContext(Context):
 
     def click(self, control, window, **kwargs):
         self.events.append(('click',control,window))
-        if control.startswith('text:') and control[5:].lower() in ('redact','arrow','rectangle','highlight','text','select','blur','crop'):
+        if control=='text:Select and move': self.state['view']['tool']='select'
+        elif control.startswith('text:') and control[5:].lower() in ('redact','arrow','rectangle','highlight','text','select','blur','crop'):
             self.state['view']['tool']=control[5:].lower()
         elif control == 'placeMark': self._add({'kind':'redact','rect':[220,110,200,100]})
-        elif control == 'removeMark': self.state['shapes']=[]
+        elif control in ('removeMark','text:Remove mark'): self.state['shapes']=[]
         elif control.startswith('text:Undo'): self.keys('Ctrl+Z')
         elif control.startswith('text:Redo'): self.keys('Ctrl+Shift+Z')
         elif control == 'editorCancel': self.state['view']['discardConfirmation']['open']=True
@@ -104,6 +105,7 @@ class FakeContext(Context):
 
     def click_at(self, x,y, **kwargs):
         self.events.append(('click_at',x,y))
+        if self.state['view']['tool']=='select': return
         self.state['view']['editingText']=True
         self.draft=''
 
@@ -215,7 +217,7 @@ class EditorRecipes(unittest.TestCase):
         ctx=FakeContext(); editor.mark_history(ctx)
         for keys in [('Ctrl+Z',),('Ctrl+Shift+Z',),('Ctrl+Y',),('Insert',),('Delete',),('Backspace',)]:
             self.assertIn(('keys',keys),ctx.events)
-        self.assertIn(('click','removeMark','editor'),ctx.events)
+        self.assertIn(('click','text:Remove mark','editor'),ctx.events)
 
     def test_typing_tool_letters_and_escape_preserves_label(self):
         ctx=FakeContext(); editor.text_entry(ctx)

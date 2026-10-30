@@ -1,5 +1,12 @@
 {
   "editor": {
-    "restore_maximized_keys": ["Alt+F10"]
+    "restore_maximized_keys": [
+      "Alt+F10"
+    ]
+  },
+  "windows": {
+    "editorColour": {
+      "title": "^Custom color$"
+    }
   }
 }
