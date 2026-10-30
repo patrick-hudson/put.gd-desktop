@@ -959,16 +959,47 @@ class CreatedDirectories(unittest.TestCase):
                 state = browser._prepare({})
                 created = json.loads((Path(state['directory']) / 'transaction.json').read_text())['created']
                 self.assertEqual(created, [str(home / p) for p in
-                                           ('.local/share/applications', '.mozilla', '.mozilla/firefox',
+                                           ('.mozilla', '.mozilla/firefox', '.local/share/applications',
                                             'isolated/data', 'isolated/data/applications')])
                 (home / 'isolated/data/applications/user-file.desktop').write_bytes(b'not ours')
-                (home / '.mozilla/extensions').mkdir()  # What a real Firefox start adds.
+                # What a real first Firefox start adds outside its --profile.
+                (home / '.mozilla/extensions').mkdir()
+                (home / '.mozilla/firefox/Crash Reports').mkdir()
+                (home / '.mozilla/firefox/Crash Reports/InstallTime20251217121356').write_bytes(b'1761786005')
                 browser._restore(state)
             self.assertTrue((home / '.local/share').exists())
             self.assertFalse((home / '.local/share/applications').exists())
             self.assertFalse((home / '.mozilla').exists())
             self.assertEqual((home / 'isolated/data/applications/user-file.desktop').read_bytes(), b'not ours')
 
+
+class ProcessTree(unittest.TestCase):
+    def test_restore_also_stops_children_that_outlive_firefox(self):
+        # Firefox's crash helper wrote into the profile root after its parent
+        # exited (Mint guest, Firefox 146). Use test-owned processes only.
+        parent = subprocess.Popen([sys.executable, '-c',
+                                   'import subprocess,sys,time\n'
+                                   'subprocess.Popen([sys.executable,"-c","import time; time.sleep(60)"])\n'
+                                   'time.sleep(60)'])
+        self.addCleanup(parent.wait)
+        self.addCleanup(parent.kill)
+        start = browser._start_ticks(parent.pid)
+        deadline = time.monotonic() + 10
+        while not browser._descendants(parent.pid, start):
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(.05)
+        [(child, child_start)] = browser._descendants(parent.pid, start)
+        self.addCleanup(lambda: browser._terminate(child, child_start))
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'putgd-surface-x'
+            directory.mkdir()
+            (directory / 'transaction.json').write_text(json.dumps(
+                {'directory': str(directory), 'since': 10 ** 18, 'foreign': [], 'desktops': [], 'backups': [],
+                 'pid': parent.pid, 'pid_start': start}))
+            browser._restore({'directory': str(directory)})
+        parent.wait(timeout=10)
+        self.assertFalse(browser._alive([child, child_start]))
+        self.assertEqual(browser._descendants(parent.pid, start), [])
 
 class RecipeContracts(unittest.TestCase):
     @contextmanager

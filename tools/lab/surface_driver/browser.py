@@ -461,17 +461,43 @@ def _foreign(state):
             if profile not in argv and int(start) >= state['since']]
 
 
+def _descendants(pid, start):
+    """Exact (pid, start) identities below one process, e.g. Firefox's crash helper."""
+    children = {}
+    for entry in Path('/proc').iterdir():
+        if entry.name.isdigit():
+            try:
+                fields = (entry / 'stat').read_text().rsplit(')', 1)[1].split()
+                children.setdefault(int(fields[1]), []).append([int(entry.name), fields[19]])
+            except (OSError, IndexError):
+                continue
+    if _start_ticks_or_none(pid) != start:
+        return []
+    found, queue = [], [pid]
+    while queue:
+        for child in children.get(queue.pop(), []):
+            found.append(child)
+            queue.append(child[0])
+    return found
+
+
+def _start_ticks_or_none(pid):
+    try:
+        return _start_ticks(pid)
+    except (OSError, IndexError):
+        return None
+
+
 def _terminate(pid, start):
     """Stop one exact process identity, never a name or substring match."""
-    path = Path('/proc/%d/stat' % pid)
     try:
         if _start_ticks(pid) != start:
             return
         os.kill(pid, 15)
         deadline = time.monotonic() + 8
-        while path.exists() and time.monotonic() < deadline:
+        while _alive([pid, start]) and time.monotonic() < deadline:
             time.sleep(.1)
-        if path.exists() and _start_ticks(pid) == start:
+        if _alive([pid, start]):
             os.kill(pid, 9)
     except (OSError, IndexError):
         pass  # Already exited.
@@ -550,19 +576,24 @@ def _prepare(options):
         raise ValueError('browser.command must be argv')
     recovered = _recover(root, timeouts['cleanup'] - 30)
     created = []
-    for directory in sorted({root, *(c for c, d in profiles), *(d / 'applications' for c, d in profiles)}):
+    _make_directories(root, created)
+    # Only the private Firefox (and snap, for its own data) writes below a
+    # profile root setup created: restore removes such a tree whole.
+    browser_created = list(created)
+    for directory in sorted({*(c for c, d in profiles), *(d / 'applications' for c, d in profiles)}):
         _make_directories(directory, created)
     try:
         backups = _snapshot(sorted({path for c, d in profiles for path in _mime_paths(c, d)}))
         directory = Path(tempfile.mkdtemp(prefix='putgd-surface-', dir=root))
     except BaseException:
-        _remove_created(created)
+        _remove_created(created, browser_created)
         raise
     os.chmod(directory, 0o700)
     token = directory.name.replace('-', '')
     desktops = list(dict.fromkeys(d / 'applications' / (token + '.desktop') for c, d in profiles))
     desktop = desktops[0]
     state = {'directory': str(directory), 'desktops': [str(p) for p in desktops], 'created': created,
+             'browser_created': browser_created,
              'backups': backups, 'pid': None, 'since': _uptime_ticks(), 'foreign': [],
              'helper': [os.getpid(), _start_ticks(os.getpid())], 'timeouts': timeouts}
     try:
@@ -631,10 +662,17 @@ def _prepare(options):
         raise
 
 
-def _remove_created(created):
-    # Deepest first. Anything inside a directory setup created appeared during
-    # the transaction: Firefox adds an empty ~/.mozilla/extensions, for one.
-    # Empty directories go; a directory holding any file stays, with the file.
+def _remove_created(created, browser_created=()):
+    # A created profile root's tree holds only what the transaction's Firefox
+    # wrote (Crash Reports, Profile Groups, snap's revision directory), so it
+    # goes whole: the shallowest created directory covers the rest.
+    if browser_created:
+        top = Path(browser_created[0])
+        if top.is_dir() and not top.is_symlink():
+            shutil.rmtree(top, ignore_errors=True)
+    # Elsewhere (MIME and applications directories, which the app under test
+    # may also write) deepest first: empty directories go; a directory holding
+    # any file stays, with the file. Firefox adds an empty ~/.mozilla/extensions.
     for directory in reversed(created):
         for parent, _, _ in os.walk(directory, topdown=False):
             try:
@@ -662,7 +700,10 @@ def _restore(state, scan=True):
     targets += [[pid, start] for pid, start, argv in _firefox_mains() if profile in argv]
     foreign = state.get('foreign', [])
     foreign += [item for item in (_foreign(state) if scan else []) if item not in foreign]
-    for pid, start in targets + foreign:
+    # Children are recorded first: once a parent exits they are reparented,
+    # and Firefox's crash helper still writes into the profile root then.
+    descendants = [child for pid, start in targets + foreign for child in _descendants(pid, start)]
+    for pid, start in targets + foreign + descendants:
         _terminate(pid, start)
     for desktop in state['desktops']:
         Path(desktop).unlink(missing_ok=True)
@@ -677,7 +718,7 @@ def _restore(state, scan=True):
                 child.unlink()
         stored.unlink(missing_ok=True)
         directory.rmdir()
-    _remove_created(state.get('created', []))
+    _remove_created(state.get('created', []), state.get('browser_created', []))
     return {'restored': True, 'foreign': len(foreign)}
 
 
