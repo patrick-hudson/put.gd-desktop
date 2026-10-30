@@ -196,6 +196,7 @@ class Target:
         self.socket = checked_socket(self.root + '/runtime/putgd/session.sock')
         checked_socket(str(self.run / 'qmp.sock'))
         self.started = False
+        self._created_root = False
         self.bin_dir = bin_dir
         self.app_executable = app_executable
         self.monitor_pid = None
@@ -218,7 +219,8 @@ class Target:
     def heartbeat(self, force=False):
         if not self._lock:
             return
-        now=time.monotonic()
+        # CLOCK_BOOTTIME includes suspend; a desktop lease keeps aging asleep.
+        now=time.clock_gettime(time.CLOCK_BOOTTIME)
         if not force and now-self._last_heartbeat<60 and now<self._lock_valid_until:
             return
         from tools.lab import desktop_lock
@@ -231,9 +233,9 @@ class Target:
             raise RecipeBlocked('physical desktop lock heartbeat unavailable') from error
         expiry=value.get('expiresInSeconds',0)
         if (not value.get('ok') or value.get('state')!='held' or type(expiry) not in (int,float)
-                or not time.monotonic()-now+1 < expiry <= desktop_lock.MAX_MINUTES*60):
+                or not time.clock_gettime(time.CLOCK_BOOTTIME)-now+1 < expiry <= desktop_lock.MAX_MINUTES*60):
             raise RecipeBlocked('physical desktop lock is no longer held by this session')
-        self._last_heartbeat=time.monotonic()
+        self._last_heartbeat=time.clock_gettime(time.CLOCK_BOOTTIME)
         self._lock_valid_until=now+max(0,expiry-1)
 
     def session(self, body, timeout=60):
@@ -260,7 +262,9 @@ class Target:
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
 
     def execute(self, script, timeout=60):
-        self.heartbeat()
+        # Shell commands include resident launch, raises and CLI mutations. Treat
+        # every physical execute as mutating rather than infer safety from text.
+        self.heartbeat(force=bool(self.physical))
         code = 'import subprocess,json\np=subprocess.run('+repr(script)+',shell=True,text=True,capture_output=True,timeout='+repr(timeout)+')\nprint(json.dumps({"returncode":p.returncode,"stdout":p.stdout,"stderr":p.stderr}))\n'
         try:
             return json.loads(self.session(self.prefix() + "python3 - <<'SD_PY'\n" + code + 'SD_PY\n', timeout + 10))
@@ -564,38 +568,36 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             except RecipeBlocked:
                 errors.append('previous clipboard restoration unavailable; private session retained')
         if getattr(self, '_created_root', False) and not errors and not self.started:
-            # Delete only a directory this Target successfully created. Check
-            # the private resident process family is gone before touching files.
-            code = r'''import os, shutil, stat, time
+            # Never remove another session or recurse through a retained mount.
+            # Wait for the private process family, including fixture helpers.
+            code='''import os,shutil,stat,time
 from pathlib import Path
-root = Path(ROOT)
+root=Path(ROOT)
 for attempt in range(50):
-    live = []
-    for proc in Path('/proc').glob('[0-9]*'):
-        try:
-            env = (proc/'environ').read_bytes().split(b'\0')
-            if ('XDG_RUNTIME_DIR='+str(root/'runtime')).encode() in env:
-                cmd = (proc/'comm').read_text().strip()
-                if cmd.startswith('putgd'):
-                    live.append(proc.name)
-        except OSError:
-            pass
-    if not live:
-        break
-    time.sleep(.1)
-else:
-    raise RuntimeError('private resident still running')
-info = root.lstat()
-if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid() or stat.S_IMODE(info.st_mode) != 0o700:
-    raise RuntimeError('session root identity changed')
+ live=[]
+ for proc in Path('/proc').glob('[0-9]*'):
+  try:
+   env=(proc/'environ').read_bytes().split(b'\\0')
+   if ('XDG_RUNTIME_DIR='+str(root/'runtime')).encode() in env and (proc/'comm').read_text().strip().startswith('putgd'):
+    live.append(proc.name)
+  except OSError:pass
+ if not live:break
+ time.sleep(.1)
+else:raise RuntimeError('private resident still running')
+info=root.lstat()
+assert root.resolve()==root and stat.S_ISDIR(info.st_mode) and info.st_uid==os.getuid() and stat.S_IMODE(info.st_mode)==0o700
+assert not list(root.glob('fx-*')), 'fixture cleanup still pending'
+for line in Path('/proc/self/mountinfo').read_text().splitlines():
+ mount=Path(line.split()[4].replace(chr(92)+'040',' '))
+ assert mount!=root and not mount.is_relative_to(root)
 shutil.rmtree(root)
-'''
+'''.replace('ROOT',repr(self.root))
             try:
-                result = self.execute("python3 - <<'SD_CLEANUP'\nROOT=" + repr(self.root) + '\n' + code + '\nSD_CLEANUP\n', timeout=8)
+                result=self.execute("python3 - <<'SD_CLEANUP'\n"+code+'\nSD_CLEANUP\n',timeout=8)
                 if result['returncode']:
                     errors.append('private session root cleanup refused')
                 else:
-                    self._created_root = False
+                    self._created_root=False
             except RecipeBlocked:
                 errors.append('private session root cleanup unavailable')
         return errors

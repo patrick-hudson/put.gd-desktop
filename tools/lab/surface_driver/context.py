@@ -12,13 +12,7 @@ from .catalog import Catalog, compare, image_modules
 from .target import input_release, qcodes
 
 
-class Fixture(dict):
-    """Descriptors support both the contract's attributes and mapping recipes."""
-    def __getattr__(self, name):
-        try:
-            return self[name]
-        except KeyError as error:
-            raise AttributeError(name) from error
+from .fixtures import Fixture, FixtureManager
 
 
 class DriverContext(Context):
@@ -581,67 +575,13 @@ asyncio.run(main())
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
         return result['stdout']
 
-    def fixture(self,name):
-        if name in self._fixtures:
-            return self._fixtures[name]
-        if name == 'image':
-            import base64, io
-            Image,_,_=image_modules()
-            image=Image.new('RGB',(640,320))
-            for i,color in enumerate(lab.FIXTURE_RGB):
-                x,y=(i%2)*320,(i//2)*160
-                image.paste(color,(x,y,x+320,y+160))
-            stream=io.BytesIO();image.save(stream,format='PNG')
-            path=self.target.root+'/files/synthetic.png'
-            result=self.shell("python3 - <<'SD_FIXTURE'\nimport base64\nfrom pathlib import Path\nPath("+repr(path)+").write_bytes(base64.b64decode("+repr(base64.b64encode(stream.getvalue()).decode())+"))\nSD_FIXTURE\n")
-            if result['returncode']:
-                raise RecipeBlocked('cannot write synthetic image on target')
-            value=Fixture(path=path,width=640,height=320)
-            self._fixtures[name]=value
-            return value
-        if name in ('upload','history','history-row'):
-            if self.destination != 'local':
-                raise RecipeBlocked('remote upload fixture requires the live lane isolated destination/credential bridge; core never provisions credentials')
-            settings = self.call('settings.get')
-            self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                       'patch':{'archive':{'root':self.target.root+'/files','keepUploads':True},'actions':{'desktop':{'destination':'local','profileId':None}}}})
-            path=self.fixture('image')['path']
-            settings=self.call('settings.get')
-            self.call('settings.patch',{'expectedRevision':settings['metadata']['observedRevision'],
-                                       'patch':{'actions':{'edit':{'destination':'local','profileId':None}}}})
-            operation=self.call('editor.open',{'source':'file','path':path})['operationId']
-            def editor_ready():
-                reply=self.cli('editor.inspect',json.dumps({'id':operation}))
-                envelope=json.loads(reply['stdout'])
-                return envelope.get('ok')
-            self.wait(editor_ready,'synthetic fixture editor ready',30)
-            self.call('editor.submit',{'id':operation})
-            state = self.wait(lambda:self._completed_operation(operation),'local capture fixture',30)
-            rows = self.call('history.list',{'limit':50}).get('records',[])
-            row = next((r for r in rows if r.get('operationId')==operation),None)
-            if not row:
-                raise RecipeBlocked('resident completed fixture but did not expose its history row')
-            value = Fixture(id=row['id'],history_id=row['id'],operation_id=operation,
-                                    name=row.get('name'),link=row.get('receipt',{}).get('directUrl') or None,path=row.get('local',{}).get('path'),state=state,row=row)
-            self._fixtures[name] = value
-            return value
-        if name == 'recording':
-            target=self.profile.get('recording_fixture_target')
-            if not target:
-                raise RecipeBlocked('recording fixture needs a profile recording_fixture_target covering a visible synthetic pattern')
-            prepared = self.call('recording.prepare',{'target':target,'format':'mp4','audio':{'system':False}})
-            rid = prepared.get('id') or prepared.get('recordingId')
-            if not rid:
-                raise RecipeBlocked('recording.prepare returned no recording identity')
-            self._ids['review'] = rid
-            self.wait(lambda: self.call('recording.inspect',{'id':rid}).get('state')=='ready','recording fixture prepared',30)
-            self.call('recording.start',{'id':rid}); time.sleep(1)
-            self.call('recording.stop',{'id':rid})
-            self.wait(lambda:self.call('recording.inspect',{'id':rid}).get('state')=='reviewing','recording fixture review',45)
-            value = Fixture(id=rid,recording_id=rid)
-            self._fixtures[name] = value
-            return value
-        raise RecipeBlocked('unknown fixture: '+name)
+    def fixture(self, name, **options):
+        if not hasattr(self, '_fixture_manager'):
+            self._fixture_manager = FixtureManager(self)
+        return self._fixture_manager.get(name, **options)
+
+    def _cleanup_fixtures(self):
+        return self._fixture_manager.close() if hasattr(self, '_fixture_manager') else []
 
     def _completed_operation(self,identity):
         state = self.call('operation.inspect',{'id':identity})

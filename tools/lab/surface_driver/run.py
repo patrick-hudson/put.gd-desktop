@@ -15,7 +15,10 @@ import os
 from pathlib import Path
 import re
 import signal
+import shutil
+import socket
 import stat
+import struct
 import subprocess
 import sys
 import time
@@ -164,6 +167,36 @@ def guard_physical_endpoints(target):
     target._verify_endpoints = lambda: verify_physical_endpoints(target)
 
 
+def resolve_boat_cli():
+    """Pin the executable once, before any authenticated boat identity proof."""
+    path = shutil.which('boat')
+    if not path:
+        raise RecipeBlocked('boat CLI is unavailable')
+    return str(Path(path).resolve(strict=True))
+
+
+def verify_guest_endpoint(target, pid, arguments):
+    """Recheck the cached owned QEMU identity and the current socket peer."""
+    try:
+        path = target.run / 'qmp.sock'
+        metadata = path.lstat()
+        if not stat.S_ISSOCK(metadata.st_mode) or metadata.st_uid != os.getuid():
+            raise ValueError('QMP socket is not owned')
+        process = Path('/proc') / str(pid)
+        if (process.stat().st_uid != os.getuid()
+                or (process / 'cmdline').read_bytes() != arguments):
+            raise ValueError('owned QEMU identity changed')
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
+            peer.settimeout(2)
+            peer.connect(str(path))
+            peer_pid, peer_uid, _ = struct.unpack('3i', peer.getsockopt(
+                socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
+            if peer_pid != pid or peer_uid != os.getuid():
+                raise ValueError('QMP listener is not the owned QEMU')
+    except (OSError, ValueError) as error:
+        raise RecipeBlocked('guest QMP endpoint binding cannot be verified') from error
+
+
 def guard_target(args, target):
     """Authorize the actual transport before any desktop command or capture."""
     if target.physical:
@@ -190,11 +223,11 @@ def guard_target(args, target):
                 and re.fullmatch(r'[A-Za-z_][A-Za-z0-9_.-]*', config.get('user', ''))):
             if config.get('host') in ('127.0.0.1', '::1') and config.get('ssh_port', 22) == 22:
                 try:
-                    reply = subprocess.run(['boat', 'info', args.boat_id, '--json'], check=True,
+                    reply = subprocess.run([args.boat_cli, 'info', args.boat_id, '--json'], check=True,
                                            capture_output=True, text=True, timeout=15)
                     info = json.loads(reply.stdout)['sandbox']
                     if info.get('id') == args.boat_id and info.get('hydrated') is True:
-                        witness = subprocess.run(['boat', 'exec', args.boat_id, '--json', '--',
+                        witness = subprocess.run([args.boat_cli, 'exec', args.boat_id, '--json', '--',
                                                   'cat', '/proc/sys/kernel/random/boot_id'], check=True,
                                                  capture_output=True, text=True, timeout=20)
                         proof = json.loads(witness.stdout)
@@ -212,10 +245,13 @@ def guard_target(args, target):
     # socket. Prove this is an owned QEMU overlay, including its exact QMP path.
     try:
         info = lab.verify_owned_guest(target.run)
-        arguments = (Path('/proc') / str(info['pid']) / 'cmdline').read_bytes().split(b'\0')
+        command = (Path('/proc') / str(info['pid']) / 'cmdline').read_bytes()
+        arguments = command.split(b'\0')
         endpoint = ('unix:'+str(target.run / 'qmp.sock')+',server=on,wait=off').encode()
         if not any(a == b'-qmp' and b == endpoint for a, b in zip(arguments, arguments[1:])):
             raise ValueError('QMP endpoint does not belong to the owned guest')
+        verify_guest_endpoint(target, info['pid'], command)
+        target._verify_endpoints = lambda: verify_guest_endpoint(target, info['pid'], command)
     except (lab.LabError, OSError, ValueError, KeyError, RuntimeError) as error:
         raise RecipeBlocked('unverified input target is physical; an owned QMP guest or builder desktop lock is required') from error
 
@@ -244,6 +280,19 @@ def validate_recipes(recipes):
 
 
 def run_recipes(context, recipes, environment, out, campaign, coverage):
+    interrupted=[]
+    def terminate(signum, _frame):
+        interrupted.append(signum)
+        raise RecipeFailed('runner interrupted by '+signal.Signals(signum).name)
+    previous={sig:signal.signal(sig,terminate) for sig in (signal.SIGTERM,signal.SIGHUP)}
+    try:
+        return _run_recipes(context,recipes,environment,out,campaign,coverage,interrupted)
+    finally:
+        for sig,handler in previous.items():
+            signal.signal(sig,handler)
+
+
+def _run_recipes(context, recipes, environment, out, campaign, coverage, interrupted):
     rows=[]
     cleanup_block=None
     receipt=Path(out)/'receipt.json'
@@ -276,34 +325,48 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
             failure=str(error) if isinstance(error,RecipeFailed) else 'driver error: '+type(error).__name__
         finally:
             signal.setitimer(signal.ITIMER_REAL,0)
-            # Teardown owns a separate bounded budget. An action deadline must
-            # not strand a window and contaminate the next recipe's before frame.
-            cleanup=getattr(recipe.function,'cleanup',None)
-            if cleanup:
+            try:
+                # Teardown owns a separate bounded budget. An action deadline must
+                # not strand a window and contaminate the next recipe's before frame.
+                cleanup=getattr(recipe.function,'cleanup',None)
+                if cleanup:
+                    try:
+                        if hasattr(context,'_deadline'):
+                            context._deadline=time.monotonic()+10
+                        def cleanup_deadline(_signum,_frame):
+                            raise RecipeFailed('recipe cleanup deadline exceeded: '+recipe.name)
+                        signal.signal(signal.SIGALRM,cleanup_deadline)
+                        signal.setitimer(signal.ITIMER_REAL,10)
+                        cleanup(context)
+                    except Exception as error:
+                        reason=str(error) if isinstance(error,RecipeFailed) else type(error).__name__
+                        cleanup_block='previous recipe cleanup did not finish; further actions blocked'
+                        context.review('recipe cleanup failed: '+reason)
+                        failure='; '.join(filter(None,(failure,'recipe cleanup failed: '+reason)))
+                        if functional=='passed':
+                            functional='failed'
+                    finally:
+                        signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
                 try:
                     if hasattr(context,'_deadline'):
                         context._deadline=time.monotonic()+10
-                    def cleanup_deadline(_signum,_frame):
-                        raise RecipeFailed('recipe cleanup deadline exceeded: '+recipe.name)
-                    signal.signal(signal.SIGALRM,cleanup_deadline)
-                    signal.setitimer(signal.ITIMER_REAL,10)
-                    cleanup(context)
+                    context.frame('after')
                 except Exception as error:
-                    reason=str(error) if isinstance(error,RecipeFailed) else type(error).__name__
-                    cleanup_block='previous recipe cleanup did not finish; further actions blocked'
-                    context.review('recipe cleanup failed: '+reason)
-                    failure='; '.join(filter(None,(failure,'recipe cleanup failed: '+reason)))
-                    if functional=='passed':
-                        functional='failed'
+                    context.review('after-frame unavailable: '+type(error).__name__)
+            finally:
+                signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
+                # A second termination must not interrupt mount/nft/keyring cleanup.
+                handlers={sig:signal.signal(sig,signal.SIG_IGN) for sig in (signal.SIGTERM,signal.SIGHUP)}
+                try:
+                    cleanup = context._cleanup_fixtures() if hasattr(context, '_cleanup_fixtures') else []
                 finally:
-                    signal.setitimer(signal.ITIMER_REAL,0)
-            signal.signal(signal.SIGALRM,previous)
-            try:
-                if hasattr(context,'_deadline'):
-                    context._deadline=time.monotonic()+10
-                context.frame('after')
-            except Exception as error:
-                context.review('after-frame unavailable: '+type(error).__name__)
+                    for sig,handler in handlers.items():signal.signal(sig,handler)
+        if cleanup:
+            cleanup_failure = 'fixture cleanup failed: ' + '; '.join(cleanup)
+            functional = 'failed'
+            failure = failure + '; ' + cleanup_failure if failure else cleanup_failure
         if failure:
             context.note(failure)
         if recipe.desktop_drawn and context.frames:
@@ -318,6 +381,8 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
                 frames,recipe.name,environment['build'],stamp()))
         write_receipts(out,environment,rows,campaign,coverage)
         print(json.dumps({'recipe':recipe.name,'functional':functional,'visual':visual,'review':bool(context.reviews)}),flush=True)
+        if interrupted:
+            break
     return rows
 
 
@@ -375,6 +440,11 @@ def main(argv=None):
         recipes=discover(args.recipes);validate_recipes(recipes)
         target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
                       app_executable='putgd-launcher' if args.package=='appimage' else 'putgd')
+        # Only the boat native-head proof invokes this CLI. Owned guests do
+        # not acquire a new host-tool dependency merely by naming their boat id.
+        args.boat_cli = resolve_boat_cli() if target.physical and args.placement == 'boat' else None
+        if args.boat_cli:
+            environment['placement_details']['boat_cli'] = args.boat_cli
         guard_target(args,target)
         authorized=True
         environment['placement_details'].update(run_id=target.info['id'],lab_profile=target.info['profile'],
