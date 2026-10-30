@@ -805,7 +805,8 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME version_integration COMMAND test_version)
   set_tests_properties(version_integration PROPERTIES TIMEOUT 30)
-  add_executable(putgd-ui-catalog tests/gui/ui_catalog.cpp)
+  # A fixed build identity (tests/gui/catalog_build_identity.cpp) keeps the version in its renders stable.
+  add_executable(putgd-ui-catalog tests/gui/ui_catalog.cpp tests/gui/catalog_build_identity.cpp)
   target_include_directories(putgd-ui-catalog PRIVATE tests src)
   target_link_libraries(putgd-ui-catalog PRIVATE putgd_ui_application putgd_editor_window putgd_tray putgd_app putgd_s3 Qt6::Test)
   if(TARGET putgd-record)
@@ -813,6 +814,23 @@ if(BUILD_TESTING)
     target_sources(putgd-ui-catalog PRIVATE src/ui/RegionOverlay.cpp src/ui/RegionSelector.h src/record/ReviewWindow.cpp src/record/Overlays.cpp src/record/BarPlacement.cpp src/record/ClipExporter.cpp src/record/AvSync.cpp src/record/DebugLog.cpp src/record/record.qrc)
     target_link_libraries(putgd-ui-catalog PRIVATE putgd_fonts putgd_file_dialog Qt6::DBus PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
     target_compile_definitions(putgd-ui-catalog PRIVATE PUTGD_CATALOG_REVIEW=1)
+  endif()
+  # Every catalog state against its reference image (tools/ci/check_catalog_references.py).
+  # Pixels depend on the exact Qt, FreeType and font build, so only an
+  # environment matching tests/gui/catalog-references (the Ubuntu 26.04 CI leg)
+  # turns this on. The 150% text run keeps the catalog's layout checks only.
+  option(PUTGD_UI_CATALOG_REFERENCES "Compare the UI catalog with its reference images (Ubuntu 26.04 CI leg)" OFF)
+  if(PUTGD_UI_CATALOG_REFERENCES)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(putgd_catalog_check "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/ci/check_catalog_references.py"
+      --catalog "$<TARGET_FILE:putgd-ui-catalog>")
+    foreach(scheme dark light)
+      add_test(NAME ui_catalog_${scheme} COMMAND ${putgd_catalog_check} --scheme ${scheme}
+        --output "${CMAKE_CURRENT_BINARY_DIR}/ui-catalog/${scheme}")
+    endforeach()
+    add_test(NAME ui_catalog_text_150 COMMAND ${putgd_catalog_check} --scheme dark --text-scale 1.5 --layout-only
+      --output "${CMAKE_CURRENT_BINARY_DIR}/ui-catalog/dark-text-150")
+    set_tests_properties(ui_catalog_dark ui_catalog_light ui_catalog_text_150 PROPERTIES TIMEOUT 400)
   endif()
   # #237: theme switch timing with History (gallery) and Settings open.
   add_executable(putgd-bench-theme-switch tests/performance/bench_theme_switch.cpp)

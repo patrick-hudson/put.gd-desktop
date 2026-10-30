@@ -231,10 +231,13 @@ def recipe(target, packages, ci):
         script = common + step(linux, 'Install distro dependencies', {'matrix.distribution': '26.04'})
         script += 'bash tools/ci/provision-linux-sdk.sh\n'
         script += step(linux, 'Provision pinned Proton helper')
-        script += step(linux, 'Build')
+        script += step(linux, 'Build', {"matrix.distribution == '26.04' && 'ON' || 'OFF'": 'ON'})
         script += 'catalog_runtime=$(mktemp -d /tmp/pgc.XXXXXX)\n'
         script += 'python3 tools/diagnostics/check_socket_paths.py --socket "$catalog_runtime/putgd/session.sock" > /out/socket-preflight.json\n'
-        script += step(linux, 'Render the UI catalog for the surface map').replace('$(mktemp -d)', '$catalog_runtime')
+        # CI renders the catalog inside CTest (ui_catalog_dark); a worker renders it directly.
+        script += ('mkdir -p build/ui-catalog\n'
+                   'QT_QPA_PLATFORM=offscreen XDG_RUNTIME_DIR="$catalog_runtime" build/dev/putgd-ui-catalog build/ui-catalog\n'
+                   'python3 tools/lab/surface_map/surface_map.py check --catalog build/ui-catalog\n')
         script += 'cp -a build/ui-catalog /out/\n'
         return matrix['ubuntu26.04']['image'], script, 'dev'
     # Disposable VM drivers need putgd-desktop-fixture in a separately labeled DEB.
