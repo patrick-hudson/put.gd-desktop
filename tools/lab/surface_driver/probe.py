@@ -1628,6 +1628,10 @@ def shell_hit(query):
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
         raise RuntimeError('desktop hit-test requires the profile compositor application')
     point = query['point']
+    rect = expected.get('rect')
+    if (not rect or len(rect) != 4 or min(rect[2:]) <= 0 or
+            not (rect[0] <= point[0] < rect[0] + rect[2] and rect[1] <= point[1] < rect[1] + rect[3])):
+        return {'ok': False, 'backend': 'shell-at-spi-pick', 'obscuring_window': 'expected shell control has no containing bounds'}
     roots = [app for app in desktop_root() if app and app.get_process_id()==expected['pid']]
     for app in roots:
         for window in app:
@@ -1636,7 +1640,9 @@ def shell_hit(query):
                 for _ in range(50):
                     if node is None:
                         break
-                    if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==normalize_role(expected['role']):
+                    if (node.get_process_id()==expected['pid'] and (node.name or '')==expected['name']
+                            and normalize_role(node.getRoleName())==normalize_role(expected['role'])
+                            and list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)) == list(rect)):
                         return {'ok':True,'backend':'shell-at-spi-pick','obscuring_window':None}
                     child = node.queryComponent().getAccessibleAtPoint(int(point[0]),int(point[1]),pyatspi.DESKTOP_COORDS)
                     if child == node:

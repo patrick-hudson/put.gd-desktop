@@ -110,11 +110,17 @@ class RawAccessibility(unittest.TestCase):
         self.assertFalse([c for c in self.bus.calls if c[3]=='GetItems'])
 
     def test_shell_pick_is_a_component_call(self):
-        query={'desktop_node':{'application':'cinnamon','name':'Upload complete','role':'notification','pid':40},
+        query={'desktop_node':{'application':'cinnamon','name':'Upload complete','role':'notification','pid':40,'rect':[780,10,480,80]},
                'point':[900,40],'shell_application':'cinnamon*'}
         self.assertTrue(probe.shell_hit(query)['ok'])
         self.assertIn('notification',probe.shell_cover((900,40),'cinnamon*'))
         self.assertFalse([c for c in self.bus.calls if c[2]=='org.a11y.atspi.Cache'])
+
+    def test_shell_pick_rejects_a_same_name_node_with_different_bounds(self):
+        query = {'desktop_node': {'application': 'cinnamon', 'name': 'Upload complete',
+                  'role': 'notification', 'pid': 40, 'rect': [780, 10, 480, 60]},
+                 'point': [900, 40], 'shell_application': 'cinnamon*'}
+        self.assertFalse(probe.shell_hit(query)['ok'])
 
     def test_unrelated_unimplemented_name_cannot_break_shell_cover(self):
         self.bus.nodes[(probe.REGISTRY, ROOT_PATH)]['children'].insert(0, (':1.8', ROOT_PATH))

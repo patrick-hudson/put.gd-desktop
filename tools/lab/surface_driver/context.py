@@ -850,6 +850,27 @@ asyncio.run(main())
         # too short on Cinnamon), then click without another tree walk.
         self._accessible_pointer(None, None, node=title)
         time.sleep(.25)
+        def stable_target(resolve):
+            # Hover can expand/move a banner and its buttons. A matching name
+            # at the old point is insufficient: require fresh, stable bounds
+            # before the independent compositor hit-test and native click.
+            previous, until = None, time.monotonic() + 2
+            while time.monotonic() < until:
+                node = resolve()
+                signature = tuple(node.get(k) for k in ('pid', 'application', 'name', 'role')) + tuple(node['rect']) if node else None
+                if signature is not None and signature == previous:
+                    return node
+                previous = signature
+                time.sleep(.1)
+            raise RecipeBlocked('notification control did not acquire stable live bounds; input withheld', issue=918)
+        initial = title
+        def live_title():
+            nodes = drawn()
+            if (len(nodes) == 1 and nodes[0]['pid'] == initial['pid']
+                    and nodes[0].get('application') == initial.get('application')):
+                return nodes[0]
+            return None
+        title = stable_target(live_title)
         if action == 'default':
             target = title
         else:
@@ -868,13 +889,14 @@ asyncio.run(main())
                         return inside[0]
                 return None
             # GNOME Shell reveals a banner's buttons only once it expands on hover.
-            target, until = button(), time.monotonic()+2
-            while target is None and time.monotonic() < until:
-                time.sleep(.15)
-                target = button()
-            if target is None:
-                raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
-        previous = len(notice.get('action_events',[]))
+            target = stable_target(button)
+        # Do not click a replacement/closed generation, or count an action
+        # another client already invoked before our native input.
+        current = [n for n in self.notifications() if n['id'] == identity and not n.get('closed')
+                   and all(n.get(k) == notice.get(k) for k in ('at', 'sender', 'server'))]
+        if len(current) != 1:
+            raise RecipeBlocked('notification generation changed before input; click withheld', issue=918)
+        previous = len(current[0].get('action_events',[]))
         self._accessible_pointer(None, 'left', node=target)
         def invoked():
             return any(e['action']==action for n in self.notifications()
