@@ -9,7 +9,6 @@ from functools import wraps
 import os
 from pathlib import Path
 import shlex
-import signal
 import selectors
 import subprocess
 import time
@@ -18,6 +17,7 @@ from tools.lab import lab, rfb
 from tools.lab.physical_host import PhysicalHost
 from .api import RecipeBlocked, RecipeFailed
 from .catalog import image_modules
+from .critical import critical, entry
 
 QT_KEYS = {'Ctrl':'ctrl','Control':'ctrl','Shift':'shift','Alt':'alt','AltGr':'alt_r','Meta':'meta_l','Super':'meta_l',
            'Return':'ret','Enter':'ret','Escape':'esc','Esc':'esc','Space':'spc','Backspace':'backspace',
@@ -27,21 +27,23 @@ PUNCTUATION = dict(zip('-=[];\'`,./\\', ['minus','equal','bracket_left','bracket
 SHIFTED = dict(zip('!@#$%^&*()_+{}:"~<>?|', '1234567890-=[];\'`,./\\'))
 
 
-@contextmanager
-def input_release():
-    """Defer the recipe alarm until release's bounded transport has completed.
+# Seconds for one release: owned-endpoint check, connect and reply. A release
+# runs in a critical section, so this also bounds how long it holds a deferred
+# recipe deadline or termination. Physical releases add the SSH lock heartbeat
+# and the forwarded-endpoint proof.
+RELEASE_TIMEOUT = 3.0
+PHYSICAL_RELEASE_TIMEOUT = 10.0
+
+
+@entry
+def input_release(review=None, failed=None, label='an input release'):
+    """Defer the recipe deadline and termination signals over a bounded step.
 
     Do not cancel/rearm the timer: a pending deadline must still fail the
-    recipe. QMP and RFB have socket timeouts independent of SIGALRM.
+    recipe once the step has completed (critical.py). QMP and RFB have socket
+    timeouts independent of SIGALRM; releases also have RELEASE_TIMEOUT.
     """
-    # Read first: an alarm already due is raised by the blocking call itself,
-    # after it changed the mask, and must not leave SIGALRM blocked for good.
-    previous = signal.pthread_sigmask(signal.SIG_BLOCK, ())
-    try:
-        signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
-        yield
-    finally:
-        signal.pthread_sigmask(signal.SIG_SETMASK, previous)
+    return critical(review=review, failed=failed, label=label)
 
 
 PREFLIGHT = r'''
@@ -221,6 +223,25 @@ class Target:
         self._probe_buffer = b''
         self._probe_source = None
         self._probe_failed = False
+        self._io_deadline = None
+
+    def io_timeout(self, default):
+        """Seconds for one transport step: ``default``, clipped to an open release budget."""
+        deadline = getattr(self, '_io_deadline', None)
+        if deadline is None:
+            return default
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('input release budget exhausted')
+        return remaining if default is None else min(default, remaining)
+
+    @contextmanager
+    def _release_budget(self):
+        self._io_deadline = time.monotonic() + (PHYSICAL_RELEASE_TIMEOUT if self.physical else RELEASE_TIMEOUT)
+        try:
+            yield
+        finally:
+            self._io_deadline = None
 
     def require_lock(self, host, session):
         self._lock = (host, session)
@@ -238,8 +259,8 @@ class Target:
         payload={'host':host,'session':session,'action':'heartbeat'}
         script="python3 - <<'SD_LOCK'\n"+desktop_lock.remote_script(payload)+'\nSD_LOCK\n'
         try:
-            value=json.loads(self.physical.ssh(self.run,script))
-        except (lab.LabError,OSError,ValueError) as error:
+            value=json.loads(self.physical.ssh(self.run,script,timeout=self.io_timeout(60)))
+        except (lab.LabError,OSError,ValueError,subprocess.TimeoutExpired) as error:
             raise RecipeBlocked('physical desktop lock heartbeat unavailable') from error
         expiry=value.get('expiresInSeconds',0)
         if (not value.get('ok') or value.get('state')!='held' or type(expiry) not in (int,float)
@@ -469,7 +490,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
 
     def release_pointer(self, x, y, width, height, button='left', head=0):
         try:
-            self._release_pointer(x,y,width,height,button,head)
+            with self._release_budget():
+                self._release_pointer(x,y,width,height,button,head)
         except RecipeBlocked as error:
             if not self.physical:
                 raise
@@ -477,19 +499,37 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             raise RecipeBlocked('physical desktop '+host+': '+button+' button may still be pressed; '
                                 'release withheld or unconfirmed; check the desktop ('+error.reason+')') from error
 
+    def release_events(self, events, head=None):
+        """Button-up events only, within the release budget."""
+        with self._release_budget():
+            self.events(events, head)
+
+    def release_keys(self, codes):
+        with self._release_budget():
+            self.key_state(codes, False)
+
     @desktop_transport
     def _release_pointer(self, x, y, width, height, button='left', head=0):
         """Release at the current guest position, without another absolute move."""
         if self.physical and not (self.run / 'qmp.sock').exists():
             # RFB requires coordinates in every pointer packet. Reuse the last
             # dispatched position, never the unvisited drag endpoint.
-            self.vnc().pointer_button(x,y,button,False)
+            connection = self.vnc()
+            connection.sock.settimeout(self.io_timeout(10))
+            try:
+                connection.pointer_button(x,y,button,False)
+            finally:
+                connection.sock.settimeout(10)
         else:
-            lab.input_events(self.run,[{'type':'btn','data':{'button':button,'down':False}}])
+            lab.input_events(self.run,[{'type':'btn','data':{'button':button,'down':False}}],
+                             timeout=self.io_timeout(10))
 
     @desktop_transport
     def events(self, events, head=None):
-        lab.input_events(self.run, events, head)
+        if getattr(self, '_io_deadline', None) is None:
+            lab.input_events(self.run, events, head)
+        else:
+            lab.input_events(self.run, events, head, timeout=self.io_timeout(10))
 
     @desktop_transport
     def key(self, codes):

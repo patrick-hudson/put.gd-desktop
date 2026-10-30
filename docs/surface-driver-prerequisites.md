@@ -52,11 +52,35 @@ per-axis `start`, `center` or `end` anchors for each resized axis. Image compari
 independently normalizes both client crops to their common smaller size, including
 device pixel ratio differences. A normalized image score never authorizes input.
 
-Recipe alarms are deferred while input release completes through transports
-with their own timeouts. A pending alarm is delivered after release and still
-fails the recipe. Physical click/drag cleanup becomes eligible only after the
+Cleanup that must run (input releases, the default-browser restore, fixture
+finalizers, the runner's fixture cleanup) runs in a critical section
+(`tools/lab/surface_driver/critical.py`, #815, #816, #762). Blocking signals as
+a cleanup's first statement is not enough: CPython runs a pending handler as a
+function starts, before its first line. So the operation around the cleanup
+(a press-release gesture, a browser transaction, fixture setup, the recipe
+loop) is armed: the run's SIGALRM, SIGTERM, SIGHUP and SIGINT handlers are
+wrapped, and a handler that falls due in a section or as a registered cleanup
+function starts defers its signal. After the section the deferred handlers run
+and their exception is raised, unless the cleanup itself failed: that failure
+stays the result and the deadline or termination is recorded as a review.
+KeyboardInterrupt always propagates, and a termination still stops the run
+after the current recipe's receipt. Recipes must not replace those handlers
+inside a `default_browser` transaction: that is reviewed and the entry
+handler is restored.
+
+Privileged fixtures (tmpfs mounts, nft rules) stage a narrow sudo rule for
+`mount`, `umount` and `nft` in the disposable overlay only, through the golden's
+`apt-get` grant. Its removal is retried a bounded number of times and proven
+with `sudo -l`; a rule left by a run that was killed, or whose removal met a
+held apt lock, is removed by the next fixture staging on that overlay (#762).
+
+Sections are short. A release has its own budget (3 s on a guest, 10 s on a
+physical desktop) covering the endpoint check, the lock heartbeat and the QMP
+connect and reply. A press is recorded before it is sent and cleared only after
+a confirmed release, so a press without a confirmed release always withholds
+later input for the run. Physical click/drag cleanup becomes eligible only after the
 matching press passes endpoint and lock checks and dispatches successfully;
-a refused press sends no release. Alarms are deferred until successful press
+a refused press sends no release. Signals are deferred until successful press
 dispatch is recorded. Every physical release rechecks endpoint identity and
 forces a fresh lock heartbeat before sending input. If authorization is lost
 while a button is held, send nothing and raise `RecipeBlocked` naming the host

@@ -8,6 +8,7 @@ import time
 import uuid
 
 from ..api import RecipeBlocked, RecipeFailed
+from ..critical import critical, entry
 
 
 class Fixture(dict):
@@ -193,20 +194,27 @@ except (ProcessLookupError,FileNotFoundError):pass
                 return False
         self.ctx.wait(ready, 'private fixture resident ready', timeout=25)
 
+    @entry
     def close(self):
         # Independent cleanup budget: recipe deadline expiry must not strand nft,
-        # mounts, helpers, keyring collections or recording jobs.
-        previous = self.ctx._deadline
-        self.ctx._deadline = time.monotonic()+180
-        try:
-            self.finalizers.sort(key=lambda item: item[0])
-            while self.finalizers:
-                _, label, function = self.finalizers.pop()
-                try:
-                    function()
-                except Exception as error:
-                    self.errors.append(label+': '+type(error).__name__)
-        finally:
-            self.ctx._deadline = previous
-        errors, self.errors = self.errors, []
+        # mounts, helpers, keyring collections or recording jobs. A deadline or
+        # termination signal waits for the finalizers (bounded by that budget).
+        with critical(getattr(self.ctx, 'review', None), label='fixture cleanup'):
+            previous = self.ctx._deadline
+            self.ctx._deadline = time.monotonic()+180
+            try:
+                self.finalizers.sort(key=_priority)
+                while self.finalizers:
+                    _, label, function = self.finalizers.pop()
+                    try:
+                        function()
+                    except Exception as error:
+                        self.errors.append(label+': '+type(error).__name__)
+            finally:
+                self.ctx._deadline = previous
+            errors, self.errors = self.errors, []
         return errors
+
+
+def _priority(item):
+    return item[0]

@@ -1,14 +1,15 @@
 """Production Context: real desktop input, resident assertions and saved evidence."""
 import dataclasses
-from contextlib import contextmanager
 import json
 from pathlib import Path
 import re
 import shlex
+import sys
 import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
+from .critical import armed, critical, entry
 from .target import input_release, qcodes
 from .receipts import Evidence
 from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect
@@ -47,6 +48,10 @@ class DriverContext(Context):
         self._input_head = 0
         self._held_codes = []
         self._input_poisoned = False
+        # A press dispatched (or possibly dispatched) without a confirmed
+        # release. Set before the press goes out, cleared after the release, so
+        # no interruption between them can leave input usable.
+        self._press_open = False
         self._popup = None
         self._click_count = 1
 
@@ -57,6 +62,8 @@ class DriverContext(Context):
         self.begin(None)
 
     def begin(self, recipe):
+        if self._press_open or self._held_codes:
+            self._input_poisoned = True  # An earlier recipe's release never completed.
         self.recipe = recipe
         self._current_window, self._popup, self._input_head = None, None, 0
         self.frames, self.notes, self.reviews = [], [], []
@@ -237,9 +244,9 @@ class DriverContext(Context):
             return self._guard(window=owner, point=centre, geometry=geometry)
         return self._guard(window=owner, geometry=geometry, raise_window=raise_window)
 
-    def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
+    def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False, holding=False):
         self._check_time()
-        if self._input_poisoned:
+        if self._input_poisoned or (self._press_open and not holding):
             raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
         role = window or self._current_window
         if not role:
@@ -331,20 +338,32 @@ class DriverContext(Context):
         if not guarded:
             self._guard(point=self._global_point(x,y,head))
         for index in range(self._click_count):
-            dispatched = False
-            try:
-                # A refused physical press must never cause a release packet.
-                # Defer alarms until dispatch is recorded, so an alarm just
-                # after a successful send cannot hide the matching press.
-                with input_release():
-                    self.target.pointer(x,y,w,h,True,button,head)
-                    dispatched = True
-                time.sleep(.04)
-            finally:
-                if dispatched or not self.target.physical:
-                    self._release_pointer((x,y),w,h,button,head)
+            with armed(self.review):
+                try:
+                    self._press(x,y,w,h,button,head)
+                    time.sleep(.04)
+                finally:
+                    # A refused physical press must never cause a release packet.
+                    if self._press_open or not self.target.physical:
+                        self._release_pointer((x,y),w,h,button,head)
             if index+1 < self._click_count:
                 time.sleep(.06)
+
+    def _press(self,x,y,w,h,button,head):
+        """Dispatch a button press; ``_press_open`` records it before it is sent.
+
+        Deferring signals over the dispatch means an alarm just after a
+        successful send cannot hide the matching press. A physical press that
+        raised counts as never sent (#736): it gets no release.
+        """
+        with input_release(self.review, label='a pointer press'):
+            self._press_open = True
+            try:
+                self.target.pointer(x,y,w,h,True,button,head)
+            except BaseException:
+                if self.target.physical:
+                    self._press_open = False
+                raise
 
     def click_at(self,x,y,button='left',head=None):
         self._pointer_click(x,y,button,self._input_head if head is None else head)
@@ -376,27 +395,27 @@ class DriverContext(Context):
         witness = self._guard(point=self._global_point(*start,head))
         unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
         last = start
-        dispatched = False
-        try:
-            with input_release():
-                self.target.pointer(*start,w,h,True,button,head)
-                dispatched = True
-            # Managed header/resize grabs can leave the client. Unmanaged
-            # selector covers/bars need pointer witnesses, not keyboard focus:
-            # WA_ShowWithoutActivating deliberately leaves that elsewhere.
-            for step in range(1,steps+1):
-                self._check_time()
-                x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
-                self._guard(**({'point':self._global_point(x,y,head)} if unmanaged else {}))
-                self.target.pointer(x,y,w,h,head=head)
-                last = (x,y)
-                time.sleep(.025)
-        finally:
-            if dispatched or not self.target.physical:
-                self._release_pointer(last,w,h,button,head)
+        with armed(self.review):
+            try:
+                self._press(*start,w,h,button,head)
+                # Managed header/resize grabs can leave the client. Unmanaged
+                # selector covers/bars need pointer witnesses, not keyboard focus:
+                # WA_ShowWithoutActivating deliberately leaves that elsewhere.
+                for step in range(1,steps+1):
+                    self._check_time()
+                    x,y = (round(a+(b-a)*step/steps) for a,b in zip(start,end))
+                    self._guard(holding=True, **({'point':self._global_point(x,y,head)} if unmanaged else {}))
+                    self.target.pointer(x,y,w,h,head=head)
+                    last = (x,y)
+                    time.sleep(.025)
+            finally:
+                if self._press_open or not self.target.physical:
+                    self._release_pointer(last,w,h,button,head)
 
+    @entry
     def _release_pointer(self, point, width, height, button, head):
-        with input_release():
+        # Registered: a signal due as this starts waits for the release.
+        with input_release(self.review):
             try:
                 release = getattr(self.target, 'release_pointer', None)
                 if release:
@@ -406,6 +425,7 @@ class DriverContext(Context):
             except BaseException:
                 self._input_poisoned = True
                 raise
+            self._press_open = False
 
     def keys(self,*sequence):
         codes = [qcodes(chord) for chord in sequence]
@@ -413,41 +433,17 @@ class DriverContext(Context):
             raise RecipeBlocked('key chord would release a key held by held_keys()')
         for chord in codes:
             self._guard()
-            with input_release():
+            with input_release(self.review, label='a key chord'):
                 self.target.key(chord)
         self._popup = None
 
-    @contextmanager
     def held_keys(self,*keys):
         codes = [code for key in keys for code in qcodes(key)]
         if len(set(codes)) != len(codes) or set(codes) & set(self._held_codes):
             raise ValueError('held keys must be distinct and not already held')
         if self.target.physical:
             raise RecipeBlocked('physical held keys require input-agent scoped cleanup across lock loss; guest QMP only')
-        self._guard()
-        self._held_codes.extend(codes)
-        def release():
-            with input_release():
-                try:
-                    self.target.key_state(list(reversed(codes)),False)
-                except BaseException:
-                    self._input_poisoned = True
-                    raise
-        try:
-            # Dispatch can succeed before a reply/deadline failure. Acquisition
-            # belongs inside the cleanup scope too.
-            self.target.key_state(codes,True)
-            yield
-        except BaseException:
-            try:
-                release()
-            except Exception:
-                self.note('held-key release unavailable after interrupted input')
-            raise
-        else:
-            release()
-        finally:
-            self._held_codes = [c for c in self._held_codes if c not in codes]
+        return _HeldKeys(self, codes)
 
     def type_text(self,text):
         self.evidence.redactor.remember(text, opaque=True)
@@ -459,7 +455,7 @@ class DriverContext(Context):
             raise RecipeBlocked('typed text would release a key held by held_keys()')
         for chord in chords:
             self._guard()
-            with input_release():
+            with input_release(self.review, label='a key chord'):
                 self.target.key(chord)
 
     def scroll(self,x,y,clicks,head=None):
@@ -477,11 +473,27 @@ class DriverContext(Context):
             for _ in range(abs(clicks)):
                 self._guard(point=self._global_point(x,y,head))
                 button = 'wheel-up' if clicks>0 else 'wheel-down'
-                try:
-                    self.target.events([{'type':'btn','data':{'button':button,'down':True}}],head)
-                finally:
-                    with input_release():
-                        self.target.events([{'type':'btn','data':{'button':button,'down':False}}],head)
+                with armed(self.review):
+                    try:
+                        with input_release(self.review, label='a wheel press'):
+                            self._press_open = True
+                            self.target.events([{'type':'btn','data':{'button':button,'down':True}}],head)
+                    finally:
+                        self._release_events([{'type':'btn','data':{'button':button,'down':False}}],head)
+
+    @entry
+    def _release_events(self, events, head=None):
+        with input_release(self.review):
+            try:
+                release = getattr(self.target, 'release_events', None)
+                if release:
+                    release(events, head)
+                else:
+                    self.target.events(events, head)
+            except BaseException:
+                self._input_poisoned = True
+                raise
+            self._press_open = False
 
     def cli(self,*args,timeout=60):
         self._check_time()
@@ -504,12 +516,13 @@ class DriverContext(Context):
             # Deadline-exempt restoration (api.Context.shell). Physical targets
             # force the lock heartbeat inside execute; guests prove ownership here.
             timeout=min(30.0 if timeout is None else timeout,CLEANUP_TIMEOUT_CAP)
-            # Defer, never cancel, run.py's recipe alarm for the whole bounded
-            # call: an alarm that falls due fails the recipe once the restore
-            # has reached the target, instead of killing the transport first.
-            # One already due when this is called is raised before any work;
-            # callers that must restore regardless block it first (browser).
-            with input_release():
+            # Defer, never cancel, run.py's recipe alarm and termination signals
+            # for the whole bounded call: one that falls due fails the recipe
+            # once the restore has reached the target, instead of killing the
+            # transport first. One already due when this is called is raised
+            # before any work, unless the caller is armed and inside a section
+            # (critical.py), as default_browser's restore is.
+            with input_release(self.review, label='a cleanup command'):
                 if not self.target.physical:
                     try:
                         lab.verify_owned_guest(self.target.run)
@@ -616,8 +629,8 @@ asyncio.run(main())
         A node already resolved by an owned query skips the second tree walk:
         the compositor pick below proves that exact node is drawn at the point.
         """
-        if self._input_poisoned:
-            raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
+        if self._input_poisoned or self._press_open:
+            raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
         if node is None:
             if not any(k in query for k in ('pid','application','owned')):
                 raise RecipeBlocked('desktop input query requires pid, application, or owned')
@@ -741,7 +754,9 @@ asyncio.run(main())
         return self._fixture_manager.get(name, **options)
 
     def _cleanup_fixtures(self):
-        return self._fixture_manager.close() if hasattr(self, '_fixture_manager') else []
+        from . import browser
+        errors = browser.restore_abandoned(self)
+        return errors + (self._fixture_manager.close() if hasattr(self, '_fixture_manager') else [])
 
     def _completed_operation(self,identity):
         state = self.call('operation.inspect',{'id':identity})
@@ -1151,3 +1166,54 @@ def parse_notifications(text,since=0):
                 elif len(integers)>1:
                     row['closed'] = {'reason':int(integers[1]),'at':at}
     return [row for row in rows if row['at']>=since]
+
+
+class _HeldKeys:
+    """``DriverContext.held_keys``: keys down for the with body, then released.
+
+    Armed from before the press until after the release; the release runs in
+    a registered ``__exit__``, so no deadline or termination can skip it.
+    """
+
+    def __init__(self, ctx, codes):
+        self.ctx, self.codes = ctx, codes
+
+    def __enter__(self):
+        ctx = self.ctx
+        ctx._guard()
+        self.guard = armed(ctx.review, label='a held-key release')
+        self.guard.__enter__()
+        try:
+            ctx._held_codes.extend(self.codes)
+            # Dispatch can succeed before a reply/deadline failure. Acquisition
+            # belongs inside the cleanup scope too.
+            with input_release(ctx.review, label='a held-key press'):
+                ctx.target.key_state(self.codes, True)
+        except BaseException:
+            self._abort()
+            raise
+        return self
+
+    @entry
+    def _abort(self):
+        self.__exit__(*sys.exc_info())
+
+    @entry
+    def __exit__(self, kind, value, traceback):
+        ctx = self.ctx
+        with critical(ctx.review, failed=kind is not None, label='a held-key release', release=self.guard):
+            try:
+                release = getattr(ctx.target, 'release_keys', None)
+                if release:
+                    release(list(reversed(self.codes)))
+                else:
+                    ctx.target.key_state(list(reversed(self.codes)),False)
+            except BaseException:
+                ctx._input_poisoned = True
+                if kind is None:
+                    raise
+                ctx.note('held-key release unavailable after interrupted input')
+            finally:
+                ctx._held_codes = [c for c in ctx._held_codes if c not in self.codes]
+        return False
+

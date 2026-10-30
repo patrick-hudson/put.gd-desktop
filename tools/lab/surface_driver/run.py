@@ -32,6 +32,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0,str(ROOT))
 from tools.lab.surface_driver.api import REGISTRY, ReceiptRow, RecipeBlocked, RecipeFailed, PACKAGES, PLACEMENTS, DESTINATIONS, HOSTS
 from tools.lab.surface_driver.context import DriverContext
+from tools.lab.surface_driver.critical import armed, critical, entry
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json, fail_coverage
 from tools.lab.surface_driver.redact import scan_run, detected
@@ -77,6 +78,12 @@ def native_endpoint(kind, address):
     return True
 
 
+def step_timeout(target, default):
+    """A transport step's seconds, clipped to the target's open release budget."""
+    budget = getattr(target, 'io_timeout', None)
+    return budget(default) if budget else default
+
+
 def verify_physical_endpoints(target):
     """Bind local listeners to the pinned SSH host, never trust a port/path label."""
     config = target.physical.config
@@ -93,13 +100,14 @@ def verify_physical_endpoints(target):
             info = socket.stat()
             if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.getuid():
                 raise ValueError('input socket is not owned')
-            uid = target.physical.ssh(target.run, 'id -u').strip()
+            uid = target.physical.ssh(target.run, 'id -u', timeout=step_timeout(target, 60)).strip()
             if not uid.isdecimal():
                 raise ValueError('unknown remote account')
             endpoints.append(('input', str(socket), str(socket)+':/run/user/'+uid+'/putgd-lab-input.sock'))
         for kind, address, forward in endpoints:
             command = ['ss', '-H', '-ltnp', 'sport = :'+str(port)] if kind == 'vnc' else ['ss', '-H', '-lxnp']
-            reply = subprocess.run(command, check=True, capture_output=True, text=True, timeout=10)
+            reply = subprocess.run(command, check=True, capture_output=True, text=True,
+                                   timeout=step_timeout(target, 10))
             lines = [line for line in reply.stdout.splitlines() if address in line.split()]
             pids = {pid for line in lines for pid in re.findall(r'pid=(\d+)', line)}
             if len(pids) != 1:
@@ -148,13 +156,14 @@ def verify_physical_endpoints(target):
                 script = "python3 - <<'SD_ENDPOINT'\n"+source+'\nimport json\ntry:\n'
                 script += ' print(json.dumps({"verified":native_endpoint('+repr(kind)+','+repr(remote_address)+')}))\n'
                 script += 'except Exception:\n print(json.dumps({"verified":False}))\nSD_ENDPOINT\n'
-                if json.loads(target.physical.ssh(target.run, script)).get('verified') is not True:
+                if json.loads(target.physical.ssh(target.run, script, timeout=step_timeout(target, 60))).get('verified') is not True:
                     raise ValueError('forwarded native service cannot be verified')
             else:
                 # Direct listeners are allowed only when the pinned SSH host
                 # is this runner, and the listener is a native desktop server.
                 boot = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
-                if not boot or target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id').strip() != boot:
+                if not boot or target.physical.ssh(target.run, 'cat /proc/sys/kernel/random/boot_id',
+                                                  timeout=step_timeout(target, 60)).strip() != boot:
                     raise ValueError('direct listener is on a different host')
                 if kind == 'vnc':
                     if executable not in ('x11vnc', 'x0vncserver', 'x0tigervnc', 'w0vncserver', 'wayvnc'):
@@ -216,7 +225,7 @@ def verify_guest_endpoint(target, pid, arguments):
         if (process.stat().st_uid != os.getuid()
                 or (process / 'cmdline').read_bytes() != arguments):
             raise ValueError('owned QEMU identity changed')
-        with lab.connect_unix(path, timeout=2) as peer:
+        with lab.connect_unix(path, timeout=step_timeout(target, 2)) as peer:
             peer_pid, peer_uid, _ = struct.unpack('3i', peer.getsockopt(
                 socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
             if peer_pid != pid or peer_uid != os.getuid():
@@ -394,10 +403,32 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
         raise RecipeFailed('runner interrupted by '+signal.Signals(signum).name)
     previous={sig:signal.signal(sig,terminate) for sig in (signal.SIGTERM,signal.SIGHUP)}
     try:
-        return _run_recipes(context,recipes,environment,out,campaign,coverage,termination)
+        # Armed (critical.py): a termination due as fixture cleanup starts waits for it.
+        with armed(context.review,label='fixture cleanup'):
+            return _run_recipes(context,recipes,environment,out,campaign,coverage,termination)
     finally:
         for sig,handler in previous.items():
             signal.signal(sig,handler)
+
+
+@entry
+def _cleanup_fixtures(context, previous, failed):
+    """Fixture cleanup after a recipe; returns (errors, a deferred signal's exception).
+
+    Registered (critical.py): no termination may interrupt mount/nft/keyring
+    cleanup. One due meanwhile is delivered once it ends: run.py's terminate
+    handler records it and the run stops after this recipe's receipt.
+    """
+    errors=[]
+    try:
+        # First statement: signal.signal is a Python wrapper, so it runs masked.
+        with critical(context.review,failed=failed,label='fixture cleanup'):
+            signal.setitimer(signal.ITIMER_REAL,0)
+            signal.signal(signal.SIGALRM,previous)
+            errors=context._cleanup_fixtures() if hasattr(context,'_cleanup_fixtures') else []
+    except Exception as error:
+        return errors,error
+    return errors,None
 
 
 def _run_recipes(context, recipes, environment, out, campaign, coverage, termination):
@@ -440,8 +471,9 @@ def _run_recipes(context, recipes, environment, out, campaign, coverage, termina
             if interrupted:
                 environment['interrupted'] = True
         finally:
-            signal.setitimer(signal.ITIMER_REAL,0)
             try:
+                # Inside the try: an interruption here still reaches fixture cleanup.
+                signal.setitimer(signal.ITIMER_REAL,0)
                 # Teardown owns a separate bounded budget. An action deadline must
                 # not strand a window and contaminate the next recipe's before frame.
                 cleanup=getattr(recipe.function,'cleanup',None)
@@ -469,16 +501,15 @@ def _run_recipes(context, recipes, environment, out, campaign, coverage, termina
                         context._deadline=time.monotonic()+10
                     context.frame('after')
                 except Exception as error:
-                    context.review('after-frame unavailable: '+type(error).__name__)
+                    # A termination landing here still stops the run; name it.
+                    context.review('after-frame unavailable: '+(str(error) if isinstance(error,RecipeFailed)
+                                                                  else type(error).__name__))
             finally:
-                signal.setitimer(signal.ITIMER_REAL,0)
-                signal.signal(signal.SIGALRM,previous)
-                # A second termination must not interrupt mount/nft/keyring cleanup.
-                handlers={sig:signal.signal(sig,signal.SIG_IGN) for sig in (signal.SIGTERM,signal.SIGHUP)}
-                try:
-                    cleanup = context._cleanup_fixtures() if hasattr(context, '_cleanup_fixtures') else []
-                finally:
-                    for sig,handler in handlers.items():signal.signal(sig,handler)
+                cleanup,late=_cleanup_fixtures(context,previous,None if functional=='passed' else True)
+                if late:
+                    functional='failed'
+                    reason=str(late) if isinstance(late,RecipeFailed) else 'driver error: '+type(late).__name__
+                    failure='; '.join(filter(None,(failure,reason)))
         context.evidence.command('recipe-output', {'stdout': stdout.getvalue(), 'stderr': stderr.getvalue()})
         if cleanup:
             cleanup_failure = 'fixture cleanup failed: ' + '; '.join(cleanup)
