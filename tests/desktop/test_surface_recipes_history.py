@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -143,6 +144,8 @@ class FakeContext(Context):
             if params['action'] != 'inspect':
                 raise AssertionError('file chooser mutation')
             return {'open': self.chooser, 'mode': 'save' if self.chooser else None}
+        if method == 'operation.cancel':
+            return {'cancelled': True}
         if method == 'operation.inspect':
             return copy.deepcopy(self.operations[params['id']])
         if method == 'ui.snapshot':
@@ -411,6 +414,10 @@ class FakeContext(Context):
 
 
 LANE = [r for r in REGISTRY if r.function.__module__ == history.__name__]
+# This widget simulator models the original History interactions. The shell
+# composites use independently tested admission/cleanup oracles below and real
+# three-desktop receipts, rather than simulating another compositor/lifecycle.
+SIMULATED = [r for r in LANE if r.function.__code__.co_firstlineno < history._nodes.__code__.co_firstlineno]
 
 
 class HistoryRecipeTests(unittest.TestCase):
@@ -423,7 +430,7 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(set(actual), expected)
 
     def test_every_executable_recipe_uses_input_inspection_and_reference_frames(self):
-        for item in LANE:
+        for item in SIMULATED:
             if item.interactions[0] in history.BLOCKED:
                 continue
             with self.subTest(recipe=item.name):
@@ -447,7 +454,7 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_references_name_existing_catalog_captures(self):
         source = (ROOT / 'tests/gui/ui_catalog.cpp').read_text()
-        for item in LANE:
+        for item in SIMULATED:
             if item.interactions[0] in history.BLOCKED:
                 continue
             ctx = FakeContext(item.needs)
@@ -542,15 +549,54 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(ctx.window, original)
         self.assertFalse(any(e[0] == 'drag' for e in ctx.events))
 
-    def test_known_cinnamon_chrome_obstruction_withholds_all_window_button_input(self):
+    def test_fixed_chrome_rows_run_on_all_three_desktops(self):
         from tools.lab.surface_driver.profiles import load_profile
-        for action in (history.maximize, history.minimize, history.close_window):
-            ctx = FakeContext(('history-row',))
-            ctx.profile = load_profile('mint-cinnamon-x11')
-            with self.assertRaises(RecipeBlocked) as error:
-                action(ctx)
-            self.assertEqual(error.exception.issue, 818)
-            self.assertFalse(ctx.events)
+        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland', 'kubuntu-kde-wayland'):
+            self.assertNotIn('history_window_buttons_blocked', load_profile(desktop))
+
+    def test_new_composites_use_available_core_fixtures(self):
+        from tools.lab.surface_driver.fixtures import FACTORIES
+        for entry in LANE:
+            self.assertTrue(set(entry.needs) <= set(FACTORIES), entry.name)
+
+    def test_new_operation_ignores_existing_and_other_actions(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[
+                {'id': 'old', 'action': 'edit'}, {'id': 'other', 'action': 'clipboard'},
+                {'id': 'new', 'action': 'edit'}]):
+            self.assertEqual(history._new_operation(ctx, {'old'}, 'edit')['id'], 'new')
+
+    def test_duplicate_operation_admission_fails(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[{'id': i, 'action': 'edit'} for i in ('a', 'b')]):
+            with self.assertRaisesRegex(RecipeFailed, 'one operation'):
+                history._new_operation(ctx, set(), 'edit')
+
+    def test_selector_cleanup_runs_when_real_escape_does_not_cancel(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[]), patch.object(history, '_new_operation', return_value={'id': 'new', 'state': 'selecting'}), patch.object(history, '_settle', return_value={'state': 'failed'}):
+            with self.assertRaisesRegex(RecipeFailed, 'real Escape'):
+                history._exercise_command(ctx, 'region', lambda action: None)
+        self.assertIn(('call', 'operation.cancel', {'id': 'new'}), ctx.events)
+
+    def test_missing_local_artifact_cannot_pass_command(self):
+        ctx = FakeContext()
+        with patch.object(history, '_recent', return_value=[]), patch.object(history, '_new_operation', return_value={'id': 'new'}), patch.object(history, '_settle', return_value={'state': 'completed', 'items': []}):
+            with self.assertRaisesRegex(RecipeFailed, 'local command completed'):
+                history._exercise_command(ctx, 'desktop', lambda action: None)
+        self.assertIn(('call', 'operation.cancel', {'id': 'new'}), ctx.events)
+
+    def test_action_matrix_cannot_pass_after_one_success(self):
+        ctx = FakeContext(('app-profile', 'selector-desktop'))
+        attempted = []
+        def exercise(ctx, action, dispatch):
+            attempted.append(action)
+            if action == 'desktop':
+                raise RecipeFailed('fixture refuses third action')
+        with patch.object(history, '_exercise_command', side_effect=exercise):
+            with self.assertRaisesRegex(RecipeFailed, 'third action'):
+                history._action_matrix(ctx, lambda action: None)
+        self.assertEqual(attempted, ['region', 'window', 'desktop'])
 
     def test_window_buttons_require_observed_effect_and_restore_on_failure(self):
         for action, fault in ((history.minimize, 'minimize-no-effect'),
@@ -683,7 +729,7 @@ class HistoryRecipeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             Path(directory, '01-history-list.controls.json').write_text(json.dumps({'controls': [
                 {'name': control, 'text': '', 'class': 'QListView'} for control in names]}))
-            for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
+            for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland', 'kubuntu-kde-wayland'):
                 catalog = Catalog(directory, load_profile(desktop))
                 for control, label in names.items():
                     self.assertIn('setAccessibleName("' + label + '")', source)
@@ -764,7 +810,7 @@ class HistoryRecipeTests(unittest.TestCase):
 
     def test_history_popup_owners_are_scoped_on_both_guests(self):
         from tools.lab.surface_driver.profiles import load_profile
-        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland'):
+        for desktop in ('mint-cinnamon-x11', 'ubuntu-gnome-wayland', 'kubuntu-kde-wayland'):
             profile = load_profile(desktop)
             for name in ('historyAddFilterMenu', 'historySelectionMore',
                          'historyInspectorMenu', 'historyManagementMenu'):

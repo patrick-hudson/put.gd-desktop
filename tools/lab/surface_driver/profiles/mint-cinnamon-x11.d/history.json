@@ -46,6 +46,17 @@
     },
     "historySaveDialog": {
       "title": "^Save original file as$"
+    },
+    "captureOutputMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyFixture": {
+      "title": "^putgd synthetic fixture$",
+      "accessible": {
+        "owned": true,
+        "name": "putgd synthetic fixture"
+      }
     }
   },
   "control_names": {
@@ -70,9 +81,5 @@
     "historyAddFilter": [
       "Add a history filter"
     ]
-  },
-  "history_window_buttons_blocked": {
-    "issue": 818,
-    "reason": "Owned critical failure notifications cover Cinnamon window chrome and the foreground guard does not refuse those covered points; input is withheld pending #818."
   }
 }

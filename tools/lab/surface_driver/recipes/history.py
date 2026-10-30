@@ -345,7 +345,12 @@ def key_menu(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
     for key in ('Menu', 'Shift+F10'):
+        _focus_items(ctx)
+        # A selection does not establish QListView.currentIndex(). Home does.
+        ctx.keys('Home')
+        ctx.wait(lambda: _state(ctx)['selectedIds'] == [row['id']], 'current keyboard row has exact receipt identity')
         ctx.keys(key)
+        _wait_window(ctx, 'historyRowMenu')
         ctx.frame('menu-' + key)
         ctx.click('text:Copy details', window='historyRowMenu')
         detail = json.loads(ctx.clipboard_text())
@@ -785,45 +790,296 @@ def escape_details(ctx):
 
 
 
+
+# Composite rows use production inspection plus real input. Fixture setup and
+# cleanup stay in core; no fake resident replies or injected Qt events.
+def _nodes(ctx, **query):
+    return ctx.accessible(dict(owned=True, visible=True, showing=True,
+                               pid=ctx.geometry('history')['pid'], **query))
+
+
+def _selected_page(ctx, label):
+    return any(n.get('states', {}).get('selected') for n in _nodes(ctx, role='page tab', name=label))
+
+
+def _capture_settings(ctx):
+    ctx.wait(lambda: _selected_page(ctx, 'Settings'), 'Settings navigation tab selected')
+    ctx.wait(lambda: _result(ctx.call('ui.viewState')).get('settings', {}).get('section') == 1,
+             'resident reports Settings Capture section')
+
+
+@recipe('shell.nav', needs=('app-profile',))
+def navigation(ctx):
+    _open(ctx)
+    _frame(ctx, 'before')
+    for page in ('Destinations', 'Settings', 'History'):
+        _click_history_node(ctx, {'role': 'page tab', 'name': page})
+        ctx.wait(lambda: _selected_page(ctx, page), page + ' selected after pointer input')
+    # The segmented tab bar implements native arrow-key navigation.
+    for key, page in (('Right', 'Destinations'), ('Right', 'Settings'), ('Left', 'Destinations'), ('Left', 'History')):
+        ctx.keys(key)
+        ctx.wait(lambda: _selected_page(ctx, page), page + ' selected after ' + key)
+    ctx.call('ui.viewState')
+    _frame(ctx, 'after')
+
+
+@recipe('shell.app-menu-quit', needs=('resident-lifecycle',))
+def quit_application(ctx):
+    lifecycle = ctx.fixture('resident-lifecycle')
+    _open(ctx)
+    _frame(ctx, 'before')
+    ctx.click('applicationMenu', window='history')
+    _wait_window(ctx, 'applicationMenuPopup')
+    ctx.click('text:Quit put.gd', window='applicationMenuPopup')
+    ctx.wait(lifecycle.stopped, 'private resident socket removed after real Quit')
+    ctx.frame('quit')
+    new = lifecycle.launch()
+    ctx.expect(new != lifecycle.initial, 'relaunch has a new authenticated resident identity')
+    _open(ctx)
+    _frame(ctx, 'after')
+
+
+@recipe('shell.output-summary', needs=('settings-action-routes',))
+def output_summary(ctx):
+    routes = ctx.fixture('settings-action-routes')
+    routes.add('clipboard', routes.profile_ids[1])
+    _open(ctx)
+    _frame(ctx, 'before')
+    ctx.click('captureOutputSummary', window='history')
+    _wait_window(ctx, 'captureOutputMenu')
+    rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
+                           'pid': ctx.geometry('history')['pid'], 'role': 'label'})
+    labels = [n['name'] for n in rows]
+    ctx.expect(any(n.startswith('Default: ') for n in labels), 'popup exposes inherited output')
+    ctx.expect(any(n.startswith('Upload clipboard: ') and 'Synthetic 1' in n for n in labels),
+               'popup exposes the exact clipboard exception destination')
+    ctx.frame('output-popup')
+    ctx.click('text:Change output', window='captureOutputMenu')
+    _capture_settings(ctx)
+    _frame(ctx, 'after', None)
+
+
+@recipe('shell.output-warning', needs=('settings-no-output',))
+def output_warning(ctx):
+    ctx.fixture('settings-no-output')
+    _open(ctx)
+    _frame(ctx, 'before')
+    ctx.expect(bool(_nodes(ctx, name='New captures have no output. Choose a destination or turn on Keep a local copy.')),
+               'accepted no-output configuration produces the actual warning strip')
+    ctx.click('chooseCommandOutput', window='history')
+    _capture_settings(ctx)
+    ctx.expect(not _nodes(ctx, objectName='chooseCommandOutput'), 'Capture page owns recovery after navigation')
+    _frame(ctx, 'after', None)
+
+
+@recipe('shell.first-launch')
+def first_launch(ctx):
+    profile = ctx.fixture('app-profile', first_launch=True)
+    ctx.expect(profile.first_launch, 'core restarted without a configuration file')
+    ctx.wait(lambda: _selected_page(ctx, 'Settings'), 'first launch selects Settings without a show command')
+    ctx.call('ui.viewState')
+    _frame(ctx, 'before', None)
+    ctx.expect(bool(_nodes(ctx, name='New captures have no output. Choose a destination or turn on Keep a local copy.')),
+               'first launch explains that no output is configured')
+    ctx.click('chooseCommandOutput', window='history')
+    _capture_settings(ctx)
+    _frame(ctx, 'after', None)
+
+
+@recipe('history.list', needs=('history_rows',))
+def list_gestures(ctx):
+    data = ctx.fixture('history_rows')
+    row = _row(ctx, 'history_rows')
+    _frame(ctx, 'before')
+    # Compact details have an explicit inspectable open/closed state; list at
+    # full width already shows its inspector. Gallery uses the same delegates.
+    _gallery(ctx)
+    _details(ctx)
+    ctx.keys('Esc')
+    ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape closes Enter details')
+    query = {'owned': True, 'visible': True, 'showing': True,
+             'pid': ctx.geometry('history')['pid'], 'role': 'list item'}
+    ctx.double_click_accessible(query)
+    ctx.wait(lambda: _state(ctx)['detailsOpen'], 'double-click opens exact selected delegate')
+    ctx.expect(_state(ctx)['selectedIds'] == [row['id']], 'double-click preserves receipt identity')
+    ctx.keys('Esc')
+    ctx.click('historyListMode', window='history')
+    _search(ctx, '')
+    _focus_items(ctx)
+    ctx.keys('Home', 'Ctrl+A')
+    ctx.wait(lambda: set(_state(ctx)['selectedIds']) == set(data.ids), 'extended selection contains every independent fixture receipt')
+    # Context menu at a native row point, with the native menu's Copy details
+    # proving the clicked row rather than optimistic menu visibility alone.
+    _search(ctx, row['name'])
+    _focus_items(ctx)
+    ctx.keys('Home')
+    ctx.click_accessible(query, button='right')
+    _wait_window(ctx, 'historyRowMenu')
+    ctx.frame('context-menu')
+    ctx.click('text:Copy details', window='historyRowMenu')
+    copied = json.loads(ctx.clipboard_text())
+    ctx.expect([r['id'] for r in copied['records']] == [row['id']], 'right-click menu acts on exact row')
+    _frame(ctx, 'after')
+
+
+def _recent(ctx):
+    return _result(ctx.call('operation.recent'))['operations']
+
+
+def _new_operation(ctx, previous, action):
+    def observed():
+        matches = [o for o in _recent(ctx) if o['id'] not in previous and o['action'] == action]
+        ctx.expect(len(matches) <= 1, 'one operation admitted for one command')
+        return matches[0] if matches else None
+    value = ctx.wait(observed, 'new ' + action + ' operation')
+    ctx.note('operationId=' + value['id'] + ' action=' + action)
+    return value
+
+
+def _settle(ctx, identity):
+    return ctx.wait(lambda: (v if (v := _result(ctx.call('operation.inspect', {'id': identity})))['state']
+                            in ('completed', 'cancelled', 'failed', 'partial', 'interrupted') else None),
+                    'owned operation settles', timeout=45)
+
+
+def _exercise_command(ctx, action, dispatch, *, external_focus=True):
+    if action == 'clipboard':
+        source = ctx.fixture('events.clipboard')
+        ctx.wait(lambda: ctx.clipboard_text() == source.text, 'synthetic text clipboard acquired')
+    elif action == 'window' and external_focus:
+        scene = ctx.fixture('selector-desktop')
+        scene.command('raise')
+        ctx.focus('historyFixture', raise_window=False)
+    previous = {v['id'] for v in _recent(ctx)}
+    dispatch(action)
+    operation = _new_operation(ctx, previous, action)
+    identity = operation['id']
+    try:
+        if action in ('region', 'edit', 'record'):
+            window = 'recsel' if action == 'record' else 'region'
+            _wait_window(ctx, window)
+            ctx.expect(operation['state'] not in ('failed', 'interrupted'), 'command reached its real selector')
+            ctx.frame('selector-' + action)
+            ctx.focus(window, raise_window=False)
+            ctx.keys('Esc')
+            ctx.expect(_settle(ctx, identity)['state'] == 'cancelled', 'real Escape cancels the new selector')
+        else:
+            state = _settle(ctx, identity)
+            ctx.expect(state['state'] == 'completed' and bool(state.get('items')), 'local command completed')
+            ctx.expect(all(i['uploadStatus'] == 'local_only' and i['local']['status'] == 'saved' for i in state['items']),
+                       'every artifact saved locally without publication')
+            if action == 'clipboard':
+                # Read only these operation-owned local paths. No existing
+                # clipboard payload or arbitrary user file is inspected.
+                import shlex
+                path = state['items'][0]['local']['path']
+                script = 'python3 -c ' + shlex.quote('from pathlib import Path;assert Path(' + repr(path) + ').read_text() == ' + repr(source.text))
+                ctx.expect(ctx.shell(script)['returncode'] == 0, 'saved clipboard bytes match the synthetic source')
+        ctx.frame('completed-' + action)
+    finally:
+        ctx.call('operation.cancel', {'id': identity})
+
+
+def _shell_command_recipe(interaction, action):
+    def command(ctx):
+        ctx.fixture('app-profile')
+        if action != 'clipboard':
+            ctx.fixture('selector-desktop').command('raise')
+        _open(ctx)
+        _frame(ctx, 'before')
+        _exercise_command(ctx, action, lambda _: ctx.click('text:' + {
+            'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
+            'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}[action], window='history'), external_focus=False)
+        _open(ctx)
+        _frame(ctx, 'after')
+    command.__name__ = 'command_' + action
+    recipe(interaction, needs=('app-profile', 'events.clipboard') if action == 'clipboard'
+           else ('app-profile', 'selector-desktop'), timeout=240)(command)
+    return command
+
+
+for _action in ('region', 'window', 'desktop', 'edit', 'record', 'clipboard'):
+    _shell_command_recipe('shell.command-' + {'edit': 'capture-edit', 'record': 'record', 'clipboard': 'upload-clipboard'}.get(_action, 'capture-' + _action), _action)
+
+
+def _action_matrix(ctx, dispatch):
+    ctx.fixture('app-profile')
+    ctx.fixture('selector-desktop')
+    _open(ctx)
+    _frame(ctx, 'before')
+    for action in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record'):
+        _exercise_command(ctx, action, dispatch)
+    _open(ctx)
+    _frame(ctx, 'after')
+
+
+@recipe('cli.action-invoke', needs=('app-profile', 'selector-desktop', 'events.clipboard'), timeout=480)
+def cli_actions(ctx):
+    _action_matrix(ctx, lambda action: _cli(ctx, 'action.invoke', json.dumps({'action': action})))
+
+
+@recipe('mcp.perform-action', needs=('app-profile', 'selector-desktop', 'events.clipboard'), timeout=480)
+def mcp_actions(ctx):
+    _action_matrix(ctx, lambda action: _result(ctx.mcp('perform_action', {'action': action})))
+
+
+@recipe('history.edit-again', needs=('history-row',))
+def edit_again(ctx):
+    row = _row(ctx)
+    detail = _result(ctx.call('history.detail', {'id': row['id']}))
+    path = detail['local']['path']
+    import shlex
+    def digest():
+        result = ctx.shell('python3 -c ' + shlex.quote('from pathlib import Path;import hashlib;print(hashlib.sha256(Path(' + repr(path) + ').read_bytes()).hexdigest())'))
+        ctx.expect(result['returncode'] == 0, 'retained synthetic source readable')
+        return result['stdout'].strip()
+    before = digest()
+    _frame(ctx, 'before')
+    previous = {o['id'] for o in _recent(ctx)}
+    ctx.click('editHistoryImage', window='history')
+    operation = _new_operation(ctx, previous, 'edit')
+    identity = operation['id']
+    try:
+        def ready():
+            reply = ctx.cli('editor.inspect', json.dumps({'id': identity}))
+            value = json.loads(reply['stdout'])
+            return _result(value) if value.get('ok') is not False else None
+        state = ctx.wait(ready, 'new editor session ready')
+        ctx.expect(state['phase'] == 'editing' and [state['width'], state['height']] == [640, 320],
+                   'History Edit opens an independent editor on the retained fixture')
+        ctx.frame('editor')
+    finally:
+        ctx.call('editor.cancel', {'id': identity})
+    ctx.expect(digest() == before, 'editing and cancelling preserve immutable history source bytes')
+    ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'], 'original receipt survives Edit')
+    _open(ctx)
+    _frame(ctx, 'after')
+
+
 # Explicit declarations, rather than optimistic click-and-review passes. These
 # remain functional=blocked until the named setup/oracle exists. Each reason is
 # independently included in the per-ID acceptance table generated from REGISTRY.
 BLOCKED = {
-    'history.list': 'Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.',
     'history.filters': 'Needs full date/MIME/destination/state fixture matrix and deterministic result oracles for every + Filter choice; clear-filters recipe exercises one upload filter only.',
     'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; fixture variants do not yet cover all states.',
-    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants still need deterministic failed/queued deletion fixtures (#675); link opening stays with links.',
-    'history.edit-again': 'Retained history images now exist; GUI Edit still needs a returned editor identity and an immutable-source oracle to prove the new editing session (#675).',
+    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants still need deterministic failed/queued deletion fixtures; link opening stays with links.',
     'history.retry-deletion': 'Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.',
-    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle (#675).',
+    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle.',
     'history.local-copy-settings': 'Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.',
-    'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup (#675).',
-    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls with a complete compact-layout oracle (#675).',
-    'shell.app-menu-quit': 'Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.',
-    'shell.nav': 'Needs mainNavigation tab hit rectangles and active main.page oracle; ui.viewState currently exposes state/appearance/captureRouting only.',
+    'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup.',
+    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls with a complete compact-layout oracle.',
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
-    'shell.command-capture-region': 'Needs capture selector fixture, selection bounds and artifact oracle; must complete/cancel real selector before next recipe.',
-    'shell.command-capture-window': 'Needs independent synthetic target window, real window selector completion and operation identity.',
-    'shell.command-capture-desktop': 'Needs local-output capture fixture and captured artifact/hash oracle.',
-    'shell.command-capture-edit': 'Needs region selector completion fixture and inspectable editor ID.',
-    'shell.command-record': 'Needs recording selector fixture and cleanup through recording.cancel with exact recording ID.',
-    'shell.command-upload-clipboard': 'Needs independent native clipboard fixture with payload/hash oracle, reused from tray_progress.py.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
-    'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness (#675).',
+    'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness.',
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
-    'shell.output-summary': 'Needs output-summary popup capture and Settings Capture navigation oracle.',
-    'shell.output-warning': 'settings-no-output now supplies configuration; the full warning-text matrix and Settings Capture navigation still need live assertions (#675).',
     'shell.action-recovery-banner': 'Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.',
     'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
-    'shell.first-launch': 'app-profile(first_launch=True) now provides lifecycle reset; the full initial Settings/no-output contract still needs live selected-page and warning-strip assertions (#675).',
-    'cli.launcher-background': 'The launcher descriptor exists, but Context.cli still routes leading flags to putgd-cli; stopped-resident/tray-absent lifecycle and the 10-second fallback oracle are also missing (#675).',
-    'cli.action-invoke': 'Needs native source and six action completion fixtures; capture/record selectors cannot be left active.',
-    'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures (#675).',
-    'mcp.perform-action': 'Needs native source and six action completion fixtures for perform_action.',
-    'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle (#675).',
-    'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane (#675).',
+    'cli.launcher-background': 'The launcher descriptor exists, but Context.cli still routes leading flags to putgd-cli; stopped-resident/tray-absent lifecycle and the 10-second fallback oracle are also missing.',
+    'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures.',
+    'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle.',
+    'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane.',
 }
 
 
