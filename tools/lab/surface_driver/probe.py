@@ -63,59 +63,152 @@ def matches(row, query):
     return True
 
 
-# Showing popup menus seen through AT-SPI events: {(pid, path): node}.
-_POPUPS = None
+def popup_file():
+    runtime = os.environ.get('XDG_RUNTIME_DIR')
+    return runtime + '/putgd-lab-popups.json' if runtime else None
 
 
-def watch_popups():
-    """Track Qt popup menus, which the application's accessible children omit.
+def popup_watch(query):
+    """Long-running: record the private family's showing popup menus.
 
     Qt lists only non-Qt::Popup top-level windows as application children, so a
     context or row menu opened with QMenu::exec() is unreachable by a tree walk.
-    Qt does emit object:state-changed:showing for it (ObjectShow) once someone
-    listens. Only the persistent probe process lives long enough to hear it,
-    and it must register before the menu opens: every input guard probes
-    first, which registers it.
+    Qt does emit object:state-changed:showing for it (ObjectShow) once a
+    listener is registered. This process listens for the whole run and keeps
+    {bus, path, pid} of owned showing popups in a private runtime file; every
+    (fresh) accessible() walks those popups live over the a11y bus.
     """
-    global _POPUPS
-    if _POPUPS is not None or __name__ != 'surface_driver_probe':
-        return
     import pyatspi
-    _POPUPS = {}
+    import signal
+    path, current = popup_file(), {}
+    def write():
+        temporary = path + '.tmp'
+        descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            os.write(descriptor, json.dumps(list(current.values())).encode())
+        finally:
+            os.close(descriptor)
+        os.replace(temporary, path)
     def changed(event):
         try:
             node = event.source
             if normalize_role(node.getRoleName()) not in POPUP_ROLES:
                 return
-            key = (node.get_process_id(), node.path)
+            pid = node.get_process_id()
+            if not owned(pid):
+                return
+            bus = node.app.bus_name
+            key = bus + node.path
             if event.detail1:
-                _POPUPS[key] = node
-            else:
-                _POPUPS.pop(key, None)
+                current[key] = {'bus': bus, 'path': node.path, 'pid': pid}
+            elif current.pop(key, None) is None:
+                return
+            write()
         except Exception:
             pass
+    write()
     pyatspi.Registry.registerEventListener(changed, 'object:state-changed:showing')
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    pyatspi.Registry.start()
+    return {}
+
+
+class RawNode:
+    """A live accessible addressed by (bus name, path) on the a11y bus.
+
+    Implements just the pyatspi node surface accessible() uses, so a popup
+    known only from the watcher's file is walked with the same code. Every
+    property is a direct D-Bus call: nothing is cached across probes.
+    """
+    ACCESSIBLE = 'org.a11y.atspi.Accessible'
+
+    def __init__(self, connection, bus, path, pid):
+        self.connection, self.bus, self.path, self.pid = connection, bus, path, pid
+        self._object = connection.get_object(bus, path, introspect=False)
+
+    def _call(self, interface, method, *args):
+        import dbus
+        try:
+            return self._object.get_dbus_method(method, interface)(*args, timeout=3)
+        except dbus.DBusException as error:
+            raise NotImplementedError(str(error)) from error
+
+    def _property(self, name):
+        return str(self._call('org.freedesktop.DBus.Properties', 'Get', self.ACCESSIBLE, name))
+
+    @property
+    def name(self):
+        return self._property('Name')
+
+    @property
+    def description(self):
+        return self._property('Description')
+
+    def getRoleName(self):
+        return str(self._call(self.ACCESSIBLE, 'GetRoleName'))
+
+    def get_process_id(self):
+        return self.pid
+
+    def getAttributes(self):
+        return [str(k) + ':' + str(v) for k, v in self._call(self.ACCESSIBLE, 'GetAttributes').items()]
+
+    def getState(self):
+        words = [int(word) for word in self._call(self.ACCESSIBLE, 'GetState')]
+        class States:
+            def contains(self, state):
+                index = int(state)
+                return bool(index // 32 < len(words) and words[index // 32] >> (index % 32) & 1)
+        return States()
+
+    def queryComponent(self):
+        return self
+
+    def getExtents(self, coordinates):
+        import dbus
+        return tuple(int(v) for v in self._call('org.a11y.atspi.Component', 'GetExtents', dbus.UInt32(int(coordinates))))
+
+    def queryText(self):
+        raise NotImplementedError
+
+    def queryAction(self):
+        raise NotImplementedError
+
+    def __iter__(self):
+        return iter([RawNode(self.connection, str(bus), str(path), self.pid)
+                     for bus, path in self._call(self.ACCESSIBLE, 'GetChildren')])
 
 
 def popup_roots(query):
-    """Extra walk roots for showing popups, with the same application scoping."""
+    """Extra walk roots for the watcher's showing popups, with the same app scoping."""
+    path = popup_file()
+    try:
+        with open(path) as stream:
+            entries = json.load(stream)
+    except (OSError, TypeError, ValueError):
+        return []
+    if not entries:
+        return []
+    import dbus
     import pyatspi
+    session = dbus.SessionBus()
+    address = dbus.Interface(session.get_object('org.a11y.Bus', '/org/a11y/bus'), 'org.a11y.Bus').GetAddress()
+    connection = dbus.bus.BusConnection(str(address))
     roots = []
-    for key, node in list((_POPUPS or {}).items()):
+    for entry in entries:
+        pid = entry['pid']
+        if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
+            continue
         try:
+            node = RawNode(connection, entry['bus'], entry['path'], pid)
             if not node.getState().contains(pyatspi.STATE_SHOWING):
-                _POPUPS.pop(key, None)
                 continue
-            app = node.get_application()
-            name, pid = app.name or '', key[0]
-        except Exception:
-            _POPUPS.pop(key, None)
+            name = RawNode(connection, entry['bus'], '/org/a11y/atspi/accessible/root', pid).name
+        except NotImplementedError:
             continue
         if query.get('application') and not fnmatch.fnmatchcase(name, query['application']):
             continue
-        if (query.get('pid') is not None and pid != query['pid']) or (query.get('owned') and not owned(pid)):
-            continue
-        roots.append((key, (node, 2, '', name, None, [{'name': name, 'role': 'application', 'rect': None, 'pid': pid}])))
+        roots.append(((pid, entry['path']), (node, 2, '', name, None, [{'name': name, 'role': 'application', 'rect': None, 'pid': pid}])))
     return roots
 
 
@@ -141,7 +234,6 @@ def accessible(query):
     unknown = set(query) - QUERY_KEYS
     if unknown:
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
-    watch_popups()
     matches_ = []
     stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
     # LIFO: popup roots go first so the ordinary tree is walked before them;
@@ -659,10 +751,6 @@ def shell_hit(query):
 
 
 def foreground(query):
-    try:
-        watch_popups()
-    except ImportError:
-        pass
     # Compositor-drawn content (notification banners) is not an X window: an
     # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
     # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
@@ -777,9 +865,21 @@ def sender_pid(sender):
 
 
 def notification_monitor(query):
-    """Long-running: filter dbus-monitor into query['log'] until terminated."""
+    """Long-running desktop observer for one run, until terminated.
+
+    Filters dbus-monitor into query['log'] (when a notification server owner
+    was resolved) and runs popup_watch as a child that dies with it.
+    """
     import select
     import signal
+    def die_with_parent():
+        ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+    watcher = subprocess.Popen([sys.executable, sys.argv[0], json.dumps({'probe': 'popup_watch', 'query': {}})],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                               preexec_fn=die_with_parent)
+    if not query.get('server'):
+        signal.signal(signal.SIGTERM, lambda *_: (watcher.terminate(), sys.exit(0)))
+        return {'exit': watcher.wait()}
     owners = {}
     def sender_owned(sender):
         if sender not in owners:
@@ -792,11 +892,9 @@ def notification_monitor(query):
     rules = ["type='method_call',interface='" + NOTIFY_INTERFACE + "',member='Notify',arg0='put.gd'",
              "type='method_return',sender='" + query['server'] + "'",
              "type='signal',interface='" + NOTIFY_INTERFACE + "',sender='" + query['server'] + "'"]
-    def die_with_parent():
-        ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
     child = subprocess.Popen(['dbus-monitor', '--session', *rules], stdout=subprocess.PIPE,
                              stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
-    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), sys.exit(0)))
+    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), watcher.terminate(), sys.exit(0)))
     descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
     buffer, block = b'', []
     def flush():
@@ -846,7 +944,8 @@ def main():
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
                     'foreground': foreground, 'windows': windows, 'tray':tray,
-                    'notification_monitor': notification_monitor, 'notification_log': notification_log}[request['probe']]
+                    'notification_monitor': notification_monitor, 'notification_log': notification_log,
+                    'popup_watch': popup_watch}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))

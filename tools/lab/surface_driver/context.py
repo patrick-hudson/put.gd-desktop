@@ -444,19 +444,21 @@ asyncio.run(main())
         return self._probe('accessible',query)
 
     def start_notifications(self):
-        """Start this run's filtered notification monitor (private family only).
+        """Start this run's desktop observer: notification log and popup watcher.
 
         Raw dbus-monitor output never reaches disk: probe.notification_monitor
         keeps only put.gd Notify calls whose sender belongs to the private
-        family, the server's replies to them and signals for those IDs.
+        family, the server's replies to them and signals for those IDs. Its
+        popup_watch child records the private family's showing QMenu popups,
+        which runtime menu resolution (click(..., 'historyContextMenu')) needs.
         """
         # Resolve the unique server owner so method-return filtering works on
         # dbus-monitor implementations which do not resolve well-known senders.
         result = self.shell("gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.GetNameOwner org.freedesktop.Notifications")
         owner = re.search(r"':[0-9]+\.[0-9]+'", result['stdout']) if result['returncode'] == 0 else None
-        if not owner:
-            return
-        self._notification_server = owner[0].strip("'")
+        # Without a server there is nothing to log, but the same observer still
+        # runs the runtime-menu popup watcher (probe.popup_watch).
+        self._notification_server = owner[0].strip("'") if owner else None
         root = self.target.root
         program, log = root+'/notification-monitor.py', root+'/notifications.log'
         request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'log':log}})
@@ -482,23 +484,26 @@ asyncio.run(main())
     def hover_accessible(self, query):
         return self._accessible_pointer(query,None)
 
-    def _accessible_pointer(self, query, button):
+    def _accessible_pointer(self, query, button, node=None):
         """Real pointer input to one visible desktop node, with a fresh hit-test.
 
         This is for desktop-drawn content (notifications/tray/browser), not a
         D-Bus Activate/AT-SPI doAction shortcut. Query must include ownership
         (pid/application/owned); arbitrary first-match selection is forbidden.
+        A node already resolved by an owned query skips the second tree walk:
+        the compositor pick below proves that exact node is drawn at the point.
         """
         if self._input_poisoned:
             raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
-        if not any(k in query for k in ('pid','application','owned')):
-            raise RecipeBlocked('desktop input query requires pid, application, or owned')
-        nodes = self.accessible(dict(query, visible=True, showing=True))
-        nodes = [n for n in nodes if n.get('rect') and min(n['rect'][2:]) > 0 and
-                 (n.get('enabled') or n.get('role') in ('label','text','notification'))]
-        if len(nodes) != 1:
-            raise RecipeBlocked('desktop input control is missing or ambiguous')
-        node = nodes[0]
+        if node is None:
+            if not any(k in query for k in ('pid','application','owned')):
+                raise RecipeBlocked('desktop input query requires pid, application, or owned')
+            nodes = self.accessible(dict(query, visible=True, showing=True))
+            nodes = [n for n in nodes if n.get('rect') and min(n['rect'][2:]) > 0 and
+                     (n.get('enabled') or n.get('role') in ('label','text','notification'))]
+            if len(nodes) != 1:
+                raise RecipeBlocked('desktop input control is missing or ambiguous')
+            node = nodes[0]
         x,y,w,h = node['rect']
         point = (x+w/2,y+h/2)
         witness = self._probe('foreground', {'desktop_node':node,'point':point,
@@ -549,14 +554,18 @@ asyncio.run(main())
         if len(titles) != 1:
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
+        # Shell banners expire within seconds and pause while hovered; St
+        # buttons also arm only after the pointer has entered them. Hover the
+        # drawn title at once, then click without another tree walk.
+        self._accessible_pointer(None, None, node=title)
+        time.sleep(.15)
         if action == 'default':
-            query = {**policy, 'pid':title['pid'], 'name':glob.escape(title['name']), 'role':title['role']}
+            target = title
         else:
-            self.hover_accessible({**policy,'pid':title['pid'],'name':glob.escape(title['name']),'role':title['role']})
             containers = [n for n in title.get('ancestors',[]) if n['role'] in ('notification','panel','alert') and n.get('rect')]
             buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
                                        'visible':True,'showing':True,'enabled':True})
-            query = None
+            target = None
             # A title's nearest panel can contain just its text/icon. Select
             # the smallest common ancestor which also contains one action.
             for ancestor in reversed(containers):
@@ -565,13 +574,12 @@ asyncio.run(main())
                           container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
                           container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
                 if len(inside)==1:
-                    query = {**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
-                             'role':inside[0]['role'],'within':container}
+                    target = inside[0]
                     break
-            if query is None:
+            if target is None:
                 raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
         previous = len(notice.get('action_events',[]))
-        self.click_accessible(query)
+        self._accessible_pointer(None, 'left', node=target)
         def invoked():
             return any(e['action']==action for n in self.notifications()
                        if n['id']==identity and all(n.get(k)==notice.get(k) for k in ('at','sender','server'))
