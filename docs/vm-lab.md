@@ -333,7 +333,10 @@ guest lifetime check before releasing that token.
 The root package supervisor is launched through the same user-scope mechanism,
 in a separate `putgd-supervisor-install-<id>.scope`. Its wrapper records
 `supervisor-process.json` before sudo; the root helper verifies that sudo kept
-it in that exact scope before admission. It never migrates a root process into
+it in that exact scope before admission. Scoped launches pass `--require-scope`,
+so missing or session-only supervisor metadata cannot downgrade that check.
+Legacy callers and the explicit unavailable-manager fallback retain their
+existing session behavior. It never migrates a root process into
 a caller-selected cgroup. The normal install evidence includes that identity.
 The root package supervisor also admits itself under `install-guard`. It
 becomes a subreaper first, then starts only while its own job holds

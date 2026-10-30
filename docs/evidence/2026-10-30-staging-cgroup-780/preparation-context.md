@@ -27,3 +27,16 @@
   directory is retained. A second run in the same guest uses a tight external
   observer with a ten-second hard deadline and records `populated 1 → 0`.
   The production recovery code and its safety conditions are unchanged.
+
+- The optional post-test Ubuntu golden re-hash progressed slowly. The standard
+  `sha256sum` probe also hit its 120-second bound. The owned optional exporter
+  was cancelled through its validated pidfd, retaining its PID/start identity
+  and IO counters in `ubuntu-slow-export-cancelled.json`. The obsolete export
+  path then refused a missing archive/empty receipt; no cleanup used it.
+  The completed export uses the runner's already completed full pre-launch
+  golden SHA-256, checks it against the snapshot manifest, and explicitly records
+  the post-test file identity and mtime preceding launch. It does **not** claim
+  a completed post-test full hash. All 41 final evidence files and the full
+  compressed archive were independently restored/hashed before retirement.
+  This changes evidence collection only; the cgroup tests, their budgets and
+  the production recovery/cleanup guards are unchanged.

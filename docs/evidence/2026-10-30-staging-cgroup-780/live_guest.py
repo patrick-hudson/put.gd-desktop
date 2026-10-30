@@ -3,11 +3,12 @@
 import hashlib, json, os
 from pathlib import Path
 import shlex, signal, subprocess, sys, time, uuid
-sys.path.insert(0, str(Path(__file__).resolve().parent / 'tools/lab'))
+ROOT=next(parent for parent in Path(__file__).resolve().parents
+          if (parent/'tools/lab/lab.py').is_file())
+sys.path.insert(0, str(ROOT/'tools/lab'))
 import lab
-ROOT=Path(__file__).resolve().parent
-RUN=ROOT/'work/lab-runs/c1'
-OUT=ROOT/'work/e780'
+RUN=ROOT/'work/lab-runs'/os.environ.get('PUTGD_780_RUN','c1')
+OUT=ROOT/'work'/os.environ.get('PUTGD_780_OUTPUT','e780')
 OUT.mkdir(parents=True,exist_ok=True)
 
 def save(name,value): lab.write_json(OUT/name,value)
@@ -138,15 +139,15 @@ from unittest.mock import patch
 import runpy
 source=sys.argv[1]
 def synthetic(commands,directory,timeout,recovery,package='putgd'):
-    Path('root-scope.json').write_text(json.dumps({'uid':os.getuid(),'cgroup':Path('/proc/self/cgroup').read_text().strip(),'admitted':Path('progress.json').exists()}))
+    Path('root-scope.json').write_text(json.dumps({'uid':os.getuid(),'cgroup':Path('/proc/self/cgroup').read_text().strip(),'admitted':Path('progress.json').exists(),'requiredScope':'--require-scope' in sys.argv}))
     os.chmod('root-scope.json',0o644)
 ns=runpy.run_path(source,run_name='supervisor_fixture')
 ns['main'].__globals__['supervise']=synthetic
-sys.argv=[source,sys.argv[2],'5','5'];ns['main']()
+sys.argv=[source,sys.argv[2],'5','5',*sys.argv[3:]];ns['main']()
 '''
 # Existing apt privilege installs only a temporary fixture and sudo rule in the
 # disposable overlay; never alter the production helper's installed bytes.
-fixture=ROOT/'work/e780/root-fixture.py'; fixture.write_text(root_script)
+fixture=OUT/'root-fixture.py'; fixture.write_text(root_script)
 lab.put(RUN,fixture,remote+'/root-fixture.py')
 # Instead use the production helper with a synthetic apt-get at a root-owned
 # PATH? That would weaken its command contract. The fixture above calls main()
@@ -158,7 +159,7 @@ invocation=lab.staging_invocation(remote,script,supervisor=True)
 guest('nohup setsid --wait '+invocation+' > ~/'+remote+'/supervisor.log 2>&1 < /dev/null &\n')
 wait_for(lambda:exists(remote,'root-scope.json'))
 identity=read(remote,'supervisor-process.json');root=read(remote,'root-scope.json')
-assert root['uid']==0 and root['admitted'] and root['cgroup']=='0::'+identity['cgroup']['path'],root
+assert root['uid']==0 and root['admitted'] and root['requiredScope'] and root['cgroup']=='0::'+identity['cgroup']['path'],root
 # N1 remains: once progress exists recovery may not release this token.
 try:recover(token);raise AssertionError('admitted supervisor accepted')
 except lab.LabError:pass
