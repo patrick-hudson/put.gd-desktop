@@ -183,7 +183,7 @@ sudo mount /dev/disk/by-label/PUTGDLAB /mnt
 sudo sh /mnt/bootstrap.sh /mnt/identity.pub
 ```
 
-Copy `tools/lab/bootstrap-guest.sh`, its companions `tools/lab/guest_idle.py` and `tools/lab/package_install.py`, and the public key into the disposable guest, keeping the two scripts together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
+Copy `tools/lab/bootstrap-guest.sh`, its companions `tools/lab/guest_idle.py` and `tools/lab/package_install.py`, and the public key into the disposable guest, keeping all three files together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
 
 Verify the SSH host fingerprint
 against the guest console before recording the host key. Keep the private key outside
@@ -255,15 +255,24 @@ SHA256 values with the requested package, even when its version is unchanged. Th
 runtime directory for desktop startup. U10 still owns complete release lifecycle,
 checksums and final notice auditing.
 
-The guest bootstrap installs the root-owned fixed supervisor at
-`/usr/local/lib/putgd-lab/package_install.py` and permits that command alongside
-`/usr/bin/apt-get` in the disposable guest's sudo rule. It never changes host
-privileges. Package dependency resolution uses distro repositories. Missing or
-stale helper bytes fail before apt starts; the controller checks the installed
-helper against its own source SHA-256. Older goldens without this helper also
-fail before apt starts: refresh bootstrap in a fresh disposable
-overlay through its visible console, keeping both companion helpers beside the
-script. Preserve the immutable golden; provision a new golden for lasting updates.
+New guest bootstrap installs the root-owned fixed supervisor at
+`/usr/local/lib/putgd-lab/package_install.py`. Every DEB `install` also stages
+its controller's helper into the fresh run overlay over that run's SSH
+connection, so existing immutable goldens need no refresh. The controller checks
+the uploaded SHA-256, uses the guest's existing passwordless `/usr/bin/apt-get`
+rule with an `APT::Update::Pre-Invoke` hook to install the root-owned helper and
+its fixed-command sudo rule, then checks the installed SHA-256, ownership,
+permissions and sudo access before starting the supervisor. The staging hook
+intentionally exits unsuccessfully before apt repository work; that expected
+apt exit is checked through the installed helper's postconditions. The normal
+update/install runs only under the bounded supervisor. `helper.json` records
+the verified hash and staging route; `staging.log` retains the hook result.
+
+This uses authority already granted to apt in the disposable guest. It never
+changes the host, golden, bootstrap key or `authorized_keys`, and needs no guest
+password or console bootstrap rerun. Keep the golden immutable; provision a new
+golden for lasting bootstrap changes. Package dependency resolution uses distro
+repositories.
 
 The VM apt path rejects RPM inputs; `physical.py` retains its existing dnf/RPM
 install path. DEB `install` has a 900-second apt budget and a further 600-second
@@ -286,7 +295,12 @@ name or retries apt. The guest `~/putgd-lab/install-active` lock blocks retries
 through binary verification after successful package-manager completion. Upload
 failure before the helper starts, or a later collection/verification failure after
 a successful package-manager report, releases only that job's lock. Unresolved or
-failed package-manager attempts retain it. For those attempts, inspect the recorded
+failed package-manager attempts retain it. A refused retry reports the held job
+ID and its result/progress state without creating another host evidence directory.
+If the supervisor produces no progress within 15 seconds, installation fails early
+and points to `supervisor.log` (which may itself be missing); the lock stays held
+because a lost launch reply does not prove no process started.
+For those attempts, inspect the recorded
 job/result, reconcile the exact owned process identities and dpkg recovery state, and acknowledge recovery by removing only that
 job's lock before another install. Do not remove a lock while its supervisor or
 package descendants are still running; uninterruptible IO may require retaining
@@ -305,7 +319,7 @@ set -eu
 lab_run_id=$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')
 lab_run="$PWD/work/lab-runs/cinnamon-$lab_run_id"
 test ! -e "$lab_run"
-python3 tools/diagnostics/check_socket_paths.py --socket "$lab_run/qmp.sock"
+python3 tools/diagnostics/check_socket_paths.py --socket "$lab_run/qmp.sock" "$lab_run/vnc.sock"
 python3 tools/lab/lab.py profiles
 python3 tools/lab/lab.py launch --profile cinnamon-x11 \
   --golden work/lab-images/cinnamon-x11.qcow2 --run "$lab_run" \
@@ -493,6 +507,39 @@ Windows custom runs use `python3 tools/lab/windows.py cleanup --vm RUN
 rules. Do not place evidence manifests or private run files in release exports.
 Retirement removes the old guest filesystem permanently; future tests use a
 fresh run directory cloned from the preserved golden.
+
+
+### Retire a pre-existing run outside the canonical root
+
+The cleanup guard deliberately refuses an old run outside this checkout's
+`work/lab-runs`. Do not bypass the guard, use a symlink, or delete its disk by
+hand. Complete the following on the actual QEMU host, after its campaign and
+investigation finish:
+
+1. Export and checksum its evidence, original `state.json`, exact QEMU identity,
+   backing chain and old absolute run path. Stop the exact owned VM with
+   `lab.py reset --run OLD_RUN`, then verify that process has exited and no
+   process holds the overlay. Inventory backing chains and confirm no other
+   overlay references a disk inside the run before relocating it. Preserve all
+   golden disks and their paths.
+2. Choose an unused, short, symlink-free direct child of this checkout's
+   `work/lab-runs`. Move the stopped run directory there as a complete bundle.
+   Preserve the original state as an evidence file; update only the active
+   `state.json`'s `overlay` field to the new absolute `disk.qcow2` path. Preserve
+   the run ID, golden path/hash and historical results. Record both paths and
+   the unchanged overlay/backing identities in relocation evidence. Never
+   resume this retired run or rewrite historical acceptance records.
+3. Export and verify that relocation evidence. Create the explicit completion
+   manifest described above using the **new** absolute run path and original
+   run ID, and include the original state and relocation record as hashed
+   members. Run canonical `cleanup --run NEW_RUN --evidence-manifest MANIFEST
+   --dry-run`, then the same command without `--dry-run`. For a golden in
+   another checkout, supply its owned canonical `--images-root .../work/lab-images`.
+   Retain the cleanup receipt alongside the evidence.
+
+The guard still checks ownership, actual processes, all backing dependencies,
+image locks and completion evidence after relocation. A stopped VM alone is
+insufficient authorization to retire its disk.
 
 
 ## Physical-desktop input agent
