@@ -1212,6 +1212,15 @@ def notifier_item(item):
     return service,path
 
 
+def notifier_process(pid):
+    """Pin the same-user process start across an SNI property request."""
+    directory='/proc/'+str(pid)
+    if os.stat(directory).st_uid!=os.getuid():
+        raise ValueError('notifier belongs to another account')
+    with open(directory+'/stat') as stream:
+        return stream.read().split(') ',1)[1].split()[19]
+
+
 def tray(query):
     """Read-only SNI properties belonging to the private resident family."""
     import dbus
@@ -1224,13 +1233,16 @@ def tray(query):
     for item in items:
         try:
             service,path = notifier_item(item)
-            pid = int(daemon.GetConnectionUnixProcessID(service))
+            owner = str(daemon.GetNameOwner(service))
+            pid = int(daemon.GetConnectionUnixProcessID(owner))
             if not owned(pid) or query.get('pid') not in (None,pid):
                 continue
-            properties = dbus.Interface(bus.get_object(service,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
+            start = notifier_process(pid)
+            properties = dbus.Interface(bus.get_object(owner,path),'org.freedesktop.DBus.Properties').GetAll('org.kde.StatusNotifierItem')
             # A stale item or an owner change during the property request must
             # never contaminate the private-family observation.
-            if int(daemon.GetConnectionUnixProcessID(service))!=pid or not owned(pid):
+            if (str(daemon.GetNameOwner(service))!=owner or int(daemon.GetConnectionUnixProcessID(owner))!=pid
+                    or notifier_process(pid)!=start or not owned(pid)):
                 continue
         except (dbus.DBusException,OSError,ValueError):
             # A watcher can retain an item after its owner exited. Continue to
@@ -1241,7 +1253,7 @@ def tray(query):
             payload = bytes(data)
             pixmaps.append({'width':int(width),'height':int(height),'bytes':len(payload),'sha256':hashlib.sha256(payload).hexdigest()})
         tooltip = properties.get('ToolTip',('',[],'',''))
-        rows.append({'pid':pid,'service':service,'path':path,'id':str(properties.get('Id','')),
+        rows.append({'pid':pid,'start':start,'owner':owner,'service':service,'path':path,'id':str(properties.get('Id','')),
                      'title':str(properties.get('Title','')),'status':str(properties.get('Status','')),
                      'icon_name':str(properties.get('IconName','')),'icon_pixmaps':pixmaps,
                      'tooltip':{'title':str(tooltip[2]),'text':str(tooltip[3])},'menu':str(properties.get('Menu',''))})

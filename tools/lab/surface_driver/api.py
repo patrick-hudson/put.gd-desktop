@@ -236,8 +236,12 @@ class Context:
     def tray(self) -> list[dict]:
         """Read-only private-family SNI identities, tooltips and icon-pixmap hashes.
 
-        Rows include pid/service/path/id/title/status/icon_name/icon_pixmaps/
+        Rows include pid/start/owner/service/path/id/title/status/icon_name/icon_pixmaps/
         tooltip/menu. Menu activation still requires real desktop input.
+        start is the Linux process start tick; owner is the pinned unique bus
+        name. Both are rechecked with private-family membership after reading
+        properties. KDE bus/path and GNOME bus@/path watcher formats are accepted;
+        stale, invalid or changed-owner items are omitted.
         """
         raise NotImplementedError
 
@@ -335,6 +339,31 @@ class Context:
           and restarts once for the genuine 60-second startup cleanup. No
           manual cache.clear is counted as an automatic notice. Recipe timeout
           must cover fixture setup plus automatic_delay_seconds (60).
+        * upload-incomplete now adds automatic=True and cleanup_result to its
+          operationId/itemId descriptor: it waits for that genuine automatic
+          cleanup, so the tray's native notification is observed since recipe
+          start. events.incomplete-multipart retains the fresh-failure contract.
+        * resident-lifecycle: initial/identity() (authenticated PID/start),
+          stopped(), quit(), launch() after real Quit, restart(). A finalizer
+          launches a quit private resident before settings restoration.
+        * tray-qt-fallback: a real QApplication resident through the native
+          -platform xcb/wayland override, preserving desktop/session identity;
+          restores the original executable route. No desktop is impersonated.
+        * tray-attention: genuine retained local-save failure and retry();
+          tray-two-uploads: two independently identified loopback operations,
+          inspect()/cancel(id); tray-active-recording: live synthetic recording
+          id/inspect()/pause()/resume()/stop(); tray-output: the action-routes
+          contract; tray-update-available: an actual checked signed-release
+          bundle via settings-update-lifecycle, never a relabelled source build.
+        * shortcut-other-menu: separate real popup process/role/observe()/focus().
+          keyboard_grab_verified=False explicitly withholds any native grab
+          claim; callers must obtain that witness from their input backend.
+        * shortcut-settings-recorder: start(action), cancel(), status(),
+          recording_status(), no_operation_baseline() through real controls and
+          the actual native shortcut channel. shortcut-keyboard-layout(layout)
+          changes/restores an owned X11 map exactly; Wayland blocks without its
+          native input-source controller. No lock/unlock or ended-session
+          lifecycle is inferred from these fixtures.
         """
         raise NotImplementedError
 

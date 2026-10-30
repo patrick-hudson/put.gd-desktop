@@ -4,7 +4,7 @@ import time
 
 from ..api import RecipeBlocked
 from .base import Fixture, Scope
-from . import desktop, destinations, dialogs, events, history, images, lifecycle, live, multipart, notifications, profile, recordings, settings, updates, uploads
+from . import desktop, destinations, dialogs, events, history, images, lifecycle, live, multipart, notifications, profile, recordings, resident, settings, tray, updates, uploads
 from .geometry import history_window
 
 
@@ -36,7 +36,7 @@ FACTORIES={
     'history_saved_copy':history.saved_copy,
     'upload-failed':partial(uploads.submit,remote=True,failure=True),
     'upload-cancelled':partial(uploads.submit,remote=True,cancelled=True),
-    'upload-incomplete':events.incomplete,
+    'upload-incomplete':tray.automatic_notice,
     'upload-in-flight':partial(uploads.submit,remote=True,active=True),
     'destinations':destinations.destinations,
     'destinations-uncached':partial(destinations.destinations,uncached=True),
@@ -74,6 +74,16 @@ FACTORIES={
     'settings-binding-unsupported':partial(desktop.binding,state='unsupported'),
     'settings-update-feed':updates.feed,
     'settings-update-lifecycle':updates.lifecycle,
+    'resident-lifecycle':resident.lifecycle,
+    'tray-qt-fallback':resident.graphical,
+    'tray-attention':tray.attention,
+    'tray-two-uploads':tray.two_uploads,
+    'tray-active-recording':tray.recording,
+    'tray-update-available':tray.update,
+    'tray-output':settings.action_routes,
+    'shortcut-other-menu':tray.other_menu,
+    'shortcut-settings-recorder':tray.shortcut_recorder,
+    'shortcut-keyboard-layout':tray.keyboard_layout,
     'diagnostics-upload':settings.diagnostics_upload,
     'events.slow-upload':events.slow_upload,
     'events.update-feed':updates.feed,

@@ -584,10 +584,11 @@ class InputFoundations(unittest.TestCase):
                'IconPixmap':[(1,1,[255,0,0,0])],'ToolTip':('',[],'put.gd','Idle'),'Menu':'/Menu'}
         class Interface:
             def Get(self,*a):return [':1.7/Item',':1.8/Item']
+            def GetNameOwner(self,service):return service
             def GetConnectionUnixProcessID(self,service):return 7 if service==':1.7' else 8
             def GetAll(self,*a):return props
         fake=SimpleNamespace(SessionBus=lambda:SimpleNamespace(get_object=lambda *a:None),Interface=lambda *a:Interface())
-        with patch.dict(sys.modules,dbus=fake),patch.object(probe,'owned',side_effect=lambda pid:pid==7):
+        with patch.dict(sys.modules,dbus=fake),patch.object(probe,'owned',side_effect=lambda pid:pid==7),patch.object(probe,'notifier_process',return_value='owned-start'):
             rows=probe.tray({})
         self.assertEqual(len(rows),1);self.assertEqual(rows[0]['pid'],7)
         self.assertEqual(rows[0]['tooltip'],{'title':'put.gd','text':'Idle'})

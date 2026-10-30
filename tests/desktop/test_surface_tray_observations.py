@@ -24,6 +24,12 @@ class Notifications(unittest.TestCase):
 
 
 class NotifierIdentity(unittest.TestCase):
+    def test_exact_live_gnome_watcher_capture(self):
+        capture=json.loads((Path(__file__).with_name('fixtures')/'tray/gnome-watcher.json').read_text())
+        item=capture['registeredItems'][0]
+        self.assertEqual(item,':1.37@/org/ayatana/NotificationItem/software_update_available')
+        self.assertEqual(probe.notifier_item(item),(':1.37','/org/ayatana/NotificationItem/software_update_available'))
+
     def test_gnome_bus_at_object_path_and_kde_formats(self):
         self.assertEqual(probe.notifier_item(':1.40@/StatusNotifierItem'),(':1.40','/StatusNotifierItem'))
         self.assertEqual(probe.notifier_item(':1.40/StatusNotifierItem'),(':1.40','/StatusNotifierItem'))
@@ -40,13 +46,24 @@ class NotifierIdentity(unittest.TestCase):
                 calls.append(name)
                 if name==':1.39':raise DBusException('stale owner')
                 return 40 if name==':1.40' else 41
+            def GetNameOwner(self,name):return name
             def GetAll(self,*args):return {'Id':'putgd','ToolTip':('',[],'put.gd','Idle')}
         fake=SimpleNamespace(DBusException=DBusException,SessionBus=lambda:SimpleNamespace(get_object=lambda *a:None),Interface=lambda *a:Interface())
-        with patch.dict(sys.modules,dbus=fake),patch.object(probe,'owned',side_effect=lambda pid:pid==40):
+        with patch.dict(sys.modules,dbus=fake),patch.object(probe,'owned',side_effect=lambda pid:pid==40),patch.object(probe,'notifier_process',return_value='owned-start'):
             rows=probe.tray({})
         self.assertEqual([row['service'] for row in rows],[':1.40'])
         self.assertTrue(all('@' not in name for name in calls))
         self.assertEqual(rows[0]['path'],'/StatusNotifierItem')
+
+    def test_reused_pid_during_property_fetch_is_rejected(self):
+        class Interface:
+            def Get(self,*args):return [':1.40@/StatusNotifierItem']
+            def GetNameOwner(self,name):return name
+            def GetConnectionUnixProcessID(self,name):return 40
+            def GetAll(self,*args):return {}
+        fake=SimpleNamespace(DBusException=RuntimeError,SessionBus=lambda:SimpleNamespace(get_object=lambda *a:None),Interface=lambda *a:Interface())
+        with patch.dict(sys.modules,dbus=fake),patch.object(probe,'owned',return_value=True),patch.object(probe,'notifier_process',side_effect=['old-start','new-start']):
+            self.assertEqual(probe.tray({}),[])
 
 
 if __name__=='__main__':unittest.main()
