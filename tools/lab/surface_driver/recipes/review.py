@@ -269,8 +269,9 @@ def _verify(ctx, rid, path, info=None):
 
 def _saved(ctx, rid, path):
     info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))['state'] == 'reviewing'
+                            and s.get('lastExport', {}).get('path') == path
                             and s.get('lastExport', {}).get('status') in ('saved', 'failed') else None),
-                    'export finishes', timeout=180)
+                    'export finishes at requested path', timeout=180)
     ctx.expect(info['lastExport'].get('path') == path, 'copy export matches requested path')
     ctx.expect(info['lastExport'].get('revision') == info['edit']['revision'], 'copy export matches current edit revision')
     ctx.expect(info['lastExport']['status'] == 'saved', 'copy export succeeded')
@@ -473,8 +474,18 @@ def save_copy(ctx):
 
 @recipe('review.status-actions', needs=('recording', 'recording-export-failure'))
 def status_actions(ctx):
-    _open(ctx)
-    ctx.blocked('Full status actions need an isolated opener and recoverable export-failure fixture for Show in folder, Try again and format/trim recovery (#672)', issue=672)
+    rid = _open(ctx, 'recording-export-failure')
+    fixture = ctx.fixture('recording-export-failure')
+    ctx.expect(_inspect(ctx, rid)['lastExport']['status'] == 'failed', 'fixture has a genuine failed export')
+    _frame(ctx, 'export-failed', '39-review-status-errors')
+    ctx.click('text:Try again', window='review')
+    _saved(ctx, rid, fixture['retry_path'])
+    ctx.click('text:Copy path', window='review')
+    ctx.expect(ctx.clipboard_text() == fixture['retry_path'], 'retry result copies the saved path')
+    ctx.click('text:Dismiss', window='review')
+    ctx.wait(lambda: not _state(ctx, rid)['savedCopy']['path'], 'Dismiss clears retry result')
+    _frame(ctx, 'after')
+    ctx.blocked('Try again, Copy path and Dismiss exercised; Show in folder needs guarded opener (#682), size/format recovery needs an over-limit fixture (#672)', issue=672)
 
 
 @recipe('review.destination-menu', 'review.upload', needs=('recording', 'destination'),
@@ -557,7 +568,7 @@ def advice(ctx):
     ctx.blocked('Format tips exercised; Export failed/Recording error advice variants need fault fixtures (#672)', issue=672)
 
 
-@recipe('review.notice', needs=('recording-budget-stop',))
+@recipe('review.notice', needs=('recording-budget-stop',), timeout=240)
 def stop_notice(ctx):
     rid = _open(ctx, 'recording-budget-stop')
     info = _inspect(ctx, rid)

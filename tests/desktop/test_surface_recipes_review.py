@@ -311,6 +311,42 @@ class ReviewRecipes(unittest.TestCase):
             review._saved(ctx, 'recording-id', '/tmp/new.webm')
         self.assertFalse(any(t[0]=='shell' for t in ctx.trace))
 
+    def test_saved_waits_for_new_path_before_decoding(self):
+        ctx = FakeContext()
+        ctx.info['lastExport'] = {'path':'/tmp/old.webm','revision':0,'status':'saved'}
+        inspect = review._inspect
+        polls = []
+        def completing(context, rid):
+            polls.append(rid)
+            if len(polls) == 2:
+                context.info['lastExport']['path'] = '/tmp/new.webm'
+            return inspect(context, rid)
+        with patch.object(review, '_inspect', side_effect=completing):
+            review._saved(ctx, 'recording-id', '/tmp/new.webm')
+        self.assertEqual(len(polls), 2)
+        self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
+
+    def test_status_retry_uses_fault_fixture_and_decodes(self):
+        ctx = FakeContext()
+        path = '/tmp/r/out/retry.webm'
+        ctx.fixture_data['recording-export-failure'] = dict(ctx.fixture_data['recording'], retry_path=path)
+        ctx.info['lastExport'] = {'path':path, 'status':'failed', 'revision':0}
+        click = ctx.click
+        def retry(control, window, **kwargs):
+            click(control, window, **kwargs)
+            if control == 'text:Try again':
+                ctx.call('recording.saveCopy', {'id':'recording-id', 'path':path})
+        ctx.click = retry
+        with self.assertRaisesRegex(RecipeBlocked, 'Show in folder'):
+            review.status_actions(ctx)
+        self.assertTrue(any(t[0] == 'shell' and 'REVIEW_MEDIA_PY' in t[1] for t in ctx.trace))
+        self.assertEqual(ctx.clipboard, path)
+
+    def test_budget_fixture_has_a_bounded_longer_deadline(self):
+        spec = next(r for r in REGISTRY if 'review.notice' in r.interactions)
+        self.assertEqual(spec.needs, ('recording-budget-stop',))
+        self.assertGreaterEqual(spec.timeout, 180)
+
     def test_notice_opens_its_named_fixture(self):
         ctx = FakeContext()
         ctx.fixture_data['recording-budget-stop'] = dict(ctx.fixture_data['recording'], id='budget-recording')
