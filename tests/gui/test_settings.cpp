@@ -5,6 +5,7 @@
 #include "ui/PreferenceRows.h"
 #include "ui/Fonts.h"
 #include "ui/ByteSize.h"
+#include <QAccessible>
 #include <QToolTip>
 #include <QPainter>
 #include <QStyleOptionViewItem>
@@ -1694,6 +1695,64 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,next->mapTo(&page,next->rect().center()));
   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true,false,true,false,true,false,true,false}));
   QCOMPARE(input->text(),saved);QCOMPARE(next->text(),nextSaved);
+ }
+ void shortcutRowSwitchIgnoresKeysUntilRelease_data(){
+  QTest::addColumn<QString>("ending");
+  for(const auto* ending:{"switch","abandon","escape","deactivate"})QTest::newRow(ending)<<QString(ending);
+ }
+ void shortcutRowSwitchIgnoresKeysUntilRelease(){
+  QFETCH(QString,ending);QList<bool> transitions;QScrollArea page;ShortcutEditor editor;
+  page.setWidget(&editor);page.setWidgetResizable(true);page.resize(800,900);
+  editor.setRecordingControl([&](bool active,auto reply){
+   transitions.append(active);QJsonObject bindings;
+   for(auto it=editor.editors().cbegin();it!=editor.editors().cend();++it)bindings[it.key()]=QJsonObject{{"requested",it.value()->text()},{"actual",it.value()->text()},{"bound",!active},{"state",active?"recording":"bound"}};
+   editor.setStatus({{"available",true},{"bindings",bindings}});reply({});
+  });
+  editor.setChordResolver([](const QKeyEvent& key){return key.keyCombination();});
+  editor.setActions(Settings::defaults()["actions"].toObject());page.show();
+  QVERIFY(putgd::test::waitForWindowExposed(&page));page.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&page));
+  auto* input=editor.editors().value("region");auto* next=editor.editors().value("window");
+  const auto saved=input->text(),nextSaved=next->text();
+  QTest::mouseClick(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,input->mapTo(&page,input->rect().center()));
+  QCOMPARE(transitions,QList<bool>({true}));
+  const auto point=next->mapTo(&page,next->rect().center());
+  QTest::mousePress(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,point);
+  bool held=true;auto release=qScopeGuard([&]{if(held)QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,point);});
+  PUTGD_TRY_COMPARE(QApplication::focusWidget(),editor.findChild<QPushButton*>("recordWindowShortcut"));
+  // A complete chord and Backspace during the hold must change neither draft.
+  QTest::keyClick(page.windowHandle(),Qt::Key_8,Qt::ControlModifier|Qt::AltModifier|Qt::ShiftModifier);
+  QTest::keyClick(page.windowHandle(),Qt::Key_Backspace);
+  QCOMPARE(input->text(),saved);QCOMPARE(next->text(),nextSaved);QCOMPARE(transitions,QList<bool>({true}));
+  if(ending=="escape")QTest::keyClick(page.windowHandle(),Qt::Key_Escape);
+  if(ending=="deactivate"){QEvent event(QEvent::WindowDeactivate);QApplication::sendEvent(&page,&event);}
+  QTest::mouseRelease(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,ending=="abandon"?QPoint(1,1):point);held=false;
+  if(ending=="switch"){
+   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false,true}));
+   QTest::keyClick(page.windowHandle(),Qt::Key_9,Qt::ControlModifier|Qt::AltModifier|Qt::ShiftModifier);
+   QCOMPARE(next->text(),QString("Ctrl+Alt+Shift+9"));
+   QCOMPARE(transitions,QList<bool>({true,false,true,false}));
+  }else{
+   PUTGD_TRY_COMPARE(transitions,QList<bool>({true,false}));QCOMPARE(next->text(),nextSaved);
+  }
+  QCOMPARE(input->text(),saved);
+ }
+ void shortcutFocusedKeycapAnnouncesRecordingAction(){
+  ShortcutEditor editor;std::function<void(Error)> acknowledge;
+  editor.setRecordingControl([&](bool active,auto reply){if(active)acknowledge=reply;else reply({});});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  QVERIFY(putgd::test::waitForWindowExposed(&editor));editor.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&editor));
+  for(const auto& action:Settings::presentationOrder()){
+   auto* button=editor.findChild<QPushButton*>("record"+action.left(1).toUpper()+action.mid(1)+"Shortcut");
+   auto* accessible=QAccessible::queryAccessibleInterface(button);QVERIFY(accessible);QCOMPARE(accessible->role(),QAccessible::Button);
+   const auto idleName=accessible->text(QAccessible::Name),idleDescription=accessible->text(QAccessible::Description);
+   button->click();QCOMPARE(QApplication::focusWidget(),button);QVERIFY(accessible->state().focused);
+   const auto recording=accessible->text(QAccessible::Name)+" "+accessible->text(QAccessible::Description);
+   QVERIFY2(recording.contains("recording",Qt::CaseInsensitive),qPrintable(recording));
+   QVERIFY2(recording.contains(editor.editors().value(action)->accessibleName(),Qt::CaseInsensitive),qPrintable(recording));
+   acknowledge({});QCOMPARE(accessible->text(QAccessible::Name)+" "+accessible->text(QAccessible::Description),recording);
+   QTest::keyClick(button,Qt::Key_Escape);
+   QCOMPARE(accessible->text(QAccessible::Name),idleName);QCOMPARE(accessible->text(QAccessible::Description),idleDescription);
+  }
  }
  void shortcutRecordingNormalizesEveryActionAndIgnoresRepeat(){
   ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
