@@ -66,6 +66,8 @@ class FakeContext(Context):
         if name not in self.needs:
             raise AssertionError('undeclared fixture ' + name)
         row = dict(self.fixture_row)
+        if name == 'launcher':
+            return SimpleNamespace(executable='putgd')
         if name == 'history-row':
             return SimpleNamespace(id='image-1', history_id='image-1', row=row, operation_id='op-1')
         if name == 'history_window':
@@ -149,7 +151,7 @@ class FakeContext(Context):
         if method == 'operation.inspect':
             return copy.deepcopy(self.operations[params['id']])
         if method == 'ui.snapshot':
-            return {'build': self.build}
+            return {'build': self.build, 'residentEpoch': 'resident-1'}
         raise AssertionError('unknown production method ' + method)
 
     def click(self, control, window, button='left', offset=None):
@@ -358,6 +360,8 @@ class FakeContext(Context):
             return [{'name': n} for n in ({'Capture actions', 'Check for updates', 'About put.gd', 'Quit put.gd'} if self.menu == 'app' else {'Minimize', 'Maximize', 'Close'} if self.menu == 'header' else set())]
         if query.get('name') == 'Capture actions':
             return [{'name': 'Capture actions'}] if self.help else []
+        if query.get('role') == 'page tab':
+            return [{'name': query['name'], 'states': {'selected': query['name'] == 'History'}}]
         if query.get('name') == 'Help':
             return [{'name': 'Help'}] if self.help else []
         if 'within' in query:
@@ -387,6 +391,18 @@ class FakeContext(Context):
         else:
             self.window['width'] = max(1060, self.window['width'] + dx)
             self.window['height'] = max(680, self.window['height'] + dy)
+
+    def shell(self, script, timeout=60, cleanup=False):
+        import shlex
+        args = shlex.split(script)
+        self.assert_launcher_args(args)
+        self.events.append(('shell', script))
+        value = json.dumps(self.build) if args[1] == '--version-json' else 'putgd 26.1029.42-nightly\n' if args[1] == '--version' else ''
+        return {'returncode': 0, 'stdout': value, 'stderr': ''}
+
+    def assert_launcher_args(self, args):
+        if len(args) != 2 or args[0] != 'putgd' or args[1] not in ('--version', '--version-json', '--history', '--activity'):
+            raise AssertionError('nonliteral launcher command')
 
     def cli(self, *args, timeout=60):
         self.events.append(('cli', args))
@@ -438,7 +454,7 @@ class HistoryRecipeTests(unittest.TestCase):
             with self.subTest(recipe=item.name):
                 ctx = FakeContext(item.needs)
                 item.function(ctx)
-                self.assertTrue(any(event[0] in {'click', 'drag', 'cli', 'mcp'} for event in ctx.events))
+                self.assertTrue(any(event[0] in {'click', 'drag', 'cli', 'mcp', 'shell'} for event in ctx.events))
                 self.assertTrue(any(event[0] == 'call' for event in ctx.events))
                 referenced = {label for label, _, reference in ctx.frames if reference}
                 self.assertTrue({'before', 'after'} <= referenced)
@@ -611,13 +627,12 @@ class HistoryRecipeTests(unittest.TestCase):
                 self.assertFalse(ctx.minimized)
                 self.assertEqual(ctx.events[-1], ('view', 'ui.show', {'view': 'history'}))
 
-    def test_launcher_dispatch_to_resident_client_is_a_core_blocker(self):
+    def test_launcher_flags_use_literal_commands_in_the_owned_shell(self):
         ctx = FakeContext(('launcher',), fault='launcher-routed-to-client')
-        with self.assertRaises(RecipeBlocked) as error:
-            history.cli_version(ctx)
-        self.assertEqual(error.exception.issue, 675)
-        self.assertIn('putgd-cli', error.exception.reason)
-        self.assertFalse(any(e == ('cli', ('--version-json',)) for e in ctx.events))
+        ctx.cli = lambda *a, **k: self.fail('launcher flag reached the method client')
+        history.cli_version(ctx)
+        self.assertIn(('shell', 'putgd --version'), ctx.events)
+        self.assertIn(('shell', 'putgd --version-json'), ctx.events)
 
     def test_geometry_rows_use_supported_accessibility_filters_without_window_fixture(self):
         class NativeContext(FakeContext):

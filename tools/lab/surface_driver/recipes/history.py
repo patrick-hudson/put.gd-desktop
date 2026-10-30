@@ -83,9 +83,9 @@ def _focus_items(ctx):
             ctx.note('History list keyboard focus verified through native accessibility')
             return
         if len(nodes) > 1:
-            ctx.blocked('History list has ambiguous native keyboard-focus witnesses.', issue=675)
+            ctx.blocked('History list has ambiguous native keyboard-focus witnesses.', issue=820)
         ctx.keys('Tab')
-    ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=675)
+    ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=820)
 
 
 def _wait_window(ctx, window):
@@ -120,7 +120,7 @@ def _click_window_node(ctx, window, query):
     if (min(width, height) <= 0 or node.get('coordinate_space') == 'window-relative'
             or not box['x'] <= point[0] < box['x'] + box['width']
             or not box['y'] <= point[1] < box['y'] + box['height']):
-        ctx.blocked('History child has no verified desktop point inside its live window.', issue=675)
+        ctx.blocked('History child has no verified desktop point inside its live window.', issue=820)
     # accessible() returns desktop coordinates; click_at() takes head pixels.
     scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
     point = tuple(round((value - box.get(origin, 0)) * scale)
@@ -150,7 +150,7 @@ def _row(ctx, fixture='history-row'):
     lists = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid,
                             'name': 'History items and upload activity'})
     if len(lists) != 1 or not lists[0].get('rect'):
-        ctx.blocked('The uniquely searched History list has no unambiguous live bounds.', issue=675)
+        ctx.blocked('The uniquely searched History list has no unambiguous live bounds.', issue=820)
     # The query has exactly one row. Target its actual delegate inside the live
     # list, rather than blank viewport space or an unselected Home focus item.
     _click_history_node(ctx, {'role': 'list item', 'within': lists[0]['rect']})
@@ -525,7 +525,7 @@ def _header_point(ctx, box):
         nodes = ctx.accessible(query)
         anchors = [n for n in nodes if n.get('name') == 'Application menu' and n.get('rect')]
         if len(anchors) > 1:
-            ctx.blocked('History has ambiguous live Application menu anchors.', issue=675)
+            ctx.blocked('History has ambiguous live Application menu anchors.', issue=820)
         return (nodes, anchors[0]) if anchors else None
     nodes, anchor = ctx.wait(layout, 'accessible History header')
     _, top, _, height = anchor['rect']
@@ -541,7 +541,7 @@ def _header_point(ctx, box):
                          for part in ((left, min(right, x - 2)), (max(left, x + width + 2), right))
                          if part[1] > part[0]]
     if not intervals or max(right - left for left, right in intervals) < 16:
-        ctx.blocked('History has no verified blank header drag target.', issue=675)
+        ctx.blocked('History has no verified blank header drag target.', issue=820)
     left, right = max(intervals, key=lambda v: v[1] - v[0])
     point = ((left + right) / 2, y)
     return tuple(round((point[i] - box.get(('screen_x', 'screen_y')[i], 0))
@@ -705,11 +705,18 @@ def close_window(ctx):
     _frame(ctx, 'after')
 
 
+def _launcher(ctx, flag):
+    # The public shell runs in Target's owned private XDG environment. Launcher
+    # flags are literal, nonsecret commands; JSON method parameters stay on the
+    # core's params-stdin CLI path. No alternate transport/backend is created.
+    import shlex
+    ctx.expect(flag in ('--version', '--version-json', '--history', '--activity'), 'supported launcher flag')
+    executable = ctx.fixture('launcher').executable
+    return ctx.shell(shlex.quote(executable) + ' ' + flag)
+
+
 def _launcher_identity(ctx):
-    text = ctx.cli('--version')
-    if text['returncode'] == 0 and text['stdout'].startswith('putgd-cli '):
-        ctx.blocked('Context.cli routed the launcher flag to putgd-cli; launcher dispatch remains a core capability gap.', issue=675)
-    return text
+    return _launcher(ctx, '--version')
 
 
 @recipe('cli.version', needs=('launcher',))
@@ -719,7 +726,9 @@ def cli_version(ctx):
     _frame(ctx, 'before')
     text = _launcher_identity(ctx)
     ctx.expect(text['returncode'] == 0 and text['stdout'].startswith('putgd '), 'launcher prints version')
-    version = _cli(ctx, '--version-json')
+    reply = _launcher(ctx, '--version-json')
+    ctx.expect(reply['returncode'] == 0, 'launcher version JSON succeeds')
+    version = json.loads(reply['stdout'])
     authoritative = _result(ctx.call('ui.snapshot'))['build']
     ctx.expect(version == authoritative, 'version JSON matches exact resident build')
     _frame(ctx, 'after')
@@ -730,14 +739,16 @@ def launcher_history(ctx):
     _launcher_identity(ctx)
     _row(ctx)
     _frame(ctx, 'before')
-    # cli is the launcher for leading flags; method names address putgd-cli.
+    epoch = _result(ctx.call('ui.snapshot'))['residentEpoch']
     for flag in ('--history', '--activity'):
-        reply = ctx.cli(flag)
+        reply = _launcher(ctx, flag)
         ctx.expect(reply['returncode'] == 0, 'second launcher forwards ' + flag)
         ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'existing resident shows History')
+        _wait_window(ctx, 'history')
+        ctx.wait(lambda: _selected_page(ctx, 'History'), 'forwarded launcher selects History')
+        ctx.expect(_result(ctx.call('ui.snapshot'))['residentEpoch'] == epoch, 'second launch forwards to the same resident')
         ctx.expect(_state(ctx)['total'] >= 1, 'forwarded launch retains history')
     _frame(ctx, 'after')
-    ctx.review('ui.viewState reports helper readiness, not active page; verify second launcher raised History in the saved frame.')
 
 
 @recipe('mcp.inspect')
@@ -1208,7 +1219,7 @@ BLOCKED = {
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
     'shell.action-recovery-banner': 'settings-no-output covers Change output; no controlled rejected-action fixtures yet supply Keep local copies and Review destination variants for the complete banner matrix.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
-    'cli.launcher-background': 'Context.cli still dispatches launcher flags to putgd-cli; a deterministic absent-tray backend fixture is also required for the 10-second Settings fallback.',
+    'cli.launcher-background': 'Private resident lifecycle exists; no isolated absent-tray fixture exposes the required 10-second Settings fallback after --background.',
     'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures.',
     'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle.',
     'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane.',
