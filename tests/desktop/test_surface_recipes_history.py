@@ -142,6 +142,8 @@ class FakeContext(Context):
             return {'state': 'ready'}
         if method == 'history.detail':
             return self.detail()
+        if method == 'delete.prepare':
+            return {'targets': [{'historyId': 'image-1'}]}
         if method == 'ui.fileDialog':
             if params['action'] != 'inspect':
                 raise AssertionError('file chooser mutation')
@@ -380,7 +382,7 @@ class FakeContext(Context):
                      'rect': [self.window['x'] + 450, self.window['y'] + 5, 300, 28]}]
         return [{'name': 'Total size: 3 MB' if query['name'].startswith('Total') else 'Size: 1 MB · 640×320'}]
 
-    def clipboard_text(self):
+    def clipboard_text(self, *, expected_json=None):
         return self.clipboard
 
     def windows(self, query=None):
