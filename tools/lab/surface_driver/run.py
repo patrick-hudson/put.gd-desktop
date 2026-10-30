@@ -186,9 +186,7 @@ def verify_guest_endpoint(target, pid, arguments):
         if (process.stat().st_uid != os.getuid()
                 or (process / 'cmdline').read_bytes() != arguments):
             raise ValueError('owned QEMU identity changed')
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
-            peer.settimeout(2)
-            peer.connect(str(path))
+        with lab.connect_unix(path, timeout=2) as peer:
             peer_pid, peer_uid, _ = struct.unpack('3i', peer.getsockopt(
                 socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
             if peer_pid != pid or peer_uid != os.getuid():
