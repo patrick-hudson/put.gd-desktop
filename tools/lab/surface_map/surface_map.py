@@ -2,10 +2,13 @@
 """Surface map: every surface and interaction of put.gd, coloured by acceptance coverage.
 
   surface_map.py build --catalog DIR --coverage FILE... --output DIR [--label TEXT] [--index] [--open] [--watch]
-  surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage
+  surface_map.py mark INTERACTION --coverage FILE --desktop ID --package deb|rpm|appimage|source
                  [--functional passed|failed|blocked] [--visual frames|reviewed-ok|reviewed-wrong]
                  [--receipt PATH] [--issue N] [--note TEXT]
-  surface_map.py import --coverage FILE --desktop ID --package PKG RECEIPT...
+                 [--host ID] [--placement native|guest|boat] [--guest NAME]
+                 [--destination local|s3|b2|proton] [--review-reason TEXT]
+  surface_map.py import --coverage FILE [--desktop ID] [--package PKG] RECEIPT...
+    Import defaults are optional when receipt rows carry desktop and package.
   surface_map.py checklist --coverage FILE... [--desktop ID]
   surface_map.py check [--catalog DIR]
 
@@ -39,7 +42,12 @@ TEMPLATE_PATH = HERE / 'surface_map.html'
 KINDS = ('button', 'menu-item', 'field', 'key', 'shortcut', 'gesture', 'state', 'cli', 'mcp', 'event', 'edge')
 FUNCTIONAL = ('passed', 'failed', 'blocked')
 VISUAL = ('frames', 'reviewed-ok', 'reviewed-wrong')
-PACKAGES = ('deb', 'rpm', 'appimage')
+PACKAGES = ('deb', 'rpm', 'appimage', 'source')
+HOSTS = ('m74', 'f44', 'd69', 'k72', 'aurora-amd', 'boat')
+PLACEMENTS = ('native', 'guest', 'boat')
+DESTINATIONS = ('local', 's3', 'b2', 'proton')
+ROW_FIELDS = ('host', 'placement', 'guest', 'destination', 'review', 'review_reason',
+              'frames', 'recipe', 'build')
 # Synthetic captures putgd-ui-catalog draws only offscreen (tests/gui/ui_catalog.cpp).
 OFFSCREEN_ONLY_CAPTURES = {'00-tray-upload-status'}
 
@@ -61,6 +69,11 @@ def validate_model(model):
     if model.get('schemaVersion') != 1:
         problems.append('schemaVersion must be 1')
     desktops = {d['id'] for d in model.get('desktops', [])}
+    for desktop in model.get('desktops', []):
+        for row in desktop.get('rows', []):
+            validate_row(row)
+            if not row.get('host') or not row.get('placement'):
+                problems.append(desktop['id'] + ': rows need host and placement')
     surfaces = {}
     for surface in model.get('surfaces', []):
         if surface['id'] in surfaces:
@@ -120,17 +133,34 @@ def interaction_visual(item):
 
 # ------------------------------------------------------------- coverage
 
-def load_coverage(paths):
+def load_coverage(paths, model=None):
     entries = []
     for path in paths:
         path = Path(path)
         if not path.exists():
             continue
         doc = json.loads(path.read_text(encoding='utf-8'))
-        if doc.get('schemaVersion') != 1:
-            raise ModelError('%s: schemaVersion must be 1' % path)
-        for entry in doc.get('entries', []):
+        if doc.get('schemaVersion') not in (1, 2):
+            raise ModelError('%s: schemaVersion must be 1 or 2' % path)
+        for index, entry in enumerate(doc.get('entries', []), 1):
             entry = dict(entry)
+            validate_row(entry, require_placement=False)
+            if entry.get('host') and not entry.get('placement'):
+                if model is None:
+                    model = load_model()
+                native = [r for d in model['desktops'] if d['id'] == entry.get('desktop')
+                          for r in d.get('rows', [])
+                          if r['host'] == entry['host'] and r['placement'] == 'native']
+                if len(native) == 1 and entry.get('guest') is None:
+                    # Inferred on every load from the current model; never written back.
+                    entry['placement'] = 'native'
+                    entry['_inferred_placement'] = True
+                else:
+                    entry['_desktop_only'] = True
+                    print('%s: entry %d (%s, %s, host %s): missing placement; '
+                          'keeping desktop rollup only' %
+                          (path, index, entry.get('interaction'), entry.get('desktop'), entry['host']),
+                          file=sys.stderr)
             entry.setdefault('campaign', doc.get('campaign', path.stem))
             entry['_file'] = path.as_posix()
             entries.append(entry)
@@ -139,15 +169,39 @@ def load_coverage(paths):
 
 def write_coverage(path, campaign, entries):
     path = Path(path)
-    doc = {'schemaVersion': 1, 'campaign': campaign,
-           'entries': [{k: v for k, v in e.items() if not k.startswith('_')} for e in entries]}
+    doc = {'schemaVersion': 2, 'campaign': campaign,
+           'entries': [{k: v for k, v in e.items()
+                        if not k.startswith('_') and not (k == 'placement' and e.get('_inferred_placement'))}
+                       for e in entries]}
     tmp = path.with_suffix(path.suffix + '.tmp')
     tmp.write_text(json.dumps(doc, indent=1, sort_keys=True) + '\n', encoding='utf-8')
     os.replace(tmp, path)
 
 
+def validate_row(row, require_placement=True):
+    if require_placement and row.get('host') and not row.get('placement'):
+        raise ModelError('host requires placement')
+    if row.get('placement') == 'native' and row.get('guest') is not None:
+        raise ModelError('guest cannot be used with native placement')
+    for field, choices in (('host', HOSTS), ('placement', PLACEMENTS),
+                           ('destination', DESTINATIONS), ('package', PACKAGES),
+                           ('functional', FUNCTIONAL), ('visual', VISUAL)):
+        if row.get(field) is not None and row[field] not in choices:
+            raise ModelError('%s must be one of %s' % (field, ', '.join(choices)))
+    if 'review' in row and not isinstance(row['review'], bool):
+        raise ModelError('review must be a boolean')
+    for field in ('guest', 'review_reason', 'recipe', 'build'):
+        if row.get(field) is not None and not isinstance(row[field], str):
+            raise ModelError(field + ' must be a string')
+    if 'frames' in row:
+        if not isinstance(row['frames'], list) or any(
+                not isinstance(f, dict) or not isinstance(f.get('label'), str)
+                or not isinstance(f.get('path'), str) for f in row['frames']):
+            raise ModelError('frames must be objects with label and path strings')
+
+
 def make_entry(interaction, desktop, package, functional=None, visual=None, receipt=None,
-               issue=None, note=None, source='mark', at=None):
+               issue=None, note=None, source='mark', at=None, **metadata):
     if functional is not None and functional not in FUNCTIONAL:
         raise ModelError('functional must be one of ' + ', '.join(FUNCTIONAL))
     if visual is not None and visual not in VISUAL:
@@ -160,14 +214,43 @@ def make_entry(interaction, desktop, package, functional=None, visual=None, rece
                        ('issue', issue), ('note', note)):
         if value not in (None, ''):
             entry[key] = value
+    entry.update({k: v for k, v in metadata.items() if k in ROW_FIELDS and v is not None})
+    validate_row(entry)
     return entry
 
 
-def latest_per_cell(entries):
-    """interaction -> desktop -> {functional, visual, receipts[], issues[]} from the newest entries."""
+def cell_key(entry):
+    return tuple(entry.get(k) for k in ('desktop', 'host', 'placement', 'guest'))
+
+
+def latest_run_entries(entries):
+    """Current metadata per cell; only an identified run can supply missing fields."""
+    latest = {}
+    for entry in sorted(entries, key=lambda e: e.get('at', '')):
+        key = (entry['interaction'], cell_key(entry))
+        previous = latest.get(key, {})
+        same_run = any(entry.get(k) and entry[k] == previous.get(k)
+                       for k in ('build', 'receipt'))
+        carry = ('build', 'recipe', 'frames')
+        # Only a verdict or explicit review update supersedes a same-run request;
+        # saved frames alone do not mean anyone reviewed them.
+        verdict = entry.get('functional') in FUNCTIONAL or entry.get('visual') in ('reviewed-ok', 'reviewed-wrong')
+        if not verdict and entry.get('review') is None:
+            carry += ('review', 'review_reason')
+        current = {k: previous[k] for k in carry if same_run and k in previous}
+        current.update({k: v for k, v in entry.items() if v is not None})
+        latest[key] = current
+    return list(latest.values())
+
+
+def latest_per_cell(entries, by_host=False):
+    """Newest nonempty verdict per dimension; historical evidence stays available."""
     cells = {}
     for entry in sorted(entries, key=lambda e: e.get('at', '')):
-        cell = cells.setdefault(entry['interaction'], {}).setdefault(entry['desktop'], {
+        if by_host and entry.get('_desktop_only'):
+            continue
+        key = cell_key(entry) if by_host else entry['desktop']
+        cell = cells.setdefault(entry['interaction'], {}).setdefault(key, {
             'functional': None, 'visual': None, 'packages': set(), 'receipts': [], 'issues': [], 'notes': []})
         if entry.get('functional'):
             cell['functional'] = entry['functional']
@@ -180,6 +263,16 @@ def latest_per_cell(entries):
             cell['issues'].append(entry['issue'])
         if entry.get('note'):
             cell['notes'].append(entry['note'])
+        if by_host:
+            cell.setdefault('destinations', set())
+            if entry.get('destination'):
+                cell['destinations'].add(entry['destination'])
+    if by_host:
+        for entry in latest_run_entries(entries):
+            if entry.get('_desktop_only'):
+                continue
+            cells[entry['interaction']][cell_key(entry)].update(
+                {k: entry[k] for k in ROW_FIELDS if k != 'destination' and k in entry})
     return cells
 
 
@@ -212,11 +305,26 @@ def aggregate_visual(states, applies):
 def summarise(model, entries):
     """Per interaction: per-desktop cells and an aggregate across required desktops."""
     cells = latest_per_cell(entries)
+    host_cells = latest_per_cell(entries, by_host=True)
+    has_hosts = any(any(cell_key(e)[1:]) for e in entries if not e.get('_desktop_only'))
+    desktop_only = latest_per_cell([e for e in entries if e.get('_desktop_only')])
     required = [d['id'] for d in model['desktops'] if d.get('required', True)]
     out = {}
     for item in model['interactions']:
         per_desktop = cells.get(item['id'], {})
         applies = interaction_visual(item)
+        hosted = host_cells.get(item['id'], {})
+        # A newer pass on another builder must not hide this builder's failure.
+        for desktop in per_desktop:
+            siblings = [c for key, c in hosted.items() if key[0] == desktop]
+            unplaced = desktop_only.get(item['id'], {}).get(desktop)
+            if unplaced:
+                siblings.append(unplaced)
+            if any(key[0] == desktop and any(key[1:]) for key in hosted):
+                fs, vs = [c['functional'] for c in siblings], [c['visual'] for c in siblings]
+                f, v = aggregate_functional(fs), aggregate_visual(vs, applies)
+                per_desktop[desktop]['functional'] = ('partial' if f == 'passed' and not all(fs) else f) if any(fs) else None
+                per_desktop[desktop]['visual'] = ('frames' if v == 'reviewed-ok' and not all(vs) else v) if any(vs) else None
         # A required desktop without a result for a dimension counts as missing for that
         # dimension, even when it has an entry for the other one.
         functional_states = [per_desktop.get(d, {}).get('functional') for d in required]
@@ -230,6 +338,11 @@ def summarise(model, entries):
         out[item['id']] = {
             'functional': functional, 'visual': visual,
             'desktops': {d: {**c, 'packages': sorted(c['packages'])} for d, c in per_desktop.items()}}
+        if has_hosts:
+            out[item['id']]['cells'] = [
+                {**dict(zip(('desktop', 'host', 'placement', 'guest'), key)), **c,
+                 'packages': sorted(c['packages']), 'destinations': sorted(c['destinations'])}
+                for key, c in hosted.items()]
     return out
 
 
@@ -381,12 +494,27 @@ def build_page_data(model, entries, catalog, output, embed=False, label=''):
         counts[state] = sum(1 for i in interactions if i['functional'] == state)
     for state in ('frames', 'reviewed-ok', 'reviewed-wrong', 'none'):
         counts['visual-' + state] = sum(1 for i in interactions if i['visual'] == state)
+    rows = {cell_key({'desktop': d['id'], **r}) for d in model['desktops'] for r in d.get('rows', [])}
+    evidence_rows = {cell_key(e) for e in entries if not e.get('_desktop_only')}
+    rows.update(evidence_rows)
+    # A named golden refines an empty planned guest placement. Keep every row
+    # backed by evidence, including unnamed guests, so no failure disappears.
+    rows = {r for r in rows if r in evidence_rows or r[3]
+            or not any(other[:3] == r[:3] and other[3] for other in rows)}
+    required = {d['id']: d.get('required', True) for d in model['desktops']}
     return {
         'generated': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
         'label': label,
         'catalog': str(catalog) if catalog else None,
         'desktops': model['desktops'],
         'packages': list(PACKAGES),
+        'hosts': list(HOSTS),
+        'rows': [{**dict(zip(('desktop', 'host', 'placement', 'guest'), r)),
+                  'required': required.get(r[0], True)}
+                 for r in sorted(rows, key=lambda r: tuple(v or '' for v in r))],
+        'hostCoverage': any(any(cell_key(e)[1:]) for e in entries if not e.get('_desktop_only')),
+        'reviews': [{k: v for k, v in e.items() if not k.startswith('_')}
+                    for e in latest_run_entries(entries) if e.get('review') is True],
         'surfaces': surfaces,
         'interactions': interactions,
         'counts': counts,
@@ -403,7 +531,7 @@ def render(data, template_path=TEMPLATE_PATH):
 
 def build(args):
     model = load_model(args.model)
-    entries = load_coverage(args.coverage)
+    entries = load_coverage(args.coverage, model)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
     data = build_page_data(model, entries, args.catalog, output, embed=args.embed, label=getattr(args, 'label', '') or '')
@@ -475,13 +603,15 @@ def classify_receipt(doc):
     return None
 
 
-def import_receipt(model, path, desktop, package):
+def import_receipt(model, path, desktop=None, package=None):
     """Coverage entries for one receipt file, through the model's receipt mapping."""
     path = Path(path)
     doc = json.loads(path.read_text(encoding='utf-8'))
     source = classify_receipt(doc)
     if source is None:
         raise ModelError('%s: not a receipt this importer knows' % path)
+    if source != 'surface_map' and (desktop is None or package is None):
+        raise ModelError('legacy receipts require --desktop and --package')
     mapping = model.get('receipts', {}).get(source, {})
     at = doc.get('finishedAt') or doc.get('at') or dt.datetime.fromtimestamp(
         path.stat().st_mtime, dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -542,15 +672,21 @@ def import_receipt(model, path, desktop, package):
     elif source == 'surface_map':
         # A driver that already speaks this tool's language.
         for row in doc['interactions']:
-            entries.append(make_entry(row['interaction'], row.get('desktop', desktop), row.get('package', package),
+            row_desktop, row_package = row.get('desktop') or desktop, row.get('package') or package
+            if row_desktop not in {d['id'] for d in model['desktops']}:
+                raise ModelError('unknown desktop %s' % row_desktop)
+            if row['interaction'] not in {i['id'] for i in model['interactions']}:
+                raise ModelError('unknown interaction %s' % row['interaction'])
+            entries.append(make_entry(row['interaction'], row_desktop, row_package,
                                       row.get('functional'), row.get('visual'), row.get('receipt', path.as_posix()),
-                                      row.get('issue'), row.get('note'), source=row.get('source', 'driver'), at=row.get('at', at)))
+                                      row.get('issue'), row.get('note'), source=row.get('source', 'driver'), at=row.get('at') or at,
+                                      **{k: row[k] for k in ROW_FIELDS if k in row}))
     return entries
 
 
 def do_import(args):
     model = load_model(args.model)
-    existing = load_coverage([args.coverage])
+    existing = load_coverage([args.coverage], model)
     campaign = args.campaign or (existing[0]['campaign'] if existing else Path(args.coverage).stem)
     added = []
     for receipt in args.receipts:
@@ -571,12 +707,14 @@ def do_mark(args):
         raise ModelError('unknown interaction %s' % args.interaction)
     if args.desktop not in desktops:
         raise ModelError('unknown desktop %s; known: %s' % (args.desktop, ', '.join(sorted(desktops))))
-    if not args.functional and not args.visual:
-        raise ModelError('give --functional and/or --visual')
-    existing = load_coverage([args.coverage])
+    if not args.functional and not args.visual and not args.review_reason:
+        raise ModelError('give --functional, --visual and/or --review-reason')
+    existing = load_coverage([args.coverage], model)
     campaign = args.campaign or (existing[0]['campaign'] if existing else Path(args.coverage).stem)
     entry = make_entry(args.interaction, args.desktop, args.package, args.functional, args.visual,
-                       args.receipt, args.issue, args.note)
+                       args.receipt, args.issue, args.note, host=args.host, placement=args.placement,
+                       guest=args.guest, destination=args.destination,
+                       review=True if args.review_reason else None, review_reason=args.review_reason)
     write_coverage(args.coverage, campaign, existing + [entry])
     print(json.dumps(entry))
     return 0
@@ -584,7 +722,7 @@ def do_mark(args):
 
 def checklist(args):
     model = load_model(args.model)
-    entries = load_coverage(args.coverage)
+    entries = load_coverage(args.coverage, model)
     summary = summarise(model, entries)
     required = [d for d in model['desktops'] if d.get('required', True)]
     if args.desktop:
@@ -698,13 +836,18 @@ def main(argv=None):
     p.add_argument('--receipt')
     p.add_argument('--issue', type=int)
     p.add_argument('--note')
+    p.add_argument('--host', choices=HOSTS)
+    p.add_argument('--placement', choices=PLACEMENTS)
+    p.add_argument('--guest')
+    p.add_argument('--destination', choices=DESTINATIONS)
+    p.add_argument('--review-reason')
 
     p = sub.add_parser('import', help='map lab receipts onto interactions')
     p.add_argument('receipts', nargs='+')
     p.add_argument('--coverage', required=True)
     p.add_argument('--campaign')
-    p.add_argument('--desktop', required=True)
-    p.add_argument('--package', required=True, choices=PACKAGES)
+    p.add_argument('--desktop', help='fallback for receipts without a desktop')
+    p.add_argument('--package', choices=PACKAGES, help='fallback for receipts without a package')
 
     p = sub.add_parser('checklist', help='what is still open, per desktop, as markdown')
     p.add_argument('--coverage', nargs='*', default=[])
