@@ -330,6 +330,8 @@ class FakeContext(Context):
         if (x, y) == (720, 220):
             self.events.append(('delegate', copy.deepcopy(self.last_delegate_query)))
             return self.click('historyList', 'history', button)
+        if (x, y) == (1250, 270):
+            return self.click('historyClearFilters', 'history', button)
         if (x, y) == (1220, 220):
             return self.click('historyChoiceuploadStatus', 'history', button)
         if (x, y) in ((1220, 420), (1320, 420)):
@@ -344,6 +346,8 @@ class FakeContext(Context):
             self.pending_button = query['name']
             self.pending_button_window = 'historyCancelAllConfirmation' if query['name'] in ('Keep uploading', 'Cancel 2 uploads') else 'historyConfirmAction'
             return [{'rect': [600, 600, 100, 40]}]
+        if query.get('name') == 'Clear filters' and query.get('role') == 'push button':
+            return [{'name': 'Clear filters', 'rect': [1200, 250, 100, 40]}]
         if query.get('name') == 'History items and upload activity':
             if query.get('states', {}).get('focused') and self.focused_control != 'historyList':
                 return []
@@ -496,6 +500,18 @@ class HistoryRecipeTests(unittest.TestCase):
             for _, _, reference in ctx.frames:
                 if reference:
                     self.assertIn('"' + reference, source, reference)
+
+    def test_clear_filter_uses_reflowed_native_button_not_catalog_point(self):
+        class Reflowed(FakeContext):
+            def click(self, control, window='history', button='left'):
+                if control == 'text:Clear filters':
+                    raise AssertionError('static catalog target precedes active-filter toolbar reflow')
+                return super().click(control, window, button)
+        ctx = Reflowed(('history_rows',))
+        history.clear_filters(ctx)
+        self.assertEqual(ctx.query['uploadStatus'], '')
+        self.assertEqual(ctx.query['search'], ctx.fixture_row['name'])
+        self.assertIn(('click', 'historyClearFilters', 'history', 'left'), ctx.events)
 
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):

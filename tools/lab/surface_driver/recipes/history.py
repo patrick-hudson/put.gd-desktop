@@ -285,7 +285,7 @@ def clear_filters(ctx):
     ctx.keys('Home', 'Down', 'Return')
     ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']), 'upload filter applied')
     _frame(ctx, 'filtered', '40-history-filters-active')
-    ctx.click('text:Clear filters', window='history')
+    _click_history_node(ctx, {'name': 'Clear filters', 'role': 'push button'})
     ctx.wait(lambda: not _state(ctx)['activeFilters'], 'advanced filters cleared')
     ctx.expect(_state(ctx)['query']['search'] == row['name'], 'Clear filters preserves search')
     _frame(ctx, 'after')
