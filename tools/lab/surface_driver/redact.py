@@ -506,7 +506,10 @@ def quarantine_files(root, files):
         if any(parent in path.parents for parent in moved):
             continue
         destination = directory/str(index)
-        os.replace(path, destination)
+        # Quarantine may live on another mount (including sandbox bind mounts
+        # that report the same st_dev). Copy into its private directory and
+        # remove the source when an atomic rename is unavailable.
+        shutil.move(path, destination)
         moved.append(path)
         if not destination.is_symlink():
             destination.chmod(0o700 if destination.is_dir() else 0o600)

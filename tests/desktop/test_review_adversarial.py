@@ -295,6 +295,25 @@ class Adv(unittest.TestCase):
         self.assertFalse(external.exists())
         self.assertFalse(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
 
+    def test_quarantine_removes_leaks_across_filesystems(self):
+        import errno
+        import tools.lab.surface_driver.redact as redact
+        self.out.mkdir()
+        planted=self.out/'planted.log'
+        planted.write_text(TOKEN)
+        quarantine=self.out.parent/'private-quarantine'
+        quarantine.mkdir(mode=0o700)
+        with patch.object(redact.tempfile,'mkdtemp',return_value=str(quarantine)), \
+                patch.object(redact.os,'rename',side_effect=OSError(errno.EXDEV,'cross-device link')):
+            result=scan_run(self.out,literals=(TOKEN,),quarantine=True)
+        self.assertFalse(result['passed'])
+        self.assertFalse(planted.exists())
+        self.assertEqual(len(result['quarantine']),1)
+        moved=next(quarantine.iterdir())
+        self.assertEqual(moved.read_text(),TOKEN)
+        self.assertEqual(quarantine.stat().st_mode & 0o777,0o700)
+        self.assertEqual(moved.stat().st_mode & 0o777,0o600)
+
     def test_target_scripts_queries_and_cli_params_never_reach_argv(self):
         from tools.lab.surface_driver.target import Target
         target=Target.__new__(Target);target.heartbeat=lambda:None;target.prefix=lambda:''
