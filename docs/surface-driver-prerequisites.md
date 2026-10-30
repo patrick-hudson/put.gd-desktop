@@ -136,10 +136,10 @@ Fresh accessibility walks are bounded (#805). They have to be: on GNOME 50 the
 private Settings window keeps `putgd-ui` at a full core (#840), and some GTK
 session services never answer AT-SPI at all.
 
-- Every libatspi call has a fixed 2 s timeout. By default libatspi allows a
-  longer wait for recently registered applications, and in a fresh process
-  that is all of them.
-- Each walk has an 8 s budget, counted from the fresh process start; the
+- Every AT-SPI call (raw D-Bus) has a 3 s timeout. libatspi, where still
+  used, gets the same bound instead of its longer default wait for recently
+  registered applications, which in a fresh process is all of them.
+- Each walk has a 7.5 s budget, counted from the fresh child's start; the
   persistent channel kills the child at 12 s.
 - An unanswered call, or a walk over budget, gives RecipeBlocked naming the
   application, its pid and its time per node. It never returns a partial
