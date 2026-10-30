@@ -77,7 +77,10 @@ class FakeContext(Context):
             return {'total': 60}
         if name == 'history_active_uploads':
             return {'operation_ids': ['op-1', 'op-2']}
+        if name == 'history_retry_upload':
+            self.operations['op-1']['state'] = 'partial'
         if name == 'history_retry_local':
+            self.operations['op-1']['state'] = 'failed'
             self.local = {'status': 'failed', 'path': ''}
         if name == 'history_saved_copy':
             row['path'] = '/tmp/private/copy.png'
@@ -148,6 +151,7 @@ class FakeContext(Context):
 
     def click(self, control, window, button='left', offset=None):
         aliases = {
+            'text:Add a history filter': 'historyAddFilter', 'text:Advanced original receipt details': 'historyDetails',
             'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
             'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
             'text:Clear selection': 'historyClearSelection', 'text:Clear filters': 'historyClearFilters',
@@ -205,7 +209,7 @@ class FakeContext(Context):
         elif control == 'dismissHistorySavedCopy':
             self.saved = False
         elif control == 'retryOperation':
-            self.operations['op-1']['state'] = 'completed'
+            self.operations['op-1']['state'] = 'failed' if self.local['status'] == 'failed' else 'partial' if self.fault == 'upload-partial-result' else 'completed'
             if self.fault == 'retry-new-identity':
                 self.operations['op-1']['id'] = 'replacement-operation'
             self.upload = 'uploaded'
@@ -280,6 +284,8 @@ class FakeContext(Context):
                 self.details = self.grid
             elif key == 'Shift+Down':
                 self.selected = ['image-1', 'image-2']
+            elif key == 'Tab' and self.fault != 'list-cannot-focus':
+                self.focused_control = 'historyList'
             elif key == 'Esc':
                 self.menu = None
                 if self.preview:
@@ -301,7 +307,7 @@ class FakeContext(Context):
 
     def focus(self, window, raise_window=True):
         self.events.append(('focus', window, raise_window))
-        if window == 'fileDialog' and not self.chooser:
+        if window == 'historySaveDialog' and not self.chooser:
             raise AssertionError('chooser must be visible before binding input')
 
     def click_accessible(self, query, button='left'):
@@ -309,7 +315,9 @@ class FakeContext(Context):
             return self.click('historyChoiceuploadStatus', 'history', button)
         if not query.get('owned') or query.get('name') != 'Expand preview' or query.get('pid') != 123:
             raise AssertionError('preview click must constrain private family and observed pid')
-        control = {'icon': 'historyPreview', 'label': 'historyPreview', 'push button': 'expandHistoryPreview'}[query['role']]
+        if query.get('states') not in ({'focusable': True}, {'focusable': False}):
+            raise AssertionError('image and its glyph share their button role')
+        control = 'historyPreview' if query['states']['focusable'] else 'expandHistoryPreview'
         self.click(control, 'history', button)
 
     def click_at(self, x, y, button='left', head=None):
@@ -317,6 +325,8 @@ class FakeContext(Context):
         self.menu = 'header'
 
     def accessible(self, query):
+        if query.get('name') == 'History items and upload activity':
+            return [{'name': query['name'], 'states': {'focused': True}}] if self.focused_control == 'historyList' else []
         if query.get('name') == 'Expand preview':
             return [{'name': 'Expand preview', 'role': role, 'pid': 123, 'rect': [100, 100, 40, 40]} for role in ('icon', 'push button')]
         if query.get('role') == 'menu item':
@@ -535,7 +545,7 @@ class HistoryRecipeTests(unittest.TestCase):
             def windows(self, query=None):
                 raise AssertionError('geometry must not send X11 title queries')
             def accessible(self, query):
-                if set(query) - {'owned', 'visible', 'pid', 'within'}:
+                if set(query) - {'owned', 'visible', 'showing', 'pid', 'within', 'name', 'states'}:
                     raise AssertionError('unsupported accessible header query')
                 return super().accessible(query)
         for action in (history.header_drag, history.edge_resize):
@@ -592,6 +602,26 @@ class HistoryRecipeTests(unittest.TestCase):
                     self.assertEqual(selector_matches({'name': label, 'objectName': ''}, control,
                                                       catalog.candidates(control, 'history')), 1)
 
+    def test_unverified_list_focus_never_receives_navigation_or_activation(self):
+        ctx = FakeContext(('history-row',), fault='list-cannot-focus')
+        with self.assertRaisesRegex(RecipeBlocked, '20 Tab steps'):
+            history._row(ctx)
+        keys = [e[1] for e in ctx.events if e[0] == 'keys']
+        self.assertNotIn(('Home',), keys)
+        self.assertEqual(keys.count(('Tab',)), 20)
+
+    def test_local_save_retry_keeps_its_original_terminal_result(self):
+        ctx = FakeContext(('history_retry_local',))
+        history._retry(ctx, 'history_retry_local', local=True)
+        self.assertEqual(ctx.operations['op-1']['state'], 'failed')
+        self.assertEqual(ctx.local['status'], 'saved')
+
+    def test_upload_retry_can_finish_partial_after_its_upload_succeeds(self):
+        ctx = FakeContext(('history_retry_upload',), fault='upload-partial-result')
+        history._retry(ctx, 'history_retry_upload')
+        self.assertEqual(ctx.upload, 'uploaded')
+        self.assertEqual(ctx.operations['op-1']['state'], 'partial')
+
     def test_popup_frames_do_not_require_a_native_menu_window(self):
         class PopupContext(FakeContext):
             def frame(self, label, window=None, reference=None):
@@ -609,7 +639,7 @@ class HistoryRecipeTests(unittest.TestCase):
                 super().focus(window, raise_window)
                 self.input_window = window
             def keys(self, *sequence):
-                if self.chooser and self.input_window != 'fileDialog':
+                if self.chooser and self.input_window != 'historySaveDialog':
                     raise AssertionError('keyboard would target History behind the chooser')
                 super().keys(*sequence)
         history.inspector_more(ChooserContext(('history-row', 'file-dialog-fallback')))

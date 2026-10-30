@@ -46,6 +46,9 @@
       "accessible": {
         "owned": true
       }
+    },
+    "historySaveDialog": {
+      "title": "^Save original file as$"
     }
   },
   "control_names": {

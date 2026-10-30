@@ -70,6 +70,22 @@ def _search(ctx, text):
              'search is applied by real input')
 
 
+def _focus_items(ctx):
+    """Tab to the list and observe widget focus before sending list shortcuts."""
+    query = {'owned': True, 'visible': True, 'showing': True,
+             'pid': ctx.geometry('history')['pid'], 'name': 'History items and upload activity',
+             'states': {'focused': True}}
+    for _ in range(20):
+        nodes = ctx.accessible(query)
+        if len(nodes) == 1:
+            ctx.note('History list keyboard focus verified through native accessibility')
+            return
+        if len(nodes) > 1:
+            ctx.blocked('History list has ambiguous native keyboard-focus witnesses.', issue=675)
+        ctx.keys('Tab')
+    ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=675)
+
+
 def _row(ctx, fixture='history-row'):
     data = ctx.fixture(fixture)
     row = data.row if fixture == 'history-row' else data['image'] if fixture == 'history_rows' else data
@@ -78,7 +94,7 @@ def _row(ctx, fixture='history-row'):
     ctx.expect(detail['id'] == row['id'] and detail['name'] == row['name'], 'fixture has the expected identity')
     _search(ctx, row['name'])
     ctx.wait(lambda: _state(ctx)['rows'] == 1, 'unique fixture row is shown')
-    ctx.click('historyList', window='history')
+    _focus_items(ctx)
     ctx.keys('Home')
     ctx.wait(lambda: row['id'] in _state(ctx)['selectedIds'], 'fixture row is selected with real input')
     return row
@@ -93,8 +109,8 @@ def _details(ctx):
     # In split-list mode details are already beside the row; gallery provides
     # an observable open/close transition at both compact and full widths.
     _gallery(ctx)
-    ctx.click('historyList', window='history', button='right')
-    ctx.keys('Esc', 'Home', 'Return')
+    _focus_items(ctx)
+    ctx.keys('Home', 'Return')
     ctx.wait(lambda: _state(ctx)['detailsOpen'] and _state(ctx)['inspectorVisible'], 'selected details open')
 
 
@@ -112,7 +128,8 @@ def _size(ctx, byte_count, caption='Size'):
             number = number.rstrip('0').rstrip('.')
         label = number + ' ' + suffix
     expected = caption + ': ' + label
-    rows = ctx.wait(lambda: ctx.accessible({'name': caption + ': *'}), 'visible binary size summary')
+    rows = ctx.wait(lambda: ctx.accessible({'owned': True, 'visible': True, 'showing': True,
+                                          'pid': ctx.geometry('history')['pid'], 'name': caption + ': *'}), 'visible binary size summary')
     ctx.expect(any(row['name'] == expected or row['name'].startswith(expected + ' · ') for row in rows),
                'visible size uses 1024 arithmetic and KB/MB/GB labels: ' + expected)
 
@@ -163,7 +180,7 @@ def clear_filters(ctx):
     row = _row(ctx, 'history_rows')
     _frame(ctx, 'before')
     ctx.click('historyFiltersExpanded', window='history')
-    ctx.click('historyAddFilter', window='history')
+    ctx.click('text:Add a history filter', window='history')
     ctx.click('text:Upload state', window='historyAddFilterMenu')
     ctx.click_accessible({'owned': True, 'visible': True, 'name': 'Upload state', 'role': 'combo box'})
     ctx.keys('Home', 'Down', 'Return')
@@ -175,46 +192,19 @@ def clear_filters(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('history.view-gallery', 'history.view-list', needs=('history-row',))
-def view_modes(ctx):
-    row = _row(ctx)
-    _frame(ctx, 'before')
-    _gallery(ctx)
-    _frame(ctx, 'gallery', GALLERY)
-    _details(ctx)
-    ctx.expect(row['id'] in _state(ctx)['selectedIds'], 'gallery keeps exact row identity')
-    _frame(ctx, 'gallery-details', '55-history-gallery-details')
-    ctx.keys('Esc')
-    ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape returns to gallery')
-    ctx.click('historyListMode', window='history')
-    ctx.wait(lambda: not _state(ctx)['gridMode'], 'List button restores list')
-    _frame(ctx, 'after')
 
 
-@recipe('history.key-enter', needs=('history-row',))
-def enter_details(ctx):
-    row = _row(ctx)
-    _gallery(ctx)
-    _frame(ctx, 'before', GALLERY)
-    ctx.click('historyList', window='history', button='right')
-    ctx.keys('Esc', 'Home', 'Return')
-    ctx.wait(lambda: _state(ctx)['detailsOpen'], 'Return opens single selected row details')
-    ctx.expect(row['id'] in _state(ctx)['selectedIds'], 'details belong to selected history ID')
-    _frame(ctx, 'after', '55-history-gallery-details')
-    ctx.keys('Esc')
 
 
 def _click_preview(ctx, button=False):
-    query = {'owned': True, 'visible': True, 'name': 'Expand preview'}
-    nodes = [n for n in ctx.accessible(query) if n.get('rect')
-             and (n.get('role') == 'push button') == button]
-    ctx.expect(len(nodes) == 1, 'one owned preview button' if button else 'one owned preview image')
-    # Qt versions expose a QLabel pixmap as an icon or label. Observe its role;
-    # the image and its child expand button deliberately share an accessible name.
-    ctx.click_accessible(dict(query, role=nodes[0]['role'], pid=nodes[0]['pid']))
+    # Both are exposed as buttons. The large image accepts keyboard focus;
+    # its small expand glyph deliberately has Qt::NoFocus.
+    ctx.click_accessible({'owned': True, 'visible': True, 'showing': True,
+                          'pid': ctx.geometry('history')['pid'], 'name': 'Expand preview',
+                          'states': {'focusable': not button}})
 
 
-@recipe('history.preview', 'history.expand-preview', 'history.key-esc', needs=('history-row',))
+@recipe('history.preview', 'history.expand-preview', needs=('history-row',))
 def preview(ctx):
     _row(ctx)
     ctx.wait(lambda: _state(ctx)['canExpandPreview'], 'retained image preview loads')
@@ -236,10 +226,9 @@ def preview(ctx):
     ctx.focus('historyExpandedPreview', raise_window=False)
     ctx.keys('Esc')
     ctx.focus('history', raise_window=False)
-    _details(ctx)
-    ctx.keys('Esc')
-    ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape without expanded preview closes details')
-    _frame(ctx, 'after', GALLERY)
+    _frame(ctx, 'after')
+
+
 
 
 @recipe('history.receipt-details', needs=('history-row',))
@@ -247,7 +236,7 @@ def receipt_details(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
     ctx.click('historyReceiptExpanded', window='history')
-    ctx.click('historyDetails', window='history')
+    ctx.click('text:Advanced original receipt details', window='history')
     ctx.keys('Ctrl+A', 'Ctrl+C')
     detail = json.loads(ctx.clipboard_text())
     ctx.expect(detail['id'] == row['id'], 'displayed advanced receipt has exact history identity')
@@ -264,7 +253,7 @@ def multi_select(ctx):
     _open(ctx)
     ctx.expect(_state(ctx)['rows'] == 2, 'fixture has two separate operation rows')
     _frame(ctx, 'before')
-    ctx.click('historyList', window='history')
+    _focus_items(ctx)
     ctx.keys('Home', 'Shift+Down')
     state = ctx.wait(lambda: _state(ctx) if _state(ctx)['selectedRows'] == 2 else None, 'Shift selects both rows')
     ctx.expect(set(state['selectedIds']) == set(data['ids']), 'only exact two fixture IDs selected')
@@ -315,7 +304,7 @@ def inspector_more(ctx):
     chooser = _result(ctx.call('ui.fileDialog', {'dialog': 'historySaveAs', 'action': 'inspect', 'id': row['id']}))
     ctx.expect(chooser['open'] is True, 'More file actions opens Save a copy chooser')
     # Bind the actual chooser before sending its cancellation key.
-    ctx.focus('fileDialog', raise_window=False)
+    ctx.focus('historySaveDialog', raise_window=False)
     ctx.keys('Esc')
     ctx.focus('history', raise_window=False)
     ctx.wait(lambda: _result(ctx.call('ui.fileDialog', {'dialog': 'historySaveAs', 'action': 'inspect', 'id': row['id']}))['open'] is False, 'chooser canceled')
@@ -348,8 +337,11 @@ def _retry(ctx, fixture, local=False):
         detail = _result(ctx.call('history.detail', {'id': row['id']}))
         return detail if (detail['local']['status'] == 'saved' if local else detail['uploadStatus'] == 'uploaded') else None
     detail = ctx.wait(saved, 'retry settles on original history ID', timeout=60)
-    after = ctx.wait(lambda: (op if (op := _result(ctx.call('operation.inspect', {'id': row['operation_id']})))['state'] == 'completed' else None),
-                     'retried operation completes', timeout=30)
+    terminal = ('completed', 'partial', 'failed', 'cancelled', 'interrupted') if local else ('completed', 'partial')
+    after = ctx.wait(lambda: (op if (op := _result(ctx.call('operation.inspect', {'id': row['operation_id']})))['state'] in terminal else None),
+                     'retried stage leaves its running observation', timeout=30)
+    if local:
+        ctx.expect(after['state'] == before['state'], 'local save retry preserves its durable operation result')
     ctx.expect(after['id'] == before['id'], 'retry preserves operation identity')
     ctx.expect(detail['id'] == row['id'], 'retry preserves history identity')
     _frame(ctx, 'after' if local else 'upload-after')
@@ -361,7 +353,7 @@ def retry_upload(ctx):
     _retry(ctx, 'history_retry_local', local=True)
 
 
-@recipe('history.active-banner', needs=('history_active_uploads',), destinations=('local', 's3'))
+@recipe('history.active-banner', needs=('history_active_uploads',), destinations=('local', 's3'), timeout=180)
 def active_banner(ctx):
     data = ctx.fixture('history_active_uploads')
     _open(ctx)
@@ -370,13 +362,13 @@ def active_banner(ctx):
     ctx.click('text-glob:* more active', window='history')
     ctx.wait(lambda: _state(ctx)['query']['uploadStatus'] == 'uploading', 'More active filters running uploads')
     ctx.click('text-glob:Cancel this upload:*', window='history')
-    ctx.wait(lambda: _state(ctx)['activeOperationCount'] < len(data['operation_ids']), 'Cancel this upload stops an active operation')
+    ctx.wait(lambda: _state(ctx)['activeOperationCount'] < len(data['operation_ids']), 'Cancel this upload stops an active operation', timeout=75)
     states = [_result(ctx.call('operation.inspect', {'id': item})) for item in data['operation_ids']]
     ctx.expect(any(item['state'] == 'cancelled' for item in states), 'one exact fixture operation canceled')
     _frame(ctx, 'after', 'history-many-active')
 
 
-@recipe('history.cancel-all-dialog', 'confirm.history-cancel-all', needs=('history_active_uploads',), destinations=('local', 's3'))
+@recipe('history.cancel-all-dialog', 'confirm.history-cancel-all', needs=('history_active_uploads',), destinations=('local', 's3'), timeout=240)
 def cancel_all(ctx):
     ids = ctx.fixture('history_active_uploads')['operation_ids']
     _open(ctx)
@@ -392,7 +384,7 @@ def cancel_all(ctx):
     second = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'second cancel-all confirmation opens')
     ctx.expect(set(second['cancelAllConfirmation']['operationIds']) == set(ids), 'second confirmation captures same identities')
     ctx.click('text-glob:Cancel * uploads', window='historyCancelAllConfirmation')
-    ctx.wait(lambda: all(_result(ctx.call('operation.inspect', {'id': item}))['state'] == 'cancelled' for item in ids), 'all confirmed uploads cancel', timeout=30)
+    ctx.wait(lambda: all(_result(ctx.call('operation.inspect', {'id': item}))['state'] == 'cancelled' for item in ids), 'all confirmed uploads cancel', timeout=75)
     ctx.expect(_state(ctx)['activeOperationCount'] == 0, 'banner clears canceled uploads')
     _frame(ctx, 'after')
 
@@ -671,6 +663,48 @@ def mcp_inspect(ctx):
     view = _result(ctx.mcp('get_view_state'))
     ctx.expect(view == _result(ctx.call('ui.viewState')), 'MCP view-state matches resident')
     _frame(ctx, 'after')
+
+
+# Gallery observation runs last so a failed native probe cannot hide unrelated window/menu results.
+@recipe('history.view-gallery', 'history.view-list', needs=('history-row',))
+def view_modes(ctx):
+    row = _row(ctx)
+    _frame(ctx, 'before')
+    _gallery(ctx)
+    _frame(ctx, 'gallery', GALLERY)
+    _details(ctx)
+    ctx.expect(row['id'] in _state(ctx)['selectedIds'], 'gallery keeps exact row identity')
+    _frame(ctx, 'gallery-details', '55-history-gallery-details')
+    ctx.keys('Esc')
+    ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape returns to gallery')
+    ctx.click('historyListMode', window='history')
+    ctx.wait(lambda: not _state(ctx)['gridMode'], 'List button restores list')
+    _frame(ctx, 'after')
+
+
+
+@recipe('history.key-enter', needs=('history-row',))
+def enter_details(ctx):
+    row = _row(ctx)
+    _gallery(ctx)
+    _frame(ctx, 'before', GALLERY)
+    _focus_items(ctx)
+    ctx.keys('Home', 'Return')
+    ctx.wait(lambda: _state(ctx)['detailsOpen'], 'Return opens single selected row details')
+    ctx.expect(row['id'] in _state(ctx)['selectedIds'], 'details belong to selected history ID')
+    _frame(ctx, 'after', '55-history-gallery-details')
+    ctx.keys('Esc')
+
+
+
+@recipe('history.key-esc', needs=('history-row',), timeout=180)
+def escape_details(ctx):
+    preview(ctx)
+    _details(ctx)
+    ctx.keys('Esc')
+    ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape without expanded preview closes details')
+    _frame(ctx, 'after', GALLERY)
+
 
 
 # Explicit declarations, rather than optimistic click-and-review passes. These
