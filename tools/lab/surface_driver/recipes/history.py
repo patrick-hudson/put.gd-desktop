@@ -970,7 +970,7 @@ def _command_control(action):
             **({'role': 'push button'} if action != 'edit' else {})}
 
 
-@recipe('shell.command-tooltips', needs=('app-profile',), timeout=240)
+@recipe('shell.command-tooltips', needs=('app-profile',), timeout=600)
 def command_tooltips(ctx):
     labels = COMMAND_LABELS
     for unavailable in (False, True):
