@@ -536,6 +536,8 @@ def cli_version(ctx):
     ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'History helper ready')
     _frame(ctx, 'before')
     text = ctx.cli('--version')
+    if text['returncode'] == 0 and text['stdout'].startswith('putgd-cli '):
+        ctx.blocked('Context.cli routed the launcher flag to putgd-cli; launcher dispatch remains a core capability gap.', issue=675)
     ctx.expect(text['returncode'] == 0 and text['stdout'].startswith('putgd '), 'launcher prints version')
     version = _cli(ctx, '--version-json')
     authoritative = _result(ctx.call('ui.snapshot'))['build']
@@ -605,7 +607,7 @@ BLOCKED = {
     'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
     'shell.first-launch': 'app-profile(first_launch=True) now provides lifecycle reset; the full initial Settings/no-output contract still needs live selected-page and warning-strip assertions (#675).',
-    'cli.launcher-background': 'Launcher routing is implemented; background start still needs a stopped-resident/tray-absent lifecycle fixture and the 10-second fallback oracle (#675).',
+    'cli.launcher-background': 'The launcher descriptor exists, but Context.cli still routes leading flags to putgd-cli; stopped-resident/tray-absent lifecycle and the 10-second fallback oracle are also missing (#675).',
     'cli.action-invoke': 'Needs native source and six action completion fixtures; capture/record selectors cannot be left active.',
     'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures (#675).',
     'mcp.perform-action': 'Needs native source and six action completion fixtures for perform_action.',

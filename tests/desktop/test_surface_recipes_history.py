@@ -301,7 +301,7 @@ class FakeContext(Context):
     def cli(self, *args, timeout=60):
         self.events.append(('cli', args))
         value = self.build if args[0] == '--version-json' else {}
-        return {'returncode': 0, 'stdout': 'putgd 26.1029.42-nightly\n' if args[0] == '--version' else json.dumps(value), 'stderr': ''}
+        return {'returncode': 0, 'stdout': ('putgd-cli 26.1029.42-nightly\n' if self.fault == 'launcher-routed-to-client' else 'putgd 26.1029.42-nightly\n') if args[0] == '--version' else json.dumps(value), 'stderr': ''}
 
     def mcp(self, tool, arguments=None):
         self.events.append(('mcp', tool, arguments))
@@ -466,6 +466,14 @@ class HistoryRecipeTests(unittest.TestCase):
                 self.assertFalse(ctx.closed)
                 self.assertFalse(ctx.minimized)
                 self.assertEqual(ctx.events[-1], ('view', 'ui.show', {'view': 'history'}))
+
+    def test_launcher_dispatch_to_resident_client_is_a_core_blocker(self):
+        ctx = FakeContext(('launcher',), fault='launcher-routed-to-client')
+        with self.assertRaises(RecipeBlocked) as error:
+            history.cli_version(ctx)
+        self.assertEqual(error.exception.issue, 675)
+        self.assertIn('putgd-cli', error.exception.reason)
+        self.assertFalse(any(e == ('cli', ('--version-json',)) for e in ctx.events))
 
     def test_native_window_observation_uses_accessible_query_and_iconified_state(self):
         from tools.lab.surface_driver.profiles import load_profile
