@@ -2476,7 +2476,7 @@
       "functional": "blocked",
       "visual": "frames",
       "receipt": "work/tray-r3/cin-export/work/tray-evidence/cin2/receipt.json",
-      "note": "accessible: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "accessible: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "cinnamon-x11",
@@ -2549,9 +2549,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus; Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus; Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2594,7 +2594,7 @@
       ],
       "recipe": "tray.notification_action_rejected",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:09:03Z"
+      "at": "2026-10-30T08:13:44Z"
     },
     {
       "interaction": "notification.completed-with-problem",
@@ -2602,9 +2602,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs offline mixed-success batch fixture with inspected per-item outcomes; Needs offline mixed-success batch fixture with inspected per-item outcomes; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs offline mixed-success batch fixture with inspected per-item outcomes; Needs offline mixed-success batch fixture with inspected per-item outcomes; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2647,16 +2647,16 @@
       ],
       "recipe": "tray.notification_completed_with_problem",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:09:00Z"
+      "at": "2026-10-30T08:13:42Z"
     },
     {
       "interaction": "notification.diagnostics-not-saved",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=6cd72451-e23b-4cc5-9df5-3bda6e5db585; notification action=save-diagnostics evidence={\"id\": 9, \"sender\": \":1.569\", \"server\": \":1.33\", \"at\": 1793347610.720132, \"action_events\": [{\"action\": \"save-diagnostics\", \"at\": 1793347614.574627}], \"closed\": {\"reason\": 2, \"at\": 1793347614.57463}}; operation=6cd72451-e23b-4cc5-9df5-3bda6e5db585 action=clipboard; operation=6cd72451-e23b-4cc5-9df5-3bda6e5db585 state=failed artifacts=04a59bc8-a1fb-4d4f-89b6-7440bc80309e; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2679,21 +2679,29 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.diagnostics_not_saved/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.diagnostics_not_saved",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:05:53Z",
-      "issue": 805
+      "at": "2026-10-30T08:07:01Z",
+      "issue": null
     },
     {
       "interaction": "notification.diagnostics-saved",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=a2decfbc-4950-418e-a37e-a1a3e8f903bd; notification action=save-diagnostics evidence={\"id\": 3, \"sender\": \":1.516\", \"server\": \":1.33\", \"at\": 1793347533.518128, \"action_events\": [{\"action\": \"save-diagnostics\", \"at\": 1793347537.623479}], \"closed\": {\"reason\": 2, \"at\": 1793347537.623482}}; notification action=show-in-folder evidence={\"id\": 4, \"sender\": \":1.516\", \"server\": \":1.33\", \"at\": 1793347537.658087, \"action_events\": [{\"action\": \"show-in-folder\", \"at\": 1793347539.972506}], \"closed\": {\"reason\": 2, \"at\": 1793347539.972508}}; operation=a2decfbc-4950-418e-a37e-a1a3e8f903bd action=clipboard; operation=a2decfbc-4950-418e-a37e-a1a3e8f903bd state=failed artifacts=5c412fe4-6db6-4cb7-8fce-83278ccdd359; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2716,12 +2724,20 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.save_diagnostics/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.save_diagnostics",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:04:27Z",
-      "issue": 805
+      "at": "2026-10-30T08:05:47Z",
+      "issue": null
     },
     {
       "interaction": "notification.in-flight-limit",
@@ -2729,9 +2745,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts; Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts; Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2774,7 +2790,7 @@
       ],
       "recipe": "tray.notification_in_flight_limit",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:09:04Z"
+      "at": "2026-10-30T08:13:44Z"
     },
     {
       "interaction": "notification.incomplete-uploads",
@@ -2782,8 +2798,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "operationId=cd6f881c-92d6-4c29-944c-0396b3169626; timeout: desktop notification: put.gd \u2014 incomplete uploads left; The retained multipart fixture does not schedule the automatic cleanup that emits this notification; raw functional=failed; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=2e52d670-68f5-4a0f-ba62-09b5ded32707; timeout: desktop notification: put.gd \u2014 incomplete uploads left; The retained multipart fixture does not schedule the automatic cleanup that emits this notification; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2810,7 +2826,7 @@
       ],
       "recipe": "tray.incomplete_uploads",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:06:59Z",
+      "at": "2026-10-30T08:08:40Z",
       "issue": 809
     },
     {
@@ -2819,8 +2835,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=456a7762-05d1-4fa4-82a8-ff179584deb0; operation=456a7762-05d1-4fa4-82a8-ff179584deb0 action=clipboard; operation=456a7762-05d1-4fa4-82a8-ff179584deb0 state=failed artifacts=5fbf8919-0d71-4f04-9bad-74fc044ab86c; desktop catalog reference=00-tray-menu-idle; operation=456a7762-05d1-4fa4-82a8-ff179584deb0 state=failed artifacts=5fbf8919-0d71-4f04-9bad-74fc044ab86c; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2837,8 +2853,24 @@
           "tolerance": null
         },
         {
+          "label": "failure-notification",
+          "path": "frames/tray.local_failure_attention/01-failure-notification.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "latched-attention",
+          "path": "frames/tray.local_failure_attention/02-latched-attention.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.local_failure_attention/01-after.png",
+          "path": "frames/tray.local_failure_attention/03-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -2847,17 +2879,17 @@
       ],
       "recipe": "tray.local_failure_attention",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:02:50Z",
-      "issue": 805
+      "at": "2026-10-30T08:05:04Z",
+      "issue": 837
     },
     {
       "interaction": "notification.preference-off",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=92ae6510-3062-4efe-95b9-c0e19d0fb3ef; operation=92ae6510-3062-4efe-95b9-c0e19d0fb3ef action=clipboard; operation=92ae6510-3062-4efe-95b9-c0e19d0fb3ef state=completed artifacts=6673d5f1-c7bc-423c-9dc2-3a95711eda1a; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2880,12 +2912,20 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.notifications_off/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.notifications_off",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:03:38Z",
-      "issue": 805
+      "at": "2026-10-30T08:05:19Z",
+      "issue": null
     },
     {
       "interaction": "notification.recording-stopped",
@@ -2893,8 +2933,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "timeout: visible synthetic scrolling pattern; Shared pattern/selector-desktop fixture never reports its visible playing state on this GNOME guest; raw functional=failed; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=4f48cb8c-7162-49b0-9370-c222078bc528; timeout: synthetic recording ready; Shared recording fixture does not reach ready on GNOME; no recording-stop input or app defect is inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2921,17 +2961,17 @@
       ],
       "recipe": "tray.recording_stopped",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:06:25Z",
+      "at": "2026-10-30T08:08:09Z",
       "issue": 672
     },
     {
       "interaction": "notification.resident-close",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=2849a506-0845-4133-a63a-decc8f93b012; notification action=save-diagnostics evidence={\"id\": 7, \"sender\": \":1.554\", \"server\": \":1.33\", \"at\": 1793347580.498114, \"action_events\": [{\"action\": \"save-diagnostics\", \"at\": 1793347583.150088}], \"closed\": {\"reason\": 2, \"at\": 1793347583.150667}}; notification action=show-in-folder evidence={\"id\": 8, \"sender\": \":1.554\", \"server\": \":1.33\", \"at\": 1793347583.181234, \"action_events\": [{\"action\": \"show-in-folder\", \"at\": 1793347586.505718}], \"closed\": {\"reason\": 2, \"at\": 1793347586.506559}}; operation=2849a506-0845-4133-a63a-decc8f93b012 action=clipboard; operation=2849a506-0845-4133-a63a-decc8f93b012 state=failed artifacts=0728682e-ce04-44af-9491-0f04f26d1a2b; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2954,21 +2994,29 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.resident_close/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.resident_close",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:05:24Z",
-      "issue": 805
+      "at": "2026-10-30T08:06:35Z",
+      "issue": null
     },
     {
       "interaction": "notification.save-diagnostics",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=a2decfbc-4950-418e-a37e-a1a3e8f903bd; notification action=save-diagnostics evidence={\"id\": 3, \"sender\": \":1.516\", \"server\": \":1.33\", \"at\": 1793347533.518128, \"action_events\": [{\"action\": \"save-diagnostics\", \"at\": 1793347537.623479}], \"closed\": {\"reason\": 2, \"at\": 1793347537.623482}}; notification action=show-in-folder evidence={\"id\": 4, \"sender\": \":1.516\", \"server\": \":1.33\", \"at\": 1793347537.658087, \"action_events\": [{\"action\": \"show-in-folder\", \"at\": 1793347539.972506}], \"closed\": {\"reason\": 2, \"at\": 1793347539.972508}}; operation=a2decfbc-4950-418e-a37e-a1a3e8f903bd action=clipboard; operation=a2decfbc-4950-418e-a37e-a1a3e8f903bd state=failed artifacts=5c412fe4-6db6-4cb7-8fce-83278ccdd359; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -2991,21 +3039,29 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.save_diagnostics/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.save_diagnostics",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:04:27Z",
-      "issue": 805
+      "at": "2026-10-30T08:05:47Z",
+      "issue": null
     },
     {
       "interaction": "notification.saved-locally",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=cb265559-72a5-4551-9ffd-bc8088bd8203; operation=cb265559-72a5-4551-9ffd-bc8088bd8203 action=clipboard; operation=cb265559-72a5-4551-9ffd-bc8088bd8203 state=completed artifacts=e7dc7613-57da-470d-818e-ee2c7b7d12a2; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3028,21 +3084,29 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.saved_locally/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.saved_locally",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:02:01Z",
-      "issue": 805
+      "at": "2026-10-30T08:04:06Z",
+      "issue": null
     },
     {
       "interaction": "notification.show-in-folder",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=28270c9a-337f-4173-9b2f-a7d844e594d1; notification action=save-diagnostics evidence={\"id\": 5, \"sender\": \":1.539\", \"server\": \":1.33\", \"at\": 1793347558.538611, \"action_events\": [{\"action\": \"save-diagnostics\", \"at\": 1793347560.71217}], \"closed\": {\"reason\": 2, \"at\": 1793347560.712174}}; notification action=show-in-folder evidence={\"id\": 6, \"sender\": \":1.539\", \"server\": \":1.33\", \"at\": 1793347560.735011, \"action_events\": [{\"action\": \"show-in-folder\", \"at\": 1793347562.703442}], \"closed\": {\"reason\": 2, \"at\": 1793347562.704169}}; operation=28270c9a-337f-4173-9b2f-a7d844e594d1 action=clipboard; operation=28270c9a-337f-4173-9b2f-a7d844e594d1 state=failed artifacts=ae765cad-9882-467b-95be-890ccd80d9ca; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3065,12 +3129,20 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.show_in_folder/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.show_in_folder",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:04:54Z",
-      "issue": 805
+      "at": "2026-10-30T08:06:08Z",
+      "issue": null
     },
     {
       "interaction": "notification.upload-complete",
@@ -3078,8 +3150,8 @@
       "package": "deb",
       "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "operationId=b1a5728d-0e4c-47d3-9de9-dfa27dded771; notification action=default evidence={\"id\": 3, \"sender\": \":1.440\", \"server\": \":1.32\", \"at\": 1793340504.034625, \"action_events\": [{\"action\": \"default\", \"at\": 1793340505.91444}], \"closed\": {\"reason\": 2, \"at\": 1793340505.914644}}; raw functional=passed; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=d7dd38bf-2635-45ce-b25c-682c1f6377fe; notification action=default evidence={\"id\": 13, \"sender\": \":1.700\", \"server\": \":1.33\", \"at\": 1793347990.503585, \"action_events\": [{\"action\": \"default\", \"at\": 1793347992.951351}], \"closed\": {\"reason\": 2, \"at\": 1793347992.953876}}; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3114,7 +3186,7 @@
       ],
       "recipe": "tray.upload_complete",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:38Z",
+      "at": "2026-10-30T08:13:27Z",
       "issue": null
     },
     {
@@ -3123,9 +3195,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants; tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants; tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3168,7 +3240,7 @@
       ],
       "recipe": "tray.notification_upload_failed",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:09:01Z"
+      "at": "2026-10-30T08:13:43Z"
     },
     {
       "interaction": "shortcut.clipboard",
@@ -3176,8 +3248,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "issue": 682,
+      "note": "clipboard wl-copy owner failed to start or acquire selection; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3194,16 +3267,8 @@
           "tolerance": null
         },
         {
-          "label": "before",
-          "path": "frames/tray.shortcut_clipboard/01-before.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
           "label": "after",
-          "path": "frames/tray.shortcut_clipboard/02-after.png",
+          "path": "frames/tray.shortcut_clipboard/01-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -3212,8 +3277,7 @@
       ],
       "recipe": "tray.shortcut_clipboard",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:01:07Z",
-      "issue": 805
+      "at": "2026-10-30T08:02:34Z"
     },
     {
       "interaction": "shortcut.closes-tray-menu",
@@ -3221,9 +3285,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3240,8 +3303,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.shortcut_closes_tray_menu/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.shortcut_closes_tray_menu/01-after.png",
+          "path": "frames/tray.shortcut_closes_tray_menu/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -3250,7 +3321,8 @@
       ],
       "recipe": "tray.shortcut_closes_tray_menu",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:01:22Z"
+      "at": "2026-10-30T08:03:27Z",
+      "issue": 805
     },
     {
       "interaction": "shortcut.desktop",
@@ -3258,8 +3330,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3294,7 +3366,7 @@
       ],
       "recipe": "tray.shortcut_desktop",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:59:01Z",
+      "at": "2026-10-30T07:59:30Z",
       "issue": 805
     },
     {
@@ -3303,8 +3375,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3339,7 +3411,7 @@
       ],
       "recipe": "tray.shortcut_edit",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:59:34Z",
+      "at": "2026-10-30T08:00:26Z",
       "issue": 805
     },
     {
@@ -3348,9 +3420,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs current-build shortcut recorder controls plus a bounded no-operation observation window; Needs current-build shortcut recorder controls plus a bounded no-operation observation window; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs current-build shortcut recorder controls plus a bounded no-operation observation window; Needs current-build shortcut recorder controls plus a bounded no-operation observation window; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3393,7 +3465,7 @@
       ],
       "recipe": "tray.shortcut_ignored_while_recording",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:50Z"
+      "at": "2026-10-30T08:13:39Z"
     },
     {
       "interaction": "shortcut.layout-change",
@@ -3401,9 +3473,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs isolated keyboard-layout change/restore and native rebinding witness; Needs isolated keyboard-layout change/restore and native rebinding witness; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs isolated keyboard-layout change/restore and native rebinding witness; Needs isolated keyboard-layout change/restore and native rebinding witness; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3446,7 +3518,7 @@
       ],
       "recipe": "tray.shortcut_layout_change",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:56Z"
+      "at": "2026-10-30T08:13:42Z"
     },
     {
       "interaction": "shortcut.locked-session",
@@ -3454,9 +3526,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs core-owned visible session lock/unlock lifecycle and protected login handling; Needs core-owned visible session lock/unlock lifecycle and protected login handling; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs core-owned visible session lock/unlock lifecycle and protected login handling; Needs core-owned visible session lock/unlock lifecycle and protected login handling; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3499,7 +3571,7 @@
       ],
       "recipe": "tray.shortcut_locked_session",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:53Z"
+      "at": "2026-10-30T08:13:41Z"
     },
     {
       "interaction": "shortcut.over-open-menu",
@@ -3507,9 +3579,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs an independently owned other-client popup fixture with keyboard-grab witness; Needs an independently owned other-client popup fixture with keyboard-grab witness; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs an independently owned other-client popup fixture with keyboard-grab witness; Needs an independently owned other-client popup fixture with keyboard-grab witness; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3552,7 +3624,7 @@
       ],
       "recipe": "tray.shortcut_over_open_menu",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:48Z"
+      "at": "2026-10-30T08:13:38Z"
     },
     {
       "interaction": "shortcut.paused-while-settings-records",
@@ -3560,9 +3632,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs native shortcut-grab observation during recorder focus and restoration; Needs native shortcut-grab observation during recorder focus and restoration; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs native shortcut-grab observation during recorder focus and restoration; Needs native shortcut-grab observation during recorder focus and restoration; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3605,7 +3677,7 @@
       ],
       "recipe": "tray.shortcut_paused_while_settings_records",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:52Z"
+      "at": "2026-10-30T08:13:40Z"
     },
     {
       "interaction": "shortcut.record",
@@ -3613,8 +3685,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3649,7 +3721,7 @@
       ],
       "recipe": "tray.shortcut_record",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:00:11Z",
+      "at": "2026-10-30T08:01:35Z",
       "issue": 805
     },
     {
@@ -3658,8 +3730,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; geometry: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3694,7 +3766,7 @@
       ],
       "recipe": "tray.shortcut_region",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:57:26Z",
+      "at": "2026-10-30T07:57:02Z",
       "issue": 805
     },
     {
@@ -3703,8 +3775,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "timeout: visible synthetic scrolling pattern; Shared pattern/selector-desktop fixture never reports its visible playing state on this GNOME guest; raw functional=failed; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh accessible geometry probe times out before input; exact guest/package and saved desktop frame retained; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3731,8 +3803,8 @@
       ],
       "recipe": "tray.shortcut_window",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:58:29Z",
-      "issue": 672
+      "at": "2026-10-30T07:58:37Z",
+      "issue": 805
     },
     {
       "interaction": "tray.activate",
@@ -3740,9 +3812,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "issue": 831,
+      "note": "GNOME tray activation requires an atomic guarded desktop double-click; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3759,16 +3831,8 @@
           "tolerance": null
         },
         {
-          "label": "before",
-          "path": "frames/tray.activate/01-before.png",
-          "window": null,
-          "reference": null,
-          "distance": null,
-          "tolerance": null
-        },
-        {
           "label": "after",
-          "path": "frames/tray.activate/02-after.png",
+          "path": "frames/tray.activate/01-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -3777,16 +3841,16 @@
       ],
       "recipe": "tray.activate",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:54:48Z"
+      "at": "2026-10-30T07:52:45Z"
     },
     {
       "interaction": "tray.context-menu",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; raw functional=passed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3817,12 +3881,20 @@
           "reference": null,
           "distance": null,
           "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.context_menu/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
         }
       ],
       "recipe": "tray.context_menu",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:55:08Z",
-      "issue": 805
+      "at": "2026-10-30T07:53:17Z",
+      "issue": null
     },
     {
       "interaction": "tray.icon-attention",
@@ -3830,8 +3902,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=456a7762-05d1-4fa4-82a8-ff179584deb0; operation=456a7762-05d1-4fa4-82a8-ff179584deb0 action=clipboard; operation=456a7762-05d1-4fa4-82a8-ff179584deb0 state=failed artifacts=5fbf8919-0d71-4f04-9bad-74fc044ab86c; desktop catalog reference=00-tray-menu-idle; operation=456a7762-05d1-4fa4-82a8-ff179584deb0 state=failed artifacts=5fbf8919-0d71-4f04-9bad-74fc044ab86c; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3848,8 +3920,24 @@
           "tolerance": null
         },
         {
+          "label": "failure-notification",
+          "path": "frames/tray.local_failure_attention/01-failure-notification.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "latched-attention",
+          "path": "frames/tray.local_failure_attention/02-latched-attention.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.local_failure_attention/01-after.png",
+          "path": "frames/tray.local_failure_attention/03-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -3858,8 +3946,8 @@
       ],
       "recipe": "tray.local_failure_attention",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:02:50Z",
-      "issue": 805
+      "at": "2026-10-30T08:05:04Z",
+      "issue": 837
     },
     {
       "interaction": "tray.icon-complete",
@@ -3867,9 +3955,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling; upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling; upload fixture completes before control returns; needs a held completion state and sub-600-ms icon sampling; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -3912,23 +4000,21 @@
       ],
       "recipe": "tray.tray_icon_complete",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:40Z"
+      "at": "2026-10-30T08:13:29Z"
     },
     {
       "interaction": "tray.icon-idle",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "passed",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno5/receipt.json",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
       "destination": "local",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "Saved panel frame needs glyph/tint review; menu metadata cannot establish icon pixels; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -3939,8 +4025,24 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.idle/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.idle/01-after.png",
+          "path": "frames/tray.idle/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/tray.idle/03-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -3949,7 +4051,9 @@
       ],
       "recipe": "tray.idle",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:07:32Z"
+      "at": "2026-10-30T08:32:12Z",
+      "issue": null,
+      "note": "raw functional=passed; recipe source=cdb6fa167e4dddf5cdfa81b9f3f54d54a359c46e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance"
     },
     {
       "interaction": "tray.icon-recording",
@@ -3957,9 +4061,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "recording fixture ends at review; needs active/paused state holds and icon-pixel sampling; recording fixture ends at review; needs active/paused state holds and icon-pixel sampling; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "recording fixture ends at review; needs active/paused state holds and icon-pixel sampling; recording fixture ends at review; needs active/paused state holds and icon-pixel sampling; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4002,7 +4106,7 @@
       ],
       "recipe": "tray.tray_icon_recording",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:41Z"
+      "at": "2026-10-30T08:13:32Z"
     },
     {
       "interaction": "tray.icon-uploading",
@@ -4010,8 +4114,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "operationId=d77e3d9d-c743-494f-a342-016191fa6cc2; tray: DBusException: org.freedesktop.DBus.Error.NameHasNoOwner: Could not get PID of name ':1.40@': no such name; GNOME watcher item cannot be resolved to a valid private-family SNI service; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=e0b66b27-db01-4a67-9abd-535768df8d76; tray: DBusException: org.freedesktop.DBus.Error.NameHasNoOwner: Could not get PID of name ':1.34@': no such name; GNOME watcher item cannot be resolved to a valid private-family SNI service; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4038,7 +4142,7 @@
       ],
       "recipe": "tray.uploading",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:14Z",
+      "at": "2026-10-30T08:12:59Z",
       "issue": 811
     },
     {
@@ -4047,8 +4151,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno5/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=cdb6fa167e4dddf5cdfa81b9f3f54d54a359c46e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4065,8 +4169,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_about/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_about/01-after.png",
+          "path": "frames/tray.tray_menu_about/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4075,8 +4187,8 @@
       ],
       "recipe": "tray.tray_menu_about",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:56:16Z",
-      "issue": 805
+      "at": "2026-10-30T08:31:33Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-attention",
@@ -4084,9 +4196,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "local S3 cannot emit proton_account_busy; provider fault adapter belongs to the builder lane; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "local S3 cannot emit proton_account_busy; provider fault adapter belongs to the builder lane; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4113,7 +4225,7 @@
       ],
       "recipe": "tray.attention_with_busy_latch",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:02:52Z"
+      "at": "2026-10-30T08:05:04Z"
     },
     {
       "interaction": "tray.menu-cancel-upload",
@@ -4121,9 +4233,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls; Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls; Core tray-offline supplies one active upload; full row also needs two concurrent uploads and native confirmation controls; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4166,7 +4278,7 @@
       ],
       "recipe": "tray.tray_menu_cancel_upload",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:42Z"
+      "at": "2026-10-30T08:13:33Z"
     },
     {
       "interaction": "tray.menu-capture-desktop",
@@ -4174,9 +4286,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4193,8 +4304,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_desktop/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_capture_desktop/01-after.png",
+          "path": "frames/tray.tray_menu_capture_desktop/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4203,7 +4322,8 @@
       ],
       "recipe": "tray.tray_menu_capture_desktop",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:58:41Z"
+      "at": "2026-10-30T07:59:03Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-capture-region",
@@ -4211,9 +4331,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4230,8 +4349,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_region/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_capture_region/01-after.png",
+          "path": "frames/tray.tray_menu_capture_region/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4240,7 +4367,8 @@
       ],
       "recipe": "tray.tray_menu_capture_region",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:57:05Z"
+      "at": "2026-10-30T07:56:30Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-capture-region-edit",
@@ -4248,9 +4376,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4267,8 +4394,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_capture_region_edit/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_capture_region_edit/01-after.png",
+          "path": "frames/tray.tray_menu_capture_region_edit/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4277,7 +4412,8 @@
       ],
       "recipe": "tray.tray_menu_capture_region_edit",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:59:12Z"
+      "at": "2026-10-30T07:59:57Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-capture-window",
@@ -4285,8 +4421,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "timeout: visible synthetic scrolling pattern; Shared pattern/selector-desktop fixture never reports its visible playing state on this GNOME guest; raw functional=failed; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "issue": 670,
+      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4313,8 +4450,7 @@
       ],
       "recipe": "tray.tray_menu_capture_window",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:57:57Z",
-      "issue": 672
+      "at": "2026-10-30T07:57:45Z"
     },
     {
       "interaction": "tray.menu-change-output",
@@ -4322,8 +4458,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno5/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=cdb6fa167e4dddf5cdfa81b9f3f54d54a359c46e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4340,8 +4476,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_change_output/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_change_output/01-after.png",
+          "path": "frames/tray.tray_menu_change_output/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4350,8 +4494,8 @@
       ],
       "recipe": "tray.tray_menu_change_output",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:56:37Z",
-      "issue": 805
+      "at": "2026-10-30T08:31:53Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-destinations",
@@ -4359,8 +4503,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno5/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=cdb6fa167e4dddf5cdfa81b9f3f54d54a359c46e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4377,8 +4521,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_destinations/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_destinations/01-after.png",
+          "path": "frames/tray.tray_menu_destinations/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4387,8 +4539,8 @@
       ],
       "recipe": "tray.tray_menu_destinations",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:55:53Z",
-      "issue": 805
+      "at": "2026-10-30T08:31:17Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-edit-clipboard",
@@ -4396,9 +4548,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Core has no native image clipboard owner descriptor; text fixture cannot prove image editing; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Core has no native image clipboard owner descriptor; text fixture cannot prove image editing; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4425,7 +4577,7 @@
       ],
       "recipe": "tray.edit_clipboard",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:01:32Z"
+      "at": "2026-10-30T08:03:44Z"
     },
     {
       "interaction": "tray.menu-edit-file",
@@ -4433,9 +4585,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4462,7 +4613,8 @@
       ],
       "recipe": "tray.edit_file",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:56:55Z"
+      "at": "2026-10-30T07:56:05Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-history",
@@ -4470,8 +4622,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno5/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=cdb6fa167e4dddf5cdfa81b9f3f54d54a359c46e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4488,8 +4640,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_history/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_history/01-after.png",
+          "path": "frames/tray.tray_menu_history/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4498,8 +4658,8 @@
       ],
       "recipe": "tray.tray_menu_history",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:55:26Z",
-      "issue": 805
+      "at": "2026-10-30T08:31:01Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-output-submenu",
@@ -4507,9 +4667,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4526,8 +4685,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.output_submenu/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.output_submenu/01-after.png",
+          "path": "frames/tray.output_submenu/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4536,7 +4703,8 @@
       ],
       "recipe": "tray.output_submenu",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:56:46Z"
+      "at": "2026-10-30T07:55:35Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-quit",
@@ -4544,9 +4712,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane; Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane; Needs core resident restart ownership after real Quit; do not terminate the shared run mid-lane; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4589,7 +4757,7 @@
       ],
       "recipe": "tray.tray_menu_quit",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:45Z"
+      "at": "2026-10-30T08:13:35Z"
     },
     {
       "interaction": "tray.menu-record",
@@ -4597,9 +4765,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4616,8 +4783,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_record/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_record/01-after.png",
+          "path": "frames/tray.tray_menu_record/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4626,7 +4801,8 @@
       ],
       "recipe": "tray.tray_menu_record",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:59:47Z"
+      "at": "2026-10-30T08:00:58Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-settings",
@@ -4634,9 +4810,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "desktop catalog reference=00-tray-menu-idle; desktop input is obscured by 'compositor shell stage did not pick the expected notification control'; Drawn shell menu label is refused by the compositor stage pick before entry input; no app defect inferred; raw functional=failed; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4653,8 +4828,16 @@
           "tolerance": null
         },
         {
+          "label": "before",
+          "path": "frames/tray.tray_menu_settings/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/tray.tray_menu_settings/01-after.png",
+          "path": "frames/tray.tray_menu_settings/02-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -4663,7 +4846,8 @@
       ],
       "recipe": "tray.tray_menu_settings",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T05:55:34Z"
+      "at": "2026-10-30T07:53:58Z",
+      "issue": 837
     },
     {
       "interaction": "tray.menu-shortcut-suffix",
@@ -4671,9 +4855,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Shell menu exposes no accelerator metadata for region; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4700,7 +4884,7 @@
       ],
       "recipe": "tray.shortcut_suffix",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:07:53Z"
+      "at": "2026-10-30T08:12:29Z"
     },
     {
       "interaction": "tray.menu-update-available",
@@ -4708,9 +4892,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs a stable-tagged local build with isolated update-result fixture; no live update query; Needs a stable-tagged local build with isolated update-result fixture; no live update query; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs a stable-tagged local build with isolated update-result fixture; no live update query; Needs a stable-tagged local build with isolated update-result fixture; no live update query; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4753,7 +4937,7 @@
       ],
       "recipe": "tray.tray_menu_update_available",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:43Z"
+      "at": "2026-10-30T08:13:34Z"
     },
     {
       "interaction": "tray.menu-upload-clipboard",
@@ -4761,9 +4945,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "issue": 682,
+      "note": "clipboard wl-copy owner failed to start or acquire selection; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4790,7 +4974,7 @@
       ],
       "recipe": "tray.tray_menu_upload_clipboard",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:00:28Z"
+      "at": "2026-10-30T08:01:58Z"
     },
     {
       "interaction": "tray.menu-upload-status",
@@ -4798,8 +4982,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "operationId=d77e3d9d-c743-494f-a342-016191fa6cc2; tray: DBusException: org.freedesktop.DBus.Error.NameHasNoOwner: Could not get PID of name ':1.40@': no such name; GNOME watcher item cannot be resolved to a valid private-family SNI service; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "operationId=e0b66b27-db01-4a67-9abd-535768df8d76; tray: DBusException: org.freedesktop.DBus.Error.NameHasNoOwner: Could not get PID of name ':1.34@': no such name; GNOME watcher item cannot be resolved to a valid private-family SNI service; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4826,7 +5010,7 @@
       ],
       "recipe": "tray.uploading",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:14Z",
+      "at": "2026-10-30T08:12:59Z",
       "issue": 811
     },
     {
@@ -4835,9 +5019,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
       "issue": 670,
-      "note": "Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray; Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "note": "Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray; Needs a graphical-resident launch profile; the production Qt Core resident uses NativeTray; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4880,7 +5064,7 @@
       ],
       "recipe": "tray.tray_qt_fallback",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:08:47Z"
+      "at": "2026-10-30T08:13:37Z"
     },
     {
       "interaction": "tray.scroll-noop",
@@ -4888,8 +5072,9 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "note": "accessible: RuntimeError: fresh accessibility probe timed out; Fresh GNOME accessible geometry cannot be resolved before input; active witness and matching package verified; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "issue": 831,
+      "note": "Desktop wheel input needs a live shell-node foreground guard; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4916,8 +5101,7 @@
       ],
       "recipe": "tray.scroll_noop",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:07:21Z",
-      "issue": 805
+      "at": "2026-10-30T08:08:40Z"
     },
     {
       "interaction": "tray.tooltip",
@@ -4925,9 +5109,8 @@
       "package": "deb",
       "functional": "blocked",
       "visual": "frames",
-      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno1/receipt.json",
-      "issue": 670,
-      "note": "Desktop tray icon selector is missing or ambiguous; needs an owned panel rectangle; raw functional=blocked; recipe source=d2feb3a50f35587c8e1427ee72deba802521082e; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
+      "receipt": "work/tray-r3/gno-export/work/tray-evidence/gno4/receipt.json",
+      "note": "tray: DBusException: org.freedesktop.DBus.Error.NameHasNoOwner: Could not get PID of name ':1.34@': no such name; GNOME watcher item cannot be resolved to a valid private-family SNI service; raw functional=blocked; recipe source=32154df2fb9bf445dbda44f5f7fc04546fd8712b; core=7bc0ed71f1b907232509fba1e6248be14fcd783b; Boat development evidence, not desktop acceptance",
       "host": "boat",
       "placement": "boat",
       "guest": "gnome-wayland",
@@ -4954,7 +5137,8 @@
       ],
       "recipe": "tray.tooltip",
       "build": "9b8ffb086d0b39fc9cfba4890c9b836737b9cba0",
-      "at": "2026-10-30T06:07:42Z"
+      "at": "2026-10-30T08:11:33Z",
+      "issue": 811
     }
   ]
 }
