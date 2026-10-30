@@ -8,6 +8,7 @@ import fcntl
 import importlib.util
 import io
 import json
+import math
 import os
 from pathlib import Path
 import select
@@ -33,7 +34,7 @@ def time_scale():
         value = float(os.environ.get('PUTGD_TEST_TIME_SCALE', '1'))
     except ValueError:
         return 1.0
-    return min(max(value, 1.0), 20.0) if value == value else 1.0
+    return min(max(value, 1.0), 20.0) if math.isfinite(value) else 1.0
 
 
 # Budget for things that will happen: a process exits, a handshake line
