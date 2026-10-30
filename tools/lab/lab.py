@@ -497,9 +497,9 @@ def put(run, local, remote):
     command(arguments + [local, endpoint + str(remote)])
 
 
-def get(run, remote, local):
+def get(run, remote, local, timeout=60):
     arguments, endpoint = scp_connection(run)
-    command(arguments + [endpoint + str(remote), local])
+    command(arguments + [endpoint + str(remote), local], timeout=timeout)
 
 
 def native_display_prefix():
@@ -1685,15 +1685,33 @@ def stage_install_helper(run, remote, helper, digest):
     script = (f'set -eu\nsource="$HOME/{remote}/package_install.py"\n'
               f'echo "{digest}  $source" | sha256sum -c -\n'
               f'hook={shlex.quote(before)}"$source"{shlex.quote(after)}\n'
-              'sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
+              'LC_ALL=C sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null '
               '-o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0 '
               '-o "APT::Update::Pre-Invoke::=$hook" update '
               '> ~/putgd-lab/' + remote.split('/')[-1] + '/staging.log 2>&1 || true\n'
+              # Return only controlled lock metadata: ssh deliberately suppresses
+              # guest stderr, which may contain private data. Apt's own failed
+              # acquisition identifies the actual holder without a precheck race.
+              f'if grep -Fq "Could not get lock /var/lib/apt/lists/lock" ~/{remote}/staging.log; then\n'
+              f'python3 - "$HOME/{remote}/staging.log" <<\'PYAPTLOCK\'\n'
+              'import json, re, sys\n'
+              'with open(sys.argv[1]) as stream: log = stream.read(32768)\n'
+              'holder = re.search(r"held by process ([0-9]+)(?: \\(([a-zA-Z0-9_.+-]+)\\))?", log)\n'
+              'print("putgd-staging-apt-lock " + json.dumps({"pid": holder[1] if holder else "unknown",\n'
+              '    "process": holder[2] if holder and holder[2] else "unknown"}))\n'
+              'PYAPTLOCK\nexit 0\nfi\n'
               f'test -x {helper}\n'
               f'echo "{digest}  {helper}" | sha256sum -c -\n'
               f'test "$(stat -c %u:%a {helper})" = 0:755\n'
               f'sudo -n -l {helper} /tmp/check 1 1 >/dev/null\n')
-    ssh(run, script)
+    output = ssh(run, script)
+    for line in output.splitlines():
+        if line.startswith('putgd-staging-apt-lock '):
+            holder = json.loads(line.split(' ', 1)[1])
+            raise LabError(f'Guest helper staging blocked by apt lists lock /var/lib/apt/lists/lock: '
+                           f'holder PID {holder["pid"]} ({holder["process"]}); '
+                           f'apt-daily or Mint Update may be active. Wait for the holder to finish; '
+                           f'inspect ~/{remote}/staging.log.')
 
 
 def install_package(run, deb, install_timeout=None, install_recovery_timeout=None):
@@ -1720,16 +1738,24 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
         f'if mkdir ~/putgd-lab/install-active 2>/dev/null; then\n'
         f'printf %s {token} > ~/putgd-lab/install-active/job\nmkdir ~/{remote}\n'
         "else\npython3 - <<'PYLOCK'\n"
-        'import json, pathlib, re\n'
+        'import datetime, json, pathlib, re\n'
         'root = pathlib.Path.home() / "putgd-lab"\n'
         'try: job = (root / "install-active/job").read_text().strip()\n'
         'except OSError: job = "unknown"\n'
-        'status = "lock acquired; job metadata not yet available"\n'
+        'status, started, result = "staging", "unknown", "unknown"\n'
+        'try: started = datetime.datetime.fromtimestamp((root / "install-active/job").stat().st_mtime, datetime.timezone.utc).isoformat()\n'
+        'except OSError: pass\n'
         'if re.fullmatch(r"install-[0-9a-f]{32}", job):\n'
+        '    result = str(root / job / "result.json")\n'
         '    for name in ("result.json", "progress.json"):\n'
-        '        try: status = {"file": name, "report": json.loads((root / job / name).read_text())}; break\n'
+        '        try:\n'
+        '            report = json.loads((root / job / name).read_text())\n'
+        '            if not isinstance(report, dict): continue\n'
+        '            status = "running" if name == "progress.json" else (\n'
+        '                "aborted" if report.get("aborted") else "succeeded" if report.get("ok") else "failed")\n'
+        '            break\n'
         '        except (OSError, ValueError): pass\n'
-        'print(json.dumps({"heldJob": job, "state": status}))\n'
+        'print(json.dumps({"heldJob": job, "state": status, "startedAt": started, "resultPath": result}))\n'
         'PYLOCK\nfi\n')
     if held.strip():
         raise LabError('Install retry refused: ' + held.strip() + '; inspect this job before recovery.')
@@ -1745,6 +1771,10 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
         put(run, str(Path(deb).resolve()), remote + '/package.deb')
     except BaseException:
         # The supervisor has not started. Staging has no repositories or dpkg work.
+        try:
+            get(run, remote + '/staging.log', evidence / 'staging.log', timeout=10)
+        except (LabError, OSError, subprocess.TimeoutExpired):
+            pass  # Missing log or disconnected guest must not hide the failure.
         release_lock()
         raise
     try:
