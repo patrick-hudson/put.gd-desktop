@@ -78,17 +78,9 @@
       "name": "Add credentials\u2026",
       "role": "push button"
     },
-    "s3Service": {
-      "name": "S3-compatible service",
-      "role": "combo box"
-    },
     "s3Bucket": {
       "name": "Bucket",
       "role": "text"
-    },
-    "s3RegionChoices": {
-      "name": "Region",
-      "role": "combo box"
     },
     "s3ObjectPrefix": {
       "name": "Folder in bucket",
@@ -97,10 +89,6 @@
     "s3PublicUrlBase": {
       "name": "Link domain",
       "role": "text"
-    },
-    "s3AclMode": {
-      "name": "Upload access request",
-      "role": "combo box"
     },
     "advancedSettings": {
       "name": "Advanced connection settings",
@@ -130,10 +118,6 @@
       "name": "Reset Connect timeout",
       "role": "push button"
     },
-    "credentialMode": {
-      "name": "Credential storage",
-      "role": "combo box"
-    },
     "credentialAccessKey": {
       "name": "Access key ID",
       "role": "text"
@@ -161,6 +145,30 @@
     "destinationsEmpty": {
       "name": "No destinations yet*",
       "role": "label"
+    }
+  },
+  "settings": {
+    "live_controls": {
+      "s3Service": {
+        "name": "*",
+        "role": "combo box",
+        "label": "S3 service"
+      },
+      "s3RegionChoices": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Region"
+      },
+      "s3AclMode": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Upload access request"
+      },
+      "credentialMode": {
+        "name": "*",
+        "role": "combo box",
+        "label": "Credential storage"
+      }
     }
   }
 }

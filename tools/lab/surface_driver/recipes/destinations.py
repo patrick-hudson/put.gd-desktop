@@ -162,6 +162,10 @@ def _wheel(ctx, clicks):
 
 
 def _click(ctx, control, *, window='destinations'):
+    options = ctx.profile.get('settings', {})
+    if window == 'destinations' and options.get('foreground_script') and control in options.get('live_controls', {}):
+        from .settings_input import click
+        return click(ctx, control)
     for attempt in range(12 if window == 'destinations' else 1):
         try:
             return ctx.click(control, window=window)
@@ -215,6 +219,8 @@ def _confirmation_frame(ctx, window):
 
 
 def _state(ctx, control, key):
+    if control == 'destinationConflictBanner' and key == 'visible':
+        return ctx.call('ui.viewState')['settings']['conflict']
     if control == 's3BucketError' and key == 'text':
         rows = ctx.accessible({'owned': True, 'objectName': control})
         if not rows:
@@ -288,7 +294,8 @@ def service(ctx):
         _choose(ctx, 's3Service', index)
         _click(ctx, 'advancedSettings')
         ctx.use_catalog('destinations', '62-destination-connection-expanded')
-        _click(ctx, 'customEndpoint')
+        if not _state(ctx, 'customEndpoint', 'checked'):
+            _click(ctx, 'customEndpoint')
         _edit(ctx, 's3Endpoint', endpoint)
         _click(ctx, 'advancedSettings')
         _saved(ctx, lambda doc: doc['profiles'][0]['settings']['endpoint'] == endpoint, 'service endpoint saved')

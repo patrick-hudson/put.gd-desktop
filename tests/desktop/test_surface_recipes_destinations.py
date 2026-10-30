@@ -82,6 +82,8 @@ class FakeContext(Context):
             if self.invalid:
                 self.conflict = True
             return {'result': {}}
+        if method == 'ui.viewState':
+            return {'settings': {'conflict': self.conflict}}
         if method == 'setup.credentialHint':
             mode = self.document['profiles'][0]['credentials']['mode']
             return {'available': self.available if mode == 'keychain' else self.stored, 'tokenStored': self.stored}
@@ -252,6 +254,8 @@ class FakeContext(Context):
             desired = 'Hide secret access key' if self.revealed else 'Show secret access key'
             return [{'name': desired, 'visible': True}] if query['name'] == desired else []
         control = query['objectName']
+        if control == 'customEndpoint':
+            return [{'states': {'checked': True}}]
         if control == 'destinationLabel':
             return [{'text': self.document['profiles'][self.selection]['label']}]
         if control == 's3BucketError':
