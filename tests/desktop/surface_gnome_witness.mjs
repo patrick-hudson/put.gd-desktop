@@ -6,7 +6,7 @@ let code=fs.readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace('exp
 const callbacks=new Map();
 let unexported=false;
 const native={display:{connect:(signal,cb)=>(callbacks.set(signal,cb),signal),disconnect:id=>callbacks.delete(id)}};
-const fake={global:native,GLib:{uuid_string_random:()=> 'epoch',get_monotonic_time:()=>1000},
+const fake={global:native,Atk:{Object:{prototype:{get_name(){return this.objectName;},get_role(){return this.objectRole;}}}},GLib:{uuid_string_random:()=> 'epoch',get_monotonic_time:()=>1000},
  Gio:{DBusExportedObject:{wrapJSObject:()=>({export(){},unexport(){unexported=true}})},DBus:{session:{}}},
  Meta:{GrabOp:{MOVING:1,RESIZING_SE:24577}},Extension:class {}};
 vm.createContext(fake);vm.runInContext(code+'\nthis.Witness=LabWitness;',fake);
@@ -28,7 +28,8 @@ const labelActor = {
     get_transformed_position: () => [830, 30], get_transformed_size: () => [200, 20],
     get_accessible_name: () => null, accessible_role: 0,
     get_text: () => 'Upload complete',
-    get_accessible: () => ({get_name: () => 'Upload complete', get_role: () => 28}),
+    get_accessible: () => ({objectName: 'Upload complete', objectRole: 28,
+        get_name: () => {throw new TypeError('Atk.Action.get_name needs an index');}}),
 };
 fake.labelActor = labelActor;
 const description = vm.runInContext('actorDescription(labelActor)', fake);
