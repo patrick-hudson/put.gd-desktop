@@ -424,6 +424,15 @@ class DestinationsContracts(unittest.TestCase):
         self.assertTrue(all(ipaddress.ip_address(urlsplit(value).hostname).is_loopback
                             for value in endpoints))
 
+    def test_bucket_error_can_use_the_visible_label_name(self):
+        ctx = self.context()
+        ctx.accessible = lambda query: [{'text': '', 'name': 'Enter only the bucket name',
+                                         'visible': True}]
+        self.assertEqual(lane._state(ctx, 's3BucketError', 'text'), 'Enter only the bucket name')
+        ctx.accessible = lambda query: [{'text': '', 'name': 'Enter only the bucket name',
+                                         'visible': False}]
+        self.assertEqual(lane._state(ctx, 's3BucketError', 'text'), '')
+
     def test_credential_input_refuses_a_non_owned_path_before_reading(self):
         ctx = self.context()
         ctx.f['credentials_file'] = '/tmp/foreign-input.json'

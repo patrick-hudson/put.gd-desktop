@@ -242,9 +242,15 @@ def _state(ctx, control, key):
         return ctx.call('ui.viewState')['settings']['conflict']
     if control == 's3BucketError' and key == 'text':
         rows = ctx.accessible({'owned': True, 'objectName': control})
-        if not rows:
-            description = _accessible(ctx, 's3Bucket').get('description', '')
-            return description.split('\n', 1)[1] if '\n' in description else ''
+        if rows:
+            ctx.expect(len(rows) == 1, 'one owned bucket validation label')
+            row = rows[0]
+            if not row.get('visible', True):
+                return ''
+            if text := row.get('text') or row.get('name', ''):
+                return text
+        description = _accessible(ctx, 's3Bucket').get('description', '')
+        return description.rsplit('\n', 1)[1] if '\n' in description else ''
     row = _accessible(ctx, control)
     if key in ('focused', 'checked'):
         row = row.get('states', {})
@@ -406,6 +412,10 @@ def add(ctx):
         ctx.keys('Return')
         # A new destination stays provisional until its required bucket is valid.
         _edit(ctx, 's3Bucket', 'surface-added-bucket')
+        if ctx.call('ui.viewState')['settings'].get('autosaveBlocked'):
+            # B2's blank initial bucket can refuse the first save while the
+            # name-dialog witness is captured. Follow the visible retry flow.
+            _click(ctx, 'text:Retry saving')
         _saved(ctx, lambda doc: any(p['label'] == label and p['provider'] == provider
                                    for p in doc['profiles']), provider + ' added with typed name')
         _frame(ctx, 'added-' + provider)
