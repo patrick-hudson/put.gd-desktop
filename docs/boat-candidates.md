@@ -5,8 +5,10 @@ UI catalog rendering run in disposable Boat workers. This is an opt-in build
 placement that keeps physical acceptance hosts quiet. It provides package and
 offscreen catalog evidence, not desktop, hardware or release acceptance.
 
-Prerequisites: merge [code PR #685](https://github.com/patrick-hudson/put.gd-desktop/pull/685)
-first so `tools/lab/boat/candidate.py` is present. Also require authenticated `boat`, OpenSSH (the Boat CLI's local
+Prerequisite: merge companion [code PR #753](https://github.com/patrick-hudson/put.gd-desktop/pull/753)
+before using this guide's nonce leases and size-scaled collection behavior. The
+original controller arrived in [#685](https://github.com/patrick-hudson/put.gd-desktop/pull/685).
+Also require authenticated `boat`, OpenSSH (the Boat CLI's local
 `~/.ssh/ascii_box_ed25519` identity), Git, Python 3 and the distro's
 `python3-yaml` package. The public candidate commit must be pushed and available
 in the local Git object database. The existing `putgd-build-base` named snapshot
@@ -29,8 +31,11 @@ before creating workers; it does not stop another session's workers.
 By default the command fans out seven `large` workers (8 vCPU, 16 GB), one per
 artifact, from `putgd-build-base`. Each has `--no-env`, an explicit auto-stop
 TTL (default 10,800 seconds), and a controller deadline 180 seconds before that
-TTL for hydration/build. Collection retains the unused build budget or a
-150-second reserve, and cleanup follows even when either phase fails.
+TTL for hydration/build. Collection retains the unused build budget or a size-scaled reserve
+(150 seconds + staged bytes / 128 KiB/s + 0.05 seconds per file, rounded up),
+whichever is greater, capped at the sandbox TTL measured conservatively from
+worker startup. An exhausted TTL fails collection with an explicit reason.
+Cleanup follows even when either phase fails.
 Use `--type default` for the 4-vCPU/8-GB size, or `--ttl SECONDS` (600–14,400)
 for a deliberate bounded run. A small TTL can expire during cold provisioning.
 The command waits for `hydrated: true` before accessing a worker and reads the
@@ -66,7 +71,8 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
 - AppImage uses the pinned Ubuntu 24.04 native container rather than GitHub's
   mutable `ubuntu-24.04` hosted VM. It runs `hosted_apt_mirrors.py`, installs Qt
   through fresh aqtinstall 3.3.* / py7zr 1.1.0 rather than the cached Action, and
-  exports `QT_PLUGIN_PATH` and `QML2_IMPORT_PATH`. Python is bootstrapped
+  exports `QT_PLUGIN_PATH`, `QML2_IMPORT_PATH` and `PKG_CONFIG_PATH`
+  (appending Qt’s `lib/pkgconfig` after existing entries, as install-qt-action does). Python is bootstrapped
   before the mirror helper because the minimal container does not preinstall it.
   The retained package inventory identifies the actual distro packages. Hosted preinstalled desktop links can
   differ; inspect `appimage-build.json`'s `rootDesktopEntry.removedLinks`. The
@@ -81,6 +87,11 @@ Each receipt's `ciDifferences` lists the remaining boundaries:
 - The fixture package's Debian **Package** field and filename are
   `putgd-lab-fixture`, not `putgd`. Its package target is empty and
   `PUTGD_UPDATE_CHECK=OFF`; it cannot advertise a production update target.
+  It declares `Conflicts: putgd` and `Replaces: putgd` because it ships the
+  same application paths. Both the package summary (the first `Description`
+  line shown by `dpkg -l`/APT) and long description identify disposable test use.
+  Install
+  either package in a disposable environment; the two cannot coexist.
   `lab-package-control.txt` and `update-info.json` record these choices.
   `native.py` deliberately does not audit this DEB: its production policy
   forbids fixture files and requires the package name `putgd`. The fixture
@@ -117,8 +128,18 @@ Collection packs the staged output into one tar archive on the worker, transfers
 it once over pinned SSH/SCP, verifies its SHA-256, and validates all members before
 restoring them. Absolute paths, parent traversal, duplicate paths, links and
 special files are rejected. Per-file inventories still bind the restored bytes;
-transport archives and failed collection evidence are retained. Packing, transfer
-and extraction share the finite collection budget. For a before/after measurement
+transport archives and failed collection evidence are retained. Packing and transfer
+receive the remaining size-scaled collection budget, capped at the sandbox TTL.
+Hash verification and restoration check that deadline between archive members and
+1 MiB chunks and on completion; a single local filesystem call can overrun before
+the next check. An overrun fails the worker, retains written local evidence and
+still attempts worker cleanup (which has its own recorded outcome). Receipts record
+`collectionInput` (bytes, file count, filesystem and I/O pressure),
+`collectionBudgetSeconds` (after the TTL cap), `collectionTtlCapped`, and
+`collectionPhases` (probe, packing, transfer,
+verification/restoration). The transport remains uncompressed `tar -cf`; packages
+and PNGs are already compressed. This exposes slow storage/network phases
+without guessing from an aggregate duration. For a before/after measurement
 on identical catalog bytes, add `--benchmark-catalog-scp`: it first copies the same
 output with legacy recursive SCP, then records `legacyScpSeconds`, the batched
 `collectionSeconds` and an equality check of both per-file inventories. A failed
@@ -135,10 +156,27 @@ sha256sum -c SHA256SUMS
 The controller deletes its workers after collection, including failure and
 SIGINT/SIGTERM/SIGHUP paths. Each Boat/SSH child starts in a separate session so
 terminal Ctrl-C reaches the controller; repeated signals request cancellation
-without interrupting cleanup. At startup and after an interrupted create it
-recovers workers by their exact name `putgd-<sha12>-<target>`, including a worker
-whose ID was never printed. Do not run two controllers for the same SHA/target
-at once: those fixed names form one recovery namespace.
+without interrupting cleanup. Each run has a random 16-hex nonce and names
+workers `putgd-<sha12>-<target>-<nonce>`; concurrent runs of the same SHA/target
+are supported. A controller holds a shared cross-worktree `flock` lease under
+`~/.local/state/putgd/boat-candidate-runs/<nonce>`. Lease files remain after exit
+so startup or `--cleanup` can identify dead local controllers. Never unlink
+these files while controllers run, since unlinking splits the lock namespace.
+
+Startup cleanup deletes workers with dead local nonce leases, or workers with
+unknown leases and expired Boat creation-time TTLs. A held local lease always
+wins over TTL expiry. Unknown leases (including controllers on another
+workstation) are preserved until TTL expiry. Legacy
+fixed names have no lease and are preserved until TTL expiry. Orphan sweeps
+always delete by the exact eligible ID, preserving a fresh legacy worker even
+when it shares an expired worker's name. Each run’s final cleanup uses its own
+exact nonce name/ID. When creation reported an ID, deletion starts immediately
+without waiting out the create timeout. Without an ID, cleanup observes the longer
+of the remaining original 120-second `boat new` window and 30 seconds after the
+CLI stops, including a timeout kill, plus up to 120 seconds for deletion. This is
+a bounded observation window for late creates; it cannot prove that the service
+will never create a worker afterward. Cleanup failures leave
+`cleanupVerified: false` and a `cleanupError` reason.
 
 Deletion receipts retain the API's initial operation status (which can be
 `pending`) separately from final `cleanup.finalState: absent`. The controller
@@ -148,7 +186,8 @@ empty account-wide list is expected only when no other session owns a worker.
 
 SIGKILL, workstation loss or an unavailable Boat API can leave TTL-stopped
 sandboxes. Auto-stop bounds compute, but does not delete their disks. Recover
-only this commit's seven fixed candidate names, preserving unrelated workers:
+only this commit’s eligible orphan workers: dead local leases or expired unknown/legacy
+workers. Preserve held local leases, unexpired unknown/legacy workers and unrelated workers:
 
 ```sh
 set -eu
@@ -159,7 +198,9 @@ python3 tools/lab/boat/candidate.py --cleanup "$sha" \
 ```
 
 Cleanup needs no checkout of the candidate's workflows or build capacity; it
-writes `cleanup.json` with deletion requests and verified final absence. Use a
+writes `cleanup.json` with deletion requests, verified absence of deleted workers,
+and IDs preserved because they are live or have unknown leases within TTL.
+A successful cleanup does not mean preserved active runs are absent. Use a
 new output directory each time. Preserve logs/receipts before retrying and follow
 [evidence retention](evidence-retention.md).
 
