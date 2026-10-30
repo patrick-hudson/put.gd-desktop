@@ -846,7 +846,7 @@ def reload_confirmation(ctx):
     ctx.click('text:Reload from file', window='settingsConfirm')
     ctx.wait(lambda: not visible(ctx, '^Reload settings from file$'), 'reload accepted')
     saved(ctx, 'preferences.notifications', not original, 3)
-    ctx.expect(not state(ctx)['settings'].get('conflict'), 'reload clears conflict')
+    ctx.wait(lambda: not state(ctx)['settings'].get('conflict'), 'reload clears conflict')
     frame(ctx, 'reload-after', 3)
 
 
