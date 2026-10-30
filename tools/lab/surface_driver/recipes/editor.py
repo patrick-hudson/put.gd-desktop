@@ -400,7 +400,9 @@ def destination(ctx):
     with _session(ctx) as op:
         text = _inspect(ctx, op)['view']['destination']['text']
         ctx.expect(bool(text), 'destination identifies the isolated local output')
-        _click_editor_text(ctx, text, ('push button',))
+        # Qt 6.4 exposes the revealable label as "push button"; Qt 6.10
+        # reports the same QAccessible::Button as "button".
+        _click_editor_text(ctx, text, ('push button', 'button'))
         ctx.expect(_inspect(ctx, op)['view']['destination']['text']==text, 'destination remains visible after real pointer input')
         _frame(ctx, 'after')
 

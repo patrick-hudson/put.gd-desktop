@@ -220,6 +220,18 @@ class EditorRecipes(unittest.TestCase):
         with self.assertRaises(RecipeBlocked): editor._click_keyboard_help(ctx)
         self.assertEqual([],clicks)
 
+    def test_destination_button_roles_preserve_tooltip_disambiguation(self):
+        for role in ('push button', 'button'):
+            with self.subTest(role=role):
+                ctx=FakeContext()
+                ctx.accessible=lambda query: [
+                    {'name':'Local only','role':'tool tip','enabled':True,'rect':[10,10,20,20]},
+                    {'name':'Local only','role':role,'enabled':True,'rect':[100,100,20,20]}]
+                clicks=[]
+                ctx.click_at=lambda x,y,**kwargs: clicks.append((x,y,kwargs))
+                editor.destination(ctx)
+                self.assertEqual([(110,110,{'head':0})],clicks)
+
     def test_fresh_session_frames_inspect_and_cleanup(self):
         ctx=FakeContext(); editor.redact(ctx)
         self.assertIn(('view','editor.view',{'id':'op-1','action':'fit'}),ctx.events)
