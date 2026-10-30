@@ -238,8 +238,13 @@ def held_case(name, phase, mode):
         ids = root_python(IDENTITIES, job, phase)
         assert ids['wrapper']['uid'] == 1000 and ids['wrapper']['cgroup'] == f'0::/system.slice/putgd-{phase}-{job}.scope', ids
         kill_controller(controller)
-        ended = end_login(mode, ids)
+        ended = [end_login(mode, ids)]
         samples = observe(ids)
+        if samples[-1]['loginScope'] not in ('inactive', ''):
+            # logind does not stop an already-closing login again (Mint 22.3,
+            # KillUserProcesses=no): the sudo client stays. End that login too.
+            ended.append(end_login('stop-session', ids))
+            samples += observe(ids)
         last = samples[-1]
         # The login and its launch chain are gone; the wrapper and scope are not.
         assert last['wrapperAlive'] and not any(last['launchChainAlive']), last
