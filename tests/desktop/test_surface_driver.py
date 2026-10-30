@@ -903,7 +903,8 @@ class InputFoundations(unittest.TestCase):
         self.ctx.target.pointer=pointer
         self.ctx.notification_action(72,'retry')
         self.assertEqual(events[0][:2],(60,20))
-        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
+        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110),(60,110)])
+        self.assertEqual(len(events[1]),4)  # Enter the action before its press/release.
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
         self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
