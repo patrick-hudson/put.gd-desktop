@@ -94,9 +94,15 @@ native desktop, with owned-process accessibility and input-recipient checks.
 
 The final recipe receipt passes with no review flag. Its observer retains 444
 samples covering 18 recording segments (three per action). A read-only observer samples
-`putgd-cli ui.snapshot` from the recipe's own private resident socket; each
-post-second-click action is native-bound to the saved chord and no entry remains
-`recording`. `native-bindings.json` records the frame/sample pairing. An extra
+`putgd-cli ui.snapshot` from the recipe's own private resident socket.
+`native-bindings.json` records the frame/sample pairing. For five of the six
+actions, the paired native sample was taken after that action's post-second-click
+frame. It shows the action bound to the saved chord, with no entry still
+`recording`. For the clipboard row, the paired sample (`…327.5789`) is 61 ms
+*before* the after-click frame (`…327.6400`), so it doesn't prove that row's state
+after the click. That row is covered by the recipe itself, which waits for
+recording to end before it passes. An independent re-run on 2026-10-30 (Release
+DEB `44455848`) also passed all six actions. An extra
 native campaign switches directly between recording rows, records a new chord
 on the target row, and verifies that the first row's saved chord stays intact.
 
