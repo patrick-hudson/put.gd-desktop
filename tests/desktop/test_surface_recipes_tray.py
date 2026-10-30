@@ -381,6 +381,17 @@ class TrayRecipesTest(unittest.TestCase):
         with self.assertRaises(RecipeBlocked):
             tray.upload_failed_notice(ctx)
 
+    def test_pause_scenario_configures_all_native_chords_before_observation(self):
+        from types import SimpleNamespace
+        ctx = FakeContext()
+        def stop_at_status():
+            raise RecipeBlocked('stop after binding setup')
+        ctx.fixture = lambda name: SimpleNamespace(status=stop_at_status)
+        with self.assertRaises(RecipeBlocked):
+            tray.recorder_releases_grabs(ctx)
+        patches = [e[2]['patch'] for e in ctx.events if e[:2] == ('call', 'settings.patch')]
+        self.assertEqual(patches[-1], {'actions': {name: {'shortcut': chord} for name, chord in tray.CHORDS.items()}})
+
     def test_available_scenarios_resolve_the_core_fixture(self):
         cases = [(tray.recording_icon, 'tray-active-recording'), (tray.cancel_uploads, 'tray-two-uploads'),
                  (tray.update_available, 'tray-update-available'), (tray.quit_resident, 'resident-lifecycle'),

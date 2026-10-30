@@ -905,6 +905,7 @@ def quit_resident(ctx):
 def qt_fallback(ctx):
     graphical = ctx.fixture('tray-qt-fallback')
     ctx.expect(graphical.graphical and graphical.native_session == ctx.profile['session'], 'real QApplication preserves native desktop')
+    ctx.wait(lambda: len(ctx.tray()) == 1, 'graphical Qt tray item registered before its toast')
     with _local(ctx, failure=True, notification_only=True):
         previous = _local_input(ctx, notification_only=True)
         notice = _notice(ctx, 'Local save failed')
@@ -950,9 +951,10 @@ def recorder_ignores_shortcut(ctx):
 @recipe('shortcut.paused-while-settings-records', desktop_drawn=True)
 def recorder_releases_grabs(ctx):
     recorder = ctx.fixture('shortcut-settings-recorder')
+    _patch(ctx, {'actions': {name: {'shortcut': chord} for name, chord in CHORDS.items()}})
     def bindings_ready():
         bindings = recorder.status()['bindings']
-        return bindings if any(v.get('bound') for v in bindings.values()) else None
+        return bindings if all(bindings.get(name, {}).get('bound') for name in CHORDS) else None
     before = ctx.wait(bindings_ready, 'native bindings ready before shortcut recording')
     expected = {k for k,v in before.items() if v.get('bound')}
     ctx.expect(bool(expected), 'native bindings are present before recording')
