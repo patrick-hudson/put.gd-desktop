@@ -1,0 +1,138 @@
+{
+  "artifact": "debian13",
+  "buildSeconds": 1885.207,
+  "ciDifferences": [
+    "Cold isolated Docker build on Boat; no Actions package/SDK/compiler caches or hosted runner preinstalls. No weekly native package snapshot/offline fallback.",
+    "No Actions upload, split debug staging, SBOM, source rebuild, publication or desktop acceptance; only selected build/audit artifacts.",
+    "Untagged development identity for the exact SHA; no release tag supplied.",
+    "PATH prefers distro /usr/bin; compiler cache is private and capped at 256M."
+  ],
+  "cleanup": {
+    "deletedIds": [
+      "bx_v424zbpc"
+    ],
+    "finalState": "absent",
+    "name": "putgd-0c329b0692ca-debian13-02818a97bfa24edb",
+    "requests": [
+      {
+        "operation": {
+          "attemptCount": 0,
+          "completedAt": null,
+          "expectedBy": null,
+          "id": "bdop_03e00ff4db7640d9b78483e1b2f8a446",
+          "kind": "sandbox",
+          "reason": "explicit",
+          "requestedAt": "2026-10-30T04:38:28.316Z",
+          "stage": "removing",
+          "status": "pending",
+          "targetId": "bx_v424zbpc"
+        },
+        "sandboxId": "bx_v424zbpc"
+      }
+    ],
+    "verification": "boat list --all",
+    "verified": true,
+    "verifiedAt": 1793335110.6993573
+  },
+  "cleanupVerified": true,
+  "collectionBudgetSeconds": 8536.526,
+  "collectionInput": {
+    "bytes": 59962890,
+    "diskAndPressure": [
+      "Filesystem     Type 1024-blocks     Used Available Capacity Mounted on",
+      "/dev/vda1      ext4   153470764 48848124  98327568      34% /home",
+      "some avg10=0.01 avg60=0.81 avg300=0.88 total=160474421",
+      "full avg10=0.01 avg60=0.81 avg300=0.86 total=135175849"
+    ],
+    "files": 7
+  },
+  "collectionPhases": {
+    "packSeconds": 2.97,
+    "probeSeconds": 2.276,
+    "restoreSeconds": 0.291,
+    "transferSeconds": 13.299
+  },
+  "collectionSeconds": 18.837,
+  "collectionTtlCapped": false,
+  "commit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+  "containerImage": "debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5",
+  "files": [
+    {
+      "bytes": 346,
+      "path": "binary-version.json",
+      "sha256": "2bdd9849526215e3d98fd9507cf106bba9f7350645d43a5f0d142ecc6e6af6f5"
+    },
+    {
+      "bytes": 345,
+      "path": "build-info.json",
+      "sha256": "995117a4c65e4caa59e7040ac75b1f98e24caf80a4e1efe4f2ddf48b2b0f06ee"
+    },
+    {
+      "bytes": 256,
+      "path": "cpack.log",
+      "sha256": "838ef6726c867649875fb9a0f073e277ebc28350279260bc93f1c0c9d52d9371"
+    },
+    {
+      "bytes": 157358,
+      "path": "native-audit.json",
+      "sha256": "e90aea89b5171cebdf926d999d8d7726ae4d704593cdf9e3748cbc6fa463f271"
+    },
+    {
+      "bytes": 34683,
+      "path": "packages.txt",
+      "sha256": "5b21e1cb0b7ff88f66ca367d0d872ee9e12f64df46dc6284ca9d6335182f274b"
+    },
+    {
+      "bytes": 59769902,
+      "path": "putgd_26.1030.2473~dev+g0c329b0692ca_amd64.deb",
+      "sha256": "301375cf3f6994e047230c6ebfcb49ad923ce8bf4908187ef0197110233317d9"
+    },
+    {
+      "bytes": 0,
+      "path": "source-status.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "hydrationSeconds": 197.848,
+  "identity": {
+    "baseVersion": "26.1030.2473",
+    "commitCount": 2473,
+    "dirty": false,
+    "gitCommit": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+    "gitTree": "038bc7af0456e1698a3e31ebeb9923a225bef876",
+    "packageVersion": "26.1030.2473~dev+g0c329b0692ca",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2473-dev+g0c329b0692ca"
+  },
+  "name": "putgd-0c329b0692ca-debian13-02818a97bfa24edb",
+  "placement": {
+    "createdAt": "2026-10-30T04:03:25.742Z",
+    "hydrated": true,
+    "hydratedAt": "2026-10-30T04:06:42.746Z",
+    "id": "bx_v424zbpc",
+    "machineProvider": "baremetal",
+    "memoryGB": 16,
+    "sshEndpoint": "51.255.76.114:19043",
+    "vcpu": 8
+  },
+  "placementReason": "parallel candidate packaging; preserve quiet physical acceptance hosts",
+  "runNonce": "02818a97bfa24edb",
+  "sandboxId": "bx_v424zbpc",
+  "snapshot": "putgd-build-base",
+  "startupCleanup": {
+    "deleted": [],
+    "preserved": [],
+    "verified": true
+  },
+  "state": "passed",
+  "totalSeconds": 2105.656,
+  "transport": {
+    "bytes": 59975680,
+    "compression": "none",
+    "kind": "tar",
+    "sha256": "f1efc1d0e0b3928f13c51d0468ab3dc1e4a33fac0a620d3f8a21350a65054c29"
+  },
+  "ttlSeconds": 10800,
+  "type": "large"
+}
