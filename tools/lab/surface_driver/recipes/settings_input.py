@@ -2,7 +2,7 @@
 import json
 import shlex
 
-from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
+from tools.lab.surface_driver.api import RecipeBlocked
 
 
 # SD_SETTINGS_CONTROLS: inspect only the verified helper. The generic desktop
@@ -114,13 +114,20 @@ def click(ctx, control):
     top, bottom = options['viewport_insets']
     for attempt in range(12):
         geometry = ctx.geometry('settings')
-        def matching():
-            return [row for row in controls(ctx, query, owner['pid'])
-                    if row.get('pid') == owner['pid'] and row.get('rect') and row['rect'][2] > 0]
-        try:
-            matches = ctx.wait(matching, 'Settings accessibility exposes ' + control)
-        except RecipeFailed:
+        rows = controls(ctx, query, owner['pid'])
+        if any(row.get('pid') != owner['pid'] for row in rows):
             ctx.blocked('Settings live control is missing or ambiguous: ' + control)
+        matches = [row for row in rows if row.get('rect') and row['rect'][2] > 0]
+        if not matches:
+            if control.startswith('settingsSection'):
+                ctx.blocked('Settings live control is missing or ambiguous: ' + control)
+            # Qt omits fully clipped controls from its visible accessibility
+            # tree. Search the page with real wheel input, then query anew.
+            ctx.note('Searching the visible Settings page for ' + control)
+            ctx.scroll(geometry['x'] + geometry['width'] - 24,
+                       geometry['y'] + geometry['height'] // 2,
+                       40 if attempt == 0 else -3)
+            continue
         if len(matches) != 1:
             ctx.blocked('Settings live control is missing or ambiguous: ' + control)
         x, y, width, height = matches[0]['rect']
