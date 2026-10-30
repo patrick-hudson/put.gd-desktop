@@ -30,7 +30,6 @@ restored keeps its backup for the next setup without blocking the others.
 from __future__ import annotations
 
 import base64
-from contextlib import contextmanager
 from dataclasses import asdict
 import hashlib
 import json
@@ -40,6 +39,7 @@ import pwd
 import re
 import shlex
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -84,48 +84,118 @@ def _remote(ctx, action, values, timeout=_TIMEOUTS['helper'], cleanup=False):
     return value
 
 
-@contextmanager
-def default_browser(ctx, browser='firefox'):
+# run.py's recipe deadline: a one-shot SIGALRM whose handler raises. The
+# controller is single-threaded, so blocking it in this thread defers it.
+_ALARM = {signal.SIGALRM}
+
+
+class default_browser:
     """Temporarily install an isolated real Firefox as the http(s) handler.
 
     Restores every touched mimeapps file byte for byte, verifies SHA-256, and
     leaves unrelated desktop entries (including the guarded recorder) alone.
     Restoration errors are fatal and leave the private backup for recovery.
+
+    No recipe alarm can skip the restore. CPython runs a due signal handler
+    as a function starts, before its first line, so while the transaction is
+    open the recipe's handler is wrapped: an alarm that falls due once the
+    body has ended (in ``__exit__`` itself) is deferred, and ``__exit__``
+    blocks the alarm first thing. The deferred alarm is delivered after the
+    restore and fails the recipe, unless the body had already failed: that
+    failure stays the result.
     """
-    if browser != 'firefox':
-        raise ValueError('Only Firefox content verification is implemented')
-    if id(ctx) in _ACTIVE:
-        raise RuntimeError('Nested default_browser transactions are unsupported')
-    options = ctx.profile.get('browser', {})
-    timeouts = _timeouts(options)
-    try:
-        state = _remote(ctx, 'prepare', options, timeout=timeouts['helper'] + timeouts['ready'])
-    except BaseException:
-        # The target step may have outlived its transport (deadline, dropped
-        # session): restore whatever it left before reporting the failure.
+
+    def __init__(self, ctx, browser='firefox'):
+        if browser != 'firefox':
+            raise ValueError('Only Firefox content verification is implemented')
+        self.ctx = ctx
+
+    def __enter__(self):
+        ctx = self.ctx
+        if id(ctx) in _ACTIVE:
+            raise RuntimeError('Nested default_browser transactions are unsupported')
+        options = ctx.profile.get('browser', {})
+        self.timeouts = timeouts = _timeouts(options)
+        self.mask = signal.pthread_sigmask(signal.SIG_BLOCK, ())  # Read only.
+        self.handler, self.wrapped, self.deferred, self.late = signal.getsignal(signal.SIGALRM), False, False, None
         try:
-            _note_dropped(ctx, _remote(ctx, 'recover', {**options, 'wait': timeouts['cleanup'] - 30},
-                                       timeout=timeouts['cleanup'], cleanup=True))
-        except Exception as error:
-            ctx.review('Interrupted Firefox setup not yet recovered (' + str(error)[:200] +
-                       '); the next default_browser entry on this account restores it')
-        raise
-    if state.get('recovered'):
-        ctx.note('Restored %d unfinished Firefox handler transaction(s) before setup' % state['recovered'])
-    _note_dropped(ctx, state)
-    _ACTIVE[id(ctx)] = {'state': state, 'timeouts': timeouts}
-    try:
-        yield
-    except BaseException:
+            self.state = _remote(ctx, 'prepare', options, timeout=timeouts['helper'] + timeouts['ready'])
+        except BaseException:
+            try:
+                signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
+            except BaseException as alarm:
+                self.late = alarm  # Already due; the mask holds from the call on.
+                signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
+            try:
+                # The target step may have outlived its transport (deadline, dropped
+                # session): restore whatever it left before reporting the failure.
+                _note_dropped(ctx, _remote(ctx, 'recover', {**options, 'wait': timeouts['cleanup'] - 30},
+                                           timeout=timeouts['cleanup'], cleanup=True))
+            except Exception as error:
+                ctx.review('Interrupted Firefox setup not yet recovered (' + str(error)[:200] +
+                           '); the next default_browser entry on this account restores it')
+            finally:
+                self._release()
+            raise
         try:
-            _restore_transaction(ctx, state, timeouts, failing=True)
-        except Exception:
-            pass  # Reviewed; the recipe's own failure stays the result.
-        raise
-    else:
-        _restore_transaction(ctx, state, timeouts, failing=False)
-    finally:
-        _ACTIVE.pop(id(ctx), None)
+            _ACTIVE[id(ctx)] = {'state': self.state, 'timeouts': timeouts}
+            if callable(self.handler):
+                signal.signal(signal.SIGALRM, self._alarm)
+                self.wrapped = True
+            if self.state.get('recovered'):
+                ctx.note('Restored %d unfinished Firefox handler transaction(s) before setup'
+                         % self.state['recovered'])
+            _note_dropped(ctx, self.state)
+        except BaseException as error:
+            self.__exit__(type(error), error, error.__traceback__)
+            raise
+        return self
+
+    def _alarm(self, signum, frame):
+        if frame is not None and frame.f_code is default_browser.__exit__.__code__:
+            self.deferred = True  # The body has ended: deliver after the restore.
+            return None
+        return self.handler(signum, frame)
+
+    def __exit__(self, kind, value, traceback):
+        # First, before any other work: block the alarm. One already due was
+        # deferred by _alarm, or is raised (and taken) by this very call.
+        try:
+            signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
+        except BaseException as alarm:
+            self.late = alarm
+            signal.pthread_sigmask(signal.SIG_BLOCK, _ALARM)
+        try:
+            problem = _restore_transaction(self.ctx, self.state, self.timeouts,
+                                           failing=kind is not None or self.deferred or self.late is not None)
+        finally:
+            _ACTIVE.pop(id(self.ctx), None)
+            self._release()
+        if kind is not None:
+            if self.late is not None:
+                self.ctx.review('Recipe deadline fell due during the Firefox restore; the recipe had already failed')
+            return False  # The recipe's own failure stays the result.
+        if self.late is not None:
+            raise self.late  # Never swallowed: the recipe overran its deadline.
+        if problem is not None:
+            raise problem
+        return False
+
+    def _release(self):
+        """Put the recipe's handler and mask back; take a deferred alarm."""
+        if self.wrapped:
+            signal.signal(signal.SIGALRM, self.handler)
+            self.wrapped = False
+        try:
+            signal.pthread_sigmask(signal.SIG_SETMASK, self.mask)  # A pending alarm arrives here.
+        except BaseException as alarm:
+            self.late = self.late or alarm
+        if self.deferred and self.late is None:
+            self.deferred = False
+            try:
+                self.handler(signal.SIGALRM, None)
+            except BaseException as alarm:
+                self.late = alarm
 
 
 def _note_dropped(ctx, answer):
@@ -135,24 +205,35 @@ def _note_dropped(ctx, answer):
 
 
 def _restore_transaction(ctx, state, timeouts, failing):
+    """Restore, retrying once; returns the error the run should fail with, if any.
+
+    Reviews record every restore problem. A retry is idempotent: once the
+    target has restored, it answers restored for the vanished transaction.
+    """
+    attempt = lambda: _remote(ctx, 'restore', {'directory': state['directory']},
+                              timeout=timeouts['cleanup'], cleanup=True)
     try:
-        restored = _remote(ctx, 'restore', {'directory': state['directory']},
-                           timeout=timeouts['cleanup'], cleanup=True)
+        restored = attempt()
     except Exception as error:
-        # A recipe alarm deferred over the call arrives here even after the
-        # target finished restoring, so the outcome is unconfirmed, not failed.
-        ctx.review('Firefox handler restore unconfirmed (' + str(error)[:200] +
-                   '); if incomplete, the next default_browser entry on this account restores it')
-        raise
-    if restored.get('restored') is not True:
-        ctx.review('Firefox handler restore unconfirmed; the next default_browser entry on this account restores it')
-        ctx.expect(False, 'browser MIME bytes and hashes restored')
-    ctx.note('Firefox handler restored; MIME SHA-256 checks passed')
-    _note_dropped(ctx, restored)
-    if restored.get('foreign'):
-        ctx.note('Stopped %d Firefox process(es) started outside the private profile' % restored['foreign'])
-        if not failing:
-            ctx.expect(False, 'no Firefox started outside the private profile during the transaction')
+        try:
+            restored = attempt()
+        except Exception as again:
+            ctx.review('Firefox handler restore incomplete (' + str(again)[:200] +
+                       '); the next default_browser entry on this account restores it')
+            return error
+    try:
+        if restored.get('restored') is not True:
+            ctx.review('Firefox handler restore unconfirmed; the next default_browser entry on this account restores it')
+            ctx.expect(False, 'browser MIME bytes and hashes restored')
+        ctx.note('Firefox handler restored; MIME SHA-256 checks passed')
+        _note_dropped(ctx, restored)
+        if restored.get('foreign'):
+            ctx.note('Stopped %d Firefox process(es) started outside the private profile' % restored['foreign'])
+            if not failing:
+                ctx.expect(False, 'no Firefox started outside the private profile during the transaction')
+    except Exception as error:
+        return error
+    return None
 
 
 def open_and_verify(ctx, trigger, expect):
@@ -436,7 +517,7 @@ def _restore_entry(item):
     path = Path(item['path'])
     if item['bytes'] is None:
         if path.is_symlink():
-            raise _TargetError('MIME path became a symlink; backup retained')
+            raise _TargetError('MIME path became a symlink')
         path.unlink(missing_ok=True)
         if path.exists():
             raise _TargetError('MIME removal failed')
@@ -453,27 +534,39 @@ def _restore_entry(item):
     finally:
         Path(temporary).unlink(missing_ok=True)
     if hashlib.sha256(path.read_bytes()).hexdigest() != item['sha256']:
-        raise _TargetError('MIME restoration hash mismatch; backup retained')
+        raise _TargetError('MIME restoration hash mismatch')
 
 
 def _restore_mime(backups):
     """Restore each entry independently, real-profile files first.
 
-    Returns (retained, dropped): the entries that could not be restored, kept
-    for the next recovery, and the number of private entries whose XDG root no
-    longer exists. Path order is no guide: /tmp sorts before /var/home.
+    Returns (retained, dropped, reasons): the entries that could not be
+    restored, kept for the next recovery; the number of private entries whose
+    XDG root, or the directory holding them, no longer exists; and static
+    reasons. Path order is no guide: /tmp sorts before /var/home.
     """
-    retained, dropped = [], 0
+    retained, dropped, reasons = [], 0, set()
     for item in sorted(backups, key=lambda item: _private_scope(item)[0]):
         private, root = _private_scope(item)
-        if private and root and not os.path.lexists(root):
-            dropped += 1  # Already cleaned with its private root.
+        gone = item['bytes'] is not None and not Path(item['path']).parent.is_dir()
+        if private and (gone or (root and not os.path.lexists(root))):
+            dropped += 1  # Already cleaned with its private root or directory.
+            continue
+        if gone:
+            # Recreating a real profile directory someone removed is not ours
+            # to decide: keep refusing, by name, until it is put back.
+            retained.append(item)
+            reasons.add('real MIME directory missing; restore it, then rerun')
             continue
         try:
             _restore_entry(item)
-        except Exception:
+        except _TargetError as error:
             retained.append(item)  # Never blocks the others.
-    return retained, dropped
+            reasons.add(str(error))
+        except Exception as error:
+            retained.append(item)
+            reasons.add('MIME write failed: ' + type(error).__name__)
+    return retained, dropped, sorted(reasons)
 
 
 def _environment(config, data):
@@ -520,6 +613,8 @@ def _foreign(state):
     Returns identities only; argv may hold the dispatched URL and never leaves
     the target.
     """
+    if state.get('boot') not in (None, _boot_id()):
+        return []  # ``since`` counts from an earlier boot: no Firefox now is ours.
     profile = state['directory'].encode()
     return [[pid, start] for pid, start, argv in _firefox_mains()
             if profile not in argv and int(start) >= state['since']]
@@ -713,14 +808,18 @@ def _prepare(options):
                        'signon.rememberSignons': False, 'browser.privatebrowsing.autostart': True}
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
-        env = _environment(config, data)
+        # Cache and state are the transaction's own, removed with it: the
+        # run's private XDG root may be gone before this Firefox exits.
+        scoped = {'XDG_CACHE_HOME': str(directory / 'xdg-cache'), 'XDG_STATE_HOME': str(directory / 'xdg-state')}
+        env = dict(_environment(config, data), **scoped)
         env['MOZ_APP_REMOTINGNAME'] = token
         # The handler forwards to the running instance through profile-keyed
         # remoting. If that instance has gone, the handler starts one on the
         # same profile and Marionette port, so observation still attaches.
         argv = command + ['--profile', str(directory), '--kiosk']
-        desktop_argv = ['MOZ_APP_REMOTINGNAME=' + token, 'XDG_CONFIG_HOME=' + str(config),
-                        'XDG_DATA_HOME=' + str(data)] + argv + ['--marionette', '%u']
+        desktop_argv = (['MOZ_APP_REMOTINGNAME=' + token, 'XDG_CONFIG_HOME=' + str(config),
+                         'XDG_DATA_HOME=' + str(data)] + [k + '=' + v for k, v in scoped.items()]
+                        + argv + ['--marionette', '%u'])
         def desktop_quote(value):
             return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('`', '\\`').replace('$', '\\$') + '"'
         # Keep the executable token unquoted. GLib ignores handlers whose
@@ -807,7 +906,7 @@ def _restore(state, scan=True):
         if not os.path.lexists(directory):
             return {'restored': True, 'foreign': 0}  # Already restored, e.g. by recovery.
         raise _TargetError('Firefox transaction record missing; profile retained')
-    retained, dropped = _restore_mime(state['backups'])
+    retained, dropped, reasons = _restore_mime(state['backups'])
     # After a reboot every recorded identity (and session id) is stale.
     current = state.get('boot') in (None, _boot_id())
     # Exact identities only: our launch, any instance on our private profile
@@ -835,7 +934,8 @@ def _restore(state, scan=True):
     if retained:
         state['backups'] = retained
         _write_transaction(state)
-        raise _TargetError('MIME restoration failed for %d file(s); backup retained' % len(retained))
+        raise _TargetError('MIME restoration failed for %d file(s) (%s); backup retained'
+                           % (len(retained), '; '.join(reasons)))
     # The record goes last, so an interrupted restore is still recoverable.
     if directory.exists():
         for child in directory.iterdir():

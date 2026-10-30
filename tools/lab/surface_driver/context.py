@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 import re
 import shlex
-import signal
 import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
@@ -422,19 +421,17 @@ class DriverContext(Context):
             # force the lock heartbeat inside execute; guests prove ownership here.
             timeout=min(30.0 if timeout is None else timeout,CLEANUP_TIMEOUT_CAP)
             # Defer, never cancel, run.py's recipe alarm for the whole bounded
-            # call (as target.input_release does for input release, #736): an
-            # alarm that falls due fails the recipe once the restore has
-            # reached the target, instead of killing the transport first.
-            previous=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
-            try:
+            # call: an alarm that falls due fails the recipe once the restore
+            # has reached the target, instead of killing the transport first.
+            # One already due when this is called is raised before any work;
+            # callers that must restore regardless block it first (browser).
+            with input_release():
                 if not self.target.physical:
                     try:
                         lab.verify_owned_guest(self.target.run)
                     except lab.LabError as error:
                         raise RecipeBlocked('cleanup refused: '+str(error)) from error
                 return self.target.execute(script,timeout=timeout)
-            finally:
-                signal.pthread_sigmask(signal.SIG_SETMASK,previous)
         self._check_time()
         timeout=60 if timeout is None else timeout
         return self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))

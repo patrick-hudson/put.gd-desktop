@@ -1044,7 +1044,7 @@ class MissingPrivateRoot(unittest.TestCase):
                 blocked = configs[1] / 'mimeapps.list'
                 blocked.unlink()
                 blocked.mkdir()  # This one entry cannot be restored.
-                with self.assertRaisesRegex(browser._TargetError, r'failed for 1 file\(s\); backup retained'):
+                with self.assertRaisesRegex(browser._TargetError, r'failed for 1 file\(s\) \(MIME write failed: IsADirectoryError\); backup retained'):
                     browser._prepare({})
                 self.assertEqual((home / '.config/mimeapps.list').read_bytes(), originals[0])
                 self.assertFalse(list(Path(temporary).rglob('putgdsurface*.desktop')))
@@ -1150,6 +1150,192 @@ class ProcessTree(unittest.TestCase):
         parent.wait(timeout=10)
         self.assertFalse(browser._alive([child, child_start]))
         self.assertEqual(browser._descendants(parent.pid, start), [])
+
+class ExitAlarm(unittest.TestCase):
+    """Validator (#680 at d415b180): run.py's one-shot alarm, due as the body
+    ends and before the restore had blocked it, skipped the restore."""
+
+    def setUp(self):
+        from tools.lab.surface_driver.context import DriverContext
+        self.actions = []
+        def execute(script, timeout=60):
+            action = shlex.split(script.split('\n', 1)[0])[2]
+            self.actions.append(action)
+            time.sleep(.002)  # A transport, so an alarm can fall due inside it.
+            if action == 'prepare':
+                return {'returncode': 0, 'stdout': '{"directory": "/x", "port": 1}', 'stderr': ''}
+            return {'returncode': 0, 'stdout': '{"restored": true}', 'stderr': ''}
+        target = SimpleNamespace(physical=None, run=Path('/nonexistent-run'), execute=execute)
+        environment = dict(desktop='d', host='boat', placement='guest', package='deb', destination='local')
+        self.ctx = DriverContext(target, environment, {}, '/tmp', '/tmp')
+        self.ctx._deadline = time.monotonic() + 60
+        owned = patch('tools.lab.lab.verify_owned_guest')
+        owned.start()
+        self.addCleanup(owned.stop)
+        def deadline(_signum, _frame):
+            raise RecipeFailed('recipe deadline exceeded: links.open')
+        previous = signal.signal(signal.SIGALRM, deadline)
+        self.addCleanup(signal.signal, signal.SIGALRM, previous)
+        self.addCleanup(signal.setitimer, signal.ITIMER_REAL, 0)
+
+    def run_body(self, body):
+        """The exception the run sees, from the with statement or just after it."""
+        self.actions.clear()
+        try:
+            with browser.default_browser(self.ctx):
+                body()
+            time.sleep(.01)  # A deadline delivered after the with statement still counts.
+        except BaseException as error:
+            return error
+        return None
+
+    def assertRestoredAndUnmasked(self, raised, message='recipe deadline exceeded'):
+        self.assertEqual(self.actions, ['prepare', 'restore'])
+        self.assertIsInstance(raised, RecipeFailed)
+        self.assertIn(message, str(raised))
+        self.assertNotIn(signal.SIGALRM, signal.pthread_sigmask(signal.SIG_BLOCK, ()))
+        self.assertNotIn(signal.SIGALRM, signal.sigpending())
+        self.assertNotIn(id(self.ctx), browser._ACTIVE)
+
+    def test_alarm_due_at_0_1_and_50_microseconds_into_exit_still_restores(self):
+        for delay in (0, 1e-6, 2e-6, 5e-6, 10e-6, 20e-6, 50e-6):
+            for trial in range(100):
+                with self.subTest(delay=delay, trial=trial):
+                    if delay:
+                        raised = self.run_body(lambda: signal.setitimer(signal.ITIMER_REAL, delay))
+                    else:
+                        raised = self.run_body(lambda: signal.raise_signal(signal.SIGALRM))
+                    self.assertRestoredAndUnmasked(raised)
+
+    def test_alarm_armed_as_the_restore_starts_is_delivered_after_it(self):
+        # The validator's premask_repro.py: the timer falls due at the restore call.
+        original = browser._remote
+        def remote(ctx, action, values, *args, **kwargs):
+            if action == 'restore':
+                signal.setitimer(signal.ITIMER_REAL, 1e-6)
+                time.sleep(.001)
+            return original(ctx, action, values, *args, **kwargs)
+        with patch.object(browser, '_remote', remote):
+            raised = self.run_body(lambda: None)
+        self.assertRestoredAndUnmasked(raised)
+        self.assertIn('Firefox handler restored; MIME SHA-256 checks passed', self.ctx.notes)
+
+    def test_body_failure_with_an_alarm_pending_keeps_both(self):
+        def body():
+            signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+            signal.setitimer(signal.ITIMER_REAL, 1e-6)
+            time.sleep(.002)  # Pending, not yet delivered.
+            raise RecipeFailed('entry point did not dispatch')
+        raised = self.run_body(body)
+        self.assertRestoredAndUnmasked(raised, 'entry point did not dispatch')
+        self.assertTrue(any('deadline fell due during the Firefox restore' in r for r in self.ctx.reviews))
+
+    def test_failed_restore_is_retried_once_then_the_original_error_raised(self):
+        calls = []
+        def remote(ctx, action, values, *args, **kwargs):
+            calls.append(action)
+            if action == 'restore' and calls.count('restore') == 1:
+                raise RecipeBlocked('target session command unavailable: TimeoutExpired')
+            return {'directory': '/x', 'port': 1} if action == 'prepare' else {'restored': True}
+        with patch.object(browser, '_remote', remote):
+            with browser.default_browser(self.ctx):
+                pass
+        self.assertEqual(calls, ['prepare', 'restore', 'restore'])
+        self.assertFalse(self.ctx.reviews)
+        calls.clear()
+        def failing(ctx, action, values, *args, **kwargs):
+            calls.append(action)
+            if action == 'restore':
+                raise RecipeBlocked('attempt %d' % calls.count('restore'))
+            return {'directory': '/x', 'port': 1}
+        with patch.object(browser, '_remote', failing):
+            with self.assertRaisesRegex(RecipeBlocked, '^attempt 1$'):
+                with browser.default_browser(self.ctx):
+                    pass
+        self.assertEqual(calls, ['prepare', 'restore', 'restore'])
+
+    def test_an_alarm_due_as_exit_starts_is_deferred_until_after_the_restore(self):
+        # CPython runs a due handler as __exit__ starts, before its first
+        # line: in that frame the wrapped handler defers; elsewhere it raises.
+        manager = browser.default_browser(self.ctx)
+        manager.__enter__()
+        self.assertEqual(signal.getsignal(signal.SIGALRM), manager._alarm)
+        with self.assertRaisesRegex(RecipeFailed, 'deadline'):
+            manager._alarm(signal.SIGALRM, sys._getframe())  # Still in the body.
+        exit_frame = SimpleNamespace(f_code=browser.default_browser.__exit__.__code__)
+        self.assertIsNone(manager._alarm(signal.SIGALRM, exit_frame))
+        with self.assertRaisesRegex(RecipeFailed, 'recipe deadline exceeded'):
+            manager.__exit__(None, None, None)
+        self.assertEqual(self.actions, ['prepare', 'restore'])
+        self.assertNotEqual(signal.getsignal(signal.SIGALRM), manager._alarm)
+
+
+class RebootAndScope(unittest.TestCase):
+    def test_no_stray_scan_with_a_since_from_an_earlier_boot(self):
+        # Never stop a Firefox we did not start: after a reboot, a user's
+        # Firefox has a start time beyond the old boot's ``since``.
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary) / 'putgd-surface-x'
+            directory.mkdir()
+            state = {'directory': str(directory), 'since': 0, 'boot': 'an-earlier-boot', 'foreign': [],
+                     'desktops': [], 'backups': [], 'pid': None}
+            (directory / 'transaction.json').write_text(json.dumps(state))
+            users = [(41, '900', [b'/usr/lib/firefox/firefox'])]
+            with patch.object(browser, '_firefox_mains', return_value=users), \
+                 patch.object(browser, '_terminate') as terminate:
+                self.assertEqual(browser._foreign(state), [])
+                self.assertEqual(browser._restore({'directory': str(directory)})['foreign'], 0)
+            terminate.assert_not_called()
+
+    def test_private_firefox_cache_and_state_belong_to_the_transaction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home = Path(temporary)
+            configs = [home / '.config', home / 'isolated/config']
+            with contextlib.ExitStack() as stack:
+                for item in _real_setup(home, configs, [b'a', b'b']):
+                    stack.enter_context(item)
+                stack.enter_context(patch.object(browser, '_terminate'))
+                state = browser._prepare({})
+                directory = Path(state['directory'])
+                env = browser.subprocess.Popen.call_args.kwargs['env']
+                self.assertEqual((env['XDG_CACHE_HOME'], env['XDG_STATE_HOME']),
+                                 (str(directory / 'xdg-cache'), str(directory / 'xdg-state')))
+                handler = next((home / '.local/share/applications').glob('putgdsurface*.desktop')).read_text()
+                self.assertIn('"XDG_CACHE_HOME=%s"' % (directory / 'xdg-cache'), handler)
+                self.assertIn('"XDG_STATE_HOME=%s"' % (directory / 'xdg-state'), handler)
+                (directory / 'xdg-cache/mozilla/firefox/startupCache').mkdir(parents=True)
+                browser._restore(state)
+            self.assertFalse(directory.exists())
+
+    def test_private_applications_directory_gone_is_already_cleaned(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home, private = Path(temporary) / 'var/home/user', Path(temporary) / 'tmp/sd-x'
+            configs = [home / '.config', private / 'config']
+            seeded = private / 'data/applications/mimeapps.list'
+            seeded.parent.mkdir(parents=True)
+            seeded.write_bytes(b'[Default Applications]\n')
+            with contextlib.ExitStack() as stack:
+                abandoned, _ = MissingPrivateRoot.abandoned(self, stack, home, configs, [b'# real\r\n', b'# p\n'], private)
+                shutil.rmtree(private / 'data/applications')  # The root itself stays.
+                self.assertEqual(browser._recover(abandoned.parent, 0), {'recovered': 1, 'dropped': 1})
+            self.assertEqual((home / '.config/mimeapps.list').read_bytes(), b'# real\r\n')
+            self.assertEqual((private / 'config/mimeapps.list').read_bytes(), b'# p\n')
+            self.assertFalse(abandoned.exists())
+
+    def test_real_directory_gone_is_refused_by_name(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            home, private = Path(temporary) / 'var/home/user', Path(temporary) / 'tmp/sd-x'
+            configs = [home / '.config', private / 'config']
+            with contextlib.ExitStack() as stack:
+                abandoned, _ = MissingPrivateRoot.abandoned(self, stack, home, configs, [b'# real\r\n', b'# p\n'], private)
+                shutil.rmtree(home / '.config')
+                with self.assertRaisesRegex(browser._TargetError,
+                                            r'failed for 1 file\(s\) \(real MIME directory missing; restore it, then rerun\)'):
+                    browser._recover(abandoned.parent, 0)
+            self.assertEqual((private / 'config/mimeapps.list').read_bytes(), b'# p\n')
+            self.assertFalse(list(Path(temporary).rglob('putgdsurface*.desktop')))
+            self.assertTrue((abandoned / 'transaction.json').exists())
+
 
 class RecipeContracts(unittest.TestCase):
     @contextmanager

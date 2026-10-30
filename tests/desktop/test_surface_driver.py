@@ -439,6 +439,23 @@ class CleanupShellBounds(unittest.TestCase):
             self.assertEqual(marker.read_text(),'done')
             self.assertNotIn(signal.SIGALRM,signal.pthread_sigmask(signal.SIG_BLOCK,[]))
 
+    def test_input_release_never_leaves_the_alarm_blocked(self):
+        # An alarm already due runs its handler inside the blocking
+        # pthread_sigmask call, after the mask changed (CPython checks signals
+        # there). Emulate exactly that; the previous mask must still return.
+        from tools.lab.surface_driver import target as target_module
+        real=signal.pthread_sigmask
+        def due(how,mask):
+            previous=real(how,mask)
+            if how==signal.SIG_BLOCK and signal.SIGALRM in set(mask):
+                raise RecipeFailed('recipe deadline exceeded: links.open')
+            return previous
+        with patch.object(target_module.signal,'pthread_sigmask',side_effect=due):
+            with self.assertRaisesRegex(RecipeFailed,'deadline'):
+                with target_module.input_release():
+                    self.fail('release must not run after the alarm')
+        self.assertNotIn(signal.SIGALRM,real(signal.SIG_BLOCK,()))
+
     def test_cleanup_timeouts_are_capped(self):
         calls=[]
         target=FakeTarget();target.run=Path('/tmp/sd-test-run')
