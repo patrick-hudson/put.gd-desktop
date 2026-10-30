@@ -242,6 +242,16 @@ tracks its unverified Toolbx/overlay route; no rpm-ostree change or Aurora golde
 mutation was attempted. Issues #770, #775, #776, #790 and #792 remain open for
 the coordinator, with evidence comments rather than closure.
 
+The code PR's first merge-branch contracts failed because a newly added
+upstream cleanup test still mocked the old default snapshot name. Its
+[failure](context/code-ci-first-fixture-failure.txt) is retained. After bringing
+in the latest nightly tests and changing that fixture to the v3 default,
+[all 48 candidate contracts](context/candidate-tests-current.txt) and
+[34 snapshot contracts](context/recipe-tests-current.txt) pass locally.
+This changes a mocked default, not a product assertion or snapshot content.
+The immutable b77 recipe link above remains the actual guest-verification
+recipe; its snapshot script is unchanged by the integration update.
+
 ## Retention and worker retirement
 
 All 12 owned sandboxes were deleted, including stopped states;
