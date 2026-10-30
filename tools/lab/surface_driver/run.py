@@ -294,7 +294,9 @@ def shell_check(context):
     """Why the desktop shell can no longer be trusted, or None (#814).
 
     Runs between recipes, so it has its own bounded budget rather than the
-    previous recipe's (possibly expired) deadline.
+    previous recipe's (possibly expired) deadline. Only an observed crash
+    counts: a lost probe channel is not one, and it already withholds input
+    from every later probe with its own reason.
     """
     if not hasattr(context,'shell_failure'):
         return None
@@ -302,8 +304,8 @@ def shell_check(context):
         context._deadline=time.monotonic()+15
     try:
         return context.shell_failure()
-    except (RecipeBlocked,RecipeFailed) as error:
-        return 'desktop shell state unavailable: '+str(error)
+    except (RecipeBlocked,RecipeFailed):
+        return None
 
 
 def _run_recipes(context, recipes, environment, out, campaign, coverage, interrupted):

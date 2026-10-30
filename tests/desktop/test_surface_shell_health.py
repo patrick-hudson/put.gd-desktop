@@ -166,8 +166,9 @@ class ShellCrashDetector(unittest.TestCase):
         self.ctx.shell_baseline()
         self.ctx._deadline=time.monotonic()-1  # the previous recipe overran
         self.assertIsNone(shell_check(self.ctx))
-        self.ctx._probe=lambda name,query:(_ for _ in ()).throw(RecipeBlocked('persistent desktop probe closed'))
-        self.assertIn('desktop shell state unavailable: persistent desktop probe closed',shell_check(self.ctx))
+        # A lost probe channel is not a crash; later probes block with their own reason.
+        self.ctx._probe=lambda name,query:(_ for _ in ()).throw(RecipeBlocked('persistent desktop probe failed'))
+        self.assertIsNone(shell_check(self.ctx))
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_crash_during_a_recipe_stops_the_run(self):
