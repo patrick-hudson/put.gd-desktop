@@ -166,7 +166,9 @@ def recipe(target, packages, ci):
         return row['image'], script, 'release'
     if target == 'appimage':
         app = packages['jobs']['appimage']
-        script = common + step(app, 'Use official Ubuntu archive mirrors')
+        # The minimal container lacks the hosted runner's preinstalled Python.
+        script = common + 'bash tools/ci/install-packages.sh python3\n'
+        script += step(app, 'Use official Ubuntu archive mirrors')
         script += step(app, 'Standard build dependencies')
         # install-qt-action uses aqtinstall 3.3.*, py7zr 1.1.0; install its locked Qt/modules.
         script += 'export LOG_CFG=$PWD/tools/ci/aqt-logging.ini\n'

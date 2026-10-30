@@ -164,7 +164,8 @@ class CandidateContracts(unittest.TestCase):
                     self.assertLess(script.index('LOG_CFG=$PWD/tools/ci/aqt-logging.ini'),
                                     script.index('/opt/aqt/bin/aqt install-qt'))
                     self.assertIn('RUNNER_TEMP=$runner_state', script)
-                    self.assertIn('tools/ci/hosted_apt_mirrors.py', script)
+                    self.assertLess(script.index('install-packages.sh python3\n'),
+                                    script.index('tools/ci/hosted_apt_mirrors.py'))
                     self.assertIn('QT_PLUGIN_PATH=$QT_ROOT_DIR/plugins QML2_IMPORT_PATH=$QT_ROOT_DIR/qml', script)
                 self.assertNotIn('/out/summary', script)
                 self.assertNotIn('/out/aqt', script)
