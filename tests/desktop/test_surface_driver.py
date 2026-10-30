@@ -767,12 +767,13 @@ class InputFoundations(unittest.TestCase):
         from tools.lab.surface_driver import probe
         from types import SimpleNamespace
         node=SimpleNamespace(name='Synthetic notice',get_process_id=lambda:50,getRoleName=lambda:'label')
-        component=SimpleNamespace(getAccessibleAtPoint=lambda *a:node)
+        component=SimpleNamespace(getAccessibleAtPoint=lambda *a:node,getExtents=lambda *a:[10,10,80,40])
+        node.queryComponent=lambda:component
         window=SimpleNamespace(queryComponent=lambda:component)
         class App(list):
             def get_process_id(self):return 50
         fake=SimpleNamespace(DESKTOP_COORDS=0)
-        query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50},
+        query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50,'rect':[10,10,80,40]},
                'point':[40,30],'shell_application':'gnome-shell*'}
         with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=[App([window])]):
             self.assertTrue(probe.shell_hit(query)['ok'])
@@ -875,8 +876,9 @@ class InputFoundations(unittest.TestCase):
             if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
         self.ctx.target.pointer=pointer
         self.ctx.notification_action(72)
-        # One owned title lookup, hover first, then press/release on the title.
-        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
+        # Hover first, then fresh owned title reads before its press/release.
+        self.assertGreaterEqual(len(queries),2)
+        self.assertTrue(all('application' in query for query in queries))
         self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
         self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
         notices[0]['closed']={'reason':1}
