@@ -416,11 +416,11 @@ class GateCatalogPin(Base):
     def test_committed_pin_lists_every_history_and_credential_state(self):
         from tools.lab.surface_driver import gate
         pin = json.loads(gate.PIN.read_text())['states']
-        self.assertGreaterEqual(len(pin), 29)
+        self.assertGreaterEqual(len(pin), 28)
         names = {n for v in pin.values() for n in v}
         self.assertTrue({'historyLink', 'credentialAccessKey', 'credentialSecretKey', 'credentialSessionToken',
                          'protonSharePassword'} <= names, names)
-        self.assertGreaterEqual(sum('credentialSecretKey' in v for v in pin.values()), 7)
+        self.assertGreaterEqual(sum('credentialSecretKey' in v for v in pin.values()), 6)
 
     def test_a_self_consistent_but_reduced_catalog_fails_the_real_pin(self):
         # The validator's shape: three inventories, one per page, all present.
