@@ -254,7 +254,7 @@ class FakeContext(Context):
             desired = 'Hide secret access key' if self.revealed else 'Show secret access key'
             return [{'name': desired, 'visible': True}] if query['name'] == desired else []
         control = query['objectName']
-        if control == 'customEndpoint':
+        if control in ('customEndpoint', 'advancedSettings'):
             return [{'states': {'checked': True}}]
         if control == 'destinationLabel':
             return [{'text': self.document['profiles'][self.selection]['label']}]

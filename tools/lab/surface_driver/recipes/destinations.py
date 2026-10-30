@@ -300,7 +300,8 @@ def service(ctx):
     for index, endpoint in ((1, 'https://surface.invalid.r2.cloudflarestorage.com'),
                              (2, profiles[0]['settings']['endpoint'])):
         _choose(ctx, 's3Service', index)
-        _click(ctx, 'advancedSettings')
+        if not _state(ctx, 'advancedSettings', 'checked'):
+            _click(ctx, 'advancedSettings')
         ctx.use_catalog('destinations', '62-destination-connection-expanded')
         if not _state(ctx, 'customEndpoint', 'checked'):
             _click(ctx, 'customEndpoint')
