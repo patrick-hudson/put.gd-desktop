@@ -415,6 +415,14 @@ class CandidateContracts(unittest.TestCase):
                 self.assertFalse(candidate.orphaned({}, b))
             self.assertTrue(candidate.orphaned({}, a))
 
+    def test_expired_ttl_never_overrides_a_live_local_nonce_lease(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(candidate, 'LEASE_ROOT', Path(temporary)):
+            nonce = 'd' * 16
+            worker = {'createdAt': '2000-01-01T00:00:00Z', 'ttlSeconds': 600}
+            with candidate.run_lease(nonce):
+                self.assertFalse(candidate.orphaned(worker, nonce))
+            self.assertTrue(candidate.orphaned(worker, nonce))
+
     def test_late_create_is_found_after_ten_seconds_and_other_nonce_is_untouched(self):
         now = [0]
         name = candidate.worker_name(SHA, 'appimage', 'a' * 16)

@@ -48,6 +48,15 @@ def run_lease(nonce):
 
 
 def orphaned(item, nonce):
+    if nonce:
+        try:
+            with (LEASE_ROOT / nonce).open('r') as lease:
+                fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return True
+        except BlockingIOError:
+            return False  # A known live controller wins even over an expired TTL.
+        except FileNotFoundError:
+            pass  # Unknown controllers may only be reaped after TTL expiry.
     try:
         created = datetime.fromisoformat(item['createdAt'].replace('Z', '+00:00')).timestamp()
         ttl = int(item['ttlSeconds'])
@@ -55,13 +64,6 @@ def orphaned(item, nonce):
             return True
     except (KeyError, TypeError, ValueError):
         pass  # Missing/unknown remote metadata is not permission to delete.
-    if nonce:
-        try:
-            with (LEASE_ROOT / nonce).open('r') as lease:
-                fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                return True
-        except (FileNotFoundError, BlockingIOError):
-            pass
     return False
 
 
