@@ -242,6 +242,7 @@ def validate_recipes(recipes):
 
 def run_recipes(context, recipes, environment, out, campaign, coverage):
     rows=[]
+    cleanup_block=None
     receipt=Path(out)/'receipt.json'
     try:
         receipt_name=str(receipt.resolve().relative_to(ROOT))
@@ -255,6 +256,8 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
         previous = signal.signal(signal.SIGALRM,deadline)
         signal.setitimer(signal.ITIMER_REAL,recipe.timeout)
         try:
+            if cleanup_block:
+                raise RecipeBlocked(cleanup_block)
             if environment['destination'] not in recipe.destinations:
                 raise RecipeBlocked('recipe does not support destination '+environment['destination'])
             context.frame('before')
@@ -270,6 +273,27 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
             failure=str(error) if isinstance(error,RecipeFailed) else 'driver error: '+type(error).__name__
         finally:
             signal.setitimer(signal.ITIMER_REAL,0)
+            # Teardown owns a separate bounded budget. An action deadline must
+            # not strand a window and contaminate the next recipe's before frame.
+            cleanup=getattr(recipe.function,'cleanup',None)
+            if cleanup:
+                try:
+                    if hasattr(context,'_deadline'):
+                        context._deadline=time.monotonic()+10
+                    def cleanup_deadline(_signum,_frame):
+                        raise RecipeFailed('recipe cleanup deadline exceeded: '+recipe.name)
+                    signal.signal(signal.SIGALRM,cleanup_deadline)
+                    signal.setitimer(signal.ITIMER_REAL,10)
+                    cleanup(context)
+                except Exception as error:
+                    reason=str(error) if isinstance(error,RecipeFailed) else type(error).__name__
+                    cleanup_block='previous recipe cleanup did not finish; further actions blocked'
+                    context.review('recipe cleanup failed: '+reason)
+                    failure='; '.join(filter(None,(failure,'recipe cleanup failed: '+reason)))
+                    if functional=='passed':
+                        functional='failed'
+                finally:
+                    signal.setitimer(signal.ITIMER_REAL,0)
             signal.signal(signal.SIGALRM,previous)
             try:
                 if hasattr(context,'_deadline'):

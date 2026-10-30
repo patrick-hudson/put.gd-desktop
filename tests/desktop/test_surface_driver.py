@@ -5,10 +5,12 @@ import importlib
 import json
 import os
 from pathlib import Path
+import signal
 import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
@@ -103,6 +105,34 @@ class Running(unittest.TestCase):
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
         self.ctx=DriverContext(FakeTarget(),self.env,load_profile(self.env['desktop']),self.path,self.path)
     def tearDown(self):self.temp.cleanup()
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_cleanup_has_a_fresh_budget_after_action_deadline_and_keeps_failure(self):
+        cleaned=[]
+        def expired(ctx):
+            ctx._deadline=time.monotonic()-1
+            signal.raise_signal(signal.SIGALRM)
+        def cleanup(ctx):
+            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0],0)
+            self.assertTrue(ctx.call('capabilities')['ready'])
+            cleaned.append(True)
+        expired.cleanup=cleanup
+        def following(ctx):ctx.expect(cleaned==[True],'cleanup completed before following recipe')
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),expired),Recipe(('editor.redo',),following)],self.env,self.path,'cleanup',self.path/'coverage.json')
+        self.assertEqual([r.functional for r in rows],['failed','passed'])
+        self.assertIn('recipe deadline exceeded',rows[0].note)
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_failed_cleanup_blocks_following_actions_and_before_frame(self):
+        calls=[]
+        def action(ctx):pass
+        def cleanup(ctx):raise RecipeFailed('editor still open')
+        action.cleanup=cleanup
+        def following(ctx):calls.append('unsafe action')
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),action),Recipe(('editor.redo',),following)],self.env,self.path,'cleanup',self.path/'coverage.json')
+        self.assertEqual([r.functional for r in rows],['failed','blocked'])
+        self.assertEqual(calls,[])
+        self.assertNotIn('before',[f['label'] for f in rows[1].frames])
 
     def test_registry_selection(self):
         self.assertTrue(discover('core_demo'))
@@ -1022,11 +1052,12 @@ class CoreDemoCleanup(unittest.TestCase):
         from tools.lab.surface_driver.recipes.core_demo import cancelled
         ctx=Mock()
         ctx.cli.side_effect=[{'stdout':json.dumps(value)} for value in (
+            {'ok':True,'result':{}},
             {'ok':True,'result':{'ready':True}},
             {'ok':False,'error':{'code':'editor_finalizing'}},
             {'ok':False,'error':{'code':'editor_closed'}},
             {'ok':False,'error':{'code':'editor_unavailable'}})]
-        ctx.call.side_effect=[{}, {'editor':{'open':True}}, {'editor':{'open':True}}]
+        ctx.call.side_effect=[{'editor':{'open':True}}, {'editor':{'open':True}}, {'editor':{'open':False}}]
         observed=[]
         def wait(predicate,*args):
             for _ in range(4):
@@ -1035,7 +1066,7 @@ class CoreDemoCleanup(unittest.TestCase):
             self.fail('editor never closed')
         ctx.wait.side_effect=wait
         cancelled(ctx,'synthetic-editor')
-        self.assertEqual(observed,[False,False,False,True])
+        self.assertEqual(observed,[True,False,False,False,True])
 
     def test_recipes_wait_for_async_cancel_before_next_before_frame(self):
         from tools.lab.surface_driver.recipes import core_demo
@@ -1049,8 +1080,12 @@ class CoreDemoCleanup(unittest.TestCase):
                 if method=='editor.view':return {'tool':self.tool}
                 if method=='editor.inspect':return {'shapes':self.shapes}
                 if method=='editor.apply':self.shapes=[{}]
+                if method=='capabilities':return {'editor':{'open':self.active}}
                 return {}
             def cli(self,*args):
+                if args[0]=='editor.cancel':
+                    self.call('editor.cancel')
+                    return {'stdout':json.dumps({'ok':True,'result':{}})}
                 if self.closing:
                     self.closing-=1
                     if not self.closing:self.active=False
@@ -1073,16 +1108,50 @@ class CoreDemoCleanup(unittest.TestCase):
             def click(self,*args,**kwargs):self.tool='redact'
         ctx=Context()
         for function in (core_demo.text_tool,core_demo.redact_tool,core_demo.undo_redo):
-            ctx.frame('before');function(ctx)
+            ctx.frame('before');function(ctx);function.cleanup(ctx)
             self.assertFalse(ctx.active)
         self.assertEqual(ctx.before,[False,False,False])
 
     def test_cancel_does_not_treat_arbitrary_inspection_failure_as_closed(self):
         from tools.lab.surface_driver.recipes.core_demo import cancelled
         ctx=Mock()
-        ctx.cli.return_value={'stdout':json.dumps({'ok':False,'error':{'code':'permission_denied'}})}
+        ctx.cli.side_effect=[{'stdout':json.dumps(v)} for v in (
+            {'ok':True,'result':{}},{'ok':False,'error':{'code':'permission_denied'}})]
         ctx.wait.side_effect=lambda predicate,*args:predicate()
         with self.assertRaisesRegex(RecipeFailed,'permission_denied'):cancelled(ctx,'synthetic-editor')
+
+    def test_unknown_active_editor_blocks_cleanup_without_guessing_an_id(self):
+        from tools.lab.surface_driver.recipes.core_demo import cleanup
+        ctx=Mock();ctx.call.return_value={'editor':{'open':True}}
+        with self.assertRaisesRegex(RecipeFailed,'cannot identify'):cleanup(ctx)
+        ctx.cli.assert_not_called()
+
+    def test_opening_failure_still_retains_its_editor_for_runner_cleanup(self):
+        from tools.lab.surface_driver.recipes.core_demo import opened,cleanup
+        ctx=Mock();ctx.fixture.return_value={'path':'/synthetic.png'}
+        ctx.call.return_value={'operationId':'owned-editor'}
+        ctx.wait.side_effect=RecipeFailed('opening timed out')
+        with self.assertRaises(RecipeFailed):opened(ctx)
+        ctx.wait.side_effect=lambda predicate,*args:predicate()
+        ctx.call.return_value={'editor':{'open':False}}
+        ctx.cli.return_value={'stdout':json.dumps({'ok':False,'error':{'code':'editor_unavailable'}})}
+        cleanup(ctx)
+        self.assertEqual(ctx.cli.call_args_list[0].args[0],'editor.cancel')
+        self.assertEqual(json.loads(ctx.cli.call_args_list[0].args[1])['id'],'owned-editor')
+
+    def test_cancel_retry_accepts_known_starting_and_finalizing_states(self):
+        from tools.lab.surface_driver.recipes.core_demo import cancelled
+        ctx=Mock()
+        ctx.cli.side_effect=[{'stdout':json.dumps({'ok':False,'error':{'code':code}})}
+                             for code in ('editor_starting','editor_finalizing','editor_unavailable')]
+        ctx.call.return_value={'editor':{'open':False}}
+        def wait(predicate,*args):
+            for _ in range(3):
+                if predicate():return
+            self.fail('cancel never completed')
+        ctx.wait.side_effect=wait
+        cancelled(ctx,'owned-editor')
+        self.assertEqual(ctx.cli.call_count,3)
 
 
 if __name__=='__main__':unittest.main()
