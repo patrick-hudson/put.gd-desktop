@@ -417,7 +417,7 @@ LANE = [r for r in REGISTRY if r.function.__module__ == history.__name__]
 # This widget simulator models the original History interactions. The shell
 # composites use independently tested admission/cleanup oracles below and real
 # three-desktop receipts, rather than simulating another compositor/lifecycle.
-SIMULATED = [r for r in LANE if r.function.__code__.co_firstlineno < history._nodes.__code__.co_firstlineno]
+SIMULATED = [r for r in LANE if r.function.__code__.co_firstlineno < history.save_diagnostics.__code__.co_firstlineno]
 
 
 class HistoryRecipeTests(unittest.TestCase):

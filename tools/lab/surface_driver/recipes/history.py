@@ -791,6 +791,77 @@ def escape_details(ctx):
 
 
 
+
+@recipe('history.save-diagnostics', needs=('history_retry_upload', 'app-profile'))
+def save_diagnostics(ctx):
+    row = _row(ctx, 'history_retry_upload')
+    root = ctx.fixture('app-profile').output_dir
+    _frame(ctx, 'before')
+    ctx.click('saveHistoryDiagnostics', window='history')
+    import shlex
+    code = """import hashlib,json,zipfile
+from pathlib import Path
+root=Path(ROOT)/'diagnostics'
+files=list(root.glob('putgd-diagnostics-*.zip')) if root.exists() else []
+assert len(files)<=1
+if files:
+ p=files[0];assert p.is_file() and not p.is_symlink()
+ with zipfile.ZipFile(p) as z:
+  manifest=json.loads(z.read('manifest.json'))
+  assert manifest['scope']['operationId']==OPERATION and manifest['operations']==1
+  for entry in manifest['files']:
+   data=z.read(entry['path'])
+   assert len(data)==entry['bytes'] and hashlib.sha256(data).hexdigest()==entry['sha256']
+ print(json.dumps({'valid':True,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'files':len(manifest['files'])}))
+else:print('{}')
+""".replace('ROOT', repr(root)).replace('OPERATION', repr(row['operation_id']))
+    def saved():
+        reply = ctx.shell('python3 -c ' + shlex.quote(code))
+        ctx.expect(reply['returncode'] == 0, 'diagnostics ZIP manifest, scope and every entry hash validate')
+        return json.loads(reply['stdout']).get('valid')
+    ctx.wait(saved, 'row diagnostics written to private archive', timeout=30)
+    ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
+               'saving diagnostics preserves the failed receipt')
+    _frame(ctx, 'after')
+
+
+@recipe('history.local-copy-settings', needs=('history_retry_local',))
+def local_copy_settings(ctx):
+    row = _row(ctx, 'history_retry_local')
+    detail = _result(ctx.call('history.detail', {'id': row['id']}))
+    ctx.expect(detail['local']['status'] != 'saved', 'fixture has no successfully retained local copy')
+    _frame(ctx, 'before')
+    ctx.click('historyChangeLocalCopies', window='history')
+    _capture_settings(ctx)
+    _frame(ctx, 'after', None)
+
+
+@recipe('history.compact', needs=('history-row',), timeout=180)
+def compact_details(ctx):
+    row = _row(ctx)
+    box = ctx.geometry('history')
+    _frame(ctx, 'before')
+    edge = (box['x'] + box['width'] - 1, box['y'] + box['height'] - 1)
+    ctx.drag(edge, (edge[0] - 600, edge[1] - 500))
+    ctx.wait(lambda: _state(ctx)['layout'] == 'compact', 'real resize enters compact History layout')
+    try:
+        for grid, back in ((False, 'Back to list'), (True, 'Back to gallery')):
+            ctx.click('historyGridMode' if grid else 'historyListMode', window='history')
+            _focus_items(ctx)
+            ctx.keys('Home', 'Return')
+            ctx.wait(lambda: _state(ctx)['detailsOpen'] and _state(ctx)['inspectorVisible'], 'compact details replace the list')
+            ctx.expect(_state(ctx)['selectedIds'] == [row['id']], 'compact details retain exact history identity')
+            ctx.expect(not _nodes(ctx, name='History items and upload activity'), 'details hide the compact list')
+            _frame(ctx, 'compact-' + str(grid), None)
+            ctx.click('text:' + back, window='history')
+            ctx.wait(lambda: not _state(ctx)['detailsOpen'], back + ' restores browsing')
+            ctx.expect(bool(_nodes(ctx, name='History items and upload activity')), 'Back restores the native list')
+    finally:
+        now = ctx.geometry('history')
+        ctx.drag((now['x'] + now['width'] - 1, now['y'] + now['height'] - 1), edge)
+    ctx.click('historyListMode', window='history')
+    _frame(ctx, 'after')
+
 # Composite rows use production inspection plus real input. Fixture setup and
 # cleanup stay in core; no fake resident replies or injected Qt events.
 def _nodes(ctx, **query):
@@ -1064,10 +1135,7 @@ BLOCKED = {
     'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; fixture variants do not yet cover all states.',
     'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants still need deterministic failed/queued deletion fixtures; link opening stays with links.',
     'history.retry-deletion': 'Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.',
-    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle.',
-    'history.local-copy-settings': 'Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.',
     'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup.',
-    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls with a complete compact-layout oracle.',
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
