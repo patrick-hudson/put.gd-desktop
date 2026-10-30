@@ -33,7 +33,9 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb.h>
 #include <xcb/xtest.h>
+#include <functional>
 #include <unistd.h>
+#include <utility>
 #include "fixtures/Waits.h"
 using namespace putgd;
 // A screen locker on the disposable bus that x11_isolated supplies (#341).
@@ -51,6 +53,14 @@ class RegionPaintProbe final:public QObject {
 public:
  QRegion painted;int count=0;
  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Paint){painted+=static_cast<QPaintEvent*>(event)->region();++count;}return false;}
+};
+class TimerDeliveryProbe final:public QObject {
+public:
+ std::function<void()> beforeDelivery;
+ bool eventFilter(QObject*,QEvent* event)override{
+  if(event->type()==QEvent::Timer&&beforeDelivery){auto callback=std::exchange(beforeDelivery,{});callback();}
+  return false;
+ }
 };
 // This service runs only on the disposable bus supplied by x11_isolated.
 // It proves native transport/lifetime contracts, not compositor behavior.
@@ -105,8 +115,22 @@ private slots:
   X11CompositorFixture compositor;const auto inside=compositor.scene({40,40,10,10},0x000000),outside=compositor.scene({300,300,10,10},0x000000);
   auto repaints=[&](xcb_window_t window,int count,QElapsedTimer& last,QObject& scope){auto* timer=new QTimer(&scope);timer->setInterval(20);connect(timer,&QTimer::timeout,this,[&compositor,&last,timer,window,count,done=0]()mutable{compositor.repaint(window);last.start();if(++done==count)timer->deleteLater();});timer->start();return QPointer<QTimer>(timer);};
   {// Repaints over the selection hold the read until they have been quiet.
-   QObject scope;X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;qint64 quiet=-1;QElapsedTimer last;connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;quiet=last.isValid()?last.elapsed():-1;});
-   settle.start();QVERIFY(settle.composited());auto timer=repaints(inside,8,last,scope);putgd::test::settle(120);PUTGD_TRY_VERIFY(!settled);PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY(timer.isNull());QVERIFY2(quiet>=70,qPrintable(QString::number(quiet)));QVERIFY(settle.repaints()>=8);}
+   X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;qint64 quiet=-1;QElapsedTimer last;connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;quiet=last.isValid()?last.elapsed():-1;});
+   settle.start();QVERIFY(settle.composited());
+   // Advance the scene only after the previous repaint was observed. A fixed
+   // wait can overshoot the entire animation on a contended event loop.
+   for(int frame=0;frame<8;++frame){
+    const auto before=settle.repaints();compositor.repaint(inside);last.start();
+    PUTGD_TRY_VERIFY_WITH_TIMEOUT(settle.repaints()>before||settled,3000);QVERIFY(!settled);
+   }
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY2(quiet>=70,qPrintable(QString::number(quiet)));QVERIFY(settle.repaints()>=8);}
+  {// Damage can arrive just before an overdue quiet timer is delivered, before
+   // Qt gets another opportunity to dispatch the X11 socket notifier.
+   X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;qint64 quiet=-1;int before=-1;QElapsedTimer last;
+   connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;quiet=last.isValid()?last.elapsed():-1;});
+   settle.start();QTimer* quietTimer=nullptr;for(auto* timer:settle.findChildren<QTimer*>())if(timer->interval()==80)quietTimer=timer;QVERIFY(quietTimer);
+   TimerDeliveryProbe probe;probe.beforeDelivery=[&]{before=settle.repaints();compositor.repaint(inside);last.start();};quietTimer->installEventFilter(&probe);
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY(before>=0);QVERIFY(settle.repaints()>before);QVERIFY2(quiet>=70,qPrintable(QString::number(quiet)));}
   {// Unrelated repaints elsewhere do not delay it.
    QObject scope;X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;QElapsedTimer last,elapsed;elapsed.start();connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;});
    settle.start();auto timer=repaints(outside,30,last,scope);PUTGD_TRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY2(elapsed.elapsed()<400,qPrintable(QString::number(elapsed.elapsed())));PUTGD_TRY_VERIFY(timer.isNull());}
