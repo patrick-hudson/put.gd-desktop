@@ -199,6 +199,10 @@ class DriverContext(Context):
         query = {'geometry': geometry, 'point': point, 'popup': popup or self._popup,
                  'raise': raise_window or self.profile.get('focus',{}).get('raise_before_input',False),
                  'compositor_script': self.profile.get('focus', {}).get('compositor_script')}
+        if self.profile.get('session') == 'x11':
+            # A just-mapped target may not be active yet (#750): the probe may
+            # activate it once if the foreground is 0 or the same private process.
+            query['settle'] = True
         if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None

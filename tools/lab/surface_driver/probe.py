@@ -776,6 +776,43 @@ def x11_hit(point):
             xlib.XSetErrorHandler(previous_handler)
 
 
+def x11_active():
+    ids = re.findall(r'0x[0-9a-fA-F]+', run('xprop', '-root', '_NET_ACTIVE_WINDOW'))
+    value = str(int(ids[-1], 16)) if ids else '0'
+    return value
+
+
+def x11_settle(target, bound=2.5):
+    """Let a just-mapped target become active before it is judged (#750).
+
+    Right after a window maps, _NET_ACTIVE_WINDOW can still be 0 or another
+    window of the same private process. Only then: activate the target once
+    and wait, bounded, for the window manager to settle. A foreign active
+    window is never displaced: the caller reports it as the obstruction. The
+    caller then re-observes stacking and the hit-test from scratch.
+    """
+    wid = str(target['window_id'])
+    deadline, activated = time.monotonic() + bound, False
+    while True:
+        active = x11_active()
+        if active == wid:
+            return True
+        if active != '0':
+            try:
+                owner = int(run('xdotool', 'getwindowpid', active))
+            except (subprocess.CalledProcessError, ValueError):
+                owner = None
+            if owner is None or owner != target.get('pid'):
+                return False
+        if time.monotonic() >= deadline:
+            return False
+        if not activated:
+            subprocess.run(['xdotool', 'windowactivate', '--sync', wid], timeout=2,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            activated = True
+        time.sleep(.1)
+
+
 def x11_foreground(query):
     if query.get('desktop_node'):
         hit = x11_hit(query['point'])
@@ -785,6 +822,8 @@ def x11_foreground(query):
     wid = str(target['window_id'])
     if target.get('override_redirect'):
         return x11_unmanaged_foreground(query)
+    if query.get('settle'):
+        x11_settle(target)
     if query.get('raise'):
         subprocess.run(['xdotool', 'windowactivate', '--sync', wid], check=True, timeout=3,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

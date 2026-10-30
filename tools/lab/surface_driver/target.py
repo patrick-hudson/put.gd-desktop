@@ -146,7 +146,7 @@ while True:
 
 def probe_mutates(name, query):
     """Probe requests that act on the desktop rather than only observing it."""
-    return name == 'foreground' and bool(query.get('raise'))
+    return name == 'foreground' and bool(query.get('raise') or query.get('settle'))
 
 
 def qcodes(chord):

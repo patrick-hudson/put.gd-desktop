@@ -378,5 +378,46 @@ class WaylandCoordinates(unittest.TestCase):
                 self.assertFalse(probe.foreground({'geometry':target,'compositor':WITNESS})['ok'])
 
 
+class StartupFocus(unittest.TestCase):
+    """#750: right after mapping, _NET_ACTIVE_WINDOW can still be 0."""
+    editor={'x':50,'y':50,'width':900,'height':620,'pid':7,'window_id':'10'}
+
+    def settle(self,actives,owners):
+        reads=iter(actives);calls=[]
+        def run(*args):
+            if args[:2]==('xdotool','getwindowpid'):
+                if owners.get(args[2]) is None:raise probe.subprocess.CalledProcessError(1,args)
+                return str(owners[args[2]])
+            return ''
+        with patch.object(probe,'x11_active',side_effect=lambda:next(reads)),patch.object(probe,'run',side_effect=run),\
+             patch.object(probe.subprocess,'run',side_effect=lambda args,**kw:calls.append(args)),patch.object(probe.time,'sleep'):
+            return probe.x11_settle(self.editor),calls
+
+    def test_window_zero_activates_the_target_once_then_waits(self):
+        ok,calls=self.settle(['0','0','10'],{})
+        self.assertTrue(ok);self.assertEqual(calls,[['xdotool','windowactivate','--sync','10']])
+
+    def test_same_process_window_is_replaced_by_the_target(self):
+        ok,calls=self.settle(['20','10'],{'20':7})
+        self.assertTrue(ok);self.assertEqual(len(calls),1)
+
+    def test_a_foreign_active_window_is_never_displaced(self):
+        ok,calls=self.settle(['30'],{'30':99})
+        self.assertFalse(ok);self.assertEqual(calls,[])
+
+    def test_bounded_when_nothing_settles(self):
+        with patch.object(probe.time,'monotonic',side_effect=[0,0,1,2,3]):
+            ok,calls=self.settle(['0']*10,{})
+        self.assertFalse(ok);self.assertEqual(len(calls),1)
+
+    def test_guard_requests_settle_on_x11_and_forces_heartbeat(self):
+        from tools.lab.surface_driver.target import probe_mutates
+        ctx,directory=context();self.addCleanup(directory.cleanup)
+        ctx.geometry=lambda role:dict(self.editor,head=0,scale=1);ctx._current_window='editor'
+        queries=[];ctx._probe=lambda name,query:queries.append(query) or {'ok':True}
+        ctx._guard()
+        self.assertTrue(queries[0]['settle']);self.assertTrue(probe_mutates('foreground',queries[0]))
+
+
 if __name__=='__main__':
     unittest.main()
