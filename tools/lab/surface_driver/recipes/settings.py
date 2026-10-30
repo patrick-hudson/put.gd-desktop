@@ -142,6 +142,8 @@ def saved(ctx, path, value, section):
 
 def scroll_click(ctx, control, window='settings'):
     """Search clipped controls with real wheel input; core verifies every hit."""
+    if window == 'settings' and control in ctx.profile.get('settings', {}).get('live_controls', {}):
+        return live_click(ctx, control)
     for attempt in range(16):
         try:
             return ctx.click(control, window=window)
@@ -463,7 +465,7 @@ def desktop_support(ctx):
     opened(ctx, 3)
     result(ctx, ctx.view('ui.diagnostics', {'action': 'setDesktopDetails', 'enabled': False}))
     frame(ctx, 'before', 3)
-    ctx.click('desktopSupportDetailsToggle', window='settings')
+    live_click(ctx, 'desktopSupportDetailsToggle')
     ctx.wait(lambda: call(ctx, 'ui.diagnostics', {'action': 'inspect'})['desktopSupport']['expanded'],
              'desktop support disclosure expands')
     ctx.use_catalog('settings', 'settings-desktop-support-expanded')
@@ -509,7 +511,7 @@ def package_frame(ctx, label):
 def package_options(ctx):
     opened(ctx, 3)
     frame(ctx, 'before', 3)
-    ctx.click('createDiagnosticsPackage', window='settings')
+    live_click(ctx, 'createDiagnosticsPackage')
     ctx.use_catalog('diagnostics', '58-diagnostics-package')
     ctx.wait(lambda: package(ctx).get('open') and not package(ctx).get('previewing'), 'package opened by real click')
     package_frame(ctx, 'before-options')
@@ -760,7 +762,7 @@ def reset_limits(ctx):
                              'previewCacheBytes': 134217728, 'historyRetentionDays': 30}}
     patch(ctx, changed)
     baseline = get(ctx)['document']
-    ctx.click('resourceLimitsToggle', window='settings')
+    live_click(ctx, 'resourceLimitsToggle')
     ctx.use_catalog('settings', 'settings-resource-limits-expanded')
     # Return must choose the safe default, and Escape must cancel too.
     for answer in ('Return', 'Esc', None):

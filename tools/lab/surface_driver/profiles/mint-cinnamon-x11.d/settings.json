@@ -175,6 +175,34 @@
       "folderOther": {
         "name": "Other files",
         "role": "text"
+      },
+      "desktopSupportDetailsToggle": {
+        "name": "Desktop support details",
+        "role": "check box"
+      },
+      "resourceLimitsToggle": {
+        "name": "Resource limits",
+        "role": "check box"
+      },
+      "createDiagnosticsPackage": {
+        "name": "Create diagnostics package",
+        "role": "push button"
+      },
+      "refreshDesktopSupport": {
+        "name": "Refresh desktop support",
+        "role": "push button"
+      },
+      "copyDesktopDetails": {
+        "name": "Copy details",
+        "role": "push button"
+      },
+      "resetAdvancedDefaults": {
+        "name": "Reset resource and history limits\u2026",
+        "role": "push button"
+      },
+      "reloadSettings": {
+        "name": "Reload from file\u2026",
+        "role": "push button"
       }
     },
     "theme_references": {
