@@ -52,9 +52,9 @@ def desktop_transport(function):
     @wraps(function)
     def invoke(*args, **kwargs):
         try:
-            args[0].heartbeat(force=True)
             if verify := getattr(args[0], '_verify_endpoints', None):
                 verify()
+            args[0].heartbeat(force=True)
             return function(*args, **kwargs)
         except RecipeBlocked:
             raise
@@ -101,10 +101,12 @@ class Target:
             value=json.loads(self.physical.ssh(self.run,script))
         except (lab.LabError,OSError,ValueError) as error:
             raise RecipeBlocked('physical desktop lock heartbeat unavailable') from error
-        if not value.get('ok') or value.get('state')!='held' or value.get('expiresInSeconds',0)<=0:
+        expiry=value.get('expiresInSeconds',0)
+        if (not value.get('ok') or value.get('state')!='held' or type(expiry) not in (int,float)
+                or not time.monotonic()-now+1 < expiry <= desktop_lock.MAX_MINUTES*60):
             raise RecipeBlocked('physical desktop lock is no longer held by this session')
         self._last_heartbeat=time.monotonic()
-        self._lock_valid_until=self._last_heartbeat+max(0,value.get('expiresInSeconds',0)-1)
+        self._lock_valid_until=now+max(0,expiry-1)
 
     def session(self, body, timeout=60):
         # lab.guest_session discovers the native bus and absolute Wayland socket

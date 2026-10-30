@@ -101,7 +101,7 @@ def verify_physical_endpoints(target):
                 options, rest = getopt.getopt(arguments[1:], '1246AaCfGgKkMNnqsTtVvXxYyB:b:c:D:E:e:F:I:i:J:L:l:m:O:o:p:Q:R:S:W:w:')
                 values = dict(options)
                 pins = [value for option, value in options if option == '-o']
-                for required in ('StrictHostKeyChecking=yes', 'UserKnownHostsFile='+config['known_hosts']):
+                for required in ('StrictHostKeyChecking=yes', 'UserKnownHostsFile='+config['known_hosts'], 'ExitOnForwardFailure=yes'):
                     key = required.split('=', 1)[0].lower()
                     matches = [p for p in pins if re.split(r'[=\s]', p.strip(), maxsplit=1)[0].lower() == key]
                     if matches != [required]:

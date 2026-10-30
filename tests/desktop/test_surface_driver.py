@@ -830,11 +830,36 @@ class TargetSafety(unittest.TestCase):
     def test_unexpired_held_lock_required_at_start(self):
         for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
                       {'ok':True,'state':'held','expiresInSeconds':0},
-                      {'ok':True,'state':'held'}, {'ok':False,'state':'held','expiresInSeconds':30}):
+                      {'ok':True,'state':'held'}, {'ok':False,'state':'held','expiresInSeconds':30},
+                      {'ok':True,'state':'held','expiresInSeconds':float('nan')},
+                      {'ok':True,'state':'held','expiresInSeconds':float('inf')},
+                      {'ok':True,'state':'held','expiresInSeconds':'30'}):
             target=Target.__new__(Target)
             target.run=Path('/tmp/sd-guard')
             target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps(reply)))
             with self.assertRaises(RecipeBlocked):target.require_lock('f44','owned-session')
+
+    def test_expiry_during_heartbeat_round_trip_blocks_input(self):
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        target=Target.__new__(Target);target.run=Path(private.name);target._rfb=Mock()
+        target._lock=('f44','owned-session')
+        target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps({'ok':True,'state':'held','expiresInSeconds':2})))
+        with patch('tools.lab.surface_driver.target.time.monotonic',side_effect=[100,102]):
+            with self.assertRaises(RecipeBlocked):target.key(['t'])
+        target._rfb.key.assert_not_called()
+
+    def test_lock_is_rechecked_after_endpoint_proof_immediately_before_input(self):
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        target=Target.__new__(Target);target.run=Path(private.name)
+        target.physical=SimpleNamespace(config={'host':'192.168.68.70','user':'patrick'})
+        target.require_lock=Mock();target._rfb=Mock()
+        guard_target(self.arguments(),target)
+        order=[]
+        self.endpoint_check.side_effect=lambda *args:order.append('endpoints')
+        target.heartbeat=lambda **kwargs:order.append('lock')
+        target._rfb.key.side_effect=lambda *args:order.append('input')
+        target.key(['t'])
+        self.assertEqual(order,['endpoints','lock','input'])
 
     def test_endpoint_rebinding_blocks_the_next_input(self):
         private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
@@ -876,7 +901,7 @@ class EndpointSafety(unittest.TestCase):
         self.target=SimpleNamespace(run=self.run,physical=SimpleNamespace(
             config={'host':'192.168.68.70','user':'patrick','known_hosts':'/pins','vnc_port':5970},
             ssh=lambda run,command:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
-        self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins',
+        self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins','-o','ExitOnForwardFailure=yes',
                    '-L','127.0.0.1:5970:127.0.0.1:5901',
                    '-L',str(self.path)+':/run/user/1000/putgd-lab-input.sock','patrick@192.168.68.70']
         self.executable='ssh';self.owner=os.getuid();self.rows=True
@@ -915,7 +940,7 @@ class EndpointSafety(unittest.TestCase):
 
     def test_shadowed_pins_ports_and_forwarding_options_are_rejected(self):
         original=list(self.argv)
-        for extra in (['-o','StrictHostKeyChecking=no'],['-o','UserKnownHostsFile /other'],
+        for extra in (['-o','StrictHostKeyChecking=no'],['-o','UserKnownHostsFile /other'],['-o','ExitOnForwardFailure=no'],
                       ['-p','2222','-p','22'],['-o','Port=2222'],['-o','LocalForward=5970 127.0.0.1:5900'],
                       ['-L','127.0.0.1:5970:127.0.0.1:5900'],
                       ['-L',str(self.path)+':/another/qmp.sock'],
