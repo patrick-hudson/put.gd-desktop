@@ -4,7 +4,9 @@ accessible query fields are ANDed: name/text/description/application/window are
 case-sensitive globs; role is normalized lowercase with spaces; pid, objectName,
 owned, visible/showing/enabled and states constrain ownership/state. Unknown keys
 are rejected. rect remains [x,y,width,height] in desktop coordinates; bounds is
-its named equivalent. Protected text is never read.
+its named equivalent. On Wayland, client rows are placed through the query's
+'compositor' witness (WaylandPlacement); unplaceable rows carry a null rect and
+coordinate_error instead of window-relative numbers. Protected text is never read.
 """
 import ctypes
 import ctypes.util
