@@ -1,0 +1,10 @@
+{
+  "removed": [
+    {
+      "name": "Editor R4 KDE bx_k27tzb6p",
+      "port": 6082,
+      "type": "vm"
+    }
+  ],
+  "otherRowsPreserved": 15
+}

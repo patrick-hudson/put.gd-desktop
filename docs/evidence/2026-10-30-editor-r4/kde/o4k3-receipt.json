@@ -1,0 +1,3796 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "kubuntu-kde-v1",
+    "package": "deb",
+    "destination": "local",
+    "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "placement_details": {
+      "boat_sandbox_id": "bx_k27tzb6p",
+      "run_id": "92c768ab-5db0-41be-80ce-c3fab266f3c8",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/user/e4/work/lab-runs/k2",
+      "session_root": "/tmp/sd-c6269b50",
+      "socket": "/tmp/sd-c6269b50/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "wayland",
+      "pid": 53151,
+      "start": "117907",
+      "boot": "c3250b15-fa1a-4335-abac-7caece8e0088",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "operation_ids": [
+      {
+        "operationId": "a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4"
+      },
+      {
+        "operationId": "bd008482-980d-4f6e-b930-71c08514a948"
+      },
+      {
+        "operationId": "080b9bef-d50d-459e-8e32-662cdcd3b6c1"
+      },
+      {
+        "operationId": "64a6acaf-2e78-42a2-ad01-80cd85739660"
+      },
+      {
+        "operationId": "67e3374b-a27b-47e5-a300-65d51f7d43d9"
+      },
+      {
+        "operationId": "a755aa7e-9c6b-4aea-acf8-e93a3a062e90"
+      },
+      {
+        "operationId": "592072c4-27d2-44b8-b1f0-482d1e5e88f6"
+      },
+      {
+        "operationId": "2659a445-c08a-4942-8d00-cb9d04081bee"
+      },
+      {
+        "operationId": "59d25d32-ccf4-4c16-b6b7-51d2504efc08"
+      },
+      {
+        "operationId": "bf948010-abde-4e14-8b39-cc2c2d3d1c00"
+      },
+      {
+        "operationId": "ca016a2f-8a4c-45ad-b338-cb5bc745d1be"
+      },
+      {
+        "operationId": "4935fa69-2508-4398-b9b1-4f6561155730"
+      },
+      {
+        "operationId": "8f2ee969-740d-4aae-86c2-61f6d742f651"
+      },
+      {
+        "operationId": "57388c24-6bde-40c1-8d33-8901182f6d59"
+      },
+      {
+        "operationId": "a397a686-d463-46fe-99a8-57df7e0ccc2c"
+      },
+      {
+        "operationId": "8e29ab6a-0e7b-4b9f-be09-17d4c83c772d"
+      },
+      {
+        "operationId": "c043365b-ed60-4c73-a23c-58ac85c13471"
+      },
+      {
+        "operationId": "e610863e-8881-49ff-98c7-4a9aca5925bd"
+      },
+      {
+        "operationId": "a40143e2-253e-4ce9-9ed0-c291bb90e30b"
+      },
+      {
+        "operationId": "22a473f8-b5b4-4e42-a48a-125a7244658c"
+      },
+      {
+        "operationId": "e18bfd51-2db6-4469-8fd8-b5388c77f559"
+      },
+      {
+        "operationId": "f8fe3124-40ed-4959-b871-0d5995e9755c"
+      },
+      {
+        "operationId": "341ac10f-88e2-4ff2-8f44-9edd6a17d55a"
+      },
+      {
+        "operationId": "36bac536-78ce-48e3-846f-1c75b7356723"
+      },
+      {
+        "operationId": "1de217b8-0fc2-405e-92b4-d5f68b846426"
+      },
+      {
+        "operationId": "b1ae3354-d378-45d0-aa2e-ba40fec2d152"
+      },
+      {
+        "operationId": "b757bdda-1791-4b34-a6f4-9c736d90ce5b"
+      },
+      {
+        "operationId": "8420df3b-60bb-4d37-8231-e3433a5dd0cc"
+      },
+      {
+        "operationId": "e58ed9b6-3a2b-489d-985c-e2b63bc6e576"
+      },
+      {
+        "operationId": "e216f827-7fb8-47bb-80de-9527abfd4e9a"
+      },
+      {
+        "operationId": "e493cff8-eb88-428f-a881-18e69dc2d6d9"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed"
+  },
+  "interactions": [
+    {
+      "interaction": "editor.opens-fit",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4; editor operationId=a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645645, tolerance=0.025): actual=/home/user/o4k3/frames/editor.redact/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.641802, tolerance=0.025): actual=/home/user/o4k3/frames/editor.redact/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456449317122309,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.64180223252981,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:47:58Z"
+    },
+    {
+      "interaction": "editor.tool-redact",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4; editor operationId=a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645645, tolerance=0.025): actual=/home/user/o4k3/frames/editor.redact/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.641802, tolerance=0.025): actual=/home/user/o4k3/frames/editor.redact/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456449317122309,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.64180223252981,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:47:58Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4; editor operationId=a59ae8bb-3c41-4fd4-b8c5-01d22f8d1dd4; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645645, tolerance=0.025): actual=/home/user/o4k3/frames/editor.redact/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.641802, tolerance=0.025): actual=/home/user/o4k3/frames/editor.redact/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.redact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.redact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456449317122309,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.64180223252981,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.redact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.redact",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:47:58Z"
+    },
+    {
+      "interaction": "editor.tool-arrow",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=bd008482-980d-4f6e-b930-71c08514a948; editor operationId=bd008482-980d-4f6e-b930-71c08514a948; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.642737, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/02-arrow.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642360, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.645914, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/04-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.647263, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/05-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.642737060463373,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423600346709771,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459136528685548,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472626068826575,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:49:07Z"
+    },
+    {
+      "interaction": "editor.tool-rectangle",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=bd008482-980d-4f6e-b930-71c08514a948; editor operationId=bd008482-980d-4f6e-b930-71c08514a948; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.642737, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/02-arrow.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642360, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.645914, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/04-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.647263, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/05-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.642737060463373,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423600346709771,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459136528685548,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472626068826575,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:49:07Z"
+    },
+    {
+      "interaction": "editor.tool-highlight",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=bd008482-980d-4f6e-b930-71c08514a948; editor operationId=bd008482-980d-4f6e-b930-71c08514a948; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.642737, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/02-arrow.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642360, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.645914, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/04-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.647263, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/05-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.642737060463373,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423600346709771,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459136528685548,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472626068826575,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:49:07Z"
+    },
+    {
+      "interaction": "editor.tool-select",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=bd008482-980d-4f6e-b930-71c08514a948; editor operationId=bd008482-980d-4f6e-b930-71c08514a948; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.642737, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/02-arrow.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.642360, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/03-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.645914, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/04-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.647263, tolerance=0.025): actual=/home/user/o4k3/frames/editor.annotation_tools/05-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.annotation_tools/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "arrow",
+          "path": "frames/editor.annotation_tools/02-arrow.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.642737060463373,
+          "tolerance": 0.025
+        },
+        {
+          "label": "rectangle",
+          "path": "frames/editor.annotation_tools/03-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6423600346709771,
+          "tolerance": 0.025
+        },
+        {
+          "label": "highlight",
+          "path": "frames/editor.annotation_tools/04-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6459136528685548,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/05-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6472626068826575,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.annotation_tools/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.annotation_tools",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:49:07Z"
+    },
+    {
+      "interaction": "editor.tool-blur",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=080b9bef-d50d-459e-8e32-662cdcd3b6c1; editor operationId=080b9bef-d50d-459e-8e32-662cdcd3b6c1; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645633, tolerance=0.025): actual=/home/user/o4k3/frames/editor.blur/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645166, tolerance=0.025): actual=/home/user/o4k3/frames/editor.blur/02-warning.png reference=/home/user/ui-catalog/21-editor-blur-warning.png; catalog mismatch (distance=0.645660, tolerance=0.025): actual=/home/user/o4k3/frames/editor.blur/03-after.png reference=/home/user/ui-catalog/21-editor-blur-warning.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.blur/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.blur/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456325977463865,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.blur/02-warning.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6451657389837655,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/03-after.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6456603111017406,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.blur",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:49:51Z"
+    },
+    {
+      "interaction": "editor.blur-warning",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=080b9bef-d50d-459e-8e32-662cdcd3b6c1; editor operationId=080b9bef-d50d-459e-8e32-662cdcd3b6c1; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645633, tolerance=0.025): actual=/home/user/o4k3/frames/editor.blur/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645166, tolerance=0.025): actual=/home/user/o4k3/frames/editor.blur/02-warning.png reference=/home/user/ui-catalog/21-editor-blur-warning.png; catalog mismatch (distance=0.645660, tolerance=0.025): actual=/home/user/o4k3/frames/editor.blur/03-after.png reference=/home/user/ui-catalog/21-editor-blur-warning.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.blur/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.blur/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456325977463865,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.blur/02-warning.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6451657389837655,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/03-after.png",
+          "window": "editor",
+          "reference": "21-editor-blur-warning",
+          "distance": 0.6456603111017406,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.blur/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.blur",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:49:51Z"
+    },
+    {
+      "interaction": "editor.tool-text",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=64a6acaf-2e78-42a2-ad01-80cd85739660; editor operationId=64a6acaf-2e78-42a2-ad01-80cd85739660; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631647, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/02-text-anchor.png reference=/home/user/ui-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.635006, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/03-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.6316474828402089,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6350063602501933,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:50:35Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=64a6acaf-2e78-42a2-ad01-80cd85739660; editor operationId=64a6acaf-2e78-42a2-ad01-80cd85739660; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631647, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/02-text-anchor.png reference=/home/user/ui-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.635006, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/03-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.6316474828402089,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6350063602501933,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:50:35Z"
+    },
+    {
+      "interaction": "editor.key-edit-text",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=64a6acaf-2e78-42a2-ad01-80cd85739660; editor operationId=64a6acaf-2e78-42a2-ad01-80cd85739660; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631647, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/02-text-anchor.png reference=/home/user/ui-catalog/26i-editor-text-anchor.png; catalog mismatch (distance=0.635006, tolerance=0.025): actual=/home/user/o4k3/frames/editor.text_entry/03-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.text_entry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-anchor",
+          "path": "frames/editor.text_entry/02-text-anchor.png",
+          "window": "editor",
+          "reference": "26i-editor-text-anchor",
+          "distance": 0.6316474828402089,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6350063602501933,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.text_entry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.text_entry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:50:35Z"
+    },
+    {
+      "interaction": "editor.undo",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; editor operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645618, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456180687328695,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:51:19Z"
+    },
+    {
+      "interaction": "editor.redo",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; editor operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645618, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456180687328695,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:51:19Z"
+    },
+    {
+      "interaction": "editor.place-mark",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; editor operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645618, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456180687328695,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:51:19Z"
+    },
+    {
+      "interaction": "editor.remove-mark",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; editor operationId=67e3374b-a27b-47e5-a300-65d51f7d43d9; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645618, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mark_history/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mark_history/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456180687328695,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mark_history/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mark_history",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:51:19Z"
+    },
+    {
+      "interaction": "editor.mouse-move-mark",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; editor operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631106, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.631353, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6311061002178648,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.631352608522501,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:52:42Z"
+    },
+    {
+      "interaction": "editor.key-nudge",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; editor operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631106, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.631353, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6311061002178648,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.631352608522501,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:52:42Z"
+    },
+    {
+      "interaction": "editor.key-resize",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; editor operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631106, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.631353, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6311061002178648,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.631352608522501,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:52:42Z"
+    },
+    {
+      "interaction": "editor.key-next-mark",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; editor operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631106, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.631353, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6311061002178648,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.631352608522501,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:52:42Z"
+    },
+    {
+      "interaction": "editor.key-deselect",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; editor operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631106, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.631353, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6311061002178648,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.631352608522501,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:52:42Z"
+    },
+    {
+      "interaction": "editor.marks-stay-on-image",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; editor operationId=a755aa7e-9c6b-4aea-acf8-e93a3a062e90; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631106, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.631353, tolerance=0.025): actual=/home/user/o4k3/frames/editor.selection_geometry/03-text-scaled.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.selection_geometry/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6311061002178648,
+          "tolerance": 0.025
+        },
+        {
+          "label": "text-scaled",
+          "path": "frames/editor.selection_geometry/03-text-scaled.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.631352608522501,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.selection_geometry/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.selection_geometry",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:52:42Z"
+    },
+    {
+      "interaction": "editor.tool-crop",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=592072c4-27d2-44b8-b1f0-482d1e5e88f6; editor operationId=592072c4-27d2-44b8-b1f0-482d1e5e88f6; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.627932, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/02-draft.png reference=/home/user/ui-catalog/23-editor-crop.png; catalog mismatch (distance=0.708554, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/03-after.png reference=/home/user/ui-catalog/23-editor-crop.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.crop/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draft",
+          "path": "frames/editor.crop/02-draft.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.6279323119450887,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/03-after.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.7085540117600206,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:53:45Z"
+    },
+    {
+      "interaction": "editor.apply-crop",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=592072c4-27d2-44b8-b1f0-482d1e5e88f6; editor operationId=592072c4-27d2-44b8-b1f0-482d1e5e88f6; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.627932, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/02-draft.png reference=/home/user/ui-catalog/23-editor-crop.png; catalog mismatch (distance=0.708554, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/03-after.png reference=/home/user/ui-catalog/23-editor-crop.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.crop/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draft",
+          "path": "frames/editor.crop/02-draft.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.6279323119450887,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/03-after.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.7085540117600206,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:53:45Z"
+    },
+    {
+      "interaction": "editor.cancel-crop",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=592072c4-27d2-44b8-b1f0-482d1e5e88f6; editor operationId=592072c4-27d2-44b8-b1f0-482d1e5e88f6; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.627932, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/02-draft.png reference=/home/user/ui-catalog/23-editor-crop.png; catalog mismatch (distance=0.708554, tolerance=0.025): actual=/home/user/o4k3/frames/editor.crop/03-after.png reference=/home/user/ui-catalog/23-editor-crop.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.crop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.crop/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draft",
+          "path": "frames/editor.crop/02-draft.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.6279323119450887,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/03-after.png",
+          "window": "editor",
+          "reference": "23-editor-crop",
+          "distance": 0.7085540117600206,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.crop/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.crop",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:53:45Z"
+    },
+    {
+      "interaction": "editor.geometry",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=2659a445-c08a-4942-8d00-cb9d04081bee; editor operationId=2659a445-c08a-4942-8d00-cb9d04081bee; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.properties/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.643060, tolerance=0.025): actual=/home/user/o4k3/frames/editor.properties/02-geometry.png reference=/home/user/ui-catalog/26h-editor-geometry-expanded.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.properties/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.properties/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "geometry",
+          "path": "frames/editor.properties/02-geometry.png",
+          "window": "editor",
+          "reference": "26h-editor-geometry-expanded",
+          "distance": 0.6430600768383817,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.properties/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.properties",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:54:38Z"
+    },
+    {
+      "interaction": "editor.keyboard-help",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=59d25d32-ccf4-4c16-b6b7-51d2504efc08; editor operationId=59d25d32-ccf4-4c16-b6b7-51d2504efc08; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.keyboard_help/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.630302, tolerance=0.025): actual=/home/user/o4k3/frames/editor.keyboard_help/02-geometry-expanded.png reference=/home/user/ui-catalog/26h-editor-geometry-expanded.png; catalog mismatch (distance=0.626641, tolerance=0.025): actual=/home/user/o4k3/frames/editor.keyboard_help/03-help.png reference=/home/user/ui-catalog/26d-editor-keyboard-help.png; catalog mismatch (distance=0.630535, tolerance=0.025): actual=/home/user/o4k3/frames/editor.keyboard_help/04-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.keyboard_help/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.keyboard_help/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "geometry-expanded",
+          "path": "frames/editor.keyboard_help/02-geometry-expanded.png",
+          "window": "editor",
+          "reference": "26h-editor-geometry-expanded",
+          "distance": 0.6303020779159931,
+          "tolerance": 0.025
+        },
+        {
+          "label": "help",
+          "path": "frames/editor.keyboard_help/03-help.png",
+          "window": "editor",
+          "reference": "26d-editor-keyboard-help",
+          "distance": 0.6266408789561224,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.keyboard_help/04-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6305352988029143,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.keyboard_help/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.keyboard_help",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:55:27Z"
+    },
+    {
+      "interaction": "editor.destination",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=bf948010-abde-4e14-8b39-cc2c2d3d1c00; editor operationId=bf948010-abde-4e14-8b39-cc2c2d3d1c00; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.destination/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.647394, tolerance=0.025): actual=/home/user/o4k3/frames/editor.destination/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.destination/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.destination/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6473936420924403,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.destination/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.destination",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:56:09Z"
+    },
+    {
+      "interaction": "editor.zoom",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=ca016a2f-8a4c-45ad-b338-cb5bc745d1be; editor operationId=ca016a2f-8a4c-45ad-b338-cb5bc745d1be; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.zoom_pan/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.601743, tolerance=0.025): actual=/home/user/o4k3/frames/editor.zoom_pan/02-menu.png reference=/home/user/ui-catalog/26f-editor-zoom-menu.png; catalog mismatch (distance=0.644495, tolerance=0.025): actual=/home/user/o4k3/frames/editor.zoom_pan/03-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.zoom_pan/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "menu",
+          "path": "frames/editor.zoom_pan/02-menu.png",
+          "window": "editor",
+          "reference": "26f-editor-zoom-menu",
+          "distance": 0.601742810287043,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6444949727083187,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.zoom_pan/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.zoom_pan",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:56:49Z"
+    },
+    {
+      "interaction": "editor.key-pan-alt",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=4935fa69-2508-4398-b9b1-4f6561155730; editor operationId=4935fa69-2508-4398-b9b1-4f6561155730; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645591, tolerance=0.025): actual=/home/user/o4k3/frames/editor.key_pan/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.584055, tolerance=0.025): actual=/home/user/o4k3/frames/editor.key_pan/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.key_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.key_pan/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.645591479841638,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.key_pan/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.5840554384238762,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.key_pan/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.key_pan",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:57:27Z"
+    },
+    {
+      "interaction": "editor.mouse-pan",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=8f2ee969-740d-4aae-86c2-61f6d742f651; editor operationId=8f2ee969-740d-4aae-86c2-61f6d742f651; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645591, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mouse_pan/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.568113, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mouse_pan/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mouse_pan/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mouse_pan/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.645591479841638,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mouse_pan/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.5681133647246234,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mouse_pan/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mouse_pan",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:58:14Z"
+    },
+    {
+      "interaction": "editor.cancel",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=57388c24-6bde-40c1-8d33-8901182f6d59; editor operationId=57388c24-6bde-40c1-8d33-8901182f6d59; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.discard/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.852993, tolerance=0.025): actual=/home/user/o4k3/frames/editor.discard/02-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.631426, tolerance=0.025): actual=/home/user/o4k3/frames/editor.discard/03-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.discard/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "question",
+          "path": "frames/editor.discard/02-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.8529932318491363,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/03-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6314264741021857,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:59:00Z"
+    },
+    {
+      "interaction": "confirm.editor-discard",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=57388c24-6bde-40c1-8d33-8901182f6d59; editor operationId=57388c24-6bde-40c1-8d33-8901182f6d59; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.discard/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.852993, tolerance=0.025): actual=/home/user/o4k3/frames/editor.discard/02-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.631426, tolerance=0.025): actual=/home/user/o4k3/frames/editor.discard/03-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.discard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.discard/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "question",
+          "path": "frames/editor.discard/02-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.8529932318491363,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/03-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6314264741021857,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.discard/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.discard",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:59:00Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=a397a686-d463-46fe-99a8-57df7e0ccc2c; editor operationId=a397a686-d463-46fe-99a8-57df7e0ccc2c; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.upload/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.641802, tolerance=0.025): actual=/home/user/o4k3/frames/editor.upload/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.upload/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.64180223252981,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.upload",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T14:59:46Z"
+    },
+    {
+      "interaction": "cli.editor",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "editor operationId=8e29ab6a-0e7b-4b9f-be09-17d4c83c772d; operationId=8e29ab6a-0e7b-4b9f-be09-17d4c83c772d; editor operationId=c043365b-ed60-4c73-a23c-58ac85c13471; operationId=c043365b-ed60-4c73-a23c-58ac85c13471; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645645, tolerance=0.025): actual=/home/user/o4k3/frames/editor.cli_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.647058, tolerance=0.025): actual=/home/user/o4k3/frames/editor.cli_editor/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.645645, tolerance=0.025): actual=/home/user/o4k3/frames/editor.cli_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.cli_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.cli_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456449317122309,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.cli_editor/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6470581839904421,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.cli_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456449317122309,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.cli_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.cli_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:00:48Z"
+    },
+    {
+      "interaction": "editor.double-click-text",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=e610863e-8881-49ff-98c7-4a9aca5925bd; editor operationId=e610863e-8881-49ff-98c7-4a9aca5925bd; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645645, tolerance=0.025): actual=/home/user/o4k3/frames/editor.double_click/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.444062, tolerance=0.025): actual=/home/user/o4k3/frames/editor.double_click/02-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.double_click/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.double_click/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456449317122309,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.double_click/02-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.4440617752477335,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.double_click/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.double_click",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:01:39Z"
+    },
+    {
+      "interaction": "editor.preparation-failed",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "issue": 663,
+      "note": "operationId=a40143e2-253e-4ce9-9ed0-c291bb90e30b; editor operationId=a40143e2-253e-4ce9-9ed0-c291bb90e30b; Needs deterministic output-limit failure fixture; normal small image cannot exercise this banner; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.preparation_failure/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.preparation_failure/02-after.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.preparation_failure/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.preparation_failure/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.preparation_failure/02-after.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.preparation_failure/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.preparation_failure/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.preparation_failure",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:02:25Z"
+    },
+    {
+      "interaction": "editor.colours",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=22a473f8-b5b4-4e42-a48a-125a7244658c; editor operationId=22a473f8-b5b4-4e42-a48a-125a7244658c; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.palette/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.638967, tolerance=0.025): actual=/home/user/o4k3/frames/editor.palette/02-after.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.639259, tolerance=0.025): actual=/home/user/o4k3/frames/editor.palette/03-recent-colours.png reference=/home/user/ui-catalog/22-editor-arrow-style.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.palette/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.palette/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.palette/02-after.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6389666830651017,
+          "tolerance": 0.025
+        },
+        {
+          "label": "recent-colours",
+          "path": "frames/editor.palette/03-recent-colours.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6392594419846792,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.palette/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.palette",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:03:37Z"
+    },
+    {
+      "interaction": "editor.line-width",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=e18bfd51-2db6-4469-8fd8-b5388c77f559; editor operationId=e18bfd51-2db6-4469-8fd8-b5388c77f559; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.style_controls/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.640872, tolerance=0.025): actual=/home/user/o4k3/frames/editor.style_controls/02-width.png reference=/home/user/ui-catalog/22-editor-arrow-style.png; catalog mismatch (distance=0.436042, tolerance=0.025): actual=/home/user/o4k3/frames/editor.style_controls/03-after.png reference=/home/user/ui-catalog/26e-editor-text-stepper-1060.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "width",
+          "path": "frames/editor.style_controls/02-width.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6408724670274323,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/03-after.png",
+          "window": "editor",
+          "reference": "26e-editor-text-stepper-1060",
+          "distance": 0.4360417012205121,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:05:04Z"
+    },
+    {
+      "interaction": "editor.custom-colour",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "issue": 663,
+      "note": "operationId=f8fe3124-40ed-4959-b871-0d5995e9755c; editor operationId=f8fe3124-40ed-4959-b871-0d5995e9755c; Custom picker opened/cancelled; choosing a custom colour and recent swatch still needs native QColorDialog selectors; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.custom_colour/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.642648, tolerance=0.025): actual=/home/user/o4k3/frames/editor.custom_colour/03-after.png reference=/home/user/ui-catalog/22-editor-arrow-style.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.custom_colour/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.custom_colour/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "picker",
+          "path": "frames/editor.custom_colour/02-picker.png",
+          "window": "editorColour",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.custom_colour/03-after.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6426480169606672,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.custom_colour/04-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.custom_colour/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.custom_colour",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:06:01Z"
+    },
+    {
+      "interaction": "editor.affected-text",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "operationId=341ac10f-88e2-4ff2-8f44-9edd6a17d55a; editor operationId=341ac10f-88e2-4ff2-8f44-9edd6a17d55a; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645652, tolerance=0.025): actual=/home/user/o4k3/frames/editor.affected_text/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.631337, tolerance=0.025): actual=/home/user/o4k3/frames/editor.affected_text/02-warning.png reference=/home/user/ui-catalog/26b-editor-text-edge.png; catalog mismatch (distance=0.629646, tolerance=0.025): actual=/home/user/o4k3/frames/editor.affected_text/03-after.png reference=/home/user/ui-catalog/26j-editor-affected-text.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.affected_text/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.affected_text/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456520345772717,
+          "tolerance": 0.025
+        },
+        {
+          "label": "warning",
+          "path": "frames/editor.affected_text/02-warning.png",
+          "window": "editor",
+          "reference": "26b-editor-text-edge",
+          "distance": 0.6313374680816174,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.affected_text/03-after.png",
+          "window": "editor",
+          "reference": "26j-editor-affected-text",
+          "distance": 0.6296462763839108,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.affected_text/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.affected_text",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:06:56Z"
+    },
+    {
+      "interaction": "mcp.editor",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "editor operationId=36bac536-78ce-48e3-846f-1c75b7356723; operationId=36bac536-78ce-48e3-846f-1c75b7356723; editor operationId=1de217b8-0fc2-405e-92b4-d5f68b846426; operationId=1de217b8-0fc2-405e-92b4-d5f68b846426; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.641262, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mcp_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.442811, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mcp_editor/02-after.png reference=/home/user/ui-catalog/27-editor-saved.png; catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mcp_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6412623117108254,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.4428111603064165,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:08:28Z"
+    },
+    {
+      "interaction": "mcp.editor-output",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "editor operationId=36bac536-78ce-48e3-846f-1c75b7356723; operationId=36bac536-78ce-48e3-846f-1c75b7356723; editor operationId=1de217b8-0fc2-405e-92b4-d5f68b846426; operationId=1de217b8-0fc2-405e-92b4-d5f68b846426; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.641262, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mcp_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.442811, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mcp_editor/02-after.png reference=/home/user/ui-catalog/27-editor-saved.png; catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.mcp_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6412623117108254,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.4428111603064165,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:08:28Z"
+    },
+    {
+      "interaction": "editor.save-copy",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; Requested chooser backend: fallback; operationId=b1ae3354-d378-45d0-aa2e-ba40fec2d152; editor operationId=b1ae3354-d378-45d0-aa2e-ba40fec2d152; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"[redacted]\", \"pid\": 123609, \"rect\": [550, 267, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=[redacted]; desktop frame dialog-ready masked by live evidence policy; desktop frame path-entered masked by live evidence policy; Fallback accessible surfaces: [{\"application\": \"putgd-ui\", \"name\": \"[redacted]\", \"pid\": 123609, \"rect\": [550, 267, 820, 520], \"role\": \"dialog\"}]; Chooser ready: backend=fallback, mode=save, title=[redacted]; desktop frame dialog-ready masked by live evidence policy; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.save_copy/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; No current fallback save chooser catalog capture is registered; No current fallback save chooser catalog capture is registered; catalog mismatch (distance=0.444904, tolerance=0.025): actual=/home/user/o4k3/frames/editor.save_copy/05-after.png reference=/home/user/ui-catalog/27-editor-saved.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_copy/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.save_copy/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/editor.save_copy/02-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "path-entered",
+          "path": "frames/editor.save_copy/03-path-entered.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "dialog-ready",
+          "path": "frames/editor.save_copy/04-dialog-ready.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_copy/05-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.44490402698713893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_copy/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_copy",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:10:50Z"
+    },
+    {
+      "interaction": "editor.save-feedback",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=b757bdda-1791-4b34-a6f4-9c736d90ce5b; editor operationId=b757bdda-1791-4b34-a6f4-9c736d90ce5b; desktop frame failure-before-cleanup masked by live evidence policy; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.save_feedback/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.444904, tolerance=0.025): actual=/home/user/o4k3/frames/editor.save_feedback/02-saved.png reference=/home/user/ui-catalog/27-editor-saved.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.save_feedback/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "saved",
+          "path": "frames/editor.save_feedback/02-saved.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.44490402698713893,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.save_feedback/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.save_feedback/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.save_feedback",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:13:01Z"
+    },
+    {
+      "interaction": "editor.compact",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=8420df3b-60bb-4d37-8231-e3433a5dd0cc; editor operationId=8420df3b-60bb-4d37-8231-e3433a5dd0cc; editor resize requested 1060x820; observed 1060x823; desktop frame failure-before-cleanup masked by live evidence policy; desktop frame after masked by live evidence policy; timeout: editor resized to matching catalog dimensions; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.compact/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.compact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.compact/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.compact/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.compact/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.compact",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:16:02Z"
+    },
+    {
+      "interaction": "editor.window-close",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=e58ed9b6-3a2b-489d-985c-e2b63bc6e576; editor operationId=e58ed9b6-3a2b-489d-985c-e2b63bc6e576; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.window_chrome/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.852993, tolerance=0.025): actual=/home/user/o4k3/frames/editor.window_chrome/02-close-question.png reference=/home/user/ui-catalog/19-editor-discard-confirm.png; catalog mismatch (distance=0.614587, tolerance=0.025): actual=/home/user/o4k3/frames/editor.window_chrome/03-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.window_chrome/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "close-question",
+          "path": "frames/editor.window_chrome/02-close-question.png",
+          "window": "editorDiscard",
+          "reference": "19-editor-discard-confirm",
+          "distance": 0.8529932318491363,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/03-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.614586832056598,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.window_chrome/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.window_chrome",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:18:47Z"
+    },
+    {
+      "interaction": "editor.mouse-square",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=e216f827-7fb8-47bb-80de-9527abfd4e9a; editor operationId=e216f827-7fb8-47bb-80de-9527abfd4e9a; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442423, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.626007, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/02-square-redact.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.628562, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/03-square-blur.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.626776, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/04-square-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.629479, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/05-square-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.629384, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/06-ctrl-cursor.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.533839, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/07-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44242307728348207,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-redact",
+          "path": "frames/editor.held_modifiers/02-square-redact.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6260065945135521,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-blur",
+          "path": "frames/editor.held_modifiers/03-square-blur.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6285620165389932,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-rectangle",
+          "path": "frames/editor.held_modifiers/04-square-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6267759552088458,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-highlight",
+          "path": "frames/editor.held_modifiers/05-square-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6294785180499918,
+          "tolerance": 0.025
+        },
+        {
+          "label": "ctrl-cursor",
+          "path": "frames/editor.held_modifiers/06-ctrl-cursor.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6293838920514442,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/07-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.5338385550636026,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/08-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:22:28Z"
+    },
+    {
+      "interaction": "editor.key-pan-space",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=e216f827-7fb8-47bb-80de-9527abfd4e9a; editor operationId=e216f827-7fb8-47bb-80de-9527abfd4e9a; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442423, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.626007, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/02-square-redact.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.628562, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/03-square-blur.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.626776, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/04-square-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.629479, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/05-square-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.629384, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/06-ctrl-cursor.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.533839, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/07-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44242307728348207,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-redact",
+          "path": "frames/editor.held_modifiers/02-square-redact.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6260065945135521,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-blur",
+          "path": "frames/editor.held_modifiers/03-square-blur.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6285620165389932,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-rectangle",
+          "path": "frames/editor.held_modifiers/04-square-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6267759552088458,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-highlight",
+          "path": "frames/editor.held_modifiers/05-square-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6294785180499918,
+          "tolerance": 0.025
+        },
+        {
+          "label": "ctrl-cursor",
+          "path": "frames/editor.held_modifiers/06-ctrl-cursor.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6293838920514442,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/07-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.5338385550636026,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/08-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:22:28Z"
+    },
+    {
+      "interaction": "editor.mouse-zoom",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=e216f827-7fb8-47bb-80de-9527abfd4e9a; editor operationId=e216f827-7fb8-47bb-80de-9527abfd4e9a; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442423, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.626007, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/02-square-redact.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.628562, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/03-square-blur.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.626776, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/04-square-rectangle.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.629479, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/05-square-highlight.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.629384, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/06-ctrl-cursor.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.533839, tolerance=0.025): actual=/home/user/o4k3/frames/editor.held_modifiers/07-after.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.held_modifiers/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44242307728348207,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-redact",
+          "path": "frames/editor.held_modifiers/02-square-redact.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6260065945135521,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-blur",
+          "path": "frames/editor.held_modifiers/03-square-blur.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6285620165389932,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-rectangle",
+          "path": "frames/editor.held_modifiers/04-square-rectangle.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6267759552088458,
+          "tolerance": 0.025
+        },
+        {
+          "label": "square-highlight",
+          "path": "frames/editor.held_modifiers/05-square-highlight.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6294785180499918,
+          "tolerance": 0.025
+        },
+        {
+          "label": "ctrl-cursor",
+          "path": "frames/editor.held_modifiers/06-ctrl-cursor.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6293838920514442,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/07-after.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.5338385550636026,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.held_modifiers/08-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.held_modifiers",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:22:28Z"
+    },
+    {
+      "interaction": "editor.key-ctrl-cursor",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4k3/receipt.json",
+      "issue": 663,
+      "note": "desktop frame before masked by live evidence policy; operationId=e493cff8-eb88-428f-a881-18e69dc2d6d9; editor operationId=e493cff8-eb88-428f-a881-18e69dc2d6d9; desktop frame failure-before-cleanup masked by live evidence policy; desktop frame after masked by live evidence policy; Ctrl hover delivered, but QMP screendumps omit the cursor glyph; a core cursor-shape witness is still required; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "kubuntu-kde-v1",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.442439, tolerance=0.025): actual=/home/user/o4k3/frames/editor.ctrl_cursor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.626620, tolerance=0.025): actual=/home/user/o4k3/frames/editor.ctrl_cursor/02-move-cursor.png reference=/home/user/ui-catalog/26-editor-selected.png; catalog mismatch (distance=0.626620, tolerance=0.025): actual=/home/user/o4k3/frames/editor.ctrl_cursor/03-draw-over-cursor.png reference=/home/user/ui-catalog/26-editor-selected.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.ctrl_cursor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.ctrl_cursor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.44243861362944226,
+          "tolerance": 0.025
+        },
+        {
+          "label": "move-cursor",
+          "path": "frames/editor.ctrl_cursor/02-move-cursor.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6266201466488627,
+          "tolerance": 0.025
+        },
+        {
+          "label": "draw-over-cursor",
+          "path": "frames/editor.ctrl_cursor/03-draw-over-cursor.png",
+          "window": "editor",
+          "reference": "26-editor-selected",
+          "distance": 0.6266201466488627,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.ctrl_cursor/04-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.ctrl_cursor/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.ctrl_cursor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:25:01Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [
+      {
+        "file_index": 7,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 8,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 9,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 13,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 14,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 15,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 16,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 17,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 21,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 22,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 23,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 27,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 28,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 29,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 38,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 39,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 40,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 51,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 53,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 54,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 58,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 63,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 65,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 69,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 70,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 84,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 85,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 89,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 90,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 91,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 92,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 96,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 97,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 101,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 107,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 108,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 112,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 113,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 114,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 118,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 119,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 120,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 124,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 125,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 129,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 130,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 148,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 149,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 150,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 154,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 155,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 156,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 160,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 161,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 162,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 166,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 167,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 177,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 178,
+        "action": "moved-to-private-quarantine"
+      },
+      {
+        "file_index": 179,
+        "action": "moved-to-private-quarantine"
+      }
+    ],
+    "passed": false,
+    "files": 152,
+    "pngs": 147,
+    "image_audit": "ocr-and-known-regions",
+    "findings": [
+      {
+        "file_index": 7,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 8,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 9,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 13,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 14,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 15,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 16,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 17,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 21,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 22,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 23,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 27,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 28,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 29,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 38,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 39,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 40,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 51,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 53,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 54,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 58,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 63,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 65,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 69,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 70,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 84,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 85,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 89,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 90,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 91,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 92,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 96,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 97,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 101,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 107,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 108,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 112,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 113,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 114,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 118,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 119,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 120,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 124,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 125,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 129,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 130,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 148,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 149,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 150,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 154,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 155,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 156,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 160,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 161,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 162,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 166,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 167,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 177,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 178,
+        "kind": "png-text-registered-secret"
+      },
+      {
+        "file_index": 179,
+        "kind": "png-text-registered-secret"
+      }
+    ]
+  }
+}

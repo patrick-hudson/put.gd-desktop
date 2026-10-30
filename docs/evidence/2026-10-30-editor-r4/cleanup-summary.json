@@ -1,0 +1,22 @@
+{
+  "sandboxes": {
+    "cin": "completed",
+    "gno": "completed",
+    "kde": "completed"
+  },
+  "wallEntriesRemoved": true,
+  "otherWallRowsPreserved": 16,
+  "tunnelUnits": {
+    "cin": "inactive",
+    "gno": "inactive",
+    "kde": "inactive"
+  },
+  "agentPid": 2728204,
+  "agentStopped": true,
+  "agentSocketRemoved": true,
+  "retirement": {
+    "cin": "completed",
+    "kde": "completed",
+    "gno": "dry-run passed; apply TimeoutExpired; sandbox deleted before apply completion was confirmed (sequencing mistake)"
+  }
+}

@@ -1,25 +1,49 @@
 # Editor surface recipes, round 4
 
-This is Boat development evidence from disposable native desktop guests. It does not establish physical desktop, performance, memory or release acceptance.
+This is **Boat development evidence**, not physical desktop or release acceptance. Current classified coverage has 153 round-4 rows, plus 51 preserved historical GNOME round-3 rows. Raw receipts and invalid attempts remain separate; no evidence-audit failure is promoted to a pass.
 
-The runtime recipe source is `017c1717fd10994c8333067702501cac08ee4e45`, on core `86d1bb2591001835b70067bbe8a21ae31166235a`. The implementation uses the actual Place button and selected shape ID, preventing the Insert/canvas-focus assumption exposed after #810. Save-copy adopts the existing file-dialog fallback fixture and input helpers; maximize/restore and discard confirmation use live owned controls. The independent export oracle reuses `editor_pixels.redactions_black` on the saved PNG decoded by Pillow. CLI/MCP operations retain the shared acceptance driver's contracts.
+| Desktop | R3 passed / failed / blocked | R4 passed / failed / blocked |
+| --- | --- | --- |
+| Mint Cinnamon X11 |39 /1 /11|44 /0 /7|
+| Ubuntu GNOME Wayland |22 /0 /29|44 /1 /6|
+| Kubuntu KDE Wayland |new|5 /0 /46|
 
-All three guests use the matched artifacts from [Actions run 41061083477](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41061083477), PR #726 head `5b2a5fb18eea60cbb8124bc8a9a2f85ced0ab16f`. Both installed app and CLI report the compiled merge identity `8d06f9947ea05ed183ca2c0689785cbcd0c10c9e`, clean, version `26.1030.3075-dev+g8d06f9947ea0`. The catalog is from the same build. Each downloaded ZIP matches GitHub's artifact digest; each DEB matches `native-audit.json/package/sha256`. There is no SHA256SUMS in these artifacts. See package-provenance.json and the installed CLI logs.
+[Classified receipt index](classified-summary.json) records the exact source and raw verdict for every selected run. The coverage committed with code PR #893 contains204 rows. Native app source is clean `8d06f9947ea05ed183ca2c0689785cbcd0c10c9e`, version `26.1030.3075-dev+g8d06f9947ea0`. The app, CLI and catalog all come from [CI 41061083477](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41061083477), PR #726 head 5b2a5fb1 built on merge with core. These are distinct PR-head and compiled identities. All three artifact ZIPs match GitHub's digests; both DEBs match `native-audit.json/package/sha256`. [Package provenance](package-provenance.json), [installed identities](installed-identities.json), [ZIP/DEB cross-check](ci-zip-deb-crosscheck.json), [catalog identity](catalog-identity.json).
 
-The ubuntu24.04 DEB is used on Mint 22.3/Cinnamon v3. Ubuntu26.04 is used on Kubuntu KDE Wayland v1 and Ubuntu GNOME Wayland v4. Each has a fresh overlay, verified 1920×1080 output, private resident directories and socket paths under 107 UTF-8 bytes, real QMP input, saved native frames and a visible VNC wall tile. The GNOME witness is staged/authenticated per overlay; product and witness extensions report ACTIVE.
+The ubuntu24.04 package runs on Cinnamon v3; ubuntu26.04 runs on KDE v1 and GNOME v4. Each has a fresh immutable-base overlay, verified 1920×1080 native session, real QMP input and visible VNC wall tile. GNOME's witness is staged per overlay; product and witness report ACTIVE. Host evidence dependencies were staged without changing core guard code. Socket paths are checked against 107 UTF-8 bytes before isolated starts. No workstation build, physical desktop, app build or core-source edit was used.
 
-The initial KDE attempt used published nightly 3d23ddf3 whose CLI lacks --params-stdin, so all 51 rows were blocked before recipe input (#896). Its receipt and frames remain separate. A fresh overlay was used after the CI pair became available; native CLI capability readiness was proven before consuming the final full run. No packages were built by this lane.
+The recipe fixes use the actual Place button and selected mark ID, avoiding the Insert/canvas-focus assumption exposed after #810. Save-copy adopts the existing fallback chooser fixture and dialogs input helpers. Discard input waits for the owned mapped confirmation. Destination input accepts both native button roles. Line-width input keeps focus on the combo; Qt 6.4 scalar fields use typed live selectors. The independent saved-PNG oracle reuses `editor_pixels.redactions_black` with Pillow. SDK editor readiness follows `mcp_editor_e2e.py` before editor evidence. [116 tests and 335 subtests pass](unit-final-coverage.txt).
 
-GNOME's unattended-upgrades process briefly held the dpkg frontend lock (#885). Both failed staging results were retained and their exact jobs recovered; the process was allowed to finish naturally. No unrelated PID was killed. The corrected setup succeeded with the same CI package.
+## Remaining failures and blocks
 
-Functional verdicts and visual review are separate: catalog mismatch flags remain in the receipts. Frames from synthetic guest content support development replay; they do not assert pixel-identical catalog or physical compositor acceptance. Every failure and partial attempt is preserved in private checksum-verified archives. The replacement coverage retains round-3 GNOME rows in addition to current round-4 rows.
+- **#911 app defect:** GNOME `editor.raise` reports success after Minimize, but no native editor returns during the bounded wait; GNOME displays a ready notification. [Receipt](gno/window-replay-receipt.json), [failure frame](gno/raise-failure.png). This is the single classified app failure.
+- **#913 recipe/compositor gap:** KDE compact resize remains 1060×823 for a 1060×820 target after the bounded corrective gesture. [Audited targeted receipt](kde/corrections-receipt.json), [frame](kde/compact-exact-bounds-failure.png). Exact bounds remain required; no third attempt on this gap.
+- **#910 core evidence gap:** opaque MCP observations cause end-audit registered-secret findings in earlier graphical frames. Both isolated MCP rechecks also fail their audit. These rows stay blocked; quarantined pixels remain private. [Invalid mixed receipt](cin/mixed-audit-invalid-receipt.json), [Cinnamon isolated MCP](cin/o4cm-receipt.json), [GNOME isolated MCP](gno/o4gm-receipt.json).
+- **#663:** deterministic preparation-failure fixture, complete custom-colour selection, cursor-glyph witness and Cinnamon font-family selector remain unproved. The Cinnamon style row checks widths 2/4/8, blur 24 and text size 32 before its unresolved font-family lookup; no partial row pass is claimed.
+- **#671:** saved-feedback recovery chooser control/window is unresolved; Show in folder also lacks the bounded fixture requested in #663.
 
-## Saved native frames
+## KDE full attempts
 
-Each unaltered frame shows the synthetic image and the real mouse-drawn redaction. The guard metadata in the final receipts records visible pixels and `ocr-checked`; visual catalog differences remain flagged for review.
+| Attempt | Outcome |
+| --- | --- |
+|K1|Invalid #896: published CLI lacks `--params-stdin`;51 startup blocks.|
+|K2|Invalid #902: early frames fully masked without host Tesseract;34 rows attempted before normal signal-safe stop.|
+|K3|Invalid #910: all 51 rows reached; observed 46 passed /1 resize failure /4 blocked before the final audit invalidated the run. No pass comes from it.|
+
+[Full attempt records](kde-full-attempts.json). Patrick approved K3 as the final extra full replay on the existing sandbox, with no new Boat start. There was no fourth full replay. KDE's 5 passes come solely from the separate 6-row graphical correction replay; the compact row is blocked on #913. The other 45 KDE rows remain blocked on the invalid full evidence audit.
+
+## Saved visuals and retention
 
 | Cinnamon X11 | GNOME Wayland | KDE Wayland |
 | --- | --- | --- |
-| ![Cinnamon redaction](cin/redact.png) | ![GNOME redaction](gno/redact.png) | ![KDE redaction](kde/redact.png) |
+| ![Cinnamon](cin/redact.png) | ![GNOME](gno/redact.png) | ![KDE line width](kde/line-width.png) |
 
-Final all-51 receipts, classifications and cleanup records will be added after the foreground campaign completes. Related code: #893.
+The unaltered frames above were captured by the existing guard when visible pixels were allowed. The KDE gallery frame comes from the independent audited graphical correction replay. Catalog differences and visual-review flags remain in the receipts; no pixel-identical visual approval is claimed. This PR changes test recipes and evidence, with no application UI change.
+
+[Archive restore index](archive-index.json): all 410 Cinnamon, 388 GNOME and 351 KDE files were checksum-verified after export. Complete raw frames, setup failures, manifests and quarantined pixels are retained privately. Public documentation contains only bounded redacted receipts and permitted representative frames. The earlier package-mismatch and dependency-invalid attempts are also retained.
+
+## Cleanup and budget
+
+All 3 sandbox deletions are confirmed complete; temporary agent, tunnels and wall entries are removed, preserving the other 16 wall rows. [Cleanup summary](cleanup-summary.json), [budget](budget.json).
+
+Cinnamon and KDE guarded retirement completed. GNOME's [dry run passed](gno/retirement-dry-run.json), but its [apply timed out](gno/retirement-apply-failed.json) under #844. I then deleted the stopped disposable sandbox before noticing the failed apply. This sequencing mistake is recorded; GNOME guarded retirement is **not** reported as completed. Its complete export was verified beforehand. Named snapshots and authoritative golden copies were preserved.
