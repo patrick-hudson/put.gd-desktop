@@ -1,0 +1,1 @@
+{"exitCode": 0, "changes": [{"path": "/etc/gdm3/custom.conf", "beforeSha256": "8ed2b8b2831fa007f7dbe1e5f78d40fce5dca15ab96ed6f016754a9e07b60223", "afterSha256": "a1257eecfdf2c51a830f6664e7e7e749a1d92bee6257a96919db27640f652cef", "reason": "Repair escaped backreference in failed test setup"}]}

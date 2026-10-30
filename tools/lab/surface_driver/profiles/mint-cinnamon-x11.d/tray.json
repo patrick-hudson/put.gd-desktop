@@ -1,0 +1,44 @@
+{
+  "tray": {
+    "icon": {
+      "name": "put.gd",
+      "role": "label",
+      "application": "cinnamon*"
+    },
+    "notification_server": "cinnamon",
+    "resident_notifications": true,
+    "shortcut_channel": "x11",
+    "fixture_issue": 670,
+    "menu": {
+      "role": "label",
+      "reject_origin": true
+    },
+    "references": {
+      "full": "00-tray-menu-idle",
+      "output": "00-tray-output-submenu",
+      "uploading": "00-tray-menu-uploading",
+      "proton-busy": "00-tray-menu-proton-busy",
+      "edit": "00-tray-edit-submenu"
+    }
+  },
+  "windows": {
+    "trayFixture": {
+      "title": "^putgd synthetic fixture$",
+      "accessible": {
+        "name": "putgd synthetic fixture",
+        "role": "frame"
+      }
+    },
+    "trayAbout": {
+      "title": "^About put.gd$",
+      "accessible": {
+        "name": "About put.gd",
+        "role": "dialog",
+        "application": "putgd*"
+      }
+    }
+  },
+  "notifications": {
+    "draw_seconds": 4
+  }
+}

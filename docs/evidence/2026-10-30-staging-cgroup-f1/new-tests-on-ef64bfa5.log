@@ -1,0 +1,259 @@
+FFTraceback (most recent call last):
+  File "<string>", line 7, in <module>
+  File "/tmp/old780-XCRX/wt/tools/lab/package_staging.py", line 150, in run
+    code = process.wait()
+           ^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2053, in _wait
+    (pid, sts) = self._try_wait(0)
+                 ^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/subprocess.py", line 2011, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+FFFFEFFFFFEEEEEEEF
+======================================================================
+ERROR: test_finished_supervisor_with_terminal_result_releases_under_install_guard (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_finished_supervisor_with_terminal_result_releases_under_install_guard)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 600, in test_finished_supervisor_with_terminal_result_releases_under_install_guard
+    report, warning = self.recover_supervisor(finished)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 592, in recover_supervisor
+    return lab.recover_staging(self.home, JOB), stderr.getvalue()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tools/lab/lab.py", line 1780, in recover_staging
+    return recover_staging_fenced(run, job, abandoned)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tools/lab/lab.py", line 1793, in recover_staging_fenced
+    ssh(run, 'set -eu\n' + owned)
+  File "/usr/lib/python3.12/unittest/mock.py", line 1134, in __call__
+    return self._mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1138, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1199, in _execute_mock_call
+    result = effect(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 87, in ssh
+    raise lab.LabError((refusals or {}).get(result.returncode, 'synthetic guest guard refused recovery'))
+putgd_lab.LabError: synthetic guest guard refused recovery
+
+======================================================================
+ERROR: test_terminal_result_and_empty_or_gone_supervisor_scope_release (tests.desktop.test_staging_recovery.CgroupStagingContracts.test_terminal_result_and_empty_or_gone_supervisor_scope_release)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 1284, in test_terminal_result_and_empty_or_gone_supervisor_scope_release
+    self.assertEqual(self.reconcile_supervisor()['state'], 'supervisor-outcome-unknown')  # populated 1
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 1270, in reconcile_supervisor
+    with patch.object(self.staging.os, 'pidfd_open', side_effect=opened), \
+  File "/usr/lib/python3.12/unittest/mock.py", line 1458, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1431, in get_original
+    raise AttributeError(
+AttributeError: <module 'package_staging' from '/tmp/old780-XCRX/wt/tools/lab/package_staging.py'> does not have the attribute 'RESULT_OWNER'
+
+======================================================================
+ERROR: test_supervisor_without_result_or_proof_of_exit_stays_held (tests.desktop.test_staging_recovery.CgroupStagingContracts.test_supervisor_without_result_or_proof_of_exit_stays_held)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 1306, in test_supervisor_without_result_or_proof_of_exit_stays_held
+    self.assertEqual(self.reconcile_supervisor()['state'], 'supervisor-no-result')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 1270, in reconcile_supervisor
+    with patch.object(self.staging.os, 'pidfd_open', side_effect=opened), \
+  File "/usr/lib/python3.12/unittest/mock.py", line 1458, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1431, in get_original
+    raise AttributeError(
+AttributeError: <module 'package_staging' from '/tmp/old780-XCRX/wt/tools/lab/package_staging.py'> does not have the attribute 'RESULT_OWNER'
+
+======================================================================
+ERROR: test_session_tracked_or_identity_less_supervisor_keeps_the_n1_fence (tests.desktop.test_staging_recovery.CgroupStagingContracts.test_session_tracked_or_identity_less_supervisor_keeps_the_n1_fence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 1345, in test_session_tracked_or_identity_less_supervisor_keeps_the_n1_fence
+    self.assertEqual(self.reconcile_supervisor()['state'], 'supervisor-session-tracked')
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 1270, in reconcile_supervisor
+    with patch.object(self.staging.os, 'pidfd_open', side_effect=opened), \
+  File "/usr/lib/python3.12/unittest/mock.py", line 1458, in __enter__
+    original, local = self.get_original()
+                      ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/unittest/mock.py", line 1431, in get_original
+    raise AttributeError(
+AttributeError: <module 'package_staging' from '/tmp/old780-XCRX/wt/tools/lab/package_staging.py'> does not have the attribute 'RESULT_OWNER'
+
+======================================================================
+ERROR: test_bootstrap_grants_the_launcher_never_systemd_run (tests.desktop.test_package_install.ScopeLauncherContracts.test_bootstrap_grants_the_launcher_never_systemd_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_package_install.py", line 275, in setUp
+    spec.loader.exec_module(self.scope)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/old780-XCRX/wt/tools/lab/package_scope.py'
+
+======================================================================
+ERROR: test_every_systemd_run_argument_is_fixed_and_the_command_runs_as_the_caller (tests.desktop.test_package_install.ScopeLauncherContracts.test_every_systemd_run_argument_is_fixed_and_the_command_runs_as_the_caller)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_package_install.py", line 275, in setUp
+    spec.loader.exec_module(self.scope)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/old780-XCRX/wt/tools/lab/package_scope.py'
+
+======================================================================
+ERROR: test_probe_proves_root_execution_without_creating_a_unit (tests.desktop.test_package_install.ScopeLauncherContracts.test_probe_proves_root_execution_without_creating_a_unit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_package_install.py", line 275, in setUp
+    spec.loader.exec_module(self.scope)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/old780-XCRX/wt/tools/lab/package_scope.py'
+
+======================================================================
+ERROR: test_refuses_other_units_root_callers_and_direct_use (tests.desktop.test_package_install.ScopeLauncherContracts.test_refuses_other_units_root_callers_and_direct_use)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_package_install.py", line 275, in setUp
+    spec.loader.exec_module(self.scope)
+  File "<frozen importlib._bootstrap_external>", line 991, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 1128, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1186, in get_data
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/old780-XCRX/wt/tools/lab/package_scope.py'
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='pid', signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 879, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2353125 == 2353125
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='pid', signal='SIGHUP')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 879, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2353133 == 2353133
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='pid', signal='SIGINT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 879, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2353142 == 2353142
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='group', signal='SIGTERM')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 879, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2353213 == 2353213
+
+======================================================================
+FAIL: test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper) (target='group', signal='SIGHUP')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 879, in test_login_end_relayed_signals_cannot_kill_the_scoped_wrapper
+    self.assertNotEqual(wrapper, client.pid)
+AssertionError: 2353223 == 2353223
+
+======================================================================
+FAIL: test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 899, in test_scoped_launch_client_reports_the_wrapper_exit_and_wrapper_stays_killable
+    self.assertNotEqual(identity['pid'], client.pid)
+AssertionError: 2353238 == 2353238
+
+======================================================================
+FAIL: test_supervisor_release_refusals_are_visible_and_keep_the_lock (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_supervisor_release_refusals_are_visible_and_keep_the_lock) (case='no-result')
+----------------------------------------------------------------------
+putgd_lab.LabError: synthetic guest guard refused recovery
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 632, in test_supervisor_release_refusals_are_visible_and_keep_the_lock
+    with self.assertRaisesRegex(lab.LabError, message):
+AssertionError: "has started and it has no terminal result.json" does not match "synthetic guest guard refused recovery"
+
+======================================================================
+FAIL: test_supervisor_release_refusals_are_visible_and_keep_the_lock (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_supervisor_release_refusals_are_visible_and_keep_the_lock) (case='populated')
+----------------------------------------------------------------------
+putgd_lab.LabError: synthetic guest guard refused recovery
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 632, in test_supervisor_release_refusals_are_visible_and_keep_the_lock
+    with self.assertRaisesRegex(lab.LabError, message):
+AssertionError: "has started and its system scope remains populated" does not match "synthetic guest guard refused recovery"
+
+======================================================================
+FAIL: test_supervisor_release_refusals_are_visible_and_keep_the_lock (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_supervisor_release_refusals_are_visible_and_keep_the_lock) (case='session')
+----------------------------------------------------------------------
+putgd_lab.LabError: synthetic guest guard refused recovery
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 632, in test_supervisor_release_refusals_are_visible_and_keep_the_lock
+    with self.assertRaisesRegex(lab.LabError, message):
+AssertionError: "ran without a system scope" does not match "synthetic guest guard refused recovery"
+
+======================================================================
+FAIL: test_supervisor_release_refusals_are_visible_and_keep_the_lock (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_supervisor_release_refusals_are_visible_and_keep_the_lock) (case='result-removed')
+----------------------------------------------------------------------
+putgd_lab.LabError: synthetic guest guard refused recovery
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 632, in test_supervisor_release_refusals_are_visible_and_keep_the_lock
+    with self.assertRaisesRegex(lab.LabError, message):
+AssertionError: "refused install-e+: the install supervisor has no terminal result.json" does not match "synthetic guest guard refused recovery"
+
+======================================================================
+FAIL: test_supervisor_release_refusals_are_visible_and_keep_the_lock (tests.desktop.test_staging_recovery.StagingRecoveryContracts.test_supervisor_release_refusals_are_visible_and_keep_the_lock) (case='replaced')
+----------------------------------------------------------------------
+putgd_lab.LabError: synthetic guest guard refused recovery
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_staging_recovery.py", line 632, in test_supervisor_release_refusals_are_visible_and_keep_the_lock
+    with self.assertRaisesRegex(lab.LabError, message):
+AssertionError: "refused install-e+: install-active is not held by this job" does not match "synthetic guest guard refused recovery"
+
+======================================================================
+FAIL: test_install_stages_and_verifies_helper_before_package (tests.desktop.test_lab.LabContracts.test_install_stages_and_verifies_helper_before_package)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/old780-XCRX/wt/tests/desktop/test_lab.py", line 426, in test_install_stages_and_verifies_helper_before_package
+    self.assertEqual(Path(put.call_args_list[1].args[1]).name, 'package_scope.py')
+AssertionError: 'synthetic.deb' != 'package_scope.py'
+- synthetic.deb
++ package_scope.py
+
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.612s
+
+FAILED (failures=12, errors=8)

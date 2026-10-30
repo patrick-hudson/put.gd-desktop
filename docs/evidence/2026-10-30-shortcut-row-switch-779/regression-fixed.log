@@ -1,0 +1,18 @@
+********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : SettingsGui::initTestCase()
+PASS   : SettingsGui::shortcutRowSwitchIgnoresKeysUntilRelease(switch)
+PASS   : SettingsGui::shortcutRowSwitchIgnoresKeysUntilRelease(abandon)
+PASS   : SettingsGui::shortcutRowSwitchIgnoresKeysUntilRelease(escape)
+PASS   : SettingsGui::shortcutRowSwitchIgnoresKeysUntilRelease(deactivate)
+QWARN  : SettingsGui::shortcutFocusedKeycapAnnouncesRecordingAction() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::shortcutFocusedKeycapAnnouncesRecordingAction() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::shortcutFocusedKeycapAnnouncesRecordingAction()
+PASS   : SettingsGui::shortcutSecondMouseClickCancelsRecording(preparing)
+PASS   : SettingsGui::shortcutSecondMouseClickCancelsRecording(ready)
+QWARN  : SettingsGui::shortcutRecordingCancellationAndFailuresReleaseSuspension() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::shortcutRecordingCancellationAndFailuresReleaseSuspension() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::shortcutRecordingCancellationAndFailuresReleaseSuspension()
+PASS   : SettingsGui::cleanupTestCase()
+Totals: 10 passed, 0 failed, 0 skipped, 0 blacklisted, 470ms
+********* Finished testing of SettingsGui *********

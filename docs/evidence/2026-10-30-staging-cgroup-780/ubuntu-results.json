@@ -1,0 +1,178 @@
+{
+  "passed": true,
+  "placement": "boat",
+  "results": [
+    {
+      "case": "production-staging",
+      "identity": {
+        "pid": 3606,
+        "sessionId": 3606,
+        "startTicks": 7582,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-659ea8b33c614f668e9e3dbb637c6662.scope",
+          "unit": "putgd-staging-install-659ea8b33c614f668e9e3dbb637c6662.scope",
+          "device": 30,
+          "inode": 10025,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+        }
+      },
+      "recovery": {
+        "pid": 3606,
+        "sessionId": 3606,
+        "startTicks": 7582,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-659ea8b33c614f668e9e3dbb637c6662.scope",
+          "unit": "putgd-staging-install-659ea8b33c614f668e9e3dbb637c6662.scope",
+          "device": 30,
+          "inode": 10025,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+        },
+        "exitCode": 0,
+        "finished": true,
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 3606,
+          "sessionId": 3606,
+          "startTicks": 7582,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-659ea8b33c614f668e9e3dbb637c6662.scope",
+            "unit": "putgd-staging-install-659ea8b33c614f668e9e3dbb637c6662.scope",
+            "device": 30,
+            "inode": 10025,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          }
+        },
+        "sessionPids": [],
+        "cgroupPopulated": false,
+        "cgroupGone": true,
+        "state": "staging-finished"
+      }
+    },
+    {
+      "case": "setsid-root-grandchild-wrapper-and-controller-sigkill",
+      "identity": {
+        "pid": 3968,
+        "sessionId": 3968,
+        "startTicks": 8004,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope",
+          "unit": "putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope",
+          "device": 30,
+          "inode": 10726,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+        }
+      },
+      "escaped": {
+        "pid": 3984,
+        "uid": 0,
+        "sessionId": 3984,
+        "startTicks": 8016,
+        "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope"
+      },
+      "controllerKilled": {
+        "pid": 103568,
+        "startTicks": 584167
+      },
+      "held": {
+        "finished": false,
+        "state": "staging-outcome-unknown",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 3968,
+          "sessionId": 3968,
+          "startTicks": 8004,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope",
+            "unit": "putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope",
+            "device": 30,
+            "inode": 10726,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": true,
+        "cgroupGone": false
+      },
+      "eventsObserved": [
+        "populated 1\nfrozen 0\n",
+        "populated 0\nfrozen 0\n"
+      ],
+      "recovery": {
+        "finished": true,
+        "state": "staging-abandoned",
+        "exactProcessAlive": false,
+        "sessionAlive": false,
+        "process": {
+          "pid": 3968,
+          "sessionId": 3968,
+          "startTicks": 8004,
+          "tracking": "cgroup-v2",
+          "cgroup": {
+            "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope",
+            "unit": "putgd-staging-install-2034b23a16a54dd09a469f64397c5ef3.scope",
+            "device": 30,
+            "inode": 10726,
+            "mountDevice": 30,
+            "mountInode": 1,
+            "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          }
+        },
+        "sessionPids": [],
+        "tracking": "cgroup-v2",
+        "cgroupPopulated": false,
+        "cgroupGone": true
+      },
+      "visual": {
+        "path": "setsid-survivor.png",
+        "sha256": "f8429576e9e769877886bb5511e56fa505ac5bd84d939b347bd011b182636901"
+      }
+    },
+    {
+      "case": "root-supervisor-scope-and-real-admission",
+      "identity": {
+        "pid": 4934,
+        "sessionId": 4934,
+        "startTicks": 12271,
+        "tracking": "cgroup-v2",
+        "cgroup": {
+          "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-supervisor-install-0cb9d0bfe62b497a98f17953c44aa043.scope",
+          "unit": "putgd-supervisor-install-0cb9d0bfe62b497a98f17953c44aa043.scope",
+          "device": 30,
+          "inode": 12280,
+          "mountDevice": 30,
+          "mountInode": 1,
+          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+        }
+      },
+      "root": {
+        "uid": 0,
+        "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/putgd-supervisor-install-0cb9d0bfe62b497a98f17953c44aa043.scope",
+        "admitted": true,
+        "requiredScope": true
+      },
+      "recoveryRefusedAfterAdmission": true
+    }
+  ],
+  "visual": {
+    "path": "completed.png",
+    "sha256": "c0dd343c053cbffdc3ecc7640bc45ee469ddfa5f319b1611c2a8cce87a7708f8"
+  }
+}

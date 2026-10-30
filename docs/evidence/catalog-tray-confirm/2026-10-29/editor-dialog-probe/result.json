@@ -1,0 +1,8 @@
+{
+  "sourceHead": "007679e3b1ee1e200b8fc2bd9c8c1f15bc2dd028",
+  "expectedFailure": true,
+  "exitCode": 1,
+  "elapsedSeconds": 0.16442256300024383,
+  "timeoutSeconds": 15,
+  "timedOut": false
+}

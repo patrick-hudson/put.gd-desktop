@@ -1174,6 +1174,7 @@ class ExitAlarm(unittest.TestCase):
         self.addCleanup(owned.stop)
         def deadline(_signum, _frame):
             raise RecipeFailed('recipe deadline exceeded: links.open')
+        self.deadline = deadline
         previous = signal.signal(signal.SIGALRM, deadline)
         self.addCleanup(signal.signal, signal.SIGALRM, previous)
         self.addCleanup(signal.setitimer, signal.ITIMER_REAL, 0)
@@ -1259,15 +1260,81 @@ class ExitAlarm(unittest.TestCase):
         # line: in that frame the wrapped handler defers; elsewhere it raises.
         manager = browser.default_browser(self.ctx)
         manager.__enter__()
-        self.assertEqual(signal.getsignal(signal.SIGALRM), manager._alarm)
+        wrapper = signal.getsignal(signal.SIGALRM)
+        self.assertIs(wrapper.original, self.deadline)
         with self.assertRaisesRegex(RecipeFailed, 'deadline'):
-            manager._alarm(signal.SIGALRM, sys._getframe())  # Still in the body.
+            wrapper(signal.SIGALRM, sys._getframe())  # Still in the body.
         exit_frame = SimpleNamespace(f_code=browser.default_browser.__exit__.__code__)
-        self.assertIsNone(manager._alarm(signal.SIGALRM, exit_frame))
+        self.assertIsNone(wrapper(signal.SIGALRM, exit_frame))
         with self.assertRaisesRegex(RecipeFailed, 'recipe deadline exceeded'):
             manager.__exit__(None, None, None)
         self.assertEqual(self.actions, ['prepare', 'restore'])
-        self.assertNotEqual(signal.getsignal(signal.SIGALRM), manager._alarm)
+        self.assertIs(signal.getsignal(signal.SIGALRM), self.deadline)
+
+    def test_termination_due_as_exit_starts_is_deferred_until_after_the_restore(self):
+        # #816: SIGTERM, SIGHUP and SIGINT get the same deferral as the alarm,
+        # here due exactly as __exit__ starts (its frame, before its first line).
+        stops = []
+        def terminate(signum, _frame):
+            stops.append(signum)
+            raise RecipeFailed('runner interrupted by ' + signal.Signals(signum).name)
+        exit_frame = SimpleNamespace(f_code=browser.default_browser.__exit__.__code__)
+        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+            with self.subTest(signal=sig):
+                previous = signal.signal(sig, terminate)
+                self.addCleanup(signal.signal, sig, previous)
+                self.actions.clear()
+                manager = browser.default_browser(self.ctx)
+                manager.__enter__()
+                before = len(stops)
+                self.assertIsNone(signal.getsignal(sig)(sig, exit_frame))  # Deferred, not raised.
+                self.assertEqual(len(stops), before)
+                with self.assertRaisesRegex(RecipeFailed, 'runner interrupted by ' + signal.Signals(sig).name):
+                    manager.__exit__(None, None, None)
+                self.assertEqual(self.actions, ['prepare', 'restore'])
+                self.assertEqual(stops[-1], sig)
+                self.assertIs(signal.getsignal(sig), terminate)
+                self.assertNotIn(id(self.ctx), browser._ACTIVE)
+                signal.signal(sig, previous)
+
+    def test_replaced_alarm_handler_inside_the_transaction_is_reviewed_and_put_back(self):
+        # #816 finding 2: a recipe that replaces the handler turns the
+        # deferral off; the exit reviews it and restores run.py's handler.
+        with browser.default_browser(self.ctx):
+            signal.signal(signal.SIGALRM, lambda *_: None)
+        self.assertEqual(self.actions, ['prepare', 'restore'])
+        self.assertIs(signal.getsignal(signal.SIGALRM), self.deadline)
+        self.assertTrue(any('replaced the SIGALRM handler inside default_browser' in r for r in self.ctx.reviews))
+
+    def test_deadline_during_setup_recovery_is_reviewed(self):
+        # #816 finding 5: prepare failed, and the deadline fell due while the
+        # interrupted setup was recovered. The setup error stays the result.
+        def remote(ctx, action, values, *args, **kwargs):
+            self.actions.append(action)
+            if action == 'prepare':
+                raise RecipeBlocked('target session command unavailable: TimeoutExpired')
+            signal.raise_signal(signal.SIGALRM)
+            return {'restored': True}
+        self.actions.clear()
+        with patch.object(browser, '_remote', remote):
+            with self.assertRaisesRegex(RecipeBlocked, 'TimeoutExpired'):
+                with browser.default_browser(self.ctx):
+                    self.fail('body must not run after a failed setup')
+        self.assertEqual(self.actions, ['prepare', 'recover'])
+        self.assertTrue(any('Recipe deadline fell due during the Firefox setup recovery' in r
+                            for r in self.ctx.reviews))
+        self.assertIs(signal.getsignal(signal.SIGALRM), self.deadline)
+        self.assertNotIn(signal.SIGALRM, signal.pthread_sigmask(signal.SIG_BLOCK, ()))
+
+    def test_abandoned_transaction_is_restored_at_fixture_cleanup(self):
+        manager = browser.default_browser(self.ctx)
+        manager.__enter__()
+        signal.signal(signal.SIGALRM, self.deadline)  # As run.py does after the recipe.
+        self.assertEqual(self.ctx._cleanup_fixtures(), [])
+        self.assertEqual(self.actions, ['prepare', 'restore'])
+        self.assertNotIn(id(self.ctx), browser._ACTIVE)
+        self.assertIs(signal.getsignal(signal.SIGALRM), self.deadline)
+        self.assertTrue(any('still open at fixture cleanup' in r for r in self.ctx.reviews))
 
 
 class RebootAndScope(unittest.TestCase):

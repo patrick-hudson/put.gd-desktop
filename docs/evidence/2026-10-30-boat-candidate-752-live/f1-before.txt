@@ -1,0 +1,28 @@
+test_no_id_cannot_rule_out_create_after_cleanup_observation_window (test_boat_candidate.CandidateContracts.test_no_id_cannot_rule_out_create_after_cleanup_observation_window) ... FAIL
+
+======================================================================
+FAIL: test_no_id_cannot_rule_out_create_after_cleanup_observation_window (test_boat_candidate.CandidateContracts.test_no_id_cannot_rule_out_create_after_cleanup_observation_window)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-c14e8bd4/tests/desktop/test_boat_candidate.py", line 636, in test_no_id_cannot_rule_out_create_after_cleanup_observation_window
+    self.assertEqual(result['cleanupVerified'], 'qualified')
+AssertionError: True != 'qualified'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (failures=1)
+test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed (test_boat_candidate.CandidateContracts.test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed) ... FAIL
+
+======================================================================
+FAIL: test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed (test_boat_candidate.CandidateContracts.test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/patrick/.t3/worktrees/put.gd/t3-c14e8bd4/tests/desktop/test_boat_candidate.py", line 660, in test_manifest_rejects_truthy_qualified_cleanup_even_if_build_passed
+    self.assertEqual(code, 1)
+AssertionError: 0 != 1
+
+----------------------------------------------------------------------
+Ran 1 test in 0.027s
+
+FAILED (failures=1)

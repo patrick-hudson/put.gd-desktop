@@ -1,0 +1,1954 @@
+{
+  "schemaVersion": 2,
+  "campaign": "surface-driver-events-round-2",
+  "entries": [
+    {
+      "interaction": "event.config-changed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.config_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.config_changed/01-before.png",
+          "window": "settings",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.config_changed/02-after.png",
+          "window": "settings",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.config_changed/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.config_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:44:30Z"
+    },
+    {
+      "interaction": "event.single-instance",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.single_instance/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.single_instance/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.single_instance",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:44:31Z"
+    },
+    {
+      "interaction": "event.ui-helper-crash",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "UI helper crash target PID: 4329; resident epoch: 4359f9a2-b7c3-4878-ad80-198bafa5cc26",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.ui_helper_crash/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.ui_helper_crash/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-crash",
+          "path": "frames/events.ui_helper_crash/02-after-crash.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recovered",
+          "path": "frames/events.ui_helper_crash/03-recovered.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.ui_helper_crash/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.ui_helper_crash",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:44:33Z"
+    },
+    {
+      "interaction": "event.clipboard-changed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "operationId=af69591b-3222-4a5a-be33-237b8bd4ce6d; Slow-upload operation: af69591b-3222-4a5a-be33-237b8bd4ce6d",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.clipboard_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.clipboard_changed/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.clipboard_changed/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.clipboard_changed/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.clipboard_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:45:06Z"
+    },
+    {
+      "interaction": "event.network-stall",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "operationId=867f1114-6dcf-44ef-b943-f7a684a9e8d0; Slow-upload operation: 867f1114-6dcf-44ef-b943-f7a684a9e8d0; Endpoint packet-drop witness: 10 packets; Publication outcome remains unknown for operation 867f1114-6dcf-44ef-b943-f7a684a9e8d0; reconcile its retained identity before any retry; Owned nft table cleanup registered with events.controllers: sd_1733d8e7c52b",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "Inspect the saved tray frame for the attention latch; resident tray state does not expose the latch.; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.network_stall/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.network_stall/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.network_stall/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.network_stall/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.network_stall",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:45:51Z"
+    },
+    {
+      "interaction": "event.update-found",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_found/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_found/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_found",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:45:59Z"
+    },
+    {
+      "interaction": "shell.app-menu-check-updates",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.app_menu_check_updates/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.app_menu_check_updates/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.app_menu_check_updates",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:08Z"
+    },
+    {
+      "interaction": "shell.update-available-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_available_link/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_available_link/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_available_link",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:16Z"
+    },
+    {
+      "interaction": "cli.update",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.cli_update/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.cli_update/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.cli_update",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:25Z"
+    },
+    {
+      "interaction": "mcp.updates",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.mcp_updates/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.mcp_updates/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.mcp_updates",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:35Z"
+    },
+    {
+      "interaction": "notification.update-available",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_notification/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_notification/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_notification",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:45Z"
+    },
+    {
+      "interaction": "settings.update-links",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "browser handler needs links lane guarded browser lifecycle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_links/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_links/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_links",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:53Z"
+    },
+    {
+      "interaction": "settings.open-software-updates",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "software-updates handler needs an isolated desktop MIME handler with launch witness",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.software_updates/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.software_updates/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.software_updates",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:46:54Z"
+    },
+    {
+      "interaction": "confirm.switch-older",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "Needs signed disposable AppImage switch fixture and confirmation controls; no install against a real release",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.switch_older/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.switch_older/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.switch_older",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:47:02Z",
+      "issue": 682
+    },
+    {
+      "interaction": "event.display-changed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "operationId=e378a061-dd16-4a6c-98f1-d5fc3ea34890; Native selector geometry is unavailable; topology event requires a visibly open selector; Blocker reference corrected: tested core lacks the selector_accessible observer profile from open PR #767; raw receipt linked #750.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.display_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.display_changed/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.display_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:47:13Z"
+    },
+    {
+      "interaction": "event.panel-theme-changed",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "Panel theme original: Mint-Y-Dark-Aqua; target: Mint-Y; resident tint: {\"color\": \"#d6d6d2\", \"panel\": \"dark\", \"source\": \"cinnamon-theme\"}; Native panel theme after event: Mint-Y; Native panel theme restored: Mint-Y-Dark-Aqua",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "Review the saved native panel glyph; opening the desktop tray menu still needs a profile input target.; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.panel_theme_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.panel_theme_changed/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.panel_theme_changed/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.panel_theme_changed/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.panel_theme_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:47:16Z"
+    },
+    {
+      "interaction": "event.disk-full-import",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "Constrained-storage operation: 25e786d8-b2f7-4dbd-8236-0a26048604e7",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "Saved tray frame must prove the attention latch; no resident latch inspector exists yet.; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_import/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_import/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_import/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_import/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.disk_full_import",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:47:36Z"
+    },
+    {
+      "interaction": "event.disk-full-record",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_record/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_record/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_record/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_record/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.disk_full_record",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:47:49Z"
+    },
+    {
+      "interaction": "event.recording-budget-stop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "note": "operationId=1391bcda-62cf-405b-87cc-dc794719213a; Budget-stop recording operation: 1391bcda-62cf-405b-87cc-dc794719213a",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.recording_budget_stop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.recording_budget_stop/01-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.recording_budget_stop/02-after.png",
+          "window": "review",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.recording_budget_stop/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.recording_budget_stop",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:48:51Z"
+    },
+    {
+      "interaction": "event.incomplete-uploads-kept",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Needs a core-owned cleanup-eligible multipart journal and automatic cleanup trigger: the current fresh failed upload is retained for Retry, and manual cache.clear intentionally does not emit the event toast.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.incomplete_uploads_kept/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.incomplete_uploads_kept/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.incomplete_uploads_kept",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:48:51Z"
+    },
+    {
+      "interaction": "event.autostart-login",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Needs a guest re-login controller, masked console login, and private XDG autostart propagation; executing start.sh is not login evidence.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.autostart_login/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.autostart_login/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.autostart_login",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:48:52Z"
+    },
+    {
+      "interaction": "event.session-logout",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Needs a guest logout/re-login controller retaining the old resident PID/start identity and saved console frames; ui.quit is not logout evidence.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.session_logout/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.session_logout/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.session_logout",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:48:52Z"
+    },
+    {
+      "interaction": "event.resident-retired",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Needs a resident tied to an ended real logind session and a fresh login launcher; changing XDG_SESSION_ID does not create an ended session.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.resident_retired/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.resident_retired/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.resident_retired",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:48:52Z"
+    },
+    {
+      "interaction": "event.keyring-unlock",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/cin5/receipt.json",
+      "issue": 682,
+      "note": "Needs an isolated locked OS keyring and protected console unlock input; never lock or use a personal keyring.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-cinnamon",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.keyring_unlock/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.keyring_unlock/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.keyring_unlock",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:48:52Z"
+    },
+    {
+      "interaction": "event.config-changed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "geometry: RuntimeError: fresh accessibility probe timed out; Core accessibility probe timed out before external config input; no event assertion ran.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.config_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.config_changed/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.config_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:59:08Z",
+      "issue": 682
+    },
+    {
+      "interaction": "event.single-instance",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.single_instance/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.single_instance/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.single_instance",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:59:12Z"
+    },
+    {
+      "interaction": "event.ui-helper-crash",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "UI helper crash target PID: 16931; resident epoch: 260f78e2-d2d4-4927-bd04-4c9d16164bd0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.ui_helper_crash/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.ui_helper_crash/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after-crash",
+          "path": "frames/events.ui_helper_crash/02-after-crash.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recovered",
+          "path": "frames/events.ui_helper_crash/03-recovered.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.ui_helper_crash/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.ui_helper_crash",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:59:21Z"
+    },
+    {
+      "interaction": "event.clipboard-changed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "operationId=3ab1a72d-4561-49bd-8ad5-f782275d26a1; Slow-upload operation: 3ab1a72d-4561-49bd-8ad5-f782275d26a1",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.clipboard_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.clipboard_changed/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.clipboard_changed/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.clipboard_changed/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.clipboard_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T04:59:56Z"
+    },
+    {
+      "interaction": "event.network-stall",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "operationId=eb11279c-c61f-41d5-835c-4aee74d46e93; Slow-upload operation: eb11279c-c61f-41d5-835c-4aee74d46e93; Endpoint packet-drop witness: 11 packets; Publication outcome remains unknown for operation eb11279c-c61f-41d5-835c-4aee74d46e93; reconcile its retained identity before any retry; Owned nft table cleanup registered with events.controllers: sd_8cc022dcee08",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "Inspect the saved tray frame for the attention latch; resident tray state does not expose the latch.; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.network_stall/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.network_stall/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.network_stall/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.network_stall/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.network_stall",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:00:49Z"
+    },
+    {
+      "interaction": "event.update-found",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_found/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_found/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_found",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:01:01Z"
+    },
+    {
+      "interaction": "shell.app-menu-check-updates",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.app_menu_check_updates/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.app_menu_check_updates/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.app_menu_check_updates",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:01:25Z"
+    },
+    {
+      "interaction": "shell.update-available-link",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_available_link/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_available_link/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_available_link",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:01:42Z"
+    },
+    {
+      "interaction": "cli.update",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.cli_update/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.cli_update/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.cli_update",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:01:54Z"
+    },
+    {
+      "interaction": "mcp.updates",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.mcp_updates/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.mcp_updates/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.mcp_updates",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:04Z"
+    },
+    {
+      "interaction": "notification.update-available",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Update flow needs tagged package bytes: no_package",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_notification/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_notification/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_notification",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:13Z"
+    },
+    {
+      "interaction": "settings.update-links",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "browser handler needs links lane guarded browser lifecycle",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.update_links/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.update_links/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.update_links",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:23Z"
+    },
+    {
+      "interaction": "settings.open-software-updates",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "software-updates handler needs an isolated desktop MIME handler with launch witness",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.software_updates/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.software_updates/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.software_updates",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:24Z"
+    },
+    {
+      "interaction": "confirm.switch-older",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "Needs signed disposable AppImage switch fixture and confirmation controls; no install against a real release",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.switch_older/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.switch_older/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.switch_older",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:33Z",
+      "issue": 682
+    },
+    {
+      "interaction": "event.display-changed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "operationId=e41957db-e976-444b-816a-40b4fadf6993; Native selector geometry is unavailable; topology event requires a visibly open selector; Blocker reference corrected: tested core lacks the selector_accessible observer profile from open PR #767; raw receipt linked #750.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.display_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.display_changed/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.display_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:44Z"
+    },
+    {
+      "interaction": "event.panel-theme-changed",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "Profile needs reversible native panelTheme commands and light/dark theme names",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.panel_theme_changed/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.panel_theme_changed/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.panel_theme_changed",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:02:44Z",
+      "issue": 682
+    },
+    {
+      "interaction": "event.disk-full-import",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "Constrained-storage operation: 933255a6-b05d-4cba-a04d-3f1f279102bf",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "Saved tray frame must prove the attention latch; no resident latch inspector exists yet.; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_import/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_import/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_import/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_import/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.disk_full_import",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:03:12Z"
+    },
+    {
+      "interaction": "event.disk-full-record",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_record/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/events.disk_full_record/01-before.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_record/02-after.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.disk_full_record/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.disk_full_record",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:03:33Z"
+    },
+    {
+      "interaction": "event.recording-budget-stop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "note": "timeout: visible synthetic scrolling pattern; Classified fixture blocker: raw recipe setup verdict was failed (visible synthetic scrolling pattern timeout); read-only guest probe confirms gtksink/gtkglsink absent. Recording event was never invoked. Raw receipt is preserved unchanged.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.recording_budget_stop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.recording_budget_stop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.recording_budget_stop",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:04:05Z",
+      "issue": 672
+    },
+    {
+      "interaction": "event.incomplete-uploads-kept",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Needs a core-owned cleanup-eligible multipart journal and automatic cleanup trigger: the current fresh failed upload is retained for Retry, and manual cache.clear intentionally does not emit the event toast.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.incomplete_uploads_kept/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.incomplete_uploads_kept/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.incomplete_uploads_kept",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:04:06Z"
+    },
+    {
+      "interaction": "event.autostart-login",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Needs a guest re-login controller, masked console login, and private XDG autostart propagation; executing start.sh is not login evidence.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.autostart_login/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.autostart_login/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.autostart_login",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:04:06Z"
+    },
+    {
+      "interaction": "event.session-logout",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Needs a guest logout/re-login controller retaining the old resident PID/start identity and saved console frames; ui.quit is not logout evidence.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.session_logout/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.session_logout/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.session_logout",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:04:07Z"
+    },
+    {
+      "interaction": "event.resident-retired",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Needs a resident tied to an ended real logind session and a fresh login launcher; changing XDG_SESSION_ID does not create an ended session.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.resident_retired/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.resident_retired/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.resident_retired",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:04:08Z"
+    },
+    {
+      "interaction": "event.keyring-unlock",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "out/gno1/receipt.json",
+      "issue": 682,
+      "note": "Needs an isolated locked OS keyring and protected console unlock input; never lock or use a personal keyring.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "events-r2-gnome",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/events.keyring_unlock/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/events.keyring_unlock/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "events.keyring_unlock",
+      "build": "0c329b0692cadc52f03f91e59c06c5eda760bf04",
+      "at": "2026-10-30T05:04:09Z"
+    }
+  ]
+}

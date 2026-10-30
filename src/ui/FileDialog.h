@@ -3,6 +3,7 @@
 #ifdef Q_OS_LINUX
 #include <QDBusArgument>
 #endif
+#include <QElapsedTimer>
 #include <QList>
 #include <QObject>
 #include <QPointer>
@@ -18,8 +19,9 @@ namespace putgd {
 // D-Bus), so the native GNOME, KDE or Cinnamon dialog appears without a Qt
 // platform theme in this process: the resident's and helpers' generic theme
 // stays as it is (docs/memory-strategy.md). Without a portal, a FileChooser
-// interface or a folder-capable version, or when it errors or does not answer,
-// Qt's widget dialog opens instead, themed from the Theme tokens.
+// interface or a folder-capable version, or when it errors, does not answer or
+// fails before its chooser could be seen, Qt's widget dialog opens instead,
+// themed from the Theme tokens. Closing the desktop's chooser is a cancel.
 // PUTGD_FILE_DIALOG=fallback skips the portal (lab and tests).
 class FileDialog final:public QObject {
  Q_OBJECT
@@ -62,6 +64,9 @@ public:
  static void theme(QFileDialog* dialog);
  // How long the portal may take to accept the request (tests shorten it).
  static void setPortalCallTimeoutMs(int milliseconds);
+ // How soon after the portal accepts the request a Response 2 still counts as
+ // the portal failing rather than the person closing its chooser (tests).
+ static void setPortalFailureWindowMs(int milliseconds);
  // The portal's parent_window for owner: x11:<xid> on X11, empty elsewhere
  // (Qt has no public xdg-foreign export for a Wayland window).
  static QString parentWindow(const QWidget* owner);
@@ -90,6 +95,7 @@ private:
  QPointer<QWidget> blocker_;
  QObject* gone_=nullptr;
  quint64 attempt_=0;
+ QElapsedTimer asked_;
 };
 #ifdef Q_OS_LINUX
 namespace portal {

@@ -1,0 +1,348 @@
+$ ctest --preset dev --parallel 1 --resource-spec-file /home/user/work/put.gd/src/tools/ci/ctest-resources.json --output-junit /home/user/work/put.gd/src/build/dev/catalog-ctest.xml
+Test project /home/user/work/put.gd/src/build/dev
+        Start   1: recording_storage_integration
+  1/113 Test   #1: recording_storage_integration ...........   Passed    6.24 sec
+        Start   2: portal_streams_contract
+  2/113 Test   #2: portal_streams_contract .................   Passed    0.01 sec
+        Start   3: wayland_acquisition_contract
+  3/113 Test   #3: wayland_acquisition_contract ............   Passed    0.00 sec
+        Start   4: export_av_sync_contract
+  4/113 Test   #4: export_av_sync_contract .................   Passed    4.19 sec
+        Start   5: poster_contract
+  5/113 Test   #5: poster_contract .........................   Passed    0.25 sec
+        Start   6: pause_timeline_contract
+  6/113 Test   #6: pause_timeline_contract .................   Passed    0.01 sec
+        Start   7: record_runtime_contract
+  7/113 Test   #7: record_runtime_contract .................   Passed    0.00 sec
+        Start   8: bar_placement_contract
+  8/113 Test   #8: bar_placement_contract ..................   Passed    0.07 sec
+        Start   9: bar_placement_single_monitor_contract
+  9/113 Test   #9: bar_placement_single_monitor_contract ...   Passed    0.05 sec
+        Start  10: gui_review_window
+ 10/113 Test  #10: gui_review_window .......................   Passed   15.58 sec
+        Start  11: record_identity_contract
+ 11/113 Test  #11: record_identity_contract ................   Passed    0.01 sec
+        Start  12: kde_region_control
+ 12/113 Test  #12: kde_region_control ......................   Passed    9.40 sec
+        Start  13: native_session_guards
+ 13/113 Test  #13: native_session_guards ...................   Passed    0.00 sec
+        Start  14: native_tray_integration
+ 14/113 Test  #14: native_tray_integration .................   Passed   22.49 sec
+        Start  15: capture_control_integration
+ 15/113 Test  #15: capture_control_integration .............   Passed    0.00 sec
+        Start  16: capture_process_integration
+ 16/113 Test  #16: capture_process_integration .............   Passed    7.04 sec
+        Start  17: x11_core_clipboard
+ 17/113 Test  #17: x11_core_clipboard ......................   Passed   17.79 sec
+        Start  18: x11_clipboard_import
+ 18/113 Test  #18: x11_clipboard_import ....................   Passed    0.67 sec
+        Start  19: x11_capture_decode
+ 19/113 Test  #19: x11_capture_decode ......................   Passed    0.14 sec
+        Start  20: x11_native_snapshot
+ 20/113 Test  #20: x11_native_snapshot .....................   Passed    0.05 sec
+        Start  21: version_contract
+ 21/113 Test  #21: version_contract ........................   Passed    4.54 sec
+        Start  22: kde_shortcut_normalization
+ 22/113 Test  #22: kde_shortcut_normalization ..............   Passed    0.01 sec
+        Start  23: kde_shortcuts_integration
+ 23/113 Test  #23: kde_shortcuts_integration ...............   Passed    5.62 sec
+        Start  24: kde_keyboard_map
+ 24/113 Test  #24: kde_keyboard_map ........................   Passed    0.01 sec
+        Start  25: shortcut_keyboard
+ 25/113 Test  #25: shortcut_keyboard .......................   Passed    0.01 sec
+        Start  26: kde_ownership_integration
+ 26/113 Test  #26: kde_ownership_integration ...............   Passed    8.56 sec
+        Start  27: kde_clipboard_import
+ 27/113 Test  #27: kde_clipboard_import ....................   Passed    0.12 sec
+        Start  28: image_job_integration
+ 28/113 Test  #28: image_job_integration ...................   Passed    2.60 sec
+        Start  29: poster_job_integration
+ 29/113 Test  #29: poster_job_integration ..................   Passed    2.65 sec
+        Start  30: ui_split_services_integration
+ 30/113 Test  #30: ui_split_services_integration ...........   Passed    1.14 sec
+        Start  31: ui_process_integration
+ 31/113 Test  #31: ui_process_integration ..................   Passed   14.38 sec
+        Start  32: editor_contract
+ 32/113 Test  #32: editor_contract .........................   Passed    1.36 sec
+        Start  33: editor_job_integration
+ 33/113 Test  #33: editor_job_integration ..................   Passed    5.53 sec
+        Start  34: edit_operations_integration
+ 34/113 Test  #34: edit_operations_integration .............   Passed   23.26 sec
+        Start  35: ui_endpoints_integration
+ 35/113 Test  #35: ui_endpoints_integration ................   Passed    2.88 sec
+        Start  36: ui_control_integration
+ 36/113 Test  #36: ui_control_integration ..................   Passed    0.86 sec
+        Start  37: session_client_integration
+ 37/113 Test  #37: session_client_integration ..............   Passed   16.64 sec
+        Start  38: version_integration
+ 38/113 Test  #38: version_integration .....................   Passed    0.18 sec
+        Start  39: gui_editor_window
+ 39/113 Test  #39: gui_editor_window .......................   Passed   21.81 sec
+        Start  40: gui_application
+ 40/113 Test  #40: gui_application .........................   Passed   41.42 sec
+        Start  41: gui_window_buttons
+ 41/113 Test  #41: gui_window_buttons ......................   Passed    0.36 sec
+        Start  42: gui_theme
+ 42/113 Test  #42: gui_theme ...............................   Passed    0.72 sec
+        Start  43: gui_tray
+ 43/113 Test  #43: gui_tray ................................***Failed   51.32 sec
+********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), ubuntu 24.04
+PASS   : ResidentTray::initTestCase()
+PASS   : ResidentTray::catalogMessageLabelsPreserveTheirActualFocusPolicy()
+QWARN  : ResidentTray::catalogRowsRemainStableAcrossStatesAndSkipSeparators() This plugin does not support raise()
+QWARN  : ResidentTray::catalogRowsRemainStableAcrossStatesAndSkipSeparators() This plugin does not support grabbing the keyboard
+PASS   : ResidentTray::catalogRowsRemainStableAcrossStatesAndSkipSeparators()
+PASS   : ResidentTray::catalogProviderReleaseBeforeOrAfterUploadCompletesExactlyOnce()
+PASS   : ResidentTray::residentThemeScopeRestoresTheEnvironmentForChildren()
+QWARN  : ResidentTray::menuShowsDisplayOnlyShortcutsAndCancelsUploads() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::menuShowsDisplayOnlyShortcutsAndCancelsUploads()
+QWARN  : ResidentTray::trayShortcutsRequireDesktopConfirmationAndClearStaleBindings() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::trayShortcutsRequireDesktopConfirmationAndClearStaleBindings()
+QWARN  : ResidentTray::multipleUploadsDelegateBoundedConfirmation() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::multipleUploadsDelegateBoundedConfirmation()
+QWARN  : ResidentTray::localSaveRetryRetainsItsOperationAndRecovery() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::localSaveRetryRetainsItsOperationAndRecovery()
+PASS   : ResidentTray::outcomeTitlesDistinguishLocalAndUploadResults()
+QWARN  : ResidentTray::errorRecoveryKeepsItsCategory() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::errorRecoveryKeepsItsCategory() Action rejected: invalid_action
+PASS   : ResidentTray::errorRecoveryKeepsItsCategory()
+PASS   : ResidentTray::failedOperationsWithoutItemsShowTheirError()
+PASS   : ResidentTray::failedUploadsNameTheFailure()
+PASS   : ResidentTray::queuedEditorUsesPhaseRatherThanEditingState()
+PASS   : ResidentTray::tooltipSummarizesConcurrentFiles()
+QWARN  : ResidentTray::fastUploadsDoNotFlashTheIcon() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::fastUploadsDoNotFlashTheIcon()
+QWARN  : ResidentTray::visibleUploadFinishesWithoutAnIdleGapAndHoldsItsFrame() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::visibleUploadFinishesWithoutAnIdleGapAndHoldsItsFrame()
+QWARN  : ResidentTray::concurrentTransferFillUsesSourceByteWeights() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::concurrentTransferFillUsesSourceByteWeights()
+QWARN  : ResidentTray::uploadProgressAndActiveColorWithoutOpeningViews() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::uploadProgressAndActiveColorWithoutOpeningViews()
+QWARN  : ResidentTray::queuedWorkAndTemporaryErrorFeedback() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::queuedWorkAndTemporaryErrorFeedback()
+QWARN  : ResidentTray::preparingAndQueuedOperationsStayBlueBeforeStorageDispatch() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::preparingAndQueuedOperationsStayBlueBeforeStorageDispatch()
+QWARN  : ResidentTray::uploadPreparationDoesNotEmitAnIntermediateGreenTransition() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::uploadPreparationDoesNotEmitAnIntermediateGreenTransition()
+QWARN  : ResidentTray::deliberateClipboardSupersessionDoesNotFlashAnError() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::deliberateClipboardSupersessionDoesNotFlashAnError()
+QWARN  : ResidentTray::cancelledAcquisitionReturnsIdle() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::cancelledAcquisitionReturnsIdle()
+QWARN  : ResidentTray::multipleProgressUpdatesUseOneBatchAndBoundedRows() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::multipleProgressUpdatesUseOneBatchAndBoundedRows()
+QWARN  : ResidentTray::localSaveRetryShowsWorkAndClearsOnSuccessOrError() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+FAIL!  : ResidentTray::localSaveRetryShowsWorkAndClearsOnSuccessOrError() Compared values are not the same
+   Actual   (tray->toolTip()): "Needs attention\nLocal save needs attention \u2014 open the tray menu to review"
+   Expected (idleTooltip)    : "put.gd"
+   Loc: [/home/user/work/put.gd/src/tests/gui/test_tray.cpp(471)]
+QWARN  : ResidentTray::acquisitionAndPreparationErrorsPersistWithoutNotifications(capture-failure) qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::acquisitionAndPreparationErrorsPersistWithoutNotifications(capture-failure)
+QWARN  : ResidentTray::acquisitionAndPreparationErrorsPersistWithoutNotifications(preparation-failure) qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::acquisitionAndPreparationErrorsPersistWithoutNotifications(preparation-failure)
+QWARN  : ResidentTray::errorRecoveryResumesAnotherActiveStorageRequest(capture-failure) qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::errorRecoveryResumesAnotherActiveStorageRequest(capture-failure)
+QWARN  : ResidentTray::errorRecoveryResumesAnotherActiveStorageRequest(upload-failure) qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::errorRecoveryResumesAnotherActiveStorageRequest(upload-failure)
+QWARN  : ResidentTray::failuresStayBadgedUntilAcknowledged() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::failuresStayBadgedUntilAcknowledged()
+QWARN  : ResidentTray::trayViewsReachTheProductionUi() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::trayViewsReachTheProductionUi()
+QWARN  : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews()
+QWARN  : ResidentTray::updateEntryOpensUpdatesWithTheDownloadGlyph() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::updateEntryOpensUpdatesWithTheDownloadGlyph()
+QWARN  : ResidentTray::everyCaptureActionWorksWithNoViewsOpen() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::everyCaptureActionWorksWithNoViewsOpen()
+QWARN  : ResidentTray::nativeShortcutDuringRecoveryDoesNotOpenViews() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::nativeShortcutDuringRecoveryDoesNotOpenViews() Action rejected: initializing
+PASS   : ResidentTray::nativeShortcutDuringRecoveryDoesNotOpenViews()
+QWARN  : ResidentTray::repeatedNativeCaptureDoesNotOpenViewsOverSelection() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::repeatedNativeCaptureDoesNotOpenViewsOverSelection() Action rejected: busy_selecting
+PASS   : ResidentTray::repeatedNativeCaptureDoesNotOpenViewsOverSelection()
+QWARN  : ResidentTray::nativeFullQueueDoesNotOpenViewsOverSelection() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::nativeFullQueueDoesNotOpenViewsOverSelection() Action rejected: queue_full
+PASS   : ResidentTray::nativeFullQueueDoesNotOpenViewsOverSelection()
+QWARN  : ResidentTray::nativeClipboardRejectionDoesNotOpenViewsOverSelection() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::nativeClipboardRejectionDoesNotOpenViewsOverSelection() Action rejected: output_required
+PASS   : ResidentTray::nativeClipboardRejectionDoesNotOpenViewsOverSelection()
+QWARN  : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray() Action rejected: output_required
+PASS   : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray()
+QWARN  : ResidentTray::missingOutputOpensCaptureRecoveryWithoutOwningAWindow() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+QWARN  : ResidentTray::missingOutputOpensCaptureRecoveryWithoutOwningAWindow() Action rejected: output_required
+PASS   : ResidentTray::missingOutputOpensCaptureRecoveryWithoutOwningAWindow()
+QWARN  : ResidentTray::recordingTrayEntryOpensAndRaisesWhileTheShortcutToggles() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::recordingTrayEntryOpensAndRaisesWhileTheShortcutToggles()
+QWARN  : ResidentTray::recordingOverlayPersistsAlongsideFailuresUntilTransfer() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::recordingOverlayPersistsAlongsideFailuresUntilTransfer()
+PASS   : ResidentTray::cleanupTestCase()
+Totals: 43 passed, 1 failed, 0 skipped, 0 blacklisted, 51314ms
+********* Finished testing of ResidentTray *********
+
+        Start  44: gui_version
+ 44/113 Test  #44: gui_version .............................   Passed    2.06 sec
+        Start  45: release_link_contract
+ 45/113 Test  #45: release_link_contract ...................   Passed    0.01 sec
+        Start  46: update_feed_contract
+ 46/113 Test  #46: update_feed_contract ....................   Passed    0.00 sec
+        Start  47: update_check_request
+ 47/113 Test  #47: update_check_request ....................   Passed    0.02 sec
+        Start  48: update_appimage_install_files
+ 48/113 Test  #48: update_appimage_install_files ...........   Passed    0.55 sec
+        Start  49: update_minisign_verify
+ 49/113 Test  #49: update_minisign_verify ..................   Passed    0.01 sec
+        Start  50: update_appimage_install_child
+ 50/113 Test  #50: update_appimage_install_child ...........   Passed    0.73 sec
+        Start  51: update_service_schedule
+ 51/113 Test  #51: update_service_schedule .................   Passed    9.32 sec
+        Start  52: host_environment_contract
+ 52/113 Test  #52: host_environment_contract ...............   Passed    0.06 sec
+        Start  53: update_system_repository
+ 53/113 Test  #53: update_system_repository ................   Passed    0.01 sec
+        Start  54: geometry_contract
+ 54/113 Test  #54: geometry_contract .......................   Passed    0.41 sec
+        Start  55: allocator_policy_contract
+ 55/113 Test  #55: allocator_policy_contract ...............   Passed    0.05 sec
+        Start  56: x11_raw_key_matcher
+ 56/113 Test  #56: x11_raw_key_matcher .....................   Passed    0.00 sec
+        Start  57: native_shortcut_rejection_integration
+ 57/113 Test  #57: native_shortcut_rejection_integration ...   Passed    0.91 sec
+        Start  58: resident_retire_integration
+ 58/113 Test  #58: resident_retire_integration .............   Passed    3.52 sec
+        Start  59: resident_display_loss_integration
+ 59/113 Test  #59: resident_display_loss_integration .......   Passed    0.76 sec
+        Start  60: native_background_startup_integration
+ 60/113 Test  #60: native_background_startup_integration ...   Passed   68.87 sec
+        Start  61: file_dialog_integration
+ 61/113 Test  #61: file_dialog_integration .................   Passed    1.53 sec
+        Start  62: file_dialog_x11_parent
+ 62/113 Test  #62: file_dialog_x11_parent ..................   Passed    0.10 sec
+        Start  63: host_open_integration
+ 63/113 Test  #63: host_open_integration ...................   Passed    3.90 sec
+        Start  64: ui_native_lifecycle_integration
+ 64/113 Test  #64: ui_native_lifecycle_integration .........   Passed    2.43 sec
+        Start  65: x11_isolated
+ 65/113 Test  #65: x11_isolated ............................   Passed   21.37 sec
+        Start  66: keychain_backend_integration
+ 66/113 Test  #66: keychain_backend_integration ............   Passed    0.01 sec
+        Start  67: keychain_integration
+ 67/113 Test  #67: keychain_integration ....................   Passed    0.11 sec
+        Start  68: collision_policy_integration
+ 68/113 Test  #68: collision_policy_integration ............   Passed   28.41 sec
+        Start  69: s3_delete_integration
+ 69/113 Test  #69: s3_delete_integration ...................   Passed   11.26 sec
+        Start  70: s3_module_integration
+ 70/113 Test  #70: s3_module_integration ...................   Passed   39.00 sec
+        Start  71: s3_integration
+ 71/113 Test  #71: s3_integration ..........................   Passed   12.98 sec
+        Start  72: s3_multipart_integration
+ 72/113 Test  #72: s3_multipart_integration ................   Passed   17.33 sec
+        Start  73: public_url
+ 73/113 Test  #73: public_url ..............................   Passed    0.01 sec
+        Start  74: build_contract
+ 74/113 Test  #74: build_contract ..........................   Passed    0.06 sec
+        Start  75: s3_worker_supervision
+ 75/113 Test  #75: s3_worker_supervision ...................   Passed   48.67 sec
+        Start  76: s3_worker_protocol
+ 76/113 Test  #76: s3_worker_protocol ......................   Passed    0.09 sec
+        Start  77: sdk_contract
+ 77/113 Test  #77: sdk_contract ............................   Passed    0.21 sec
+        Start  78: payload_contract
+ 78/113 Test  #78: payload_contract ........................   Passed    0.41 sec
+        Start  79: archive_contract
+ 79/113 Test  #79: archive_contract ........................   Passed    0.05 sec
+        Start  80: upload_naming_contract
+ 80/113 Test  #80: upload_naming_contract ..................   Passed    0.05 sec
+        Start  81: history_contract
+ 81/113 Test  #81: history_contract ........................   Passed    7.35 sec
+        Start  82: operations_contract
+ 82/113 Test  #82: operations_contract .....................   Passed  175.62 sec
+        Start  83: recording_model_contract
+ 83/113 Test  #83: recording_model_contract ................   Passed    0.25 sec
+        Start  84: storage_contract_integration
+ 84/113 Test  #84: storage_contract_integration ............   Passed   19.93 sec
+        Start  85: cli_integration
+ 85/113 Test  #85: cli_integration .........................   Passed   42.04 sec
+        Start  86: config_reload_integration
+ 86/113 Test  #86: config_reload_integration ...............   Passed    0.90 sec
+        Start  87: storage_locations_integration
+ 87/113 Test  #87: storage_locations_integration ...........   Passed    7.38 sec
+        Start  88: gnome_image_decode
+ 88/113 Test  #88: gnome_image_decode ......................   Passed    0.07 sec
+        Start  89: gnome_bridge_contract
+ 89/113 Test  #89: gnome_bridge_contract ...................   Passed    0.02 sec
+        Start  90: gnome_core_transport_integration
+ 90/113 Test  #90: gnome_core_transport_integration ........   Passed   11.68 sec
+        Start  91: kwin_transfer_contract
+ 91/113 Test  #91: kwin_transfer_contract ..................   Passed    0.17 sec
+        Start  92: recording_service_integration
+ 92/113 Test  #92: recording_service_integration ...........   Passed   16.30 sec
+        Start  93: recording_helper_integration
+ 93/113 Test  #93: recording_helper_integration ............   Passed   13.61 sec
+        Start  94: settings_contract
+ 94/113 Test  #94: settings_contract .......................   Passed   10.40 sec
+        Start  95: logging_contract
+ 95/113 Test  #95: logging_contract ........................   Passed    2.19 sec
+        Start  96: crash_handler_contract
+ 96/113 Test  #96: crash_handler_contract ..................   Passed   11.84 sec
+        Start  97: diagnostics_upload_contract
+ 97/113 Test  #97: diagnostics_upload_contract .............   Passed    7.28 sec
+        Start  98: diagnostics_bundle_contract
+ 98/113 Test  #98: diagnostics_bundle_contract .............   Passed    5.15 sec
+        Start  99: json_ref_lifetime_contract
+ 99/113 Test  #99: json_ref_lifetime_contract ..............   Passed    0.36 sec
+        Start 100: gui_settings
+100/113 Test #100: gui_settings ............................   Passed  140.93 sec
+        Start 101: gui_history_view
+101/113 Test #101: gui_history_view ........................   Passed  130.97 sec
+        Start 102: gui_history_view_text150
+102/113 Test #102: gui_history_view_text150 ................   Passed   17.15 sec
+        Start 103: login_startup_contract
+103/113 Test #103: login_startup_contract ..................   Passed    0.88 sec
+        Start 104: resident_session_contract
+104/113 Test #104: resident_session_contract ...............   Passed    1.72 sec
+        Start 105: local_ipc_contract
+105/113 Test #105: local_ipc_contract ......................   Passed   12.89 sec
+        Start 106: ip_address_contract
+106/113 Test #106: ip_address_contract .....................   Passed    0.02 sec
+        Start 107: region_selection_contract
+107/113 Test #107: region_selection_contract ...............   Passed    2.04 sec
+        Start 108: kde_region_overlay
+108/113 Test #108: kde_region_overlay ......................   Passed    0.05 sec
+        Start 109: native_region_overlay
+109/113 Test #109: native_region_overlay ...................   Passed   11.83 sec
+        Start 110: capture_preparation_x11
+110/113 Test #110: capture_preparation_x11 .................   Passed    5.19 sec
+        Start 111: proton_contract
+111/113 Test #111: proton_contract .........................   Passed   27.96 sec
+        Start 112: proton_transport
+112/113 Test #112: proton_transport ........................   Passed    7.91 sec
+        Start 113: b2_integration
+113/113 Test #113: b2_integration ..........................   Passed    9.96 sec
+
+99% tests passed, 1 tests failed out of 113
+
+Label Time Summary:
+integration    = 1249.94 sec*proc (82 tests)
+unit           =  17.37 sec*proc (31 tests)
+
+Total Test time (real) = 1267.36 sec
+
+The following tests FAILED:
+	 43 - gui_tray (Failed)
+Errors while running CTest
+Retrying 1 failed integration test(s) once: gui_tray
+$ ctest --preset dev --parallel 1 --resource-spec-file /home/user/work/put.gd/src/tools/ci/ctest-resources.json --output-junit /home/user/work/put.gd/src/build/dev/catalog-ctest-retry.xml -R ^(gui_tray)$
+Test project /home/user/work/put.gd/src/build/dev
+    Start 43: gui_tray
+1/1 Test #43: gui_tray .........................   Passed   56.78 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Label Time Summary:
+integration    =  56.78 sec*proc (1 test)
+
+Total Test time (real) =  56.80 sec
+::warning title=Flaky test gui_tray::gui_tray failed, then passed its one retry. It is listed in the job summary and the flaky-test tracker. First failure: FAIL!  : ResidentTray::localSaveRetryShowsWorkAndClearsOnSuccessOrError() Compared values are not the same
+ctest_retry: 113 tests, 1 failed first, 1 passed on retry, 0 failed

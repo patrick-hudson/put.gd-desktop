@@ -9,9 +9,9 @@
 
 The run's put.gd must be installed (lab.py install). With the borrowed keychain
 reference from PUTGD_LAB_PROTON_REFERENCE, it adds a Proton destination to the
-guest's lab configuration, creates a new isolated folder, uploads one synthetic
-PNG privately through the editor, then creates, inspects and revokes that
-upload's own link. It writes proton-smoke.json (nonsecret: names, IDs, states,
+guest's lab configuration, creates a new isolated folder, runs Check account and
+folder against it, uploads one synthetic PNG privately through the editor, then
+creates, inspects and revokes that upload's own link. It writes proton-smoke.json (nonsecret: names, IDs, states,
 no URLs) into the run, and quits the guest's put.gd. Proton files cannot be
 deleted through put.gd, so the folder and its one file stay for manual removal.
 """
@@ -31,6 +31,8 @@ _spec.loader.exec_module(lab)
 PROFILE_ID = 'proton-lent'
 DEADLINE = 300
 SECRET_KEYS = ('url', 'link', 'shareUrl', 'publicUrl', 'directUrl')
+# Operation::activeState in src/core/Operation.cpp, plus the older 'queued'.
+ACTIVE_STATES = ('accepted', 'acquiring', 'editing', 'recording', 'stored', 'running', 'queued')
 
 
 def scrub(value):
@@ -118,6 +120,14 @@ class Smoke:
         self.result['folderName'] = folder.get('name', name)
         self.step('folder', folderName=self.result['folderName'])
 
+    def check(self):
+        """Settings' Check account and folder (Test connection) against the new folder."""
+        tested = self.setup('testDestination')
+        self.result['testScope'] = tested.get('testScope')
+        self.step('checked', testScope=self.result['testScope'])
+        if self.result['testScope'] != 'account-folder':
+            raise lab.LabError(f'Check account and folder covered {self.result["testScope"]}, not account-folder')
+
     def upload(self):
         # A synthetic 256x160 gradient, written by the guest's own python3; no host data.
         path = lab.ssh(self.run, '''set -eu
@@ -138,7 +148,7 @@ PY
         operation = opened['operationId']
         self.cli('editor.submit', {'id': operation})
         final = self.wait(lambda: self.cli('operation.inspect', {'id': operation}),
-                          lambda value: value.get('state') not in ('accepted', 'running', 'queued', 'editing'),
+                          lambda value: value.get('state') not in ACTIVE_STATES,
                           'upload')
         self.result['operationId'] = operation
         self.step('uploaded', operationId=operation, state=final.get('state'), file=Path(path).name)
@@ -223,10 +233,17 @@ printf '%s' "$profile"
         self.step('browser', profile=profile)
 
     def pictures(self):
-        """Evidence frames of the guest's own screen (a disposable VM): Settings with the lent
-        destination and its account, then History with the revoked link. The app keeps both open."""
-        for view in ('settings', 'history'):
-            self.cli('ui.show', {'view': view})
+        """Evidence frames of the guest's own screen (a disposable VM): Destinations with the lent
+        account and folder, then History with the revoked link. The app keeps both open. Builds
+        without a Destinations view show Settings instead."""
+        for view in ('destinations', 'history'):
+            try:
+                self.cli('ui.show', {'view': view})
+            except (lab.LabError, ValueError):
+                if view != 'destinations':
+                    raise
+                view = 'settings'
+                self.cli('ui.show', {'view': view})
             time.sleep(4)
             frame = lab.screenshot(self.run, f'proton-{view}')
             self.step('picture', view=view, path=frame['path'], sha256=frame['sha256'])
@@ -267,6 +284,7 @@ def main():
         else:
             smoke.configure()
             smoke.folder()
+            smoke.check()
             if '--browser' in sys.argv[1:]:
                 smoke.browser()
             smoke.upload()
