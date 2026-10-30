@@ -83,7 +83,7 @@ class FakeContext(Context):
         if control=='text:Select and move': self.state['view']['tool']='select'
         elif control.startswith('text:') and control[5:].lower() in ('redact','arrow','rectangle','highlight','text','select','blur','crop'):
             self.state['view']['tool']=control[5:].lower()
-        elif control == 'placeMark': self._add({'kind':'redact','rect':[220,110,200,100]})
+        elif control == 'placeMark': self._add({'kind':self.state['view']['tool'],'rect':[220,110,200,100]})
         elif control in ('removeMark','text:Remove mark'): self.state['shapes']=[]
         elif control.startswith('text:Undo'): self.keys('Ctrl+Z')
         elif control.startswith('text:Redo'): self.keys('Ctrl+Shift+Z')
@@ -182,8 +182,23 @@ class EditorRecipes(unittest.TestCase):
         self.assertEqual(owned,set(actual))
         self.assertEqual(len(actual),len(set(actual)))
         for r in recipes:
-            self.assertEqual(('image',),r.needs)
+            self.assertEqual(('image','file-dialog-fallback') if r.function.__name__=='save_copy' else ('image',),r.needs)
             self.assertEqual(('local',),r.destinations)
+
+    def test_place_reads_selected_identity_instead_of_shape_order(self):
+        ctx=FakeContext()
+        def click(control, window):
+            self.assertEqual(('placeMark','editor'),(control,window))
+            ctx.state['shapes']=[{'id':4,'kind':'blur'},{'id':9,'kind':'rectangle'}]
+            ctx.state['view']['selectedShapeId']=9
+        ctx.click=click
+        self.assertEqual(9,editor._place(ctx,'op-1','rectangle'))
+        self.assertFalse(any(e[0]=='keys' for e in ctx.events))
+
+    def test_failed_placement_reports_assertion_without_index_error(self):
+        ctx=FakeContext();ctx.click=lambda *args,**kwargs:None
+        with self.assertRaisesRegex(RecipeFailed,'new selected rectangle'):
+            editor._place(ctx,'op-1','rectangle')
 
     def test_help_click_ignores_the_same_label_tooltip(self):
         ctx=FakeContext()

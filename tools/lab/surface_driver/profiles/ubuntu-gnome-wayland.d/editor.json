@@ -36,6 +36,10 @@
     ],
     "colorSwatchBlack": [
       "Color Black"
+    ],
+    "windowMaximize": [
+      "Maximize",
+      "Restore"
     ]
   },
   "editor": {
