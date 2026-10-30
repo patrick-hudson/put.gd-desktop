@@ -242,7 +242,8 @@ class Context:
         Ordinary calls fail after the recipe deadline and are clipped to the time
         left. ``cleanup=True`` is for restoring what a recipe changed (default
         browser, theme, dconf): it runs even after the deadline, with its own
-        timeout (30 s when none is given), never the clipped remainder. The
+        timeout (30 s when none is given, at most 600 s), never the clipped
+        remainder, and the recipe alarm is deferred until it returns. The
         target's safety checks still apply (desktop lock for physical targets,
         an owned overlay for guests).
         """

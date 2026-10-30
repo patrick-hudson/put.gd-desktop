@@ -384,6 +384,68 @@ class CleanupShell(unittest.TestCase):
         self.assertEqual(len(self.calls),1)
 
 
+class CleanupShellBounds(unittest.TestCase):
+    """Validator B2, N1 and N3 on #680: the cleanup hook's own boundaries."""
+    env=dict(desktop='mint-cinnamon-x11',host='boat',placement='guest',package='deb',destination='local')
+
+    def context(self,target):
+        return DriverContext(target,self.env,load_profile('mint-cinnamon-x11'),'/tmp','/tmp')
+
+    def test_recipe_alarm_is_deferred_until_a_cleanup_call_completes(self):
+        # run.py's SIGALRM fired 0.05 s into a restore and killed the transport
+        # before the script reached the target. A real subprocess stands in.
+        with tempfile.TemporaryDirectory() as temporary:
+            marker=Path(temporary)/'restored'
+            target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+            def execute(script,timeout=60):
+                subprocess.run([sys.executable,'-c','import pathlib,sys,time\ntime.sleep(.3)\npathlib.Path(sys.argv[1]).write_text("done")',
+                                str(marker)],check=True,timeout=timeout)
+                return {'returncode':0,'stdout':'ran','stderr':''}
+            target.execute=execute
+            ctx=self.context(target)
+            def deadline(_signum,_frame):
+                raise RecipeFailed('recipe deadline exceeded: links.open')
+            previous=signal.signal(signal.SIGALRM,deadline)
+            try:
+                signal.setitimer(signal.ITIMER_REAL,.05)
+                with patch.object(lab,'verify_owned_guest'):
+                    with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+                        ctx.shell('restore',timeout=30,cleanup=True)
+                        time.sleep(1)  # Not reached: the pending alarm fires on return.
+            finally:
+                signal.setitimer(signal.ITIMER_REAL,0)
+                signal.signal(signal.SIGALRM,previous)
+            self.assertEqual(marker.read_text(),'done')
+            self.assertNotIn(signal.SIGALRM,signal.pthread_sigmask(signal.SIG_BLOCK,[]))
+
+    def test_cleanup_timeouts_are_capped(self):
+        calls=[]
+        target=FakeTarget();target.run=Path('/tmp/sd-test-run')
+        target.execute=lambda script,timeout=60:calls.append(timeout) or {'returncode':0,'stdout':'','stderr':''}
+        with patch.object(lab,'verify_owned_guest'):
+            self.context(target).shell('restore',timeout=86400,cleanup=True)
+        self.assertEqual(calls,[600])
+
+    def test_physical_cleanup_rechecks_the_lock_before_every_command(self):
+        # A heartbeat seconds old must not stand in for a lease since lost.
+        sent=[]
+        def ssh(run,script,timeout=None):
+            if 'SD_LOCK' in script:
+                sent.append('lock')
+                return json.dumps({'ok':True,'state':'released'})
+            sent.append('command')
+            return '{}' if 'session_environment' in script else json.dumps({'returncode':0,'stdout':'','stderr':''})
+        target=Target.__new__(Target)
+        target.physical=SimpleNamespace(ssh=ssh,config={'profile':{'name':'mint-cinnamon-x11'}})
+        target.run,target.root,target.bin_dir=Path('/tmp/sd-test-run'),'/tmp/sd-test',None
+        target._lock=('k72','session-1')
+        target._last_heartbeat=time.clock_gettime(time.CLOCK_BOOTTIME)
+        target._lock_valid_until=target._last_heartbeat+1800
+        with self.assertRaisesRegex(RecipeBlocked,'no longer held'):
+            self.context(target).shell('restore',timeout=180,cleanup=True)
+        self.assertEqual(sent,['lock'])
+
+
 class InputFoundations(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)

@@ -5,11 +5,15 @@ import json
 from pathlib import Path
 import re
 import shlex
+import signal
 import time
 from tools.lab import lab
 from .api import Context, Frame, RecipeBlocked, RecipeFailed
 from .catalog import Catalog, compare, image_modules
 from .target import qcodes
+
+# Seconds; a cleanup call's own budget may not grow past this.
+CLEANUP_TIMEOUT_CAP = 600
 
 
 class Fixture(dict):
@@ -382,13 +386,22 @@ class DriverContext(Context):
     def shell(self,script,timeout=None,cleanup=False):
         if cleanup:
             # Deadline-exempt restoration (api.Context.shell). Physical targets
-            # keep the lock heartbeat inside execute; guests prove ownership here.
-            if not self.target.physical:
-                try:
-                    lab.verify_owned_guest(self.target.run)
-                except lab.LabError as error:
-                    raise RecipeBlocked('cleanup refused: '+str(error)) from error
-            return self.target.execute(script,timeout=30.0 if timeout is None else timeout)
+            # force the lock heartbeat inside execute; guests prove ownership here.
+            timeout=min(30.0 if timeout is None else timeout,CLEANUP_TIMEOUT_CAP)
+            # Defer, never cancel, run.py's recipe alarm for the whole bounded
+            # call (as target.input_release does for input release, #736): an
+            # alarm that falls due fails the recipe once the restore has
+            # reached the target, instead of killing the transport first.
+            previous=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
+            try:
+                if not self.target.physical:
+                    try:
+                        lab.verify_owned_guest(self.target.run)
+                    except lab.LabError as error:
+                        raise RecipeBlocked('cleanup refused: '+str(error)) from error
+                return self.target.execute(script,timeout=timeout)
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK,previous)
         self._check_time()
         timeout=60 if timeout is None else timeout
         return self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
