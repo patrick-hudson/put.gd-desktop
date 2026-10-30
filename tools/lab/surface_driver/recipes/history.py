@@ -1101,6 +1101,19 @@ def navigation(ctx):
     _frame(ctx, 'before')
     for page in ('Destinations', 'Settings', 'History'):
         _click_history_node(ctx, {'role': 'page tab', 'name': page})
+        # Preserve the actual transition when a desktop omits a page witness.
+        # Only fixed public landmark names, states and rectangles are logged.
+        tabs = _nodes(ctx, role='page tab', name=page)
+        landmarks = {'historyRow': ('All items', 'list item'),
+                     'historyList': ('Show history items', 'list'),
+                     'settingsRow': ('General', 'list item'),
+                     'settingsList': ('Settings categories', 'list'),
+                     'destinationButton': ('Add destination', 'push button')}
+        counts = {key: len(_nodes(ctx, name=name, role=role)) for key, (name, role) in landmarks.items()}
+        ctx.note('Navigation witness ' + page + ': ' + json.dumps({
+            'tabs': [{'rect': n.get('rect'), 'states': n.get('states')} for n in tabs],
+            'landmarkCounts': counts}))
+        _frame(ctx, 'pointer-' + page, None)
         ctx.wait(lambda: _selected_page(ctx, page), page + ' selected after pointer input')
     # The segmented tab bar implements native arrow-key navigation.
     for key, page in (('Right', 'Destinations'), ('Right', 'Settings'), ('Left', 'Destinations'), ('Left', 'History')):
