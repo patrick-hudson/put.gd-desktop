@@ -126,14 +126,7 @@ QComboBox* choices(QWidget* parent,const QString& name,const QStringList& values
 // QFormLayout can compress a wrapped field below its layout's minimum height.
 class FormRow final:public QWidget {
 protected:
- bool event(QEvent* event)override{const bool handled=QWidget::event(event);if(layout()&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show)){const int floor=property("preferenceRow").toBool()&&!property("preferenceNaturalHeight").toBool()?Ui::scaled(Ui::Metric::control)+2*space(Space::s):0;const int height=std::max({floor,layout()->totalMinimumSize().height(),layout()->totalHeightForWidth(width())});if(minimumHeight()!=height)setMinimumHeight(height);
- // Child layout changes can alter height-for-width without changing the minimum.
- // Notify the parent form so it discards the previous row-height cache.
- if(event->type()==QEvent::LayoutRequest){updateGeometry();
-  // The containing form can be nested below the parent's outer box layout.
-  // QWidget::updateGeometry does not invalidate that nested height cache.
-  if(auto* owner=parentWidget())for(auto* form:owner->findChildren<QFormLayout*>())if(form->indexOf(this)>=0)form->invalidate();
- }}return handled;}
+ bool event(QEvent* event)override{const bool handled=QWidget::event(event);if(layout()&&(event->type()==QEvent::Resize||event->type()==QEvent::LayoutRequest||event->type()==QEvent::Show)){const int floor=property("preferenceRow").toBool()&&!property("preferenceNaturalHeight").toBool()?Ui::scaled(Ui::Metric::control)+2*space(Space::s):0;const int height=std::max({floor,layout()->totalMinimumSize().height(),layout()->totalHeightForWidth(width())});if(minimumHeight()!=height)setMinimumHeight(height);}return handled;}
 };
 // Endpoint display wraps long host names without changing selectable text.
 class EndpointLabel final:public QLabel {
@@ -287,23 +280,10 @@ public:
 protected:
  bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Resize||event->type()==QEvent::Show)apply();return false;}
 private:
- void apply(){
-  const auto margins=field_->layout()->contentsMargins();const int available=qMax(0,field_->width()-margins.left()-margins.right());const bool stacked=!compact_&&stacked_;const auto direction=stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight;if(line_->direction()!=direction)line_->setDirection(direction);
-  auto* captions=line_->itemAt(0)->widget();captions->setMinimumWidth(stacked||compact_?0:gutter_-space(Space::l));captions->setMaximumWidth(stacked||compact_?QWIDGETSIZE_MAX:gutter_-space(Space::l));if(auto* label=qobject_cast<QWidget*>(field_->property("preferenceLabel").value<QObject*>()))label->setMinimumHeight(stacked?0:Ui::scaled(Ui::Metric::control));
-  // Keep constraint updates idempotent: clearing and restoring a shortcut's
-  // minimum width invalidates its layout even when its final width is unchanged.
-  value_->setMinimumWidth(compact_?qMin(width_,available):0);value_->setMaximumWidth(compact_?qMin(width_,available):QWIDGETSIZE_MAX);
-  line_->setStretch(0,compact_?1:0);line_->setStretch(1,compact_?0:1);
-  field_->setProperty("stacked",stacked);
-  // A read-only value sits under its label when stacked, at the row's end inline.
-  for(auto* text:value_->findChildren<QLabel*>())if(text->property("preferenceReadoutText").toBool())text->setAlignment((stacked?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);
-  // Spacing and alignment setters invalidate even for the same value. Family observes
-  // LayoutRequest, so an unconditional write schedules another sizing pass forever.
-  const int spacing=space(stacked?Space::s:Space::l);if(line_->spacing()!=spacing)line_->setSpacing(spacing);
-  const Qt::Alignment alignment=compact_?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop;if(line_->itemAt(1)->alignment()!=alignment)line_->setAlignment(value_,alignment);
-  // A status/help child can change its minimum height while this value keeps
-  // the same rectangle. Refresh its inner geometry on a sizing pass; invalidate
-  // the child layout, not the observed row that would schedule us again.
+ void apply(){const auto margins=field_->layout()->contentsMargins();const int available=qMax(0,field_->width()-margins.left()-margins.right());const bool stacked=!compact_&&stacked_;const auto direction=stacked?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight;if(line_->direction()!=direction)line_->setDirection(direction);auto* captions=line_->itemAt(0)->widget();captions->setMinimumWidth(stacked||compact_?0:gutter_-space(Space::l));captions->setMaximumWidth(stacked||compact_?QWIDGETSIZE_MAX:gutter_-space(Space::l));if(auto* label=qobject_cast<QWidget*>(field_->property("preferenceLabel").value<QObject*>()))label->setMinimumHeight(stacked?0:Ui::scaled(Ui::Metric::control));value_->setMinimumWidth(0);value_->setMaximumWidth(compact_?qMin(width_,available):QWIDGETSIZE_MAX);if(compact_)value_->setMinimumWidth(qMin(width_,available));line_->setStretch(0,compact_?1:0);line_->setStretch(1,compact_?0:1);field_->setProperty("stacked",stacked);// A read-only value sits under its label when stacked, at the row's end inline.
+ for(auto* text:value_->findChildren<QLabel*>())if(text->property("preferenceReadoutText").toBool())text->setAlignment((stacked?Qt::AlignLeft:Qt::AlignRight)|Qt::AlignVCenter);line_->setSpacing(space(stacked?Space::s:Space::l));line_->setAlignment(value_,compact_?Qt::AlignRight|Qt::AlignTop:Qt::AlignTop);
+  // A newly shown hint can leave an existing value rectangle with undersized
+  // child geometry. Refresh the inner layout once it has enough room.
   if(auto* layout=value_->layout();layout&&value_->isVisible()&&value_->height()>=layout->totalMinimumSize().height())
    for(int i=0;i<layout->count();++i)if(auto* item=layout->itemAt(i);!item->isEmpty()&&item->geometry().height()<item->minimumSize().height()){layout->invalidate();break;}
  }
@@ -809,7 +789,9 @@ void alignChoices(QWidget* family,bool reserveHelp){
  public:
   explicit Family(QWidget* root,bool reserveHelp):QObject(root),root_(root),reserveHelp_(reserveHelp){if(reserveHelp_)root_->installEventFilter(this);for(auto* combo:root->findChildren<QComboBox*>())if(combo->property("preferenceChoice").toBool()){combo->installEventFilter(this);connect(combo->model(),&QAbstractItemModel::dataChanged,this,[this]{schedule();});connect(combo->model(),&QAbstractItemModel::rowsInserted,this,[this]{schedule();});connect(combo->model(),&QAbstractItemModel::rowsRemoved,this,[this]{schedule();});connect(combo->model(),&QAbstractItemModel::modelReset,this,[this]{schedule();});}for(auto* field:root->findChildren<QWidget*>())if(field->property("preferenceChoiceValue").toBool()||field->property("preferenceInlineValue").toBool()){auto* row=field->parentWidget();row->installEventFilter(this);if(auto* caption=row->property("preferenceLabel").value<QObject*>())caption->installEventFilter(this);if(field->property("preferenceShortcutValue").toBool())for(auto* edit:field->findChildren<QLineEdit*>())connect(edit,&QLineEdit::textChanged,this,[this]{schedule();});}schedule();}
  protected:
-  bool eventFilter(QObject* watched,QEvent* e)override{if(e->type()==QEvent::FontChange||e->type()==QEvent::Show||e->type()==QEvent::Resize||(e->type()==QEvent::LayoutRequest&&watched!=root_))schedule();return false;}
+  // Model/text signals plus font, visibility and size events cover the sizing inputs.
+  // LayoutRequest is also produced by apply itself, so observing it feeds the next pass forever.
+  bool eventFilter(QObject*,QEvent* e)override{if(e->type()==QEvent::FontChange||e->type()==QEvent::Show||e->type()==QEvent::Resize)schedule();return false;}
  private:
   void schedule(){if(pending_)return;pending_=true;QTimer::singleShot(0,this,[this]{pending_=false;int captionWidth=0,shortcutWidth=0,helpWidth=0;
    const auto values=root_->findChildren<QWidget*>();for(auto* row:values)if(auto* caption=qobject_cast<QWidget*>(row->property("preferenceLabel").value<QObject*>());caption&&row->property("preferenceRow").toBool()&&(!reserveHelp_||row->property("preferenceCaption").isValid())){if(reserveHelp_){const QFontMetrics metrics(Ui::font());if(row->property("preferenceCaption").isValid())captionWidth=qMax(captionWidth,metrics.horizontalAdvance(row->property("preferenceCaption").toString()));else if(auto* text=qobject_cast<QLabel*>(caption))captionWidth=qMax(captionWidth,metrics.horizontalAdvance(text->text()));else for(auto* text:caption->findChildren<QLabel*>())captionWidth=qMax(captionWidth,metrics.horizontalAdvance(text->text()));}else{captionWidth=qMax(captionWidth,caption->sizeHint().width());if(auto* text=qobject_cast<QLabel*>(caption))captionWidth=qMax(captionWidth,text->fontMetrics().horizontalAdvance(text->text()));}for(auto* help:caption->findChildren<QToolButton*>())helpWidth=qMax(helpWidth,help->width()+space(Space::xs));}
