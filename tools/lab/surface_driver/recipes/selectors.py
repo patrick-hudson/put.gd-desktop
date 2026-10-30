@@ -11,6 +11,9 @@ from __future__ import annotations
 
 import re
 import shlex
+import base64
+import hashlib
+import json
 from contextlib import contextmanager
 from pathlib import PurePosixPath
 
@@ -180,6 +183,37 @@ def _op(ctx, oid):
 def _png_dimensions(ctx, path, width, height):
     probe = ctx.shell("python3 -c 'import struct,sys; print(*struct.unpack(\"!II\",open(sys.argv[1],\"rb\").read(24)[16:24]))' " + shlex.quote(path))
     ctx.expect(probe.get("returncode") == 0 and probe.get("stdout", "").strip() == f"{int(width)} {int(height)}", "capture dimensions match chosen output")
+    _retain(ctx, path, "png")
+
+
+def _retain(ctx, path, kind):
+    """Export only signature-checked synthetic outputs from this private run."""
+    program = '''import base64,hashlib,json,os,stat
+from pathlib import Path
+p=Path(PATH);root=Path(ROOT).resolve(strict=True)
+assert p.resolve(strict=True).is_relative_to(root)
+fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW)
+with os.fdopen(fd,'rb') as f:
+ s=os.fstat(f.fileno());assert stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and 0<s.st_size<=32*1024*1024
+ data=f.read(32*1024*1024+1);assert len(data)==s.st_size
+assert data.startswith(bytes([137,80,78,71,13,10,26,10])) if KIND=='png' else data[4:8]==b'ftyp'
+print(json.dumps({'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'data':base64.b64encode(data).decode()}))
+'''.replace('PATH', repr(path)).replace('ROOT', repr(ctx.target.root)).replace('KIND', repr(kind))
+    reply = ctx.shell("python3 - <<'SD_RETAIN'\n" + program + 'SD_RETAIN\n')
+    ctx.expect(reply.get("returncode") == 0, "synthetic functional artifact readback succeeded")
+    value = json.loads(reply["stdout"])
+    data = base64.b64decode(value["data"], validate=True)
+    digest = hashlib.sha256(data).hexdigest()
+    ctx.expect(len(data) == value["bytes"] and digest == value["sha256"], "functional artifact transport hash matches")
+    directory = ctx.out / "functional"
+    directory.mkdir(mode=0o700, exist_ok=True)
+    output = directory / (digest + "." + kind)
+    if not output.exists():
+        with output.open("xb") as stream:
+            stream.write(data)
+    ctx.expect(hashlib.sha256(output.read_bytes()).hexdigest() == digest, "retained functional artifact hash matches")
+    output.with_suffix(output.suffix + ".json").write_text(json.dumps({"source": path, "bytes": len(data), "sha256": digest, "kind": kind}) + "\n")
+    ctx.note("Retained synthetic " + kind + " sha256=" + digest)
 
 
 def _cancel_region(ctx, oid, key="Esc"):
@@ -292,6 +326,7 @@ def _motion(ctx, rid):
     ctx.expect(result.get("returncode") == 0 and found is not None, "clip motion analyzer succeeded")
     score = float(found.group(1))
     ctx.note("recording " + rid + " motion=" + str(score))
+    _retain(ctx, path, "mp4")
     ctx.expect(score > 1.0, "clip contains moving pattern, not a frozen desktop")
 
 

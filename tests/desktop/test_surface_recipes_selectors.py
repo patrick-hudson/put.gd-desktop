@@ -7,6 +7,10 @@ import json
 from pathlib import Path
 import sys
 import unittest
+import tempfile
+import base64
+import hashlib
+from types import SimpleNamespace
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +36,9 @@ class FakeContext(Context):
     profile = {}
 
     def __init__(self, heads=1):
+        self._output = tempfile.TemporaryDirectory(prefix="selectors-unit-")
+        self.out = Path(self._output.name)
+        self.target = SimpleNamespace(root="/tmp/selectors-unit")
         self.pattern_commands = []
         self.env = {"command": self.pattern_commands.append, "screens": [[0, 0, 1280, 800], [1280, 0, 1024, 768]][:heads],
                     "output_dir": "/tmp/sel-artifacts", "record_helper": "/opt/test/putgd-record"}
@@ -306,6 +313,10 @@ class FakeContext(Context):
                 self.selection[axis] += distance * (1 if direction in ("Right", "Down") else -1)
 
     def shell(self, script, timeout=60):
+        if "SD_RETAIN" in script:
+            data = b"\x89PNG\r\n\x1a\nunit" if "'png'" in script else b"\0\0\0\x10ftypunit"
+            return {"returncode": 0, "stdout": json.dumps({"data": base64.b64encode(data).decode(),
+                    "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()})}
         if "--motion" in script:
             return {"returncode": 0, "stdout": f"motion={self.motion}\n"}
         if "struct.unpack" in script:
@@ -369,6 +380,13 @@ class SelectorRecipes(unittest.TestCase):
             selectors.region_upload(ctx)
         self.assertFalse(ctx.inputs)
         self.assertEqual(ctx.document, ctx.original)
+
+    def test_functional_artifact_transport_must_match_its_hash(self):
+        ctx = FakeContext()
+        ctx.shell = lambda *a, **k: {"returncode": 0, "stdout": json.dumps({"data": "dW5pdA==", "bytes": 4, "sha256": "0" * 64})}
+        with self.assertRaisesRegex(RecipeFailed, "transport hash"):
+            selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
+        self.assertFalse((ctx.out / "functional").exists())
 
     def test_wayland_preparation_uses_core_consent_and_closes_monitor(self):
         ctx = FakeContext()
