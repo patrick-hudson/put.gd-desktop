@@ -1,0 +1,5028 @@
+{
+  "schemaVersion": 2,
+  "campaign": "surface-driver-history-r2-boat-development",
+  "entries": [
+    {
+      "interaction": "history.search",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=c24d4721-8794-4b19-9a86-1938ec134aeb; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.search/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.search/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.search",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:30:41Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.categories",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=1e6ad3dc-1626-40a4-aba0-61bde15504f7; operationId=03a62b0c-41ad-47bb-b824-9896e333fa27; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.categories/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.categories/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.categories",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:31:29Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.clear-filters",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=39063074-d93a-4c3d-bdce-99227bc664af; operationId=9dca3c94-c0b9-4244-9d63-7605bc9548a7; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.clear_filters/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.clear_filters/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.clear_filters",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:32:18Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.view-gallery",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=8c925ee8-48cb-42b2-9493-651a52e93c17; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.view_modes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.view_modes/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.view_modes",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:32:48Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.view-list",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=8c925ee8-48cb-42b2-9493-651a52e93c17; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.view_modes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.view_modes/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.view_modes",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:32:48Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.key-enter",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=e323d67d-6a04-4f79-8104-15414c824a8a; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.enter_details/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.enter_details/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.enter_details",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:23Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.preview",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=4924308b-f488-4260-8d7f-349290ac9335; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.preview/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.preview/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.preview",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:52Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.expand-preview",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=4924308b-f488-4260-8d7f-349290ac9335; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.preview/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.preview/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.preview",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:52Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.key-esc",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=4924308b-f488-4260-8d7f-349290ac9335; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.preview/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.preview/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.preview",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:52Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.receipt-details",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=5deb3bf6-62c5-4c76-bf37-f79018f7ad83; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.receipt_details/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.receipt_details/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.receipt_details",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:34:25Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.multi-select",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=a7decb7e-d4db-4934-9d44-11a25e7e9f7a; operationId=930a8aa3-d297-4d47-8f76-9846d8827ab3; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.multi_select/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.multi_select/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.multi_select",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:35:08Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.paging",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=ddcb9d8b-c7ac-4570-aaad-f8688b14b3a2; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.paging/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.paging/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.paging",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:35:44Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.key-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=4e412f9a-5f71-49e7-a96f-4e906f258a65; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.key_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.key_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.key_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:36:12Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.inspector-more",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=d4f15b05-e607-4192-b649-8f6647c7b04f; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.inspector_more/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.inspector_more/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.inspector_more",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:36:40Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.saved-copy-strip",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "Core fixture keyboard target is History after opening its chooser; foreground guard withheld input. Raw verdict=failed. operationId=9010b747-fa83-4695-9a5e-e506229d5064; input target 'history' is obscured by 'Save original file as' (window 73400337)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.saved_copy_strip/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.saved_copy_strip/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.saved_copy_strip",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:37:13Z",
+      "issue": 675
+    },
+    {
+      "interaction": "history.retry-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=badb1e2b-10f3-4126-9379-9de1cecf00b5; operationId=14a05f2b-97e7-4183-9a5f-1816d2270182; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.retry_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.retry_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.retry_upload",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:38:13Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.active-banner",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=a5d9486b-fb2c-4c24-95c5-311784c65a35; operationId=58d2c223-6ad6-48fc-a073-26499b94d573; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.active_banner/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.active_banner/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.active_banner",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:39:05Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.cancel-all-dialog",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=fd837674-a9fd-4bed-8014-2eaab9a64e6d; operationId=da560170-f3dc-4b63-b2ad-cd2a23d1f75a; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.cancel_all/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.cancel_all/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.cancel_all",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:39:59Z",
+      "issue": 718
+    },
+    {
+      "interaction": "confirm.history-cancel-all",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=fd837674-a9fd-4bed-8014-2eaab9a64e6d; operationId=da560170-f3dc-4b63-b2ad-cd2a23d1f75a; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.cancel_all/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.cancel_all/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.cancel_all",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:39:59Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=5fb01dff-67f1-4e07-9357-036ce4a44979; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.delete_remote/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.delete_remote/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.delete_remote",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:40:37Z",
+      "issue": 718
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=5fb01dff-67f1-4e07-9357-036ce4a44979; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.delete_remote/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.delete_remote/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.delete_remote",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:40:37Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.more-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=6f389ef2-95e5-44db-9bc4-51f9f89e6928; operationId=32e94ab2-17ff-496d-ae39-11828e3dd716; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.clear_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.clear_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.clear_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:41:25Z",
+      "issue": 718
+    },
+    {
+      "interaction": "confirm.history-clear",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=6f389ef2-95e5-44db-9bc4-51f9f89e6928; operationId=32e94ab2-17ff-496d-ae39-11828e3dd716; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.clear_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.clear_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.clear_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:41:25Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.header-drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=0bc5d276-e7f7-47fa-9df9-7ac1f29f3da3; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.header_drag/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.header_drag/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.header_drag",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:41:55Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.edge-resize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=3593aa14-aad3-4689-99d9-7cab89297a14; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.edge_resize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.edge_resize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.edge_resize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:42:25Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.minimum-size",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=3593aa14-aad3-4689-99d9-7cab89297a14; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.edge_resize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.edge_resize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.edge_resize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:42:25Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.window-maximize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=26c74e19-998b-45fa-aaae-c1f4cebf39cd; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.maximize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.maximize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.maximize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:42:53Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.window-minimize",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=42c813fa-2344-465d-bc50-95669b04b973; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.minimize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.minimize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.minimize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:21Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.window-close",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=63656153-c2cd-45c7-9aa8-e650d0b3b678; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.close_window/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.close_window/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.close_window",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:49Z",
+      "issue": 718
+    },
+    {
+      "interaction": "cli.version",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "Context.cli executed putgd-cli instead of putgd for --version, verified against both native responses. Raw verdict=failed. launcher prints version",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.846784, tolerance=0.025): actual=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/frames/history.cli_version/01-before.png reference=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/catalog/01-history-list.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.cli_version/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/history.cli_version/01-before.png",
+          "window": "history",
+          "reference": "01-history-list",
+          "distance": 0.8467835518734583,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/history.cli_version/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.cli_version",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:52Z",
+      "issue": 675
+    },
+    {
+      "interaction": "cli.launcher-history",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=104db0b1-e97d-48f5-a627-4c130b854831; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.launcher_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.launcher_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.launcher_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:21Z",
+      "issue": 718
+    },
+    {
+      "interaction": "cli.second-launch",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "note": "operationId=104db0b1-e97d-48f5-a627-4c130b854831; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.launcher_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.launcher_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.launcher_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:21Z",
+      "issue": 718
+    },
+    {
+      "interaction": "mcp.inspect",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.846784, tolerance=0.025): actual=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/frames/history.mcp_inspect/01-before.png reference=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/catalog/01-history-list.png; catalog mismatch (distance=0.846784, tolerance=0.025): actual=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/frames/history.mcp_inspect/02-after.png reference=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/catalog/01-history-list.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.mcp_inspect/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/history.mcp_inspect/01-before.png",
+          "window": "history",
+          "reference": "01-history-list",
+          "distance": 0.8467835518734583,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/history.mcp_inspect/02-after.png",
+          "window": "history",
+          "reference": "01-history-list",
+          "distance": 0.8467835518734583,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/history.mcp_inspect/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.mcp_inspect",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:33Z"
+    },
+    {
+      "interaction": "history.list",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_list/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_list/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_list",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:33Z"
+    },
+    {
+      "interaction": "history.filters",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs full date/MIME/destination/state fixture matrix and dynamic + Filter menu capture; clear-filters recipe exercises one upload filter only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_filters/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_filters/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_filters",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:33Z"
+    },
+    {
+      "interaction": "history.row-primary",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; baseline catalog alone cannot resolve all states.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_row_primary/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_row_primary/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_row_primary",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:34Z"
+    },
+    {
+      "interaction": "history.row-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants and verified runtime row menus are still missing (#675/#712); link opening stays with links.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_row_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_row_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_row_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:34Z"
+    },
+    {
+      "interaction": "history.edit-again",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Retained history images now exist; GUI Edit still needs a returned editor identity and an immutable-source oracle to prove the new editing session (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_edit_again/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_edit_again/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_edit_again",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:34Z"
+    },
+    {
+      "interaction": "history.retry-deletion",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_retry_deletion/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_retry_deletion/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_retry_deletion",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:35Z"
+    },
+    {
+      "interaction": "history.save-diagnostics",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle and verified runtime menu controls (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_save_diagnostics/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_save_diagnostics/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_save_diagnostics",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:35Z"
+    },
+    {
+      "interaction": "history.local-copy-settings",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_local_copy_settings/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_local_copy_settings/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_local_copy_settings",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:35Z"
+    },
+    {
+      "interaction": "history.empty-states",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_empty_states/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_empty_states/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_empty_states",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:36Z"
+    },
+    {
+      "interaction": "history.compact",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls after the #718 drag blocker is resolved.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_compact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_compact/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_compact",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:36Z"
+    },
+    {
+      "interaction": "shell.app-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs application-menu capture with dynamic actions; baseline history catalog contains its button only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_app_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_app_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_app_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:36Z"
+    },
+    {
+      "interaction": "shell.app-menu-capture-help",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs capture-help dialog control inventory and close oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_app_menu_capture_help/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_app_menu_capture_help/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_app_menu_capture_help",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:37Z"
+    },
+    {
+      "interaction": "shell.app-menu-quit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_app_menu_quit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_app_menu_quit/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_app_menu_quit",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:37Z"
+    },
+    {
+      "interaction": "shell.nav",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs mainNavigation tab hit rectangles and active main.page oracle; ui.viewState currently exposes state/appearance/captureRouting only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_nav/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_nav/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_nav",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:37Z"
+    },
+    {
+      "interaction": "shell.header-context-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs safe header hit target and custom system menu capture; menu is absent from baseline catalog.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_header_context_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_header_context_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_header_context_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:37Z"
+    },
+    {
+      "interaction": "shell.button-layout",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_button_layout/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_button_layout/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_button_layout",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:38Z"
+    },
+    {
+      "interaction": "shell.command-capture-region",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs capture selector fixture, selection bounds and artifact oracle; must complete/cancel real selector before next recipe.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_region/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_region/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_region",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:38Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs independent synthetic target window, real window selector completion and operation identity.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_window/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_window/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_window",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:38Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs local-output capture fixture and captured artifact/hash oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_desktop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_desktop",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:39Z"
+    },
+    {
+      "interaction": "shell.command-capture-edit",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs region selector completion fixture and inspectable editor ID.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_edit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_edit/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_edit",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:39Z"
+    },
+    {
+      "interaction": "shell.command-record",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs recording selector fixture and cleanup through recording.cancel with exact recording ID.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_record/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_record/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_record",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:39Z"
+    },
+    {
+      "interaction": "shell.command-upload-clipboard",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs independent native clipboard fixture with payload/hash oracle, reused from tray_progress.py.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_upload_clipboard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_upload_clipboard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_upload_clipboard",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:39Z"
+    },
+    {
+      "interaction": "shell.edit-source-menu",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_edit_source_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_edit_source_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_edit_source_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:40Z"
+    },
+    {
+      "interaction": "shell.drop-image",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_drop_image/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_drop_image/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_drop_image",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:40Z"
+    },
+    {
+      "interaction": "shell.command-tooltips",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_tooltips/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_tooltips/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_tooltips",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:40Z"
+    },
+    {
+      "interaction": "shell.narrow-labels",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_narrow_labels/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_narrow_labels/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_narrow_labels",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:41Z"
+    },
+    {
+      "interaction": "shell.output-summary",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs output-summary popup capture and Settings Capture navigation oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_output_summary/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_output_summary/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_output_summary",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:41Z"
+    },
+    {
+      "interaction": "shell.output-warning",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "settings-no-output now supplies configuration; current warning-strip controls and Settings Capture navigation still need live shell projection (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_output_warning/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_output_warning/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_output_warning",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:42Z"
+    },
+    {
+      "interaction": "shell.action-recovery-banner",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_action_recovery_banner/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_action_recovery_banner/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_action_recovery_banner",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:42Z"
+    },
+    {
+      "interaction": "shell.autosave-status",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs accepted/refused autosave fixtures and saved-status accessible projection.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_autosave_status/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_autosave_status/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_autosave_status",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:42Z"
+    },
+    {
+      "interaction": "shell.edit-chooser-failure",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_edit_chooser_failure/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_edit_chooser_failure/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_edit_chooser_failure",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:42Z"
+    },
+    {
+      "interaction": "shell.first-launch",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "app-profile(first_launch=True) now provides lifecycle reset; the full initial Settings/no-output contract still needs live selected-page and warning-strip assertions (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_first_launch/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_first_launch/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_first_launch",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:43Z"
+    },
+    {
+      "interaction": "cli.launcher-background",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Launcher routing is implemented; background start still needs a stopped-resident/tray-absent lifecycle fixture and the 10-second fallback oracle (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_cli_launcher_background/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_cli_launcher_background/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_cli_launcher_background",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:43Z"
+    },
+    {
+      "interaction": "cli.action-invoke",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs native source and six action completion fixtures; capture/record selectors cannot be left active.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_cli_action_invoke/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_cli_action_invoke/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_cli_action_invoke",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:43Z"
+    },
+    {
+      "interaction": "cli.history",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_cli_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_cli_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_cli_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:43Z"
+    },
+    {
+      "interaction": "mcp.perform-action",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs native source and six action completion fixtures for perform_action.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_mcp_perform_action/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_mcp_perform_action/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_mcp_perform_action",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:44Z"
+    },
+    {
+      "interaction": "mcp.operations",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_mcp_operations/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_mcp_operations/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_mcp_operations",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:44Z"
+    },
+    {
+      "interaction": "mcp.history",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/c2-r1/receipt.json",
+      "issue": 675,
+      "note": "History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-c2",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_mcp_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_mcp_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_mcp_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:44Z"
+    },
+    {
+      "interaction": "history.search",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=0735b59f-12f2-4e56-b8e4-4d9c940aa171; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.search/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.search/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.search",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:30:30Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.categories",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=1a7c72e8-2fbf-41d8-9826-6901dab5dc64; operationId=7ae594f2-d53b-434a-8512-c52d8b95754e; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.categories/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.categories/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.categories",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:31:18Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.clear-filters",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=2229868c-30fc-4484-9cd7-245220f34b6b; operationId=9ec33b8b-aada-40b9-b6ce-84387dec76ef; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.clear_filters/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.clear_filters/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.clear_filters",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:32:06Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.view-gallery",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=931ab9a2-15af-4e65-9f23-8d5d1d9fe927; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.view_modes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.view_modes/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.view_modes",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:32:34Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.view-list",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=931ab9a2-15af-4e65-9f23-8d5d1d9fe927; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.view_modes/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.view_modes/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.view_modes",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:32:34Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.key-enter",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=dce48d1a-a975-440c-9200-93f862ad22ce; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.enter_details/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.enter_details/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.enter_details",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:03Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.preview",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=2de11c49-a908-47fe-8ccd-c46e51ddbae6; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.preview/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.preview/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.preview",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:35Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.expand-preview",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=2de11c49-a908-47fe-8ccd-c46e51ddbae6; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.preview/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.preview/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.preview",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:35Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.key-esc",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=2de11c49-a908-47fe-8ccd-c46e51ddbae6; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.preview/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.preview/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.preview",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:33:35Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.receipt-details",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=e8ab6e69-ad95-4f53-a1d3-137893a76647; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.receipt_details/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.receipt_details/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.receipt_details",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:34:04Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.multi-select",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=9ad5db19-29a6-4383-a023-41d9acb66ae1; operationId=4a4432e1-390a-487c-813b-60da498a7df8; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.multi_select/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.multi_select/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.multi_select",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:34:41Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.paging",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=4eae1765-cea1-4eb2-85c9-ef101b5b5954; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.paging/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.paging/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.paging",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:35:15Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.key-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=e5087ecd-fef7-49d7-b81f-201a2af1f5eb; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.key_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.key_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.key_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:35:46Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.inspector-more",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=e550fe9a-f9a9-4f46-a95d-59779330d8a3; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.inspector_more/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.inspector_more/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.inspector_more",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:36:18Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.saved-copy-strip",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=ca35fc73-af1b-480f-8030-601ff4e9d168; foreground: RuntimeError: Wayland compositor focus/stacking witness unavailable; configure focus.compositor_script",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.saved_copy_strip/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.saved_copy_strip/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.saved_copy_strip",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:36:52Z",
+      "issue": 705
+    },
+    {
+      "interaction": "history.retry-upload",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=260b7f86-8300-4a36-b6aa-b57048e8148f; operationId=b513213d-0492-4042-88c9-3ee25ee39e09; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.retry_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.retry_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.retry_upload",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:37:50Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.active-banner",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=b9548149-8fc4-4a65-b6d9-1b310727ba91; operationId=e26a704f-3880-4e2b-b498-563f45877901; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.active_banner/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.active_banner/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.active_banner",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:38:41Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.cancel-all-dialog",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=af7a212b-1971-4b57-a008-7d8b32834814; operationId=09c289ee-0ddb-4f62-bcbf-e12ed18664bd; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.cancel_all/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.cancel_all/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.cancel_all",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:39:31Z",
+      "issue": 718
+    },
+    {
+      "interaction": "confirm.history-cancel-all",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=af7a212b-1971-4b57-a008-7d8b32834814; operationId=09c289ee-0ddb-4f62-bcbf-e12ed18664bd; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.cancel_all/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.cancel_all/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.cancel_all",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:39:31Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=2e14dd5c-7e87-4a99-bb72-499083697af4; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.delete_remote/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.delete_remote/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.delete_remote",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:40:11Z",
+      "issue": 718
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=2e14dd5c-7e87-4a99-bb72-499083697af4; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.delete_remote/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.delete_remote/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.delete_remote",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:40:11Z",
+      "issue": 718
+    },
+    {
+      "interaction": "history.more-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=845dc17e-3a43-437b-a502-1bed057729f4; operationId=2cad244c-bd66-4773-85b7-16f18d280178; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.clear_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.clear_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.clear_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:40:59Z",
+      "issue": 718
+    },
+    {
+      "interaction": "confirm.history-clear",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=845dc17e-3a43-437b-a502-1bed057729f4; operationId=2cad244c-bd66-4773-85b7-16f18d280178; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.clear_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.clear_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.clear_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:40:59Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.header-drag",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=01d2aa8b-cf7c-4ac6-a760-73815e1f253a; windows: ValueError: unknown accessibility query keys: title",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.header_drag/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.header_drag/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.header_drag",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:41:23Z",
+      "issue": 675
+    },
+    {
+      "interaction": "shell.edge-resize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=eb6212cd-5653-4561-9e87-71a01b174f1c; windows: ValueError: unknown accessibility query keys: title",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.edge_resize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.edge_resize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.edge_resize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:41:46Z",
+      "issue": 675
+    },
+    {
+      "interaction": "shell.minimum-size",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=eb6212cd-5653-4561-9e87-71a01b174f1c; windows: ValueError: unknown accessibility query keys: title",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.edge_resize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.edge_resize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.edge_resize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:41:46Z",
+      "issue": 675
+    },
+    {
+      "interaction": "shell.window-maximize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=9bfe6d3e-2a5d-403a-8fea-017e912dce0b; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.maximize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.maximize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.maximize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:42:18Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.window-minimize",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=6772109b-137b-482c-aa71-857efefd64a7; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.minimize/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.minimize/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.minimize",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:42:50Z",
+      "issue": 718
+    },
+    {
+      "interaction": "shell.window-close",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=9520d805-5990-4e9b-add0-208179f50c1c; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.close_window/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.close_window/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.close_window",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:20Z",
+      "issue": 718
+    },
+    {
+      "interaction": "cli.version",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "Context.cli executed putgd-cli instead of putgd for --version, verified against both native responses. Raw verdict=failed. launcher prints version",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.623764, tolerance=0.025): actual=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/frames/history.cli_version/01-before.png reference=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/catalog/01-history-list.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.cli_version/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/history.cli_version/01-before.png",
+          "window": "history",
+          "reference": "01-history-list",
+          "distance": 0.6237635524136192,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/history.cli_version/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.cli_version",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:25Z",
+      "issue": 675
+    },
+    {
+      "interaction": "cli.launcher-history",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=95a0d53e-b031-4e23-bdad-f48f0ab59bd8; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.launcher_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.launcher_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.launcher_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:59Z",
+      "issue": 718
+    },
+    {
+      "interaction": "cli.second-launch",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "note": "operationId=95a0d53e-b031-4e23-bdad-f48f0ab59bd8; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.launcher_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.launcher_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.launcher_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:43:59Z",
+      "issue": 718
+    },
+    {
+      "interaction": "mcp.inspect",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.623765, tolerance=0.025): actual=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/frames/history.mcp_inspect/01-before.png reference=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/catalog/01-history-list.png; catalog mismatch (distance=0.623765, tolerance=0.025): actual=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/frames/history.mcp_inspect/02-after.png reference=/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/catalog/01-history-list.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.mcp_inspect/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/history.mcp_inspect/01-before.png",
+          "window": "history",
+          "reference": "01-history-list",
+          "distance": 0.6237646406129027,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/history.mcp_inspect/02-after.png",
+          "window": "history",
+          "reference": "01-history-list",
+          "distance": 0.6237646406129027,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/history.mcp_inspect/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.mcp_inspect",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:07Z"
+    },
+    {
+      "interaction": "history.list",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_list/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_list/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_list",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:08Z"
+    },
+    {
+      "interaction": "history.filters",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs full date/MIME/destination/state fixture matrix and dynamic + Filter menu capture; clear-filters recipe exercises one upload filter only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_filters/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_filters/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_filters",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:08Z"
+    },
+    {
+      "interaction": "history.row-primary",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; baseline catalog alone cannot resolve all states.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_row_primary/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_row_primary/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_row_primary",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:09Z"
+    },
+    {
+      "interaction": "history.row-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants and verified runtime row menus are still missing (#675/#712); link opening stays with links.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_row_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_row_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_row_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:09Z"
+    },
+    {
+      "interaction": "history.edit-again",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Retained history images now exist; GUI Edit still needs a returned editor identity and an immutable-source oracle to prove the new editing session (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_edit_again/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_edit_again/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_edit_again",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:09Z"
+    },
+    {
+      "interaction": "history.retry-deletion",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_retry_deletion/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_retry_deletion/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_retry_deletion",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:10Z"
+    },
+    {
+      "interaction": "history.save-diagnostics",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle and verified runtime menu controls (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_save_diagnostics/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_save_diagnostics/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_save_diagnostics",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:10Z"
+    },
+    {
+      "interaction": "history.local-copy-settings",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_local_copy_settings/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_local_copy_settings/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_local_copy_settings",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:11Z"
+    },
+    {
+      "interaction": "history.empty-states",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_empty_states/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_empty_states/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_empty_states",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:11Z"
+    },
+    {
+      "interaction": "history.compact",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls after the #718 drag blocker is resolved.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_history_compact/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_history_compact/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_history_compact",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:11Z"
+    },
+    {
+      "interaction": "shell.app-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs application-menu capture with dynamic actions; baseline history catalog contains its button only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_app_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_app_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_app_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:12Z"
+    },
+    {
+      "interaction": "shell.app-menu-capture-help",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs capture-help dialog control inventory and close oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_app_menu_capture_help/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_app_menu_capture_help/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_app_menu_capture_help",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:12Z"
+    },
+    {
+      "interaction": "shell.app-menu-quit",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_app_menu_quit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_app_menu_quit/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_app_menu_quit",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:13Z"
+    },
+    {
+      "interaction": "shell.nav",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs mainNavigation tab hit rectangles and active main.page oracle; ui.viewState currently exposes state/appearance/captureRouting only.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_nav/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_nav/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_nav",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:14Z"
+    },
+    {
+      "interaction": "shell.header-context-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs safe header hit target and custom system menu capture; menu is absent from baseline catalog.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_header_context_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_header_context_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_header_context_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:14Z"
+    },
+    {
+      "interaction": "shell.button-layout",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_button_layout/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_button_layout/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_button_layout",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:15Z"
+    },
+    {
+      "interaction": "shell.command-capture-region",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs capture selector fixture, selection bounds and artifact oracle; must complete/cancel real selector before next recipe.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_region/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_region/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_region",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:15Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs independent synthetic target window, real window selector completion and operation identity.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_window/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_window/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_window",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:16Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs local-output capture fixture and captured artifact/hash oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_desktop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_desktop",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:16Z"
+    },
+    {
+      "interaction": "shell.command-capture-edit",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs region selector completion fixture and inspectable editor ID.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_capture_edit/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_capture_edit/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_capture_edit",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:17Z"
+    },
+    {
+      "interaction": "shell.command-record",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs recording selector fixture and cleanup through recording.cancel with exact recording ID.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_record/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_record/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_record",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:17Z"
+    },
+    {
+      "interaction": "shell.command-upload-clipboard",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs independent native clipboard fixture with payload/hash oracle, reused from tray_progress.py.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_upload_clipboard/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_upload_clipboard/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_upload_clipboard",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:18Z"
+    },
+    {
+      "interaction": "shell.edit-source-menu",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_edit_source_menu/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_edit_source_menu/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_edit_source_menu",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:18Z"
+    },
+    {
+      "interaction": "shell.drop-image",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_drop_image/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_drop_image/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_drop_image",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:19Z"
+    },
+    {
+      "interaction": "shell.command-tooltips",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_command_tooltips/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_command_tooltips/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_command_tooltips",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:19Z"
+    },
+    {
+      "interaction": "shell.narrow-labels",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_narrow_labels/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_narrow_labels/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_narrow_labels",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:20Z"
+    },
+    {
+      "interaction": "shell.output-summary",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs output-summary popup capture and Settings Capture navigation oracle.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_output_summary/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_output_summary/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_output_summary",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:20Z"
+    },
+    {
+      "interaction": "shell.output-warning",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "settings-no-output now supplies configuration; current warning-strip controls and Settings Capture navigation still need live shell projection (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_output_warning/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_output_warning/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_output_warning",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:21Z"
+    },
+    {
+      "interaction": "shell.action-recovery-banner",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_action_recovery_banner/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_action_recovery_banner/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_action_recovery_banner",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:21Z"
+    },
+    {
+      "interaction": "shell.autosave-status",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs accepted/refused autosave fixtures and saved-status accessible projection.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_autosave_status/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_autosave_status/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_autosave_status",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:22Z"
+    },
+    {
+      "interaction": "shell.edit-chooser-failure",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_edit_chooser_failure/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_edit_chooser_failure/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_edit_chooser_failure",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:22Z"
+    },
+    {
+      "interaction": "shell.first-launch",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "app-profile(first_launch=True) now provides lifecycle reset; the full initial Settings/no-output contract still needs live selected-page and warning-strip assertions (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_shell_first_launch/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_shell_first_launch/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_shell_first_launch",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:22Z"
+    },
+    {
+      "interaction": "cli.launcher-background",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Launcher routing is implemented; background start still needs a stopped-resident/tray-absent lifecycle fixture and the 10-second fallback oracle (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_cli_launcher_background/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_cli_launcher_background/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_cli_launcher_background",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:23Z"
+    },
+    {
+      "interaction": "cli.action-invoke",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs native source and six action completion fixtures; capture/record selectors cannot be left active.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_cli_action_invoke/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_cli_action_invoke/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_cli_action_invoke",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:24Z"
+    },
+    {
+      "interaction": "cli.history",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_cli_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_cli_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_cli_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:24Z"
+    },
+    {
+      "interaction": "mcp.perform-action",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Needs native source and six action completion fixtures for perform_action.",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_mcp_perform_action/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_mcp_perform_action/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_mcp_perform_action",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:25Z"
+    },
+    {
+      "interaction": "mcp.operations",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_mcp_operations/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_mcp_operations/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_mcp_operations",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:25Z"
+    },
+    {
+      "interaction": "mcp.history",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/.t3/worktrees/put.gd/t3-3f45900e/work/h2/g-r1/receipt.json",
+      "issue": 675,
+      "note": "History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane (#675).",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "history-r2-g",
+      "destination": "local",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/history.blocked_mcp_history/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/history.blocked_mcp_history/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "history.blocked_mcp_history",
+      "build": "fd261f1aa767dad3300be70ef34f3085323de0b2",
+      "at": "2026-10-30T04:44:26Z"
+    }
+  ]
+}
