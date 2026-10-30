@@ -1,58 +1,52 @@
-"""Guest-only synthetic collections; never change a desktop's default wallet.
+"""Guest-only Secret Service for synthetic KDE loopback credentials.
 
-KDE's compatibility service exposes Secret Service but not GNOME's private
-collection control API. Create a unique blank wallet through KWallet's PAM
-interface, then use libsecret for this private resident only. The real desktop
-bus/portal and its default aliases remain intact.
+No default KWallet, alias, real item or desktop identity is changed. The distro
+GNOME daemon supplies the Secret Service API on an otherwise unowned bus name,
+with private storage and an exact PID/start-time cleanup lease.
 """
+from ..api import RecipeBlocked
 
-KDE_CREATE = '''
-# Activate the KDE compatibility service, not org.freedesktop.secrets (which
-# ksecretd does not advertise as activatable).
-bus.call_sync('org.kde.secretservicecompat','/','org.freedesktop.DBus.Peer','Ping',None,None,Gio.DBusCallFlags.NONE,20000,None)
-wallet=LABEL
-assert wallet.startswith('putgd-fixture-') and len(wallet)==46
-wallets=call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
-assert wallet not in wallets
-folder=Path.home()/'.local/share/kwalletd'
-folder.mkdir(mode=0o700,parents=True,exist_ok=True)
-salt=folder/(wallet+'.salt')
-wallet_file=folder/(wallet+'.kwl')
-assert not wallet_file.exists() and not salt.exists()
-import hashlib,time,stat
-with open(os.open(salt,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as f:f.write(os.urandom(56))
-identity=salt.stat()
-digest=hashlib.pbkdf2_hmac('sha512',b'',salt.read_bytes(),50000,dklen=56)
-try:
- call('/ksecretd','org.kde.KWallet','pamOpen',GLib.Variant('(sayi)',(wallet,digest,0)),'()')
- deadline=time.monotonic()+20
- while wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]:
-  assert time.monotonic()<deadline,'KWallet did not create the fixture wallet'
-  time.sleep(.1)
- # Resolve only our exact label: KDE's object-path escaping varies by version.
- candidates=call(service,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Service','Collections')),'(v)')[0]
- found=[p for p in candidates if call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]==wallet]
- assert len(found)==1
- collection=found[0]
-except BaseException:
- # A partial creation may have a wallet: remove only the unique owned name.
- if wallet in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]:
-  assert call('/ksecretd','org.kde.KWallet','networkWallet',None,'(s)')[0]!=wallet, 'retain a default wallet'
-  assert call('/ksecretd','org.kde.KWallet','localWallet',None,'(s)')[0]!=wallet, 'retain a default wallet'
-  assert call('/ksecretd','org.kde.KWallet','deleteWallet',GLib.Variant('(s)',(wallet,)),'(i)')[0]==0
- if salt.exists():
-  current=salt.lstat();assert (current.st_dev,current.st_ino)==(identity.st_dev,identity.st_ino)
-  salt.unlink()
- raise
+OWNER = '''import json
+import gi
+gi.require_version('Gio','2.0')
+from gi.repository import Gio,GLib
+bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+def call(method,signature,args,reply):
+ return bus.call_sync('org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus',method,
+  GLib.Variant(signature,args),GLib.VariantType(reply),Gio.DBusCallFlags.NONE,3000,None).unpack()[0]
+name='org.freedesktop.secrets'
+owner=call('GetNameOwner','(s)',(name,),'(s)') if call('NameHasOwner','(s)',(name,),'(b)') else None
+pid=call('GetConnectionUnixProcessID','(s)',(owner,),'(u)') if owner else None
+print(json.dumps({'owner':owner,'pid':pid}))
 '''
 
-KDE_SALT_CLEANUP = '''
-import stat
-p=Path.home()/'.local/share/kwalletd'/(LABEL+'.salt')
-if p.exists():
- assert LABEL not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0], 'owned wallet was not deleted; retain its salt'
- s=p.lstat()
- assert stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and not s.st_mode&0o077
- assert (s.st_dev,s.st_ino)==(SALT_DEVICE,SALT_INODE)
- p.unlink()
-'''
+
+def isolated_service(scope):
+    ctx=scope.ctx
+    if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
+        raise RecipeBlocked('isolated Secret Service requires a disposable nested guest',issue=919)
+    if scope.json(OWNER)['owner']:
+        raise RecipeBlocked('isolated Secret Service refuses an already owned bus name; existing wallets are preserved',issue=919)
+    if ctx.shell('command -v gnome-keyring-daemon >/dev/null')['returncode']:
+        raise RecipeBlocked('KDE fixture needs profiles/provision-probes.sh --keyring-overlay in the disposable overlay',issue=919)
+    scope.initialize()
+    root=scope.root+'/secret-service'
+    from ..target import checked_socket
+    checked_socket(root+'/control/control')
+    scope.python('from pathlib import Path\n'+
+                 '\n'.join('Path('+repr(root+'/'+part)+').mkdir(mode=0o700,parents=True,exist_ok=False)'
+                           for part in ('config','data','cache','control')))
+    identity=scope.launch(['gnome-keyring-daemon','--foreground','--components=secrets','--control-directory='+root+'/control'],
+                          environment={'XDG_CONFIG_HOME':root+'/config','XDG_DATA_HOME':root+'/data',
+                                       'XDG_CACHE_HOME':root+'/cache'},name='secret-service')
+    def ready():
+        owner=scope.json(OWNER)
+        if owner['owner'] and owner['pid']!=identity['pid']:
+            raise RecipeBlocked('Secret Service name was acquired by another process; no collection was created',issue=919)
+        return owner['pid']==identity['pid']
+    ctx.wait(ready,'owned isolated Secret Service',timeout=10)
+    # QtKeychain 0.15 has no QTKEYCHAIN_BACKEND override. Its unknown-version
+    # branch chooses libsecret. This hint belongs only to the private resident:
+    # XDG_CURRENT_DESKTOP=KDE and the real Wayland/KWin adapter remain intact.
+    scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
+    return identity

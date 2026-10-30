@@ -9,6 +9,12 @@
 # overlay. It is never sealed into a golden or snapshot; it fails closed when
 # the package or the gtksink element is unavailable.
 set -eu
+if [ "${1:-}" = --keyring-overlay ]; then
+  sudo -n apt-get update
+  sudo -n apt-get install -y --no-install-recommends gnome-keyring python3-gi
+  command -v gnome-keyring-daemon >/dev/null
+  exit 0
+fi
 if [ "${1:-}" = --recording-overlay ]; then
   sudo -n apt-get update
   sudo -n apt-get install -y --no-install-recommends \
@@ -17,7 +23,7 @@ if [ "${1:-}" = --recording-overlay ]; then
   exit 0
 fi
 if [ "${1:-}" != --disposable ]; then
-  echo 'usage: provision-probes.sh --disposable | --recording-overlay (disposable guests and overlays only; never run on goldens)' >&2
+  echo 'usage: provision-probes.sh --disposable | --recording-overlay | --keyring-overlay (disposable guests and overlays only; never run on goldens)' >&2
   exit 2
 fi
 sudo -n apt-get update

@@ -1,14 +1,15 @@
 """Loopback-only destination profiles and an owned blank-password collection.
 
-Uses provider-specific collection creation without moving the desktop's default
-alias or reading any existing item.
+Uses unique collections without changing a default alias. KDE guests use a
+fixture-owned Secret Service with private storage and an exact process identity;
+the desktop's KWallet is never opened or modified.
 """
 import json
 from pathlib import Path
 
 from ..api import RecipeBlocked
 from .base import Fixture
-from .keyring import KDE_CREATE, KDE_SALT_CLEANUP
+from .keyring import isolated_service
 
 # Query/return metadata only. Fake material is generated/read solely on target.
 KEYRING = '''import base64,json,os,secrets
@@ -28,23 +29,17 @@ def fake_keyring(scope):
     if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('fake credential collection is restricted to a disposable nested guest',issue=666)
     scope.initialize()
+    if ctx.profile.get('compositor',{}).get('kind')=='kwin-script':
+        isolated_service(scope)
     reference='putgd-lab-'+str(__import__('uuid').uuid4())
     path=scope.root+'/fake-input.json'
     scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000)
-    kde=ctx.profile.get('compositor',{}).get('kind')=='kwin-script'
-    label=('putgd-fixture-'+scope.token) if kde else ('putgd fixture '+scope.token)
-    create=KDE_CREATE if kde else '''
-collection=call(service,'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface','CreateWithMasterPassword',
- GLib.Variant('(a{sv}(oayays))',({'org.freedesktop.Secret.Collection.Label':GLib.Variant('s',LABEL)},(session,b'',b'','text/plain'))),'(o)')[0]
-'''
     # No default-alias mutation: QtKeychain's libsecret lookup searches the
     # unique reference in unlocked collections. Each item is explicitly owned.
-    created=scope.json((KEYRING+('''
-bus.call_sync('org.kde.secretservicecompat','/','org.freedesktop.DBus.Peer','Ping',None,None,Gio.DBusCallFlags.NONE,20000,None)
-''' if kde else '')+'''
-default=call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]
+    created=scope.json(KEYRING+'''
 session=call(service,'org.freedesktop.Secret.Service','OpenSession',GLib.Variant('(sv)',('plain',GLib.Variant('s',''))),'(vo)')[1]
-'''+create+'''
+collection=call(service,'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface','CreateWithMasterPassword',
+ GLib.Variant('(a{sv}(oayays))',({'org.freedesktop.Secret.Collection.Label':GLib.Variant('s',LABEL)},(session,b'',b'','text/plain'))),'(o)')[0]
 try:
  value={'accessKey':'SYNTHETIC'+secrets.token_hex(12),'secretKey':'synthetic-'+secrets.token_hex(24),'sessionToken':''}
  with open(os.open(PATH,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as f:json.dump(value,f)
@@ -54,41 +49,19 @@ try:
   GLib.Variant('(a{sv}(oayays)b)',({'org.freedesktop.Secret.Item.Label':GLib.Variant('s',LABEL),
   'org.freedesktop.Secret.Item.Attributes':GLib.Variant('a{ss}',attrs)},(session,b'',secret,'text/plain'),False)),'(oo)')
  assert prompt=='/'
- assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]==default
 except BaseException:
- try:
-  current=call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]
-  assert current!=collection, 'refuse deleting a default collection after setup failure'
-  assert call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]=='/'
- finally:
-  if KDE and salt.exists():
-   assert wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
-   current=salt.lstat();assert (current.st_dev,current.st_ino)==(identity.st_dev,identity.st_ino)
-   salt.unlink()
+ call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')
  raise
-metadata={'collection':collection,'reference':REFERENCE}
-if KDE:metadata.update(salt_device=identity.st_dev,salt_inode=identity.st_ino)
-print(json.dumps(metadata))
-''').replace('KDE',repr(kde)).replace('LABEL',repr(label)).replace('PATH',repr(path)).replace('REFERENCE',repr(reference)))
+print(json.dumps({'collection':collection,'reference':REFERENCE}))
+'''.replace('LABEL',repr('putgd fixture '+scope.token)).replace('PATH',repr(path)).replace('REFERENCE',repr(reference)))
     scope.defer('fake keyring collection',lambda:scope.python(KEYRING+'''
 p=COLLECTION
 label=call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]
 assert label==LABEL
-default=call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]
-assert default!=p, 'refuse deleting a default collection'
+assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]!=p
 prompt=call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]
 assert prompt=='/'
-assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]==default
-'''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr(label))))
-    if kde:
-        # Collection Delete removes only that wallet; verify the salt inode too.
-        scope.defer('owned wallet salt',lambda:scope.python(KEYRING+KDE_SALT_CLEANUP.replace('LABEL',repr(label))
-                    .replace('SALT_DEVICE',repr(created['salt_device'])).replace('SALT_INODE',repr(created['salt_inode']))),priority=-10)
-        # QtKeychain 0.15 lacks QTKEYCHAIN_BACKEND. Its unknown-version
-        # branch selects libsecret; change only this private resident's hint.
-        # The actual KDE desktop, Wayland transport and native adapter stay
-        # selected by XDG_CURRENT_DESKTOP=KDE, verified by the driver.
-        scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
+'''.replace('COLLECTION',repr(created['collection'])).replace('LABEL',repr('putgd fixture '+scope.token))))
     return Fixture(reference=reference,collection=created['collection'],credentials_file=path,blank_password=True,private=True)
 
 

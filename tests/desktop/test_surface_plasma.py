@@ -1,8 +1,6 @@
 """Plasma guards and guest-only provisioning. Mocks are not desktop evidence."""
 from pathlib import Path
 import sys
-import tempfile
-import os
 import unittest
 from unittest.mock import Mock, patch
 from types import SimpleNamespace
@@ -13,7 +11,6 @@ from tools.lab.surface_driver.compositor import stage_plasma_accessibility as st
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.fixtures import destinations
 from tools.lab.surface_driver.api import RecipeBlocked
-from tests.desktop.test_surface_fixtures import FixtureCase
 from tests.desktop import test_surface_shell_health as shell_tests
 
 
@@ -113,79 +110,53 @@ class Provisioning(unittest.TestCase):
             session.assert_not_called()
 
 
-class KDEKeyring(FixtureCase):
-    def test_kde_creates_unique_wallet_and_scopes_backend_to_private_resident(self):
-        scope=self.ctx.manager.scope;scope.initialize();self.ctx.profile['compositor']={'kind':'kwin-script'}
-        scripts=[]
-        with patch.object(scope,'json',side_effect=lambda s:scripts.append(s) or {'collection':'/owned','salt_device':1,'salt_inode':2}),\
-             patch.object(scope,'python',side_effect=lambda s:scripts.append(s) or ''),patch.object(scope,'restart') as restart:
-            self.ctx.fixture('fake-keyring');self.ctx.manager.close()
-            restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
-        source='\n'.join(scripts)
-        self.assertIn('org.kde.secretservicecompat',source);self.assertIn("'pamOpen'",source)
-        self.assertIn('putgd-fixture-'+scope.token,source)
-        self.assertNotIn('CreateWithMasterPassword',source)
-        self.assertNotIn('SetAlias',source);self.assertNotIn('GetSecret',source)
-        self.assertIn('(s.st_dev,s.st_ino)==(1,2)',source)
-        self.assertIn("'Delete'",source)
+class IsolatedSecretService(unittest.TestCase):
+    def scope(self,owners):
+        ctx=SimpleNamespace(placement='boat',profile={'guest':'kde-wayland'},
+                            shell=Mock(return_value={'returncode':0}),wait=lambda ready,*a,**k:ready())
+        return SimpleNamespace(ctx=ctx,root='/tmp/private/fx-owned',json=Mock(side_effect=owners),
+                               initialize=Mock(),python=Mock(),launch=Mock(return_value={'pid':42,'start':'100'}),restart=Mock())
 
-    def test_physical_fixture_refuses_before_service_activation(self):
-        self.ctx.placement='native';scope=self.ctx.manager.scope
-        with patch.object(scope,'json') as call:
-            with self.assertRaises(RecipeBlocked):destinations.fake_keyring(scope)
-            call.assert_not_called()
+    def test_unowned_name_gets_private_daemon_storage_and_scoped_backend(self):
+        from tools.lab.surface_driver.fixtures.keyring import isolated_service
+        scope=self.scope([{'owner':None,'pid':None},{'owner':':1.42','pid':42}])
+        self.assertEqual(isolated_service(scope),{'pid':42,'start':'100'})
+        args=scope.launch.call_args
+        self.assertIn('--foreground',args.args[0]);self.assertIn('--components=secrets',args.args[0])
+        self.assertTrue(all(p.startswith(scope.root+'/secret-service/') for p in args.kwargs['environment'].values()))
+        scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
+        self.assertFalse(any('SetAlias' in call.args[0] for call in scope.json.call_args_list))
 
+    def test_existing_service_is_preserved_before_launch_or_storage_mutation(self):
+        from tools.lab.surface_driver.fixtures.keyring import isolated_service
+        scope=self.scope([{'owner':':1.99','pid':99}])
+        with self.assertRaisesRegex(RecipeBlocked,'already owned'):isolated_service(scope)
+        scope.launch.assert_not_called();scope.python.assert_not_called();scope.restart.assert_not_called()
 
-class WalletScript(unittest.TestCase):
-    def run_create(self, *, collision=False, resolve=True, default=False):
-        from tools.lab.surface_driver.fixtures.keyring import KDE_CREATE
-        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
-        home=Path(self.temp.name);self.wallet='putgd-fixture-'+'a'*32
-        state={'wallets':[self.wallet] if collision else []};calls=[]
-        def call(path,iface,method,params,reply):
-            calls.append((path,method,params))
-            if method=='wallets':return (state['wallets'],)
-            if method in ('networkWallet','localWallet'):return (self.wallet if default else 'default-wallet',)
-            if method=='pamOpen':state['wallets']=[self.wallet];return ()
-            if method=='deleteWallet':state['wallets']=[];return (0,)
-            if method=='Get':
-                return (['/collection/owned'] if resolve else [],) if params[1]=='Collections' else (self.wallet,)
-            raise AssertionError('unexpected service operation: '+method)
-        namespace=dict(bus=Mock(),Gio=SimpleNamespace(DBusCallFlags=SimpleNamespace(NONE=0)),
-                       GLib=SimpleNamespace(Variant=lambda signature,value:value),call=call,
-                       LABEL=self.wallet,Path=Path,os=os,service='/org/freedesktop/secrets')
-        with patch.object(Path,'home',return_value=home):
-            try:exec(KDE_CREATE,namespace)
-            except AssertionError:
-                self.assertTrue(collision or not resolve)
-            else:self.assertFalse(collision or not resolve)
-        return home,namespace,calls,state
+    def test_racing_foreign_owner_never_receives_fixture_items(self):
+        from tools.lab.surface_driver.fixtures.keyring import isolated_service
+        scope=self.scope([{'owner':None,'pid':None},{'owner':':1.99','pid':99}])
+        with self.assertRaisesRegex(RecipeBlocked,'another process'):isolated_service(scope)
+        scope.restart.assert_not_called()
 
-    def test_native_wallet_creation_uses_new_salt_and_only_owned_label(self):
-        home,namespace,calls,state=self.run_create()
-        salt=home/'.local/share/kwalletd'/(self.wallet+'.salt')
-        self.assertEqual(len(salt.read_bytes()),56);self.assertEqual(salt.stat().st_mode&0o777,0o600)
-        self.assertEqual(namespace['collection'],'/collection/owned')
-        self.assertTrue(all(args[0]==self.wallet for _,m,args in calls if m=='pamOpen'))
-        self.assertFalse(any(m in ('SetAlias','ReadSecret','GetSecret') for _,m,_ in calls))
+    def test_physical_session_refuses_before_bus_access(self):
+        from tools.lab.surface_driver.fixtures.keyring import isolated_service
+        scope=self.scope([]);scope.ctx.placement='native'
+        with self.assertRaisesRegex(RecipeBlocked,'disposable'):isolated_service(scope)
+        scope.json.assert_not_called();scope.launch.assert_not_called()
 
-    def test_collision_refuses_without_creating_salt_or_opening_wallet(self):
-        home,_,calls,_=self.run_create(collision=True)
-        self.assertFalse((home/'.local/share/kwalletd').exists())
-        self.assertFalse(any(m=='pamOpen' for _,m,_ in calls))
-
-    def test_partial_creation_deletes_exact_wallet_and_salt(self):
-        home,_,calls,state=self.run_create(resolve=False)
-        self.assertEqual(state['wallets'],[])
-        self.assertIn(('/ksecretd','deleteWallet',(self.wallet,)),calls)
-        self.assertFalse((home/'.local/share/kwalletd'/(self.wallet+'.salt')).exists())
+    def test_missing_distro_daemon_reports_overlay_provisioning(self):
+        from tools.lab.surface_driver.fixtures.keyring import isolated_service
+        scope=self.scope([{'owner':None,'pid':None}]);scope.ctx.shell.return_value={'returncode':1}
+        with self.assertRaisesRegex(RecipeBlocked,'keyring-overlay'):isolated_service(scope)
+        scope.launch.assert_not_called()
 
 
-    def test_partial_creation_never_deletes_a_wallet_that_became_default(self):
-        home,_,calls,state=self.run_create(resolve=False,default=True)
-        self.assertEqual(state['wallets'],[self.wallet])
-        self.assertFalse(any(method=='deleteWallet' for _,method,_ in calls))
-        self.assertTrue((home/'.local/share/kwalletd'/(self.wallet+'.salt')).exists())
+    def test_daemon_control_socket_is_checked_before_launch(self):
+        from tools.lab.surface_driver.fixtures.keyring import isolated_service
+        scope=self.scope([{'owner':None,'pid':None}]);scope.root='/tmp/'+'é'*60
+        with self.assertRaisesRegex(RecipeBlocked,'socket'):isolated_service(scope)
+        scope.launch.assert_not_called();scope.python.assert_not_called()
 
 
 class PlasmaCrash(unittest.TestCase):
