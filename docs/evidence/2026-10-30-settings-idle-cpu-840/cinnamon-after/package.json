@@ -1,0 +1,18 @@
+{
+  "sha256": "22b828998dc82bcd22df85721416357308090f013a821ec601f3e66e51d2608f",
+  "filename": "putgd_26.1030.2615~dev+gbe8bc6b13f28_amd64.deb",
+  "installedBinarySha256": {
+    "/usr/bin/putgd-ui": "6db07dfa39fd15ed7a142a8773fe09888d571c7a73ee6d41f85417287b91408f",
+    "/usr/bin/putgd-s3-worker": "21605b738b65903bc4ea3931746ca507d84cdfb31cd2bc739fb48b0100327f60",
+    "/usr/bin/putgd-record": "500219a9237ef39bd40a9ac7f4f3b59f7e9c10aa78f3fd22107560deec63a17d",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-kde-region": "b974f72f5e754da2fb350e46757bcd19497d522bf0ed6540e4fd4f78a098ebca",
+    "/usr/bin/putgd-desktop-fixture": "d604b420ea1ab73ecd47d0336b7729670661d94ddef7a4fe9b58d4170e0ba901",
+    "/usr/bin/putgd-cli": "d27d8d053b7dc964a596ad11a83c7796836fba1901ca132fd6cc61483034cb06",
+    "/usr/bin/putgd-capture": "dbb9ed6f11e153701576af536c12bab82af7ab76c81dc252e389f8819fd8c1ec",
+    "/usr/bin/putgd-b2-worker": "c0ac1ad6103dfb5f3031766640e751009e912ecbe34e46a9cc4b67553eb19a56",
+    "/usr/bin/putgd": "0772e418e9c405c1592b8979b46de5860a5a5a0b79f8c2e68d1037ab6dba1f2a"
+  },
+  "installEvidence": "/home/user/lab-driver/work/lab-runs/s840c3/install-1fba910bb0db4b879d5abf9bd433db62",
+  "timedOut": false
+}

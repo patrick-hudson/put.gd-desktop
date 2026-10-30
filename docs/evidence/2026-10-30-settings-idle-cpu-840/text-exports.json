@@ -1,0 +1,47 @@
+{
+  "displayTransform": "Trim trailing whitespace and trailing blank lines; exact originals retained in gzip files.",
+  "files": {
+    "gnome-before/desktop-versions.txt": {
+      "originalSha256": "98ca71c0a95f3c5497b8bc0b26fc6c396821f21024812f0f306fcd91da470823",
+      "gzip": "gnome-before/desktop-versions.txt.gz",
+      "gzipSha256": "5760ac23dd083d1a18ec658f1e4f0a418fbfbe92a965bc63fc3cff7a9111ff53",
+      "display": "gnome-before/desktop-versions.display.txt",
+      "displaySha256": "c5070b0c1822dad9b8d8e601fb878340382475aac47feea2431b313ee30245aa"
+    },
+    "gnome-after/desktop-versions.txt": {
+      "originalSha256": "98ca71c0a95f3c5497b8bc0b26fc6c396821f21024812f0f306fcd91da470823",
+      "gzip": "gnome-after/desktop-versions.txt.gz",
+      "gzipSha256": "5760ac23dd083d1a18ec658f1e4f0a418fbfbe92a965bc63fc3cff7a9111ff53",
+      "display": "gnome-after/desktop-versions.display.txt",
+      "displaySha256": "c5070b0c1822dad9b8d8e601fb878340382475aac47feea2431b313ee30245aa"
+    },
+    "cinnamon-before/desktop-versions.txt": {
+      "originalSha256": "67e3813301cbf46d7e647af4fa0e7fa3fa219283eba4dc841901c4d652e1e75d",
+      "gzip": "cinnamon-before/desktop-versions.txt.gz",
+      "gzipSha256": "cfc75f2cd138c4a1140a23e233b288974851dcaa71a2005cf62f561678b85078",
+      "display": "cinnamon-before/desktop-versions.display.txt",
+      "displaySha256": "79ebafd9e3faf3a69ab2dc2e3b469f165507b664e8a5f44edb6fd9f0078b6049"
+    },
+    "cinnamon-after/desktop-versions.txt": {
+      "originalSha256": "67e3813301cbf46d7e647af4fa0e7fa3fa219283eba4dc841901c4d652e1e75d",
+      "gzip": "cinnamon-after/desktop-versions.txt.gz",
+      "gzipSha256": "cfc75f2cd138c4a1140a23e233b288974851dcaa71a2005cf62f561678b85078",
+      "display": "cinnamon-after/desktop-versions.display.txt",
+      "displaySha256": "79ebafd9e3faf3a69ab2dc2e3b469f165507b664e8a5f44edb6fd9f0078b6049"
+    },
+    "profiling/perf-report.txt": {
+      "originalSha256": "933fa5f588d9a1aff74ba3420770961d39bf56185cedbb37467a0d91543ce26e",
+      "gzip": "profiling/perf-report.txt.gz",
+      "gzipSha256": "60def74f1aa68b6b55f571a622396540e27d39242f5ed2de58a40a6a19d9dca1",
+      "display": "profiling/perf-report.display.txt",
+      "displaySha256": "81d5a4acb6c67489a9068b4d2b3b9aac6a05ff4cb5a7f87cd74edb42c82cf6e9"
+    },
+    "tests/package-control.txt": {
+      "originalSha256": "d930b1fd4a040b3e9a540d43c89ebb27f85697cd116aa36f28f2a36cdbe30713",
+      "gzip": "tests/package-control.txt.gz",
+      "gzipSha256": "58c00979a95ce14703d023417bf8f895e6185b648ecaeb38a00aeb58693485cf",
+      "display": "tests/package-control.display.txt",
+      "displaySha256": "4c885cd37c8519350388266e895171c74a069aa7767340df08ddc3cf20094c8e"
+    }
+  }
+}

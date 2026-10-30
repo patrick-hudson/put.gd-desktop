@@ -1,0 +1,7 @@
+{
+  "status": "installed",
+  "format": "deb",
+  "sha256": "bf2d17ffaf81b0c728498bf98c9b7254d7db5e1e06e697ae7d1f48ce0da746e0",
+  "installEvidence": "/home/user/lab-driver/work/lab-runs/s840g2/install-f59ce1ccc512450bae3517d5fc4cd413",
+  "timedOut": false
+}

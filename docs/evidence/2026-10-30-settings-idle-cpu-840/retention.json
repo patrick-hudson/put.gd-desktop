@@ -1,0 +1,39 @@
+{
+  "privateWorkRoot": "work/840 on the workstation; excluded from release source exports",
+  "archives": [
+    {
+      "archive": "840-diagnostics-archive.tar.gz",
+      "sha256": "71f4d24f129714652a767f70d976bd5fef6214bfb8b83539903110f5dc68fec3",
+      "bytes": 146855137,
+      "members": 3806,
+      "memberChecksumsVerified": true,
+      "index": "840-diagnostics-archive.json"
+    },
+    {
+      "archive": "840-diagnostics-final.tar.gz",
+      "sha256": "6bb6b89f12033a1499a3342b4462c06822379606790892c9b8e2aa2f6fd2535c",
+      "bytes": 34461553,
+      "members": 902,
+      "memberChecksumsVerified": true,
+      "index": "840-diagnostics-final.json"
+    },
+    {
+      "archive": "840-review-raw-gnome.tar.gz",
+      "sha256": "bcb60cf3e08380bb745943bf5a328986ec11389229141b7cc4adc854343cdd58",
+      "bytes": 4530453,
+      "members": 191,
+      "memberChecksumsVerified": true,
+      "index": "840-review-raw-gnome.json"
+    },
+    {
+      "archive": "840-review-raw-cinnamon.tar.gz",
+      "sha256": "8d3468d7eae65adba184678120edd07437a0ae4197604843164e33627404dafa",
+      "bytes": 4146885,
+      "members": 304,
+      "memberChecksumsVerified": true,
+      "index": "840-review-raw-cinnamon.json"
+    }
+  ],
+  "restore": "Verify archive SHA-256, then tar -xzf ARCHIVE into a private directory; verify each member against its JSON index. Originals and tested DEBs remain in the private work archive.",
+  "noDisksOrKeys": true
+}

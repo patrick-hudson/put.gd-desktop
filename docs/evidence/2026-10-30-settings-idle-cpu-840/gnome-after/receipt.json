@@ -1,0 +1,32 @@
+{
+  "placement": "boat",
+  "platform": "wayland",
+  "accessibilityForced": true,
+  "resident": 6083,
+  "seconds": 60,
+  "binaries": {
+    "putgd": "ecbc7c5e24c185944320a5463727038c1c59c7d1d480b45675c472a5eba38d89",
+    "putgd-cli": "0779cee0ef580517fd38104f2370fb731385a4fe1a8d2fbbf1b1ac7baa64be63",
+    "putgd-ui": "d0139d090a99691935854117472a3e0d23cd71a34ef7ede9332bc3ca5ea3ddc7"
+  },
+  "samples": [
+    {
+      "view": "settings",
+      "uiPid": 6097,
+      "ticks": 0,
+      "elapsed": 60.00025093100004,
+      "cpuPercent": 0.0
+    }
+  ],
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1030.2615-dev+gbe8bc6b13f28",
+    "baseVersion": "26.1030.2615",
+    "packageVersion": "26.1030.2615~dev+gbe8bc6b13f28",
+    "gitCommit": "be8bc6b13f28afd03c835211f98f608909b84b6f",
+    "gitTree": "17352781d921c64e2ee9a28ee92ef371225430a0",
+    "commitCount": 2615,
+    "dirty": false,
+    "sourceProvenance": "git"
+  }
+}

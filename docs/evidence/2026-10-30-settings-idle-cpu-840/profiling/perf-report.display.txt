@@ -1,0 +1,750 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 794  of event 'cycles:P'
+# Event count (approx.): 34004638798
+#
+# Overhead  Command   Shared Object             Symbol
+# ........  ........  ........................  ..........................................................................................................................................................................................................................
+#
+    23.88%  putgd-ui  libQt6Core.so.6.4.2       [.] QMetaObject::indexOfProperty(char const*) const
+            |
+            ---QMetaObject::indexOfProperty(char const*) const
+               QObject::property(char const*) const
+               |
+               |--22.88%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+               |          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+               |          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+               |          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+               |          QObject::event(QEvent*)
+               |          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+               |          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+               |          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+               |          0x7db54b533a8f
+               |          0x7db54a914585
+               |          0x7db54a973977
+               |          g_main_context_iteration
+               |          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+               |          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+               |          QCoreApplication::exec()
+               |          main
+               |          __libc_start_call_main
+               |          __libc_start_main@@GLIBC_2.34
+               |          _start
+               |
+                --0.88%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const::{lambda(QWidget*)#1}::operator()(QWidget*) const
+                          putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                          QObject::event(QEvent*)
+                          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                          0x7db54b533a8f
+                          0x7db54a914585
+                          0x7db54a973977
+                          g_main_context_iteration
+                          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QCoreApplication::exec()
+                          main
+                          __libc_start_call_main
+                          __libc_start_main@@GLIBC_2.34
+                          _start
+
+     5.69%  putgd-ui  libc.so.6                 [.] __memcmp_evex_movbe
+            |
+            ---__memcmp_evex_movbe
+               0x7db54b56baeb
+               |
+                --5.56%--QObject::property(char const*) const
+                          |
+                           --5.17%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                                     QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                                     void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                                     QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                                     QObject::event(QEvent*)
+                                     QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                                     QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                                     QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                                     0x7db54b533a8f
+                                     0x7db54a914585
+                                     0x7db54a973977
+                                     g_main_context_iteration
+                                     QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                                     QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                                     QCoreApplication::exec()
+                                     main
+                                     __libc_start_call_main
+                                     __libc_start_main@@GLIBC_2.34
+                                     _start
+
+     4.54%  putgd-ui  libQt6Core.so.6.4.2       [.] QMetaProperty::getMetaPropertyData(QMetaObject const*, int)
+            |
+            ---QMetaProperty::getMetaPropertyData(QMetaObject const*, int)
+               QObject::property(char const*) const
+               |
+                --4.40%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                          QObject::event(QEvent*)
+                          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                          0x7db54b533a8f
+                          0x7db54a914585
+                          0x7db54a973977
+                          g_main_context_iteration
+                          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QCoreApplication::exec()
+                          main
+                          __libc_start_call_main
+                          __libc_start_main@@GLIBC_2.34
+                          _start
+
+     3.68%  putgd-ui  libc.so.6                 [.] __strcmp_evex
+            |
+            ---__strcmp_evex
+               |
+                --3.55%--QObject::property(char const*) const
+                          |
+                           --3.42%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                                     QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                                     void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                                     QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                                     QObject::event(QEvent*)
+                                     QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                                     QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                                     QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                                     0x7db54b533a8f
+                                     0x7db54a914585
+                                     0x7db54a973977
+                                     g_main_context_iteration
+                                     QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                                     QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                                     QCoreApplication::exec()
+                                     main
+                                     __libc_start_call_main
+                                     __libc_start_main@@GLIBC_2.34
+                                     _start
+
+     2.99%  putgd-ui  libQt6Core.so.6.4.2       [.] QObject::property(char const*) const
+            |
+            ---QObject::property(char const*) const
+               |
+                --2.87%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                          QObject::event(QEvent*)
+                          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                          0x7db54b533a8f
+                          0x7db54a914585
+                          0x7db54a973977
+                          g_main_context_iteration
+                          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QCoreApplication::exec()
+                          main
+                          __libc_start_call_main
+                          __libc_start_main@@GLIBC_2.34
+                          _start
+
+     2.92%  putgd-ui  libQt6Core.so.6.4.2       [.] QVariant::QVariant(QVariant const&)
+            |
+            ---QVariant::QVariant(QVariant const&)
+               putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+               QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+               void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+               QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+               QObject::event(QEvent*)
+               QApplicationPrivate::notify_helper(QObject*, QEvent*)
+               QCoreApplication::notifyInternal2(QObject*, QEvent*)
+               QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+               0x7db54b533a8f
+               0x7db54a914585
+               0x7db54a973977
+               g_main_context_iteration
+               QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+               QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+               QCoreApplication::exec()
+               main
+               __libc_start_call_main
+               __libc_start_main@@GLIBC_2.34
+               _start
+
+     2.17%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036ba78
+            |
+            ---0x7db54b56ba78
+               putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+               QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+               void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+               QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+               QObject::event(QEvent*)
+               QApplicationPrivate::notify_helper(QObject*, QEvent*)
+               QCoreApplication::notifyInternal2(QObject*, QEvent*)
+               QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+               0x7db54b533a8f
+               0x7db54a914585
+               0x7db54a973977
+               g_main_context_iteration
+               QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+               QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+               QCoreApplication::exec()
+               main
+               __libc_start_call_main
+               __libc_start_main@@GLIBC_2.34
+               _start
+
+     1.92%  putgd-ui  libQt6Core.so.6.4.2       [.] QMetaObject::cast(QObject const*) const
+            |
+            ---QMetaObject::cast(QObject const*) const
+               |
+                --1.79%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                          |
+                           --1.29%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                     |
+                                      --1.16%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                |
+                                                 --1.03%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                           qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                           qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                           |
+                                                            --0.78%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                                      |
+                                                                       --0.51%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+
+     1.39%  putgd-ui  libc.so.6                 [.] pthread_mutex_lock@@GLIBC_2.2.5
+            |
+            ---pthread_mutex_lock@@GLIBC_2.2.5
+               hb_font_get_user_data
+               hb_qt_font_get_use_design_metrics(hb_font_t*)
+               0x7db54bc7cb98
+               0x7db54a7db9ed
+               0x7db54a856b14
+               hb_shape_plan_execute
+               hb_shape_full
+               QTextEngine::shapeTextWithHarfbuzzNG(QScriptItem const&, unsigned short const*, int, QFontEngine*, QList<unsigned int> const&, bool, bool) const
+               QTextEngine::shapeText(int) const
+               |
+                --0.88%--QTextLine::layout_helper(int)
+                          0x7db54bba0625
+                          0x7db54bba11af
+                          0x7db54bba317f
+                          0x7db54bba3724
+                          QTextDocumentLayout::doLayout(int, int, int)
+                          0x7db54bba3dc9
+                          QTextDocumentLayout::documentChanged(int, int, int)
+                          QTextDocument::setTextWidth(double)
+
+     1.29%  putgd-ui  libQt6Core.so.6.4.2       [.] qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+            |
+            ---qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+               qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+               qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+               |
+                --1.03%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                          |
+                           --0.91%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                     qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                     qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                     |
+                                      --0.78%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+                                                |
+                                                 --0.66%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+
+     1.15%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLabel::metaObject() const
+            |
+            ---QLabel::metaObject() const
+               |
+                --0.76%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                          QObject::event(QEvent*)
+                          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                          0x7db54b533a8f
+                          0x7db54a914585
+                          0x7db54a973977
+                          g_main_context_iteration
+                          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QCoreApplication::exec()
+                          main
+                          __libc_start_call_main
+                          __libc_start_main@@GLIBC_2.34
+                          _start
+
+     1.15%  putgd-ui  [kernel.kallsyms]         [k] asm_sysvec_apic_timer_interrupt
+            |
+            ---asm_sysvec_apic_timer_interrupt
+               |
+                --0.89%--__GI___libc_write
+
+     1.00%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidget::metaObject() const
+            |
+            ---QWidget::metaObject() const
+               |
+                --0.75%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                          QObject::event(QEvent*)
+                          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                          0x7db54b533a8f
+                          0x7db54a914585
+                          0x7db54a973977
+                          g_main_context_iteration
+                          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QCoreApplication::exec()
+                          main
+                          __libc_start_call_main
+                          __libc_start_main@@GLIBC_2.34
+                          _start
+
+     0.99%  putgd-ui  libQt6Core.so.6.4.2       [.] QtPrivate::compareMemory(QByteArrayView, QByteArrayView)
+            |
+            ---QtPrivate::compareMemory(QByteArrayView, QByteArrayView)
+               |
+                --0.86%--0x7db54b56baeb
+                          |
+                           --0.74%--QObject::property(char const*) const
+                                     |
+                                      --0.62%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                                                QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                                                void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                                                QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                                                QObject::event(QEvent*)
+                                                QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                                                QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                                                QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                                                0x7db54b533a8f
+                                                0x7db54a914585
+                                                0x7db54a973977
+                                                g_main_context_iteration
+                                                QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                                                QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                                                QCoreApplication::exec()
+                                                main
+                                                __libc_start_call_main
+                                                __libc_start_main@@GLIBC_2.34
+                                                _start
+
+     0.97%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bac3
+            |
+            ---0x7db54b56bac3
+               QObject::property(char const*) const
+               putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+               QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+               void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+               QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+               QObject::event(QEvent*)
+               QApplicationPrivate::notify_helper(QObject*, QEvent*)
+               QCoreApplication::notifyInternal2(QObject*, QEvent*)
+               QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+               0x7db54b533a8f
+               0x7db54a914585
+               0x7db54a973977
+               g_main_context_iteration
+               QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+               QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+               QCoreApplication::exec()
+               main
+               __libc_start_call_main
+               __libc_start_main@@GLIBC_2.34
+               _start
+
+     0.77%  putgd-ui  putgd-ui                  [.] putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+            |
+            ---putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+               QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+               void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+               QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+               QObject::event(QEvent*)
+               QApplicationPrivate::notify_helper(QObject*, QEvent*)
+               QCoreApplication::notifyInternal2(QObject*, QEvent*)
+               QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+               0x7db54b533a8f
+               0x7db54a914585
+               0x7db54a973977
+               g_main_context_iteration
+               QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+               QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+               QCoreApplication::exec()
+               main
+               __libc_start_call_main
+               __libc_start_main@@GLIBC_2.34
+               _start
+
+     0.65%  putgd-ui  putgd-ui                  [.] QList<QWidget*>::const_iterator::operator!=(QList<QWidget*>::const_iterator) const
+            |
+            ---QList<QWidget*>::const_iterator::operator!=(QList<QWidget*>::const_iterator) const
+               |
+                --0.52%--putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}::operator()() const
+                          QtPrivate::FunctorCall<QtPrivate::IndexesList<>, QtPrivate::List<>, void, putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}>::call(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void**)
+                          void QtPrivate::Functor<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0>::call<QtPrivate::List<>, void>(putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}&, void*, void**)
+                          QtPrivate::QFunctorSlotObject<putgd::PreferenceRows::alignChoices(QWidget*, bool)::Family::schedule()::{lambda()#1}, 0, QtPrivate::List<>, void>::impl(int, QtPrivate::QSlotObjectBase*, QObject*, void**, bool*)
+                          QObject::event(QEvent*)
+                          QApplicationPrivate::notify_helper(QObject*, QEvent*)
+                          QCoreApplication::notifyInternal2(QObject*, QEvent*)
+                          QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+                          0x7db54b533a8f
+                          0x7db54a914585
+                          0x7db54a973977
+                          g_main_context_iteration
+                          QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+                          QCoreApplication::exec()
+                          main
+                          __libc_start_call_main
+                          __libc_start_main@@GLIBC_2.34
+                          _start
+
+     0.62%  putgd-ui  libQt6Core.so.6.4.2       [.] QMetaObject::inherits(QMetaObject const*) const
+            |
+            ---QMetaObject::inherits(QMetaObject const*) const
+               |
+                --0.51%--qt_qFindChildren_helper(QObject const*, QMetaObject const&, QList<void*>*, QFlags<Qt::FindChildOption>)
+
+     0.59%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d47a
+            |
+            ---0x7db54a82747a
+               0x7db54a877209
+               0x7db54a82c1c6
+               0x7db54a852bd4
+               0x7db54a856bd8
+               hb_shape_plan_execute
+               hb_shape_full
+               QTextEngine::shapeTextWithHarfbuzzNG(QScriptItem const&, unsigned short const*, int, QFontEngine*, QList<unsigned int> const&, bool, bool) const
+               QTextEngine::shapeText(int) const
+               QTextLine::layout_helper(int)
+               0x7db54bba0625
+               0x7db54bba11af
+               0x7db54bba317f
+               0x7db54bba3724
+               QTextDocumentLayout::doLayout(int, int, int)
+               0x7db54bba3dc9
+               QTextDocumentLayout::documentChanged(int, int, int)
+               QTextDocument::setTextWidth(double)
+               0x7db54c2e9c2c
+               QLabel::heightForWidth(int) const
+               QWidgetItem::minimumHeightForWidth(int) const
+               QBoxLayout::heightForWidth(int) const
+               non-virtual thunk to QBoxLayout::minimumHeightForWidth(int) const
+               QLayout::totalMinimumHeightForWidth(int) const
+               QWidgetItem::minimumHeightForWidth(int) const
+               QBoxLayout::heightForWidth(int) const
+               non-virtual thunk to QBoxLayout::minimumHeightForWidth(int) const
+               QLayout::totalMinimumHeightForWidth(int) const
+               QWidgetItem::minimumHeightForWidth(int) const
+               QBoxLayout::heightForWidth(int) const
+               QBoxLayout::setGeometry(QRect const&)
+               QLayoutPrivate::doResize()
+               QLayout::activate()
+               QApplicationPrivate::notify_helper(QObject*, QEvent*)
+               QCoreApplication::notifyInternal2(QObject*, QEvent*)
+               QCoreApplicationPrivate::sendPostedEvents(QObject*, int, QThreadData*)
+               0x7db54b533a8f
+               0x7db54a914585
+               0x7db54a973977
+               g_main_context_iteration
+               QEventDispatcherGlib::processEvents(QFlags<QEventLoop::ProcessEventsFlag>)
+               QEventLoop::exec(QFlags<QEventLoop::ProcessEventsFlag>)
+               QCoreApplication::exec()
+               main
+               __libc_start_call_main
+               __libc_start_main@@GLIBC_2.34
+               _start
+
+     0.52%  putgd-ui  putgd-ui                  [.] QObject* qvariant_cast<QObject*>(QVariant const&)
+            |
+            ---QObject* qvariant_cast<QObject*>(QVariant const&)
+
+     0.50%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QVBoxLayout::metaObject() const
+            |
+            ---QVBoxLayout::metaObject() const
+
+     0.40%  putgd-ui  libQt6Gui.so.6.4.2        [.] QGuiApplication::font()
+     0.39%  putgd-ui  libQt6Core.so.6.4.2       [.] QUnicodeTables::properties(char32_t)
+     0.39%  putgd-ui  libQt6Core.so.6.4.2       [.] QMetaType::convert(QMetaType, void const*, QMetaType, void*)
+     0.38%  putgd-ui  libQt6Core.so.6.4.2       [.] QVariant::~QVariant()
+     0.38%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidget::testAttribute_helper(Qt::WidgetAttribute) const
+     0.38%  putgd-ui  libc.so.6                 [.] __strlen_evex
+     0.38%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QFormLayout::rowCount() const
+     0.38%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QHBoxLayout::metaObject() const
+     0.38%  putgd-ui  libQt6Core.so.6.4.2       [.] QUnicodeTools::initCharAttributes(QStringView, QUnicodeTools::ScriptItem const*, long long, QCharAttributes*, QFlags<QUnicodeTools::CharAttributeOption>)
+     0.38%  putgd-ui  libQt6Core.so.6.4.2       [.] QArrayData::allocate(QArrayData**, long long, long long, long long, QArrayData::AllocationOption)
+     0.37%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextEngine::itemize() const
+     0.37%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFontEngineMulti::stringToCMap(QChar const*, int, QGlyphLayout*, int*, QFlags<QFontEngine::ShaperFlag>) const
+     0.37%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QBoxLayout::metaObject() const
+     0.37%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bb07
+     0.37%  putgd-ui  libQt6Core.so.6.4.2       [.] QVariant::toBool() const
+     0.37%  putgd-ui  libc.so.6                 [.] pthread_mutex_unlock@@GLIBC_2.2.5
+     0.27%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000f9fc
+     0.27%  putgd-ui  libQt6Widgets.so.6.4.2    [.] non-virtual thunk to QBoxLayout::sizeHint() const
+     0.26%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QBoxLayout::itemAt(int) const
+     0.26%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QScrollBar::metaObject() const
+     0.26%  putgd-ui  putgd-ui                  [.] QList<QWidget*>::const_iterator::operator*() const
+     0.26%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTransform::operator*=(QTransform const&)
+     0.26%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bb5c
+     0.26%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da90
+     0.26%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextEngine::shapeText(int) const
+     0.26%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidgetPrivate::subtractOpaqueSiblings(QRegion&, bool*, bool) const
+     0.26%  putgd-ui  libQt6Core.so.6.4.2       [.] QMetaType::isValid() const
+     0.26%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFontEngineFT::glyphIndex(unsigned int) const
+     0.26%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000018de85
+     0.25%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054d75f
+     0.25%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QFormLayout::isRowVisible(int) const
+     0.25%  putgd-ui  libharfbuzz.so.0.60830.0  [.] hb_blob_destroy
+     0.25%  putgd-ui  putgd-ui                  [.] QScopedPointer<QObjectData, QScopedPointerDeleter<QObjectData> >::operator->() const
+     0.25%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QBoxLayout::heightForWidth(int) const
+     0.25%  putgd-ui  putgd-ui                  [.] bool QAtomicOps<int>::deref<int>(std::atomic<int>&)
+     0.25%  putgd-ui  [kernel.kallsyms]         [k] __raw_callee_save___pv_queued_spin_unlock
+     0.25%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036baeb
+     0.25%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd0b2
+     0.25%  putgd-ui  [kernel.kallsyms]         [k] __irqentry_text_start
+     0.25%  putgd-ui  putgd-ui                  [.] QToolButton**&& std::forward<QToolButton**>(std::remove_reference<QToolButton**>::type&)
+     0.25%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bac7
+     0.25%  putgd-ui  putgd-ui                  [.] putgd::Ui::Surface::paintEvent(QPaintEvent*)
+     0.25%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QProgressBar::metaObject() const
+     0.25%  putgd-ui  libQt6Gui.so.6.4.2        [.] QRegion::operator=(QRegion const&)
+     0.25%  putgd-ui  putgd-ui                  [.] QArrayDataPointer<QToolButton*>::reallocateAndGrow(QArrayData::GrowthPosition, long long, QArrayDataPointer<QToolButton*>*)
+     0.25%  putgd-ui  libharfbuzz.so.0.60830.0  [.] hb_font_set_user_data
+     0.24%  putgd-ui  libc.so.6                 [.] _int_malloc
+     0.24%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextEngine::shapeTextWithHarfbuzzNG(QScriptItem const&, unsigned short const*, int, QFontEngine*, QList<unsigned int> const&, bool, bool) const
+     0.14%  putgd-ui  [kernel.kallsyms]         [k] fput
+     0.14%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x00000000003891b4
+     0.14%  putgd-ui  [kernel.kallsyms]         [k] tick_sched_handle
+     0.14%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000047ae0c
+     0.14%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000fa57
+     0.14%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd1e5
+     0.14%  putgd-ui  libQt6Gui.so.6.4.2        [.] QVectorPath::controlPointRect() const
+     0.14%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextEngine::drawItemDecorationList(QPainter*, QList<QTextEngine::ItemDecoration> const&)
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da4d
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000fa75
+     0.13%  putgd-ui  putgd-ui                  [.] operator+(QString const&, QString const&)
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidgetPrivate::updateGeometry_helper(bool)
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x00000000003b010f
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] QRecursiveMutex::unlock()
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000f9f1
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da7f
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextLine::layout_helper(int)
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd1d3
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QApplication::font()
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bae6
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x00000000003a2e90
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidget::window() const
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd213
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFontEngineFT::loadGlyphFor(unsigned int, QFixedPoint const&, QFontEngine::GlyphFormat, QTransform const&, bool, bool)
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000026e046
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] nft_do_chain
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000023640f
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000019af64
+     0.13%  putgd-ui  libc.so.6                 [.] __libc_calloc
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] non-virtual thunk to QBoxLayout::hasHeightForWidth() const
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextDocumentLayout::draw(QPainter*, QAbstractTextDocumentLayout::PaintContext const&)
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLayout::totalMinimumHeightForWidth(int) const
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000ccfbc
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x0000000000081eb5
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] irq_enter_rcu
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] hb_shape_plan_create_cached2
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] tcp_clean_rtx_queue.constprop.0
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x0000000000389073
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d475
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000258168
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d44d
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da48
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] QString::reallocData(long long, QArrayData::AllocationOption)
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] __skb_gso_segment
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextDocumentLayout::documentChanged(int, int, int)
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000038906f
+     0.13%  putgd-ui  libqoffscreen.so          [.] 0x000000000000d30c
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000f9e4
+     0.13%  putgd-ui  putgd-ui                  [.] operator==(QMetaType, QMetaType)
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x0000000000091ac3
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd17a
+     0.13%  putgd-ui  putgd-ui                  [.] QVariant::Private::storage() const
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd0b0
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bb64
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007ce4f
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QPalette::operator=(QPalette const&)
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000478071
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000026de8f
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d5ac
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000faf2
+     0.13%  putgd-ui  libstdc++.so.6.0.33       [.] operator delete[](void*)
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd0c2
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] qGeomCalc(QList<QLayoutStruct>&, int, int, int, int, int)
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] __slab_free
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidgetRepaintManager::paintAndFlush()
+     0.13%  putgd-ui  putgd-ui                  [.] std::enable_if<std::__and_<std::__not_<std::__is_tuple_like<long long> >, std::is_move_constructible<long long>, std::is_move_assignable<long long> >::value, void>::type std::swap<long long>(long long&, long long&)
+     0.13%  putgd-ui  libc.so.6                 [.] __memset_avx512_unaligned_erms
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] hb_font_get_user_data@plt
+     0.13%  putgd-ui  libglib-2.0.so.0.8000.0   [.] 0x000000000005b7cc
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054d76e
+     0.13%  putgd-ui  putgd-ui                  [.] QList<QLineEdit*>::isEmpty() const
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTransform::map(QPointF const&) const
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054d903
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000ccf37
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFont::~QFont()
+     0.13%  putgd-ui  libc.so.6                 [.] _int_free_merge_chunk
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000a081f
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QComboBoxPrivateContainer::metaObject() const
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x00000000001f1d95
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLayout::parentWidget() const
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d585
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] QUnicodeTools::initScripts(QStringView, QVarLengthArray<QUnicodeTools::ScriptItem, 64ll>*)
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000275565
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextFormat::QTextFormat(QTextFormat const&)
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd09d
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] qCalculateGrowingBlockSize(long long, long long, long long)
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] csum_partial_copy_generic
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFontEngineFT::recalcAdvances(QGlyphLayout*, QFlags<QFontEngine::ShaperFlag>) const
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x00000000002b3790
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QBoxLayout::invalidate()
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000ab777
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000faeb
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QPalette::QPalette()
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] get_page_from_freelist
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextEngine::fontEngine(QScriptItem const&, QFixed*, QFixed*, QFixed*) const
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] ip6_dst_check
+     0.13%  putgd-ui  putgd-ui                  [.] putgd::Ui::applicationScale()
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000026e000
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLayout::update()
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000047cba7
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] napi_schedule_prep
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] QChar::decompositionTag(char32_t)
+     0.13%  putgd-ui  libc.so.6                 [.] realloc
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036bacc
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x0000000000031125
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFont::family() const
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000019a69e
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QBoxLayout::setGeometry(QRect const&)
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000681d0
+     0.13%  putgd-ui  putgd-ui                  [.] QVariant::Private::typeInterface() const
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x00000000001f22b7
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidget::sizePolicy() const
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QRegion::QRegion(QRegion const&)
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000fa5d
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextEngine::LayoutData::~LayoutData()
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] kvm_steal_clock
+     0.13%  putgd-ui  putgd-ui                  [.] void qt_ptr_swap<QToolButton*>(QToolButton**&, QToolButton**&)
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036baed
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] __hrtimer_run_queues
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000682ab
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd1ba
+     0.13%  putgd-ui  ld-linux-x86-64.so.2      [.] __tls_get_addr
+     0.13%  putgd-ui  putgd-ui                  [.] QList<QToolButton*>::begin()
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] pvclock_clocksource_read_nowd
+     0.13%  putgd-ui  putgd-ui                  [.] QArrayDataPointer<QLabel*>::deref()
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextFrame::begin() const
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd1c8
+     0.13%  putgd-ui  [kernel.kallsyms]         [k] _raw_spin_lock_irq
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd1dc
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFontEngineFT::stringToCMap(QChar const*, int, QGlyphLayout*, int*, QFlags<QFontEngine::ShaperFlag>) const
+     0.13%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000a07af
+     0.13%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x00000000001f070b
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x00000000002363f3
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000478081
+     0.13%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000019b0e4
+     0.13%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000274348
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] QtPrivate::QMetaTypeForType<bool>::getCopyCtr()::{lambda(QtPrivate::QMetaTypeInterface const*, void*, void const*)#1}::_FUN(QtPrivate::QMetaTypeInterface const*, void*, void const*)
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000fa84
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000478069
+     0.12%  putgd-ui  [kernel.kallsyms]         [k] __inet6_lookup_established
+     0.12%  putgd-ui  putgd-ui                  [.] QMetaType::QMetaType(QtPrivate::QMetaTypeInterface const*)
+     0.12%  putgd-ui  putgd-ui                  [.] QPainter::setBrush(QBrush const&)@plt
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036ba91
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000a07a1
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007ce5f
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000478079
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000018de25
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidgetItemV2::updateCacheIfNecessary() const
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidget::graphicsEffect() const
+     0.12%  putgd-ui  [kernel.kallsyms]         [k] account_user_time
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextFormat::lengthProperty(int) const
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036baf4
+     0.12%  putgd-ui  putgd-ui                  [.] QCoreApplication::instance()
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da8b
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] QColor::alphaF() const
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLayoutItem::widget() const
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidgetItem::isEmpty() const
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd1ea
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] hb_shape_plan_reference
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000ccfc3
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x00000000002416d2
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd176
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000006847c
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054cc64
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] QRegion::operator&(QRect const&) const
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x0000000000081617
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] QObject::event(QEvent*)
+     0.12%  putgd-ui  libc.so.6                 [.] _int_free
+     0.12%  putgd-ui  putgd-ui                  [.] QArrayDataPointer<QToolButton*>::allocateGrow(QArrayDataPointer<QToolButton*> const&, long long, QArrayData::GrowthPosition)
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000028dec5
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000000f9f9
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLayoutPrivate::getMargin(int*, int, QStyle::PixelMetric) const
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d654
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QFusionStyle::styleHint(QStyle::StyleHint, QStyleOption const*, QWidget const*, QStyleHintReturn*) const
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] QTextFormat::~QTextFormat()
+     0.12%  putgd-ui  putgd-ui                  [.] QFlags<Qt::AlignmentFlag>::QFlags(Qt::AlignmentFlag)
+     0.12%  putgd-ui  putgd-ui                  [.] int QAtomicOps<int>::loadRelaxed<int>(std::atomic<int> const&)
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] QString::QString(QChar const*, long long)
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da87
+     0.12%  putgd-ui  putgd-ui                  [.] putgd::(anonymous namespace)::PreferenceChoiceRow::apply()
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000001230e
+     0.12%  putgd-ui  putgd-ui                  [.] QVariant::constData() const
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] QWindow::winId() const
+     0.12%  putgd-ui  putgd-ui                  [.] QHashPrivate::Data<QHashPrivate::Node<QWidget*, bool> >::Data(unsigned long)
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000242c78
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QMainWindow::event(QEvent*)
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QLayout::activateRecursiveHelper(QLayoutItem*)
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QStyle::visualRect(Qt::LayoutDirection, QRect const&, QRect const&)
+     0.12%  putgd-ui  putgd-ui                  [.] QWidget::isVisibleTo(QWidget const*) const@plt
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da56
+     0.12%  putgd-ui  libQt6Gui.so.6.4.2        [.] QFont::QFont(QFont const&)
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000ccf98
+     0.12%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000b5d5d
+     0.12%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x0000000000269181
+     0.12%  putgd-ui  libQt6Core.so.6.4.2       [.] QString::append(QChar const*, long long)
+     0.11%  putgd-ui  putgd-ui                  [.] QList<QWidget*>::const_iterator::operator++()
+     0.11%  putgd-ui  libharfbuzz.so.0.60830.0  [.] hb_unicode_funcs_reference
+     0.11%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QWidget::hasHeightForWidth() const
+     0.11%  putgd-ui  putgd-ui                  [.] QArrayDataPointer<QLabel*>::detach(QArrayDataPointer<QLabel*>*)
+     0.11%  putgd-ui  libQt6Widgets.so.6.4.2    [.] 0x000000000026cf28
+     0.11%  putgd-ui  libQt6Widgets.so.6.4.2    [.] QAbstractSlider::setPageStep(int)
+     0.11%  putgd-ui  [kernel.kallsyms]         [k] native_write_msr
+     0.11%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x000000000054da68
+     0.11%  putgd-ui  libQt6Core.so.6.4.2       [.] 0x000000000036babf
+     0.11%  putgd-ui  libQt6Gui.so.6.4.2        [.] QRegion::~QRegion()
+     0.11%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x00000000000cd0c6
+     0.11%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x00000000004a74ba
+     0.11%  putgd-ui  libQt6Gui.so.6.4.2        [.] 0x0000000000242b30
+     0.11%  putgd-ui  libharfbuzz.so.0.60830.0  [.] 0x000000000007d425
+     0.09%  putgd-ui  libQt6Gui.so.6.4.2        [.] QRasterPaintEngine::drawCachedGlyphs(int, unsigned int const*, QFixedPoint const*, QFontEngine*)
+     0.00%  putgd-ui  [kernel.kallsyms]         [k] __update_load_avg_blocked_se
+     0.00%  putgd-ui  [kernel.kallsyms]         [k] __raw_spin_lock_irqsave
+     0.00%  putgd-ui  [kernel.kallsyms]         [k] amd_pmu_enable_all
+
+
+#
+# (Cannot load tips.txt file, please install perf!)
+#
