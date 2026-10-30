@@ -346,6 +346,17 @@ class TrayRecipesTest(unittest.TestCase):
             tray.shortcut_edit(ctx)
         self.assertFalse(any(e[0] == 'keys' for e in ctx.events))
 
+    def test_cancelled_selector_gets_only_one_escape(self):
+        ctx = FakeContext()
+        tray.shortcut_region(ctx)
+        self.assertEqual(sum(e == ('keys', ('Esc',)) for e in ctx.events), 1)
+
+    def test_record_selector_alone_cannot_prove_the_full_toggle(self):
+        ctx = FakeContext()
+        with self.assertRaisesRegex(RecipeBlocked, 'start/stop/raise'):
+            tray.shortcut_record(ctx)
+        self.assertEqual(sum(e == ('keys', ('Esc',)) for e in ctx.events), 1)
+
     def test_refused_recording_selector_guard_does_not_retry_keyboard_cleanup(self):
         ctx = FakeContext()
         def refused(window, raise_window=True):

@@ -386,12 +386,13 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                             ctx.note(str(error))
                             ctx.blocked('Recording selector is drawn, but the foreground witness cannot target its nonactivating cover', 670)
                         raise
-                    cleanup_keys = True
                     ctx.keys('Esc')
                     # A real cancellation also establishes that the shortcut did
                     # not merely admit work which failed before showing a selector.
                     settled = _settled(ctx, operation)
                     ctx.expect(settled['state'] == 'cancelled', 'selector cancelled through real Escape input')
+                    if action == 'record':
+                        ctx.blocked('Initial recording selector was cancelled; full start/stop/raise toggle needs an owned active-recording fixture', 670)
                 else:
                     settled = _settled(ctx, operation)
                     ctx.expect(settled['state'] == 'completed' and settled.get('items'), 'local action completed')
