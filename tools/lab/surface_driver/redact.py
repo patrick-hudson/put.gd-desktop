@@ -151,30 +151,30 @@ class Redactor:
     def audit_literals(self):
         return frozenset(self._secrets)
 
-    def remember(self, value, *, opaque=False):
+    def remember(self, value, *, opaque=False, force=False):
         """Register raw leaves and URL components before handing results to recipes."""
         if isinstance(value, Sensitive):
-            value, opaque = value.reveal(), True
+            value, opaque, force = value.reveal(), True, True
         if isinstance(value, dict):
             for key, item in value.items():
-                self.remember(key)  # Link-shaped keys are data too; schema names stay public.
+                self.remember(key, force=force)  # Link-shaped keys are data too; schema names stay public.
                 identity = key in STRUCTURAL_FIELDS or key in ('id', 'historyId', 'state', 'status', 'code', 'url_host', 'length', 'present', 'type', 'tool', 'mode', 'format', 'formats', 'category', 'sourceKind', 'mime', 'mimeType')
-                self.remember(item, opaque=not identity and (opaque or bool(SECRET_FIELD.search(str(key)))))
+                self.remember(item, opaque=force or not identity and (opaque or bool(SECRET_FIELD.search(str(key)))), force=force)
         elif isinstance(value, (list, tuple)):
             for item in value:
-                self.remember(item, opaque=opaque)
+                self.remember(item, opaque=opaque, force=force)
         elif isinstance(value, str):
-            if opaque and distinctive(value) and not public_url(value):
+            if opaque and distinctive(value) and (force or not public_url(value)):
                 self._secrets.add(value)
             try:
                 decoded = json.loads(value)
                 if isinstance(decoded, (dict, list, str)) and decoded != value:
-                    self.remember(decoded, opaque=opaque)
+                    self.remember(decoded, opaque=opaque, force=force)
             except ValueError:
                 pass
             for match in list(URL.finditer(value)) + list(SHARE.finditer(value)):
                 url = match.group()
-                if public_url(url):
+                if public_url(url) and not force:
                     continue
                 normalized = re.sub(r'^hxxp', 'http', url, flags=re.I)
                 if '://' not in normalized:
@@ -205,6 +205,7 @@ class Redactor:
                    for variant in (secret, secret.split('://', 1)[1]))
 
     def url(self, value):
+        self.remember(value)
         if isinstance(value, Sensitive):
             value = value.reveal()
         value = str(value)

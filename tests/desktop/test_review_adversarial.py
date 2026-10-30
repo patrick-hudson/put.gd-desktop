@@ -360,6 +360,15 @@ class Adv(unittest.TestCase):
         self.ctx._frame_regions(Image.new('RGB',(120,80),'white'),0)
         self.assertEqual(self.ctx._input_head,0)
 
+    def test_explicit_secret_overrides_the_public_documentation_allowlist(self):
+        link = 'https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#SyntheticPrivateFragment726'
+        redactor = Redactor()
+        redactor.remember(link)
+        self.assertFalse(redactor.audit_literals)
+        redactor.url(Sensitive(link))
+        self.assertIn('SyntheticPrivateFragment726', redactor.audit_literals)
+        self.assertNotIn('SyntheticPrivateFragment726', redactor.text('fragment SyntheticPrivateFragment726'))
+
     def test_resident_private_log_and_state_root_removed_after_quit(self):
         from tools.lab.surface_driver.target import Target
         target=Target.__new__(Target)
