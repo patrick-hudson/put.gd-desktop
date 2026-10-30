@@ -43,8 +43,8 @@
       "application": "gnome-shell*"
     },
     "title_name_glob": "*{summary}*",
-    "actions_available": false,
-    "reason": "Two Ubuntu GNOME guest attempts could not uniquely observe the drawn notification through AT-SPI (#670)"
+    "reason": "Two Ubuntu GNOME guest attempts did not observe the requested toast; saved frames show a pre-existing Software Updater banner (#670)",
+    "actions_verified": false
   },
   "windows": {
     "editor.canvas": {
