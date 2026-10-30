@@ -265,6 +265,7 @@ class Selectors(unittest.TestCase):
             candidates=catalog.candidates('recentColorSwatch_123456','editor')
             self.assertEqual(len(candidates),1)
             self.assertEqual(selector_matches({'name':'Color #123456','role':'toggle button'},'recentColorSwatch_123456',candidates),1)
+            self.assertEqual(selector_matches({'name':'Color #123456','role':'check box'},'recentColorSwatch_123456',candidates),1)
             self.assertIsNone(selector_matches({'name':'Color #123456','role':'label'},'recentColorSwatch_123456',candidates))
             for selector in ('recentColorSwatch_12345','recentColorSwatch_ABCDEF','recentColorSwatch_123456extra'):
                 self.assertEqual(catalog.candidates(selector,'editor'),[])

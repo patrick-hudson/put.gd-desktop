@@ -609,7 +609,9 @@ def label(value):
     return (value or '').split('\t')[0].replace('&&', '\0').replace('&', '').replace('\0', '&')
 
 
-CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', 'toggle button', 'menu'),
+# Qt 6.4 QAccessibleToolButton::role returns CheckBox for a checkable
+# toolbutton without a menu (including the editor's recent-color swatches).
+CLASS_ROLES = {'QPushButton': ('push button',), 'QToolButton': ('push button', 'toggle button', 'check box', 'menu'),
                'QLineEdit': ('text', 'entry'), 'QSpinBox': ('spin button',),
                'QComboBox': ('combo box',), 'QMenu': ('menu', 'popup menu'),
                'QCheckBox': ('check box',), 'QAction': ('menu item', 'check menu item', 'radio menu item')}
