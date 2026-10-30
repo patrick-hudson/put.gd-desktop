@@ -224,15 +224,17 @@ def _clipboard(ctx, image=False):
 def _local_upload(ctx):
     _clipboard(ctx)
     previous = {o['id'] for o in _recent(ctx)}
-    _menu(ctx)
-    _menu_frame(ctx, 'before')
-    _press(ctx, 'clipboard', 'menu item')
+    # Emit the toast through real input without spending its short draw window
+    # navigating or framing a tray menu. The native binding is checked first.
+    binding = ctx.call('ui.snapshot')['diagnostics'].get('shortcuts', {}).get('bindings', {}).get('clipboard', {})
+    ctx.expect(binding.get('bound'), 'clipboard shortcut is natively bound')
+    ctx.keys(CHORDS['clipboard'])
     return _settled(ctx, _new_operation(ctx, previous, 'clipboard'))
 
 
 def _notice(ctx, summary, body=None, exclude=()):
     def find():
-        matches = [n for n in ctx.notifications() if n.get('id') not in exclude
+        matches = [n for n in ctx.notifications() if isinstance(n.get('id'), int) and n['id'] not in exclude
                    and n.get('summary') == summary and (body is None or body in n.get('body', ''))]
         return matches[-1] if matches else None
     return ctx.wait(find, 'desktop notification: ' + summary)
@@ -378,14 +380,7 @@ def _action_recipe(interaction, action, shortcut=False, menu_open=False):
                     # If targeting is refused, fixture teardown owns selector
                     # cleanup; never retry keyboard input through a failed guard.
                     cleanup_keys = False
-                    try:
-                        ctx.focus('recsel' if action == 'record' else 'region')
-                    except RecipeFailed as error:
-                        if action == 'record' and str(error).startswith(
-                                "input target 'recsel' is obscured by 'put.gd'"):
-                            ctx.note(str(error))
-                            ctx.blocked('Recording selector is drawn, but the foreground witness cannot target its nonactivating cover', 670)
-                        raise
+                    ctx.focus('recsel' if action == 'record' else 'region')
                     ctx.keys('Esc')
                     # A real cancellation also establishes that the shortcut did
                     # not merely admit work which failed before showing a selector.
@@ -504,28 +499,107 @@ def notifications_off(ctx):
         ctx.frame('after')
 
 
-def _notification_click_block(ctx):
-    ctx.blocked('Notification default/button input awaits verified desktop coordinates and action correlation', 670)
+def _action(ctx, notice, action):
+    ctx.notification_action(notice['id'], action)
+    current = next(n for n in ctx.notifications() if n.get('id') == notice['id'])
+    ctx.expect(any(e.get('action') == action for e in current.get('action_events', [])),
+               'ActionInvoked belongs to the exact notification ID and action')
+    ctx.note('notification=' + str(notice['id']) + ' action=' + action)
+    return current
+
+
+def _host_opened(ctx, target):
+    # Read only our private persistent log; do not export unrelated log records.
+    script = """python3 - <<'PYLOG'
+import json,os
+from pathlib import Path
+rows=[]
+for path in Path(os.environ['XDG_STATE_HOME']).rglob('putgd-*.jsonl'):
+ for line in path.read_text().splitlines():
+  try: row=json.loads(line)
+  except ValueError: continue
+  if row.get('message')=='Opened on the host' and row.get('fields',{}).get('target')==TARGET:
+   rows.append(row)
+print('opened' if rows else '')
+PYLOG
+""".replace('TARGET', repr(target))
+    ctx.wait(lambda: _shell(ctx, script) == 'opened', 'accepted host open: ' + target)
+
+
+def _diagnostics(ctx, *, reveal=False, denied=False, resident=False):
+    with _local(ctx, failure=True) as root:
+        folder = root + '/diagnostics'
+        _shell(ctx, 'mkdir -m ' + ('500' if denied else '700') + ' -- ' + shlex.quote(folder))
+        _patch(ctx, {'preferences': {'diagnostics': {'debugLogging': False, 'packageFolder': folder}}})
+        op = _local_upload(ctx)
+        ctx.expect(op['state'] == 'failed', 'local obstruction produced the diagnostic source operation')
+        notice = _notice(ctx, 'Local save failed')
+        if resident:
+            expected = _profile(ctx)['resident_notifications']
+            ctx.expect(bool(notice.get('hints', {}).get('resident')) == expected,
+                       'resident hint agrees with desktop policy')
+            if expected:
+                ctx.expect(notice.get('timeout') == 0, 'resident action banner has no server timeout')
+        _action(ctx, notice, 'save-diagnostics')
+        result = _notice(ctx, 'put.gd — diagnostics not saved' if denied else 'put.gd — diagnostics saved')
+        if reveal:
+            _action(ctx, result, 'show-in-folder')
+            _host_opened(ctx, 'diagnostics-folder')
+        else:
+            _drawn_notice(ctx, result)
+        if denied:
+            ctx.expect(not _shell(ctx, 'find ' + shlex.quote(folder) + " -maxdepth 1 -name '*.zip' -print"),
+                       'failed diagnostics produced no package')
+        else:
+            ctx.expect('Nothing was uploaded.' in result.get('body', ''), 'package was saved without publication')
+            name = _shell(ctx, "python3 - <<'PYZIP'\nimport zipfile\nfrom pathlib import Path\nfiles=list(Path(" +
+                          repr(folder) + ").glob('*.zip'))\nassert len(files)==1\nwith zipfile.ZipFile(files[0]) as z: assert z.testzip() is None\nprint(files[0].name)\nPYZIP")
+            ctx.expect(name.endswith('.zip'), 'one valid diagnostics package exists in the selected private folder')
+        if resident:
+            ctx.wait(lambda: next((n.get('closed') for n in ctx.notifications() if n.get('id') == notice['id']), None),
+                     'used notification closed after the action')
+        ctx.frame('after')
 
 
 @recipe('notification.save-diagnostics', 'notification.diagnostics-saved', desktop_drawn=True)
 def save_diagnostics(ctx):
-    _notification_click_block(ctx)
+    _diagnostics(ctx)
 
 
 @recipe('notification.show-in-folder', desktop_drawn=True)
 def show_in_folder(ctx):
-    _notification_click_block(ctx)
+    _diagnostics(ctx, reveal=True)
 
 
 @recipe('notification.resident-close', desktop_drawn=True)
 def resident_close(ctx):
-    _notification_click_block(ctx)
+    _diagnostics(ctx, resident=True)
 
 
 @recipe('notification.diagnostics-not-saved', desktop_drawn=True)
 def diagnostics_not_saved(ctx):
-    _notification_click_block(ctx)
+    _diagnostics(ctx, denied=True)
+
+
+@recipe('notification.recording-stopped', desktop_drawn=True)
+def recording_stopped(ctx):
+    fixture = ctx.fixture('recording-budget-stop')
+    notice = _notice(ctx, 'put.gd — recording stopped', body='Largest file')
+    _drawn_notice(ctx, notice)
+    state = ctx.call('recording.inspect', {'id': fixture.recording_id})
+    ctx.expect(state['state'] == 'reviewing' and state.get('stopReason') == 'budget',
+               'budget stop retains the exact recording for private review')
+    ctx.frame('after')
+
+
+@recipe('notification.incomplete-uploads', desktop_drawn=True)
+def incomplete_uploads(ctx):
+    fixture = ctx.fixture('upload-incomplete')
+    notice = _notice(ctx, 'put.gd — incomplete uploads left')
+    _drawn_notice(ctx, notice)
+    state = ctx.call('operation.inspect', {'id': fixture.operationId})
+    ctx.expect(state['state'] in ('failed', 'partial'), 'multipart failure retained its exact operation')
+    ctx.frame('after')
 
 
 @recipe('tray.scroll-noop', desktop_drawn=True)
@@ -628,22 +702,28 @@ def uploading(ctx):
 @recipe('notification.upload-complete', desktop_drawn=True)
 def upload_complete(ctx):
     fixture = ctx.fixture('upload')
-    ctx.view('ui.show', {'view': 'history'})
-    ctx.expect(fixture.state['state'] == 'completed', 'loopback publication completed')
     notice = _notice(ctx, 'Upload complete')
-    # A bus call is only metadata. Require the shell to expose the drawn title.
-    _drawn_notice(ctx, notice)
+    # Click immediately: the server serializes short-lived banners.
+    _action(ctx, notice, 'default')
+    ctx.expect(fixture.state['state'] == 'completed', 'loopback publication completed')
+    _host_opened(ctx, 'notification-link')
     ctx.frame('after')
-    ctx.blocked('Drawn upload-complete popup observed; default-action click and browser effect await desktop worker', 670)
 
 
 def _drawn_notice(ctx, notice):
     policy = ctx.profile.get('notifications', {}).get('accessible')
     if not policy:
         ctx.blocked('Notification profile has no shell ownership selector', 670)
-    nodes = ctx.accessible({**policy, 'name': notice['summary'], 'visible': True, 'showing': True})
-    if not any(n.get('rect') and min(n['rect'][2:]) > 0 for n in nodes):
-        ctx.blocked('Notify metadata observed but a drawn popup is not exposed by the shell', 670)
+    def drawn():
+        nodes = ctx.accessible({**policy, 'name': notice['summary'], 'visible': True, 'showing': True})
+        def on_screen(node):
+            rect = node.get('rect')
+            if isinstance(rect, dict):
+                rect = [rect[k] for k in ('x', 'y', 'width', 'height')]
+            return rect and min(rect[:2]) >= 0 and min(rect[2:]) > 0
+        return any(on_screen(n) for n in nodes)
+    ctx.wait(drawn, 'drawn shell popup: ' + notice['summary'],
+             timeout=ctx.profile.get('notifications', {}).get('draw_seconds', 3))
 
 
 # Explicit declarations are independent rows, so unavailable scenarios never
@@ -664,8 +744,6 @@ BLOCKED = {
     'notification.completed-with-problem': 'Needs offline mixed-success batch fixture with inspected per-item outcomes',
     'notification.upload-failed': 'tray-failed supplies one failure; full row still needs interrupted-upload and retained-local-copy variants',
     'notification.action-rejected': 'Needs deterministic pre-admission rejection fixture without configuration recovery stealing popup focus',
-    'notification.recording-stopped': 'recording-budget-stop is available; drawn popup/recording-stop identity correlation awaits desktop worker (#670)',
-    'notification.incomplete-uploads': 'upload-incomplete is available; drawn cleanup-notice identity correlation awaits desktop worker (#670)',
     'notification.in-flight-limit': 'Needs a delayed-reply notification server fixture; eight outstanding Notify calls are not eight visible toasts',
 }
 

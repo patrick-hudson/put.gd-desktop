@@ -29,5 +29,8 @@
         "role": "frame"
       }
     }
+  },
+  "notifications": {
+    "draw_seconds": 4
   }
 }

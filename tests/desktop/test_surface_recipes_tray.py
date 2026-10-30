@@ -26,6 +26,7 @@ class FakeContext(Context):
         self.profile = json.loads((ROOT / 'tools/lab/surface_driver/profiles/mint-cinnamon-x11.d/tray.json').read_text())
         # Exercise recipe logic with a capable fake; never desktop evidence.
         self.profile['tray']['icon'] = {'name': 'put.gd', 'application': 'cinnamon'}
+        self.profile.setdefault('notifications', {})['accessible'] = {'application': 'cinnamon*'}
         self.events = []
         self.rects = {}
         self.about_open = False
@@ -56,6 +57,9 @@ class FakeContext(Context):
         if name == 'events.clipboard':
             self.clipboard = 'putgd synthetic clipboard text'
             return Fixture(text=self.clipboard)
+        if name == 'upload':
+            self.notices.append({'id': 1, 'summary': 'Upload complete'})
+            return Fixture(state={'state': 'completed'})
         if name == 'tray-proton-busy':
             raise RecipeBlocked('proton_account_busy fixture unavailable', 670)
         raise AssertionError(name)
@@ -143,6 +147,7 @@ class FakeContext(Context):
         if self.edit_sources:
             names.update(('Edit clipboard image', 'Edit an image file…'))
         for n in self.notices:
+            names.add(n['summary'])
             names.update(n.get('buttons', ()))
         if name not in names:
             return []
@@ -215,7 +220,8 @@ class FakeContext(Context):
         if not pending and self.document['preferences']['notifications']:
             self.notices.append({'id': len(self.notices) + 1, 'summary': 'Local save failed' if failed else 'Saved locally',
                 'body': 'Local save failed.' if failed else 'Saved locally.', 'actions': ['save-diagnostics'] if failed else [],
-                'buttons': ['Save diagnostics for this upload'] if failed else []})
+                'buttons': ['Save diagnostics for this upload'] if failed else [],
+                'hints': {'resident': True}, 'timeout': 0})
 
     def keys(self, *sequence):
         self.events.append(('keys', sequence))
@@ -249,6 +255,8 @@ class FakeContext(Context):
             self.obstruction = False
         elif 'mkdir -m 500' in script:
             self.readonly = True
+        elif "'Opened on the host'" in script:
+            output = 'opened'
         elif 'zipfile' in script:
             output = 'putgd-diagnostics-20261029-000000Z.zip'
         return {'returncode': 0, 'stdout': output, 'stderr': ''}
@@ -258,6 +266,14 @@ class FakeContext(Context):
 
     def clipboard_text(self):
         return self.clipboard
+
+    def notification_action(self, identity, action='default'):
+        self.events.append(('notification_action', identity, action))
+        notice = next(n for n in self.notices if n['id'] == identity)
+        notice.setdefault('action_events', []).append({'action': action})
+        notice['closed'] = {'reason': 3}
+        if action == 'save-diagnostics':
+            self.click_at(*tray._point(self, self.accessible({'name': 'Save diagnostics for this upload'})[0]))
 
     def notifications(self):
         return copy.deepcopy(self.notices)
@@ -302,27 +318,34 @@ class TrayRecipesTest(unittest.TestCase):
                     r.function(ctx)
                 self.assertEqual(caught.exception.issue, 670)
 
-    def test_upload_complete_default_action_stays_blocked_after_observing_popup(self):
-        from tools.lab.surface_driver.fixtures.base import Fixture
+    def test_upload_complete_clicks_exact_id_before_framing_or_host_observation(self):
         ctx = FakeContext()
-        ctx.fixture = lambda name: Fixture(state={'state': 'completed'})
-        ctx.notices = [{'id': 1, 'summary': 'Upload complete'}]
-        ctx.profile['notifications'] = {'accessible': {'application': 'cinnamon*'}}
-        ctx.accessible = lambda query: [{'rect': [10, 10, 100, 40]}]
-        with self.assertRaises(RecipeBlocked) as caught:
-            tray.upload_complete(ctx)
-        self.assertEqual(caught.exception.issue, 670)
-        self.assertFalse(any(e[0] == 'click' for e in ctx.events))
-        self.assertIn(('frame', 'after', None), ctx.events)
+        tray.upload_complete(ctx)
+        action = ctx.events.index(('notification_action', 1, 'default'))
+        self.assertLess(action, next(i for i,e in enumerate(ctx.events) if e[0]=='shell'))
+        self.assertLess(action, ctx.events.index(('frame', 'after', None)))
 
-    def test_notification_actions_block_before_input(self):
+    def test_notification_actions_use_core_input_and_correlate_the_id(self):
         for function in (tray.save_diagnostics, tray.show_in_folder,
                          tray.resident_close, tray.diagnostics_not_saved):
-            ctx = FakeContext()
-            with self.assertRaises(RecipeBlocked) as caught:
+            with self.subTest(recipe=function.__name__):
+                ctx = FakeContext()
                 function(ctx)
-            self.assertEqual(caught.exception.issue, 670)
-            self.assertFalse(ctx.events)
+                self.assertIn(('notification_action', 1, 'save-diagnostics'), ctx.events)
+                self.assertIn(('frame', 'after', None), ctx.events)
+
+    def test_notify_without_server_reply_is_not_a_click_identity(self):
+        ctx = FakeContext()
+        ctx.notices = [{'id': None, 'summary': 'Upload complete'}]
+        with self.assertRaises(RecipeFailed):
+            tray._notice(ctx, 'Upload complete')
+
+    def test_uncorrelated_action_signal_cannot_pass(self):
+        ctx = FakeContext()
+        ctx.notices = [{'id': 4, 'summary': 'Upload complete', 'action_events': [{'action':'other'}]}]
+        ctx.notification_action = lambda *a: None
+        with self.assertRaises(RecipeFailed):
+            tray._action(ctx, ctx.notices[0], 'default')
 
     def test_shortcuts_read_native_diagnostics_from_the_ui_snapshot(self):
         ctx = FakeContext()
@@ -362,9 +385,8 @@ class TrayRecipesTest(unittest.TestCase):
         def refused(window, raise_window=True):
             raise RecipeFailed("input target 'recsel' is obscured by 'put.gd' (window 42)")
         ctx.focus = refused
-        with self.assertRaises(RecipeBlocked) as caught:
+        with self.assertRaises(RecipeFailed):
             tray.shortcut_record(ctx)
-        self.assertEqual(caught.exception.issue, 670)
         self.assertEqual([e for e in ctx.events if e[0] == 'keys'],
                          [('keys', (tray.CHORDS['record'],))])
 
@@ -478,7 +500,7 @@ class TrayRecipesTest(unittest.TestCase):
         ctx = FakeContext()
         ctx.profile['notifications'] = {'accessible': {'application': 'cinnamon*'}}
         ctx.accessible = lambda query: []
-        with self.assertRaises(RecipeBlocked):
+        with self.assertRaises(RecipeFailed):
             tray._drawn_notice(ctx, {'summary': 'Upload complete'})
 
     def test_catalog_ids_match_published_action_identity_rules(self):
@@ -517,7 +539,7 @@ class TrayRecipesTest(unittest.TestCase):
         for desktop in json.loads((ROOT / 'tools/lab/surface_map/model.json').read_text())['desktops']:
             fragment = ROOT / 'tools/lab/surface_driver/profiles' / (desktop['id'] + '.d') / 'tray.json'
             data = json.loads(fragment.read_text())
-            self.assertEqual(set(data), {'tray', 'windows'})
+            self.assertEqual(set(data) - {'notifications'}, {'tray', 'windows'})
             self.assertEqual(set(data['windows']), {'trayFixture'})
             self.assertIn(data['tray']['notification_server'], ('cinnamon', 'gnome-shell', 'Plasma'))
 
