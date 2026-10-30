@@ -5,6 +5,7 @@
 #include "ui/HistoryWindow.h"
 #include "ui/HistoryModel.h"
 #include "ui/FileDialog.h"
+#include "ui/TrayController.h"
 #include <QFileDialog>
 #include "ui/SettingsWindow.h"
 #include "platform/HostOpen.h"
@@ -43,6 +44,7 @@
 #include <QPushButton>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QSystemTrayIcon>
 #include <QTabWidget>
 #include <QToolButton>
 #include <QElapsedTimer>
@@ -200,6 +202,69 @@ QJsonObject catalogConfig(const QString& root){
  auto doc=Settings::developmentTemplate();auto s3=doc["profiles"].toArray().first().toObject();s3["id"]="synthetic-archive";s3["label"]="Project archive";auto s=s3["settings"].toObject();s["bucket"]="design-captures";s["region"]="us-east-1";s["endpoint"]="https://s3.us-east-1.amazonaws.com";s["objectPrefix"]="screenshots/";s["aclMode"]="omit";s["publicUrlBase"]="https://captures.example.invalid";s3["settings"]=s;s3["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};
  QJsonObject proton{{"id","synthetic-proton"},{"label","Proton Drive"},{"provider","proton-drive"},{"settings",QJsonObject{{"accountRootUid","synthetic-root"},{"folderUid","synthetic-folder"},{"folderName","put.gd"},{"shareByDefault",true},{"linkExpirationDays",0},{"sharePasswordReference",QJsonValue::Null},{"requestTimeoutMs",120000}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};doc["profiles"]=QJsonArray{proton,s3};auto actions=doc["actions"].toObject();int index=1;for(const auto& name:Settings::actionNames()){auto a=actions[name].toObject();a["profileId"]="synthetic-proton";a["shortcut"]="Ctrl+"+QString::number(index++);actions[name]=a;}doc["actions"]=actions;auto archive=doc["archive"].toObject();archive["root"]=root+"/local-copies";archive["keepUploads"]=true;doc["archive"]=archive;auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;return doc;
 }
+// A provider fixture, never ProtonProvider: hold one real OperationService upload
+// until its menu has been captured, then return the Proton account-busy error.
+// This exercises resultReady -> TrayController::latchFailure without a session,
+// provider process or network request.
+class TrayCatalogProvider final:public StorageProvider {
+public:
+ QObject dispatcher;std::function<void()> finish;
+ ProviderCapabilities capabilities(const Destination&)const override {ProviderCapabilities c;c.conditionalCreate=true;c.conditionalReplace=true;c.urls=true;c.sharing=true;c.privateUploads=true;return c;}
+ QString serializationKey(const Destination&,const QJsonObject&,const QString& name)const override{return name;}
+ Error validateSettings(const QJsonObject&)const override{return {};}
+ void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> done,std::shared_ptr<std::atomic_bool> = {})override {done({"absent",{{"syntheticName",name}},{},{}});}
+ void upload(const UploadRequest&,std::function<void(UploadResult)> done)override {
+  QMetaObject::invokeMethod(&dispatcher,[this,done]{finish=[done]{done({"failed",{},{"proton_account_busy","Synthetic Proton account is busy",{}}});};},Qt::QueuedConnection);
+ }
+ void stat(const StorageReceipt&,std::function<void(StatResult)> done)override {done({"unknown",{},{}});}
+ void reconcile(const UploadRequest&,std::function<void(StatResult)> done)override {done({"unknown",{},{}});}
+ void remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> done)override {done({"failed",{},{"synthetic_only","No remote objects exist",{}}});}
+};
+bool captureTrayMenus(const QString& output,QJsonArray& captures){
+ QTemporaryDir data("/tmp/pgt-XXXXXX");if(!data.isValid())return false;
+ SettingsService settings(data.filePath("config.json"),[](const QString&,const QJsonObject&){return Error{};});
+ auto config=catalogConfig(data.path());auto preferences=config["preferences"].toObject();preferences["notifications"]=false;config["preferences"]=preferences;if(!settings.save(config,{}))return false;
+ ProviderRegistry registry;auto provider=std::make_shared<TrayCatalogProvider>();registry.add("proton-drive",provider);
+ Source source;source.payload=textPayload();OperationService operations(data.filePath("data"),settings,registry,source);
+ if(!waitUntil([&]{return operations.ready();}))return false;
+ // Complete any held upload on failure too, before destroying its dispatcher.
+ auto drain=qScopeGuard([&]{if(provider->finish){std::exchange(provider->finish,{})();waitUntil([&]{return operations.diagnostics()["activeOperations"].toInt()==0;});}});
+ TrayController controller(operations,[](const QString&){},[]{});
+ auto* tray=controller.findChild<QSystemTrayIcon*>();if(!tray||!tray->contextMenu())return false;
+ auto* menu=tray->contextMenu();
+ controller.setUpdateStatus({{"channel","stable"},{"result",QJsonObject{{"updateAvailable",true},{"latest","26.1029.9999"}}}});
+ auto shot=[&](QMenu& root,const QString& name){
+  // QWidget::adjustSize caps top-level windows to two thirds of the offscreen
+  // screen. Size to the real menu's hint so the taller upload state keeps every
+  // row in the reference instead of cropping its About/Quit group.
+  root.ensurePolished();root.resize(root.sizeHint());root.show();putgd::test::settle(40);
+  // Unlike the general widget inventory, a menu inventory contains exactly its
+  // visible rows, including separators and QWidgetAction output labels. Hidden
+  // conditional actions have no click target; child QLabel geometry is not a row.
+  QJsonArray rows;int index=0;
+  for(auto* action:root.actions()){
+   if(!action->isVisible())continue;
+   const auto rect=root.actionGeometry(action);
+   if(rect.isEmpty()||!root.rect().contains(rect)){qCritical("Tray menu row does not fit: %s",qPrintable(action->text()));return false;}
+   auto id=action->objectName();if(id.isEmpty())id=action->data().toString();if(id.isEmpty())id=QString("trayMenuRow%1").arg(index);++index;
+   rows.append(QJsonObject{{"name",id},{"class","QAction"},{"kind",action->isSeparator()?"separator":"menu-item"},{"text",action->text()},{"rect",QJsonArray{rect.x(),rect.y(),rect.width(),rect.height()}},{"enabled",action->isEnabled()},{"submenu",action->menu()!=nullptr}});
+  }
+  const auto image=root.grab();QSaveFile controls(QDir(output).filePath(name+".controls.json"));
+  if(!image.save(QDir(output).filePath(name+".png"))||!controls.open(QIODevice::WriteOnly)||controls.write(QJsonDocument(QJsonObject{{"width",root.width()},{"height",root.height()},{"class","QMenu"},{"controls",rows},{"keys",QJsonArray{}}}).toJson())<=0||!controls.commit())return false;
+  captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});root.close();return true;
+ };
+ if(!shot(*menu,"00-tray-menu-idle"))return false;
+ auto* summary=menu->findChild<QAction*>("trayOutputSummary");if(!summary||!summary->menu()||!shot(*summary->menu(),"00-tray-output-submenu"))return false;
+ auto* uploading=menu->findChild<QAction*>("trayUploadStatus");auto* attention=menu->findChild<QAction*>("trayFailedUploads");if(!uploading||!attention)return false;
+ Error invokeError;QString operationId;operations.invoke("clipboard",[&](Error error,QJsonObject result){invokeError=error;operationId=result["operationId"].toString();});
+ if(!waitUntil([&]{return invokeError||(!operationId.isEmpty()&&bool(provider->finish)&&uploading->isVisible());})||invokeError)return false;
+ if(!shot(*menu,"00-tray-menu-uploading"))return false;
+ std::exchange(provider->finish,{})();
+ if(!waitUntil([&]{return attention->isVisible()&&attention->text()=="Failed uploads (1)"&&!uploading->isVisible();}))return false;
+ QJsonObject failed;bool inspected=false;operations.inspect(operationId,[&](Error error,QJsonObject value){invokeError=error;failed=value;inspected=true;});
+ if(!waitUntil([&]{return inspected;})||invokeError||!QStringList{"failed","partial"}.contains(failed["state"].toString())||failed["items"].toArray().isEmpty()||failed["items"].toArray().first().toObject()["error"].toObject()["code"]!="proton_account_busy")return false;
+ return shot(*menu,"00-tray-menu-proton-busy");
+}
 }
 int main(int argc,char** argv){
  QApplication app(argc,argv);app.setApplicationName("putgd-ui-catalog");
@@ -252,6 +317,7 @@ int main(int argc,char** argv){
  if(!editorOnly){
  auto* preview=window.findChild<QLabel*>("historyPreview");if(!preview||!waitUntil([&]{return !preview->pixmap().isNull();}))return 2;
  if(QGuiApplication::platformName()=="offscreen"){
+  if(!captureTrayMenus(output,captures))return 2;
   QMenu status(&window);auto* information=status.addAction("Uploading… 50% · 2 MB of 4 MB");information->setEnabled(false);information->setProperty("visualRole","information");status.addSeparator();status.addAction("Cancel upload");status.addSeparator();status.addAction("History");status.show();putgd::test::settle(20);if(!status.grab().save(QDir(output).filePath("00-tray-upload-status.png"))||!writeInventory(output,"00-tray-upload-status",status))return 2;status.close();
   QMenu menu(&window);menu.addAction("All actions: Shared link · R&&D · No local copy")->setEnabled(false);menu.addAction("Capture region && edit: Nothing is saved or uploaded")->setEnabled(false);menu.addSeparator();menu.addAction("Change output");menu.show();putgd::test::settle(20);const auto image=menu.grab();if(!image.save(QDir(output).filePath("00-output-menu-literal-ampersand.png"))||!writeInventory(output,"00-output-menu-literal-ampersand",menu))return 2;captures.append(QJsonObject{{"file","00-output-menu-literal-ampersand.png"},{"controls","00-output-menu-literal-ampersand.controls.json"},{"width",image.width()},{"height",image.height()}});menu.close();
  }

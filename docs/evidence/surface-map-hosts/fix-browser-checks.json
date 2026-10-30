@@ -1,0 +1,43 @@
+{
+  "baseCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+  "browserChecks": {
+    "v1": {
+      "matchedNightly": true,
+      "normalization": "Planned Aurora label removes (AppImage); no other differences normalized",
+      "views": [
+        "All required desktops/Map",
+        "All required desktops/Gaps",
+        "All required desktops/Matrix",
+        "Mint Cinnamon/X11/Map",
+        "Mint Cinnamon/X11/Gaps",
+        "Mint Cinnamon/X11/Matrix"
+      ],
+      "matrixDesktopColumns": 9
+    },
+    "unnamedGuest": {
+      "filteredGaps": "failed",
+      "headers": [
+        "Interaction",
+        "kind",
+        "driver",
+        "Aurora KDE/Wayland on f44 (VM)",
+        "Fedora GNOME/Wayland on f44 (native)",
+        "Kubuntu KDE/Wayland on f44 (VM)",
+        "Mint Cinnamon/X11 on f44 (VM)",
+        "Ubuntu GNOME/Wayland on f44 (VM)",
+        "Ubuntu GNOME/Wayland on f44 (VM) \u00b7 golden",
+        "Ubuntu GNOME/X11 on f44 (VM)"
+      ],
+      "matrixFunctional": [
+        "failed",
+        "passed"
+      ]
+    },
+    "optional": {
+      "hostRollup": "passed/reviewed-ok",
+      "popover": "\u2715\nImage editor \u00b7 Undo Ctrl+Z\neditor.undo \u00b7 button \u00b7 method editor.apply \u00b7 driver edit_acceptance \u00b7 src/ui/EditorWindow.cpp\n\tfunctional\tvisual\t\t\nAurora KDE/Wayland on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nDebian KDE/Wayland on d69 (native)\t passed\t reviewed-ok\tdeb\t\nKubuntu KDE/Wayland on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nMint Cinnamon/X11 on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nKDE neon (Unstable/User) on d69 (VM) (optional)\t failed\t reviewed-wrong\tdeb\t\nUbuntu GNOME/Wayland on d69 (VM)\t passed\t reviewed-ok\tdeb\t\nUbuntu GNOME/X11 on d69 (VM)\t passed\t reviewed-ok\tdeb\t\noverall: passed on every required desktop \u00b7 frames reviewed and right",
+      "explicitOptionalChip": "failed/reviewed-wrong"
+    }
+  },
+  "consoleErrors": []
+}

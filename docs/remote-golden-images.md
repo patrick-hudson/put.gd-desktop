@@ -15,7 +15,9 @@ Public Access settings are on, ownership is `BucketOwnerEnforced` and SSE-S3
 encryption is the default. Disks are zstd-compressed and stored in Glacier
 Instant Retrieval (millisecond reads, per-GB retrieval fee, 90-day minimum);
 small metadata uses Standard. A lifecycle rule aborts incomplete multipart
-uploads after 7 days. The Kubuntu builder holds no golden.
+uploads after 7 days. Kubuntu (`k72`), Mint (`m74`) and Aurora (`aurora-amd`) hold
+extra copies of two goldens so they can lend their Proton sessions to guests; see
+[below](#copies-on-k72-m74-and-aurora-amd).
 
 All copies are ignored private artifacts; `git ls-files` will not list them.
 Treat every copy as an immutable source. Never boot, modify, move or overwrite
@@ -79,6 +81,27 @@ both builders and in S3 (`linux/<name>/<name>.qcow2.zst` and
 | --- | --- | --- | --- |
 | `neon-unstable-noble-20261023-d613510c07bd` (Plasma, Frameworks and Gear git master) | `9fef081035ca6691446672b2914c09ff4a7b4a4b359577a6087279b0d892e8f6` | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-7b9fb1191be6`) | same name (made here) |
 | `neon-user-6.8.1-20261023-9ef808278853` (released Plasma 6.8.1) | `191852a5b552492daa9eac1093acd7e15578b0cc5374f4c9a660037af5863238` | same name (made here) | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-6141be2a1211`) |
+
+### Copies on k72, m74 and aurora-amd
+
+On 2026-10-29 and 2026-10-30, two goldens were copied from `f44` to k72, m74 and
+aurora-amd, for Proton lending. These are extra copies: the three-copy rule above still counts Fedora,
+Debian and S3.
+
+| Name | Kubuntu `k72` | Mint `m74` | Aurora `aurora-amd` |
+| --- | --- | --- | --- |
+| `gnome-provisioned-20261016` | `transfer-eff2bd963713` | `transfer-659d95302859` | `transfer-000d35aedb8b` |
+| `cinnamon-x11` | `transfer-4ecf0e847901` | `transfer-1e7496436875` | `transfer-69d4d8858821` |
+
+- **How they were copied:** each image was streamed once from f44 through a pipe on the
+  workstation and written to no disk there. For m74 and aurora-amd, one stream was teed
+  to both.
+- **Verification:** before promotion, each copy matched the inventory SHA-256 and passed
+  `qemu-img info` (qcow2, no backing file, same virtual size) and `qemu-img check`. The
+  sidecars were copied and hash-checked too.
+- **Receipts:** under the workstation's `work/verification/golden-transfer-<id>/`.
+
+Aurora's paths are under `/var/home/patrick/`; pass them to `lab.py` in that form.
 
 ## Use a host copy in place
 
