@@ -89,17 +89,32 @@ class ShellActorPick(unittest.TestCase):
     pick={'pid':70,'window':None,'chain':[],'shell_nodes':[{'text':'Settings','role':28,'accessible':'','rect':[1650,140,90,24]}]}
 
     def test_native_shell_actor_proves_label_above_the_client(self):
-        with patch.object(probe,'compositor_pick',return_value=self.pick):
+        with patch.object(probe,'compositor_pick',return_value=self.pick),patch.object(probe,'native_shell_role',return_value='label'):
             self.assertTrue(probe.shell_witness_hit(self.query)['ok'])
 
     def test_foreign_window_pid_duplicate_name_or_wrong_rect_cannot_match(self):
         for pick in (dict(self.pick,pid=71),dict(self.pick,window={'id':99,'title':'Foreign window'}),
                      dict(self.pick,shell_nodes=[{'text':'Settings','rect':[20,20,90,24]}])):
-            with patch.object(probe,'compositor_pick',return_value=pick):
+            with patch.object(probe,'compositor_pick',return_value=pick),patch.object(probe,'native_shell_role',return_value='label'):
                 self.assertFalse(probe.shell_witness_hit(self.query)['ok'])
-        with patch.object(probe,'compositor_pick',return_value=self.pick):
+        with patch.object(probe,'compositor_pick',return_value=self.pick),patch.object(probe,'native_shell_role',return_value='label'):
             query=dict(self.query,desktop_node=dict(self.node,application='imposter'))
             self.assertFalse(probe.shell_witness_hit(query)['ok'])
+
+    def test_real_menu_wire_roles_use_semantic_names_across_atk_and_atspi(self):
+        node=dict(self.node,name='put.gd',role='menu',role_id=33,rect=[1780,0,36,32])
+        pick=dict(self.pick,shell_nodes=[{'accessible':'put.gd','role':32,'rect':[1780,0,36,32]}])
+        query=dict(self.query,desktop_node=node,point=[1798,16])
+        library=Mock();library.atk_role_get_name.return_value=b'menu'
+        with patch.object(probe,'compositor_pick',return_value=pick),\
+             patch.object(probe.ctypes.util,'find_library',return_value='libatk-1.0.so.0'),\
+             patch.object(probe.ctypes,'CDLL',return_value=library):
+            self.assertTrue(probe.shell_witness_hit(query)['ok'])
+        library.atk_role_get_name.assert_called_once_with(32)
+
+    def test_same_text_and_bounds_with_another_native_role_is_refused(self):
+        with patch.object(probe,'compositor_pick',return_value=self.pick),patch.object(probe,'native_shell_role',return_value='slider'):
+            self.assertFalse(probe.shell_witness_hit(self.query)['ok'])
 
 
 if __name__=='__main__':unittest.main()

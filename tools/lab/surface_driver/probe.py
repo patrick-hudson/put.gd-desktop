@@ -163,9 +163,6 @@ class RawNode:
     def getRoleName(self):
         return str(self._call(self.ACCESSIBLE, 'GetRoleName'))
 
-    def getRole(self):
-        return int(self._call(self.ACCESSIBLE, 'GetRole'))
-
     def get_process_id(self):
         return self.pid
 
@@ -599,8 +596,6 @@ def accessible(query):
                        'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
                        'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
                        'protected': protected, 'popup': popup, 'ancestors': ancestors}
-                if hasattr(node, 'getRole'):
-                    row['role_id'] = int(node.getRole())
                 row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
                 row['coordinate_space'], reason = 'desktop', None
                 if wayland:
@@ -1245,6 +1240,24 @@ def shell_hit(query):
     return {'ok':False,'backend':'shell-at-spi-pick','obscuring_window':'compositor shell stage did not pick the expected notification control'}
 
 
+def native_shell_role(value):
+    """Shell actors use ATK roles; AT-SPI role enum numbers are different.
+
+    Resolve the native ABI's canonical name rather than guessing an offset.
+    atk_role_get_name is non-localized; button aliases use the query matcher.
+    """
+    library = ctypes.util.find_library('atk-1.0')
+    if not library:
+        raise RuntimeError('native shell role names require the distro ATK library')
+    atk = ctypes.CDLL(library)
+    atk.atk_role_get_name.argtypes = [ctypes.c_int]
+    atk.atk_role_get_name.restype = ctypes.c_char_p
+    name = atk.atk_role_get_name(value)
+    if not name:
+        raise RuntimeError('native shell reported an unknown ATK role')
+    return normalize_role(name.decode('utf-8'))
+
+
 def shell_witness_hit(query):
     """Bind the live AT-SPI node to the shell's actual picked actor and PID."""
     expected = query['desktop_node']
@@ -1252,12 +1265,11 @@ def shell_witness_hit(query):
     ok = (bool(query['shell_application']) and type(expected.get('pid')) is int and expected['pid'] > 0
           and fnmatch.fnmatchcase(expected.get('application',''),query['shell_application'])
           and expected.get('pid') == pick.get('pid') and pick.get('window') is None)
-    role = expected.get('role_id')
-    if role is None:
-        raise RuntimeError('native shell hit-test needs the server role identity')
+    role = normalize_role(expected['role'])
     rect = expected.get('rect')
     ok = ok and bool(expected.get('name')) and bool(rect) and len(rect) == 4 and any(
-        expected['name'] in (actor.get('accessible'),actor.get('text')) and actor.get('role') == role
+        expected['name'] in (actor.get('accessible'),actor.get('text'))
+        and type(actor.get('role')) is int and native_shell_role(actor['role']) == role
         and actor.get('rect') and len(actor['rect']) == 4 and all(abs(a-b)<=1 for a,b in zip(actor['rect'],rect))
         for actor in pick.get('shell_nodes',[]))
     window = pick.get('window')
