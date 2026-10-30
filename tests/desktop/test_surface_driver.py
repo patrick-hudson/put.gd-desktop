@@ -359,6 +359,51 @@ class InputFoundations(unittest.TestCase):
         self.assertEqual([args[4] for args in sent],[True,False,True,False])
         self.assertEqual(self.ctx._click_count,1)
 
+    def test_canvas_focus_selects_owning_window(self):
+        queries=[]
+        self.ctx._probe=lambda name,query:queries.append(query) or {'ok':True}
+        self.ctx.focus('editor.canvas')
+        self.assertEqual(self.ctx._current_window,'editor')
+        self.assertEqual(queries[0]['geometry']['window_id'],'10')
+
+    def test_drag_failure_releases_held_button(self):
+        guards=[];events=[]
+        def guard(**kwargs):
+            guards.append(kwargs)
+            if len(guards)>1:raise RecipeFailed('focus changed during drag')
+        self.ctx._guard=guard;self.ctx.target.pointer=lambda *args,**kw:events.append(args)
+        with self.assertRaisesRegex(RecipeFailed,'focus changed'):
+            self.ctx.drag((10,10),(30,30))
+        self.assertEqual(events[0][4],True)
+        self.assertEqual(events[-1][4],False)
+
+    def test_desktop_label_click_uses_pointer_and_hit_test(self):
+        self.ctx.accessible=lambda query:[{'name':'Notice','role':'label','pid':8,'enabled':False,'rect':[10,10,80,20]}]
+        probes=[];events=[]
+        self.ctx._probe=lambda name,query:probes.append(query) or {'ok':True}
+        self.ctx.target.pointer=lambda *args:events.append(args)
+        self.ctx.click_accessible({'application':'cinnamon','name':'Notice'})
+        self.assertEqual(probes[0]['point'],(50,20))
+        self.assertEqual(events[0][:2],(50,20))
+        self.assertEqual([e[4] for e in events],[True,False])
+
+    def test_read_only_tray_inventory_is_private_and_hashes_pixmaps(self):
+        from tools.lab.surface_driver import probe
+        from types import SimpleNamespace
+        props={'Id':'putgd','Title':'put.gd','Status':'Active','IconName':'putgd',
+               'IconPixmap':[(1,1,[255,0,0,0])],'ToolTip':('',[],'put.gd','Idle'),'Menu':'/Menu'}
+        class Interface:
+            def Get(self,*a):return [':1.7/Item',':1.8/Item']
+            def GetConnectionUnixProcessID(self,service):return 7 if service==':1.7' else 8
+            def GetAll(self,*a):return props
+        fake=SimpleNamespace(SessionBus=lambda:SimpleNamespace(get_object=lambda *a:None),Interface=lambda *a:Interface())
+        with patch.dict(sys.modules,dbus=fake),patch.object(probe,'owned',side_effect=lambda pid:pid==7):
+            rows=probe.tray({})
+        self.assertEqual(len(rows),1);self.assertEqual(rows[0]['pid'],7)
+        self.assertEqual(rows[0]['tooltip'],{'title':'put.gd','text':'Idle'})
+        self.assertEqual(rows[0]['icon_pixmaps'][0]['bytes'],4)
+        self.assertEqual(len(rows[0]['icon_pixmaps'][0]['sha256']),64)
+
     def test_live_menus_without_catalog_context_and_row(self):
         events=[];self.ctx.target.pointer=lambda *args:events.append(args)
         requests=[]
@@ -399,6 +444,23 @@ class InputFoundations(unittest.TestCase):
         with patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}):
             with self.assertRaisesRegex(RuntimeError,'compositor focus/stacking witness unavailable'):
                 probe.foreground({'geometry':self.g})
+
+    def test_wayland_shell_pick_requires_the_expected_compositor_node(self):
+        from tools.lab.surface_driver import probe
+        from types import SimpleNamespace
+        node=SimpleNamespace(name='Synthetic notice',get_process_id=lambda:50,getRoleName=lambda:'label')
+        component=SimpleNamespace(getAccessibleAtPoint=lambda *a:node)
+        window=SimpleNamespace(queryComponent=lambda:component)
+        class App(list):
+            def get_process_id(self):return 50
+        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[App([window])]),DESKTOP_COORDS=0)
+        query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50},
+               'point':[40,30],'shell_application':'gnome-shell*'}
+        with patch.dict(sys.modules,pyatspi=fake):
+            self.assertTrue(probe.shell_hit(query)['ok'])
+            query['desktop_node']['application']='other app'
+            with self.assertRaisesRegex(RuntimeError,'profile compositor'):
+                probe.shell_hit(query)
 
     def test_x11_active_and_stacking_reject_same_process_obscurer(self):
         from tools.lab.surface_driver import probe
@@ -496,6 +558,22 @@ class InputFoundations(unittest.TestCase):
         notices[0]['closed']={'reason':1}
         with self.assertRaisesRegex(RecipeBlocked,'closed'):
             self.ctx.notification_action(72)
+
+    def test_notification_button_uses_common_ancestor_not_title_only_panel(self):
+        self.ctx.profile['notifications']['actions_available']=True
+        notice={'id':72,'summary':'Synthetic notice','actions':['retry','Retry'],'action_events':[]}
+        title={'name':'Synthetic notice','pid':50,'role':'label','rect':[20,10,80,20],
+               'ancestors':[{'role':'notification','rect':[0,0,200,150]},
+                            {'role':'panel','rect':[20,10,80,20]}]}
+        button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
+        self.ctx.notifications=lambda:[notice]
+        self.ctx.accessible=lambda query:[title if query['name']=='Synthetic notice' else button]
+        clicked=[]
+        def click(query):
+            clicked.append(query);notice['action_events'].append({'action':'retry'})
+        self.ctx.click_accessible=click
+        self.ctx.notification_action(72,'retry')
+        self.assertEqual(clicked[0]['within'],[0,0,200,150])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')

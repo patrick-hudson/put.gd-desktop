@@ -64,7 +64,7 @@ def accessible(query):
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
     matches_ = []
     stack = [(pyatspi.Registry.getDesktop(0), 0, '', '', None, [])]
-    visited = 0
+    visited, truncated = 0, False
     while stack and visited < 20000:
         node, depth, window, application, popup, ancestors = stack.pop()
         visited += 1
@@ -130,9 +130,11 @@ def accessible(query):
             if depth < 50:
                 ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid}]
                 stack.extend((child, depth + 1, window, application, popup, ancestry) for child in node if child is not None)
+            elif getattr(node,'childCount',0):
+                truncated = True
         except (RuntimeError, AttributeError, NotImplementedError):
             continue
-    if stack:
+    if stack or truncated:
         raise RuntimeError('accessibility scan exceeded bounded tree size/depth')
     return matches_
 
@@ -205,7 +207,7 @@ def control_geometry(query):
 
 
 def run(*args):
-    return subprocess.check_output(args, text=True, stderr=subprocess.DEVNULL).strip()
+    return subprocess.check_output(args, text=True, stderr=subprocess.DEVNULL, timeout=5).strip()
 
 
 def xprop(wid, prop):

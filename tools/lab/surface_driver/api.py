@@ -161,8 +161,9 @@ class Context:
         [x,y,width,height] or null, bounds {x,y,width,height} or null, pid,
         application, window, owned, objectName, accelerator, attributes,
         visible/showing/enabled, protected, popup and ancestors. Coordinates are
-        desktop screen units (X11 pixels, Wayland logical). Password text is
-        never read. RecipeBlocked when unavailable, including profile gaps.
+        AT-SPI DESKTOP_COORDS as reported by the server. Profiles record
+        geometry gaps; pointer input requires an independent compositor witness.
+        Password text is never read. RecipeBlocked when unavailable, including profile gaps.
         """
         raise NotImplementedError
 

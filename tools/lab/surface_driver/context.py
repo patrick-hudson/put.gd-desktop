@@ -165,8 +165,9 @@ class DriverContext(Context):
 
     def focus(self, window, raise_window=True):
         """Select an input target and verify/optionally raise it before input."""
-        self._current_window, self._popup = window, None
-        return self._guard(window=window, raise_window=raise_window)
+        owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
+        self._current_window, self._popup = owner, None
+        return self._guard(window=owner, raise_window=raise_window)
 
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
@@ -475,16 +476,22 @@ asyncio.run(main())
             query = {**policy, 'pid':title['pid'], 'name':glob.escape(title['name']), 'role':title['role']}
         else:
             containers = [n for n in title.get('ancestors',[]) if n['role'] in ('notification','panel','alert') and n.get('rect')]
-            if not containers:
-                raise RecipeBlocked('notification button cannot be correlated to its drawn container')
-            container = containers[-1]['rect']
             buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
                                        'visible':True,'showing':True,'enabled':True})
-            buttons = [n for n in buttons if n.get('rect') and container[0] <= n['rect'][0] < container[0]+container[2]
-                       and container[1] <= n['rect'][1] < container[1]+container[3]]
-            if len(buttons) != 1:
+            query = None
+            # A title's nearest panel can contain just its text/icon. Select
+            # the smallest common ancestor which also contains one action.
+            for ancestor in reversed(containers):
+                container = ancestor['rect']
+                inside = [n for n in buttons if n.get('rect') and min(n['rect'][2:])>0 and
+                          container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
+                          container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
+                if len(inside)==1:
+                    query = {**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
+                             'role':inside[0]['role'],'within':container}
+                    break
+            if query is None:
                 raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
-            query = {**policy,'pid':title['pid'],'name':glob.escape(actions[action]),'role':buttons[0]['role'],'within':container}
         previous = len(notice.get('action_events',[]))
         self.click_accessible(query)
         def invoked():
