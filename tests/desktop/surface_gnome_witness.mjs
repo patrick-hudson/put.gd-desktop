@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const path=process.argv[2];
+const path=process.argv[2] ?? new URL('../../tools/lab/surface_driver/compositor/gnome-witness/extension.js',import.meta.url);
 let code=fs.readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace('export default class LabWitness','class LabWitness');
 const callbacks=new Map();
 let unexported=false;

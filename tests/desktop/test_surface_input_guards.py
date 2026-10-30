@@ -49,8 +49,9 @@ class FocusAndRoles(unittest.TestCase):
         button=FakeNode('Upload','button',[10,10,80,30])
         app=FakeNode('putgd','application',None,children=[button])
         desktop=FakeNode('main','desktop frame',None,children=[app])
-        api=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop), DESKTOP_COORDS=0)
-        with patch.dict(sys.modules,pyatspi=api),patch.object(probe,'popup_roots',return_value=[]):
+        api=SimpleNamespace(DESKTOP_COORDS=0)
+        with patch.dict(sys.modules,pyatspi=api),patch.object(probe,'desktop_root',return_value=desktop),\
+             patch.object(probe,'popup_roots',return_value=[]):
             rows=probe.accessible({'name':'Upload','role':'push button'})
         self.assertEqual(rows[0]['role'],'button')
 
@@ -116,8 +117,8 @@ class ShellNotificationCover(unittest.TestCase):
         stage=PickNode('','window',[0,0,1920,1080],PickNode('','panel',[0,0,1920,1080]))
         stage.append(banner)
         app=FakeNode('cinnamon','application',None,children=[stage])
-        api=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:[app]),DESKTOP_COORDS=0,STATE_SHOWING='showing')
-        with patch.dict(sys.modules,pyatspi=api):
+        api=SimpleNamespace(DESKTOP_COORDS=0,STATE_SHOWING='showing')
+        with patch.dict(sys.modules,pyatspi=api),patch.object(probe,'desktop_root',return_value=[app]):
             self.assertIn("notification 'Upload failed'",probe.shell_cover((1580,70),'cinnamon*'))
             self.assertIsNone(probe.shell_cover((100,500),'cinnamon*'))
 
@@ -295,15 +296,53 @@ class GrabEvidence(unittest.TestCase):
         ctx.target.release_pointer.assert_called_once()
 
 
+class DragGuards(unittest.TestCase):
+    def drag_with_real_guard(self, require_resize):
+        ctx,directory=context({'session':'wayland','compositor':{'kind':'gnome-lab-witness'}})
+        self.addCleanup(directory.cleanup)
+        observations,dispatched=[],[]
+        def observe(name,query):
+            observations.append((name,ctx._press_open,len(dispatched)))
+            if name=='foreground':
+                return {'ok':True}
+            self.assertEqual(name,'resize')
+            return ({'epoch':'a','serial':5,'events':[GrabEvidence.event]} if ctx._press_open
+                    else GrabEvidence.before)
+        def pointer(*args,**kwargs):
+            self.assertTrue(ctx._press_open)
+            dispatched.append((args[:2],args[4] if len(args)>4 else None))
+        def release(*args):
+            self.assertTrue(ctx._press_open)
+        ctx._probe=Mock(side_effect=observe)
+        ctx.target.pointer.side_effect=pointer
+        ctx.target.release_pointer.side_effect=release
+        ctx.drag((20,30),(50,60),steps=3,require_resize=require_resize)
+        self.assertEqual(dispatched,[((20,30),True),((30,40),None),((40,50),None),((50,60),None)])
+        self.assertEqual([holding for name,holding,_ in observations if name=='foreground'],
+                         [False,True,True,True])
+        self.assertEqual([(holding,sent) for name,holding,sent in observations if name=='resize'],
+                         [(False,0),(True,2)] if require_resize else [])
+        if require_resize:
+            self.assertEqual(sum(note.startswith('resize-start ') for note in ctx.notes),1)
+        ctx.target.release_pointer.assert_called_once_with(50,60,1920,1080,'left',0)
+        self.assertFalse(ctx._press_open)
+        self.assertFalse(ctx._input_poisoned)
+        ctx._guard()  # A confirmed release also permits the next guarded input.
+
+    def test_drag_steps_pass_real_guard_while_press_is_open(self):
+        self.drag_with_real_guard(False)
+
+    def test_resize_drag_steps_pass_real_guard_while_press_is_open(self):
+        self.drag_with_real_guard(True)
+
+
 class WitnessSignals(unittest.TestCase):
     def test_native_grab_signal_lifecycle_and_bounded_history(self):
         import shutil
         node=shutil.which('node')
         if not node:
             self.skipTest('Node is unavailable for the extension signal unit test')
-        root=Path(__file__).resolve().parents[2]
-        subprocess.run([node,str(Path(__file__).with_name('surface_gnome_witness.mjs')),
-                        str(root/'tools/lab/surface_driver/compositor/gnome-witness/extension.js')],
+        subprocess.run([node,'--test',str(Path(__file__).with_name('surface_gnome_witness.mjs'))],
                        check=True,capture_output=True,text=True,timeout=5)
 
 
