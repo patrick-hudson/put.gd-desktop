@@ -94,6 +94,23 @@ class Hygiene(unittest.TestCase):
             target.release_pointer(10,20,100,100)
         self.assertEqual(send.call_args.args[1],[{'type':'btn','data':{'button':'left','down':False}}])
 
+    def test_unmanaged_drag_checks_each_intended_point_before_moving(self):
+        with tempfile.TemporaryDirectory() as td:
+            events = []
+            class Input:
+                physical = None
+                def pointer(self,*args,**kw):events.append(('pointer',args[:2]))
+            ctx = DriverContext(Input(),dict(desktop='test',host='boat',placement='boat',package='deb',destination='local'),{},td,td)
+            ctx._dimensions = lambda head:(100,100)
+            def guard(**query):
+                events.append(('guard',query['point']))
+                return {'ok':True,'backend':'x11-unmanaged-hit-test'}
+            ctx._guard = guard
+            ctx.drag((10,10),(30,30),steps=2)
+            self.assertEqual(events[:6],[('guard',(10,10)),('pointer',(10,10)),
+                                        ('guard',(20,20)),('pointer',(20,20)),
+                                        ('guard',(30,30)),('pointer',(30,30))])
+
     def test_persistent_probe_keeps_channel_but_observes_each_request(self):
         target = self.probe_target()
         source = 'counter=0\ndef geometry(query):\n global counter\n counter+=1\n return counter\n'
