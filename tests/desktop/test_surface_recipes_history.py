@@ -596,7 +596,7 @@ class HistoryRecipeTests(unittest.TestCase):
         with patch.object(history, '_exercise_command', side_effect=exercise):
             with self.assertRaisesRegex(RecipeFailed, 'third action'):
                 history._action_matrix(ctx, lambda action: None)
-        self.assertEqual(attempted, ['region', 'window', 'desktop'])
+        self.assertEqual(attempted, ['clipboard', 'region', 'window', 'desktop'])
 
     def test_window_buttons_require_observed_effect_and_restore_on_failure(self):
         for action, fault in ((history.minimize, 'minimize-no-effect'),

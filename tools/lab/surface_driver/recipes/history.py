@@ -818,6 +818,38 @@ def autosave_status(ctx):
     ctx.review('Inspect the status-band captions in saved frames: Settings save automatically and Changes not saved.')
 
 
+@recipe('shell.command-tooltips', needs=('app-profile',), timeout=240)
+def command_tooltips(ctx):
+    labels = {'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
+              'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}
+    for unavailable in (False, True):
+        if unavailable:
+            ctx.fixture('settings-no-output')
+        _open(ctx)
+        if not unavailable:
+            _frame(ctx, 'before')
+        config = _result(ctx.call('settings.get'))['document']
+        for action, label in labels.items():
+            query = {'owned': True, 'visible': True, 'showing': True,
+                     'pid': ctx.geometry('history')['pid'], 'name': label, 'role': 'push button'}
+            ctx.hover_accessible(query)
+            def tooltip():
+                rows = _nodes(ctx, role='tool tip')
+                texts = [n.get('text') or n.get('name', '') for n in rows]
+                return next((text for text in texts if label in text), None)
+            text = ctx.wait(tooltip, 'owned tooltip for ' + action)
+            ctx.expect('Output' in text or 'local' in text.lower() or 'Nothing is saved or uploaded' in text,
+                       'command tooltip includes actual output behavior')
+            shortcut = config['actions'][action].get('shortcut', '')
+            if shortcut:
+                ctx.expect(shortcut in text, 'tooltip includes configured shortcut')
+            if unavailable:
+                ctx.expect('New captures have no output' in text, 'tooltip includes unavailability reason')
+            ctx.frame('tooltip-' + action + ('-unavailable' if unavailable else '-local'))
+            ctx.keys('Esc')
+    _frame(ctx, 'after')
+
+
 @recipe('history.save-diagnostics', needs=('history_retry_upload', 'app-profile'))
 def save_diagnostics(ctx):
     row = _row(ctx, 'history_retry_upload')
@@ -1104,7 +1136,9 @@ def _action_matrix(ctx, dispatch):
     ctx.fixture('selector-desktop')
     _open(ctx)
     _frame(ctx, 'before')
-    for action in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record'):
+    # Capture results replace the native clipboard owner; exercise the owned
+    # text source first, before any completed screenshot changes it.
+    for action in ('clipboard', 'region', 'window', 'desktop', 'edit', 'record'):
         _exercise_command(ctx, action, dispatch)
     _open(ctx)
     _frame(ctx, 'after')
@@ -1165,7 +1199,6 @@ BLOCKED = {
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
-    'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness.',
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
     'shell.action-recovery-banner': 'settings-no-output covers Change output; no controlled rejected-action fixtures yet supply Keep local copies and Review destination variants for the complete banner matrix.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
