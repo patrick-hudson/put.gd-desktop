@@ -135,3 +135,25 @@ applied.
   - the fallback's contrast and surfaces in Dark and Light, and a scheme switch while open.
 - **`file_dialog_x11_parent`** checks the `x11:<xid>` handle under Xvfb.
 - **`gui_review_window`, `gui_settings` and `mcp_integration`** cover the commands above.
+
+### Native cancellation preconditions (GNOME 50, #847)
+
+Start cancellation checks in an existing directory. Nautilus 50 can draw a
+missing-folder alert inside the chooser when `current_folder` does not exist.
+The compositor still reports the chooser's top-level focused, while the
+alert's **OK** button has keyboard focus. The first Escape dismisses that
+alert without cancelling the chooser or sending its `Request.Response`.
+A second Escape cancels the chooser with Response `1`.
+
+The surface driver's dialog fixture prepares its private `out/diagnostics`
+directory before opening the diagnostics chooser. With no alert, one real
+Escape cancels with Response `1` and preserves the selected diagnostics folder,
+settings and operation list. This is synthetic fixture setup; the app does not
+create a diagnostics directory merely to open its chooser. The fixture removes
+the directory through its normal owned cleanup.
+
+For a cancellation investigation, retain the focused control as well as the
+compositor window, the matching frontend/backend request and response, and saved
+before/after frames. An open request after an alert was dismissed does not
+establish a lost portal response. See the [live trace and recipe
+evidence](evidence/2026-10-30-diagnostics-folder-847/README.md).
