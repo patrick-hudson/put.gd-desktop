@@ -115,8 +115,11 @@ def connect_unix(path, timeout):
 
 
 class QMP:
-    def __init__(self, path, timeout=10):
-        self.socket = connect_unix(path, timeout)
+    def __init__(self, path, timeout=10, deadline=None):
+        # deadline (time.monotonic()): one budget for connect, greeting and
+        # every reply, instead of ``timeout`` per step.
+        self.deadline = deadline
+        self.socket = connect_unix(path, timeout if deadline is None else min(timeout, deadline - time.monotonic()))
         self.stream = None
         try:
             self.stream = self.socket.makefile('rwb')
@@ -131,7 +134,15 @@ class QMP:
             self.close()
             raise
 
+    def _budget(self):
+        if self.deadline is not None:
+            remaining = self.deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError('QMP deadline exceeded')
+            self.socket.settimeout(remaining)
+
     def _read(self):
+        self._budget()
         line = self.stream.readline(1024 * 1024)
         if not line or not line.endswith(b'\n'):
             raise LabError('QMP closed or oversized reply')
@@ -142,6 +153,7 @@ class QMP:
         request = {'execute': name, 'id': self.sequence}
         if arguments is not None:
             request['arguments'] = arguments
+        self._budget()
         self.stream.write(json.dumps(request).encode() + b'\n')
         self.stream.flush()
         while True:
@@ -881,11 +893,13 @@ def reset(run):
     return {'status': 'stopped', 'evidence': str(run)}
 
 
-def input_events(run, events, head=None):
+def input_events(run, events, head=None, timeout=None):
+    """Send QMP input events. ``timeout``: total seconds, connect to reply."""
     arguments = {'events': events}
     if head is not None:
         arguments.update(device='video0', head=head)
-    with QMP(Path(run) / 'qmp.sock') as qmp:
+    budget = {} if timeout is None else {'timeout': timeout, 'deadline': time.monotonic() + timeout}
+    with QMP(Path(run) / 'qmp.sock', **budget) as qmp:
         qmp.execute('input-send-event', arguments)
 
 
