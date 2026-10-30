@@ -1,6 +1,10 @@
 """Fault-injection checks for Tier 1's independent result oracles."""
+from pathlib import Path
+import sys
 import unittest
 from PIL import Image, ImageDraw
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tools.lab.lab import FIXTURE_RGB
 from tools.lab.surface_driver.recipes.outcomes import edited_pixels, pattern_visible, pixels_equal
