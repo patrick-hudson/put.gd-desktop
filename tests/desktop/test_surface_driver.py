@@ -642,8 +642,10 @@ class InputFoundations(unittest.TestCase):
         self.assertEqual(clicked[0]['within'],[0,0,200,150])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
+        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
+                                               reason='Declared desktop gap (#670)')
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
+        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
             self.ctx.notification_action(72)
         self.assertEqual(error.exception.issue,670)
 
