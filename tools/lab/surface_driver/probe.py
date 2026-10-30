@@ -119,8 +119,25 @@ def popup_roots(query):
     return roots
 
 
+UNREAD = object()
+
+
+def extents(node):
+    import pyatspi
+    try:
+        value = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
+    except (NotImplementedError, RuntimeError):
+        return None
+    return list(value) if value is not None else None
+
+
 def accessible(query):
     import pyatspi
+    owners = {}
+    def is_owned(pid):
+        if pid not in owners:
+            owners[pid] = owned(pid)
+        return owners[pid]
     unknown = set(query) - QUERY_KEYS
     if unknown:
         raise ValueError('unknown accessibility query keys: ' + ', '.join(sorted(unknown)))
@@ -156,7 +173,6 @@ def accessible(query):
                     continue
             if role in WINDOW_ROLES or (ancestors and ancestors[-1]['role']=='application' and role not in POPUP_ROLES):
                 window, popup = name, None
-            attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
             state_set = node.getState()
             states = {}
             for key in ('visible', 'showing', 'enabled', 'sensitive', 'active', 'focused', 'focusable',
@@ -168,41 +184,43 @@ def accessible(query):
             potential = all(not query.get(key) or fnmatch.fnmatchcase(value, query[key])
                             for key,value in (('name',name),('application',application),('window',window)))
             potential = potential and (not query.get('role') or role==normalize_role(query['role']))
-            rect = None
-            try:
-                rect = list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
-            except (NotImplementedError, RuntimeError):
-                pass
+            # Extents/attributes/text are one D-Bus round trip each: fetch them
+            # only for rows that can match and for popups. Ancestor rectangles
+            # are filled in for matched rows only (a shell tree has ~2000 nodes).
+            rect = extents(node) if potential or role in POPUP_ROLES else UNREAD
             if role in POPUP_ROLES and states['showing']:
                 popup = {'name': name, 'role': role, 'rect': rect, 'pid': pid}
-            protected = role == 'password text'
-            text = ''
-            if potential and not protected:
+            if potential:
+                attributes = dict(a.split(':', 1) for a in node.getAttributes() if ':' in a)
+                protected = role == 'password text'
+                text = ''
+                if not protected:
+                    try:
+                        interface = node.queryText()
+                        text = interface.getText(0, min(interface.characterCount, 65536))
+                    except (NotImplementedError, RuntimeError):
+                        pass
+                accelerator = ''
                 try:
-                    interface = node.queryText()
-                    text = interface.getText(0, min(interface.characterCount, 65536))
+                    action = node.queryAction()
+                    accelerator = ';'.join(action.getKeyBinding(i) for i in range(action.nActions))
                 except (NotImplementedError, RuntimeError):
                     pass
-            accelerator = ''
-            try:
-                if not potential:
-                    raise NotImplementedError
-                action = node.queryAction()
-                accelerator = ';'.join(action.getKeyBinding(i) for i in range(action.nActions))
-            except (NotImplementedError, RuntimeError):
-                pass
-            object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
-            row = {'window': window, 'application': application, 'name': name, 'role': role,
-                   'text': text, 'description': '' if protected else (node.description or ''),
-                   'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
-                   'owned': owned(pid), 'objectName': object_name, 'accelerator': accelerator,
-                   'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
-                   'protected': protected, 'popup': popup, 'ancestors': ancestors}
-            row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
-            if matches(row, query):
-                matches_.append(row)
+                object_name = next((attributes[k] for k in ('id', 'objectName', 'object-name', 'accessible-id') if k in attributes), '')
+                row = {'window': window, 'application': application, 'name': name, 'role': role,
+                       'text': text, 'description': '' if protected else (node.description or ''),
+                       'states': states, 'rect': rect, 'attributes': attributes, 'pid': pid,
+                       'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
+                       'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
+                       'protected': protected, 'popup': popup, 'ancestors': ancestors}
+                row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
+                if matches(row, query):
+                    for ancestor in ancestors:
+                        if ancestor['rect'] is UNREAD:
+                            ancestor['rect'] = extents(ancestor['_node'])
+                    matches_.append(row)
             if depth < 50:
-                ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid}]
+                ancestry = ancestors + [{'name':name,'role':role,'rect':rect,'pid':pid,'_node':node}]
                 stack.extend((child, depth + 1, window, application, popup, ancestry) for child in node if child is not None)
             elif getattr(node,'childCount',0):
                 truncated = True
@@ -210,6 +228,8 @@ def accessible(query):
             continue
     if stack or truncated:
         raise RuntimeError('accessibility scan exceeded bounded tree size/depth')
+    for row in matches_:
+        row['ancestors'] = [{k: (None if v is UNREAD else v) for k, v in a.items() if k != '_node'} for a in row['ancestors']]
     return matches_
 
 

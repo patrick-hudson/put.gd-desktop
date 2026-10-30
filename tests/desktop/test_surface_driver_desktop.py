@@ -225,5 +225,44 @@ class NotificationPrivacy(unittest.TestCase):
             self.assertTrue(probe.notification_log({'log':log.name,'pid':os.getpid()})['alive'])
 
 
+class FakeNode(list):
+    def __init__(self,name,role,rect,pid=50,children=()):
+        super().__init__(children);self.name,self.role,self.rect,self.pid=name,role,rect,pid
+        self.description='';self.path='/n/'+name;self.extent_reads=0
+    def getRoleName(self):return self.role
+    def get_process_id(self):return self.pid
+    def getAttributes(self):return []
+    def getState(self):
+        from types import SimpleNamespace
+        return SimpleNamespace(contains=lambda state:state in ('visible','showing','enabled'))
+    def queryComponent(self):
+        from types import SimpleNamespace
+        def extents(_):
+            self.extent_reads+=1;return self.rect
+        return SimpleNamespace(getExtents=extents)
+    def queryText(self):raise NotImplementedError
+    def queryAction(self):raise NotImplementedError
+
+
+class LazyWalk(unittest.TestCase):
+    def test_only_candidates_and_matched_ancestry_read_extents(self):
+        from types import SimpleNamespace
+        label=FakeNode('Upload complete','label',[830,30,200,20])
+        other=[FakeNode('Clock '+str(i),'label',[0,0,40,10]) for i in range(30)]
+        banner=FakeNode('','notification',[780,10,480,80],children=[label])
+        stage=FakeNode('','window',[0,0,1280,800],children=[banner,*other])
+        app=FakeNode('cinnamon','application',None,children=[stage])
+        desktop=FakeNode('main','desktop frame',[0,0,1280,800],children=[app])
+        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:desktop),DESKTOP_COORDS=0,
+                             STATE_VISIBLE='visible',STATE_SHOWING='showing',STATE_ENABLED='enabled')
+        with patch.dict(sys.modules,pyatspi=fake):
+            rows=probe.accessible({'application':'cinnamon*','name':'Upload complete','showing':True})
+        self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0]['rect'],[830,30,200,20])
+        self.assertEqual([a['rect'] for a in rows[0]['ancestors']][-2:],[[0,0,1280,800],[780,10,480,80]])
+        self.assertTrue(all('_node' not in a for a in rows[0]['ancestors']))
+        self.assertEqual(sum(n.extent_reads for n in other),0)
+
+
 if __name__=='__main__':
     unittest.main()
