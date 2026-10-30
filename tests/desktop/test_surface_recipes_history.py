@@ -606,6 +606,19 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertFalse(ctx.query['uploadStatus'])
         self.assertEqual(ctx.query['search'], ctx.fixture_row['name'])
 
+    def test_one_working_row_shortcut_does_not_pass_both_bindings(self):
+        class NoMenuKey(FakeContext):
+            def keys(self, *keys):
+                if keys == ('Menu',):
+                    self.events.append(('keys', keys))
+                    return
+                return super().keys(*keys)
+        ctx = NoMenuKey(('history-row',))
+        with self.assertRaises(RecipeBlocked) as error:
+            history.key_menu(ctx)
+        self.assertEqual(error.exception.issue, 835)
+        self.assertEqual(json.loads(ctx.clipboard)['records'][0]['id'], 'image-1')
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))

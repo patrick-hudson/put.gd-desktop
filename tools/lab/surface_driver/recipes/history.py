@@ -404,7 +404,12 @@ def key_menu(ctx):
             'real delegate click establishes the exact selected current keyboard row')
         _frame(ctx, 'selected-' + key)
         ctx.keys(key)
-        _wait_menu(ctx, 'Copy details')
+        try:
+            _wait_menu(ctx, 'Copy details')
+        except RecipeFailed:
+            if key == 'Menu':
+                ctx.blocked('Shift+F10 opened the real row menu and copied the exact receipt; the portable Menu key produced no owned popup after verified current-row focus. A native Menu-key delivery witness is still needed for this second binding.', issue=835)
+            raise
         _frame(ctx, 'menu-' + key, None)
         _copied_row_details(ctx, row)
     _frame(ctx, 'after')
