@@ -155,7 +155,7 @@ class FakeContext(Context):
             'text:Retry upload': 'retryOperation', 'text:Retry local save': 'retryOperation',
             'text:Next': 'historyNext', 'text:Previous': 'historyPrevious',
             'text:Clear selection': 'historyClearSelection', 'text:Clear filters': 'historyClearFilters',
-            'text:Keep uploading': 'historyKeepUploading', 'text-glob:Cancel * uploads': 'historyConfirmCancelAll',
+            'text:Keep uploading': 'historyKeepUploading', 'text:Cancel 2 uploads': 'historyConfirmCancelAll',
             'text-glob:* more active': 'historyMoreActive', 'text-glob:Cancel this upload:*': 'cancelBannerOperation',
             'text-glob:Cancel all (*)…': 'cancelAllBannerOperations', 'text:Upload state': 'historyAddFilteruploadStatus',
             'text:Save a copy…': 'saveHistoryAsAction', 'text:Close preview': 'closeHistoryPreview',
@@ -594,6 +594,27 @@ class HistoryRecipeTests(unittest.TestCase):
                 with self.assertRaises(RecipeBlocked):
                     history._click_history_node(ctx, {'name': 'Expand preview'})
                 self.assertFalse(any(e[0] in ('click', 'focus') for e in ctx.events))
+
+    def test_dialog_geometry_waits_for_mapping_before_frame_or_input(self):
+        ctx = FakeContext()
+        calls = []
+        def geometry(window):
+            calls.append(window)
+            if len(calls) < 3:
+                raise RecipeBlocked('new dialog not mapped yet')
+            return ctx.window
+        ctx.geometry = geometry
+        self.assertEqual(history._wait_window(ctx, 'historyConfirmAction'), ctx.window)
+        self.assertEqual(calls, ['historyConfirmAction'] * 3)
+        self.assertFalse(ctx.events)
+
+    def test_cancel_all_targets_the_counted_button_without_matching_dialog_title(self):
+        class CountedContext(FakeContext):
+            def click(self, control, window, button='left', offset=None):
+                if window == 'historyCancelAllConfirmation' and control.startswith('text-glob:Cancel'):
+                    raise AssertionError('glob also matches the dialog title')
+                return super().click(control, window, button, offset)
+        history.cancel_all(CountedContext(('history_active_uploads',)))
 
     def test_native_window_observation_uses_accessible_query_and_iconified_state(self):
         from tools.lab.surface_driver.profiles import load_profile

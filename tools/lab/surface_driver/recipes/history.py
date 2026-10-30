@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal, ROUND_HALF_UP
 
-from tools.lab.surface_driver.api import RecipeFailed, recipe
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
 
 LIST = '01-history-list'
 GALLERY = '02-history-gallery'
@@ -86,13 +86,29 @@ def _focus_items(ctx):
     ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=675)
 
 
+def _wait_window(ctx, window):
+    """A click can return before an asynchronous dialog or popup settles."""
+    def observed():
+        try:
+            return ctx.geometry(window)
+        except RecipeBlocked:
+            return None
+    try:
+        return ctx.wait(observed, 'live ' + window + ' window settles')
+    except RecipeFailed:
+        ctx.blocked('No unambiguous live geometry after waiting for ' + window + '.', issue=820)
+
+
 def _click_history_node(ctx, query):
     """Click an app child through its live bounds and the normal window guard."""
-    box = ctx.geometry('history')
-    nodes = ctx.accessible(dict(query, owned=True, visible=True, showing=True, enabled=True, pid=box['pid']))
-    if len(nodes) != 1 or not nodes[0].get('rect'):
-        ctx.blocked('History input requires one owned, enabled native child with live bounds.', issue=675)
-    node = nodes[0]
+    box = _wait_window(ctx, 'history')
+    def observed():
+        nodes = ctx.accessible(dict(query, owned=True, visible=True, showing=True, enabled=True, pid=box['pid']))
+        return nodes[0] if len(nodes) == 1 and nodes[0].get('rect') else None
+    try:
+        node = ctx.wait(observed, 'one enabled History child acquires live bounds')
+    except RecipeFailed:
+        ctx.blocked('History input requires one owned, enabled native child with live bounds after waiting.', issue=820)
     x, y, width, height = node['rect']
     point = (x + width / 2, y + height / 2)
     if (min(width, height) <= 0 or node.get('coordinate_space') == 'window-relative'
@@ -404,6 +420,7 @@ def cancel_all(ctx):
     _frame(ctx, 'before', 'history-many-active')
     ctx.click('text-glob:Cancel all (*)…', window='history')
     state = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'cancel-all confirmation opens')['cancelAllConfirmation']
+    _wait_window(ctx, 'historyCancelAllConfirmation')
     _frame(ctx, 'keep-question', 'history-cancel-all-confirmation', 'historyCancelAllConfirmation')
     ctx.expect(state['open'] and set(state['operationIds']) == set(ids), 'confirmation captures exact active identities')
     ctx.click('text:Keep uploading', window='historyCancelAllConfirmation')
@@ -412,7 +429,7 @@ def cancel_all(ctx):
     ctx.click('text-glob:Cancel all (*)…', window='history')
     second = ctx.wait(lambda: (s if (s := _state(ctx))['cancelAllConfirmation']['open'] else None), 'second cancel-all confirmation opens')
     ctx.expect(set(second['cancelAllConfirmation']['operationIds']) == set(ids), 'second confirmation captures same identities')
-    ctx.click('text-glob:Cancel * uploads', window='historyCancelAllConfirmation')
+    ctx.click('text:Cancel ' + str(len(ids)) + ' uploads', window='historyCancelAllConfirmation')
     ctx.wait(lambda: all(_result(ctx.call('operation.inspect', {'id': item}))['state'] == 'cancelled' for item in ids), 'all confirmed uploads cancel', timeout=75)
     ctx.expect(_state(ctx)['activeOperationCount'] == 0, 'banner clears canceled uploads')
     _frame(ctx, 'after')
@@ -424,8 +441,10 @@ def delete_remote(ctx):
     original = _result(ctx.call('history.detail', {'id': row['id']}))
     _frame(ctx, 'before')
     ctx.click('text:Delete from destination…', window='history')
+    _wait_window(ctx, 'historyConfirmAction')
     ctx.frame('question', window='historyConfirmAction')
     ctx.click('text:Show the full deletion preparation', window='historyConfirmAction')
+    _wait_window(ctx, 'Deletion technical details')
     ctx.click('text:Copy technical details', window='Deletion technical details')
     preparation = json.loads(ctx.clipboard_text())
     ctx.frame('technical-details', window='Deletion technical details')
@@ -434,6 +453,7 @@ def delete_remote(ctx):
     ctx.click('text:Cancel', window='historyConfirmAction')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['remoteStatus'] == original['remoteStatus'], 'Cancel preserves remote state')
     ctx.click('text:Delete from destination…', window='history')
+    _wait_window(ctx, 'historyConfirmAction')
     ctx.click('text-glob:Delete * file*', window='historyConfirmAction')
     final = ctx.wait(lambda: (d if (d := _result(ctx.call('history.detail', {'id': row['id']})))['remoteStatus'] in ('removed', 'already_missing') else None), 'recorded loopback object deleted', timeout=60)
     ctx.expect(final['id'] == original['id'] and final['local'] == original['local'], 'deletion preserves history and local copy')
@@ -451,17 +471,20 @@ def clear_history(ctx):
         ctx.click('historyManagementExpanded', window='history')
         ctx.frame('more-menu-' + ('cache' if 'temporary' in action else 'records'))
         ctx.click('text:' + action, window='historyManagementMenu')
+        _wait_window(ctx, 'historyConfirmAction')
         ctx.frame('question-' + ('cache' if 'temporary' in action else 'records'), window='historyConfirmAction')
         ctx.click('text:Cancel', window='historyConfirmAction')
         ctx.expect(_state(ctx)['total'] == before, 'Cancel preserves history')
     ctx.click('historyManagementExpanded', window='history')
     ctx.click('text:Clear temporary files…', window='historyManagementMenu')
+    _wait_window(ctx, 'historyConfirmAction')
     ctx.click('text:Clear temporary files', window='historyConfirmAction')
     ctx.wait(lambda: not _state(ctx)['busy'], 'temporary file cleanup finishes')
     ctx.expect(_state(ctx)['total'] == before, 'cache cleanup preserves history records')
     ctx.expect(_result(ctx.call('history.detail', {'id': ctx.fixture('history_rows')['image']['id']}))['local'] == local_before, 'cache cleanup preserves local-copy receipt')
     ctx.click('historyManagementExpanded', window='history')
     ctx.click('text:Clear history records…', window='historyManagementMenu')
+    _wait_window(ctx, 'historyConfirmAction')
     ctx.click('text:Clear history records', window='historyConfirmAction')
     ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['total'] == 0, 'confirmed clear removes local history')
     _frame(ctx, 'after')
