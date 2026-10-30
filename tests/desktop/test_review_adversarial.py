@@ -408,5 +408,17 @@ class Adv(unittest.TestCase):
         self.assertIn('coverage-export-filename-registered-secret',receipt)
 
 
+    def test_repository_paths_are_not_mistaken_for_schemeless_share_links(self):
+        from tools.lab.surface_driver.redact import detected
+        r=Redactor()
+        path='/home/user/work/put.gd/src/tools/lab/surface_map/coverage/campaign.json'
+        self.assertFalse(r.has_sensitive(path))
+        self.assertEqual(r.text(path),path)
+        self.assertFalse(r.audit_literals)
+        self.assertFalse(detected(path))
+        self.assertTrue(detected('put.gd/'+TOKEN))
+        self.assertTrue(detected('//put.gd/'+TOKEN))
+
+
 if __name__ == '__main__':
     unittest.main()

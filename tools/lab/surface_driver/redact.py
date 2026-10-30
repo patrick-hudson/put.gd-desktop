@@ -29,7 +29,7 @@ URL_SPAN = re.compile(r'\[url \{[^{}\r\n]+\}\]')
 REDACTED_SPANS = ('[redacted]', '[redacted AWS key]', '[redacted session/authorization]', '[redacted object]')
 AWS = re.compile(r'\b(?:AKIA|ASIA|AIDA|AROA)[A-Z0-9]{16}\b')
 SECRET_FIELD = re.compile(r'(?:password|secret(?!_scan)|token|authorization|^(?:session(?:[._-]?(?:id|uid|data))?|proton[._-]?session|x-pm-(?:uid|session))$|private.?key|access.?key|url$|link$)', re.I)
-SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w.])(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+))', re.I)
+SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w./])(?://)?(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+))', re.I)
 ENUMS = frozenset(('text', 'image', 'files', 'local', 'tty', 'clipboard', 'wayland', 'x11', 'completed', 'cancelled', 'pending', 'recording', 'uploading', 'initializing', 'background', 'foreground', 'available', 'unavailable'))
 
 
@@ -177,7 +177,7 @@ class Redactor:
                     continue
                 normalized = re.sub(r'^hxxp', 'http', url, flags=re.I)
                 if '://' not in normalized:
-                    normalized = 'https://'+normalized
+                    normalized = 'https:'+normalized if normalized.startswith('//') else 'https://'+normalized
                 self._secrets.update((url, normalized))
                 try:
                     parsed = urlsplit(normalized)
