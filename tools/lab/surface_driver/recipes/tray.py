@@ -391,12 +391,16 @@ def edit_file(ctx):
     _press(ctx, 'edit-sources', 'menu item')
     _menu_frame(ctx, 'before')
     _press(ctx, 'trayMenuAction-672f6057ec40f3b4', 'menu item')
+    focused = False
     try:
         state = ctx.call('ui.fileDialog', {'dialog': 'editImage', 'action': 'inspect'})
         ctx.expect(state.get('open'), 'real tray input opened the image chooser')
+        ctx.focus('fileDialog')
+        focused = True
         ctx.frame('after')
     finally:
-        ctx.keys('Esc')
+        if focused:
+            ctx.keys('Esc')
 
 
 def _action_recipe(interaction, action, shortcut=False, menu_open=False):

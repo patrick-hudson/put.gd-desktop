@@ -647,6 +647,13 @@ class TrayRecipesTest(unittest.TestCase):
         for identity in ('trayOutputSummary', 'trayChangeOutput', 'trayCancelUpload'):
             self.assertIn('setObjectName("' + identity + '")', source)
 
+    def test_file_chooser_cleanup_focuses_its_owned_dialog(self):
+        ctx = FakeContext()
+        tray.edit_file(ctx)
+        self.assertIn(('focus', 'fileDialog'), ctx.events)
+        focus = ctx.events.index(('focus', 'fileDialog'))
+        self.assertGreater(next(i for i, e in enumerate(ctx.events) if e == ('keys', ('Esc',))), focus)
+
     def test_about_dialog_is_closed_after_its_evidence_frame(self):
         ctx = FakeContext()
         tray.tray_menu_about(ctx)
