@@ -432,6 +432,16 @@ class LabContracts(unittest.TestCase):
             self.assertTrue(lab.read_json(Path(result['installEvidence']) / 'helper.json')['verified'])
 
     def test_install_staging_lock_error_names_holder_without_running_hook(self):
+        self.check_install_staging_lock_error(
+            'E: Could not get lock /var/lib/apt/lists/lock. It is held by process 12345 (apt-get)',
+            r'12345 \(apt-get\)')
+
+    def test_install_staging_lock_error_without_holder_reports_unknown(self):
+        self.check_install_staging_lock_error(
+            'E: Could not get lock /var/lib/apt/lists/lock - open (11: Resource temporarily unavailable)',
+            r'unknown \(unknown\)')
+
+    def check_install_staging_lock_error(self, message, holder):
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
             remote = 'putgd-lab/install-test'
@@ -440,7 +450,7 @@ class LabContracts(unittest.TestCase):
             source.write_text('synthetic helper')
             sudo = home / 'sudo'
             sudo.write_text('#!/bin/sh\n'
-                'echo "E: Could not get lock /var/lib/apt/lists/lock. It is held by process 12345 (apt-get)"\n'
+                f'echo "{message}"\n'
                 'echo "E: Unable to lock directory /var/lib/apt/lists/"\nexit 100\n')
             sudo.chmod(0o700)
             def ssh(_run, script):
@@ -449,9 +459,9 @@ class LabContracts(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 return result.stdout
             with patch.object(lab, 'ssh', side_effect=ssh):
-                with self.assertRaisesRegex(lab.LabError, 'apt lists lock.*holder PID 12345 \\(apt-get\\).*staging.log'):
+                with self.assertRaisesRegex(lab.LabError, f'apt lists lock.*holder PID {holder}.*staging.log'):
                     lab.stage_install_helper('unused', remote, '/nonexistent/helper', lab.hash_file(source))
-            self.assertIn('12345', (home / remote / 'staging.log').read_text())
+            self.assertIn(message, (home / remote / 'staging.log').read_text())
 
     def test_install_staging_failure_releases_lock_without_launch_and_collects_log(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -485,7 +495,34 @@ class LabContracts(unittest.TestCase):
                     self.assertEqual(get.call_args.kwargs['timeout'], 10)
                     self.assertTrue(any('rmdir' in c.args[1] for c in ssh.call_args_list))
 
+    def test_install_staging_log_interrupt_releases_lock_without_launch(self):
+        for error in (KeyboardInterrupt(), SystemExit(2)):
+            with self.subTest(error=type(error).__name__), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+                with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put'), \
+                        patch.object(lab, 'get', side_effect=error) as get, \
+                        patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('staging failure')):
+                    with self.assertRaises(type(error)) as caught:
+                        lab.install_package(run, 'synthetic.deb')
+                    self.assertIs(caught.exception, error)
+                    self.assertEqual(get.call_args.kwargs['timeout'], 10)
+                    scripts = [call.args[1] for call in ssh.call_args_list]
+                    releases = [script for script in scripts if 'rmdir' in script]
+                    self.assertEqual(len(releases), 1)
+                    self.assertIn('if [ "$(cat ~/putgd-lab/install-active/job)" = install-', releases[0])
+                    self.assertFalse(any('nohup sudo' in script for script in scripts))
+
     def test_install_refused_retry_reports_held_job_without_orphan_evidence(self):
+        self.check_install_refused_retry('aborted', 'result.json')
+
+    def test_install_refused_retry_with_only_progress_reports_running(self):
+        self.check_install_refused_retry('running', 'progress.json')
+
+    def test_install_refused_retry_without_reports_reports_staging(self):
+        self.check_install_refused_retry('staging', None)
+
+    def check_install_refused_retry(self, expected_state, report_name):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)
             lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
@@ -497,25 +534,29 @@ class LabContracts(unittest.TestCase):
             result = home / 'putgd-lab' / job / 'result.json'
             result.parent.mkdir()
             report = {'aborted': True, 'ownedProcesses': [{'pid': pid, 'startTicks': 42} for pid in range(10000)]}
-            lab.write_json(result, report)
+            if report_name:
+                lab.write_json(result.with_name(report_name), report)
             def ssh(_run, script):
                 output = lab.subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
                     env={**os.environ, 'HOME': str(home)}, timeout=5)
                 self.assertEqual(output.returncode, 0, output.stderr)
                 held = json.loads(output.stdout)
                 self.assertEqual(held['heldJob'], job)
-                self.assertEqual(held['state'], 'aborted')
+                self.assertEqual(held['state'], expected_state)
                 self.assertEqual(held['resultPath'], str(result))
                 self.assertRegex(held['startedAt'], r'^\d{4}-\d\d-\d\dT')
                 self.assertNotIn('ownedProcesses', output.stdout)
-                self.assertEqual(lab.read_json(result), report)
+                if report_name:
+                    self.assertEqual(lab.read_json(result.with_name(report_name)), report)
+                self.assertEqual(result.exists(), report_name == 'result.json')
                 return output.stdout
             with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put') as put:
-                with self.assertRaisesRegex(lab.LabError, 'retry refused.*install-b.*aborted.*startedAt.*result.json') as caught:
+                with self.assertRaisesRegex(lab.LabError, f'retry refused.*install-b.*{expected_state}.*startedAt.*result.json') as caught:
                     lab.install_package(run, 'synthetic.deb')
                 self.assertLess(len(str(caught.exception)), 600)
                 put.assert_not_called()
             self.assertFalse(list(run.glob('install-*')))
+            self.assertEqual((active / 'job').read_text(), job)
 
     def test_install_supervisor_missing_progress_fails_fast_and_keeps_lock(self):
         with tempfile.TemporaryDirectory() as directory:

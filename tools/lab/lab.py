@@ -1775,7 +1775,10 @@ def install_package(run, deb, install_timeout=None, install_recovery_timeout=Non
             get(run, remote + '/staging.log', evidence / 'staging.log', timeout=10)
         except (LabError, OSError, subprocess.TimeoutExpired):
             pass  # Missing log or disconnected guest must not hide the failure.
-        release_lock()
+        finally:
+            # Log collection can itself be interrupted (KeyboardInterrupt).
+            # No supervisor exists yet, so always release this staging lock.
+            release_lock()
         raise
     try:
         ssh(run, f'nohup sudo -n {helper} "$HOME/{remote}" {timeout} {recovery} '
