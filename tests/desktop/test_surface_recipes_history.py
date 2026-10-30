@@ -619,6 +619,28 @@ class HistoryRecipeTests(unittest.TestCase):
         self.assertEqual(error.exception.issue, 835)
         self.assertEqual(json.loads(ctx.clipboard)['records'][0]['id'], 'image-1')
 
+    def test_local_source_digest_uses_public_structural_json_metadata(self):
+        import hashlib
+        import subprocess
+        import tempfile
+        from tools.lab.surface_driver.redact import Redactor
+        redactor = Redactor()
+        class DigestContext:
+            def shell(self, script):
+                reply = subprocess.run(script, shell=True, capture_output=True, text=True)
+                value = json.loads(reply.stdout)
+                redactor.remember(value)
+                return {'returncode': reply.returncode, 'stdout': reply.stdout}
+            def expect(self, condition, message):
+                if not condition:
+                    raise AssertionError(message)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'synthetic source.png'
+            path.write_bytes(b'synthetic-source')
+            expected = hashlib.sha256(path.read_bytes()).hexdigest()
+            self.assertEqual(history._local_digest(DigestContext(), str(path)), expected)
+            self.assertNotIn(expected, redactor.audit_literals)
+
     def test_preview_without_effect_fails(self):
         with self.assertRaisesRegex(RecipeFailed, 'preview click expands'):
             history.preview(FakeContext(('history-row',), fault='preview-no-effect'))

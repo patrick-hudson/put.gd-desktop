@@ -1306,17 +1306,21 @@ def mcp_actions(ctx):
     _action_matrix(ctx, lambda action: _result(ctx.mcp('perform_action', {'action': action})))
 
 
-@recipe('history.edit-again', needs=('history-row',))
+def _local_digest(ctx, path):
+    import shlex
+    code = ('from pathlib import Path;import hashlib,json;print(json.dumps({"sha256":'
+            'hashlib.sha256(Path(' + repr(path) + ').read_bytes()).hexdigest()}))')
+    result = ctx.shell('python3 -c ' + shlex.quote(code))
+    ctx.expect(result['returncode'] == 0, 'retained synthetic source readable')
+    return json.loads(result['stdout'])['sha256']
+
+
+@recipe('history.edit-again', needs=('history-row',), timeout=240)
 def edit_again(ctx):
     row = _row(ctx)
     detail = _result(ctx.call('history.detail', {'id': row['id']}))
     path = detail['local']['path']
-    import shlex
-    def digest():
-        result = ctx.shell('python3 -c ' + shlex.quote('from pathlib import Path;import hashlib;print(hashlib.sha256(Path(' + repr(path) + ').read_bytes()).hexdigest())'))
-        ctx.expect(result['returncode'] == 0, 'retained synthetic source readable')
-        return result['stdout'].strip()
-    before = digest()
+    before = _local_digest(ctx, path)
     _frame(ctx, 'before')
     previous = {o['id'] for o in _recent(ctx)}
     _click_history_node(ctx, {'name': 'Edit image…', 'role': 'push button'})
@@ -1333,7 +1337,7 @@ def edit_again(ctx):
         ctx.frame('editor')
     finally:
         ctx.call('editor.cancel', {'id': identity})
-    ctx.expect(digest() == before, 'editing and cancelling preserve immutable history source bytes')
+    ctx.expect(_local_digest(ctx, path) == before, 'editing and cancelling preserve immutable history source bytes')
     ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'], 'original receipt survives Edit')
     _open(ctx)
     _frame(ctx, 'after')
