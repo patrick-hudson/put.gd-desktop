@@ -442,6 +442,12 @@ asyncio.run(main())
         return self._probe('accessible',query)
 
     def start_notifications(self):
+        """Start this run's filtered notification monitor (private family only).
+
+        Raw dbus-monitor output never reaches disk: probe.notification_monitor
+        keeps only put.gd Notify calls whose sender belongs to the private
+        family, the server's replies to them and signals for those IDs.
+        """
         # Resolve the unique server owner so method-return filtering works on
         # dbus-monitor implementations which do not resolve well-known senders.
         result = self.shell("gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.GetNameOwner org.freedesktop.Notifications")
@@ -449,10 +455,12 @@ asyncio.run(main())
         if not owner:
             return
         self._notification_server = owner[0].strip("'")
-        filters = ["type='method_call',interface='org.freedesktop.Notifications',member='Notify',arg0='put.gd'",
-                   "type='method_return',sender='"+self._notification_server+"'",
-                   "type='signal',interface='org.freedesktop.Notifications',sender='"+self._notification_server+"'"]
-        script = 'nohup dbus-monitor --session '+shlex.join(filters)+' > '+shlex.quote(self.target.root+'/notifications.log')+' 2>&1 < /dev/null & echo $!'
+        root = self.target.root
+        program, log = root+'/notification-monitor.py', root+'/notifications.log'
+        request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'log':log}})
+        source = Path(__file__).with_name('probe.py').read_text()
+        script = ('cat > '+shlex.quote(program)+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
+                  'nohup python3 '+shlex.quote(program)+' '+shlex.quote(request)+' > /dev/null 2>&1 < /dev/null & echo $!')
         result = self.shell(script)
         if result['returncode'] == 0:
             self.target.monitor_pid = int(result['stdout'].strip())
@@ -460,10 +468,11 @@ asyncio.run(main())
     def notifications(self):
         if not self.target.monitor_pid:
             raise RecipeBlocked('session-bus notification monitor not started')
-        result = self.shell('kill -0 '+str(self.target.monitor_pid)+' && cat '+shlex.quote(self.target.root+'/notifications.log'))
-        if result['returncode']:
+        reply = self._probe('notification_log', {'log':self.target.root+'/notifications.log',
+                                                 'pid':self.target.monitor_pid})
+        if not reply.get('alive'):
             raise RecipeBlocked('session bus refused notification monitoring or dbus-monitor is unavailable')
-        return parse_notifications(result['stdout'],self._notifications_since)
+        return parse_notifications(reply['text'],self._notifications_since)
 
     def click_accessible(self, query, button='left'):
         return self._accessible_pointer(query,button)

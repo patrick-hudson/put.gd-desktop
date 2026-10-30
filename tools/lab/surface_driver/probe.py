@@ -592,11 +592,132 @@ def tray(query):
     return rows
 
 
+NOTIFY_INTERFACE = 'org.freedesktop.Notifications'
+
+
+class NotificationFilter:
+    """Keep only the private family's own notification traffic (finding 8).
+
+    dbus-monitor sees every application's Notify replies and every
+    ActionInvoked/NotificationClosed signal the server broadcasts. A block is
+    kept only when it is a put.gd Notify from a private-family sender, the
+    server's reply to that exact call, or a server signal for an ID that reply
+    returned. Everything else is dropped before it reaches the log.
+    """
+    def __init__(self, server, sender_owned):
+        self.server, self.sender_owned = server, sender_owned
+        self.pending, self.ids = {}, set()
+
+    def keep(self, block):
+        header = block.split('\n', 1)[0]
+        sender = re.search(r'\bsender=(\S+)', header)
+        sender = sender[1] if sender else None
+        if header.startswith('method call') and 'member=Notify' in header:
+            serial = re.search(r'\bserial=(\d+)', header)
+            app = re.search(r'^\s*string "((?:[^"\\]|\\.)*)"', block, re.M)
+            if serial and sender and app and app[1] == 'put.gd' and self.sender_owned(sender):
+                if len(self.pending) >= 256:
+                    self.pending.pop(next(iter(self.pending)))
+                self.pending[(sender, serial[1])] = True
+                return True
+            return False
+        if header.startswith('method return'):
+            serial = re.search(r'\breply_serial=(\d+)', header)
+            destination = re.search(r'\bdestination=(\S+)', header)
+            identity = re.search(r'^\s*uint32 (\d+)', block, re.M)
+            key = (destination[1], serial[1]) if serial and destination else None
+            if sender == self.server and key in self.pending and identity:
+                del self.pending[key]
+                self.ids.add(int(identity[1]))
+                return True
+            return False
+        if header.startswith('signal') and sender == self.server and 'interface=' + NOTIFY_INTERFACE in header:
+            identity = re.search(r'^\s*uint32 (\d+)', block, re.M)
+            if identity and int(identity[1]) in self.ids:
+                if 'member=NotificationClosed' in header:
+                    self.ids.discard(int(identity[1]))
+                return True
+        return False
+
+
+def sender_pid(sender):
+    reply = run('gdbus', 'call', '--session', '--dest', 'org.freedesktop.DBus', '--object-path',
+                '/org/freedesktop/DBus', '--method', 'org.freedesktop.DBus.GetConnectionUnixProcessID', sender)
+    found = re.search(r'uint32 (\d+)', reply)
+    return int(found[1]) if found else None
+
+
+def notification_monitor(query):
+    """Long-running: filter dbus-monitor into query['log'] until terminated."""
+    import select
+    import signal
+    owners = {}
+    def sender_owned(sender):
+        if sender not in owners:
+            try:
+                owners[sender] = owned(sender_pid(sender))
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+                owners[sender] = False
+        return owners[sender]
+    keeper = NotificationFilter(query['server'], sender_owned)
+    rules = ["type='method_call',interface='" + NOTIFY_INTERFACE + "',member='Notify',arg0='put.gd'",
+             "type='method_return',sender='" + query['server'] + "'",
+             "type='signal',interface='" + NOTIFY_INTERFACE + "',sender='" + query['server'] + "'"]
+    def die_with_parent():
+        ctypes.CDLL(None).prctl(1, signal.SIGTERM)  # PR_SET_PDEATHSIG
+    child = subprocess.Popen(['dbus-monitor', '--session', *rules], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, preexec_fn=die_with_parent)
+    signal.signal(signal.SIGTERM, lambda *_: (child.terminate(), sys.exit(0)))
+    descriptor = os.open(query['log'], os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+    buffer, block = b'', []
+    def flush():
+        if block and keeper.keep(''.join(block)):
+            os.write(descriptor, ''.join(block).encode())
+        block.clear()
+    while True:
+        # dbus-monitor ends a message only by starting the next one; an idle
+        # gap completes the current block so the last signal is not delayed.
+        ready, _, _ = select.select([child.stdout], [], [], .05)
+        if not ready:
+            flush()
+            continue
+        chunk = os.read(child.stdout.fileno(), 65536)
+        if not chunk:
+            flush()
+            break
+        buffer += chunk
+        while b'\n' in buffer:
+            raw, buffer = buffer.split(b'\n', 1)
+            line = raw.decode('utf-8', 'replace') + '\n'
+            if line[:1] not in (' ', '\t', '\n') and block:
+                flush()
+            block.append(line)
+    return {'exit': child.wait()}
+
+
+def notification_log(query):
+    """Read the filtered log written by this run's own monitor (bounded)."""
+    try:
+        os.kill(int(query['pid']), 0)
+        alive = True
+    except (OSError, ValueError, TypeError):
+        alive = False
+    try:
+        with open(query['log'], 'rb') as stream:
+            data = stream.read(8 * 1024 * 1024 + 1)
+    except FileNotFoundError:
+        data = b''
+    if len(data) > 8 * 1024 * 1024:
+        raise RuntimeError('notification log exceeded 8 MiB')
+    return {'alive': alive, 'text': data.decode('utf-8', 'replace')}
+
+
 def main():
     request = json.loads(sys.argv[1])
     try:
         function = {'accessible': accessible, 'geometry': geometry, 'control': control_geometry,
-                    'foreground': foreground, 'windows': windows, 'tray':tray}[request['probe']]
+                    'foreground': foreground, 'windows': windows, 'tray':tray,
+                    'notification_monitor': notification_monitor, 'notification_log': notification_log}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))
