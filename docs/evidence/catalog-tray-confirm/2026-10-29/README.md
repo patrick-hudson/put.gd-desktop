@@ -78,6 +78,8 @@ The two map screenshots are direct browser captures, with the entire card positi
 
 The 5 tray states contain 26 hotspot rectangles for all 20 menu interactions. The 16 confirmation states contain 52 rectangles for all 13 confirmation actions plus the message-text interaction. There are no unmodelled controls or keys on either surface. The catalog check validates 194 sidecars. Its five editor-only “control in another state” notices remain legacy-compatible and are outside this mapping change.
 
+Rendering change: an interaction whose selector matches several controls now gets a hotspot on every match, not only the first. This applies to models without `capture` too. It only adds hotspots. An independent check rendered nightly's `model.json` with nightly's and this branch's `surface_map.py`. Coverage output was identical, and six surfaces gained hotspots: destinations 15→17, settings-general 7→8, settings-capture 11→13, settings-shortcuts 5→20, editor 22→30, review 16→20. The coordinator accepted this as an improvement.
+
 ## Runtime parameters and earlier attempts
 
 The boat host measured 0.106 seconds per fsync during concurrent tests. Earlier campaigns at outer timeout scale 3 exhausted the 90-second Proton and 360-second operations guards. A subsequent concurrent operations run completed 125 cases but failed the pre-existing next-slot fairness assertion. That exact fairness case passed unchanged in isolation in 2.471 seconds. These original logs and reports remain in the private archive; they are not represented as passing runs.
