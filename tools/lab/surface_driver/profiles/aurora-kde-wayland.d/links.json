@@ -1,0 +1,6 @@
+{
+  "browser": {
+    "command": ["flatpak", "run", "org.mozilla.firefox"],
+    "profile_root": "~/.var/app/org.mozilla.firefox/.mozilla/firefox"
+  }
+}

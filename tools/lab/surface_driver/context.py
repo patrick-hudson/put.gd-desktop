@@ -13,6 +13,9 @@ from .target import input_release, qcodes
 from .receipts import Evidence
 from .redact import Sensitive, SECRET_FIELD, URL, rect
 
+# Seconds; a cleanup call's own budget may not grow past this.
+CLEANUP_TIMEOUT_CAP = 600
+
 
 from .fixtures import Fixture, FixtureManager
 
@@ -479,10 +482,31 @@ class DriverContext(Context):
             self.evidence.redactor.remember(result.get('stdout', ''), opaque=True)
         return result
 
-    def shell(self,script,timeout=60):
-        self._check_time()
+    def shell(self,script,timeout=None,cleanup=False):
+        # Scripts can carry links (typed fixtures, notify-send bodies): they are
+        # registered, and a link makes later frames sensitive, on every path.
         self.evidence.redactor.remember(script)
-        result = self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
+        self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(script)
+        if cleanup:
+            # Deadline-exempt restoration (api.Context.shell). Physical targets
+            # force the lock heartbeat inside execute; guests prove ownership here.
+            timeout=min(30.0 if timeout is None else timeout,CLEANUP_TIMEOUT_CAP)
+            # Defer, never cancel, run.py's recipe alarm for the whole bounded
+            # call: an alarm that falls due fails the recipe once the restore
+            # has reached the target, instead of killing the transport first.
+            # One already due when this is called is raised before any work;
+            # callers that must restore regardless block it first (browser).
+            with input_release():
+                if not self.target.physical:
+                    try:
+                        lab.verify_owned_guest(self.target.run)
+                    except lab.LabError as error:
+                        raise RecipeBlocked('cleanup refused: '+str(error)) from error
+                result = self.target.execute(script,timeout=timeout)
+        else:
+            self._check_time()
+            timeout=60 if timeout is None else timeout
+            result = self.target.execute(script,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
         self.evidence.command('shell', result)
         self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(result.get('stdout', ''))
         try:
