@@ -98,9 +98,12 @@ void ShortcutEditor::setActions(const QJsonObject& actions){cancelRecording();fo
 void ShortcutEditor::startRecording(const QString& action){
  cancelRecording();recordingAction_=action;recordingReady_=false;chord_={};pressed_.clear();
  const auto generation=++recordingGeneration_;
- editors_[action]->setPlaceholderText("Press shortcut…");recordButtons_[action]->setFocusPolicy(Qt::NoFocus);
+ editors_[action]->setPlaceholderText("Press shortcut…");
  recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
- editors_[action]->setFocus();qApp->installEventFilter(this);
+ // Keep focus on the clickable keycap. Focusing its mouse-transparent child
+ // while making the button unfocusable lets a real click focus the surrounding
+ // scroll area: FocusOut cancels, then clicked starts recording again.
+ recordButtons_[action]->setFocus();qApp->installEventFilter(this);
  if(!chordResolver_)keyboard_=std::make_unique<ShortcutKeyboard>();
  if(!recordingControl_){finishRecording("Recording is unavailable. Reopen Settings from the running app.");return;}
  QPointer<ShortcutEditor> guard(this);
@@ -115,7 +118,7 @@ void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishReco
 void ShortcutEditor::finishRecording(const QString& message){
  if(recordingAction_.isEmpty())return;
  ++recordingGeneration_;recordingReady_=false;
- editors_[recordingAction_]->setPlaceholderText("Not set");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
+ editors_[recordingAction_]->setPlaceholderText("Not set");recordingAction_.clear();pressed_.clear();chord_={};keyboard_.reset();
  recordingStatus_->setText(message);
  if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
   // Saving settings can supersede this restore. The newer binding request owns
@@ -127,7 +130,7 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
  if(event->type()==QEvent::WindowActivate&&object==window()&&isVisible()&&recordingAction_.isEmpty()&&refresh_->isVisible()&&refreshAction_)refreshAction_();
  if(recordingAction_.isEmpty())return false;
  auto* input=editors_[recordingAction_];
- if((object==input&&event->type()==QEvent::FocusOut)||(object==this&&event->type()==QEvent::Hide)||(object==window()&&(event->type()==QEvent::WindowDeactivate||event->type()==QEvent::Close||event->type()==QEvent::Hide))||event->type()==QEvent::ApplicationDeactivate){cancelRecording();return false;}
+ if((object==recordButtons_[recordingAction_]&&event->type()==QEvent::FocusOut)||(object==this&&event->type()==QEvent::Hide)||(object==window()&&(event->type()==QEvent::WindowDeactivate||event->type()==QEvent::Close||event->type()==QEvent::Hide))||event->type()==QEvent::ApplicationDeactivate){cancelRecording();return false;}
  if(event->type()!=QEvent::ShortcutOverride&&event->type()!=QEvent::KeyPress&&event->type()!=QEvent::KeyRelease)return false;
  auto* key=static_cast<QKeyEvent*>(event);event->accept();
  if(event->type()==QEvent::ShortcutOverride)return true;

@@ -1650,6 +1650,32 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
   QTest::keyClick(input,Qt::Key_Escape,Qt::ControlModifier);QTest::keyRelease(input,Qt::Key_2,Qt::ControlModifier);QTest::keyRelease(input,Qt::Key_Control);
   QCOMPARE(input->text(),QString("Ctrl+1"));
  }
+ void shortcutSecondMouseClickCancelsRecording_data(){
+  QTest::addColumn<bool>("ready");QTest::newRow("preparing")<<false;QTest::newRow("ready")<<true;
+ }
+ void shortcutSecondMouseClickCancelsRecording(){
+  QFETCH(bool,ready);std::function<void(Error)> acknowledge;
+  QList<bool> transitions;QScrollArea page;ShortcutEditor editor;
+  page.setWidget(&editor);page.setWidgetResizable(true);page.resize(800,900);
+  editor.setRecordingControl([&](bool active,auto reply){transitions.append(active);if(active&&!ready)acknowledge=reply;else reply({});});
+  editor.setActions(Settings::defaults()["actions"].toObject());page.show();
+  QVERIFY(QTest::qWaitForWindowExposed(&page));page.activateWindow();putgd::test::settle(20);
+  auto* input=editor.editors().value("region");const auto saved=input->text();
+  auto click=[&]{QTest::mouseClick(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,input->mapTo(&page,input->rect().center()));putgd::test::settle(20);};
+  click();QCOMPARE(transitions,QList<bool>({true}));
+  QCOMPARE(input->placeholderText(),QString("Press shortcut…"));
+  click();QCOMPARE(transitions,QList<bool>({true,false}));
+  if(acknowledge)acknowledge({});
+  QCOMPARE(input->text(),saved);QCOMPARE(input->placeholderText(),QString("Not set"));
+  QVERIFY(editor.findChild<QLabel*>("shortcutRecordingStatus")->text().startsWith("Recording canceled."));
+  // Another real keycap click switches rows; Escape still restores bindings.
+  click();auto* next=editor.editors().value("window");const auto nextSaved=next->text();
+  QTest::mouseClick(page.windowHandle(),Qt::LeftButton,Qt::NoModifier,next->mapTo(&page,next->rect().center()));
+  QCOMPARE(transitions,QList<bool>({true,false,true,false,true}));
+  QCOMPARE(input->placeholderText(),QString("Not set"));QCOMPARE(next->placeholderText(),QString("Press shortcut…"));
+  QTest::keyClick(page.windowHandle(),Qt::Key_Escape);
+  QCOMPARE(transitions,QList<bool>({true,false,true,false,true,false}));QCOMPARE(next->text(),nextSaved);
+ }
  void shortcutRecordingNormalizesEveryActionAndIgnoresRepeat(){
   ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
   for(const auto& action:Settings::invocableActionNames()){
