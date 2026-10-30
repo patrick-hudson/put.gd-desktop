@@ -1,5 +1,10 @@
 # Cgroup staging recovery, issue #780
 
+**Superseded checkpoint:** independent validation found blocking B1: these user-manager
+scopes were killed after the last login ended with `Linger=no`. The earlier
+checks did not prove logout survival. This source is not accepted for #780.
+The correction and repeated evidence are in [the B1 follow-up](../2026-10-30-staging-cgroup-b1/README.md).
+
 Code PR: [#798](https://github.com/patrick-hudson/put.gd-desktop/pull/798).
 Final implementation: `5ac286f6b6538a312389d696f90be937778af228`.
 The initial Cinnamon checkpoint at `3e21fbf10db71bd4ed5b1f81acb224c53f962bfd`
@@ -47,7 +52,7 @@ and [systemd-run scope semantics](https://www.freedesktop.org/software/systemd/m
 | Overlay retirement | Both Cinnamon overlays ([initial](cinnamon-initial-cleanup.json), [final](cinnamon-final-cleanup.json)) and [Ubuntu](ubuntu-cleanup.json) retired through the unmodified guarded cleanup after export verification. Post-cleanup checks confirm no QEMU and free controller flocks ([Cinnamon](cinnamon-post-cleanup.json), [Ubuntu](ubuntu-post-cleanup.json)). |
 | Sandbox/local cleanup | Both sandbox deletion operations completed ([Cinnamon](cinnamon-deletion-final.json), [Ubuntu](ubuntu-deletion-final.json)). [Owned tunnels, wall tiles and forwarded agent removed](local-cleanup.json); all other tiles preserved. [Both named source snapshots retained](snapshots-retained.json). Exactly two sandboxes created, no physical/Proton locks taken. |
 
-The [live driver](live_guest.py) runs only on the QEMU host against an owned
+The [current live driver](https://github.com/patrick-hudson/put.gd-desktop/blob/9a00d8281e69450f68f970219b2cc7e1b34c46f4/tools/lab/staging_acceptance.py) runs only on the QEMU host against an owned
 disposable overlay. Its root APT fixture uses empty source lists, no list cleanup
 and no package installation. The root-supervisor fixture installs a temporary
 fixture/rule only inside that overlay. Existing bases and user objects are not
@@ -79,8 +84,8 @@ Final code [contracts and required CI](https://github.com/patrick-hudson/put.gd-
 pass. Neither PR is merged or watched.
 
 
-The linked driver discovers the checkout root before importing the lab, so it
-can run from this evidence directory. This small reproduction adapter was
+The maintained driver now lives with the lab tools in the code PR. It discovers
+the checkout root before importing the lab. This small reproduction adapter was
 checked without contacting a guest; the exact drivers executed in the campaign
 remain in the private hashed archives. Case bodies are unchanged. On the actual
 QEMU host, use the final implementation checkout, an authenticated running lab
@@ -88,7 +93,7 @@ VM and a fresh output directory, for example:
 
 ```sh
 PUTGD_780_RUN=c1 PUTGD_780_OUTPUT=e780-repro \
-  python3 docs/evidence/2026-10-30-staging-cgroup-780/live_guest.py
+  python3 tools/lab/staging_acceptance.py
 ```
 
 Never run this installer fixture against a physical desktop. The driver calls

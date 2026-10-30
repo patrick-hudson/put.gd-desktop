@@ -282,10 +282,13 @@ timeout. A missing log or disconnected guest does not replace the original error
 Staging runs under a detached, unprivileged guest subreaper in a new Linux
 session (`setsid`), in that job's private `~/putgd-lab/install-<id>` directory.
 `staging-process.json` records the session ID, session leader PID and `/proc`
-start ticks before any privileged work. When cgroup v2 and the systemd user
-manager are reachable, the launcher first enters a dedicated transient
-`systemd-run --user --scope --property=Delegate=yes` unit named
-`putgd-staging-install-<id>.scope`. The identity then also records
+start ticks before any privileged staging work. With the system-scope
+prerequisites below, the launcher uses passwordless sudo to create a dedicated
+`systemd-run --system --scope --property=Delegate=yes` unit under
+`/system.slice/putgd-staging-install-<id>.scope`. Inside it, `setpriv` drops
+back to the invoking guest user's UID, GID and supplementary groups before
+executing the unprivileged wrapper. The system manager (PID 1) owns the scope;
+it is independent of the user's login sessions and `user@UID.service`. The identity then also records
 `tracking: "cgroup-v2"`, its cgroup path/device/inode, the cgroup mount identity
 and boot ID. It never uses the SSH connection's `session-N.scope`, whose sshd
 processes could outlive the controller. `staging-result.json` is
@@ -330,7 +333,7 @@ way. The command then authenticates the owned running overlay, rejects a changed
 lock token and any package-supervisor progress/result, and repeats the bounded
 guest lifetime check before releasing that token.
 
-The root package supervisor is launched through the same user-scope mechanism,
+The root package supervisor is launched through the same system-scope mechanism,
 in a separate `putgd-supervisor-install-<id>.scope`. Its wrapper records
 `supervisor-process.json` before sudo; the root helper verifies that sudo kept
 it in that exact scope before admission. Scoped launches pass `--require-scope`,
@@ -403,17 +406,32 @@ cgroup emptiness or the authenticated gone-scope proof above. Killing the wrappe
 children still run. Children that remain in the staging session keep recovery
 blocked until they exit. Zombie or exited processes do not count as live.
 
-The launcher probes cgroup v2 at `/sys/fs/cgroup` and the user manager over
-noninteractive SSH before starting work. It explicitly selects
-`/run/user/<uid>` and its user bus. A desktop login or pam_systemd may provide
-them; lingering is not assumed or enabled. If either prerequisite is
-unavailable, the job retains the existing session scan and records
-`tracking: "session"` with a `fallbackReason`. A scope-creation or scope-entry
-failure after selection fails the launch; it never retries the command outside
-the scope. Mint 22.3 and Ubuntu 26.04 guest regressions cover the actual sudo
-APT hook and root supervisor, including SSH with lingering disabled. Other
-guest profiles use the same runtime checks; Aurora/rpm-ostree's AppImage route
-does not run the APT staging/supervisor path.
+The launcher probes the cgroup v2 mount, `systemd-run`, `systemctl`, `sudo`,
+`setpriv`, system-manager bus access and passwordless sudo authority for
+`systemd-run`. It requires **systemd 254 or newer**, checks the version before
+using `--expand-environment=no`, and falls back clearly on an older or
+unverifiable version. The user manager and user bus are not prerequisites;
+no linger setting is changed. Each failed prerequisite has its own
+`fallbackReason`. If a prerequisite is unavailable, the job keeps the existing
+session scan and `tracking: "session"`. The guest prints the fallback and the
+controller reports it at install time for staging and supervisor phases.
+`staging-tracking.json` and `supervisor-tracking.json` retain the selection.
+A scope-creation or scope-entry failure after selection fails the launch;
+it never retries the command outside the scope. The original user-manager
+mechanism was rejected after B1 reproduced watchdog loss when the last login
+ended. Its earlier SSH/bus checks did not prove logout survival. Corrected
+Mint/Ubuntu logout and controller-SIGKILL evidence is recorded with the new
+system-manager mechanism. Other guest profiles use the same runtime checks;
+Aurora/rpm-ostree's AppImage route does not run the APT path.
+
+Cgroup tracking covers normal inherited descendants, including `setsid()`.
+A privileged hook can deliberately leave the scope by writing `cgroup.procs`,
+starting a new unit with `systemd-run`, or asking `systemctl start` to launch a
+service elsewhere. The required session scan remains as a second guard for
+out-of-cgroup processes that retain the recorded session ID. A root process
+that both leaves the cgroup and changes session can escape both checks.
+Tracking is a lifetime fence for the staged command tree, not a security
+boundary against a deliberately privileged migrator.
 
 **Only session-tracked jobs retain the following limits.** A live wrapper waits,
 as subreaper, for every descendant, including ones that called `setsid()`.
