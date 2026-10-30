@@ -34,8 +34,11 @@ def input_release():
     Do not cancel/rearm the timer: a pending deadline must still fail the
     recipe. QMP and RFB have socket timeouts independent of SIGALRM.
     """
-    previous = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+    # Read first: an alarm already due is raised by the blocking call itself,
+    # after it changed the mask, and must not leave SIGALRM blocked for good.
+    previous = signal.pthread_sigmask(signal.SIG_BLOCK, ())
     try:
+        signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
         yield
     finally:
         signal.pthread_sigmask(signal.SIG_SETMASK, previous)
