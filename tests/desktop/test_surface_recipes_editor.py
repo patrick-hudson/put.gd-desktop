@@ -72,6 +72,7 @@ class FakeContext(Context):
     def geometry(self, window):
         self.events.append(('geometry',window))
         if window == 'editor.canvas': return {'x':100,'y':100,'width':800,'height':500}
+        if window == 'editorDiscard': return {'x':100,'y':100,'width':400,'height':200}
         assert window == 'editor'
         return {'x':0,'y':0,'width':1180,'height':820}
 
@@ -231,6 +232,18 @@ class EditorRecipes(unittest.TestCase):
                 ctx.click_at=lambda x,y,**kwargs: clicks.append((x,y,kwargs))
                 editor.destination(ctx)
                 self.assertEqual([(110,110,{'head':0})],clicks)
+
+    def test_discard_waits_for_a_mapped_window_before_focusing(self):
+        ctx=FakeContext();calls=[]
+        def geometry(window):
+            calls.append(window)
+            if len(calls)==1: raise RecipeBlocked('window not mapped yet')
+            return {'x':100,'y':100,'width':400,'height':200}
+        ctx.geometry=geometry
+        ctx.wait=lambda predicate,what: predicate() or predicate()
+        editor._discard_ready(ctx)
+        self.assertEqual(['editorDiscard','editorDiscard'],calls)
+        self.assertEqual(('focus','editorDiscard'),ctx.events[-1])
 
     def test_fresh_session_frames_inspect_and_cleanup(self):
         ctx=FakeContext(); editor.redact(ctx)

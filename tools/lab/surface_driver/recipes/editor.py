@@ -452,6 +452,16 @@ def mouse_pan(ctx):
         _frame(ctx, 'after', '26-editor-selected')
 
 
+def _discard_ready(ctx):
+    def mapped():
+        try:
+            return ctx.geometry('editorDiscard')
+        except RecipeBlocked:
+            return None
+    ctx.wait(mapped, 'discard confirmation mapped by the window manager')
+    ctx.focus('editorDiscard', raise_window=False)
+
+
 @recipe('editor.cancel', 'confirm.editor-discard', needs=IMAGE)
 def discard(ctx):
     with _session(ctx) as op:
@@ -459,15 +469,17 @@ def discard(ctx):
         shapes = _inspect(ctx, op)['shapes']
         ctx.click('editorCancel', window='editor')
         ctx.expect(_inspect(ctx, op)['view']['discardConfirmation']['open'], 'dirty Cancel asks before discard')
+        _discard_ready(ctx)
         ctx.frame('question', window='editorDiscard', reference='19-editor-discard-confirm')
-        ctx.focus('editorDiscard', raise_window=False)
         ctx.keys('Esc')
         ctx.expect(_inspect(ctx, op)['shapes'] == shapes and not _inspect(ctx, op)['view']['discardConfirmation']['open'], 'Escape keeps edits')
         ctx.click('editorCancel', window='editor')
+        _discard_ready(ctx)
         ctx.click('text:Keep editing', window='editorDiscard')
         ctx.expect(_inspect(ctx, op)['shapes'] == shapes, 'Keep editing preserves marks')
         _frame(ctx, 'after')
         ctx.click('editorCancel', window='editor')
+        _discard_ready(ctx)
         ctx.click('confirmDiscard', window='editorDiscard')
         operation = ctx.wait(lambda: (lambda o: o if o['state']=='cancelled' else None)(_result(ctx.call('operation.inspect', {'id':op}))), 'discard completes')
         ctx.expect(not operation['items'], 'discard stores no artifact')
@@ -828,8 +840,8 @@ def window_chrome(ctx):
         ctx.click('placeMark',window='editor')
         ctx.click('windowClose',window='editor')
         ctx.expect(_inspect(ctx,op)['view']['discardConfirmation']['open'],'window Close asks before discarding')
+        _discard_ready(ctx)
         ctx.frame('close-question',window='editorDiscard',reference='19-editor-discard-confirm')
-        ctx.focus('editorDiscard', raise_window=False)
         ctx.keys('Esc')
         ctx.focus('editor', raise_window=False)
         ctx.expect(_inspect(ctx,op)['phase']=='editing','Escape keeps editor after window Close')
