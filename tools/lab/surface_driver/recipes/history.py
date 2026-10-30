@@ -844,7 +844,7 @@ def cli_version(ctx):
     _frame(ctx, 'after')
 
 
-@recipe('cli.launcher-history', 'cli.second-launch', needs=('history-row', 'launcher'))
+@recipe('cli.launcher-history', 'cli.second-launch', needs=('history-row', 'launcher'), timeout=240)
 def launcher_history(ctx):
     _launcher_identity(ctx)
     _row(ctx)
