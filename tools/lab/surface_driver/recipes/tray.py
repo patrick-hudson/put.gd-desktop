@@ -933,6 +933,9 @@ def other_client_menu(ctx):
 @recipe('shortcut.ignored-while-recording', desktop_drawn=True)
 def recorder_ignores_shortcut(ctx):
     recorder = ctx.fixture('shortcut-settings-recorder')
+    _patch(ctx, {'actions': {'clipboard': {'shortcut': CHORDS['clipboard']}}})
+    ctx.wait(lambda: ctx.call('ui.snapshot')['diagnostics']['shortcuts']['bindings']['clipboard'].get('bound'),
+             'native clipboard binding ready before recorder')
     before = recorder.no_operation_baseline()
     recorder.start('region')
     previous = {o['id'] for o in _recent(ctx)}
@@ -981,6 +984,7 @@ def keyboard_layout_change(ctx):
 @recipe('notification.action-rejected', desktop_drawn=True)
 def action_rejected(ctx):
     ctx.fixture('settings-no-output')
+    _patch(ctx, {'actions': {'clipboard': {'shortcut': CHORDS['clipboard']}}})
     ctx.view('ui.show', {'view': 'settings'})
     _clipboard(ctx)
     before = {o['id'] for o in _recent(ctx)}

@@ -349,6 +349,17 @@ class TrayRecipesTest(unittest.TestCase):
                                                 'states': states, 'rect': [10, 10, 80, 24]}]
                 tray._page(ctx, 'History')
 
+    def test_rejection_assigns_a_real_shortcut_without_changing_output_policy(self):
+        ctx = FakeContext()
+        ctx.fixture = lambda name, **options: {}
+        def stop_before_input(*args, **options):
+            raise RecipeBlocked('stop after binding setup')
+        ctx.view = stop_before_input
+        with self.assertRaises(RecipeBlocked):
+            tray.action_rejected(ctx)
+        patches = [e[2]['patch'] for e in ctx.events if e[:2] == ('call', 'settings.patch')]
+        self.assertEqual(patches[-1], {'actions': {'clipboard': {'shortcut': tray.CHORDS['clipboard']}}})
+
     def test_available_scenarios_resolve_the_core_fixture(self):
         cases = [(tray.recording_icon, 'tray-active-recording'), (tray.cancel_uploads, 'tray-two-uploads'),
                  (tray.update_available, 'tray-update-available'), (tray.quit_resident, 'resident-lifecycle'),
