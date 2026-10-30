@@ -190,12 +190,17 @@ class CandidateContracts(unittest.TestCase):
                 (artifact / 'package').write_bytes(target.encode())
                 return {'artifact': target, 'commit': args.commit, 'sandboxId': 'bx_' + target,
                         'state': 'passed', 'cleanupVerified': True, 'files': candidate.inventory(artifact)}
+            def closed_output(*args, **kwargs):
+                self.assertTrue((output / 'manifest.json').is_file())
+                self.assertTrue((output / 'SHA256SUMS').is_file())
+                self.assertTrue(json.loads((output / 'manifest.json').read_text())['passed'])
+                raise BrokenPipeError('closed pipe')
             with patch.object(candidate, 'boat', side_effect=boat), \
                  patch.object(candidate, 'load_workflows', return_value=({}, {})), \
                  patch.object(candidate, 'recipe', return_value=('image', 'script', 'release')), \
                  patch.object(candidate, 'build_worker', side_effect=worker), \
                  patch.object(candidate.signal, 'signal'), \
-                 patch('builtins.print', side_effect=BrokenPipeError('closed pipe')) as printer:
+                 patch('builtins.print', side_effect=closed_output) as printer:
                 code = candidate.main([SHA, '--output', str(output), '--artifact', 'appimage', '--artifact', 'fedora44'])
             self.assertTrue(printer.called)
             manifest = json.loads((output / 'manifest.json').read_text())
@@ -215,6 +220,7 @@ class CandidateContracts(unittest.TestCase):
         with tarfile.open(path, 'w') as stream:
             for name, kind in entries:
                 member = tarfile.TarInfo(name)
+                member.mode = 0o755 if name.endswith('.AppImage') else 0o644
                 if kind == 'file':
                     member.size = 4
                     stream.addfile(member, io.BytesIO(b'data'))
@@ -227,9 +233,11 @@ class CandidateContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             archive = root / 'artifact.tar'
-            self.make_archive(archive, [('ui-catalog/window.png', 'file')])
+            self.make_archive(archive, [('ui-catalog/window.png', 'file'), ('putgd.AppImage', 'file')])
             candidate.restore_archive(archive, root / 'artifacts', candidate.sha256(archive))
             self.assertEqual((root / 'artifacts/ui-catalog/window.png').read_bytes(), b'data')
+            self.assertEqual((root / 'artifacts/putgd.AppImage').stat().st_mode & 0o777, 0o700)
+            self.assertEqual((root / 'artifacts/ui-catalog/window.png').stat().st_mode & 0o777, 0o600)
             with self.assertRaisesRegex(ValueError, 'SHA-256'):
                 candidate.restore_archive(archive, root / 'bad', 'a' * 64)
             self.assertFalse((root / 'bad').exists())

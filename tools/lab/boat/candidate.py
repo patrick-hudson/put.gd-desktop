@@ -279,7 +279,7 @@ def restore_archive(archive, destination, expected):
                 with stream.extractfile(member) as source, path.open('xb') as target:
                     while chunk := source.read(1024 * 1024):
                         target.write(chunk)
-                path.chmod(0o600)
+                path.chmod(0o700 if member.mode & 0o100 else 0o600)
 
 
 def collect_artifacts(ssh, options, host, port, directory, receipt, build_error, *, timeout=150):
