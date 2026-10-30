@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "f44",
+    "placement": "native",
+    "package": "deb",
+    "destination": "local",
+    "build": "fake-transport-only"
+  },
+  "interactions": [
+    {
+      "interaction": "editor.undo",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "receipt": "/tmp/tmpfg1_o4zf/receipt.json",
+      "note": "physical desktop f44: right button may still be pressed; release withheld or unconfirmed; check the desktop (physical desktop lock is no longer held by this session)",
+      "host": "f44",
+      "placement": "native",
+      "destination": "local",
+      "recipe": "<run_path>.<lambda>",
+      "build": "fake-transport-only",
+      "at": "2026-10-30T03:35:15Z"
+    }
+  ]
+}

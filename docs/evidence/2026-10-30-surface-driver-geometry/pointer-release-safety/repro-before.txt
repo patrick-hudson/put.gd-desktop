@@ -1,0 +1,7 @@
+click raised RecipeBlocked physical desktop lock is no longer held by this session
+click rfb pointer_button calls while lock lost: [call(100, 200, 'left', False)]
+drag raised RecipeBlocked physical desktop lock is no longer held by this session
+drag rfb pointer_button calls while lock lost: [call(100, 200, 'left', False)]
+click raised RecipeBlocked endpoint identity changed
+click rfb pointer_button calls while lock lost: [call(100, 200, 'left', False)]
+new RFB connections opened after endpoint verification failed: [59999]
