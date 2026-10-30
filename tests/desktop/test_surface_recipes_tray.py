@@ -87,6 +87,9 @@ class FakeContext(Context):
             return {'document': copy.deepcopy(self.document), 'metadata': {'acceptedRevision': 'r1'}}
         if method == 'settings.patch':
             assert params['expectedRevision'] == 'r1'
+            if 'captureDefaults' in params['patch']:
+                required = json.loads((ROOT / 'schemas/config.schema.json').read_text())['properties']['captureDefaults']['required']
+                assert set(required) <= params['patch']['captureDefaults'].keys()
             for key, value in params['patch'].items():
                 self.document.setdefault(key, {}).update(copy.deepcopy(value))
             return {'acceptedRevision': 'r2'}

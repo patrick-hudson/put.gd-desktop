@@ -206,7 +206,8 @@ def _local(ctx, *, failure=False, notifications=True):
     routes = {action: {'destination': 'local', 'profileId': None, 'shortcut': chord}
               for action, chord in CHORDS.items() if action != 'record'}
     routes['record'] = {'shortcut': CHORDS['record']}
-    _patch(ctx, {'actions': routes, 'captureDefaults': {'destination': 'local', 'profileId': None},
+    _patch(ctx, {'actions': routes, 'captureDefaults': {'destination': 'local', 'profileId': None,
+                                     'publicationMode': 'default'},
                  'archive': {'root': archive, 'keepUploads': True,
                              'folders': {k: None for k in ('images', 'videos', 'text', 'other')}},
                  'preferences': {'notifications': notifications}})
