@@ -334,6 +334,8 @@ def link_browser(ctx):
             result = open_and_verify(ctx, paste,
                                      {'kind': 's3', 'name': detail['name'], 'preview': True, 'url_host': '127.0.0.1'})
             ctx.expect(result['matched'] and result['frames'], 'guarded Firefox shows uploaded image with full-desktop frame')
+            if not all(ctx.evidence.frames[f['path']]['visible_pixels'] for f in result['frames']):
+                ctx.blocked('Firefox navigation matched, but its required content frame is fully masked', issue=952)
 
 
 @recipe('history.delete-remote', 'confirm.history-delete', desktop_drawn=True, timeout=300)
@@ -352,7 +354,7 @@ def history_delete(ctx):
         ctx.expect([t['historyId'] for t in prepared['targets']] == [detail['id']]
                    and bool(prepared['acknowledgement']), 'confirmation prepares exact owned ID and effects')
         _frame(ctx, 'exact-deletion-confirmation')
-        ctx.click('confirmActionButton', window='confirmAction')
+        history._confirm_button(ctx, 'confirmAction', 'Delete 1 file')
         final = ctx.wait(lambda: (d if (d := ctx.call('history.detail', {'id': detail['id']})).get('remoteStatus')
                                  in ('removed', 'already_missing', 'failed', 'unknown', 'changed') else None),
                          'UI deletion settled', timeout=60)
