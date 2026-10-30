@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-v3",
+    "package": "deb",
+    "destination": "local",
+    "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "placement_details": {
+      "boat_sandbox_id": "bx_k238wh6f",
+      "run_id": "3384d1cf-dafc-465e-a884-fbae07b83773",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/e4/work/lab-runs/c1",
+      "session_root": "/tmp/sd-b2cfb791",
+      "socket": "/tmp/sd-b2cfb791/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 142592,
+      "start": "328802",
+      "boot": "4ac4b665-1c79-403b-bf04-73712fccd8b1",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1262,
+      "start": 752,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "595dc9e1-c2d1-40b5-b89e-40679968ba9e"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.line-width",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/user/o4cl/receipt.json",
+      "note": "operationId=595dc9e1-c2d1-40b5-b89e-40679968ba9e; editor operationId=595dc9e1-c2d1-40b5-b89e-40679968ba9e; line width 2/4/8 read back on the placed mark; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (2 matches)",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-v3",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.645641, tolerance=0.025): actual=/home/user/o4cl/frames/editor.style_controls/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.640875, tolerance=0.025): actual=/home/user/o4cl/frames/editor.style_controls/02-width.png reference=/home/user/ui-catalog/22-editor-arrow-style.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.style_controls/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.6456408250755499,
+          "tolerance": 0.025
+        },
+        {
+          "label": "width",
+          "path": "frames/editor.style_controls/02-width.png",
+          "window": "editor",
+          "reference": "22-editor-arrow-style",
+          "distance": 0.6408753437814791,
+          "tolerance": 0.025
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/editor.style_controls/03-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.style_controls/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.style_controls",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:26:35Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 10,
+    "pngs": 5,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

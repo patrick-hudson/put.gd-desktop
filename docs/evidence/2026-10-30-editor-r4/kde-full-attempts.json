@@ -1,0 +1,36 @@
+[
+  {
+    "run": "K1",
+    "classification": "invalid setup",
+    "issue": 896,
+    "app": "3d23ddf3d67a60a119bffaecf758961b45db3a22",
+    "rawCounts": {
+      "passed": 0,
+      "failed": 0,
+      "blocked": 51
+    },
+    "reason": "published CLI rejects --params-stdin before recipe input"
+  },
+  {
+    "run": "K2",
+    "classification": "invalid setup",
+    "issue": 902,
+    "app": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "attemptedRows": 34,
+    "reason": "early host frames fully masked because Tesseract absent; normal SIGTERM cleanup after dependency found"
+  },
+  {
+    "run": "K3",
+    "classification": "invalid evidence audit",
+    "issue": 910,
+    "app": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "rows": 51,
+    "observedBeforeAudit": {
+      "passed": 46,
+      "failed": 1,
+      "blocked": 4
+    },
+    "acceptedFromThisRun": 0,
+    "reason": "end audit registered-secret false positives; no fourth full replay"
+  }
+]

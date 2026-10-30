@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "ubuntu-gnome-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "ubuntu-gnome-v4",
+    "package": "deb",
+    "destination": "local",
+    "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+    "placement_details": {
+      "boat_sandbox_id": "bx_k48yxtyc",
+      "run_id": "ca69a5b4-8e71-4c68-9c03-155dc4eb73c1",
+      "lab_profile": "gnome-wayland",
+      "run_directory": "/home/user/e4/work/lab-runs/g1",
+      "session_root": "/tmp/sd-009aff61",
+      "socket": "/tmp/sd-009aff61/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-ubuntu-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "ubuntu:GNOME",
+      "qt_platform": "wayland"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "x11-selection-bridge",
+      "pid": 163028,
+      "start": "383885",
+      "boot": "9e068036-0d3d-4c78-906f-1f42fe05fbae",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3075",
+      "commitCount": 3075,
+      "dirty": false,
+      "gitCommit": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "gitTree": "c13fe1c825758cc35c5a8b2055c68acbfe64e86c",
+      "packageVersion": "26.1030.3075~dev+g8d06f9947ea0",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3075-dev+g8d06f9947ea0"
+    },
+    "operation_ids": [
+      {
+        "operationId": "9ec303cc-7892-4862-a5d8-e8ffe780e78a"
+      },
+      {
+        "operationId": "39a973d0-a6d0-42fb-8c03-c8e0def1431a"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed"
+  },
+  "interactions": [
+    {
+      "interaction": "mcp.editor",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gm/receipt.json",
+      "note": "editor operationId=9ec303cc-7892-4862-a5d8-e8ffe780e78a; operationId=9ec303cc-7892-4862-a5d8-e8ffe780e78a; editor operationId=39a973d0-a6d0-42fb-8c03-c8e0def1431a; operationId=39a973d0-a6d0-42fb-8c03-c8e0def1431a; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.367403, tolerance=0.025): actual=/home/user/o4gm/frames/editor.mcp_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.359779, tolerance=0.025): actual=/home/user/o4gm/frames/editor.mcp_editor/02-after.png reference=/home/user/ui-catalog/27-editor-saved.png; catalog mismatch (distance=0.360905, tolerance=0.025): actual=/home/user/o4gm/frames/editor.mcp_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.3674025815822147,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.3597791271347248,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.36090527795347527,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:26:00Z"
+    },
+    {
+      "interaction": "mcp.editor-output",
+      "desktop": "ubuntu-gnome-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/o4gm/receipt.json",
+      "note": "editor operationId=9ec303cc-7892-4862-a5d8-e8ffe780e78a; operationId=9ec303cc-7892-4862-a5d8-e8ffe780e78a; editor operationId=39a973d0-a6d0-42fb-8c03-c8e0def1431a; operationId=39a973d0-a6d0-42fb-8c03-c8e0def1431a; desktop frame after masked by live evidence policy; secret evidence audit failed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "ubuntu-gnome-v4",
+      "destination": "local",
+      "review": true,
+      "review_reason": "catalog mismatch (distance=0.367403, tolerance=0.025): actual=/home/user/o4gm/frames/editor.mcp_editor/01-before.png reference=/home/user/ui-catalog/20-editor-redact.png; catalog mismatch (distance=0.359779, tolerance=0.025): actual=/home/user/o4gm/frames/editor.mcp_editor/02-after.png reference=/home/user/ui-catalog/27-editor-saved.png; catalog mismatch (distance=0.360905, tolerance=0.025): actual=/home/user/o4gm/frames/editor.mcp_editor/03-before.png reference=/home/user/ui-catalog/20-editor-redact.png",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.3674025815822147,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/02-after.png",
+          "window": "editor",
+          "reference": "27-editor-saved",
+          "distance": 0.3597791271347248,
+          "tolerance": 0.025
+        },
+        {
+          "label": "before",
+          "path": "frames/editor.mcp_editor/03-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": 0.36090527795347527,
+          "tolerance": 0.025
+        },
+        {
+          "label": "after",
+          "path": "frames/editor.mcp_editor/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "editor.mcp_editor",
+      "build": "8d06f9947ea05ed183ca2c0689785cbcd0c10c9e",
+      "at": "2026-10-30T15:26:00Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [
+      {
+        "file_index": 7,
+        "action": "moved-to-private-quarantine"
+      }
+    ],
+    "passed": false,
+    "files": 10,
+    "pngs": 5,
+    "image_audit": "ocr-and-known-regions",
+    "findings": [
+      {
+        "file_index": 7,
+        "kind": "png-text-registered-secret"
+      }
+    ]
+  }
+}

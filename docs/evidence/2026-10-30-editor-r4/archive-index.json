@@ -1,0 +1,21 @@
+{
+  "privateRoot": "/home/patrick/.t3/worktrees/put.gd/t3-309cae63/work/editor-r4",
+  "bundles": {
+    "cin": {
+      "sha256": "021465e4ae1c0a5da36949cfa3cf218e6c4e8541b6ea94c0d07f7891f4a73d83",
+      "files": 410,
+      "verified": true
+    },
+    "gno": {
+      "sha256": "b61990f4926db2f143f7ea809e720d78b489b87b4fbee09cad8c78288ecf935a",
+      "files": 388,
+      "verified": true
+    },
+    "kde": {
+      "sha256": "9d7e3645ec9f437ce4047fb001aeb39957b1454d24c1c467a5bd7903d5541847",
+      "files": 351,
+      "verified": true
+    }
+  },
+  "quarantinedPixels": "retained only inside private bundles under PRIVATE-CORE-QUARANTINE-DO-NOT-PUBLISH"
+}

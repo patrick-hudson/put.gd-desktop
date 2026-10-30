@@ -1,0 +1,16 @@
+{
+  "sandboxes": 3,
+  "boatStartResumeAttempts": 6,
+  "successfulStartsResumes": 4,
+  "rejectedAttempts": 2,
+  "fullLaneInvocations": {
+    "cin": 2,
+    "gno": 2,
+    "kde": 3
+  },
+  "extraKdeFullReplay": "explicitly approved; existing sandbox; last full replay",
+  "physicalDesktops": false,
+  "workstationBuilds": false,
+  "ownAppBuilds": false,
+  "coreSourceEdits": false
+}
