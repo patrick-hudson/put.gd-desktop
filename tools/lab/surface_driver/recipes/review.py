@@ -30,7 +30,7 @@ def _frame(ctx, label, reference=REFERENCE, window='review'):
     return ctx.frame(label, window=window, reference=reference)
 
 
-def _open(ctx, fixture_name='recording'):
+def _open(ctx, fixture_name='recording', *, frame_review=True):
     fixture = ctx.fixture(fixture_name)
     required = {'id', 'output_dir', 'working_path', 'frozen_path'}
     if not isinstance(fixture, dict) or not required.issubset(fixture):
@@ -46,7 +46,11 @@ def _open(ctx, fixture_name='recording'):
                and info['edit'].get('trimEnd') in (None, info['durationUs']),
                'fresh fixture has no masks or trim')
     _capture_motion(ctx, fixture)
-    _frame(ctx, 'before')
+    if frame_review:
+        _frame(ctx, 'before')
+    else:
+        ctx.frame('before')
+        ctx.review('API full-desktop frames require visual review')
     return rid
 
 
@@ -617,7 +621,7 @@ def _api_edits(info):
 
 @recipe('cli.recording', needs=('recording',))
 def cli_recording(ctx):
-    rid = _open(ctx)
+    rid = _open(ctx, frame_review=False)
     initial = _inspect(ctx, rid)
     for method, params in [('recording.capabilities', {}), ('recording.inspect', {'id': rid}),
                            ('recording.review', {'id': rid, 'action': 'seek', 'time': 1_000_000}),
@@ -632,12 +636,12 @@ def cli_recording(ctx):
     path = str(PurePosixPath(ctx.fixture('recording')['output_dir']) / ('cli-copy.' + info['config']['format']))
     _reply(ctx, ctx.cli('recording.saveCopy', json.dumps({'id': rid, 'path': path})))
     _saved(ctx, rid, path)
-    _frame(ctx, 'after')
+    ctx.frame('after')
     ctx.blocked('CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)', issue=672)
 
 
 def _mcp_review(ctx):
-    rid = _open(ctx)
+    rid = _open(ctx, frame_review=False)
     _reply(ctx, ctx.mcp('get_recording_capabilities'))
     info = _reply(ctx, ctx.mcp('get_recording', {'id': rid}))
     _reply(ctx, ctx.mcp('edit_recording', {'id': rid, 'revision': info['edit']['revision'],
@@ -651,7 +655,7 @@ def _mcp_review(ctx):
     _reply(ctx, ctx.mcp('save_recording_copy', {'id': rid, 'path': path}))
     _saved(ctx, rid, path)
     ctx.expect(_inspect(ctx, rid)['retainedUs'] == 2_000_000, 'MCP trim reaches resident')
-    _frame(ctx, 'after')
+    ctx.frame('after')
     return rid, _inspect(ctx, rid)
 
 
@@ -677,4 +681,4 @@ def mcp_recording_review(ctx):
     for path in paths:
         _verify(ctx, rid, path, before)
     ctx.view('ui.history')
-    _frame(ctx, 'uploaded', '01-history-list', 'history')
+    ctx.frame('uploaded')

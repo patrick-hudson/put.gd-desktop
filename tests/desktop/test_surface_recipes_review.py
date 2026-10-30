@@ -261,6 +261,13 @@ class ReviewRecipes(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'fresh fixture'):
             review.playback(ctx)
 
+    def test_api_open_retains_full_desktop_evidence(self):
+        ctx = FakeContext()
+        review._open(ctx, frame_review=False)
+        self.assertIsNone(ctx.frames[-1]['window'])
+        self.assertIsNone(ctx.frames[-1]['reference'])
+        self.assertTrue(any(t[0] == 'review' for t in ctx.trace))
+
     def test_core_namespace_fixture_is_explicitly_blocked(self):
         ctx = FakeContext()
         ctx.fixture_data['recording'] = types.SimpleNamespace(id='recording-id')
@@ -446,7 +453,7 @@ class ReviewRecipes(unittest.TestCase):
         self.assertEqual(calls[0], ('upload_recording', {'id':'recording-id','revision':3}))
         self.assertEqual(calls[1], ('get_operation', {'id':'upload-id'}))
         self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
-        self.assertEqual(ctx.frames[-1]['reference'], '01-history-list')
+        self.assertEqual(ctx.frames[-1]['label'], 'uploaded')
 
     def test_screen_coordinates_follow_live_geometry(self):
         ctx = FakeContext()
