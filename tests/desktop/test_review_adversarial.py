@@ -316,7 +316,7 @@ class Adv(unittest.TestCase):
 
     def test_target_scripts_queries_and_cli_params_never_reach_argv(self):
         from tools.lab.surface_driver.target import Target
-        target=Target.__new__(Target);target.heartbeat=lambda:None;target.prefix=lambda:''
+        target=Target.__new__(Target);target.physical=None;target.heartbeat=lambda **kw:None;target.prefix=lambda:''
         scripts=[]
         target.session=lambda script,timeout: scripts.append(script) or json.dumps({'returncode':0,'stdout':'','stderr':''})
         target.execute('echo '+PUTGD)
