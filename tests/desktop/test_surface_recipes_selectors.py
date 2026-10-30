@@ -527,6 +527,28 @@ class SelectorRecipes(unittest.TestCase):
         self.assertEqual(ctx.pattern_commands, ["raise"])
         self.assertEqual(ctx.document, ctx.original)
 
+    def test_bar_guard_refusal_is_blocked_and_keeps_live_frame(self):
+        for function in (lambda ctx: selectors._bar_click(ctx, "record", "bar-ready"),
+                         lambda ctx: selectors._bar_drag(ctx, (10, 10), (20, 10))):
+            ctx = FakeContext()
+            def refused(*args, **kwargs):
+                raise RecipeFailed("input target 'bar-ready' is obscured by 'putgd synthetic fixture' (window 123)")
+            ctx.click = ctx.drag = refused
+            with self.assertRaises(RecipeBlocked) as caught:
+                function(ctx)
+            self.assertEqual(caught.exception.issue, 705)
+            self.assertIn("bar-input-refused", [f[0] for f in ctx.frames])
+            self.assertFalse(ctx.inputs)
+
+    def test_bar_state_failure_is_not_reclassified_as_input_gap(self):
+        ctx = FakeContext()
+        def failed(*args, **kwargs):
+            raise RecipeFailed("timeout: recording recording")
+        ctx.click = failed
+        with self.assertRaisesRegex(RecipeFailed, "timeout: recording"):
+            selectors._bar_click(ctx, "record", "bar-ready")
+        self.assertFalse(ctx.frames)
+
     def test_unavailable_fixture_is_blocked(self):
         ctx = FakeContext()
         ctx.env = {}

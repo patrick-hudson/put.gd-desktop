@@ -268,15 +268,42 @@ def _motion(ctx, rid):
     ctx.expect(score > 1.0, "clip contains moving pattern, not a frozen desktop")
 
 
+@contextmanager
+def _bar_input(ctx):
+    try:
+        yield
+    except RecipeFailed as error:
+        if re.fullmatch(r"input target 'bar(?:-[a-z-]+)?' is obscured by .+", str(error)):
+            # The core foreground guard refuses the gesture. Preserve the live
+            # surface and independent cursor/focus readback before API cleanup.
+            ctx.frame("bar-input-refused")
+            if ctx.profile.get("session") == "x11":
+                witness = ctx.shell("xdotool getmouselocation --shell; xprop -root _NET_ACTIVE_WINDOW")
+                if witness.get("returncode") == 0:
+                    ctx.note("X11 cursor/focus witness: " + witness.get("stdout", "").strip())
+            ctx.blocked("Recording bar foreground authorization unavailable (#705): " + str(error), issue=705)
+        raise
+
+
+def _bar_click(ctx, control, window):
+    with _bar_input(ctx):
+        ctx.click(control, window=window)
+
+
+def _bar_drag(ctx, start, end):
+    with _bar_input(ctx):
+        ctx.drag(start, end)
+
+
 def _start(ctx, rid):
-    ctx.click("record", window="bar-ready")
+    _bar_click(ctx, "record", window="bar-ready")
     _state(ctx, rid, "recording")
 
 
 def _stop(ctx, rid):
     # A changing pattern is supplied by the fixture; elapsed time alone is no proof.
     ctx.shell("sleep 2")
-    ctx.click("stop", window="bar-handle" if _inspect(ctx, rid).get("overlayPlacement") == "handle" else "bar-recording")
+    _bar_click(ctx, "stop", window="bar-handle" if _inspect(ctx, rid).get("overlayPlacement") == "handle" else "bar-recording")
     reviewed = _state(ctx, rid, "reviewing")
     ctx.expect(reviewed["durationUs"] > 0, "stopped clip has retained duration")
     _motion(ctx, rid)
@@ -525,18 +552,18 @@ def bar_options(ctx):
             caps = _call(ctx, "recording.capabilities")
             if not caps.get("audio", {}).get("system"):
                 ctx.blocked("System audio unavailable on this desktop")
-            ctx.click("text:System audio", window="bar-ready")
+            _bar_click(ctx, "text:System audio", window="bar-ready")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "system audio enabled")
             # Format order is the catalog's real combo order, not a translated label.
             for index, (fmt, codec) in enumerate((("mp4", "h264"), ("mp4", "h265"), ("webm", "vp9"), ("gif", ""), ("webp", ""))):
                 if fmt not in caps["formats"] or (codec and codec not in caps.get("codecs", {}).get(fmt, [])):
                     ctx.blocked("Required recording format unavailable: " + fmt + "/" + codec)
-                ctx.click("format", window="bar-ready")
+                _bar_click(ctx, "format", window="bar-ready")
                 ctx.keys("Home", *(["Down"] * index), "Return")
                 info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))["config"]["format"] == fmt and s["config"]["codec"] == codec else None), "format " + fmt + "/" + codec)
                 ctx.expect(info["config"]["audio"]["system"] == (fmt not in ("gif", "webp")), "animation formats are silent")
                 ctx.frame("format-" + fmt + "-" + codec, window="bar", reference="33a-record-gif-requested-audio" if fmt == "gif" else BAR)
-            ctx.click("format", window="bar-ready")
+            _bar_click(ctx, "format", window="bar-ready")
             ctx.keys("Home", "Return")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "video restores audio intent")
             ctx.frame("after", window="bar", reference="33b-record-restored-audio")
@@ -553,10 +580,10 @@ def bar_recording(ctx):
             _start(ctx, rid)
             ctx.frame("recording", window="bar", reference="34-record-recording-bar")
             ctx.frame("recording-bounds")
-            ctx.click("text:Pause", window="bar-recording")
+            _bar_click(ctx, "text:Pause", window="bar-recording")
             _state(ctx, rid, "paused")
             ctx.frame("paused", window="bar", reference="35-record-paused-bar")
-            ctx.click("text:Resume", window="bar-paused")
+            _bar_click(ctx, "text:Resume", window="bar-paused")
             _state(ctx, rid, "recording")
             _stop(ctx, rid)
             ctx.frame("after", window="review", reference="30-review")
@@ -573,10 +600,10 @@ def bar_discard(ctx):
             try:
                 ctx.frame("before-ready-" + gesture, window="bar", reference=BAR)
                 if gesture == "cancel":
-                    ctx.click("cancel", window="bar-ready")
+                    _bar_click(ctx, "cancel", window="bar-ready")
                 else:
                     # Give the ready bar keyboard focus through a real control.
-                    ctx.click("format", window="bar-ready")
+                    _bar_click(ctx, "format", window="bar-ready")
                     ctx.keys("Esc", "Esc")
                 _state(ctx, rid, "cancelled")
                 ctx.frame("after-ready-" + gesture)
@@ -590,19 +617,19 @@ def bar_discard(ctx):
             ctx.expect(_inspect(ctx, rid)["state"] == "recording", "Esc while recording does nothing")
             for phase in ("recording", "paused"):
                 if phase == "paused":
-                    ctx.click("text:Pause", window="bar-recording")
+                    _bar_click(ctx, "text:Pause", window="bar-recording")
                     _state(ctx, rid, "paused")
-                ctx.click("cancel", window="bar-" + phase)
+                _bar_click(ctx, "cancel", window="bar-" + phase)
                 ctx.frame("question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
                 ctx.expect(_visible(ctx, "Discard this recording?"), "inline discard question visible")
                 ctx.keys("Esc")
                 ctx.expect(not _visible(ctx, "Discard this recording?"), "Esc answers Keep")
                 ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep preserves phase")
-                ctx.click("cancel", window="bar-" + phase)
-                ctx.click("keepRecording", window="bar-question-" + phase)
+                _bar_click(ctx, "cancel", window="bar-" + phase)
+                _bar_click(ctx, "keepRecording", window="bar-question-" + phase)
                 ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep button preserves phase")
-            ctx.click("cancel", window="bar-paused")
-            ctx.click("discardRecording", window="bar-question-paused")
+            _bar_click(ctx, "cancel", window="bar-paused")
+            _bar_click(ctx, "discardRecording", window="bar-question-paused")
             _state(ctx, rid, "cancelled")
             ctx.frame("after")
         finally:
@@ -621,13 +648,13 @@ def bar_drag(ctx):
             ctx.expect(_inspect(ctx, rid)["overlayPlacement"] == "outside", "half-screen target keeps bar outside")
             # Top border is a safe non-control drag target.
             start = (int(before["x"] + before["width"] / 2), int(before["y"] + 2))
-            ctx.drag(start, (start[0] + 30, start[1]))
+            _bar_drag(ctx, start, (start[0] + 30, start[1]))
             after = ctx.geometry("bar")
             ctx.expect(after["x"] != before["x"] or after["y"] != before["y"], "bar moved under pointer drag")
             x, y, w, h = _inspect(ctx, rid)["target"]["rect"]
             ctx.expect(after["x"] + after["width"] <= x or after["x"] >= x + w or after["y"] + after["height"] <= y or after["y"] >= y + h, "bar stays outside captured pixels")
             ctx.frame("after", window="bar", reference=BAR)
-            ctx.drag((int(after["x"] + after["width"] / 2), int(after["y"] + 2)), (int(x + w / 2), int(y + h / 2)))
+            _bar_drag(ctx, (int(after["x"] + after["width"] / 2), int(after["y"] + 2)), (int(x + w / 2), int(y + h / 2)))
             rejected = ctx.geometry("bar")
             ctx.expect(rejected["x"] + rejected["width"] <= x or rejected["x"] >= x + w or rejected["y"] + rejected["height"] <= y or rejected["y"] >= y + h, "dragging an outside bar cannot overlap the capture")
             ctx.frame("rejected-inside", window="bar", reference=BAR)
