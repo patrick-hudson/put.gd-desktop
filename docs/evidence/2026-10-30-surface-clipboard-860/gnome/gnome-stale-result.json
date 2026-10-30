@@ -1,0 +1,51 @@
+{
+  "placement": "boat",
+  "case": "legacy source removed after restoration",
+  "legacy": {
+    "pid": 44154,
+    "start": "138448"
+  },
+  "before": {
+    "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+    "text/html": "0387e3cedca1a97f4d156e661118485240807e2cd5e10882e1e7d3368de205bb",
+    "application/x-putgd-860": "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880"
+  },
+  "oldCpuAfterRootRemoval": {
+    "pid": 44154,
+    "start": "138448",
+    "cpuPercent": 0.39994005090608065,
+    "load": [
+      0.1005859375,
+      0.5302734375,
+      0.57861328125
+    ]
+  },
+  "nativeBlockedReason": "native GNOME clipboard cannot be restored exactly after keeper exit; Mutter persists one supported MIME type (text limit 4 MiB); unrestorable MIME types: text/html, application/x-putgd-860",
+  "nativeGuardCleanup": [],
+  "nativeGuardPreservedClipboard": true,
+  "legacyStillAliveAfterNativeBlock": true,
+  "recovery": {
+    "restored_and_stopped": true,
+    "reviews": [
+      "Disposable GNOME clipboard restoration preserves text/plain; other MIME types were not restorable: text/html, application/x-putgd-860"
+    ],
+    "ready": true,
+    "preserved_mimes": [
+      "text/plain"
+    ],
+    "transport": "x11-selection-bridge",
+    "pid": 45573,
+    "start": "140968",
+    "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+    "reaped_pids": [
+      44154
+    ]
+  },
+  "freshCleanup": [],
+  "legacyAliveAfterNextRun": false,
+  "after": {
+    "text/plain;charset=utf-8": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37",
+    "text/plain": "361d6911abd80443db43caab9bc4de35dab61acd10752bfd4922fd1659dffb37"
+  },
+  "primaryTextByteExact": true
+}

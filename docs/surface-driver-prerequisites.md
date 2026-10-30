@@ -35,15 +35,38 @@ The driver host additionally needs `python3-pil` for PNG capture and comparison,
 plus the lab host's existing QEMU/OpenSSH requirements. Never install a substitute
 Qt or compiler toolchain. Target Qt remains dynamically linked to distro libraries.
 
-Before resident launch the target copies the existing clipboard's MIME formats
-into a private helper's memory, with a 32 MiB limit. Clipboard bytes never enter
-SSH output, files or receipts. An unreadable/oversized clipboard blocks startup.
-Closing the run restores those formats. On X11, the restoring helper serves the
-selection until the clipboard manager or the next copy takes ownership, then
-exits; exiting immediately would clear an otherwise restored selection. The
-helper source contains no clipboard bytes. Its private session root is removed
-after the resident exits and cleanup succeeds. Failed cleanup retains the root
-and reports an explicit error.
+Before resident launch the target inspects and snapshots clipboard MIME data in
+private helper memory, with a 32 MiB limit. Payload bytes never enter SSH output,
+files or receipts. An unreadable/oversized clipboard blocks startup. Receipts
+contain only process identity, format names, review notes and cleanup status.
+
+The keeper is event-driven. One owned SSH input pipe binds it to the runner;
+EOF, parent death and termination request restoration. A shutdown-only kernel
+deadline bounds a stalled Qt transfer. Run end also stops the exact PID through
+a pidfd after validating UID, boot ID, start time and complete argv. Next start
+recovers identified orphaned keepers, including old core helpers whose successful
+cleanup removed their private root. Recovery happens after the current native
+clipboard policy has passed. No process-name or command-pattern kill is used.
+Clipboard restoration uses the shared `critical.py` cleanup section.
+
+GNOME needs its existing X11 selection bridge for this unfocused clipboard
+helper. The app and compositor witnesses still run natively on Wayland. Mutter
+persists one preferred supported format after owner exit, with a 4 MiB text limit:
+
+- Disposable `boat` and `guest` runs restore that supported format, normally the
+  primary text type, and record a review note for omitted formats. A platform may
+  regenerate equivalent text aliases; that does not promise general multi-MIME
+  persistence.
+- `native` runs block before ownership changes or resident launch if all offered
+  application formats cannot be restored. Native X11 additionally requires a
+  `CLIPBOARD_MANAGER`; nonempty native Wayland clipboards outside GNOME remain
+  blocked until their persistence handoff is verified. Empty clipboards are safe.
+
+No Shell clipboard extension is added. Full native GNOME MIME persistence is
+tracked in [#879](https://github.com/patrick-hudson/put.gd-desktop/issues/879).
+The helper always exits; it never remains as a clipboard owner after the run.
+Successful cleanup removes the private root; a failed cleanup retains it and
+reports an explicit error. See the [#860 evidence and limits](evidence/2026-10-30-surface-clipboard-860/README.md).
 
 Catalog input rectangles use Qt logical client coordinates. Resizing a window,
 even without changing its aspect ratio, does not prove that controls scale with
