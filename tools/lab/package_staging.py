@@ -71,7 +71,7 @@ def system_scope_tools():
         ([paths['systemd-run'], '--version'], 'systemd-run version probe'),
         ([paths['systemctl'], '--system', 'show', '--property=Version', '--value'],
          'system manager bus probe'),
-        ([paths['sudo'], '-n', '-l', '--', paths['systemd-run']],
+        ([paths['sudo'], '-n', '--', paths['systemd-run'], '--version'],
          'passwordless sudo for systemd-run probe'),
     ]
     for arguments, prerequisite in probes:
@@ -84,7 +84,7 @@ def system_scope_tools():
             return None, prerequisite + ' could not execute'
         if result.returncode:
             return None, prerequisite + ' failed'
-        if arguments[-1] == '--version':
+        if prerequisite == 'systemd-run version probe':
             version = re.match(r'systemd ([0-9]+)\b', result.stdout)
             if not version:
                 return None, 'systemd-run version could not be established'

@@ -15,11 +15,11 @@ id lab >/dev/null
 if command -v apt-get >/dev/null; then
   export DEBIAN_FRONTEND=noninteractive
   apt-get update
-  apt-get install -y openssh-server python3
+  apt-get install -y openssh-server python3 util-linux
   package_manager=/usr/bin/apt-get
   ssh_service=ssh
 elif command -v dnf >/dev/null; then
-  dnf install -y openssh-server python3
+  dnf install -y openssh-server python3 util-linux
   package_manager=/usr/bin/dnf
   ssh_service=sshd
 else
@@ -34,10 +34,10 @@ chmod 600 /home/lab/.ssh/authorized_keys
 if command -v restorecon >/dev/null; then
   restorecon -RF /home/lab/.ssh
 fi
-# Test package installation only; this rule is never installed on the host.
+# Test package installation and its system scopes only; never installed on the host.
 install -d -m 755 /usr/local/lib/putgd-lab
 install -m 755 "$(dirname "$0")/package_install.py" /usr/local/lib/putgd-lab/package_install.py
-printf 'lab ALL=(root) NOPASSWD: %s, /usr/local/lib/putgd-lab/package_install.py\n' "$package_manager" > /etc/sudoers.d/putgd-lab
+printf 'lab ALL=(root) NOPASSWD: %s, /usr/local/lib/putgd-lab/package_install.py, /usr/bin/systemd-run\n' "$package_manager" > /etc/sudoers.d/putgd-lab
 chmod 440 /etc/sudoers.d/putgd-lab
 visudo -cf /etc/sudoers.d/putgd-lab
 systemctl enable --now "$ssh_service"

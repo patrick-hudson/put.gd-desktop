@@ -177,11 +177,13 @@ save('prior-results.json',{'passed':True,'placement':'boat','results':results,'v
 # Separate root SSH is an observer, never a login by the lab user. Its public
 # key exists only in this owned overlay; the private per-run key stays on host.
 public=(RUN/'identity.pub').read_text().strip()
-guest('sudo -n install -d -m 700 /root/.ssh\nprintf "\\n%s\\n" '+shlex.quote(public)+
-      ' | sudo -n tee -a /root/.ssh/authorized_keys >/dev/null\n'
-      'sudo -n chmod 600 /root/.ssh/authorized_keys\n'
-      'printf "PermitRootLogin prohibit-password\\n" | sudo -n tee /etc/ssh/sshd_config.d/00-putgd-780-root.conf >/dev/null\n'
-      'sudo -n /usr/sbin/sshd -t\nsudo -n systemctl reload ssh.service\n')
+observer_hook=('set -eu; install -d -m 700 /root/.ssh; printf "\\n%s\\n" '+shlex.quote(public)+
+    ' >> /root/.ssh/authorized_keys; chmod 600 /root/.ssh/authorized_keys; '
+    'printf "PermitRootLogin prohibit-password\\n" > /etc/ssh/sshd_config.d/00-putgd-780-root.conf; '
+    '/usr/sbin/sshd -t; systemctl reload ssh.service; exit 1')
+guest('sudo -n /usr/bin/apt-get -o Dir::Etc::sourcelist=/dev/null -o Dir::Etc::sourceparts=- '
+      '-o APT::Get::List-Cleanup=0 -o '+shlex.quote('APT::Update::Pre-Invoke::='+observer_hook)+
+      ' update > /tmp/putgd-780-observer-setup.log 2>&1 || :\n')
 root_args=lab.ssh_args(RUN);root_args[-1]='root@127.0.0.1'
 def root_guest(script,timeout=30):
     return lab.command(root_args+['sh','-s'],input='set -eu\n'+script,timeout=timeout).stdout

@@ -1050,6 +1050,9 @@ class CgroupStagingContracts(unittest.TestCase):
                 self.assertIsNotNone(tools)
                 self.assertIsNone(reason)
                 self.assertTrue(all('--user' not in call.args[0] for call in probes.call_args_list))
+                self.assertEqual(probes.call_args_list[-1].args[0],
+                    ['/usr/bin/sudo', '-n', '--', '/usr/bin/systemd-run', '--version'])
+                self.assertTrue(all('-l' not in call.args[0] for call in probes.call_args_list))
         with patch.object(self.staging, 'system_scope_tools', return_value=(None, 'systemd-run executable is unavailable')), \
                 patch.object(self.staging, 'save'), patch.object(self.staging.os, 'execvpe', side_effect=OSError()), \
                 redirect_stdout(io.StringIO()) as output:
