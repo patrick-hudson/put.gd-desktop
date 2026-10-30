@@ -1,4 +1,4 @@
-#include <QElapsedTimer>
+#include <chrono>
 #include <thread>
 #include <QJsonDocument>
 #include "fixtures/Waits.h"
@@ -21,6 +21,7 @@
 using namespace putgd;
 class ProtonTransportTest:public QObject {
  Q_OBJECT
+ using Clock=std::chrono::steady_clock;
  static Destination destination(const QString& fixture="auth") {
   auto settings=ProtonProvider::defaults();settings["fixture"]=fixture;settings["requestTimeoutMs"]=1000;
   return {"proton-drive","synthetic","revision",settings,{{"mode","keychain"},{"reference","putgd/proton/transport-"+QUuid::createUuid().toString(QUuid::WithoutBraces)}}};
@@ -38,15 +39,16 @@ private slots:
   ProtonProvider provider;auto d=destination("timeout");d.settings["requestTimeoutMs"]=120000;
   d.settings["receivedFile"]=received;
   auto cancellation=std::make_shared<std::atomic_bool>(false);
-  NameCheck result;std::atomic_bool completed=false;
-  std::jthread worker([&]{provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);completed.store(true);});
+  NameCheck result;std::atomic_bool completed=false;Clock::time_point finished;
+  std::jthread worker([&]{provider.checkName(d,"synthetic.txt",[&](NameCheck value){result=value;},cancellation);finished=Clock::now();completed.store(true);});
   auto cancelOnExit=qScopeGuard([&]{cancellation->store(true);});
   // Account-lock persistence can take longer than 200 ms (#577). Prove the
   // request reached the helper before testing cancellation after dispatch.
   PUTGD_TRY_VERIFY(requestReceived(received,"checkName"));
-  QElapsedTimer elapsed;elapsed.start();cancellation->store(true);
+  const auto cancelledAt=Clock::now();cancellation->store(true);
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(completed.load(),2000);worker.join();
-  QVERIFY(elapsed.elapsed()<2000);QCOMPARE(result.status,QString("inconclusive"));
+  // Polling may observe completion late; measure when the worker actually ended.
+  QVERIFY(finished>=cancelledAt);QVERIFY(finished-cancelledAt<std::chrono::seconds(2));QCOMPARE(result.status,QString("inconclusive"));
   QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));
   QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
   QVERIFY(QFile::remove(received));
@@ -172,13 +174,13 @@ private slots:
  void reconciliationCancellationStopsExtendedRequest(){
   QTemporaryDir dir;QVERIFY(dir.isValid());const auto received=dir.filePath("received");
   ProtonProvider provider;UploadRequest request;request.destination=destination("timeout");request.destination.settings["receivedFile"]=received;request.requestTimeoutMs=30000;request.cancellation=std::make_shared<std::atomic_bool>(false);
-  StatResult result;std::atomic_bool completed=false;
-  std::jthread worker([&]{provider.reconcile(request,[&](StatResult value){result=value;});completed.store(true);});
+  StatResult result;std::atomic_bool completed=false;Clock::time_point finished;
+  std::jthread worker([&]{provider.reconcile(request,[&](StatResult value){result=value;});finished=Clock::now();completed.store(true);});
   auto cancelOnExit=qScopeGuard([&]{request.cancellation->store(true);});
   PUTGD_TRY_VERIFY(requestReceived(received,"reconcile"));
-  QElapsedTimer elapsed;elapsed.start();request.cancellation->store(true);
+  const auto cancelledAt=Clock::now();request.cancellation->store(true);
   PUTGD_TRY_VERIFY_WITH_TIMEOUT(completed.load(),2000);worker.join();
-  QVERIFY(elapsed.elapsed()<2000);QCOMPARE(result.status,QString("unknown"));QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+  QVERIFY(finished>=cancelledAt);QVERIFY(finished-cancelledAt<std::chrono::seconds(2));QCOMPARE(result.status,QString("unknown"));QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
   QVERIFY(QFile::remove(received));
   provider.reconcile(request,[&](StatResult value){result=value;});
   QCOMPARE(result.error.code,QString("operation_cancelled"));QVERIFY(!QFileInfo::exists(received));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);

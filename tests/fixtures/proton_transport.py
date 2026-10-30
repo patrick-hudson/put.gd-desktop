@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Synthetic stdio peer for testing adapter failure disposition; no SDK or account."""
 import json
+import signal
 import sys
 import time
 request = json.loads(sys.stdin.buffer.readline())
@@ -63,7 +64,12 @@ if case == 'timeout':
     if received:
         with open(received, 'x') as marker:
             marker.write(request['method'])
-    time.sleep(3)
+        # The parent owns cancellation and the request deadline. An acknowledged
+        # request must not finish merely because its observer was descheduled.
+        while True:
+            signal.pause()
+    else:
+        time.sleep(3)
 elif case == 'malformed':
     print('malformed', flush=True)
 else:
