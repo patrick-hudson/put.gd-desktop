@@ -488,7 +488,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
 
 def quarantine_files(root, files):
     """Outside the export root; names never preserve attacker-controlled text."""
-    directory = Path(tempfile.mkdtemp(prefix='.surface-quarantine-', dir=root.parent))
+    directory = Path(tempfile.mkdtemp(prefix='putgd-surface-quarantine-'))
     directory.chmod(0o700)
     actions = []
     moved = []
@@ -519,7 +519,10 @@ def main(argv=None):
         if not isinstance(literals, list) or not all(isinstance(v, str) and distinctive(v) for v in literals):
             parser.error('literals file must contain distinctive strings')
     receipt = args.run/'receipt.json'
-    value = json.loads(receipt.read_text()) if receipt.exists() else None
+    try:
+        value = json.loads(receipt.read_text()) if receipt.exists() else None
+    except (OSError, ValueError):
+        value = None
     result = scan_run(args.run, literals=literals, require_ocr=bool(value and value.get('environment', {}).get('destination', 'local') != 'local'), quarantine=True)
     if value and not value.get('secret_scan', {'passed': True}).get('passed', True):
         previous = value['secret_scan']

@@ -261,17 +261,26 @@ class Adv(unittest.TestCase):
         def plant(ctx):
             ctx.sensitive(PUTGD)
             (ctx.out/'leak.log').write_text(TOKEN)
-        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),plant)],self.env,self.out,'safe',external)
+        import tools.lab.surface_driver.redact as redact
+        original=redact.tempfile.mkdtemp
+        directories=[]
+        def quarantine(**kw):
+            directory=Path(original(**kw));directories.append(directory)
+            self.addCleanup(__import__('shutil').rmtree,directory)
+            return str(directory)
+        with patch.object(redact.tempfile,'mkdtemp',side_effect=quarantine):
+            rows=run_recipes(self.ctx,[Recipe(('editor.undo',),plant)],self.env,self.out,'safe',external)
         self.assertEqual(rows[0].functional, 'failed')
         self.assertFalse((self.out/'leak.log').exists())
         self.assertFalse(external.exists())
         receipt=json.loads((self.out/'receipt.json').read_text())
         self.assertTrue(receipt['secret_scan']['quarantine'])
-        for directory in self.out.parent.glob('.surface-quarantine-*'):
+        self.assertTrue(directories)
+        for directory in directories:
+            self.assertFalse(directory.is_relative_to(self.out.parent))
             self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
             self.assertTrue(any(TOKEN.encode() in f.read_bytes() for f in directory.iterdir()))
 
-    @unittest.skipUnless(Image, 'requires python3-pil')
     def test_coverage_written_inside_run_and_scanned_before_copy(self):
         import tools.lab.surface_driver.run as runner
         external=self.out.parent/'external'/'coverage.json'
