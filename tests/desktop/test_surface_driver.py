@@ -26,6 +26,8 @@ from tools.lab.surface_driver.run import discover, guard_target, main, native_en
 from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
+sys.path.insert(0,str(ROOT/'tests/desktop'))
+from surface_live_fixture import write_catalog
 try:
     from PIL import Image
 except ImportError:
@@ -105,9 +107,12 @@ class Running(unittest.TestCase):
         self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
         self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
         self.which_patch.start(); self.addCleanup(self.which_patch.stop)
+        # The real self-test needs tesseract; LiveEvidence tests cover it directly.
+        self.selftest_patch = patch('tools.lab.surface_driver.redact.ocr_self_test', return_value=True)
+        self.selftest_patch.start(); self.addCleanup(self.selftest_patch.stop)
         self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
-        profile=load_profile(self.env['desktop']); profile['evidence']={'browser_address_bars':[]}
+        profile=load_profile(self.env['desktop'])
         self.ctx=DriverContext(FakeTarget(),self.env,profile,self.path,self.path)
     def tearDown(self):self.temp.cleanup()
 
@@ -266,7 +271,8 @@ class Running(unittest.TestCase):
 
     def test_main_refuses_live_destinations_until_secret_safe_evidence(self):
         from tools.lab.surface_driver import run as runner, receipts, context, redact
-        self.assertEqual(runner.secret_safe_evidence_blockers(), [])
+        write_catalog(self.path)
+        self.assertEqual(runner.secret_safe_evidence_blockers('boat', self.path, 'abcdef'), [])
         failures = ((redact.shutil, 'which'), (receipts, 'Redactor'), (receipts, 'save_frame'),
                     (receipts, 'scan_run'), (redact, 'ocr_text'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
         for destination in ('s3','b2','proton'):
@@ -296,13 +302,13 @@ class Running(unittest.TestCase):
                     result=({'build':{'gitCommit':'abcdef','dirty':False}} if method=='ui.snapshot'
                             else {'metadata':{'observedRevision':'revision'}} if method=='settings.get' else {})
                     return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
-                target.cli=cli
+                target.cli=cli;target.execute=lambda script,timeout=60:{'returncode':0,'stdout':'123','stderr':''}
                 touched=[]
                 recipe=Recipe(('editor.undo',),lambda ctx:touched.append(ctx.destination),destinations=(destination,))
                 out=self.path/('admitted-'+destination)
                 args=['--desktop',self.env['desktop'],'--host','boat','--placement','boat','--boat-id','bx_test',
                       '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination',destination,
-                      '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(out),
+                      '--recipes','core_demo','--catalog',str(write_catalog(self.path/'catalog')),'--build','abcdef','--out',str(out),
                       '--coverage',str(out/'coverage.json')]
                 with patch.object(runner,'Target',return_value=target),patch.object(runner,'guard_target'),patch.object(runner,'discover',return_value=[recipe]):
                     self.assertEqual(runner.main(args),0)
@@ -312,9 +318,12 @@ class Running(unittest.TestCase):
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_live_gate_refuses_a_present_but_nonworking_ocr_executable(self):
         from tools.lab.surface_driver import run as runner, redact
-        self.ocr_patch.stop()
+        self.ocr_patch.stop();self.selftest_patch.stop()
         with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],1,b'',b'')):
-            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers())
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef'))
+        # Exits 0 but reads nothing: still refused (blind OCR).
+        with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'',b'')):
+            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef'))
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
@@ -667,7 +676,7 @@ class InputFoundations(unittest.TestCase):
         def run(*args):
             if args[0]=='xprop' and args[1]=='-root':return 'window id # 0x14'
             if args[1]=='getwindowpid':raise subprocess.CalledProcessError(1,args)
-            if args[1]=='getwindowgeometry':return 'X=0\nY=0\nWIDTH=100\nHEIGHT=80'
+            if args[0]=='xwininfo':return '  Absolute upper-left X:  0\n  Absolute upper-left Y:  0\n  Width: 100\n  Height: 80\n  Override Redirect State: no\n'
             if args[1]=='getwindowname':return 'Other client without PID'
             return ''
         with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='20')),patch.object(probe,'run',side_effect=run):
@@ -730,15 +739,19 @@ class InputFoundations(unittest.TestCase):
         self.ctx.profile['notifications']['actions_available']=True
         notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
         self.ctx.notifications=lambda:notices
-        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20]}
-        self.ctx.accessible=lambda query:[node]
-        clicks=[]
-        def click(query):
-            clicks.append(query);notices[0]['action_events'].append({'action':'default'})
-        self.ctx.click_accessible=click
+        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20],'application':'cinnamon'}
+        queries=[];self.ctx.accessible=lambda query:queries.append(query) or [node]
+        picks=[];self.ctx._probe=lambda name,query:picks.append(query) or {'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72)
-        self.assertEqual(clicks[0]['pid'],50)
-        self.assertIn('application',clicks[0])
+        # One owned title lookup, hover first, then press/release on the title.
+        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
+        self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
+        self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
         notices[0]['closed']={'reason':1}
         with self.assertRaisesRegex(RecipeBlocked,'closed'):
             self.ctx.notification_action(72)
@@ -750,19 +763,24 @@ class InputFoundations(unittest.TestCase):
                'ancestors':[{'role':'notification','rect':[0,0,200,150]},
                             {'role':'panel','rect':[20,10,80,20]}]}
         button={'name':'Retry','pid':50,'role':'push button','rect':[20,100,80,20]}
+        outside={'name':'Retry','pid':50,'role':'push button','rect':[20,170,80,20]}
         self.ctx.notifications=lambda:[notice]
-        self.ctx.accessible=lambda query:[title if query['name']=='Synthetic notice' else button]
-        clicked=[]
-        def click(query):
-            clicked.append(query);notice['action_events'].append({'action':'retry'})
-        self.ctx.click_accessible=click
-        self.ctx.hover_accessible=lambda query:None
+        self.ctx.accessible=lambda query:[title] if query['name']=='Synthetic notice' else [button,outside]
+        self.ctx._probe=lambda name,query:{'ok':True}
+        events=[]
+        def pointer(*args,**kwargs):
+            events.append(args)
+            if len(args)>4 and args[4] is False:notice['action_events'].append({'action':'retry'})
+        self.ctx.target.pointer=pointer
         self.ctx.notification_action(72,'retry')
-        self.assertEqual(clicked[0]['within'],[0,0,200,150])
+        self.assertEqual(events[0][:2],(60,20))
+        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
+        self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
+                                               reason='Declared desktop gap (#670)')
         self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
-        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
+        with self.assertRaisesRegex(RecipeBlocked,'Declared desktop gap') as error:
             self.ctx.notification_action(72)
         self.assertEqual(error.exception.issue,670)
 

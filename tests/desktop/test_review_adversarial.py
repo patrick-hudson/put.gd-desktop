@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).parent))
 from test_surface_redact import MemoryTarget, LINK
+from surface_live_fixture import EVIDENCE
 from tools.lab.surface_driver.api import Recipe, RecipeFailed, ReceiptRow
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.redact import Redactor, Sensitive, scan_run, save_frame, URL
@@ -34,7 +35,7 @@ class Adv(unittest.TestCase):
         tgt = MemoryTarget()
         tgt.cli = lambda *a, **k: {'returncode': 0, 'stdout': json.dumps({'ok': True, 'result': {'directUrl': PUTGD}}), 'stderr': ''}
         self.ctx = DriverContext(tgt, self.env, {'session': 'x11', 'catalog_tolerance': .025, 'at_spi': {'available': True},
-            'evidence': {'browser_address_bars': [{'rect': [0, 0, 120, 15]}]}}, p/'catalog', self.out)
+            'evidence': dict(EVIDENCE)}, p/'catalog', self.out)
 
     def tearDown(self): self.t.cleanup()
 
@@ -392,12 +393,14 @@ class Adv(unittest.TestCase):
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_exported_coverage_copy_is_scanned_and_quarantined(self):
+        # A leak in this run's staged export rows: only that staged file is
+        # quarantined and the shared campaign file is never written.
         import tools.lab.surface_driver.run as runner
         external=self.out.parent/'export'/'coverage.json'
         original=runner.write_json
         def corrupt(path, value, **kw):
             original(path, value, **kw)
-            if Path(path)==external:
+            if Path(path).name=='coverage-export.json':
                 Path(path).write_text(json.dumps({'leak':PUTGD}))
         with patch.object(runner, 'write_json', side_effect=corrupt):
             rows=run_recipes(self.ctx,[Recipe(('editor.undo',),lambda ctx:None)],self.env,self.out,'safe',external)
@@ -405,6 +408,7 @@ class Adv(unittest.TestCase):
         self.assertFalse(external.exists())
         self.assertFalse(self.env['coverage_export']['copy_scan_passed'])
         self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['quarantine'])
+        self.assertFalse((self.out/'coverage-export.json').exists())
 
 
     @unittest.skipUnless(Image, 'requires python3-pil')

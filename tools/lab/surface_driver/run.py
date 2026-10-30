@@ -38,22 +38,66 @@ from tools.lab.surface_driver.redact import scan_run, detected
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
-def secret_safe_evidence_blockers():
-    """Check the loaded persistence path, not a global live-upload switch."""
+# Live destinations need these pages' secret controls in the catalog (F6 masks
+# them; their inventories are how a frame knows what to require).
+SECRET_PAGES = {'history': ('history',), 'destinations': ('destination', 'credential', 'proton', 'settings')}
+
+
+def catalog_blockers(catalog, build):
+    """A complete ui-catalog for this exact build, with secret-control inventories."""
+    from tools.lab.surface_driver.catalog import Catalog
+    from tools.lab.surface_driver.redact import SECRET_FIELD
+    if not catalog or not build:
+        return ['catalog-missing']
+    directory = Path(catalog)
+    try:
+        manifest = json.loads((directory/'manifest.json').read_text())
+    except (OSError, ValueError):
+        return ['catalog-missing']
+    if manifest.get('kind') != 'synthetic-ui-catalog' or not manifest.get('captures'):
+        return ['catalog-empty']
+    identity = manifest.get('build') if isinstance(manifest.get('build'), dict) else {}
+    commit = identity.get('gitCommit') or identity.get('commit') or ''
+    blockers = []
+    if not (commit and commit.startswith(build)) and identity.get('version') != build or identity.get('dirty') is not False:
+        blockers.append('catalog-build-mismatch')
+    if any(not (directory/c.get('controls', '\0')).is_file() for c in manifest['captures']):
+        blockers.append('catalog-controls-missing')
+    try:
+        inventories = Catalog(directory, {}).inventories
+    except (OSError, ValueError):
+        return blockers+['catalog-controls-missing']
+    for page, stems in SECRET_PAGES.items():
+        if not any(any(stem in name for stem in stems) and any(
+                (SECRET_FIELD.search(c.get('name', '')) or c.get('sensitive')) and c.get('class') not in ('QPushButton', 'QToolButton', 'QCheckBox', 'QRadioButton')
+                for c in inventory.get('controls', [])) for name, inventory in inventories.items()):
+            blockers.append('catalog-lacks-'+page+'-secret-controls')
+    return blockers
+
+
+def secret_safe_evidence_blockers(placement=None, catalog=None, build=None, physical=None):
+    """Check the loaded persistence path, not a global live-upload switch.
+
+    Live destinations also need a disposable placement (boat sandbox or owned
+    guest), an exact-build catalog and an OCR that reads small rendered text.
+    Physical desktops are refused: clipboard managers and browser history
+    keep working links outside the run (see the PR and its follow-up issue).
+    """
     import shutil
     from tools.lab.surface_driver import redact, receipts, context
     blockers = []
-    if (receipts.Redactor is not redact.Redactor or getattr(receipts.Redactor, 'evidence_revision', None) != 1
-            or not all(callable(getattr(receipts.Redactor, name, None)) for name in ('remember', 'text', 'safe'))):
+    if (receipts.Redactor is not redact.Redactor or getattr(receipts.Redactor, 'evidence_revision', None) != 2
+            or not all(callable(getattr(receipts.Redactor, name, None)) for name in ('remember', 'text', 'safe', 'add_link_hosts'))):
         blockers.append('redaction-not-loaded')
     if (Evidence is not receipts.Evidence or context.Evidence is not Evidence or DriverContext is not context.DriverContext
             or receipts.save_frame is not redact.save_frame or not callable(receipts.save_frame)
-            or getattr(receipts.save_frame, 'evidence_revision', None) != 1
+            or getattr(receipts.save_frame, 'evidence_revision', None) != 2
             or getattr(getattr(Evidence, 'frame', None), 'prewrite_gate', None) is not receipts.save_frame
+            or getattr(DriverContext.frame, 'live_policy', None) is not DriverContext._frame_regions
             or not callable(redact.ocr_text)):
         blockers.append('prewrite-frame-gate-not-loaded')
     if (scan_run is not redact.scan_run or receipts.scan_run is not scan_run or not callable(scan_run)
-            or getattr(scan_run, 'evidence_revision', None) != 1
+            or getattr(scan_run, 'evidence_revision', None) != 2
             or getattr(getattr(Evidence, 'scan', None), 'run_audit', None) is not scan_run
             or not callable(finish_evidence)
             or getattr(run_recipes, 'final_audit', None) is not finish_evidence):
@@ -62,10 +106,15 @@ def secret_safe_evidence_blockers():
         blockers.append('ocr-unavailable-install-tesseract-in-disposable-target')
     else:
         try:
-            from PIL import Image
-            redact.ocr_text(Image.new('RGB', (64, 64), 'white'), ocr=ocr)
+            if not redact.ocr_self_test(ocr):
+                blockers.append('ocr-self-test-failed')
         except Exception:
             blockers.append('ocr-self-test-failed')
+    if placement not in ('boat', 'guest'):
+        blockers.append('placement-not-disposable')
+    elif physical and placement != 'boat':
+        blockers.append('physical-desktop-refused')
+    blockers += catalog_blockers(catalog, build)
     return blockers
 
 
@@ -194,6 +243,30 @@ def verify_physical_endpoints(target):
         raise RecipeBlocked('physical VNC/input endpoint binding cannot be verified') from error
 
 
+def endpoint_hosts(settings):
+    """Hostnames of every configured destination endpoint/public URL base."""
+    from urllib.parse import urlsplit
+    hosts = set()
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in ('endpoint', 'publicUrlBase', 'apiUrl', 'downloadUrl') and isinstance(item, str):
+                    try:
+                        parsed = urlsplit(item)
+                        if parsed.hostname:
+                            hosts.add(parsed.hostname + (':'+str(parsed.port) if parsed.port else ''))
+                            hosts.add(parsed.hostname)
+                    except ValueError:
+                        pass
+                else:
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+    walk(settings)
+    return hosts
+
+
 def guard_physical_endpoints(target):
     verify_physical_endpoints(target)
     target._verify_endpoints = lambda: verify_physical_endpoints(target)
@@ -218,9 +291,7 @@ def verify_guest_endpoint(target, pid, arguments):
         if (process.stat().st_uid != os.getuid()
                 or (process / 'cmdline').read_bytes() != arguments):
             raise ValueError('owned QEMU identity changed')
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as peer:
-            peer.settimeout(2)
-            peer.connect(str(path))
+        with lab.connect_unix(path, timeout=2) as peer:
             peer_pid, peer_uid, _ = struct.unpack('3i', peer.getsockopt(
                 socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize('3i')))
             if peer_pid != pid or peer_uid != os.getuid():
@@ -467,55 +538,105 @@ def _run_recipes(context, recipes, environment, out, campaign, coverage, termina
 
 
 def finish_evidence(evidence, out, environment, rows, campaign, coverage):
-    # Coverage stays private until the complete run has passed its gate.
-    local = Path(out)/'coverage.json'
+    """End-of-run audit; the last bytes written are the last bytes scanned.
+
+    Coverage stays private until the whole run passed its audit. A shared
+    campaign file is only ever replaced by bytes that were scanned first, and
+    a failed export never touches (or quarantines) other runs' rows.
+    """
+    out = Path(out)
+    local = out/'coverage.json'
     write_receipts(out, environment, rows, campaign, local, evidence=evidence)
     try:
         result = evidence.scan()
     except Exception:
         result = {'passed': False, 'findings': [{'kind': 'audit-unavailable'}], 'quarantine': []}
         evidence.failed_scan = result
+    if result['passed'] and Path(coverage).resolve() != local.resolve():
+        environment['coverage_export'] = export_coverage(evidence, out, rows, campaign, Path(coverage))
+        if not environment['coverage_export']['published']:
+            result = evidence.failed_scan
     if not result['passed']:
         for row in rows:
             row.functional = 'failed'
             if 'secret evidence audit failed' not in (row.note or ''):
                 row.note = ((row.note+'; ') if row.note else '')+'secret evidence audit failed'
         if Path(coverage).resolve() != local.resolve() and Path(coverage).exists():
+            # Rows this run published earlier (e.g. a previous pass) become failed.
             result['invalidated_coverage_rows'] = fail_coverage(coverage, [row.to_json() for row in rows], redactor=evidence.redactor)
     write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
-    if result['passed'] and Path(coverage).resolve() != local.resolve():
-        # Merge under the campaign lock, then scan a private staged copy before publishing.
-        import fcntl
-        destination = Path(coverage)
-        if kinds := detected(str(destination), evidence.redactor.audit_literals):
-            evidence.failed_scan = {'passed': False, 'findings': [{'kind': 'coverage-export-filename-'+kind} for kind in kinds], 'quarantine': []}
-            return finish_evidence(evidence, out, environment, rows, campaign, local)
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with open(str(destination)+'.lock', 'a') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            stage = Path(out)/'coverage-export.json'
-            if destination.exists():
-                stage.write_bytes(destination.read_bytes())
-            write_receipts(out, environment, rows, campaign, stage, evidence=evidence, scan=result)
-            copy_scan = scan_run(out, frames=evidence.frames, literals=evidence.redactor.audit_literals,
-                                 require_ocr=evidence.require_ocr, quarantine=True)
-            if copy_scan['passed']:
-                write_json(destination, json.loads(stage.read_text()), redactor=evidence.redactor)
-                # Verify the exact bytes copied, using an isolated private audit directory.
-                import tempfile
-                with tempfile.TemporaryDirectory(prefix='.coverage-audit-', dir=Path(out).parent) as tmp:
-                    copied = Path(tmp)/'coverage.json'
-                    copied.write_bytes(destination.read_bytes())
-                    copy_scan = scan_run(tmp, literals=evidence.redactor.audit_literals, require_ocr=evidence.require_ocr)
-                if not copy_scan['passed']:
-                    from tools.lab.surface_driver.redact import quarantine_files
-                    copy_scan['quarantine'] = quarantine_files(Path(out), [(0, destination)])
-            environment['coverage_export'] = {'scanned_before_copy': True, 'copy_scan_passed': copy_scan['passed']}
-            if not copy_scan['passed']:
-                evidence.failed_scan = copy_scan
-                return finish_evidence(evidence, out, environment, rows, campaign, coverage)
-        write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
+    final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
+                     hosts=evidence.redactor.link_hosts, quarantine=True)
+    if not final['passed']:
+        # The rewritten receipt itself carried a value. Replace both with
+        # constant failure stubs (no run data) and scan those final bytes.
+        from tools.lab.surface_driver.api import SCHEMA_VERSION
+        stub = {'passed': False, 'findings': [{'kind': 'final-receipt-audit-failed'}], 'quarantine': final['quarantine']}
+        for name, value in (('receipt.json', {'schemaVersion': SCHEMA_VERSION, 'secret_scan': stub}),
+                            ('coverage.json', {'schemaVersion': SCHEMA_VERSION, 'entries': []})):
+            (out/name).write_text(json.dumps(value, indent=2)+'\n')
+            (out/name).chmod(0o600)
+        scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
+                 hosts=evidence.redactor.link_hosts)
+        evidence.failed_scan = result = stub
+        for row in rows:
+            row.functional = 'failed'
     return result
+
+
+def export_coverage(evidence, out, rows, campaign, destination):
+    """Publish this run's rows to the shared campaign file, audit first.
+
+    This run's rows are staged and scanned alone; then the merged file is
+    staged and scanned; only those exact bytes replace the shared file.
+    A finding in this run's rows quarantines only its own staged file. A
+    finding elsewhere in the shared file blocks publication, untouched.
+    """
+    import fcntl
+    import hashlib
+    from tools.lab.surface_driver.api import SCHEMA_VERSION
+    redactor = evidence.redactor
+    state = {'scanned_before_copy': True, 'copy_scan_passed': False, 'published': False}
+    def refuse(findings, quarantine=()):
+        evidence.failed_scan = {'passed': False, 'findings': findings, 'quarantine': list(quarantine)}
+        return state
+    if kinds := detected(str(destination), redactor.audit_literals, redactor.link_hosts):
+        return refuse([{'kind': 'coverage-export-filename-'+kind} for kind in kinds])
+    entries = [redactor.safe(row.to_json()) for row in rows]
+    own, merged = out/'coverage-export.json', out/'.coverage-merged.json'
+    write_json(own, {'schemaVersion': SCHEMA_VERSION, 'campaign': campaign, 'entries': entries}, redactor=redactor)
+    audit = lambda name, **kw: scan_run(out, paths=(name,), literals=redactor.audit_literals,
+                                        hosts=redactor.link_hosts, **kw)
+    scan = audit(own.name, quarantine=True)
+    if not scan['passed']:
+        return refuse([dict(f, kind='coverage-export-'+f['kind']) for f in scan['findings']], scan['quarantine'])
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fields = ('interaction','desktop','package','host','placement','guest','destination','recipe','build')
+    identity = lambda row: tuple(row.get(k) for k in fields)
+    with open(str(destination)+'.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            previous = json.loads(destination.read_text()).get('entries', []) if destination.exists() else []
+            combined = {identity(row): row for row in previous}
+            combined.update((identity(row), row) for row in entries)
+            # Others' rows are published as they are: serialize, never re-redact.
+            data = (json.dumps({'schemaVersion': SCHEMA_VERSION, 'campaign': campaign, 'entries': list(combined.values())},
+                               indent=2, ensure_ascii=False, allow_nan=False)+'\n').encode()
+            merged.write_bytes(data)
+            merged.chmod(0o600)
+            scan = audit(merged.name)
+            if not scan['passed']:
+                return refuse([{'kind': 'shared-coverage-has-findings'}])
+            temporary = destination.with_name('.'+destination.name+'.'+str(os.getpid())+'.tmp')
+            temporary.write_bytes(data)
+            os.replace(temporary, destination)
+            state['copy_scan_passed'] = hashlib.sha256(destination.read_bytes()).digest() == hashlib.sha256(data).digest()
+            state['published'] = state['copy_scan_passed']
+            if not state['published']:
+                return refuse([{'kind': 'coverage-export-copy-changed'}])
+        finally:
+            merged.unlink(missing_ok=True)
+    return state
 
 
 # Admission verifies this exact end-of-run gate is still attached to the runner.
@@ -555,7 +676,10 @@ def main(argv=None):
     if args.placement=='boat' and not args.boat_id:
         raise SystemExit('--placement boat requires --boat-id')
     if args.destination!='local':
-        if blockers := secret_safe_evidence_blockers():
+        # Physical desktops (--host-profile with placement native) are refused
+        # before any target is touched; a boat head is its own disposable VM.
+        physical = bool(args.host_profile)
+        if blockers := secret_safe_evidence_blockers(args.placement, args.catalog, args.build, physical):
             raise SystemExit('live destination '+args.destination+' blocked by secret-safe evidence: '+', '.join(blockers))
     run=args.run or args.guest
     if not args.host_profile:
@@ -604,6 +728,8 @@ def main(argv=None):
         if observed.get('dirty'):
             raise RecipeBlocked('resident reports a dirty build; use an identified clean artifact')
         settings=context.call('settings.get')
+        # Scheme-less links on the configured endpoints are links too (F3).
+        context.evidence.redactor.add_link_hosts(endpoint_hosts(settings))
         patch={'archive':{'root':target.root+'/files'},'preferences':{'launchAtLogin':False}}
         if args.destination=='local':
             patch['archive']['keepUploads']=True

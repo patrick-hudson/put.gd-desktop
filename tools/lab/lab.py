@@ -87,20 +87,49 @@ def command(args, timeout=60, check=True, input=None):
     return result
 
 
+def connect_unix(path, timeout):
+    """Connect within one deadline, including Linux AF_UNIX backlog pressure.
+
+    Python timeout sockets use O_NONBLOCK. Unlike TCP's EINPROGRESS, a full
+    Unix listener queue returns EAGAIN immediately, without waiting for the
+    configured timeout. Retry only this pre-connection failure, never a QMP
+    write or reply: input dispatch may already have happened in those cases.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('Unix socket connection timed out')
+        peer = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            peer.settimeout(remaining)
+            peer.connect(str(path))
+            peer.settimeout(timeout)
+            return peer
+        except BlockingIOError:
+            peer.close()
+            time.sleep(min(.01, max(0, deadline - time.monotonic())))
+        except BaseException:
+            peer.close()
+            raise
+
+
 class QMP:
     def __init__(self, path, timeout=10):
-        self.socket = socket.socket(socket.AF_UNIX)
-        self.socket.settimeout(timeout)
-        self.socket.connect(str(path))
-        self.stream = self.socket.makefile('rwb')
-        self.events = []
-        self.sequence = 0
-        greeting = self._read()
-        if 'QMP' not in greeting:
+        self.socket = connect_unix(path, timeout)
+        self.stream = None
+        try:
+            self.stream = self.socket.makefile('rwb')
+            self.events = []
+            self.sequence = 0
+            greeting = self._read()
+            if 'QMP' not in greeting:
+                raise LabError('Missing QMP greeting')
+            self.version = greeting['QMP']['version']
+            self.execute('qmp_capabilities')
+        except BaseException:
             self.close()
-            raise LabError('Missing QMP greeting')
-        self.version = greeting['QMP']['version']
-        self.execute('qmp_capabilities')
+            raise
 
     def _read(self):
         line = self.stream.readline(1024 * 1024)
@@ -127,8 +156,11 @@ class QMP:
             return reply['return']
 
     def close(self):
-        self.stream.close()
-        self.socket.close()
+        try:
+            if self.stream is not None:
+                self.stream.close()
+        finally:
+            self.socket.close()
 
     def __enter__(self):
         return self

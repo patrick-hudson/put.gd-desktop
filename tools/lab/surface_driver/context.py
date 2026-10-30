@@ -121,6 +121,11 @@ class DriverContext(Context):
 
     def _probe(self, name, query):
         self._check_time()
+        compositor = self.profile.get('compositor')
+        if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows'):
+            # Wayland AT-SPI extents are window-relative: the compositor witness
+            # places them on the desktop and answers focus/hit-tests.
+            query = dict(query, compositor=compositor)
         source = Path(__file__).with_name('probe.py').read_text()
         persistent = getattr(self.target, 'probe', None)
         if persistent:
@@ -137,7 +142,31 @@ class DriverContext(Context):
             raise RecipeBlocked(name+' probe returned an invalid response')
         if not result['ok']:
             raise RecipeBlocked(name+': '+result['error'])
+        self._observed(result['result'])
         return result['result']
+
+    def _observed(self, value):
+        """Desktop observations (AT-SPI text, window titles) are data too.
+
+        Links and secret-field text read from the desktop are registered before
+        a recipe sees them, and a link anywhere makes later frames sensitive.
+        """
+        redactor = self.evidence.redactor
+        redactor.remember(value)
+        rows = value if isinstance(value, list) else value.get('windows', []) if isinstance(value, dict) else []
+        names = None
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if names is None:
+                names = self._secret_names()
+            if (row.get('protected') or row.get('role') == 'password text' or row.get('objectName') in names
+                    or SECRET_FIELD.search(str(row.get('objectName') or ''))):
+                # The field's value, never its label: labels are public UI text.
+                if isinstance(row.get('text'), str) and row['text']:
+                    redactor.remember(Sensitive(row['text']))
+        if redactor.has_sensitive_url(json.dumps(value, default=str)):
+            self._sensitive_seen = True
 
     def _window_query(self, window):
         spec = self.profile.get('windows', {}).get(window, {})
@@ -183,7 +212,14 @@ class DriverContext(Context):
         """Select an input target and verify/optionally raise it before input."""
         owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
         self._current_window, self._popup = owner, None
-        return self._guard(window=owner, raise_window=raise_window)
+        geometry = self.geometry(owner)
+        if geometry.get('override_redirect'):
+            # Unmanaged bars/covers never become the active window: select them
+            # by a server hit-test at their centre. Keyboard input to them is
+            # still refused unless the X input focus is really inside them.
+            centre = (geometry['x']+geometry['width']/2, geometry['y']+geometry['height']/2)
+            return self._guard(window=owner, point=centre, geometry=geometry)
+        return self._guard(window=owner, geometry=geometry, raise_window=raise_window)
 
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
@@ -196,6 +232,13 @@ class DriverContext(Context):
         query = {'geometry': geometry, 'point': point, 'popup': popup or self._popup,
                  'raise': raise_window or self.profile.get('focus',{}).get('raise_before_input',False),
                  'compositor_script': self.profile.get('focus', {}).get('compositor_script')}
+        if self.profile.get('session') == 'x11':
+            # A just-mapped target may not be active yet (#750): the probe may
+            # activate it once if the foreground is 0 or the same private process.
+            query['settle'] = True
+        if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
+            # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
+            query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
         witness = self._probe('foreground', query)
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
@@ -477,19 +520,30 @@ asyncio.run(main())
         return self._probe('accessible',query)
 
     def start_notifications(self):
+        """Start this run's desktop observer: notification memory and popup watcher.
+
+        Raw dbus-monitor output never reaches disk: probe.notification_monitor
+        keeps only put.gd Notify calls whose sender belongs to the private
+        family, the server's replies to them and signals for those IDs. Its
+        popup_watch child records the private family's showing QMenu popups,
+        which runtime menu resolution (click(..., 'historyContextMenu')) needs.
+        """
         # Resolve the unique server owner so method-return filtering works on
         # dbus-monitor implementations which do not resolve well-known senders.
         result = self.shell("gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.GetNameOwner org.freedesktop.Notifications")
         owner = re.search(r"':[0-9]+\.[0-9]+'", result['stdout']) if result['returncode'] == 0 else None
-        if not owner:
-            return
-        self._notification_server = owner[0].strip("'")
-        import inspect
-        from .redact import notification_monitor
+        # Without a server there is nothing to keep, but the same observer still
+        # runs the runtime-menu popup watcher (probe.popup_watch).
+        self._notification_server = owner[0].strip("'") if owner else None
         from .target import checked_socket
-        path = checked_socket(self.target.root+'/notify.sock')
-        code = inspect.getsource(notification_monitor)+'\nnotification_monitor('+repr(path)+', '+repr(self._notification_server)+')\n'
-        script = 'nohup python3 -c '+shlex.quote(code)+' >/dev/null 2>&1 </dev/null & echo $!'
+        root = self.target.root
+        program, path = root+'/notification-monitor.py', checked_socket(root+'/notify.sock')
+        request = json.dumps({'probe':'notification_monitor','query':{'server':self._notification_server,'socket':path}})
+        source = Path(__file__).with_name('probe.py').read_text()
+        # The program file is the probe source only; filtered notification
+        # blocks stay in the monitor's memory and leave it over its 0600 socket.
+        script = ('cat > '+shlex.quote(program)+" <<'SD_PROBE'\n"+source+'\nSD_PROBE\n'
+                  'nohup python3 '+shlex.quote(program)+' '+shlex.quote(request)+' > /dev/null 2>&1 < /dev/null & echo $!')
         result = self.shell(script)
         if result['returncode'] == 0:
             self.target.monitor_pid = int(result['stdout'].strip())
@@ -499,12 +553,13 @@ asyncio.run(main())
     def notifications(self):
         if not self.target.monitor_pid:
             raise RecipeBlocked('session-bus notification monitor not started')
-        path = self.target.root+'/notify.sock'
-        code = 'import socket,sys\ns=socket.socket(socket.AF_UNIX);s.settimeout(5);s.connect('+repr(path)+')\nwhile True:\n data=s.recv(65536)\n if not data: break\n sys.stdout.buffer.write(data)\ns.close()\n'
-        result = self.shell('kill -0 '+str(self.target.monitor_pid)+' && python3 -c '+shlex.quote(code))
-        if result['returncode']:
+        reply = self._probe('notification_read', {'socket':self.target.root+'/notify.sock',
+                                                  'pid':self.target.monitor_pid})
+        if not reply.get('alive'):
             raise RecipeBlocked('session bus refused notification monitoring or dbus-monitor is unavailable')
-        rows = parse_notifications(result['stdout'],self._notifications_since)
+        rows = parse_notifications(reply['text'],self._notifications_since)
+        # Bodies can carry links: register every returned field before any
+        # recipe can format it, and treat every later frame as sensitive.
         self.evidence.redactor.remember(rows, opaque=True)
         self._sensitive_seen = True
         return rows
@@ -515,21 +570,26 @@ asyncio.run(main())
     def hover_accessible(self, query):
         return self._accessible_pointer(query,None)
 
-    def _accessible_pointer(self, query, button):
+    def _accessible_pointer(self, query, button, node=None):
         """Real pointer input to one visible desktop node, with a fresh hit-test.
 
         This is for desktop-drawn content (notifications/tray/browser), not a
         D-Bus Activate/AT-SPI doAction shortcut. Query must include ownership
         (pid/application/owned); arbitrary first-match selection is forbidden.
+        A node already resolved by an owned query skips the second tree walk:
+        the compositor pick below proves that exact node is drawn at the point.
         """
-        if not any(k in query for k in ('pid','application','owned')):
-            raise RecipeBlocked('desktop input query requires pid, application, or owned')
-        nodes = self.accessible(dict(query, visible=True, showing=True))
-        nodes = [n for n in nodes if n.get('rect') and min(n['rect'][2:]) > 0 and
-                 (n.get('enabled') or n.get('role') in ('label','text','notification'))]
-        if len(nodes) != 1:
-            raise RecipeBlocked('desktop input control is missing or ambiguous')
-        node = nodes[0]
+        if self._input_poisoned:
+            raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
+        if node is None:
+            if not any(k in query for k in ('pid','application','owned')):
+                raise RecipeBlocked('desktop input query requires pid, application, or owned')
+            nodes = self.accessible(dict(query, visible=True, showing=True))
+            nodes = [n for n in nodes if n.get('rect') and min(n['rect'][2:]) > 0 and
+                     (n.get('enabled') or n.get('role') in ('label','text','notification'))]
+            if len(nodes) != 1:
+                raise RecipeBlocked('desktop input control is missing or ambiguous')
+            node = nodes[0]
         x,y,w,h = node['rect']
         point = (x+w/2,y+h/2)
         witness = self._probe('foreground', {'desktop_node':node,'point':point,
@@ -572,37 +632,54 @@ asyncio.run(main())
         # Restrict the summary/body witness to this notification server's tree.
         import glob
         name = self.profile.get('notifications',{}).get('title_name_glob','{summary}').replace('{summary}',glob.escape(notice['summary']))
-        titles = self.accessible({**policy, 'name':name, 'visible':True, 'showing':True})
-        titles = [n for n in titles if n.get('rect') and min(n['rect'][2:])>0]
-        exact = [n for n in titles if n['name']==notice['summary']]
-        if exact:
-            titles = exact
+        def drawn():
+            titles = self.accessible({**policy, 'name':name, 'visible':True, 'showing':True})
+            titles = [n for n in titles if n.get('rect') and min(n['rect'][2:])>0]
+            exact = [n for n in titles if n['name']==notice['summary']]
+            return exact or titles
+        # The server draws the banner shortly after its Notify reply. Wait for
+        # it briefly; Cinnamon's default banner lasts 4 s and only fades on hover.
+        titles = []
+        deadline = time.monotonic()+float(self.profile.get('notifications',{}).get('draw_seconds',3))
+        while True:
+            titles = drawn()
+            if len(titles) == 1 or time.monotonic() > deadline:
+                break
+            time.sleep(.1)
         if len(titles) != 1:
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
+        # St buttons arm only after the pointer has entered them: hover the
+        # drawn title at once, let the shell process the enter (0.05 s was
+        # too short on Cinnamon), then click without another tree walk.
+        self._accessible_pointer(None, None, node=title)
+        time.sleep(.25)
         if action == 'default':
-            query = {**policy, 'pid':title['pid'], 'name':glob.escape(title['name']), 'role':title['role']}
+            target = title
         else:
-            self.hover_accessible({**policy,'pid':title['pid'],'name':glob.escape(title['name']),'role':title['role']})
             containers = [n for n in title.get('ancestors',[]) if n['role'] in ('notification','panel','alert') and n.get('rect')]
-            buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
-                                       'visible':True,'showing':True,'enabled':True})
-            query = None
-            # A title's nearest panel can contain just its text/icon. Select
-            # the smallest common ancestor which also contains one action.
-            for ancestor in reversed(containers):
-                container = ancestor['rect']
-                inside = [n for n in buttons if n.get('rect') and min(n['rect'][2:])>0 and
-                          container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
-                          container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
-                if len(inside)==1:
-                    query = {**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
-                             'role':inside[0]['role'],'within':container}
-                    break
-            if query is None:
+            def button():
+                buttons = self.accessible({**policy,'pid':title['pid'],'name':glob.escape(actions[action]),
+                                           'visible':True,'showing':True,'enabled':True})
+                # A title's nearest panel can contain just its text/icon. Select
+                # the smallest common ancestor which also contains one action.
+                for ancestor in reversed(containers):
+                    container = ancestor['rect']
+                    inside = [n for n in buttons if n.get('rect') and min(n['rect'][2:])>0 and
+                              container[0] <= n['rect'][0]+n['rect'][2]/2 < container[0]+container[2] and
+                              container[1] <= n['rect'][1]+n['rect'][3]/2 < container[1]+container[3]]
+                    if len(inside)==1:
+                        return inside[0]
+                return None
+            # GNOME Shell reveals a banner's buttons only once it expands on hover.
+            target, until = button(), time.monotonic()+2
+            while target is None and time.monotonic() < until:
+                time.sleep(.15)
+                target = button()
+            if target is None:
                 raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
         previous = len(notice.get('action_events',[]))
-        self.click_accessible(query)
+        self._accessible_pointer(None, 'left', node=target)
         def invoked():
             return any(e['action']==action for n in self.notifications()
                        if n['id']==identity and all(n.get(k)==notice.get(k) for k in ('at','sender','server'))
@@ -654,52 +731,197 @@ asyncio.run(main())
         self._sensitive_controls.append((control, window))
         self._sensitive_seen = True
 
-    def _frame_regions(self, image, head):
-        regions = [region for selected, region in self._sensitive_regions if selected == head]
-        config = self.profile.get('evidence', {})
-        bars = [rect(item['rect']) for item in config.get('browser_address_bars', []) if item.get('head', 0) == head]
-        unresolved = False
-        controls = list(self._sensitive_controls)
-        # Catalog text fields (including History's direct/previous URL) are
-        # automatic guards. Their live geometry is used after layout changes.
-        for name, inventory in self.catalog.inventories.items():
+    # Main-window views share one top-level window. The selected tab of its
+    # "Main navigation" bar (History, Destinations, Settings) names the visible
+    # page; a view-state main.page (MainWindow::navigate order) is the fallback.
+    MAIN_PAGES = {'history': 0, 'destinations': 1, 'settings': 2}
+    TEXT_ROLES = ('text', 'entry', 'password text', 'label', 'static', 'paragraph', 'link', 'heading',
+                  'table cell', 'list item', 'tree item', 'tool tip', 'notification', 'push button')
+
+    def _to_head(self, box, head, geometry=None):
+        """A desktop-space rectangle as device pixels on the captured head."""
+        x, y, w, h = box
+        if geometry is not None:
+            scale = geometry.get('scale', 1)
+            return rect([(x-geometry.get('screen_x', 0))*scale, (y-geometry.get('screen_y', 0))*scale, w*scale, h*scale])
+        for screen in self.profile.get('screens', []):
+            if screen.get('head', 0) == head:
+                scale = 1 if self.profile.get('session') == 'x11' else screen.get('scale', 1)
+                return rect([(x-screen['x'])*scale, (y-screen['y'])*scale, w*scale, h*scale])
+        scale = 1 if self.profile.get('session') == 'x11' else self.profile.get('scale', 1)
+        return rect([x*scale, y*scale, w*scale, h*scale])
+
+    def _areas(self, specs, image, head):
+        """Profile-declared desktop areas (anchor + logical size or head fraction)."""
+        scale = next((s.get('scale', 1) for s in self.profile.get('screens', []) if s.get('head', 0) == head),
+                     self.profile.get('scale', 1))
+        regions = []
+        for spec in specs:
+            if spec.get('head', head) != head:
+                continue
+            size = lambda value, extent: extent if value is None else (value*extent if value <= 1 else value*scale)
+            width, height = size(spec.get('width'), image.width), size(spec.get('height'), image.height)
+            anchor = spec.get('anchor', 'top-right').split('-')
+            x = 0 if 'left' in anchor else image.width-width if 'right' in anchor else (image.width-width)/2
+            y = 0 if 'top' in anchor else image.height-height if 'bottom' in anchor else (image.height-height)/2
+            regions.append(rect([x, y, width, height]))
+        return regions
+
+    def _leaks(self, *values):
+        redactor = self.evidence.redactor
+        text = ' '.join(v for v in values if isinstance(v, str) and v)
+        return bool(text) and (redactor.has_sensitive_url(text) or any(s in text for s in redactor.audit_literals))
+
+    def _secret_names(self):
+        names = {selector for selector, _ in self._sensitive_controls}
+        for inventory in self.catalog.inventories.values():
             for row in inventory.get('controls', []):
-                if SECRET_FIELD.search(row.get('name', '')) or row.get('sensitive'):
-                    if row.get('class') in ('QPushButton', 'QToolButton', 'QCheckBox'):
-                        continue
-                    for role in ('history', 'settings', 'editor', 'review', 'destinations'):
-                        if role in name:
-                            controls.append((row['name'], role))
+                if ((SECRET_FIELD.search(row.get('name', '')) or row.get('sensitive'))
+                        and row.get('class') not in ('QPushButton', 'QToolButton', 'QCheckBox', 'QRadioButton')):
+                    names.add(row['name'])
+        return names
+
+    def _visible_page(self, rows):
+        tabs = [r for r in rows if r.get('role') == 'page tab' and r.get('states', {}).get('selected')
+                and str(r.get('name', '')).lower() in self.MAIN_PAGES]
+        if len(tabs) == 1:
+            return tabs[0]['name'].lower()
+        page = self.call('ui.viewState').get('main', {}).get('page')
+        return next((name for name, index in self.MAIN_PAGES.items() if index == page), None)
+
+    def _required_controls(self, role, rows=()):
+        """Secret controls the visible page/state must show: the declared catalog
+        capture's visible secret controls, else those on every capture of the
+        view-state's current page. Other pages' controls are never required."""
+        names = self._secret_names()
+        capture = self._captures.get(role)
+        if capture:
+            inventories = [self.catalog.inventories.get(capture, {})]
+        else:
+            if role in self.MAIN_PAGES or role == 'main':
+                role = self._visible_page(rows)
+                if role is None:
+                    raise RecipeBlocked('main window page unknown')
+            stems = {'destinations': 'destination'}
+            inventories = [v for k, v in self.catalog.inventories.items() if stems.get(role, role or '\0') in k]
+        if not inventories:
+            return set(), role
+        sets = [{c['name'] for c in inv.get('controls', []) if c.get('name') in names and c.get('visible', True)}
+                for inv in inventories]
+        required = set.intersection(*sets) if not capture else sets[0]
+        required |= {selector for selector, window in self._sensitive_controls
+                     if window == role or self.profile.get('windows', {}).get(window, {}).get('owner') == role}
+        return required, role
+
+    def _secret_regions(self, head, role=None, geometry=None):
+        """Showing owned controls that hold or display secrets; raises when unknown."""
+        if not self.profile.get('at_spi', {}).get('available'):
+            raise RecipeBlocked('secret control geometry needs AT-SPI')
+        names = self._secret_names()
+        query = {'owned': True, 'visible': True, 'showing': True}
+        if geometry and geometry.get('pid'):
+            query['pid'] = geometry['pid']
+        rows = self._probe('accessible', query)
+        if geometry and not any(r.get('rect') and r.get('window') and r['role'] not in ('application',) for r in rows):
+            raise RecipeBlocked('owned window has no readable accessible tree')
+        regions, found = [], set()
+        for row in rows:
+            secret = (row.get('objectName') in names or SECRET_FIELD.search(row.get('objectName') or '')
+                      or row.get('role') == 'password text' or row.get('protected')
+                      or self._leaks(row.get('name'), row.get('text'), row.get('description')))
+            if not secret:
+                continue
+            if not row.get('rect') or min(row['rect'][2:]) <= 0:
+                raise RecipeBlocked('showing secret control has no placement')
+            found.add(row.get('objectName'))
+            x, y, w, h = row['rect']
+            regions.append(self._to_head([x-2, y-2, w+4, h+4], head, geometry))
+        if role is not None:
+            required, page = self._required_controls(role, rows)
+            if required - found:
+                raise RecipeBlocked('visible page secret controls did not resolve')
+        return regions
+
+    def _layout(self):
+        query = {}
+        if self.profile.get('compositor') and self.profile.get('session') == 'wayland':
+            query['compositor'] = self.profile['compositor']
+        return self._probe('layout', query)['windows']
+
+    def _frame_regions(self, image, head, geometry=None, role=None, desktop_safe=None):
+        """Masks for one capture; (regions, fallback, guard).
+
+        Before anything sensitive is seen (local runs) only declared regions
+        apply. Afterwards, and always for live destinations, only the owned
+        window's own pixels may be kept: desktop-level frames are fully masked
+        unless the recipe declares their content safe, non-owned windows over
+        the owned window and the profile's notification areas are masked, and
+        every showing secret control is masked. Any unknown fails closed.
+        """
+        regions = [region for selected, region in self._sensitive_regions if selected == head]
+        if not self._sensitive_seen:
+            # Nothing link-like seen yet: secret fields can hold no live value,
+            # so their masks are best effort (the read can still mark the run).
+            if geometry is not None and self.profile.get('at_spi', {}).get('available'):
+                input_head = self._input_head
+                try:
+                    regions += self._secret_regions(head, None, geometry)
+                except (RecipeBlocked, ValueError, KeyError, TypeError):
+                    pass
+                finally:
+                    self._input_head = input_head
+            if not self._sensitive_seen:
+                return regions, False, None
+        full = [[0, 0, image.width, image.height]]
+        if geometry is None and not desktop_safe:
+            return full, True, 'live-desktop-masked'
+        config = self.profile.get('evidence', {})
         input_head = self._input_head
         try:
-            for selector, role in set(controls):
-                try:
-                    candidates = self.catalog.candidates(selector, role, self._captures.get(role))
-                    geometry = self.geometry(role)
-                    if geometry.get('head', 0) != head:
+            if 'notification_areas' not in config:
+                raise RecipeBlocked('profile declares no notification areas')
+            regions += self._areas(config['notification_areas'], image, head)
+            windows = self._layout()
+            if geometry is not None:
+                target = next((w for w in windows if str(w.get('id')) == str(geometry.get('window_id'))), None)
+                if target is None:
+                    raise RecipeBlocked('owned window is not in the desktop stacking order')
+                box = [geometry[k] for k in ('x', 'y', 'width', 'height')]
+                for other in windows:
+                    above = other.get('stack') is None or (target.get('stack') is not None and other['stack'] > target['stack'])
+                    if other is target or other.get('owned') or other.get('minimized') or not above:
                         continue
-                    # Share 2a's current owned-control witness and result shape;
-                    # equal window dimensions do not prove an unchanged layout.
-                    row = self._live_control(selector, role, geometry, candidates)
-                    x, y, w, h = row['rect']
-                    scale = geometry.get('scale', 1)
-                    regions.append(rect([(x-geometry.get('screen_x', 0))*scale,
-                                         (y-geometry.get('screen_y', 0))*scale, w*scale, h*scale]))
-                except (RecipeBlocked, ValueError, KeyError):
-                    unresolved = True
+                    x, y, w, h = other['rect']
+                    if x < box[0]+box[2] and box[0] < x+w and y < box[1]+box[3] and box[1] < y+h:
+                        regions.append(self._to_head(other['rect'], head, geometry))
+                regions += self._secret_regions(head, role, geometry)
+            else:
+                browser = config.get('browser', {})
+                for other in windows:
+                    if other.get('owned') or other.get('minimized'):
+                        continue
+                    x, y, w, h = other['rect']
+                    if browser.get('title') and re.search(browser['title'], other.get('title') or ''):
+                        regions.append(self._to_head([x, y, w, min(h, browser.get('chrome_height', 160))], head))
+                    elif self._leaks(other.get('title')):
+                        regions.append(self._to_head(other['rect'], head))
+                if any(self._leaks(other.get('title')) for other in windows):
+                    regions += self._areas(config.get('window_list_panels', [{'anchor': 'bottom', 'height': 1}]), image, head)
+                regions += self._secret_regions(head)
+        except (RecipeBlocked, ValueError, KeyError, TypeError):
+            return full, True, 'live-geometry-unknown-fully-masked'
         finally:
             self._input_head = input_head
-        # Unknown geometry never permits a secret-bearing frame to be saved.
-        # Until the profile/recipe supplies verified bounds, retain a black
-        # failure witness with an explicit fallback rather than raw pixels.
-        intersects = lambda r: r[0] < image.width and r[1] < image.height and r[0]+r[2] > 0 and r[1]+r[3] > 0
-        fallback = self._sensitive_seen and (unresolved or not any(map(intersects, regions)) or not any(map(intersects, bars)))
-        regions += bars
-        if fallback:
-            regions = [[0, 0, image.width, image.height]]
-        return regions, fallback
+        return regions, False, None
 
-    def frame(self,label,window=None,reference=None):
+    def frame(self, label, window=None, reference=None, *, desktop_safe=None):
+        """Save evidence. Live/sensitive frames keep only the owned window's pixels.
+
+        A desktop-level frame (no window) is fully masked once anything
+        sensitive was seen, unless desktop_safe names why the whole visible
+        desktop is safe; notification areas, browser chrome and secret
+        controls stay masked even then.
+        """
         self._check_time()
         label = self.evidence.redactor.text(label)
         safe = re.sub('[^a-zA-Z0-9_.-]','_',label)[:80] or 'frame'
@@ -711,7 +933,8 @@ asyncio.run(main())
         geometry = self.geometry(role) if role else None
         head = geometry.get('head',0) if geometry else 0
         image = self.target.capture_image(head)
-        regions, fallback = self._frame_regions(image, head)
+        owner = self.profile.get('windows', {}).get(role, {}).get('owner', role) if role else None
+        regions, fallback, policy = self._frame_regions(image, head, geometry, owner, desktop_safe)
         crop = None
         if geometry:
             x,y,w,h = (geometry[k] for k in ('x','y','width','height'))
@@ -719,10 +942,16 @@ asyncio.run(main())
             x=(x-geometry.get('screen_x',0))*scale;y=(y-geometry.get('screen_y',0))*scale
             crop = [x,y,w*scale,h*scale]
         metadata = self.evidence.frame(image,path,regions,crop=crop,fallback=fallback)
-        if not metadata['visible_pixels']:
-            self.review('frame has no visible pixels; visual approval withheld')
-        if metadata['fallback']:
-            self.review('frame fully masked: '+metadata.get('guard', 'sensitive geometry unavailable'))
+        if policy:
+            metadata['policy'] = policy
+        if policy == 'live-desktop-masked' and metadata['guard'] == 'fully-masked':
+            # Deliberate: a live desktop frame without a declaration is not evidence.
+            self.note('desktop frame '+safe+' masked by live evidence policy')
+        else:
+            if not metadata['visible_pixels']:
+                self.review('frame has no visible pixels; visual approval withheld')
+            if metadata['fallback']:
+                self.review('frame fully masked: '+(policy or metadata.get('guard', 'sensitive geometry unavailable')))
         frame = Frame(label,str(path.relative_to(self.out)),role,reference)
         self.frames.append(frame)
         if reference and not (self.recipe and self.recipe.desktop_drawn):
@@ -741,6 +970,10 @@ asyncio.run(main())
 
     def review(self,reason):
         self.reviews.append(self.evidence.redactor.text(reason))
+
+
+# Admission checks that frames still pass through the live evidence policy.
+DriverContext.frame.live_policy = DriverContext._frame_regions
 
 
 def parse_notifications(text,since=0):

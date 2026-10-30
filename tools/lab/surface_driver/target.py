@@ -106,8 +106,8 @@ import json, os, subprocess, sys
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
-             'foreground':'foreground', 'windows':'windows', 'tray':'tray',
-             'notification_log':'notification_log'}
+             'foreground':'foreground', 'windows':'windows', 'tray':'tray', 'layout':'layout',
+             'notification_read':'notification_read'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:
@@ -123,7 +123,7 @@ while True:
         name, query = request['probe'], request['query']
         fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
-                  name in ('geometry','foreground','windows')))
+                  name in ('geometry','foreground','windows','layout')))
         if fresh:
             try:
                 child_source = ("__name__ = 'surface_driver_probe'\n" + SOURCE +
@@ -145,6 +145,11 @@ while True:
     sys.stdout.write(json.dumps(response) + '\n')
     sys.stdout.flush()
 '''
+
+
+def probe_mutates(name, query):
+    """Probe requests that act on the desktop rather than only observing it."""
+    return name == 'foreground' and bool(query.get('raise') or query.get('settle'))
 
 
 def qcodes(chord):
@@ -377,8 +382,10 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         Keeping the X11 interpreter alive removes SSH startup from each
         character and drag step. Accessibility reads use fresh children on
         that channel. No witness is cached; a lost channel blocks input.
+        A request that can change the desktop (foreground raise: xdotool
+        windowactivate/windowraise) forces the lock heartbeat, like real input.
         """
-        self.heartbeat()
+        self.heartbeat(force=probe_mutates(name, query))
         if self._probe_failed:
             raise RecipeBlocked('persistent desktop probe failed; start a new run before further input')
         if self._probe_process is None:

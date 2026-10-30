@@ -34,14 +34,15 @@ class Evidence:
         # A frame is registered only after the first (already redacted) write.
         self.out.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.out.chmod(0o700)
-        metadata = save_frame(image, path, regions, crop=crop, fallback=fallback, literals=self.redactor.audit_literals)
+        metadata = save_frame(image, path, regions, crop=crop, fallback=fallback, literals=self.redactor.audit_literals,
+                              hosts=self.redactor.link_hosts)
         self.frames[str(path.relative_to(self.out))] = metadata
         write_json(self.out/'frame-masks.json', {'frames': self.frames}, redactor=self.redactor)
         return metadata
 
     def scan(self):
         result = scan_run(self.out, frames=self.frames, literals=self.redactor.audit_literals,
-                          require_ocr=self.require_ocr, quarantine=True)
+                          require_ocr=self.require_ocr, quarantine=True, hosts=self.redactor.link_hosts)
         if any(v.get('guard') == 'ocr-unavailable-fully-masked' for v in self.frames.values()):
             result['passed'] = False
             result['findings'].append({'kind': 'frame-ocr-unavailable', 'blocked': 'tesseract is required before saving visible pixels'})
@@ -70,10 +71,12 @@ def fail_coverage(path, rows, *, redactor=None):
         value = json.loads(path.read_text())
         invalidated = 0
         for row in value.get('entries', []):
-            if identity(row) in failed:
+            if identity(row) in failed and row.get('functional') != 'failed':
                 row['functional'] = 'failed'
                 invalidated += 1
-        write_json(path, value, redactor=redactor)
+        # Other runs' rows are never rewritten unless this run's rows changed.
+        if invalidated:
+            write_json(path, value, redactor=redactor)
         return invalidated
 
 

@@ -19,6 +19,9 @@ from tools.lab.surface_driver.redact import Redactor, Sensitive, scan_run, save_
 from tools.lab.surface_driver.receipts import Evidence, write_json, write_receipts
 from tools.lab.surface_driver.run import run_recipes, main
 from tools.lab.surface_driver.target import Target
+from tools.lab.surface_driver import redact
+sys.path.insert(0, str(ROOT/'tests/desktop'))
+from surface_live_fixture import EVIDENCE, FakeDesktop, control, owned_window
 try:
     from PIL import Image, PngImagePlugin
 except ImportError:
@@ -63,7 +66,7 @@ class Secrets(unittest.TestCase):
         self.env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='cinnamon-x11',
                         package='source', destination='local', build='synthetic-build')
         self.ctx = DriverContext(MemoryTarget(), self.env, {'session': 'x11', 'catalog_tolerance': .025,
-            'at_spi': {'available': True}, 'evidence': {'browser_address_bars': [{'rect': [0, 0, 120, 15]}]}}, self.catalog, self.out)
+            'at_spi': {'available': True}, 'evidence': dict(EVIDENCE)}, self.catalog, self.out)
 
     def tearDown(self):
         self.temp.cleanup()
@@ -208,8 +211,10 @@ class Secrets(unittest.TestCase):
         self.assertIn('GetNameOwner', '\n'.join(scripts))
         self.assertIn(':1.42', '\n'.join(scripts))
         self.ctx._notifications_since = 0
+        self.assertIn('notification_read', '\n'.join(scripts))
         raw = 'method call time=100.1 sender=:1.2 serial=45 interface=org.freedesktop.Notifications; member=Notify\n'+''.join(' string "'+s+'"\n' for s in ('put.gd', 'putgd', 'Synthetic', SESSION))
-        self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': raw, 'stderr': ''}
+        reply = json.dumps({'ok': True, 'result': {'alive': True, 'text': raw}})
+        self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': reply, 'stderr': ''}
         self.assertEqual(self.ctx.notifications()[0]['body'], SESSION)
         self.assertTrue(self.ctx._sensitive_seen)
         self.ctx.note('notification body '+SESSION)
@@ -248,16 +253,18 @@ class Secrets(unittest.TestCase):
         def checked_save(im, path, *args, **kwargs):
             # All encoding is to memory, and pixels are already masked then.
             self.assertIsInstance(path, io.BytesIO)
-            self.assertEqual(im.getpixel((10, 10)), (0, 0, 0))
+            self.assertEqual(im.getpixel((115, 5)), (0, 0, 0))  # profile notification area
             self.assertEqual(im.getpixel((35, 35)), (0, 0, 0))
             writes.append(True)
             return original(im, path, *args, **kwargs)
         self.ctx.target.capture_image = lambda head=0: image
+        self.ctx._probe = FakeDesktop()
         self.ctx.sensitive_region([30, 30, 40, 20])
         with patch.object(Image.Image, 'save', checked_save):
-            full = self.ctx.frame('full')
+            full = self.ctx.frame('full', desktop_safe='synthetic fixture desktop')
         self.assertTrue(writes)
-        self.ctx.geometry = lambda role: {'x': 20, 'y': 20, 'width': 80, 'height': 50, 'scale': 1}
+        self.ctx.geometry = lambda role: {'x': 20, 'y': 20, 'width': 80, 'height': 50, 'scale': 1, 'window_id': '10'}
+        self.ctx._captures['history'] = '01-history-list'
         cropped = self.ctx.frame('window', window='history')
         with Image.open(self.out/full.path) as saved:
             self.assertEqual(saved.getpixel((100, 60)), (255, 255, 255))
@@ -273,14 +280,12 @@ class Secrets(unittest.TestCase):
         inventory = {'width': 100, 'height': 50, 'controls': [{'name': 'historyLink', 'class': 'QLineEdit', 'rect': [5, 5, 20, 5]}]}
         (self.catalog/'history.controls.json').write_text(json.dumps(inventory))
         self.ctx.catalog = Catalog(self.catalog, {})
-        self.ctx.geometry = lambda role: {'x': -90, 'y': 10, 'width': 100, 'height': 50, 'scale': 2, 'screen_x': -100}
-        def probe(name, query):
-            self.assertEqual(name, 'control')
-            self.assertEqual(query['selector'], 'historyLink')
-            self.assertEqual(query['candidates'][0]['name'], 'historyLink')
-            return {'rect': [-85, 15, 20, 5]}
-        self.ctx._probe = probe
-        frame = self.ctx.frame('catalog')
+        self.ctx.target.capture_image = lambda head=0: Image.new('RGB', (240, 160), 'white')
+        self.ctx.geometry = lambda role: {'x': -100, 'y': 0, 'width': 120, 'height': 80, 'scale': 2, 'screen_x': -100,
+                                          'window_id': '10', 'pid': 7}
+        # The secret control's live accessible geometry, not a catalog estimate.
+        self.ctx._probe = FakeDesktop([owned_window((-100, 0, 120, 80))], [control('historyLink', [-85, 15, 20, 5])])
+        frame = self.ctx.frame('catalog', window='history')
         with Image.open(self.out/frame.path) as image:
             self.assertEqual(image.getpixel((35, 35)), (0, 0, 0))
             self.assertEqual(image.getpixel((100, 60)), (255, 255, 255))
@@ -297,13 +302,19 @@ class Secrets(unittest.TestCase):
         self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
 
     @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_browser_bar_alone_cannot_attest_unknown_link_fields_or_another_head(self):
+    def test_desktop_frames_need_a_declaration_and_known_geometry(self):
         self.ctx.sensitive(LINK)
-        frame = self.ctx.frame('only-bar')
+        frame = self.ctx.frame('undeclared')
         self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
-        self.ctx.sensitive_region([10, 30, 50, 20])
-        self.ctx.profile['evidence']['browser_address_bars'][0]['head'] = 1
-        frame = self.ctx.frame('other-head-bar')
+        self.assertEqual(self.ctx.evidence.frames[frame.path]['policy'], 'live-desktop-masked')
+        def unknown(name, query):
+            raise RecipeBlocked('no compositor witness')
+        self.ctx._probe = unknown
+        frame = self.ctx.frame('declared-unknown-layout', desktop_safe='synthetic')
+        self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
+        self.ctx._probe = FakeDesktop()
+        self.ctx.profile['evidence'].pop('notification_areas')
+        frame = self.ctx.frame('declared-no-notification-areas', desktop_safe='synthetic')
         self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
 
     @unittest.skipUnless(Image, 'requires python3-pil')
@@ -323,8 +334,9 @@ class Secrets(unittest.TestCase):
         Image.new('RGB', (10, 10), 'white').save(path, pnginfo=meta)
         self.assertFalse(scan_run(self.out, ocr='')['passed'])
         path.unlink()
-        self.ctx.evidence.frame(Image.new('RGB', (10, 10), 'white'), path, [[0, 0, 10, 10]])
+        self.ctx.evidence.frame(Image.new('RGB', (10, 10), 'white'), path, [[0, 0, 5, 5]])
         self.ocr_patch.stop()
+        redact._OCR_CACHE.clear()
         with patch('tools.lab.surface_driver.redact.subprocess.run', return_value=subprocess.CompletedProcess([], 0, LINK.encode(), b'')) as ocr:
             result = scan_run(self.out, ocr='tesseract')
         self.assertEqual(ocr.call_args.kwargs['env']['OMP_THREAD_LIMIT'], '1')

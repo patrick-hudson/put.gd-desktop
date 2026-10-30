@@ -33,9 +33,9 @@
   },
   "catalog_windows": {},
   "focus": {
-    "backend": "profile-compositor",
+    "backend": "compositor-witness",
     "raise_before_input": false,
-    "reason": "Requires compositor_script returning verified focus/stacking; public resident view-state does not expose focus"
+    "reason": "KWin stacking order, active window and clientGeometry from a read-only KWin script; no Wayland raise"
   },
   "notifications": {
     "accessible": {
@@ -125,44 +125,29 @@
       }
     }
   },
+  "compositor": {
+    "kind": "kwin-script",
+    "shell_application": "",
+    "stage": "none: a one-shot read-only KWin script loaded over org.kde.KWin /Scripting per observation"
+  },
   "evidence": {
-    "browser_address_bars": [
+    "note": "Live/sensitive frames: banner areas of this desktop's notification server (top and bottom positions) are always masked; browser chrome is masked from live window geometry; window-list panels only when a window title carries a link or registered value.",
+    "notification_areas": [
       {
-        "rect": [
-          0,
-          0,
-          16384,
-          160
-        ],
-        "head": 0
-      },
-      {
-        "rect": [
-          0,
-          0,
-          16384,
-          160
-        ],
-        "head": 1
-      },
-      {
-        "rect": [
-          0,
-          0,
-          16384,
-          160
-        ],
-        "head": 2
-      },
-      {
-        "rect": [
-          0,
-          0,
-          16384,
-          160
-        ],
-        "head": 3
+        "anchor": "bottom-right",
+        "width": 520,
+        "height": 0.6
       }
-    ]
+    ],
+    "window_list_panels": [
+      {
+        "anchor": "bottom",
+        "height": 52
+      }
+    ],
+    "browser": {
+      "title": "(Mozilla Firefox|Firefox|Chromium|Google Chrome|Web)$",
+      "chrome_height": 170
+    }
   }
 }

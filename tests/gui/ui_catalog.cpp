@@ -13,6 +13,7 @@
 #include "ui/EditorWindow.h"
 #include "editor/EditorCommands.h"
 #include "app/DiagnosticsBundle.h"
+#include "core/BuildInfo.h"
 #include <QApplication>
 #include <QHBoxLayout>
 #include <QGridLayout>
@@ -545,5 +546,5 @@ int main(int argc,char** argv){
  // The custom frame under real input: the driver moves, maximizes, restores,
  // resizes and finally closes the main window.
  window.resize(1060,680);window.showNormal();if(!native.chrome(window,"90-chrome"))return 2;
- QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
+ QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-catalog"},{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures},{"skippedCaptures",skippedCaptures}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
 }

@@ -29,7 +29,27 @@ URL_SPAN = re.compile(r'\[url \{[^{}\r\n]+\}\]')
 REDACTED_SPANS = ('[redacted]', '[redacted AWS key]', '[redacted session/authorization]', '[redacted object]')
 AWS = re.compile(r'\b(?:AKIA|ASIA|AIDA|AROA)[A-Z0-9]{16}\b')
 SECRET_FIELD = re.compile(r'(?:password|secret(?!_scan)|token|authorization|^(?:session(?:[._-]?(?:id|uid|data))?|proton[._-]?session|x-pm-(?:uid|session))$|private.?key|access.?key|url$|link$)', re.I)
-SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w./])(?://)?(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+|(?:[a-z0-9.-]+\.)?s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?/[^\s<>"\'`\\]+))', re.I)
+# Object-store hosts whose scheme-less host/path form is itself a working link:
+# AWS S3, Backblaze B2 (friendly and S3 endpoints), common S3-compatible
+# services and any host with an "s3" label (custom/self-hosted endpoints).
+# A run also adds its destination profiles' configured endpoint hosts.
+OBJECT_HOST = (r'(?:[a-z0-9-]+\.)*(?:s3(?:[.-][a-z0-9-]+)*\.amazonaws\.com(?:\.cn)?|backblazeb2\.com|backblaze\.com'
+               r'|r2\.cloudflarestorage\.com|r2\.dev|digitaloceanspaces\.com|wasabisys\.com|linodeobjects\.com'
+               r'|storage\.googleapis\.com|blob\.core\.windows\.net|s3(?:-[a-z0-9-]+)?(?:\.[a-z0-9-]+)+)')
+LINK_TAIL = r'(?::[0-9]{1,5})?/[^\s<>"\'`\\]+'
+SHARE = re.compile(r'(?:hxxps?://[^\s<>"\'`\\]+|(?<![\w./-])(?://)?(?:put\.gd/[^\s<>"\'`\\]+|drive\.proton\.me/urls/[^\s<>"\'`\\]+|'
+                   + OBJECT_HOST + LINK_TAIL + '))', re.I)
+# Scheme-less host/path text in a recipe's failure message is treated as a link.
+LINKISH = re.compile(r'(?<![\w./@-])(?:[a-z0-9-]+\.)+[a-z][a-z0-9-]{1,62}(?::[0-9]{1,5})?/[^\s<>"\'`\\]+', re.I)
+
+
+def host_links(hosts):
+    """Scheme-less links on a run's configured endpoint hosts (and their subdomains)."""
+    hosts = sorted({h.lower().strip('.') for h in hosts
+                    if isinstance(h, str) and re.fullmatch(r'[A-Za-z0-9.:\[\]-]{3,253}', h)}, key=len, reverse=True)
+    if not hosts:
+        return None
+    return re.compile(r'(?<![\w./-])(?://)?(?:[a-z0-9-]+\.)*(?:' + '|'.join(map(re.escape, hosts)) + ')' + LINK_TAIL, re.I)
 ENUMS = frozenset(('text', 'image', 'files', 'local', 'tty', 'clipboard', 'wayland', 'x11', 'completed', 'cancelled', 'pending', 'recording', 'uploading', 'initializing', 'background', 'foreground', 'available', 'unavailable'))
 
 
@@ -68,7 +88,11 @@ def spellings(value):
                 forms.update((encoded, encoded.rstrip('=')))
     return {x for x in forms if len(x) >= 8}
 
-MARKER = re.compile(r'(?i)(?:bearer\s+[^\s\[]+|(?:aws_secret_access_key|aws_session_token|secretAccessKey|secretKey|accessToken|refreshToken|sessionToken|sessionId|session\.uid|userKeyPassword|x-pm-uid|x-pm-session|proton.?session)\s*["\']?\s*[:=]\s*["\']?[^\s,}{\["\']+)')
+MARKER = re.compile(r'(?i)(?:bearer\s+[^\s\[]+'
+                    r'|authorization\s*["\']?\s*[:=]\s*["\']?(?:(?:bearer|basic|aws4-hmac-sha256)\s+)?[^\s,}{\["\']+'
+                    r'|(?:aws_secret_access_key|aws_session_token|secretAccessKey|secretKey|accessToken|refreshToken|sessionToken|sessionId|session\.uid|userKeyPassword|x-pm-uid|x-pm-session|proton.?session'
+                    r'|x-amz-(?:signature|credential|security-token)|x-goog-(?:signature|credential)|awsaccesskeyid|(?<=[?&;])(?:signature|credential|sig))'
+                    r'\s*["\']?\s*[:=]\s*["\']?[^\s,}{\["\']+)')
 STRUCTURAL_FIELDS = frozenset({
     'interaction', 'desktop', 'package', 'host', 'placement', 'guest', 'destination',
     'recipe', 'build', 'functional', 'visual', 'at', 'path', 'reference', 'label', 'receipt', 'campaign',
@@ -146,6 +170,22 @@ class Redactor:
     def __init__(self):
         self._salt = os.urandom(32)  # deliberately never persisted
         self._secrets = set()
+        self._hosts = set()
+        self._host_links = None
+
+    @property
+    def link_hosts(self):
+        return frozenset(self._hosts)
+
+    def add_link_hosts(self, hosts):
+        """Configured endpoint hosts: their scheme-less host/path text is a link."""
+        self._hosts.update(h.lower() for h in hosts if isinstance(h, str) and h)
+        self._host_links = host_links(self._hosts)
+
+    def links(self, text):
+        """Every URL, share/object-store link and configured-endpoint link in text."""
+        found = list(URL.finditer(text)) + list(SHARE.finditer(text))
+        return found + (list(self._host_links.finditer(text)) if self._host_links else [])
 
     @property
     def audit_literals(self):
@@ -172,7 +212,7 @@ class Redactor:
                     self.remember(decoded, opaque=opaque, force=force)
             except ValueError:
                 pass
-            for match in list(URL.finditer(value)) + list(SHARE.finditer(value)):
+            for match in self.links(value):
                 url = match.group()
                 if public_url(url) and not force:
                     continue
@@ -198,8 +238,7 @@ class Redactor:
 
     def has_sensitive_url(self, value):
         text = str(value)
-        if (any(not public_url(m[0] if '://' in m[0] else 'https://'+m[0]) for m in SHARE.finditer(text))
-                or any(not public_url(m[0]) for m in URL.finditer(text))):
+        if any(not public_url(m[0] if '://' in m[0] else 'https://'+m[0].lstrip('/')) for m in self.links(text)):
             return True
         return any(variant in text for secret in self._secrets if URL.fullmatch(secret)
                    for variant in (secret, secret.split('://', 1)[1]))
@@ -241,7 +280,7 @@ class Redactor:
         # Keep safe derivatives outside substring replacement too: a one-letter
         # typed secret must not damage a salted hash or its JSON field names.
         pieces, offset = [], 0
-        matches = list(URL.finditer(value)) + list(SHARE.finditer(value))
+        matches = self.links(value)
         derivatives = [self.url(match.group()) for match in matches]
         spans = [(m.start(), m.end(), '[url '+json.dumps(d, sort_keys=True)+']') for m, d in zip(matches, derivatives)]
         for match in URL_SPAN.finditer(value):
@@ -311,7 +350,10 @@ class Redactor:
                 # The backend's diagnostic quotes a single input character,
                 # which can be a fragment of a longer registered secret.
                 return 'requested text uses a key unavailable to this input backend'
-            return self.text(str(error))
+            # Recipes should pass links through ctx.url_evidence(); a scheme-less
+            # host/path quoted anyway is replaced by its derivative by pattern.
+            message = LINKISH.sub(lambda m: '[url '+json.dumps(self.url('https://'+m[0]), sort_keys=True)+']', str(error))
+            return self.text(message)
         # Exception arguments/chains/traceback locals can contain raw commands.
         return 'driver error: '+type(error).__name__
 
@@ -329,7 +371,10 @@ def rect(value):
     return [math.floor(x), math.floor(y), math.ceil(x+w)-math.floor(x), math.ceil(y+h)-math.floor(y)]
 
 
-def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None):
+_OCR_CACHE = {}
+
+
+def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=()):
     """Mask/crop in memory, strip metadata, then perform the first pixel write."""
     image = image.convert('RGB')
     masks = []
@@ -346,7 +391,7 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
         image = image.crop((x, y, x+w, y+h))
         masks = [[max(0, mx-x), max(0, my-y), min(x+w, mx+mw)-max(x, mx), min(y+h, my+mh)-max(y, my)]
                  for mx, my, mw, mh in masks if mx < x+w and my < y+h and mx+mw > x and my+mh > y]
-    guard = 'fully-masked'
+    guard, text = 'fully-masked', None
     if image.getbbox():
         try:
             text = ocr_text(image, ocr=ocr)
@@ -355,11 +400,12 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
             fallback = True
         else:
             guard = 'ocr-checked'
-            if detected(text, literals):
+            if ocr_detected(text, literals, hosts):
                 guard, fallback = 'ocr-sensitive-text-fully-masked', True
         if fallback and guard != 'ocr-checked':
             image.paste((0, 0, 0), (0, 0, image.width, image.height))
             masks = [[0, 0, image.width, image.height]]
+            text = None
     # Copy pixels into a fresh object: PNG text/EXIF/ICC metadata is discarded.
     from PIL import Image
     clean = Image.frombytes('RGB', image.size, image.tobytes())
@@ -370,14 +416,21 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.write_bytes(encoded)
     path.chmod(0o600)
-    return {'sha256': hashlib.sha256(encoded).hexdigest(), 'size': list(clean.size),
+    digest = hashlib.sha256(encoded).hexdigest()
+    if text is not None:
+        # RAM only: the end-of-run audit re-matches this frame's text against
+        # literals registered later, without reading the pixels twice.
+        _OCR_CACHE[digest] = text
+        while len(_OCR_CACHE) > 512:
+            _OCR_CACHE.pop(next(iter(_OCR_CACHE)))
+    return {'sha256': digest, 'size': list(clean.size),
             'regions': masks, 'fallback': fallback, 'guard': guard, 'visible_pixels': bool(clean.getbbox())}
 
 
-def patterns(text):
+def patterns(text, extra=None):
     text = text.replace('\\/', '/')
     found = []
-    if URL.search(text) or SHARE.search(text):
+    if URL.search(text) or SHARE.search(text) or (extra and extra.search(text)):
         found.append('url')
     if AWS.search(text):
         found.append('aws-key')
@@ -403,31 +456,134 @@ def decoded_forms(text):
             pass
 
 
-def detected(text, literals=()):
+def detected(text, literals=(), hosts=()):
     kinds = set()
     candidates = tuple(decoded_forms(text))
+    extra = host_links(hosts)
     for value in candidates:
-        kinds.update(patterns(value))
+        kinds.update(patterns(value, extra))
     if any(spelling in candidate for literal in literals for spelling in spellings(literal) for candidate in candidates):
         kinds.add('registered-secret')
     return sorted(kinds)
 
 
+# OCR reads l/I/1, O/0, S/5 ... interchangeably and splits or joins words.
+CONFUSABLES = str.maketrans('0oqd1ijt|!5$8z2g96', 'ooooolllllssbzzggg')
+
+
+def ocr_normal(text):
+    return re.sub(r'[^a-z0-9]', '', text.lower().translate(CONFUSABLES))
+
+
+def fuzzy_contains(text, literal):
+    """literal occurs in normalized OCR text with at most len/8 edits.
+
+    Pigeonhole: with e edits, one of e+1 literal chunks survives exactly;
+    each exact chunk anchors a bounded semi-global edit-distance check.
+    """
+    m = len(literal)
+    errors = m // 8
+    if literal in text:
+        return True
+    if not errors:
+        return False
+    size = m // (errors + 1)
+    for index in range(errors + 1):
+        chunk = literal[index*size:(index+1)*size]
+        offset = text.find(chunk)
+        while offset >= 0:
+            start = max(0, offset - index*size - errors)
+            window = text[start:offset - index*size + m + errors]
+            previous = [0] * (len(window) + 1)
+            for i, character in enumerate(literal, 1):
+                current = [i] + [0] * len(window)
+                for j, other in enumerate(window, 1):
+                    current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+(character != other))
+                previous = current
+            if min(previous) <= errors:
+                return True
+            offset = text.find(chunk, offset+1)
+    return False
+
+
+def ocr_detected(text, literals=(), hosts=()):
+    """Audit OCR text: OCR inserts spaces and confuses glyphs, so match loosely.
+
+    Patterns are checked as read and with whitespace removed; registered
+    literals are compared after whitespace/punctuation removal and glyph
+    folding, with a small edit budget. A false positive only masks a frame.
+    """
+    kinds = set(detected(text, literals, hosts)) | set(detected(re.sub(r'\s+', '', text), (), hosts))
+    normalized = ocr_normal(text)
+    for literal in literals:
+        folded = ocr_normal(literal)
+        if len(folded) >= 10 and fuzzy_contains(normalized, folded):
+            kinds.add('registered-secret')
+            break
+    return sorted(kinds)
+
+
 def ocr_text(image, *, ocr=None):
+    """Tesseract over an upscaled grayscale copy, read as drawn and inverted.
+
+    UI and notification text is often 11-13 px and light-on-dark; Tesseract
+    misses it at native size, so the audit reads a 3x (large frames: 2x) copy.
+    """
+    from PIL import Image, ImageOps
     tesseract = shutil.which('tesseract') if ocr is None else ocr
     if not tesseract:
         raise RuntimeError('OCR required: tesseract is unavailable')
-    stream = io.BytesIO()
-    image.save(stream, format='PNG')
-    result = subprocess.run([tesseract, 'stdin', 'stdout'], input=stream.getvalue(), capture_output=True,
-                            timeout=30, check=False, env=dict(os.environ, OMP_THREAD_LIMIT='1'))
-    if result.returncode:
-        raise RuntimeError('OCR failed')
-    return result.stdout.decode('utf-8', errors='replace')
+    gray = image.convert('L')
+    scale = 3 if gray.width * gray.height <= 1_200_000 else 2
+    gray = gray.resize((gray.width*scale, gray.height*scale), Image.Resampling.LANCZOS)
+    texts = []
+    for variant in (gray, ImageOps.invert(gray)):
+        stream = io.BytesIO()
+        variant.save(stream, format='PNG')
+        result = subprocess.run([tesseract, 'stdin', 'stdout', '--psm', '11'], input=stream.getvalue(), capture_output=True,
+                                timeout=120, check=False, env=dict(os.environ, OMP_THREAD_LIMIT='1'))
+        if result.returncode:
+            raise RuntimeError('OCR failed')
+        texts.append(result.stdout.decode('utf-8', errors='replace'))
+    return '\n'.join(texts)
 
 
-def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False):
-    """Never include a matched value, OCR text or an unsafe filename in findings."""
+OCR_PROBE_TOKEN = 'Kq7Zp3Wx9Ty'
+
+
+def ocr_self_test(ocr=None, size=11):
+    """Render a known link at the smallest UI text size; OCR must read it.
+
+    Both polarities (dark on light, light on a dark notification banner) must
+    yield the link pattern and the literal token through the frame guard's
+    own reader and matcher. A blind or broken OCR fails here.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+    font = None
+    for candidate in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf',
+                      '/usr/share/fonts/TTF/DejaVuSans.ttf', '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+                      '/usr/share/fonts/google-noto/NotoSans-Regular.ttf', '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf'):
+        if Path(candidate).is_file():
+            font = ImageFont.truetype(candidate, size)
+            break
+    if font is None:
+        font = ImageFont.load_default(size=size)
+    text = 'Link copied: https://put.gd/' + OCR_PROBE_TOKEN + '.png'
+    for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')):
+        image = Image.new('RGB', (520, 40), background)
+        ImageDraw.Draw(image).text((10, 12), text, font=font, fill=foreground)
+        kinds = ocr_detected(ocr_text(image, ocr=ocr), (OCR_PROBE_TOKEN + '.png',))
+        if 'url' not in kinds or 'registered-secret' not in kinds:
+            return False
+    return True
+
+
+def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None):
+    """Never include a matched value, OCR text or an unsafe filename in findings.
+
+    paths limits the audit to those files (relative to directory), for bytes
+    rewritten after the full audit: the last write is always the last scan.
+    """
     root = Path(directory)
     if frames is None:
         try:
@@ -435,12 +591,13 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
         except (OSError, ValueError, KeyError, TypeError):
             frames = {}
     tesseract = shutil.which('tesseract') if ocr is None else ocr
-    check = lambda text: detected(text, literals)
+    check = lambda text: detected(text, literals, hosts)
     findings, count, pngs = [], 0, 0
     if not tesseract and (require_ocr or literals):
         findings.append({'kind': 'ocr-required-unavailable', 'blocked': 'tesseract must be staged in the run sandbox/guest'})
     quarantined = []
-    for index, path in enumerate(sorted(root.rglob('*'))):
+    selected = sorted(root.rglob('*')) if paths is None else sorted(root/p for p in paths if (root/p).exists())
+    for index, path in enumerate(selected):
         # Indexes, not filenames: a leaked URL may be in the filename itself.
         before = len(findings)
         report = lambda kind: findings.append({'file_index': index, 'kind': kind})
@@ -484,13 +641,14 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
                                 report('unmasked-sensitive-region')
                     if not tesseract and image.convert('RGB').getbbox():
                         report('png-ocr-unavailable')
-                    if tesseract:
+                    if tesseract and image.convert('RGB').getbbox():
                         try:
-                            text = ocr_text(image, ocr=tesseract)
+                            text = _OCR_CACHE.get(hashlib.sha256(data).hexdigest()) or ocr_text(image, ocr=tesseract)
                         except Exception:
                             report('ocr-failed')
                         else:
-                            for kind in check(text):
+                            # Re-checked against literals registered after the frame was saved.
+                            for kind in ocr_detected(text, literals, hosts):
                                 report('png-text-'+kind)
         except Exception as error:
             findings.append({'file_index': index, 'kind': 'unreadable-or-invalid-artifact',
@@ -525,9 +683,9 @@ def quarantine_files(root, files):
 
 # Capability contracts for the live-run admission check. These belong to the
 # actual functions used by Evidence, so replacing/disconnecting a sink closes it.
-Redactor.evidence_revision = 1
-save_frame.evidence_revision = 1
-scan_run.evidence_revision = 1
+Redactor.evidence_revision = 2
+save_frame.evidence_revision = 2
+scan_run.evidence_revision = 2
 
 
 def main(argv=None):
@@ -572,52 +730,6 @@ def main(argv=None):
             fail_coverage(args.coverage or args.run/'coverage.json', value.get('interactions', []), redactor=redactor)
     print(json.dumps(result))
     return 0 if result['passed'] else 1
-
-
-def notification_monitor(path, server=None):
-    """Target-side bounded RAM monitor; no notification bodies in a log file."""
-    import collections
-    import os
-    import signal
-    import socket
-    import subprocess
-    import threading
-    lines = collections.deque(maxlen=4096)
-    lock = threading.Lock()
-    filters = ["type='method_call',interface='org.freedesktop.Notifications',member='Notify',arg0='put.gd'",
-               "type='method_return',sender='"+(server or 'org.freedesktop.Notifications')+"'"]
-    if server:
-        filters.append("type='signal',interface='org.freedesktop.Notifications',sender='"+server+"'")
-    process = subprocess.Popen(['dbus-monitor', '--session', *filters],
-        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    def read():
-        for line in iter(process.stdout.readline, b''):
-            with lock:
-                lines.append(line[:16384])
-    threading.Thread(target=read, daemon=True).start()
-    server = socket.socket(socket.AF_UNIX)
-    def stop(*_):
-        raise SystemExit()
-    signal.signal(signal.SIGTERM, stop)
-    try:
-        server.bind(path)
-        os.chmod(path, 0o600)
-        server.listen(1)
-        while True:
-            connection, _ = server.accept()
-            with connection:
-                with lock:
-                    data = b''.join(lines)
-                connection.settimeout(3)
-                try:
-                    connection.sendall(data)
-                except OSError:
-                    pass
-    finally:
-        server.close()
-        process.terminate()
-        process.wait(timeout=3)
-        os.unlink(path)
 
 
 if __name__ == '__main__':
