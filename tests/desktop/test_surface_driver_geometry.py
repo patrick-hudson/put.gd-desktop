@@ -193,6 +193,27 @@ if __name__=='__main__':main()
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, previous)
 
+    def test_vnc_scroll_pulse_finishes_release_before_a_forced_deadline(self):
+        events = []
+        class Vnc:
+            def pointer_button(self,x,y,button,down):
+                if not down:
+                    signal.setitimer(signal.ITIMER_REAL,.01)
+                    time.sleep(.03)
+                events.append((button,down))
+        target = Target.__new__(Target)
+        target.heartbeat = lambda:None
+        target.vnc = lambda:Vnc()
+        def deadline(*_):raise RecipeFailed('forced scroll deadline')
+        previous = signal.signal(signal.SIGALRM,deadline)
+        try:
+            with self.assertRaisesRegex(RecipeFailed,'forced scroll deadline'):
+                target.scroll_vnc(10,10,1)
+            self.assertEqual(events,[('wheel-up',True),('wheel-up',False)])
+        finally:
+            signal.setitimer(signal.ITIMER_REAL,0)
+            signal.signal(signal.SIGALRM,previous)
+
     def test_root_cleanup_requires_created_root_and_successful_quit(self):
         target = Target.__new__(Target)
         target._rfb = None

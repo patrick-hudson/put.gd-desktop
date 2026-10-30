@@ -503,7 +503,13 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
 
     @desktop_transport
     def scroll_vnc(self, x, y, clicks):
-        self.vnc().scroll(x,y,clicks)
+        button = 'wheel-up' if clicks>0 else 'wheel-down'
+        for _ in range(abs(clicks)):
+            try:
+                self.vnc().pointer_button(x,y,button,True)
+            finally:
+                with input_release():
+                    self.vnc().pointer_button(x,y,button,False)
 
     def vnc(self):
         if self._rfb is None:
