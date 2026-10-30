@@ -66,6 +66,9 @@
     ],
     "historyManagementExpanded": [
       "Manage history"
+    ],
+    "historyAddFilter": [
+      "Add a history filter"
     ]
   }
 }

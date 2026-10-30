@@ -581,7 +581,7 @@ class HistoryRecipeTests(unittest.TestCase):
         from tools.lab.surface_driver.probe import selector_matches
         from tools.lab.surface_driver.profiles import load_profile
         source = (ROOT / 'src/ui/HistoryWindow.cpp').read_text()
-        names = {'historyList': 'History items and upload activity', 'historyCategories': 'Show history items'}
+        names = {'historyList': 'History items and upload activity', 'historyCategories': 'Show history items', 'historyAddFilter': 'Add a history filter'}
         with tempfile.TemporaryDirectory() as directory:
             Path(directory, '01-history-list.controls.json').write_text(json.dumps({'controls': [
                 {'name': control, 'text': '', 'class': 'QListView'} for control in names]}))
