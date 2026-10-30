@@ -151,7 +151,7 @@ class FakeContext(Context):
 
     def geometry(self, window):
         self.calls.append(('geometry', window))
-        return {'x': 0, 'y': 0, 'width': 820, 'height': 520, 'scale': 1}
+        return {'x': 0, 'y': 0, 'width': 820, 'height': 520, 'scale': 1, 'pid': 123}
 
     def accessible(self, query):
         self.calls.append(('accessible', query))

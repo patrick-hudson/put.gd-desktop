@@ -96,10 +96,14 @@ def _ready(ctx, inspect, backend, mode):
         top = [node for node in nodes if node.get('role') in ('dialog', 'file chooser', 'frame')]
         if len(top) != 1:
             ctx.blocked('Portal chooser top-level AT-SPI identity is missing or ambiguous', issue=671)
-        ctx.profile.setdefault('windows', {})['portalFileDialog'] = {
-            'title': '^' + re.escape(state['title']) + '$', 'owned': False,
-            'accessible': {'name': state['title'], 'pid': top[0]['pid'], 'owned': False},
-        }
+        identity = {'name': state['title'], 'pid': top[0]['pid'], 'owned': False}
+        ctx.profile['dialogs']['portal_identity'] = identity
+        spec = {'title': '^' + re.escape(state['title']) + '$', 'owned': False}
+        if ctx.profile['dialogs']['backends']['portal'].get('geometry_accessible', True):
+            spec['accessible'] = identity
+        ctx.profile.setdefault('windows', {})['portalFileDialog'] = spec
+        geometry = ctx.geometry('portalFileDialog')
+        ctx.expect(geometry['pid'] == identity['pid'], 'native chooser and AT-SPI process identities agree')
         ctx.focus('portalFileDialog', raise_window=False)
     else:
         ctx.profile.setdefault('windows', {}).setdefault('putgdFileDialog', {})['title'] = '^' + re.escape(state['title']) + '$'
@@ -121,7 +125,7 @@ def _input(ctx, backend, path, mode, inspect):
         # A title-only AT-SPI witness is insufficient: inspect the typed path
         # before Return can navigate, accept, or trigger an overwrite prompt.
         def contains_path():
-            identity = ctx.profile['windows']['portalFileDialog']['accessible']
+            identity = ctx.profile['dialogs']['portal_identity']
             nodes = ctx.accessible({'text': path, 'window': identity['name'],
                                     'pid': identity['pid'], 'visible': True, 'showing': True})
             matches = [node for node in nodes if path in

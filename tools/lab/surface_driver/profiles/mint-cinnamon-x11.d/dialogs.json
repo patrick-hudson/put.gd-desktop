@@ -12,7 +12,8 @@
         ],
         "folder_accept_keys": [
           "Alt+S"
-        ]
+        ],
+        "geometry_accessible": false
       },
       "fallback": {
         "available": true,
@@ -27,7 +28,7 @@
   "windows": {
     "putgdFileDialog": {
       "accessible": {
-        "role": "dialog",
+        "role": "file chooser",
         "application": "putgd*"
       }
     }
