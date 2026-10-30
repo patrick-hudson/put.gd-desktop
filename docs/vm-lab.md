@@ -50,7 +50,12 @@ actual host-visible QEMU processes and reserved VNC/SSH ports. A sandbox's missi
 PID does not prove that the host VM stopped. Verify the exact process identity
 and owned overlay before stopping a VM; preserve its diagnostics. `reset` retains
 the overlay. `launch` requires a new run directory and creates a new overlay;
-it does not resume an existing run. An existing-overlay resume must separately
+it does not resume an existing run. `--run` must name a symlink-free direct child
+of this checkout's canonical `work/lab-runs`; an outside or nested path is rejected
+before allocating an overlay or bootstrapping anything. Use a short name such as
+`work/lab-runs/c1`. If that still exceeds the 107-byte resolved socket limit,
+use a checkout at a shorter real path and keep runs inside its canonical root;
+a symlink or `/tmp` run outside that root does not provide a cleanup-safe shortcut. An existing-overlay resume must separately
 validate its recorded backing chain, host process/port absence and new QEMU identity,
 then update the live run metadata without overwriting the prior receipt.
 
@@ -164,20 +169,21 @@ truncate -s 16M "$provision_control/seed.img"
 mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
 mcopy -i "$provision_control/seed.img" tools/lab/bootstrap-guest.sh ::bootstrap.sh
 mcopy -i "$provision_control/seed.img" tools/lab/guest_idle.py ::guest_idle.py
+mcopy -i "$provision_control/seed.img" tools/lab/package_install.py ::package_install.py
 mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
 Shut down this new provisioning guest before restarting it. With the ISO
 detached (`-boot order=c`, remove `-cdrom`), add
 `-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
-QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script and visibility helper only. In the guest terminal:
+QEMU command for this same unprovisioned disk. The seed contains the public key, bootstrap script, visibility helper and package supervisor only. In the guest terminal:
 
 ```sh
 sudo mount /dev/disk/by-label/PUTGDLAB /mnt
 sudo sh /mnt/bootstrap.sh /mnt/identity.pub
 ```
 
-Copy `tools/lab/bootstrap-guest.sh`, its companion `tools/lab/guest_idle.py` and the public key into the disposable guest, keeping the two scripts together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
+Copy `tools/lab/bootstrap-guest.sh`, its companions `tools/lab/guest_idle.py` and `tools/lab/package_install.py`, and the public key into the disposable guest, keeping the two scripts together. The script verifies it is running inside QEMU, installs SSH with normal apt packages, creates the private authorized-key file, and grants only guest package installation to `lab`. The current .deb resolves Qt and other runtime dependencies through apt. No password or cloud credential is part of this script.
 
 Verify the SSH host fingerprint
 against the guest console before recording the host key. Keep the private key outside
@@ -249,7 +255,36 @@ SHA256 values with the requested package, even when its version is unchanged. Th
 runtime directory for desktop startup. U10 still owns complete release lifecycle,
 checksums and final notice auditing.
 
-The guest bootstrap grants the narrowly scoped `/usr/bin/apt-get` rule used by `install`; it never changes host privileges. Package dependency resolution uses distro repositories.
+The guest bootstrap installs the root-owned fixed supervisor at
+`/usr/local/lib/putgd-lab/package_install.py` and permits that command alongside
+`/usr/bin/apt-get` in the disposable guest's sudo rule. It never changes host
+privileges. Package dependency resolution uses distro repositories. Older goldens
+without this helper fail before apt starts: refresh bootstrap in a fresh disposable
+overlay through its visible console, keeping both companion helpers beside the
+script. Preserve the immutable golden; provision a new golden for lasting updates.
+
+DEB `install` has a 900-second apt budget and a further 600-second recovery window.
+Profiles can set positive integer `install_timeout` and
+`install_recovery_timeout` values; CLI `--install-timeout` and
+`--install-recovery-timeout` override them. The guest supervisor survives an SSH or
+controller disconnect, waits for only its own descendants after the apt budget
+expires, and never starts a replacement apt command during recovery. It verifies
+`dpkg -s putgd`, a clean `dpkg --audit`, and the installed binary hashes before
+certifying success. Recovery can succeed after the initial timeout if the owned
+install finishes; that timeout remains recorded in the receipt.
+
+Each attempt retains `apt.log`, PID/start identities, `progress.json`, and
+`result.json` (including dpkg state) under `~/putgd-lab/install-<id>` in the guest
+and copies completed evidence into the host run's matching directory. If the
+recovery window expires, the supervisor freezes and kills only descendants pinned
+by pidfds, then reports any remaining PIDs and package state. It never kills by
+name or retries apt. The guest `~/putgd-lab/install-active` lock blocks retries
+until the successful install and binary verification complete. On failure or a
+lost result, inspect the recorded job/result, reconcile the exact owned process
+identities and dpkg recovery state, and acknowledge recovery by removing only that
+job's lock before another install. Do not remove a lock while its supervisor or
+package descendants are still running; uninterruptible IO may require retaining
+the stopped run for investigation.
 
 After inventory and clean golden image shutdown, choose a new run path and
 verify that it does not exist. On a builder, replace the `--golden` path with
