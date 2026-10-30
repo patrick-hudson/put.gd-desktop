@@ -141,6 +141,63 @@ def ensure_accessible(ctx):
     ctx.frame('accessibility-after-reopen')
 
 
+def native_viewport(ctx, control, geometry, attempt):
+    """Clip against live ancestors: Qt exports its viewport as a filler.
+
+    Compositor containment alone allows a child behind the Settings footer.
+    Desktop/application extents are excluded: AT-SPI can retain the golden's
+    old desktop size after the real guest framebuffer has been resized.
+    """
+    query = {'owned': True, 'pid': geometry['pid'], 'visible': True}
+    alias = ctx.profile.get('live_controls', {}).get(control)
+    if alias:
+        query.update(name=alias['name'], role=alias['role'])
+    elif control.startswith('text:'):
+        query['name'] = control[5:]
+    else:
+        query['objectName'] = control
+        if hasattr(ctx, 'catalog'):
+            candidates = ctx.catalog.candidates(control, 'settings')
+            classes = {c.get('class') for c in candidates}
+            roles = {'QPushButton': 'push button', 'QLineEdit': 'text',
+                     'QSpinBox': 'spin button', 'QComboBox': 'combo box',
+                     'QToolButton': 'check box'}
+            if len(classes) == 1 and next(iter(classes)) in roles:
+                query['role'] = roles[next(iter(classes))]
+    rows = ctx.accessible(query)
+    if len(rows) > 1:
+        ctx.blocked('Native Settings viewport target is ambiguous: ' + control, issue=856)
+    if not rows or not rows[0].get('rect'):
+        return 40 if attempt == 0 else -3
+    row = rows[0]
+    if row.get('enabled') is False:
+        ctx.blocked('Native Settings control is disabled; input withheld: ' + control, issue=681)
+    parents = [a['rect'] for a in row.get('ancestors', [])
+               if a.get('role') not in ('desktop frame', 'application') and
+               a.get('rect') and min(a['rect'][2:]) > 0]
+    if not parents:
+        ctx.blocked('Native Settings viewport ancestry is unavailable; input withheld: ' + control, issue=856)
+    left, top = geometry['x'], geometry['y']
+    right, bottom = left + geometry['width'], top + geometry['height']
+    for x, y, width, height in parents:
+        left, top = max(left, x), max(top, y)
+        right, bottom = min(right, x + width), min(bottom, y + height)
+    x, y, width, height = row['rect']
+    if left <= x and x + width <= right and top <= y and y + height <= bottom:
+        ctx.note('Verified native Settings viewport: ' + json.dumps(
+            {'control': control, 'rect': row['rect'], 'viewport': [left, top, right-left, bottom-top]}, sort_keys=True))
+        return None
+    return 3 if y < top else -3
+
+
+def native_wheel(ctx, geometry, direction):
+    ctx.focus('settings')
+    scale = geometry.get('scale', 1)
+    ctx.scroll(round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale),
+               round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height'] / 2) * scale),
+               direction, head=geometry.get('head'))
+
+
 def click(ctx, control, *, after_window=None):
     """Resolve each click anew, including scroll/status/disclosure layout changes."""
     options = ctx.profile.get('settings', {})
@@ -151,6 +208,13 @@ def click(ctx, control, *, after_window=None):
         # never reuse a refused rectangle or relax compositor ownership.
         for attempt in range(12):
             try:
+                if ctx.profile.get('session') == 'wayland' and not control.startswith('settingsSection'):
+                    geometry = live_geometry(ctx)
+                    direction = native_viewport(ctx, control, geometry, attempt)
+                    if direction is not None:
+                        ctx.note('Scrolling a clipped native Settings control before input: ' + control)
+                        native_wheel(ctx, geometry, direction)
+                        continue
                 return ctx.click(control, window='settings')
             except RecipeBlocked as error:
                 if not any(reason in error.reason for reason in
@@ -159,12 +223,8 @@ def click(ctx, control, *, after_window=None):
                 if control.startswith('settingsSection'):
                     raise
                 geometry = live_geometry(ctx)
-                ctx.focus('settings')
-                scale = geometry.get('scale', 1)
-                x = round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale)
-                y = round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height'] / 2) * scale)
                 ctx.note('Searching the native Settings page for ' + control)
-                ctx.scroll(x, y, 40 if attempt == 0 else -3, head=geometry.get('head'))
+                native_wheel(ctx, geometry, 40 if attempt == 0 else -3)
         ctx.blocked('Settings control remains clipped or absent after bounded wheel search: ' + control, issue=856)
     query = options.get('live_controls', {}).get(control)
     if not query:

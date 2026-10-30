@@ -91,6 +91,50 @@
     "addCaptureException": {
       "name": "Add an exception\u2026",
       "role": "push button"
+    },
+    "recordRegionShortcut": {
+      "name": "Change capture region shortcut",
+      "role": "push button"
+    },
+    "clearRegionShortcut": {
+      "name": "Clear capture region shortcut",
+      "role": "push button"
+    },
+    "recordWindowShortcut": {
+      "name": "Change capture window shortcut",
+      "role": "push button"
+    },
+    "clearWindowShortcut": {
+      "name": "Clear capture window shortcut",
+      "role": "push button"
+    },
+    "recordDesktopShortcut": {
+      "name": "Change capture desktop shortcut",
+      "role": "push button"
+    },
+    "clearDesktopShortcut": {
+      "name": "Clear capture desktop shortcut",
+      "role": "push button"
+    },
+    "recordClipboardShortcut": {
+      "name": "Change upload clipboard shortcut",
+      "role": "push button"
+    },
+    "clearClipboardShortcut": {
+      "name": "Clear upload clipboard shortcut",
+      "role": "push button"
+    },
+    "recordEditShortcut": {
+      "name": "Change capture region & edit shortcut",
+      "role": "push button"
+    },
+    "clearEditShortcut": {
+      "name": "Clear capture region & edit shortcut",
+      "role": "push button"
+    },
+    "recordRecordShortcut": {
+      "name": "Change record screen shortcut",
+      "role": "push button"
     }
   },
   "control_names": {

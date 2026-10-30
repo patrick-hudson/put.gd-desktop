@@ -428,6 +428,32 @@ class Contracts(unittest.TestCase):
             with self.assertRaisesRegex(RecipeBlocked, refusal):
                 click(ctx, 'archiveRoot')
 
+    def test_native_footer_clipping_scrolls_before_any_click(self):
+        from tools.lab.surface_driver.recipes.settings_input import click
+        ctx = Fake()
+        ctx.profile['session'] = 'wayland'
+        ctx.profile['settings'].pop('foreground_script')
+        ctx.geometry = lambda window: {'pid': 123, 'x': 300, 'y': 73, 'width': 1320, 'height': 880}
+        scrolls, clicks = [], []
+        ctx.accessible = lambda query: [{'rect': [1140, 850 if scrolls else 903, 150, 36], 'ancestors': [
+            {'role': 'desktop frame', 'rect': [0, 0, 1024, 768]},
+            {'role': 'frame', 'rect': [300, 73, 1320, 880]},
+            {'role': 'filler', 'rect': [516, 181, 1092, 732]}]}]
+        def wheel(*args, **kwargs):
+            self.assertFalse(clicks)
+            scrolls.append((args, kwargs))
+        ctx.scroll = wheel
+        ctx.click = lambda *a, **k: clicks.append((a, k))
+        click(ctx, 'recordClipboardShortcut')
+        self.assertEqual(len(scrolls), 1)
+        self.assertEqual(len(clicks), 1)
+        self.assertIn('Verified native Settings viewport', ctx.notes[-1])
+        ctx.accessible = lambda query: [{'rect': [1140, 903, 150, 36]}]
+        clicks.clear()
+        with self.assertRaisesRegex(RecipeBlocked, 'ancestry is unavailable'):
+            click(ctx, 'recordClipboardShortcut')
+        self.assertFalse(clicks)
+
     def test_native_field_focus_is_proved_before_typing(self):
         ctx = Fake()
         ctx.profile['session'] = 'wayland'
@@ -437,7 +463,7 @@ class Contracts(unittest.TestCase):
         def accessible(query):
             if query.get('states', {}).get('focused'):
                 return [{'objectName': 'qt_spinbox_lineedit', 'accessibleId': 'QApplication.putgdMainWindow.recentActivityLimit.qt_spinbox_lineedit'}] if scrolled else [{'objectName': 'otherField'}]
-            return [{'rect': [700, 920, 180, 28]}]
+            return [{'rect': [700, 920, 180, 28], 'ancestors': [{'role': 'filler', 'rect': [336, 148, 1200, 800]}]}]
         ctx.accessible = accessible
         ctx.scroll = lambda *a, **k: scrolled.append((a, k))
         lane.replace(ctx, 'recentActivityLimit', '37')
@@ -448,7 +474,7 @@ class Contracts(unittest.TestCase):
         ctx.profile['session'] = 'wayland'
         ctx.profile['settings'].pop('foreground_script')
         ctx.geometry = lambda window: {'window_id': '42', 'pid': 123, 'x': 120, 'y': 40, 'width': 1440, 'height': 960}
-        ctx.accessible = lambda query: [{'objectName': 'otherField', 'rect': [700, 920, 180, 28]}]
+        ctx.accessible = lambda query: [{'objectName': 'otherField', 'rect': [700, 920, 180, 28], 'ancestors': [{'role': 'filler', 'rect': [336, 148, 1200, 800]}]}]
         ctx.scroll = lambda *a, **k: None
         with self.assertRaises(RecipeBlocked) as caught:
             lane.replace(ctx, 'archiveRoot', '/tmp/synthetic')
