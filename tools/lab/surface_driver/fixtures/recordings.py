@@ -48,6 +48,20 @@ os.execvp('python3',['python3',COVER,'play','--pattern','--media-now','--video-s
                    prepare_command="python3 -c "+shlex.quote('import os;f=os.open('+repr(fifo)+',os.O_WRONLY|os.O_NONBLOCK);os.write(f,b"raise\n");os.close(f)'))
 
 
+def review_catalog(scope, name):
+    ctx=scope.ctx
+    if hasattr(ctx,'catalog') and (ctx.catalog.directory/(name+'.controls.json')).is_file():
+        ctx.use_catalog('review',name)
+
+
+def actual_working(scope, identity):
+    from pathlib import PurePosixPath
+    root=scope.ctx.call('diagnostics').get('locations',{}).get('data',{}).get('path')
+    if not isinstance(root,str) or not PurePosixPath(root).is_relative_to(PurePosixPath(scope.ctx.target.root)/'data'):
+        raise RecipeBlocked('recording fixture needs the exact owned data root',issue=672)
+    return root+'/recording/'+identity+'/working.mkv'
+
+
 def capture(scope, scene, *, seconds=4.5, automatic=False):
     ctx=scope.ctx
     scene.command('raise')
@@ -72,7 +86,7 @@ def capture(scope, scene, *, seconds=4.5, automatic=False):
     if automatic:
         if state.get('stopReason')!='budget':
             raise RecipeFailed('recording stopped without the required byte-budget reason')
-        source=ctx.target.root+'/data/putgd/recording/'+identity+'/working.mkv'
+        source=actual_working(scope,identity)
         scope.python('import shutil\nshutil.copyfile('+repr(source)+','+repr(path)+')')
     if ctx.shell('test -s '+shlex.quote(path))['returncode']:
         raise RecipeBlocked('recording did not retain its actual working clip',issue=672)
@@ -93,6 +107,7 @@ def recording(scope, *, automatic=False):
     ctx._ids['review']=identity
     ctx.call('recording.review',{'id':identity,'action':'pause'})
     ctx.call('recording.review',{'id':identity,'action':'seek','time':0})
+    review_catalog(scope,'30-review')
     return Fixture(id=identity,recording_id=identity,operation_id=identity,extension='mp4',
                    output_dir=scope.root+'/out',working_path=working_path,frozen_path=frozen_path,synthetic=True)
 
@@ -106,11 +121,7 @@ def controls(scope):
 def preview_error(scope):
     """Latch a genuine decoder failure, then restore bytes before real Retry."""
     value=scope.ctx.fixture('recording')
-    root=scope.ctx.call('diagnostics').get('locations',{}).get('data',{}).get('path')
-    from pathlib import PurePosixPath
-    if not isinstance(root,str) or not PurePosixPath(root).is_relative_to(PurePosixPath(scope.ctx.target.root)/'data'):
-        raise RecipeBlocked('decoder fault requires the exact owned recording data root',issue=672)
-    working=root+'/recording/'+value.id+'/working.mkv'
+    working=actual_working(scope,value.id)
     backup=scope.root+'/decoder-backup.mkv'
     scope.python('''import os
 from pathlib import Path
@@ -136,6 +147,7 @@ if backup.exists():
     scope.ctx.wait(lambda:scope.ctx.call('recording.review',{'id':value.id,'action':'inspect'})['preview'].get('error'),
                    'genuine decoder preview failure',timeout=20)
     restore()
+    review_catalog(scope,'40-review-preview-error')
     return Fixture(value,decoder_fault_restored=True)
 
 
