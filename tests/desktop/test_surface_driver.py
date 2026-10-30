@@ -188,7 +188,9 @@ class Running(unittest.TestCase):
         inv={'width':20,'height':10,'controls':[{'name':'upload','rect':[2,2,4,4]}]}
         (self.path/'test-editor.controls.json').write_text(json.dumps(inv))
         self.ctx.catalog=Catalog(self.path,{})
-        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1}
+        self.ctx.geometry=lambda role:{'x':0,'y':0,'width':20,'height':10,'scale':1,'head':0}
+        self.ctx.profile['at_spi']['available']=False
+        self.ctx._probe=lambda name,query:{'ok':True}
         events=[]
         self.ctx.target.pointer=lambda *args:events.append(args)
         self.ctx.click('upload',window='editor')
@@ -202,12 +204,12 @@ class Running(unittest.TestCase):
         self.ctx.geometry=lambda role:{'x':0,'y':0,'width':40,'height':20,'scale':1}
         self.ctx._dimensions=lambda head=0:(100,100)
         probes=[]
-        self.ctx._probe=lambda name,query:probes.append((name,query)) or [6,8,10,12]
+        self.ctx._probe=lambda name,query:probes.append((name,query)) or ({'rect':[6,8,10,12]} if name=='control' else {'ok':True})
         events=[];self.ctx.target.pointer=lambda *args:events.append(args)
         self.ctx.click('upload',window='editor')
         self.assertEqual(events[0][:2],(11,14))
         self.assertEqual(probes[0][0],'control')
-        self.assertEqual(probes[0][1]['label'],'Upload')
+        self.assertEqual(probes[0][1]['candidates'][0]['text'],'&Upload')
         self.ctx.profile['at_spi']['available']=False
         with self.assertRaisesRegex(RecipeBlocked,'live AT-SPI'):
             self.ctx.click('upload',window='editor')
@@ -216,6 +218,8 @@ class Running(unittest.TestCase):
         sent=[];self.ctx.target.key=lambda value:sent.append(value)
         with self.assertRaises(RecipeBlocked):self.ctx.type_text('hello ☃')
         self.assertEqual(sent,[])
+        self.ctx._current_window='editor'
+        self.ctx._guard=lambda **kwargs:None
         self.ctx.type_text('Ab!')
         self.assertEqual(sent,[['shift','a'],['b'],['shift','1']])
 
@@ -295,6 +299,247 @@ method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=4
         row=parse_notifications(raw,100)[0]
         self.assertEqual((row['summary'],row['body'],row['id']),('Saved locally','Synthetic file',72))
         self.assertEqual(parse_notifications(raw,101),[])
+
+
+class InputFoundations(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.path=Path(self.temp.name)
+        self.ctx=DriverContext(FakeTarget(),dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',package='deb',destination='local'),
+                               load_profile('mint-cinnamon-x11'),self.path,self.path)
+        self.g={'x':0,'y':0,'width':100,'height':80,'scale':1,'head':0,'pid':7,'window_id':'10'}
+        self.ctx.geometry=lambda role:dict(self.g)
+        self.ctx._dimensions=lambda head=0:(200,200)
+        self.ctx._current_window='editor'
+
+    def test_obstruction_stops_every_input_and_names_window(self):
+        self.ctx._probe=lambda name,query:{'ok':False,'obscuring_window':'First launch Settings','active':'20'}
+        sent=[]
+        self.ctx.target.pointer=lambda *args,**kwargs:sent.append(args)
+        self.ctx.target.key=lambda *args:sent.append(args)
+        for action in (lambda:self.ctx.click_at(10,10), lambda:self.ctx.drag((10,10),(20,20)),
+                       lambda:self.ctx.keys('T'),lambda:self.ctx.type_text('x'),
+                       lambda:self.ctx.scroll(10,10,1),lambda:self.ctx.hover(10,10)):
+            with self.assertRaisesRegex(RecipeFailed,'editor.*First launch Settings'):
+                action()
+        self.assertEqual(sent,[])
+
+    def test_focus_is_rechecked_between_chords(self):
+        probes=[];sent=[]
+        def probe(name,query):
+            probes.append(query)
+            return {'ok':len(probes)==1,'obscuring_window':'Other client'}
+        self.ctx._probe=probe;self.ctx.target.key=sent.append
+        with self.assertRaisesRegex(RecipeFailed,'Other client'):
+            self.ctx.keys('T','R')
+        self.assertEqual(sent,[['t']])
+        self.assertEqual(len(probes),2)
+
+    def test_held_keys_release_on_exception(self):
+        self.ctx._probe=lambda *a:{'ok':True}
+        events=[];self.ctx.target.key_state=lambda *args:events.append(args)
+        with self.assertRaisesRegex(RecipeFailed,'during drag'):
+            with self.ctx.held_keys('Ctrl','Shift'):
+                raise RecipeFailed('during drag')
+        self.assertEqual(events,[(['ctrl','shift'],True),(['shift','ctrl'],False)])
+        self.assertEqual(self.ctx._held_codes,[])
+
+    def test_overlapping_held_key_chord_refuses_before_release(self):
+        self.ctx._probe=lambda *a:{'ok':True}
+        sent=[];self.ctx.target.key_state=lambda *args:sent.append(args)
+        with self.ctx.held_keys('AltGr'):
+            with self.assertRaisesRegex(RecipeBlocked,'held by held_keys'):
+                self.ctx.keys('AltGr+E')
+        self.assertEqual(sent,[(['alt_r'],True),(['alt_r'],False)])
+
+    def test_double_click_is_one_resolved_gesture(self):
+        self.ctx._probe=lambda name,query:({'rect':[10,10,20,20]} if name=='control' else {'ok':True})
+        sent=[];self.ctx.target.pointer=lambda *args:sent.append(args)
+        self.ctx.double_click('text:Save','editor')
+        self.assertEqual([args[4] for args in sent],[True,False,True,False])
+        self.assertEqual(self.ctx._click_count,1)
+
+    def test_live_menus_without_catalog_context_and_row(self):
+        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
+        requests=[]
+        def probe(name,query):
+            requests.append((name,query))
+            if name=='control':
+                return {'rect':[15,20,40,12],'pid':7,'popup':{'rect':[10,10,80,60],'pid':7}}
+            return {'ok':True}
+        self.ctx._probe=probe
+        for role in ('historyContextMenu','historyRowMenu'):
+            self.ctx.click('text:Copy path',role)
+        self.assertEqual(events[0][:2],(35,26))
+        self.assertTrue(all(q['popup'] for name,q in requests if name=='control'))
+        self.assertTrue(all(q['geometry']['pid']==7 for name,q in requests if name=='foreground'))
+
+    def test_live_controls_fail_closed_even_when_catalog_exists(self):
+        inv={'width':100,'height':80,'controls':[{'name':'save','text':'Save','rect':[1,2,4,4]}]}
+        (self.path/'editor.controls.json').write_text(json.dumps(inv));self.ctx.catalog=Catalog(self.path,{})
+        def missing(*args):raise RecipeBlocked('hidden or disabled')
+        self.ctx._probe=missing
+        with self.assertRaisesRegex(RecipeBlocked,'hidden or disabled'):
+            self.ctx.click('save','editor')
+
+    def test_secondary_head_offset_applied_once(self):
+        self.ctx.profile['screens']=[{'x':-1920,'y':0,'width':1920,'height':1080,'head':1,'scale':2}]
+        self.ctx.profile['session']='wayland'
+        self.g.update(x=-1900,width=100,coordinate_space='logical')
+        def probe(name,query):
+            return {'rect':[-1880,20,20,10]} if name=='control' else {'ok':True}
+        self.ctx._probe=probe
+        events=[];self.ctx.target.pointer=lambda *args:events.append(args)
+        self.ctx.click('text:Save','editor')
+        self.assertEqual(events[0][:2],(100,50))
+        self.assertEqual(events[0][-1],1)
+
+    def test_wayland_missing_compositor_witness_blocks(self):
+        from tools.lab.surface_driver import probe
+        with patch.dict('os.environ',{'XDG_SESSION_TYPE':'wayland'}):
+            with self.assertRaisesRegex(RuntimeError,'compositor focus/stacking witness unavailable'):
+                probe.foreground({'geometry':self.g})
+
+    def test_x11_active_and_stacking_reject_same_process_obscurer(self):
+        from tools.lab.surface_driver import probe
+        settings=dict(self.g,window_id='20',name='Settings')
+        def run(*args):
+            return '_NET_ACTIVE_WINDOW(WINDOW): window id # 0xa' if args[-1]=='_NET_ACTIVE_WINDOW' else '_NET_CLIENT_LIST_STACKING(WINDOW): window id # 0xa, 0x14'
+        with patch.object(probe,'run',side_effect=run),patch.object(probe,'x11_windows',return_value=[dict(self.g,name='Editor'),settings]):
+            result=probe.x11_foreground({'geometry':self.g})
+        self.assertFalse(result['ok']);self.assertEqual(result['obscuring_window'],'Settings')
+
+    def test_x11_unmanaged_popup_uses_server_hit_test(self):
+        from tools.lab.surface_driver import probe
+        def run(*args):
+            return '_NET_ACTIVE_WINDOW(WINDOW): window id # 0xa' if args[-1]=='_NET_ACTIVE_WINDOW' else '_NET_CLIENT_LIST_STACKING(WINDOW): window id # 0xa'
+        with patch.object(probe,'run',side_effect=run),patch.object(probe,'x11_windows',return_value=[dict(self.g,name='Editor')]),patch.object(probe,'x11_hit',return_value={'pid':8,'path':['99'],'name':'Other popup'}):
+            result=probe.x11_foreground({'geometry':self.g,'point':[5,5]})
+        self.assertFalse(result['ok']);self.assertEqual(result['obscuring_window'],'Other popup')
+
+    def test_x11_inventory_retains_unmanaged_obscurer_without_pid(self):
+        from tools.lab.surface_driver import probe
+        from types import SimpleNamespace
+        def run(*args):
+            if args[0]=='xprop' and args[1]=='-root':return 'window id # 0x14'
+            if args[1]=='getwindowpid':raise subprocess.CalledProcessError(1,args)
+            if args[1]=='getwindowgeometry':return 'X=0\nY=0\nWIDTH=100\nHEIGHT=80'
+            if args[1]=='getwindowname':return 'Other client without PID'
+            return ''
+        with patch.object(probe.subprocess,'run',return_value=SimpleNamespace(stdout='20')),patch.object(probe,'run',side_effect=run):
+            rows=probe.x11_windows({'owned':False})
+        self.assertEqual(rows[0]['name'],'Other client without PID')
+        self.assertIsNone(rows[0]['pid'])
+
+    def test_private_seed_precedes_launch_and_first_launch_is_explicit(self):
+        target=Target.__new__(Target);target.root='/tmp/sd-seed';target.app_executable='putgd';target.started=False
+        calls=[]
+        target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
+        target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}
+        target.start()
+        seed=next(i for i,s in enumerate(calls) if 'SD_SEED' in s)
+        launch=next(i for i,s in enumerate(calls) if 'nohup' in s)
+        self.assertLess(seed,launch)
+        self.assertNotIn('development-s3',calls[seed]);self.assertIn("'profiles': []",calls[seed])
+        calls.clear();target.start(first_launch=True)
+        self.assertFalse(any('SD_SEED' in s for s in calls))
+
+    def test_accessibility_shape_text_filters_and_protected_text(self):
+        from tools.lab.surface_driver import probe
+        from types import SimpleNamespace
+        class Node:
+            def __init__(self,name,role,text='',children=()):
+                self.name,self.role,self.text,self.children=name,role,text,children
+                self.description='description'
+            def getRoleName(self):return self.role
+            def get_process_id(self):return 7
+            def getAttributes(self):return ['id:field']
+            def getState(self):return SimpleNamespace(contains=lambda value:value in ('visible','showing','enabled'))
+            def queryComponent(self):return SimpleNamespace(getExtents=lambda coords:(1,2,30,40))
+            def queryText(self):
+                if self.role=='password text':raise AssertionError('protected text must not be read')
+                return SimpleNamespace(characterCount=len(self.text),getText=lambda a,b:self.text[a:b])
+            def queryAction(self):raise NotImplementedError
+            def __iter__(self):return iter(self.children)
+        field=Node('File name','text','/tmp/synthetic.png')
+        secret=Node('Password','password text','must stay private')
+        app=Node('putgd-ui','application',children=[Node('Open image','file chooser',children=[field,secret]),
+                 Node('Edit image','filler',children=[Node('Image being edited','filler')])])
+        fake=SimpleNamespace(Registry=SimpleNamespace(getDesktop=lambda _:Node('desktop','desktop frame',children=[app])),DESKTOP_COORDS=0,
+                             **{'STATE_'+k.upper():k for k in ('visible','showing','enabled')})
+        with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'owned',return_value=True):
+            rows=probe.accessible({'text':'/tmp/*.png','role':'text','owned':True})
+            self.assertEqual(len(rows),1)
+            row=rows[0]
+            for key in ('name','role','text','states','rect','bounds','pid','application','window','accelerator','ancestors'):
+                self.assertIn(key,row)
+            self.assertEqual(row['window'],'Open image');self.assertEqual(row['rect'],[1,2,30,40])
+            self.assertEqual(probe.accessible({'name':'Password'})[0]['text'],'')
+            self.assertEqual(probe.accessible({'objectName':'missing'}),[])
+            self.assertEqual(probe.accessible({'name':'Image being edited'})[0]['window'],'Edit image')
+            with self.assertRaisesRegex(ValueError,'unknown accessibility'):
+                probe.accessible({'typo':True})
+
+    def test_notification_action_is_real_pointer_and_waits_for_correlated_signal(self):
+        self.ctx.profile['notifications']['actions_available']=True
+        notices=[{'id':72,'summary':'Synthetic notice','actions':['default','Show'],'action_events':[]}]
+        self.ctx.notifications=lambda:notices
+        node={'name':'Synthetic notice','pid':50,'role':'label','rect':[10,10,80,20]}
+        self.ctx.accessible=lambda query:[node]
+        clicks=[]
+        def click(query):
+            clicks.append(query);notices[0]['action_events'].append({'action':'default'})
+        self.ctx.click_accessible=click
+        self.ctx.notification_action(72)
+        self.assertEqual(clicks[0]['pid'],50)
+        self.assertIn('application',clicks[0])
+        notices[0]['closed']={'reason':1}
+        with self.assertRaisesRegex(RecipeBlocked,'closed'):
+            self.ctx.notification_action(72)
+
+    def test_declared_notification_input_gap_blocks_before_observation(self):
+        self.ctx.notifications=lambda: self.fail('gap must withhold all input before observation')
+        with self.assertRaisesRegex(RecipeBlocked,'Two boat guest attempts') as error:
+            self.ctx.notification_action(72)
+        self.assertEqual(error.exception.issue,670)
+
+    def test_notification_events_are_correlated_to_server_and_replacement(self):
+        raw='''method call time=100.1 sender=:1.2 -> destination=org.freedesktop.Notifications serial=45 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
+   string "put.gd"
+   uint32 0
+   string "putgd"
+   string "Synthetic notice"
+   string "Synthetic body"
+   array [
+      string "default"
+      string "Show"
+      string "retry"
+      string "Retry"
+   ]
+   array [
+      dict entry (
+         string "resident"
+         variant             boolean true
+      )
+   ]
+   int32 5000
+method return time=100.2 sender=:1.3 -> destination=:1.2 serial=9 reply_serial=45
+   uint32 72
+signal time=100.3 sender=:1.99 -> destination=(null destination) serial=20 interface=org.freedesktop.Notifications; member=ActionInvoked
+   uint32 72
+   string "wrong-server"
+signal time=100.4 sender=:1.3 -> destination=(null destination) serial=21 interface=org.freedesktop.Notifications; member=ActionInvoked
+   uint32 72
+   string "retry"
+signal time=100.5 sender=:1.3 -> destination=(null destination) serial=22 interface=org.freedesktop.Notifications; member=NotificationClosed
+   uint32 72
+   uint32 2
+'''
+        row=parse_notifications(raw,100)[0]
+        self.assertEqual(row['sender'],':1.2');self.assertEqual(row['server'],':1.3')
+        self.assertTrue(row['resident']);self.assertEqual(row['timeout'],5000)
+        self.assertEqual(row['action_events'],[{'action':'retry','at':100.4}])
+        self.assertEqual(row['closed'],{'reason':2,'at':100.5})
 
 
 if __name__=='__main__':unittest.main()

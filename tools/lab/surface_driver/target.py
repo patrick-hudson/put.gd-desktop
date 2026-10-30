@@ -15,7 +15,7 @@ from tools.lab.physical_host import PhysicalHost
 from .api import RecipeBlocked, RecipeFailed
 from .catalog import image_modules
 
-QT_KEYS = {'Ctrl':'ctrl','Control':'ctrl','Shift':'shift','Alt':'alt','Meta':'meta_l','Super':'meta_l',
+QT_KEYS = {'Ctrl':'ctrl','Control':'ctrl','Shift':'shift','Alt':'alt','AltGr':'alt_r','Meta':'meta_l','Super':'meta_l',
            'Return':'ret','Enter':'ret','Escape':'esc','Esc':'esc','Space':'spc','Backspace':'backspace',
            'Tab':'tab','Backtab':'tab','Delete':'delete','Insert':'insert','Home':'home','End':'end',
            'PageUp':'pgup','PageDown':'pgdn','Left':'left','Right':'right','Up':'up','Down':'down','Menu':'menu'}
@@ -149,7 +149,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             raise RecipeBlocked('native target identity unavailable')
         return json.loads(result['stdout'])
 
-    def start(self):
+    def start(self, *, first_launch=False):
         available=self.execute('command -v '+shlex.quote(self.app_executable)+' >/dev/null && command -v putgd-cli >/dev/null')
         if available['returncode']:
             raise RecipeBlocked(self.app_executable+' and putgd-cli must be installed before the surface run')
@@ -157,6 +157,20 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                               ' '.join(shlex.quote(self.root+'/'+s) for s in ('runtime','config','data','cache','state','files')))
         if result['returncode']:
             raise RecipeBlocked('private session directory already exists or cannot be created')
+        if not first_launch:
+            # Use the checked-in schema example as a baseline; discard every
+            # provider and credential reference before sending it to the guest.
+            document = json.loads((Path(__file__).resolve().parents[3] / 'config/development.example.json').read_text())
+            document['profiles'] = []
+            document['actions'] = {name: {'destination':'local', 'profileId':None, 'shortcut':''}
+                                   for name in ('region','window','desktop','clipboard','edit')}
+            document['actions']['record'] = {'shortcut':''}
+            document['archive'].update(root=self.root+'/files', keepUploads=True)
+            document['preferences']['launchAtLogin'] = False
+            code = 'import os,json\nfrom pathlib import Path\np=Path(os.environ["XDG_CONFIG_HOME"])/"putgd"\np.mkdir(mode=0o700)\nwith (p/"config.json").open("x") as f: json.dump('+repr(document)+',f)\n'
+            seeded = self.execute("python3 - <<'SD_SEED'\n"+code+'SD_SEED\n')
+            if seeded['returncode']:
+                raise RecipeBlocked('cannot seed private local-only configuration before resident launch')
         result = self.execute('nohup '+shlex.quote(self.app_executable)+' --background > '+shlex.quote(self.root+'/app.log')+' 2>&1 < /dev/null &')
         if result['returncode']:
             raise RecipeBlocked('could not start isolated resident')
@@ -186,6 +200,12 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             self.vnc().key(*(aliases.get(c,c) for c in codes))
         else:
             lab.key(self.run, codes)
+
+    @desktop_transport
+    def key_state(self, codes, down):
+        if self.physical and not (self.run / 'qmp.sock').exists():
+            raise RecipeBlocked('held keys require the QMP-compatible host-input transport')
+        self.events([{'type':'key','data':{'down':down,'key':{'type':'qcode','data':code}}} for code in codes])
 
     @desktop_transport
     def pointer(self, x, y, width, height, down=None, button='left', head=0):

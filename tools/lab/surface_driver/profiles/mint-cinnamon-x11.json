@@ -13,7 +13,8 @@
   },
   "session": "x11",
   "known_gaps": [
-    "Catalogs are synthetic content; desktop drawn surfaces require human review"
+    "Catalogs are synthetic content; desktop drawn surfaces require human review",
+    "Runtime context/row menu controls were not exposed by the live AT-SPI resolver in two boat attempts (#675)"
   ],
   "window_titles": {
     "history": "^put\\.gd$",
@@ -25,7 +26,96 @@
     "about": "About",
     "destinations": "^put\\.gd$",
     "updates": "^put\\.gd$",
-    "bar": "^put\\.gd recording controls$"
+    "bar": "^put\\.gd recording controls$",
+    "fileDialog": ".*",
+    "putgdFileDialog": ".*",
+    "region": ".*",
+    "recsel": ".*"
   },
-  "catalog_windows": {}
+  "catalog_windows": {},
+  "focus": {
+    "backend": "ewmh",
+    "raise_before_input": false
+  },
+  "notifications": {
+    "accessible": {
+      "application": "cinnamon*"
+    },
+    "actions_available": false,
+    "reason": "Two boat guest attempts: Cinnamon AT-SPI banner extents did not match the on-screen banner; default/button input is unverified (#670)"
+  },
+  "windows": {
+    "editor.canvas": {
+      "owner": "editor",
+      "accessible": {
+        "name": "Image being edited"
+      }
+    },
+    "fileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser"
+      }
+    },
+    "putgdFileDialog": {
+      "title": ".*",
+      "accessible": {
+        "role": "file chooser"
+      }
+    },
+    "region": {
+      "title": ".*",
+      "accessible": {
+        "name": "Capture region"
+      }
+    },
+    "recsel": {
+      "title": ".*",
+      "accessible": {
+        "name": "Recording region"
+      }
+    },
+    "historyContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyRowMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "maskOptionsMenu": {
+      "owner": "review",
+      "popup": true
+    },
+    "confirmAction": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog"
+      }
+    },
+    "confirm": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog"
+      }
+    },
+    "confirmDestinationDefault": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog"
+      }
+    },
+    "confirmDestinationReload": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog"
+      }
+    },
+    "confirmDestinationRemove": {
+      "title": ".*",
+      "accessible": {
+        "role": "dialog"
+      }
+    }
+  }
 }
