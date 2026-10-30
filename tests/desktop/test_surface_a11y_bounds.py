@@ -230,6 +230,16 @@ class ApplicationNames(Walk):
         self.assertEqual(silent.calls, 0)
 
 
+class PlacementRefusal(unittest.TestCase):
+    def test_refusal_lists_what_the_compositor_shows_for_that_process(self):
+        placement = probe.WaylandPlacement(WITNESS)
+        placement._windows = [dict(FRAMES['windows'][0], title='Save original file as', frame=[300, 200, 1283, 1001], type=4),
+                              dict(FRAMES['windows'][0], id=30, pid=99, title='other')]
+        with self.assertRaisesRegex(RuntimeError, r"\(0 matches\); compositor has for pid 50: 'Save original file as' "
+                                                  r"\[300, 200, 1283, 1001\] type 4$"):
+            placement.toplevel(50, 'Save original file as', [0, 0, 820, 520])
+
+
 class QtAccessibleId(Walk):
     def control(self, selector, candidates=(), **extra):
         app, frame, nodes = settings_window()

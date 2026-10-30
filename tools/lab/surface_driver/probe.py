@@ -521,8 +521,8 @@ class WaylandPlacement:
                  w.get('type') not in POPUP_WINDOW_TYPES and
                  0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
         if len(found) != 1:
-            raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)'
-                               % (title, pid, width, height, len(found)))
+            raise RuntimeError('compositor window for %r (pid %s, %dx%d) is missing or ambiguous (%d matches)%s'
+                               % (title, pid, width, height, len(found), self.same_process(pid)))
         frame = found[0]['frame']
         content = found[0].get('content')
         if content:
@@ -543,11 +543,16 @@ class WaylandPlacement:
             found = [w for w in self.windows() if w['pid'] == pid and w.get('type') in POPUP_WINDOW_TYPES and
                      abs(w['frame'][2] - rect[2]) <= 2 and abs(w['frame'][3] - rect[3]) <= 2]
             if len(found) != 1:
-                raise RuntimeError('compositor popup window for pid %s (%dx%d) is missing or ambiguous (%d matches)'
-                                   % (pid, rect[2], rect[3], len(found)))
+                raise RuntimeError('compositor popup window for pid %s (%dx%d) is missing or ambiguous (%d matches)%s'
+                                   % (pid, rect[2], rect[3], len(found), self.same_process(pid)))
             frame = found[0]['frame']
             self._cache[key] = {'dx': frame[0] - rect[0], 'dy': frame[1] - rect[1], 'window_id': found[0]['id'], 'frame': frame}
         return self._cache[key]
+
+    def same_process(self, pid):
+        """What the compositor does show for this (owned) process, so a refusal is diagnosable."""
+        shown = ['%r %s type %s' % (w['title'], w['frame'], w.get('type')) for w in self.windows() if w['pid'] == pid][:4]
+        return '; compositor has for pid %s: %s' % (pid, ', '.join(shown) if shown else 'no windows')
 
     def inside(self, rect, frame):
         return (frame[0] - 1 <= rect[0] and frame[1] - 1 <= rect[1] and
