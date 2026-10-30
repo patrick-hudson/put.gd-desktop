@@ -36,7 +36,7 @@ class OwnedProcesses:
                 # from the children file may have exited and been reused.
                 handle = os.pidfd_open(child)
                 stat = (Path('/proc') / str(child) / 'stat').read_text().rsplit(')', 1)[1].split()
-                if int(stat[1]) != parent:
+                if int(stat[1]) != parent or select.select([handle], [], [], 0)[0]:
                     continue
                 identity = {'pid': child, 'startTicks': int(stat[19])}
                 if child in self.handles and identity in self.identities:
