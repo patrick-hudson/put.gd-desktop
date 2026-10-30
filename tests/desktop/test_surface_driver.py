@@ -3,12 +3,17 @@
 import dataclasses
 import importlib
 import json
+import os
 from pathlib import Path
+import signal
+import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
-from unittest.mock import patch, MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock, patch
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT))
@@ -17,7 +22,8 @@ from tools.lab.surface_driver.catalog import Catalog, compare, control_point
 from tools.lab.surface_driver.context import DriverContext, parse_notifications
 from tools.lab.surface_driver.profiles import load_profile, merge
 from tools.lab.surface_driver.receipts import write_receipts
-from tools.lab.surface_driver.run import discover, main, run_recipes, validate_recipes
+from tools.lab.surface_driver.run import discover, guard_target, main, native_endpoint, run_recipes, validate_recipes, verify_physical_endpoints
+from tools.lab import desktop_lock, lab
 from tools.lab.surface_driver.target import Target, checked_socket, qcodes
 from tools.lab.surface_map import surface_map
 try:
@@ -99,6 +105,34 @@ class Running(unittest.TestCase):
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
         self.ctx=DriverContext(FakeTarget(),self.env,load_profile(self.env['desktop']),self.path,self.path)
     def tearDown(self):self.temp.cleanup()
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_cleanup_has_a_fresh_budget_after_action_deadline_and_keeps_failure(self):
+        cleaned=[]
+        def expired(ctx):
+            ctx._deadline=time.monotonic()-1
+            signal.raise_signal(signal.SIGALRM)
+        def cleanup(ctx):
+            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0],0)
+            self.assertTrue(ctx.call('capabilities')['ready'])
+            cleaned.append(True)
+        expired.cleanup=cleanup
+        def following(ctx):ctx.expect(cleaned==[True],'cleanup completed before following recipe')
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),expired),Recipe(('editor.redo',),following)],self.env,self.path,'cleanup',self.path/'coverage.json')
+        self.assertEqual([r.functional for r in rows],['failed','passed'])
+        self.assertIn('recipe deadline exceeded',rows[0].note)
+
+    @unittest.skipUnless(Image,'requires python3-pil')
+    def test_failed_cleanup_blocks_following_actions_and_before_frame(self):
+        calls=[]
+        def action(ctx):pass
+        def cleanup(ctx):raise RecipeFailed('editor still open')
+        action.cleanup=cleanup
+        def following(ctx):calls.append('unsafe action')
+        rows=run_recipes(self.ctx,[Recipe(('editor.undo',),action),Recipe(('editor.redo',),following)],self.env,self.path,'cleanup',self.path/'coverage.json')
+        self.assertEqual([r.functional for r in rows],['failed','blocked'])
+        self.assertEqual(calls,[])
+        self.assertNotIn('before',[f['label'] for f in rows[1].frames])
 
     def test_registry_selection(self):
         self.assertTrue(discover('core_demo'))
@@ -239,7 +273,7 @@ class Running(unittest.TestCase):
               '--guest','cinnamon-x11','--run',str(self.path),'--package','deb','--destination','local',
               '--recipes','core_demo','--catalog',str(self.path),'--build','abcdef','--out',str(self.path/'run'),
               '--coverage',str(self.path/'main-coverage.json')]
-        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'):
             self.assertEqual(main(args),0)
         mutation=next(json.loads(a[1]) for a in calls if a[0]=='settings.patch')
         self.assertEqual(mutation['patch']['actions']['edit']['destination'],'local')
@@ -248,7 +282,7 @@ class Running(unittest.TestCase):
         self.assertEqual(json.loads((self.path/'run/receipt.json').read_text())['environment']['observed_build']['gitCommit'],'abcdef')
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
-        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]):
+        with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'):
             self.assertEqual(main(args),2)
         self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
 
@@ -452,7 +486,7 @@ class InputFoundations(unittest.TestCase):
 
     def test_physical_held_keys_and_vnc_altgr_block_before_dispatch(self):
         target=Target.__new__(Target);target.physical=object();target.run=self.path
-        target.heartbeat=lambda:None
+        target.heartbeat=lambda **kwargs:None
         target.events=lambda *a:self.fail('physical held input must not dispatch')
         target.vnc=lambda:self.fail('unsupported VNC chord must not dispatch')
         with self.assertRaisesRegex(RecipeBlocked,'scoped cleanup'):
@@ -699,6 +733,441 @@ signal time=100.5 sender=:1.3 -> destination=(null destination) serial=22 interf
         self.assertTrue(row['resident']);self.assertEqual(row['timeout'],5000)
         self.assertEqual(row['action_events'],[{'action':'retry','at':100.4}])
         self.assertEqual(row['closed'],{'reason':2,'at':100.5})
+
+
+class TargetSafety(unittest.TestCase):
+    def setUp(self):
+        endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
+        self.endpoint_check=endpoint_check.start()
+        self.addCleanup(endpoint_check.stop)
+
+    def arguments(self, host='f44', placement='native', session='owned-session'):
+        return SimpleNamespace(host=host, placement=placement, lock_session=session, boat_id='bx_test')
+
+    def target(self, address='192.168.68.70', user='patrick', port=22):
+        return SimpleNamespace(physical=SimpleNamespace(config={'host':address,'user':user,'ssh_port':port}),
+                               run=Path('/tmp/sd-guard'), require_lock=Mock())
+
+    def test_every_host_placement_profile_and_lock_combination(self):
+        # The declaration never exempts a builder, including boat/boat and boat/guest.
+        from tools.lab.surface_driver.api import HOSTS, PLACEMENTS
+        for host in HOSTS:
+            for placement in PLACEMENTS:
+                for profile in (*desktop_lock.HOSTS, 'unknown', 'guest', 'boat'):
+                    for session in (None, 'owned-session'):
+                        with self.subTest(host=host, placement=placement, profile=profile, lock=session):
+                            address=desktop_lock.HOSTS[profile][0] if profile in desktop_lock.HOSTS else ('127.0.0.1' if profile=='boat' else 'unknown.example')
+                            target = self.target(address)
+                            target.physical.ssh=Mock(return_value='boot-id\n')
+                            if profile=='guest':
+                                target.physical=None
+                            args=self.arguments(host,placement,session)
+                            builder=profile in desktop_lock.HOSTS
+                            allowed = (builder and host==profile and placement=='native' and session) or (profile=='guest' and placement!='native') or (profile=='boat' and host=='boat' and placement=='boat')
+                            command=b'qemu-system-x86_64\0-qmp\0unix:/tmp/sd-guard/qmp.sock,server=on,wait=off\0'
+                            reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':'bx_test','hydrated':True}}))
+                            proof=SimpleNamespace(stdout=json.dumps({'exitCode':0,'stdout':'boot-id\n'}))
+                            with patch.object(lab,'verify_owned_guest',return_value={'pid':123}),patch.object(Path,'read_bytes',return_value=command),patch.object(Path,'read_text',return_value='boot-id\n'),patch('tools.lab.surface_driver.run.subprocess.run',side_effect=lambda command,**kwargs:reply if command[1]=='info' else proof):
+                                if allowed:
+                                    guard_target(args,target)
+                                else:
+                                    with self.assertRaises(RecipeBlocked):guard_target(args,target)
+                            if builder and allowed:
+                                target.require_lock.assert_called_once_with(profile,'owned-session')
+                            else:
+                                target.require_lock.assert_not_called()
+
+    def test_all_builders_use_actual_endpoint_not_profile_name(self):
+        for builder,(address,_) in desktop_lock.HOSTS.items():
+            target=self.target(address)
+            target.physical.config['name']='boat-sandbox'
+            guard_target(self.arguments(builder),target)
+            target.require_lock.assert_called_once_with(builder,'owned-session')
+            for user,port in (('other',22),('patrick',2222)):
+                with self.assertRaises(RecipeBlocked):
+                    guard_target(self.arguments(builder),self.target(address,user,port))
+
+    def test_unknown_or_non_qemu_run_is_not_a_guest_exemption(self):
+        target=self.target();target.physical=None
+        for problem in (lab.LabError('physical state'),OSError('missing QEMU'),RuntimeError('symlink')):
+            with patch.object(lab,'verify_owned_guest',side_effect=problem):
+                with self.assertRaisesRegex(RecipeBlocked,'unverified input target'):
+                    guard_target(self.arguments('boat','guest'),target)
+        with patch.object(lab,'verify_owned_guest',return_value={'pid':123}),patch.object(Path,'read_bytes',return_value=b'qemu-system-x86_64\0-qmp\0unix:/another/qmp.sock,server=on,wait=off\0'):
+            with self.assertRaisesRegex(RecipeBlocked,'unverified input target'):
+                guard_target(self.arguments('boat','boat'),target)
+
+    def test_boat_profile_needs_authenticated_sandbox_and_local_machine(self):
+        target=self.target('127.0.0.1', 'user')
+        target.physical.ssh=Mock(return_value='boot-id\n')
+        args=self.arguments('boat','boat')
+        for identity,hydrated,remote_boot,allowed in (
+                ('bx_other',True,'boot-id',False),('bx_test',False,'boot-id',False),
+                ('bx_test',True,'different',False),('bx_test',True,'boot-id',True)):
+            target.physical.ssh.return_value=remote_boot
+            reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':identity,'hydrated':hydrated}}))
+            proof=SimpleNamespace(stdout=json.dumps({'exitCode':0,'stdout':'boot-id\n'}))
+            with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=[reply,proof]),patch.object(Path,'read_text',return_value='boot-id\n'):
+                if allowed:guard_target(args,target)
+                else:
+                    with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        # A supplied BOAT_ID and matching local SSH boot identity do not prove
+        # that the runner is the authenticated sandbox.
+        reply=SimpleNamespace(stdout=json.dumps({'sandbox':{'id':'bx_test','hydrated':True}}))
+        for witness in ({'exitCode':0,'stdout':'other-boot'}, {'exitCode':1,'stdout':'boot-id'}):
+            proof=SimpleNamespace(stdout=json.dumps(witness))
+            with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=[reply,proof]),patch.object(Path,'read_text',return_value='boot-id\n'):
+                with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=FileNotFoundError):
+            with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        for malformed in ('not-json', '[]', '{}', '{"sandbox":null}'):
+            with patch('tools.lab.surface_driver.run.subprocess.run',return_value=SimpleNamespace(stdout=malformed)):
+                with self.assertRaises(RecipeBlocked):guard_target(args,target)
+        args.boat_id='--api-url=https://untrusted.invalid'
+        with patch('tools.lab.surface_driver.run.subprocess.run') as command:
+            with self.assertRaises(RecipeBlocked):guard_target(args,target)
+            command.assert_not_called()
+        args.boat_id='bx_test';target.physical.config['user']='-oProxyCommand=untrusted'
+        with patch('tools.lab.surface_driver.run.subprocess.run') as command:
+            with self.assertRaises(RecipeBlocked):guard_target(args,target)
+            command.assert_not_called()
+
+    def test_bypass_and_missing_native_lock_refuse_before_start_input_or_capture(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)
+            for number,(host,placement,session,address) in enumerate((
+                    ('boat','boat',None,'192.168.68.70'),('boat','guest',None,'192.168.68.70'),
+                    ('f44','native',None,'192.168.68.70'),('f44','native','owned-session','unknown.example'),
+                    ('f44','native','revoked-session','192.168.68.70'))):
+                target=self.target(address)
+                target.require_lock.side_effect=RecipeBlocked('lock is not held by this session')
+                target.info={'id':'fake-target','profile':'cinnamon-x11'}
+                target.root='/tmp/sd-fake';target.socket=target.root+'/runtime/putgd/session.sock'
+                target.identity=Mock(return_value={'session_type':'x11'})
+                target.key=Mock();target.screenshot=Mock();target.close=Mock(return_value=[])
+                def unsafe_start():
+                    target.key(['t'])
+                    raise RecipeFailed('unlocked resident start was reached')
+                target.start=Mock(side_effect=unsafe_start)
+                args=['--desktop','mint-cinnamon-x11','--host',host,'--placement',placement,
+                      '--host-profile',str(root/'pinned.json'),'--boat-id','bx_test','--package','deb',
+                      '--destination','local','--recipes','core_demo','--catalog',str(root),'--build','abcdef',
+                      '--out',str(root/str(number)),'--coverage',str(root/'coverage.json')]
+                if session:args+=['--lock-session',session]
+                with patch('tools.lab.surface_driver.run.Target',return_value=target):
+                    self.assertEqual(main(args),2)
+                for operation in (target.start,target.identity,target.key,target.screenshot):operation.assert_not_called()
+                self.assertIn('blocked',json.loads((root/str(number)/'receipt.json').read_text())['environment'])
+
+    def test_each_real_input_rechecks_lock_even_with_cached_lease(self):
+        for method,arguments in (('key',(['t'],)),('pointer',(1,1,100,100)),('events',([],)),('scroll_vnc',(1,1,1))):
+            target=Target.__new__(Target)
+            target._lock=('f44','owned-session');target._last_heartbeat=100;target._lock_valid_until=1000
+            target.run=Path('/tmp/sd-guard');target.info={};target._rfb=Mock()
+            target.physical=SimpleNamespace(ssh=Mock(side_effect=[
+                json.dumps({'ok':True,'state':'held','expiresInSeconds':30}),
+                json.dumps({'ok':False,'state':'held','expiresInSeconds':29})]))
+            with patch('tools.lab.surface_driver.target.time.monotonic',return_value=101),patch.object(lab,'input_events') as events,patch.object(lab,'key') as key,patch.object(lab,'pointer') as pointer:
+                getattr(target,method)(*arguments)
+                with self.assertRaises(RecipeBlocked):getattr(target,method)(*arguments)
+                self.assertEqual(target.physical.ssh.call_count,2)
+                self.assertEqual(sum(m.call_count for m in (events,key,pointer,target._rfb.key,target._rfb.pointer_button,target._rfb.scroll)),1)
+
+    def test_unexpired_held_lock_required_at_start(self):
+        for reply in ({'ok':True,'state':'expired','expiresInSeconds':0},
+                      {'ok':True,'state':'held','expiresInSeconds':0},
+                      {'ok':True,'state':'held'}, {'ok':False,'state':'held','expiresInSeconds':30},
+                      {'ok':True,'state':'held','expiresInSeconds':float('nan')},
+                      {'ok':True,'state':'held','expiresInSeconds':float('inf')},
+                      {'ok':True,'state':'held','expiresInSeconds':'30'}):
+            target=Target.__new__(Target)
+            target.run=Path('/tmp/sd-guard')
+            target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps(reply)))
+            with self.assertRaises(RecipeBlocked):target.require_lock('f44','owned-session')
+
+    def test_expiry_during_heartbeat_round_trip_blocks_input(self):
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        target=Target.__new__(Target);target.run=Path(private.name);target._rfb=Mock()
+        target._lock=('f44','owned-session')
+        target.physical=SimpleNamespace(ssh=Mock(return_value=json.dumps({'ok':True,'state':'held','expiresInSeconds':2})))
+        with patch('tools.lab.surface_driver.target.time.monotonic',side_effect=[100,102]):
+            with self.assertRaises(RecipeBlocked):target.key(['t'])
+        target._rfb.key.assert_not_called()
+
+    def test_lock_is_rechecked_after_endpoint_proof_immediately_before_input(self):
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        target=Target.__new__(Target);target.run=Path(private.name)
+        target.physical=SimpleNamespace(config={'host':'192.168.68.70','user':'patrick'})
+        target.require_lock=Mock();target._rfb=Mock()
+        guard_target(self.arguments(),target)
+        order=[]
+        self.endpoint_check.side_effect=lambda *args:order.append('endpoints')
+        target.heartbeat=lambda **kwargs:order.append('lock')
+        target._rfb.key.side_effect=lambda *args:order.append('input')
+        target.key(['t'])
+        self.assertEqual(order,['endpoints','lock','input'])
+
+    def test_endpoint_rebinding_blocks_the_next_input(self):
+        private=tempfile.TemporaryDirectory();self.addCleanup(private.cleanup)
+        target=Target.__new__(Target);target.run=Path(private.name);target.info={}
+        target.physical=SimpleNamespace(config={'host':'192.168.68.70','user':'patrick'})
+        target.heartbeat=Mock();target._rfb=Mock()
+        guard_target(self.arguments(),target)
+        self.endpoint_check.assert_called_once_with(target)
+        self.endpoint_check.side_effect=[None,RecipeBlocked('endpoint changed')]
+        target.key(['t'])
+        with self.assertRaises(RecipeBlocked):target.key(['t'])
+        target._rfb.key.assert_called_once_with('t')
+
+    def test_native_host_input_still_works_under_a_held_lock(self):
+        with tempfile.TemporaryDirectory() as td:
+            target=Target.__new__(Target);target.run=Path(td)
+            (target.run/'qmp.sock').touch()
+            held=json.dumps({'ok':True,'state':'held','expiresInSeconds':30})
+            target.physical=SimpleNamespace(ssh=Mock(side_effect=[held,held,
+                json.dumps({'ok':True,'state':'expired','expiresInSeconds':0})]))
+            target.require_lock('f44','owned-session')
+            with patch.object(lab,'key') as key:
+                target.key(['t'])
+                key.assert_called_once_with(target.run,['t'])
+                with self.assertRaises(RecipeBlocked):target.key(['t'])
+                self.assertEqual(key.call_count,1)
+            self.assertEqual(target.physical.ssh.call_count,3)
+
+
+class EndpointSafety(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.run=Path(self.temp.name)
+        self.path=self.run/'qmp.sock'
+        self.assertLessEqual(len(str(self.path).encode('utf-8')),107)
+        self.listener=socket.socket(socket.AF_UNIX)
+        self.listener.bind(str(self.path));self.listener.listen()
+        self.addCleanup(self.listener.close)
+        self.target=SimpleNamespace(run=self.run,physical=SimpleNamespace(
+            config={'host':'192.168.68.70','user':'patrick','known_hosts':'/pins','vnc_port':5970},
+            ssh=lambda run,command:'1000' if command=='id -u' else ('{"verified":true}' if 'SD_ENDPOINT' in command else 'boot-id')))
+        self.argv=['ssh','-NT','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile=/pins','-o','ExitOnForwardFailure=yes',
+                   '-L','127.0.0.1:5970:127.0.0.1:5901',
+                   '-L',str(self.path)+':/run/user/1000/putgd-lab-input.sock','patrick@192.168.68.70']
+        self.executable='ssh';self.owner=os.getuid();self.rows=True
+        original_stat=Path.stat;original_read=Path.read_bytes;original_link=Path.readlink;original_text=Path.read_text
+        def proc_stat(path,*args,**kwargs):
+            return SimpleNamespace(st_uid=self.owner) if path==Path('/proc/123') else original_stat(path,*args,**kwargs)
+        def proc_read(path):
+            return '\0'.join(self.argv).encode() if path==Path('/proc/123/cmdline') else original_read(path)
+        def proc_link(path):
+            return Path('/usr/bin/'+self.executable) if path==Path('/proc/123/exe') else original_link(path)
+        def proc_text(path,*args,**kwargs):
+            return 'boot-id' if path==Path('/proc/sys/kernel/random/boot_id') else original_text(path,*args,**kwargs)
+        def listeners(command,**kwargs):
+            self.assertEqual(command[0],'ss')
+            address='127.0.0.1:5970' if '-ltnp' in command else str(self.path)
+            return SimpleNamespace(stdout='LISTEN 0 128 '+address+' * users:(("ssh",pid=123,fd=4))' if self.rows else '')
+        for patcher in (patch.object(Path,'stat',proc_stat),patch.object(Path,'read_bytes',proc_read),
+                        patch.object(Path,'readlink',proc_link),patch.object(Path,'read_text',proc_text),
+                        patch('tools.lab.surface_driver.run.subprocess.run',side_effect=listeners)):
+            patcher.start();self.addCleanup(patcher.stop)
+
+    def test_both_pinned_forwarded_endpoints_are_accepted(self):
+        verify_physical_endpoints(self.target)
+
+    def test_mismatched_vnc_qmp_host_pins_and_remote_command_are_rejected(self):
+        original=list(self.argv)
+        for old,new in (('patrick@192.168.68.70','patrick@192.168.68.69'),
+                        ('127.0.0.1:5970:127.0.0.1:5901','127.0.0.1:5970:127.0.0.1:5900'),
+                        (str(self.path)+':/run/user/1000/putgd-lab-input.sock',str(self.path)+':/another/qmp.sock'),
+                        ('UserKnownHostsFile=/pins','UserKnownHostsFile=/other-pins')):
+            self.argv=[new if value==old else value for value in original]
+            with self.subTest(replaced=old):
+                with self.assertRaisesRegex(RecipeBlocked,'endpoint binding'):verify_physical_endpoints(self.target)
+        self.argv=original+['remote-command','patrick@192.168.68.70']
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_shadowed_pins_ports_and_forwarding_options_are_rejected(self):
+        original=list(self.argv)
+        for extra in (['-o','StrictHostKeyChecking=no'],['-o','UserKnownHostsFile /other'],['-o','ExitOnForwardFailure=no'],
+                      ['-p','2222','-p','22'],['-o','Port=2222'],['-o','LocalForward=5970 127.0.0.1:5900'],
+                      ['-L','127.0.0.1:5970:127.0.0.1:5900'],
+                      ['-L',str(self.path)+':/another/qmp.sock'],
+                      ['-R','127.0.0.1:5901:192.168.68.69:5900'],['-F','other-config']):
+            self.argv=[original[0],*extra,*original[1:]]
+            with self.subTest(options=extra):
+                with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_forwarded_service_must_be_native_on_the_authenticated_host(self):
+        for reply in ('{"verified":false}', 'null', 'not-json'):
+            self.target.physical.ssh=lambda run,command:'1000' if command=='id -u' else reply
+            with self.subTest(reply=reply):
+                with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_native_service_proof_rejects_ssh_and_wrong_input_socket(self):
+        with self.assertRaises(ValueError):native_endpoint('vnc','127.0.0.1:5970')
+        self.executable='w0vncserver'
+        self.assertTrue(native_endpoint('vnc','127.0.0.1:5970'))
+        self.executable='python3.12';self.argv=['python3','/lab/host_input.py','serve','--socket',str(self.path)]
+        self.assertTrue(native_endpoint('input',str(self.path)))
+        self.argv[-1]=str(self.path)+'-other'
+        with self.assertRaises(ValueError):native_endpoint('input',str(self.path))
+
+    def test_unknown_or_unowned_listener_is_rejected(self):
+        self.rows=False
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+        self.rows=True;self.owner=os.getuid()+1
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+        self.owner=os.getuid();self.executable='socat'
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_regular_file_or_indirect_input_socket_is_rejected(self):
+        self.path.unlink();self.path.write_text('not a socket')
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+        self.path.unlink();self.path.symlink_to(self.run/'another.sock')
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_direct_native_vnc_requires_the_same_authenticated_machine(self):
+        self.path.unlink();self.executable='w0vncserver'
+        verify_physical_endpoints(self.target)
+        self.target.physical.ssh=lambda *args:'another-boot'
+        with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_direct_host_input_requires_its_exact_socket(self):
+        # The native VNC and Python input listeners have separate PIDs in a
+        # real session; select their executable/argv per ss query here.
+        socket_argument=str(self.path)
+        def listeners(command,**kwargs):
+            if '-ltnp' in command:
+                self.executable='w0vncserver'
+                address='127.0.0.1:5970'
+            else:
+                self.executable='python3.12';address=str(self.path)
+                self.argv=['python3','/lab/host_input.py','serve','--socket',socket_argument]
+            return SimpleNamespace(stdout='LISTEN 0 128 '+address+' * users:(("server",pid=123,fd=4))')
+        with patch('tools.lab.surface_driver.run.subprocess.run',side_effect=listeners):
+            verify_physical_endpoints(self.target)
+            socket_argument=str(self.path)+'-other'
+            with self.assertRaises(RecipeBlocked):verify_physical_endpoints(self.target)
+
+    def test_unverifiable_endpoints_block_main_before_resident_or_capture(self):
+        self.target.info={'id':'fake','profile':'cinnamon-x11'}
+        self.target.root='/tmp/sd-fake';self.target.socket='/tmp/sd-fake/runtime/putgd/session.sock'
+        self.target.require_lock=Mock();self.target.start=Mock();self.target.identity=Mock()
+        self.target.screenshot=Mock();self.target.close=Mock(return_value=[])
+        self.argv[-1]='patrick@192.168.68.69'
+        args=['--desktop','mint-cinnamon-x11','--host','f44','--placement','native','--lock-session','owned',
+              '--host-profile','pinned.json','--package','deb','--destination','local','--recipes','core_demo',
+              '--catalog',str(self.run),'--build','abcdef','--out',str(self.run/'result'),
+              '--coverage',str(self.run/'coverage.json')]
+        with patch('tools.lab.surface_driver.run.Target',return_value=self.target):
+            self.assertEqual(main(args),2)
+        self.target.require_lock.assert_called_once_with('f44','owned')
+        for operation in (self.target.start,self.target.identity,self.target.screenshot):operation.assert_not_called()
+
+
+class CoreDemoCleanup(unittest.TestCase):
+    def test_finalizing_helper_waits_for_resident_editor_admission_to_clear(self):
+        from tools.lab.surface_driver.recipes.core_demo import cancelled
+        ctx=Mock()
+        ctx.cli.side_effect=[{'stdout':json.dumps(value)} for value in (
+            {'ok':True,'result':{}},
+            {'ok':True,'result':{'ready':True}},
+            {'ok':False,'error':{'code':'editor_finalizing'}},
+            {'ok':False,'error':{'code':'editor_closed'}},
+            {'ok':False,'error':{'code':'editor_unavailable'}})]
+        ctx.call.side_effect=[{'editor':{'open':True}}, {'editor':{'open':True}}, {'editor':{'open':False}}]
+        observed=[]
+        def wait(predicate,*args):
+            for _ in range(4):
+                observed.append(predicate())
+                if observed[-1]:return
+            self.fail('editor never closed')
+        ctx.wait.side_effect=wait
+        cancelled(ctx,'synthetic-editor')
+        self.assertEqual(observed,[True,False,False,False,True])
+
+    def test_recipes_wait_for_async_cancel_before_next_before_frame(self):
+        from tools.lab.surface_driver.recipes import core_demo
+        class Context:
+            active=False;closing=0;tool=None;shapes=[];before=[]
+            def call(self, method, params=None):
+                if method=='editor.open':
+                    if self.active:raise RecipeFailed('editor_active')
+                    self.active=True;return {'operationId':'synthetic-editor'}
+                if method=='editor.cancel':self.closing=3
+                if method=='editor.view':return {'tool':self.tool}
+                if method=='editor.inspect':return {'shapes':self.shapes}
+                if method=='editor.apply':self.shapes=[{}]
+                if method=='capabilities':return {'editor':{'open':self.active}}
+                return {}
+            def cli(self,*args):
+                if args[0]=='editor.cancel':
+                    self.call('editor.cancel')
+                    return {'stdout':json.dumps({'ok':True,'result':{}})}
+                if self.closing:
+                    self.closing-=1
+                    if not self.closing:self.active=False
+                value={'ok':True,'result':{'ready':True}} if self.active else {'ok':False,'error':{'code':'editor_unavailable'}}
+                return {'stdout':json.dumps(value)}
+            def wait(self,predicate,what,timeout=10):
+                for _ in range(5):
+                    result=predicate()
+                    if result:return result
+                raise RecipeFailed(what)
+            def fixture(self,*args):return {'path':'/synthetic.png'}
+            def view(self,*args):pass
+            def frame(self,label,**kwargs):
+                if label=='before':self.before.append(self.active)
+            def keys(self,key):
+                if key=='T':self.tool='text'
+                if key=='Ctrl+Z':self.shapes=[]
+                if key=='Ctrl+Shift+Z':self.shapes=[{}]
+            def use_catalog(self,*args):pass
+            def click(self,*args,**kwargs):self.tool='redact'
+        ctx=Context()
+        for function in (core_demo.text_tool,core_demo.redact_tool,core_demo.undo_redo):
+            ctx.frame('before');function(ctx);function.cleanup(ctx)
+            self.assertFalse(ctx.active)
+        self.assertEqual(ctx.before,[False,False,False])
+
+    def test_cancel_does_not_treat_arbitrary_inspection_failure_as_closed(self):
+        from tools.lab.surface_driver.recipes.core_demo import cancelled
+        ctx=Mock()
+        ctx.cli.side_effect=[{'stdout':json.dumps(v)} for v in (
+            {'ok':True,'result':{}},{'ok':False,'error':{'code':'permission_denied'}})]
+        ctx.wait.side_effect=lambda predicate,*args:predicate()
+        with self.assertRaisesRegex(RecipeFailed,'permission_denied'):cancelled(ctx,'synthetic-editor')
+
+    def test_unknown_active_editor_blocks_cleanup_without_guessing_an_id(self):
+        from tools.lab.surface_driver.recipes.core_demo import cleanup
+        ctx=Mock();ctx.call.return_value={'editor':{'open':True}}
+        with self.assertRaisesRegex(RecipeFailed,'cannot identify'):cleanup(ctx)
+        ctx.cli.assert_not_called()
+
+    def test_opening_failure_still_retains_its_editor_for_runner_cleanup(self):
+        from tools.lab.surface_driver.recipes.core_demo import opened,cleanup
+        ctx=Mock();ctx.fixture.return_value={'path':'/synthetic.png'}
+        ctx.call.return_value={'operationId':'owned-editor'}
+        ctx.wait.side_effect=RecipeFailed('opening timed out')
+        with self.assertRaises(RecipeFailed):opened(ctx)
+        ctx.wait.side_effect=lambda predicate,*args:predicate()
+        ctx.call.return_value={'editor':{'open':False}}
+        ctx.cli.return_value={'stdout':json.dumps({'ok':False,'error':{'code':'editor_unavailable'}})}
+        cleanup(ctx)
+        self.assertEqual(ctx.cli.call_args_list[0].args[0],'editor.cancel')
+        self.assertEqual(json.loads(ctx.cli.call_args_list[0].args[1])['id'],'owned-editor')
+
+    def test_cancel_retry_accepts_known_starting_and_finalizing_states(self):
+        from tools.lab.surface_driver.recipes.core_demo import cancelled
+        ctx=Mock()
+        ctx.cli.side_effect=[{'stdout':json.dumps({'ok':False,'error':{'code':code}})}
+                             for code in ('editor_starting','editor_finalizing','editor_unavailable')]
+        ctx.call.return_value={'editor':{'open':False}}
+        def wait(predicate,*args):
+            for _ in range(3):
+                if predicate():return
+            self.fail('cancel never completed')
+        ctx.wait.side_effect=wait
+        cancelled(ctx,'owned-editor')
+        self.assertEqual(ctx.cli.call_count,3)
 
 
 if __name__=='__main__':unittest.main()
