@@ -63,6 +63,15 @@ class Outcomes(unittest.TestCase):
             defect.putpixel(location, (1, 2, 3))
             self.assertFalse(edited_pixels(defect, original()))
 
+    def test_editor_rejects_shifted_annotations_inside_their_broad_regions(self):
+        for box, shift in (((20, 20, 265, 105), 10), ((340, 20, 605, 125), 10),
+                           ((30, 195, 290, 265), 10), ((350, 180, 560, 290), 5)):
+            image = annotated()
+            mark = image.crop(box)
+            image.paste(original().crop(box), box)
+            image.paste(mark, (box[0] + shift, box[1]))
+            self.assertFalse(edited_pixels(image, original()))
+
     def test_six_recipes_reference_existing_interactions(self):
         recipes = discover('outcomes')
         self.assertEqual(len(recipes), 6)

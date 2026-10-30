@@ -45,6 +45,21 @@ def edited_pixels(actual, original):
     if set(actual.crop((365, 195, 545, 275)).getdata()) != {(0, 0, 0)}:
         return False
     boxes = ((20, 20, 265, 105), (340, 20, 605, 125), (30, 195, 290, 265), (350, 180, 560, 290))
+    _, ImageChops, _ = image_modules()
+    bounds = []
+    for box in boxes:
+        changed = ImageChops.difference(actual.crop(box), original.crop(box)).getbbox()
+        if changed is None:
+            return False
+        bounds.append(tuple(value + box[i % 2] for i, value in enumerate(changed)))
+    # Stroke edges and mouse-to-image quantization get four raster pixels;
+    # glyph bearings get a small anchor band, independent of desktop fonts.
+    for index, wanted in ((0, (30, 30, 251, 91)), (1, (350, 30, 591, 111)), (3, (360, 190, 551, 281))):
+        if any(abs(a - b) > 4 for a, b in zip(bounds[index], wanted)):
+            return False
+    left, top, right, bottom = bounds[2]
+    if not (35 <= left <= 45 and 217 <= top <= 231 and 20 <= right - left <= 180 and 5 <= bottom - top <= 60):
+        return False
     for box in boxes[:3]:
         if sum(a != b for a, b in zip(actual.crop(box).getdata(), original.crop(box).getdata())) < 20:
             return False
@@ -73,6 +88,12 @@ def _lane(ctx):
                  'archive': {'keepUploads': True}})
     try:
         yield scope, service
+    except BaseException:
+        try:
+            _frame(ctx, 'outcome-failed-before-cleanup')
+        except Exception as error:
+            ctx.note('failure frame unavailable: ' + type(error).__name__)
+        raise
     finally:
         ctx.expect(not scope.close(), 'outcome scope cleanup succeeded')
 
@@ -207,8 +228,10 @@ def _measure(ctx, helper, path):
 def _clip(ctx, scene, frozen):
     scene.command('freeze' if frozen else 'resume')
     scene.command('raise')
-    rid = selectors._open_record(ctx)
-    selectors._choose(ctx, rid, scene.rect)
+    # Tier 1 prepares the known source rectangle, then drives the actual bar
+    # and explicit Upload. Recording-selector gestures belong to Tier 2.
+    rid = selectors._open_record(ctx, rect=scene.rect)
+    ctx.expect(selectors._inspect(ctx, rid)['target']['rect'] == scene.rect, 'recording uses the known pattern rectangle')
     try:
         selectors._start(ctx, rid)
         started = time.monotonic()
@@ -230,9 +253,15 @@ def _clip(ctx, scene, frozen):
         raise
 
 
-@recipe('review.upload', 'recsel.drag', desktop_drawn=True, timeout=480)
+@recipe('review.upload', desktop_drawn=True, timeout=480)
 def recording_upload(ctx):
     with _lane(ctx) as (scope, service), selectors._portal_scope(ctx):
+        ctx.expect(not ctx.call('recording.capabilities').get('active'), 'private recording session starts idle')
+        def cleanup():
+            active = ctx.call('recording.capabilities').get('active')
+            if active:
+                selectors._cancel_record(ctx, active)
+        scope.defer('owned active recording', cleanup, priority=100)
         scene = ctx.fixture('selector-desktop')
         frozen, control = _clip(ctx, scene, True)
         selectors._cancel_record(ctx, frozen)
