@@ -403,9 +403,11 @@ class Contracts(unittest.TestCase):
 
     def test_native_scroll_retries_only_clipped_or_absent_controls(self):
         from tools.lab.surface_driver.recipes.settings_input import click
-        for refusal in ('control: archiveRoot (0 matches)', 'placed rectangle falls outside compositor frame'):
+        for invoke, refusal in ((invoke, reason) for invoke in (click, lane.scroll_click) for reason in
+                                ('control: archiveRoot (0 matches)', 'placed rectangle falls outside compositor frame')):
             ctx = Fake()
             ctx.profile['settings'].pop('foreground_script')
+            ctx.profile['settings'].pop('live_controls')
             clicks, scrolls = [], []
             def attempt(control, **kwargs):
                 clicks.append(control)
@@ -415,7 +417,7 @@ class Contracts(unittest.TestCase):
             ctx.geometry = lambda window: {'x': 200, 'y': 100, 'width': 600, 'height': 400,
                                           'screen_x': 100, 'screen_y': 0, 'scale': 2, 'head': 1}
             ctx.scroll = lambda x, y, steps, **kw: scrolls.append((x, y, steps, kw))
-            click(ctx, 'archiveRoot')
+            invoke(ctx, 'archiveRoot')
             self.assertEqual(len(clicks), 3)
             self.assertEqual(scrolls, [(1352, 600, 40, {'head': 1}), (1352, 600, -3, {'head': 1})])
         for refusal in ('control has 2 matches', 'foreground is obstructed', 'compositor witness unavailable'):

@@ -142,7 +142,7 @@ def saved(ctx, path, value, section):
 
 def scroll_click(ctx, control, window='settings', *, after_window=None):
     """Search clipped controls with real wheel input; core verifies every hit."""
-    if window == 'settings' and control in ctx.profile.get('settings', {}).get('live_controls', {}):
+    if window == 'settings':
         return live_click(ctx, control, after_window=after_window)
     for attempt in range(16):
         try:
@@ -473,7 +473,7 @@ def package(ctx):
 
 def open_package(ctx):
     opened(ctx, 3)
-    result(ctx, ctx.view('ui.diagnostics', {'action': 'openPackage'}))
+    live_click(ctx, 'createDiagnosticsPackage', after_window='diagnostics')
     ctx.use_catalog('diagnostics', '58-diagnostics-package')
     ctx.wait(lambda: package(ctx).get('open') and not package(ctx).get('previewing'), 'diagnostics preview ready')
     ctx.expect(package(ctx)['includeNames'] is False, 'file names excluded on every new dialog')
