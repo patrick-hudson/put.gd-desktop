@@ -6,6 +6,8 @@ import json
 import hashlib
 import os
 import shutil
+import signal
+import time
 from types import SimpleNamespace
 from pathlib import Path
 import socket
@@ -473,6 +475,7 @@ class LabContracts(unittest.TestCase):
                 Path(local).write_text('staging failure evidence')
             with patch.object(lab, 'ssh') as ssh, patch.object(lab, 'put'), \
                     patch.object(lab, 'get', side_effect=get), \
+                    patch.object(lab, 'reconcile_staging', return_value={'finished': True, 'state': 'staging-finished'}), \
                     patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('hash mismatch')):
                 ssh.return_value = ''
                 with self.assertRaisesRegex(lab.LabError, 'hash mismatch'):
@@ -489,7 +492,8 @@ class LabContracts(unittest.TestCase):
                 lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
                 with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put'), \
                         patch.object(lab, 'get', side_effect=error) as get, \
-                        patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('original staging failure')):
+                        patch.object(lab, 'reconcile_staging', return_value={'finished': True, 'state': 'staging-finished'}), \
+                    patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('original staging failure')):
                     with self.assertRaisesRegex(lab.LabError, 'original staging failure'):
                         lab.install_package(run, 'synthetic.deb')
                     self.assertEqual(get.call_args.kwargs['timeout'], 10)
@@ -502,7 +506,8 @@ class LabContracts(unittest.TestCase):
                 lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
                 with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put'), \
                         patch.object(lab, 'get', side_effect=error) as get, \
-                        patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('staging failure')):
+                        patch.object(lab, 'reconcile_staging', return_value={'finished': True, 'state': 'staging-finished'}), \
+                    patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('staging failure')):
                     with self.assertRaises(type(error)) as caught:
                         lab.install_package(run, 'synthetic.deb')
                     self.assertIs(caught.exception, error)
@@ -528,14 +533,232 @@ class LabContracts(unittest.TestCase):
                         return ''
                     with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put'), \
                             patch.object(lab, 'get', side_effect=interrupt), \
-                            patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('staging failure')), \
+                            patch.object(lab, 'reconcile_staging', return_value={'finished': True, 'state': 'staging-finished'}), \
+                    patch.object(lab, 'stage_install_helper', side_effect=lab.LabError('staging failure')), \
                             contextlib.redirect_stderr(warning):
                         with self.assertRaises(type(interrupt)) as caught:
                             lab.install_package(run, 'synthetic.deb')
                     self.assertIs(caught.exception, interrupt)
                     self.assertEqual(sum('rmdir' in script for script in scripts), 1)
                     self.assertFalse(any('nohup sudo' in script for script in scripts))
-                    self.assertIn('install-active may require reconciliation', warning.getvalue())
+                    self.assertIn('retains install-active', warning.getvalue())
+
+    def test_failed_staging_holds_lock_on_live_or_unreachable_guest(self):
+        for transport in (lab.subprocess.TimeoutExpired('ssh', 60), KeyboardInterrupt(), SystemExit(2)):
+            for outcome in ({'finished': False, 'state': 'staging-running'}, OSError('offline')):
+                with self.subTest(transport=type(transport).__name__, outcome=outcome), tempfile.TemporaryDirectory() as directory:
+                    run = Path(directory)
+                    lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+                    warning = io.StringIO()
+                    with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put'), \
+                            patch.object(lab, 'get'), patch.object(lab, 'stage_install_helper', side_effect=transport), \
+                            patch.object(lab, 'reconcile_staging', **({'side_effect': outcome} if isinstance(outcome, Exception)
+                                else {'return_value': outcome})), contextlib.redirect_stderr(warning):
+                        with self.assertRaises(type(transport) if isinstance(transport, (KeyboardInterrupt, SystemExit)) else lab.LabError) as caught:
+                            lab.install_package(run, 'synthetic.deb')
+                        if isinstance(transport, (KeyboardInterrupt, SystemExit)):
+                            self.assertIs(caught.exception, transport)
+                            self.assertIn('retains install-active', warning.getvalue())
+                        else:
+                            self.assertIn('recover-staging', str(caught.exception))
+                        self.assertFalse(any('rmdir' in c.args[1] for c in ssh.call_args_list))
+                        self.assertTrue(next(run.glob('install-*/staging-failed.json')).is_file())
+
+    def test_staging_lifetime_fence_finished_wait_exit_and_stopped(self):
+        for finish in ('already-finished', 'exits', 'stopped', 'adopted'):
+            with self.subTest(finish=finish), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                script = ('echo $$ > child.pid; touch ready; '
+                          'while [ ! -e finish ]; do sleep .02; done')
+                if finish == 'adopted':
+                    script = 'sh -c ' + lab.shlex.quote(script) + ' & exit 0'
+                process = lab.subprocess.Popen([sys.executable, str(lab.HERE / 'package_staging.py'),
+                    'run', directory, script], start_new_session=True)
+                child = None
+                try:
+                    deadline = time.monotonic() + 3
+                    while not (root / 'ready').exists():
+                        self.assertIsNone(process.poll())
+                        self.assertLess(time.monotonic(), deadline)
+                        time.sleep(.01)
+                    child = int((root / 'child.pid').read_text())
+                    identity = lab.read_json(root / 'staging-process.json')
+                    self.assertEqual(identity['pid'], process.pid)
+                    self.assertGreater(identity['startTicks'], 0)
+                    # Execute the real reconciliation implementation in its own
+                    # cwd without changing the test runner's process directory.
+                    def reconcile(wait):
+                        result = lab.subprocess.run([sys.executable, str(lab.HERE / 'package_staging.py'),
+                            'reconcile', directory, str(wait)], capture_output=True, text=True, timeout=4, check=True)
+                        return json.loads(result.stdout)
+                    pending = reconcile(0)
+                    self.assertFalse(pending['finished'])
+                    self.assertEqual(pending['state'], 'staging-running')
+                    self.assertTrue(pending['exactProcessAlive'])
+                    self.assertEqual(pending['process'], identity)
+                    if finish == 'already-finished':
+                        (root / 'finish').touch()
+                        process.wait(timeout=3)
+                        report = reconcile(0)
+                    else:
+                        def release():
+                            time.sleep(.1)
+                            if finish == 'stopped':
+                                os.kill(child, signal.SIGTERM)  # exact child started above
+                            else:
+                                (root / 'finish').touch()
+                        worker = threading.Thread(target=release)
+                        worker.start()
+                        try:
+                            report = reconcile(2)
+                        finally:
+                            worker.join(timeout=3)
+                    self.assertTrue(report['finished'])
+                    self.assertEqual(report['state'], 'staging-finished')
+                    self.assertEqual(report['pid'], process.pid)
+                    self.assertEqual(report['startTicks'], identity['startTicks'])
+                    self.assertEqual(report['exitCode'] == 0, finish != 'stopped')
+                finally:
+                    (root / 'finish').touch()
+                    process.wait(timeout=3)
+
+    def test_retry_refused_while_real_staging_process_is_alive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            job = 'install-' + 'b' * 32
+            remote = root / 'putgd-lab' / job
+            remote.mkdir(parents=True)
+            active = root / 'putgd-lab/install-active'
+            active.mkdir()
+            (active / 'job').write_text(job)
+            lab.write_json(root / 'state.json', {'profile': 'cinnamon-x11'})
+            process = lab.subprocess.Popen([sys.executable, str(lab.HERE / 'package_staging.py'),
+                'run', str(remote), 'touch ready; while [ ! -e finish ]; do sleep .02; done'])
+            try:
+                deadline = time.monotonic() + 3
+                while not (remote / 'ready').exists():
+                    self.assertIsNone(process.poll())
+                    self.assertLess(time.monotonic(), deadline)
+                    time.sleep(.01)
+                def ssh(_run, script):
+                    return lab.subprocess.run(['sh', '-s'], input=script, text=True, capture_output=True,
+                        env={**os.environ, 'HOME': str(root)}, timeout=3, check=True).stdout
+                with patch.object(lab, 'ssh', side_effect=ssh), patch.object(lab, 'put') as put:
+                    with self.assertRaisesRegex(lab.LabError, 'retry refused.*staging'):
+                        lab.install_package(root, 'synthetic.deb')
+                    put.assert_not_called()
+                self.assertIsNone(process.poll())
+                self.assertEqual((active / 'job').read_text(), job)
+                self.assertFalse(list(root.glob('install-*')))
+            finally:
+                (remote / 'finish').touch()
+                process.wait(timeout=3)
+
+    def test_staging_fence_cancels_delayed_launch_and_refuses_missing_terminal_receipt(self):
+        for marker in (False, True):
+            with self.subTest(marker=marker), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                if marker:
+                    lab.write_json(root / 'staging-process.json', {'pid': 123, 'startTicks': 456})
+                report = lab.subprocess.run([sys.executable, str(lab.HERE / 'package_staging.py'),
+                    'reconcile', directory, '0'], capture_output=True, text=True, timeout=3, check=True)
+                self.assertEqual(json.loads(report.stdout)['finished'], not marker)
+                delayed = lab.subprocess.run([sys.executable, str(lab.HERE / 'package_staging.py'),
+                    'run', directory, 'touch must-not-run'], timeout=3)
+                self.assertEqual(delayed.returncode, 125)
+                self.assertFalse((root / 'must-not-run').exists())
+
+    def test_recover_staging_only_releases_confirmed_failed_staging(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            job = 'install-' + 'b' * 32
+            with patch.object(lab, 'ssh') as ssh:
+                with self.assertRaisesRegex(lab.LabError, 'No controller staging-failure receipt'):
+                    lab.recover_staging(run, job)
+                ssh.assert_not_called()
+            (run / job).mkdir()
+            lab.write_json(run / job / 'staging-failed.json', {'error': 'TimeoutExpired'})
+            for finished in (False, True):
+                with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'reconcile_staging',
+                        return_value={'finished': finished, 'state': 'staging-finished' if finished else 'staging-running'}):
+                    if finished:
+                        self.assertTrue(lab.recover_staging(run, job)['finished'])
+                    else:
+                        with self.assertRaisesRegex(lab.LabError, 'remains held.*blocks retries'):
+                            lab.recover_staging(run, job)
+                    self.assertEqual(any('rmdir' in c.args[1] for c in ssh.call_args_list), finished)
+                    for c in ssh.call_args_list:
+                        self.assertIn('test ! -e', c.args[1])
+                        self.assertIn('install-active/job', c.args[1])
+
+    def test_concurrent_release_and_recovery_cannot_remove_replacement_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / 'controller'
+            run.mkdir()
+            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11'})
+            with patch.object(lab, 'ssh', return_value='') as ssh, patch.object(lab, 'put', side_effect=lab.LabError('upload')), \
+                    patch.object(lab, 'get'):
+                with self.assertRaisesRegex(lab.LabError, 'upload'):
+                    lab.install_package(run, 'synthetic.deb')
+            acquire = ssh.call_args_list[0].args[1]
+            release = next(c.args[1] for c in ssh.call_args_list if 'rmdir' in c.args[1])
+            job = next(run.glob('install-*')).name
+            replacement = 'install-' + 'c' * 32
+            acquire = acquire.replace(job, replacement)
+            with patch.object(lab, 'verify_owned_guest'), patch.object(lab, 'ssh', return_value='') as ssh, \
+                    patch.object(lab, 'reconcile_staging', return_value={'finished': True}):
+                lab.recover_staging(run, job)
+            recover = next(c.args[1] for c in ssh.call_args_list if 'rmdir' in c.args[1])
+            binaries = root / 'bin'
+            binaries.mkdir()
+            wrapper = binaries / 'rm'
+            wrapper.write_text('#!/bin/sh\nif [ "${BLOCK_RELEASE:-}" = 1 ]; then\n'
+                'touch "$GATE/blocked"\nwhile [ ! -e "$GATE/release" ]; do sleep .01; done\nfi\n'
+                'exec ' + lab.shlex.quote(shutil.which('rm')) + ' "$@"\n')
+            wrapper.chmod(0o700)
+            for number, (first, second) in enumerate(((release, recover), (recover, release), (recover, recover))):
+                with self.subTest(number=number):
+                    home = root / str(number)
+                    active = home / 'putgd-lab/install-active'
+                    active.mkdir(parents=True)
+                    (active / 'job').write_text(job)
+                    (home / 'putgd-lab' / job).mkdir()
+                    env = {**os.environ, 'HOME': str(home), 'GATE': str(home),
+                           'PATH': str(binaries) + ':' + os.environ['PATH']}
+                    processes = []
+                    def start(script, **extra):
+                        process = lab.subprocess.Popen(['sh', '-s'], stdin=lab.subprocess.PIPE,
+                            stdout=lab.subprocess.PIPE, stderr=lab.subprocess.PIPE, text=True, env={**env, **extra})
+                        process.stdin.write(script)
+                        process.stdin.close()
+                        processes.append(process)
+                        return process
+                    def ready(name):
+                        deadline = time.monotonic() + 3
+                        while not (home / name).exists():
+                            self.assertLess(time.monotonic(), deadline)
+                            time.sleep(.01)
+                    try:
+                        a = start(first, BLOCK_RELEASE='1')
+                        ready('blocked')  # A passed the old token check, before rm.
+                        b = start('touch "$GATE/b-ready"\n' + second)
+                        c = start('touch "$GATE/c-ready"\n' + acquire)
+                        ready('b-ready')
+                        ready('c-ready')
+                        # Without the shared guard, B releases A's old token and
+                        # C acquires a new job while A is paused before its rm.
+                        with self.assertRaises(lab.subprocess.TimeoutExpired):
+                            c.wait(timeout=.2)
+                    finally:
+                        (home / 'release').touch()
+                        for process in processes:
+                            process.wait(timeout=6)
+                            process.stdout.close()
+                            process.stderr.close()
+                    self.assertEqual(a.returncode, 0)
+                    self.assertEqual(c.returncode, 0)
+                    self.assertEqual((active / 'job').read_text(), replacement)
 
     def test_install_refused_retry_reports_held_job_without_orphan_evidence(self):
         self.check_install_refused_retry('aborted', 'result.json')
