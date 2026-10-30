@@ -14,8 +14,12 @@ def grow_history(scope, total):
     import json
     helper=scope.root+'/native_acceptance.py'
     scope.write(helper,(Path(__file__).resolve().parents[2]/'native_acceptance.py').read_bytes())
+    # The cloner checks a complete local-only config alongside the isolated
+    # journal. It never edits the resident's accepted configuration.
+    from .profile import seeded_config
+    scope.write(scope.root+'/config/putgd/config.json',json.dumps(seeded_config(scope.root)).encode())
     argv=['python3',helper,'--output',scope.root+'/paging-growth.json','grow',
-          '--fixture-root',scope.ctx.target.root,'--db',scope.ctx.target.root+'/data/putgd/history.sqlite',
+          '--fixture-root',scope.root,'--db',scope.root+'/data/putgd/history.sqlite',
           '--runtime',scope.ctx.target.root+'/runtime','--to',str(total)]
     result={}
     def grow():

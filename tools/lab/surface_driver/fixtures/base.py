@@ -29,6 +29,7 @@ class Scope:
         self.values = {}
         self.initialized = False
         self._environment = {}
+        self.processes = []
 
     def defer(self, label, function, *, priority=0):
         self.finalizers.append((priority, label, function))
@@ -67,12 +68,20 @@ p.mkdir(mode=0o700)
 (p/'owner').write_text(TOKEN)
 '''.replace('ROOT', repr(self.ctx.target.root)).replace('OWNED', repr(self.root)).replace('TOKEN', repr(self.token)))
         self.initialized = True
-        self.defer('owned directory', lambda: self.python('''import shutil
+        self.defer('owned directory', lambda: self.python('''import os,shutil
 from pathlib import Path
 p=Path(ROOT)
 assert p.resolve()==p and not p.is_symlink() and (p/'owner').read_text()==TOKEN
+for line in Path('/proc/self/mountinfo').read_text().splitlines():
+ mount=Path(line.split()[4].replace('\\040',' '))
+ assert mount!=p and not mount.is_relative_to(p)
+for identity in PROCESSES:
+ proc=Path('/proc')/str(identity['pid'])/'stat'
+ if proc.exists():
+  fields=proc.read_text().split(') ',1)[1].split()
+  assert fields[19]!=identity['start'] or fields[0]=='Z'
 shutil.rmtree(p)
-'''.replace('ROOT', repr(self.root)).replace('TOKEN', repr(self.token))), priority=-1000)
+'''.replace('ROOT', repr(self.root)).replace('TOKEN', repr(self.token)).replace('PROCESSES', repr(self.processes))), priority=-1000)
 
     def write(self, path, data):
         import base64
@@ -97,6 +106,7 @@ identity={'pid':p.pid,'start':Path('/proc/%d/stat'%p.pid).read_text().split(') '
 print(json.dumps(identity))
 '''.replace('LOG', repr(self.root+'/'+name+'.log')).replace('ARGV', repr(argv)).replace('ENV', repr(environment or {})))
         self.defer(name, lambda: self.stop(result))
+        self.processes.append(result)
         return result
 
     def stop(self, identity):
@@ -113,7 +123,10 @@ try:
   for _ in range(30):
    if not p.exists() or (p/'stat').read_text().split(') ',1)[1].split()[0]=='Z':break
    time.sleep(.1)
-  else:signal.pidfd_send_signal(fd,signal.SIGKILL)
+  else:
+   signal.pidfd_send_signal(fd,signal.SIGKILL)
+   import select
+   assert select.select([fd],[],[],5)[0], 'owned helper did not exit after SIGKILL'
  finally:os.close(fd)
 except (ProcessLookupError,FileNotFoundError):pass
 '''.replace('IDENTITY', repr(identity)))
@@ -138,11 +151,34 @@ except (ProcessLookupError,FileNotFoundError):pass
             self.defer('resident environment', lambda: self.restart(), priority=-500)
         self.ctx.call('ui.quit')
         target.started = False
-        # The socket must actually disappear before another resident is launched.
+        original = None
+        try:
+            # Never race a resident still releasing its private socket.
+            self.ctx.wait(lambda: self.ctx.shell('test ! -e '+shlex.quote(target.socket))['returncode']==0,
+                          'private resident releases socket', timeout=15)
+            if before:
+                before()
+        except BaseException as error:
+            original = error
+            raise
+        finally:
+            try:
+                self._relaunch()
+            except BaseException:
+                # A transient launch failure must not strand later finalizers.
+                try:
+                    self._relaunch()
+                except BaseException:
+                    if original is None:
+                        raise
+                else:
+                    if original is None:
+                        raise
+
+    def _relaunch(self):
+        target = self.ctx.target
         self.ctx.wait(lambda: self.ctx.shell('test ! -e '+shlex.quote(target.socket))['returncode']==0,
-                      'private resident releases socket', timeout=15)
-        if before:
-            before()
+                      'private resident releases socket before relaunch', timeout=15)
         env = ' '.join(shlex.quote(k+'='+v) for k,v in self._environment.items())
         log = self.root+'/resident.log' if self._environment else target.root+'/app.log'
         command = 'nohup env '+env+' '+shlex.quote(target.app_executable)+' --background >> '+shlex.quote(log)+' 2>&1 < /dev/null &'
@@ -161,14 +197,11 @@ except (ProcessLookupError,FileNotFoundError):pass
         # Independent cleanup budget: recipe deadline expiry must not strand nft,
         # mounts, helpers, keyring collections or recording jobs.
         previous = self.ctx._deadline
-        self.ctx._deadline = time.monotonic()+90
+        self.ctx._deadline = time.monotonic()+180
         try:
             self.finalizers.sort(key=lambda item: item[0])
             while self.finalizers:
                 _, label, function = self.finalizers.pop()
-                if label == 'owned directory' and self.errors:
-                    self.errors.append('owned directory retained after cleanup failure')
-                    continue
                 try:
                     function()
                 except Exception as error:

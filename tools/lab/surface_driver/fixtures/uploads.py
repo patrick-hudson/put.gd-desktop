@@ -4,17 +4,30 @@ from .base import Fixture
 from .destinations import control
 
 TERMINAL={'completed','failed','partial','cancelled','interrupted'}
+# Exceeds the loopback client's 30 s request + 25 s low-speed timeouts,
+# including a margin for cancellation delivery and journal persistence.
+SETTLE_TIMEOUT=75
+
+
+def cancel(scope, identity):
+    if 'loopback-s3' in scope.values:
+        control(scope)  # Release the server BEFORE asking the SDK to cancel.
+    reply=scope.ctx.cli('operation.cancel', __import__('json').dumps({'id':identity}))
+    if reply['returncode'] and not reply.get('stdout'):
+        raise RecipeFailed('fixture operation cleanup transport unavailable')
+    return scope.ctx.wait(lambda:(s if (s:=scope.ctx.call('operation.inspect',{'id':identity})).get('state') in TERMINAL else None),
+                          'owned operation settles before fixture cleanup',timeout=SETTLE_TIMEOUT)
 
 
 def track(scope, method, identity):
     def cleanup():
+        if method == 'operation.cancel':
+            cancel(scope,identity)
+            return
         reply=scope.ctx.cli(method, __import__('json').dumps({'id':identity}))
         # Already completed/cancelled/cleared is harmless; transport failure isn't.
         if reply['returncode'] and not reply.get('stdout'):
             raise RecipeFailed('fixture operation cleanup transport unavailable')
-        if method == 'operation.cancel':
-            scope.ctx.wait(lambda:scope.ctx.call('operation.inspect',{'id':identity}).get('state') in TERMINAL,
-                           'owned operation settles before fixture cleanup',timeout=20)
     scope.defer('owned '+method,cleanup,priority=100)
 
 
@@ -47,9 +60,7 @@ def submit(scope, *, remote=False, local_failure=False, active=False, failure=Fa
             return state if any(i.get('uploadStatus')=='uploading' for i in state.get('items',[])) else None
         state=ctx.wait(in_flight,'fixture upload in flight',timeout=30)
         if cancelled:
-            ctx.call('operation.cancel',{'id':operation})
-            state=ctx.wait(lambda:(s if (s:=ctx.call('operation.inspect',{'id':operation}))['state'] in TERMINAL else None),'fixture cancellation',timeout=30)
-            control(scope)
+            state=cancel(scope,operation)
     else:
         state=ctx.wait(lambda:(s if (s:=ctx.call('operation.inspect',{'id':operation}))['state'] in TERMINAL else None),'fixture terminal operation',timeout=40)
         if not (local_failure or failure) and state['state']!='completed':
@@ -87,15 +98,12 @@ def clipboard_files(scope, paths):
     ctx=scope.ctx
     if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('file clipboard fixture requires a disposable nested guest')
+    from .clipboard import owner
+    scope.initialize()
     uri=scope.root+'/clipboard-uris'
     from urllib.parse import quote
     scope.write(uri,('\r\n'.join('file://'+quote(p) for p in paths)+'\r\n').encode())
-    if ctx.profile['session']=='wayland':
-        args=['wl-copy','--foreground','--type','text/uri-list']
-    else:
-        args=['xclip','-quiet','-selection','clipboard','-target','text/uri-list']
-    code='import os\nf=os.open('+repr(uri)+',os.O_RDONLY);os.dup2(f,0)\nos.execvp('+repr(args[0])+','+repr(args)+')'
-    return scope.launch(['python3','-c',code],name='file-clipboard')
+    return owner(scope,uri,'text/uri-list',name='file-clipboard')
 
 
 def incomplete_multipart(scope):

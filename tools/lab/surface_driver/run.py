@@ -51,6 +51,19 @@ def validate_recipes(recipes):
 
 
 def run_recipes(context, recipes, environment, out, campaign, coverage):
+    interrupted=[]
+    def terminate(signum, _frame):
+        interrupted.append(signum)
+        raise RecipeFailed('runner interrupted by '+signal.Signals(signum).name)
+    previous={sig:signal.signal(sig,terminate) for sig in (signal.SIGTERM,signal.SIGHUP)}
+    try:
+        return _run_recipes(context,recipes,environment,out,campaign,coverage,interrupted)
+    finally:
+        for sig,handler in previous.items():
+            signal.signal(sig,handler)
+
+
+def _run_recipes(context, recipes, environment, out, campaign, coverage, interrupted):
     rows=[]
     receipt=Path(out)/'receipt.json'
     try:
@@ -87,7 +100,13 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
                 context.frame('after')
             except Exception as error:
                 context.review('after-frame unavailable: '+type(error).__name__)
-        cleanup = context._cleanup_fixtures() if hasattr(context, '_cleanup_fixtures') else []
+            finally:
+                # A second termination must not interrupt mount/nft/keyring cleanup.
+                handlers={sig:signal.signal(sig,signal.SIG_IGN) for sig in (signal.SIGTERM,signal.SIGHUP)}
+                try:
+                    cleanup = context._cleanup_fixtures() if hasattr(context, '_cleanup_fixtures') else []
+                finally:
+                    for sig,handler in handlers.items():signal.signal(sig,handler)
         if cleanup:
             cleanup_failure = 'fixture cleanup failed: ' + '; '.join(cleanup)
             functional = 'failed'
@@ -106,6 +125,8 @@ def run_recipes(context, recipes, environment, out, campaign, coverage):
                 frames,recipe.name,environment['build'],stamp()))
         write_receipts(out,environment,rows,campaign,coverage)
         print(json.dumps({'recipe':recipe.name,'functional':functional,'visual':visual,'review':bool(context.reviews)}),flush=True)
+        if interrupted:
+            break
     return rows
 
 

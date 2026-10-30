@@ -63,9 +63,14 @@ def app_profile(scope, *, first_launch=False):
     scope.patch({'archive':{'root':scope.root+'/out','keepUploads':True},
                  'actions':{name:{'destination':'local','profileId':None} for name in ('region','window','desktop','clipboard','edit')},
                  'preferences':{'launchAtLogin':False,'unlockCredentialsAtStartup':False}})
+    # Each recipe gets its own journals, artifact store and session-only
+    # credential cache. Restoring the resident environment retires them all;
+    # existing journals in the target's baseline are never rewritten/deleted.
+    scope.python('from pathlib import Path\n'+
+                 '\n'.join('Path('+repr(scope.root+'/'+name)+').mkdir(mode=0o700,exist_ok=True)' for name in ('data','out','working')))
     # The accepted file now exists, so this restart closes first-launch Settings.
-    scope.restart({'PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'},
+    scope.restart({'XDG_DATA_HOME':scope.root+'/data','PUTGD_RECORD_KEEP_WORKING':scope.root+'/working'},
                   before=(lambda:scope.python('from pathlib import Path\nPath('+repr(expected)+').unlink()')) if first_launch else None)
     scope.python('from pathlib import Path\n'+
                  '\n'.join('Path('+repr(scope.root+'/'+name)+').mkdir(mode=0o700,exist_ok=True)' for name in ('out','working')))
-    return Fixture(private=True,isolated=True,config_path=expected,root=ctx.target.root,output_dir=scope.root+'/out',first_launch=first_launch)
+    return Fixture(private=True,isolated=True,config_path=expected,root=scope.root,data_dir=scope.root+'/data',output_dir=scope.root+'/out',first_launch=first_launch)

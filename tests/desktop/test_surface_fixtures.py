@@ -4,6 +4,7 @@ import copy
 import hashlib
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import tempfile
@@ -23,7 +24,7 @@ from tools.lab.surface_driver.api import Recipe, RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.fixtures import FACTORIES, FixtureManager
 from tools.lab.surface_driver.fixtures.base import Fixture, Scope
-from tools.lab.surface_driver.fixtures import destinations, dialogs, history, images, live, notifications, profile, recordings
+from tools.lab.surface_driver.fixtures import clipboard, destinations, dialogs, events, geometry, history, images, live, notifications, privileges, profile, recordings, uploads
 from tools.lab.surface_driver.fixtures.profile import seed_profile, seeded_config
 from tools.lab.surface_driver.fixtures.s3_server import Server
 from tools.lab.surface_driver.run import run_recipes
@@ -122,6 +123,145 @@ class Fixtures(unittest.TestCase):
         self.assertFalse(Path(str(path)+'.lock').exists())
         self.assertFalse(list(path.parent.glob('.fixture-config-*')))
 
+    def test_cancellation_releases_stall_before_cancel_and_waits_past_client_bounds(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        scope.values['loopback-s3']=Fixture()
+        scope.write(scope.root+'/control.json',b'{"stallSeconds":120}')
+        order=[]
+        def cli(method,params):
+            self.assertEqual(json.loads(Path(scope.root+'/control.json').read_text()),{})
+            order.append(method)
+            return {'returncode':0,'stdout':'{}'}
+        def wait(predicate,what,timeout):
+            order.append('wait')
+            self.assertGreater(timeout,30+25)
+            self.assertLessEqual(timeout,90)
+            return {'state':'cancelled'}
+        with patch.object(self.ctx,'cli',cli),patch.object(self.ctx,'wait',wait):
+            uploads.track(scope,'operation.cancel','owned-op')
+            self.assertEqual(scope.close(),[])
+        self.assertEqual(order,['operation.cancel','wait'])
+
+    def test_recipe_journals_are_isolated_and_paging_uses_the_new_root(self):
+        baseline=self.root/'data/putgd';baseline.mkdir();(baseline/'history.sqlite').write_bytes(b'preserve baseline')
+        self.ctx.fixture('app-profile')
+        first=self.ctx.manager.scope.root
+        self.assertEqual(Scope.restart.call_args.args[0]['XDG_DATA_HOME'],first+'/data')
+        self.ctx.manager.close()
+        self.ctx.fixture('app-profile')
+        second=self.ctx.manager.scope.root
+        self.assertNotEqual(first,second)
+        scope=self.ctx.manager.scope;commands=[]
+        def restart(environment=None,*,before=None):
+            if before:before()
+        original=scope.python
+        def python(code,**kw):
+            if 'subprocess.run' in code:
+                commands.append(code);return '{"result":{"historyRows":51,"independentOperations":51}}'
+            return original(code,**kw)
+        with patch.object(scope,'restart',restart),patch.object(scope,'python',python):
+            history.grow_history(scope,51)
+        self.assertIn(second+'/data/putgd/history.sqlite',commands[0])
+        self.assertNotIn(str(baseline/'history.sqlite'),commands[0])
+        self.assertEqual((baseline/'history.sqlite').read_bytes(),b'preserve baseline')
+
+    def test_privilege_staging_is_overlay_only_and_removed_after_os_cleanup(self):
+        scope=self.ctx.manager.scope;commands=[];order=[]
+        def shell(command,**kwargs):
+            commands.append(command)
+            return {'returncode':0,'stdout':'','stderr':''}
+        with patch.object(self.ctx,'shell',shell):
+            privileges.ensure(scope)
+            privileges.ensure(scope)
+            scope.defer('nft',lambda:order.append('nft'),priority=250)
+            scope.defer('unmount',lambda:order.append('unmount'))
+            scope.close()
+        hooks=[c for c in commands if 'APT::Update::Pre-Invoke' in c]
+        self.assertEqual(len(hooks),2)
+        self.assertIn('NOPASSWD: /usr/bin/mount, /usr/bin/umount, /usr/sbin/nft',hooks[0])
+        self.assertIn('Dir::Etc::sourcelist=/dev/null',hooks[0])
+        self.assertIn('APT::Get::List-Cleanup=0',hooks[0])
+        self.assertIn('rm -- /etc/sudoers.d/putgd-surface-',hooks[1])
+        self.assertEqual(order,['nft','unmount'])
+
+    def test_clipboard_missing_tool_blocks_clearly_without_launch(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        reply={'returncode':1,'stdout':'','stderr':''}
+        with patch.object(self.ctx,'shell',return_value=reply),patch.object(scope,'launch') as launch:
+            with self.assertRaisesRegex(RecipeBlocked,'clipboard requires xclip'):
+                clipboard.owner(scope,scope.root+'/text','text/plain',name='clip')
+        launch.assert_not_called()
+
+    def test_clipboard_stages_missing_tool_in_owned_directory(self):
+        scope=self.ctx.manager.scope;scope.initialize();commands=[]
+        def shell(command,**kwargs):
+            commands.append(command)
+            return {'returncode':1 if command.startswith('command -v') else 0,'stdout':'','stderr':''}
+        with patch.object(self.ctx,'shell',shell):
+            path=clipboard.tool(scope,'xclip')
+        self.assertTrue(path.startswith(scope.root+'/'))
+        self.assertTrue(any('apt-get download xclip' in c and 'dpkg-deb --extract' in c for c in commands))
+
+    def test_clipboard_failed_owner_does_not_return_silent_success(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        with patch.object(clipboard,'tool',return_value='/missing/xclip'),patch.object(self.ctx,'wait',side_effect=RecipeFailed('owner absent')):
+            with self.assertRaisesRegex(RecipeBlocked,'owner failed to start'):
+                clipboard.owner(scope,scope.root+'/text','text/plain',name='clip')
+
+    def test_s3_live_blocks_before_starting_any_dependencies(self):
+        self.ctx.destination='s3'
+        with self.assertRaisesRegex(RecipeBlocked,'sensitive_transport'):
+            self.ctx.fixture('live')
+        self.assertFalse(list(self.root.glob('fx-*')))
+        self.assertEqual(self.ctx.calls,[])
+
+    def test_slow_upload_uses_requested_destination(self):
+        with patch.object(events,'submit',return_value=Fixture()),patch.object(events,'control'),patch.dict(FACTORIES,{'loopback-s3':lambda s:Fixture(port=1234)}):
+            self.assertEqual(self.ctx.fixture('events.slow-upload',destination='local').destination,'local')
+
+    def test_live_canvas_points_are_resolved_after_editor_opens(self):
+        boxes=iter([dict(x=100,y=200,width=400,height=200,scale=2,screen_x=0,screen_y=0)]*2)
+        ctx=SimpleNamespace(geometry=lambda role:next(boxes))
+        value=geometry.LiveFixture(ctx,configured=True)
+        self.assertIn('editor_mark_start',value)
+        self.assertEqual(value['editor_mark_start'],[480,540])
+        self.assertEqual(value.editor_mark_end,[720,660])
+
+    def test_history_header_point_avoids_live_navigation(self):
+        box=dict(x=100,y=50,width=1320,height=880,pid=42)
+        self.ctx.view=lambda *a:None;self.ctx.focus=lambda *a:None
+        self.ctx.geometry=lambda *a:box
+        self.ctx.accessible=lambda q:[{'name':'Application menu','role':'push button','rect':[112,62,36,36]},
+                                     {'name':'Main navigation','role':'page tab list','rect':[600,62,300,36]},
+                                     {'name':'Close window','role':'push button','rect':[1370,62,36,36]}]
+        point=self.ctx.fixture('history_window').header_drag_point
+        self.assertEqual(point[1],80)
+        self.assertTrue(150<point[0]<598 or 902<point[0]<1368)
+
+    def test_cleanup_error_does_not_retain_fake_input_or_safe_owned_directory(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        scope.write(scope.root+'/fake-input.json',b'synthetic')
+        def broken():raise RecipeFailed('synthetic cleanup failure')
+        scope.defer('broken',broken)
+        self.assertEqual(scope.close(),['broken: RecipeFailed'])
+        self.assertFalse(Path(scope.root).exists())
+
+    def test_sigterm_and_sighup_run_finalizers_and_stop_the_recipe_sequence(self):
+        for sig in (signal.SIGTERM,signal.SIGHUP):
+            with self.subTest(signal=sig),tempfile.TemporaryDirectory() as directory:
+                notes=[];cleaned=[];ran=[]
+                context=SimpleNamespace(begin=lambda r:None,frame=lambda *a:None,frames=[],reviews=[],notes=notes,
+                                        review=lambda v:None,note=notes.append,_cleanup_fixtures=lambda:cleaned.append(True) or [])
+                def interrupted(ctx):os.kill(os.getpid(),sig)
+                def later(ctx):ran.append(True)
+                env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
+                previous=signal.getsignal(sig)
+                rows=run_recipes(context,[Recipe(('editor.undo',),interrupted),Recipe(('editor.undo',),later)],env,directory,'signal-test',Path(directory)/'coverage.json')
+                self.assertEqual(cleaned,[True]);self.assertEqual(ran,[])
+                self.assertEqual(len(rows),1);self.assertEqual(rows[0].functional,'failed')
+                self.assertIn(signal.Signals(sig).name,rows[0].note)
+                self.assertEqual(signal.getsignal(sig),previous)
+
     def test_recording_family_cancels_both_ids_and_removes_clips(self):
         scope=self.ctx.manager.scope;commands=[]
         def capture(s,scene,**kw):
@@ -176,12 +316,13 @@ class Fixtures(unittest.TestCase):
         self.ctx.fixture('app-profile');commands=[]
         original=self.ctx.shell
         def shell(script,timeout=60):
-            if 'sudo -n mount' in script or 'sudo -n umount' in script:
+            if 'sudo -n /usr/bin/mount' in script or 'sudo -n /usr/bin/umount' in script:
                 commands.append(script);return {'returncode':0,'stdout':'','stderr':''}
             return original(script,timeout)
         self.ctx.shell=shell
-        descriptor=self.ctx.fixture('events.record-storage')
-        self.ctx.manager.close()
+        with patch('tools.lab.surface_driver.fixtures.privileges.ensure'):
+            descriptor=self.ctx.fixture('events.record-storage')
+            self.ctx.manager.close()
         self.assertTrue(any('umount -- '+descriptor.mountPath in c for c in commands))
         self.assertFalse(Path(descriptor.mountPath).exists())
 
@@ -206,12 +347,12 @@ class Fixtures(unittest.TestCase):
         original=self.ctx.shell
         for deny_preflight in (True,False):
             def shell(script,timeout=60):
-                if 'sudo -n mount' in script:
+                if 'sudo -n /usr/bin/mount' in script:
                     code=1 if deny_preflight or '-t tmpfs' in script else 0
                     return {'returncode':code,'stdout':'','stderr':''}
                 return original(script,timeout)
             self.ctx.shell=shell
-            with self.subTest(deny_preflight=deny_preflight),self.assertRaises(RecipeBlocked):
+            with patch('tools.lab.surface_driver.fixtures.privileges.ensure'),self.subTest(deny_preflight=deny_preflight),self.assertRaises(RecipeBlocked):
                 self.ctx.fixture('events.record-storage')
             self.assertFalse(list((self.root/'data').glob('quota-*')))
 
@@ -376,6 +517,17 @@ class Fixtures(unittest.TestCase):
         proc=Path('/proc')/str(process['pid'])/'stat'
         self.assertTrue(not proc.exists() or proc.read_text().split(') ',1)[1].split()[0]=='Z')
 
+    def test_sigkill_waits_for_stubborn_helper_before_removing_directory(self):
+        scope=self.ctx.manager.scope;scope.initialize()
+        ready=scope.root+'/ready'
+        process=scope.launch([sys.executable,'-c',
+            'import signal,time;from pathlib import Path;signal.signal(signal.SIGTERM,signal.SIG_IGN);Path('+repr(ready)+').touch();time.sleep(30)'],name='stubborn-helper')
+        self.ctx.wait(lambda:Path(ready).exists(),'helper installed SIGTERM handler')
+        self.assertEqual(scope.close(),[])
+        proc=Path('/proc')/str(process['pid'])/'stat'
+        self.assertTrue(not proc.exists() or proc.read_text().split(') ',1)[1].split()[0]=='Z')
+        self.assertFalse(Path(scope.root).exists())
+
     def test_cleanup_never_removes_unowned_sibling(self):
         sibling=self.root/'existing';sibling.write_text('preserve')
         self.ctx.fixture('image');self.ctx.manager.close()
@@ -435,6 +587,47 @@ class Loopback(unittest.TestCase):
 
 
 class Restart(unittest.TestCase):
+    def context(self):
+        commands=[]
+        ctx=SimpleNamespace(_deadline=time.monotonic()+30)
+        ctx.target=SimpleNamespace(root='/tmp/owned-fixture',socket='/tmp/owned-fixture/runtime/putgd/session.sock',app_executable='putgd',started=True)
+        ctx.call=lambda *a,**k:{}
+        ctx.shell=lambda command,**k:commands.append(command) or {'returncode':0,'stdout':'','stderr':''}
+        ctx.cli=lambda *a,**k:{'returncode':0,'stdout':'{"ok":true}'}
+        ctx.wait=lambda predicate,*a,**k:predicate()
+        return ctx,commands
+
+    def test_before_failure_relaunches_and_preserves_the_original_error(self):
+        ctx,commands=self.context();scope=Scope(ctx)
+        original=RecipeFailed('forced before failure')
+        def before():raise original
+        with self.assertRaises(RecipeFailed) as caught:scope.restart(before=before)
+        self.assertIs(caught.exception,original)
+        self.assertTrue(ctx.target.started)
+        self.assertEqual(sum(c.startswith('nohup') for c in commands),1)
+
+    def test_relaunch_failure_recovers_resident_and_surfaces_original_error(self):
+        ctx,commands=self.context();scope=Scope(ctx);launches=[]
+        original=RecipeBlocked('forced relaunch failure')
+        def launch(command,**kwargs):
+            commands.append(command)
+            if command.startswith('nohup'):
+                launches.append(command)
+                if len(launches)==1:raise original
+            return {'returncode':0,'stdout':'','stderr':''}
+        ctx.shell=launch
+        with self.assertRaises(RecipeBlocked) as caught:scope.restart()
+        self.assertIs(caught.exception,original)
+        self.assertTrue(ctx.target.started);self.assertEqual(len(launches),2)
+
+    def test_before_error_survives_a_second_relaunch_failure(self):
+        ctx,_=self.context();scope=Scope(ctx)
+        original=RecipeFailed('original mutation failure')
+        def before():raise original
+        with patch.object(scope,'_relaunch',side_effect=RecipeBlocked('launch error')):
+            with self.assertRaises(RecipeFailed) as caught:scope.restart(before=before)
+        self.assertIs(caught.exception,original)
+
     def test_scope_restores_launch_environment_once(self):
         commands=[]
         ctx=SimpleNamespace(_deadline=time.monotonic()+30)

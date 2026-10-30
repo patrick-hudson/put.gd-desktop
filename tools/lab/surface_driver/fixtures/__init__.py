@@ -5,6 +5,7 @@ import time
 from ..api import RecipeBlocked
 from .base import Fixture, Scope
 from . import destinations, dialogs, events, history, images, live, notifications, profile, recordings, settings, uploads
+from .geometry import history_window
 
 
 def blocked(reason, issue):
@@ -78,7 +79,7 @@ FACTORIES={
     'tray-failed':partial(uploads.submit,remote=True,failure=True),
     'tray-cancelled':partial(uploads.submit,remote=True,cancelled=True),
     'tray-proton-busy':blocked('local S3 cannot emit proton_account_busy; provider fault adapter belongs to the builder lane',670),
-    'history_window':blocked('history window chrome/geometry belongs to core 2a',675),
+    'history_window':history_window,
     'launcher':lambda scope:Fixture(executable=scope.ctx.target.app_executable),
     'mcp':lambda scope:Fixture(python=scope.ctx.profile.get('mcp_python'),helper=scope.ctx.profile.get('mcp_helper')),
 }
