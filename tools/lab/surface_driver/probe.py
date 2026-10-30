@@ -30,8 +30,14 @@ def owned(pid):
         return False
 
 
+# at-spi2-core renamed ATSPI_ROLE_PUSH_BUTTON's name to "button" (Qt 6.10 on
+# GNOME 50 reports it); older servers say "push button". One canonical name.
+ROLE_SYNONYMS = {'button': 'push button'}
+
+
 def normalize_role(role):
-    return role.lower().replace('_', ' ').replace('-', ' ')
+    role = role.lower().replace('_', ' ').replace('-', ' ')
+    return ROLE_SYNONYMS.get(role, role)
 
 
 def matches(row, query):
@@ -220,6 +226,35 @@ def xprop(wid, prop):
     return run('xprop', '-id', str(wid), prop).partition('=')[2].strip()
 
 
+def xwininfo(wid):
+    raw = run('xwininfo', '-id', str(wid))
+    def field(label):
+        found = re.search(r'^\s*' + re.escape(label) + r':\s*(-?\d+|yes|no)\s*$', raw, re.M)
+        if not found:
+            raise ValueError('xwininfo omitted ' + label)
+        return found[1]
+    return {'x': int(field('Absolute upper-left X')), 'y': int(field('Absolute upper-left Y')),
+            'width': int(field('Width')), 'height': int(field('Height')),
+            'override_redirect': field('Override Redirect State') == 'yes'}
+
+
+def x11_focus_owner():
+    """X input focus (keyboard target), which override-redirect windows never take from EWMH."""
+    xlib = ctypes.CDLL(ctypes.util.find_library('X11'))
+    xlib.XOpenDisplay.argtypes = [ctypes.c_char_p]; xlib.XOpenDisplay.restype = ctypes.c_void_p
+    xlib.XGetInputFocus.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int)]
+    xlib.XCloseDisplay.argtypes = [ctypes.c_void_p]
+    display = xlib.XOpenDisplay(None)
+    if not display:
+        raise RuntimeError('cannot open X11 display for input focus')
+    try:
+        focus, revert = ctypes.c_ulong(), ctypes.c_int()
+        xlib.XGetInputFocus(display, ctypes.byref(focus), ctypes.byref(revert))
+        return str(focus.value)
+    finally:
+        xlib.XCloseDisplay(display)
+
+
 def x11_windows(query):
     options = ['--onlyvisible'] if not query.get('include_hidden') else []
     search = subprocess.run(['xdotool', 'search', *options, '--name', query.get('title', '.*')],
@@ -235,8 +270,11 @@ def x11_windows(query):
                 pid = None
             if query.get('owned', True) and (pid is None or not owned(pid)):
                 continue
-            raw = run('xdotool', 'getwindowgeometry', '--shell', wid)
-            values = dict(line.split('=', 1) for line in raw.splitlines() if '=' in line)
+            # xdotool's location translates the child's offset inside a WM
+            # frame a second time (native decorated dialogs land 1x title bar
+            # low). xwininfo reports the server's absolute client origin.
+            info = xwininfo(wid)
+            values = {'X': info['x'], 'Y': info['y'], 'WIDTH': info['width'], 'HEIGHT': info['height']}
             state = xprop(wid, '_NET_WM_STATE')
             extents = [int(v) for v in re.findall(r'\d+',xprop(wid,'_NET_FRAME_EXTENTS'))]
             frame = None
@@ -247,6 +285,7 @@ def x11_windows(query):
             found.append({'x': int(values['X']), 'y': int(values['Y']), 'width': int(values['WIDTH']),
                           'height': int(values['HEIGHT']), 'scale': 1, 'pid': pid, 'window_id': wid,
                           'name': run('xdotool', 'getwindowname', wid), 'coordinate_space': 'framebuffer', 'frame':frame,
+                          'override_redirect': info['override_redirect'],
                           'states': {'active':wid==active, 'minimized': '_NET_WM_STATE_HIDDEN' in state,
                                      'maximized': all(v in state for v in ('MAXIMIZED_VERT', 'MAXIMIZED_HORZ'))}})
         except (subprocess.CalledProcessError, ValueError, OSError):
@@ -371,6 +410,8 @@ def x11_foreground(query):
                 'obscuring_window':hit['name'], 'obscuring_window_id':hit['path'][-1] if hit['path'] else None}
     target = query['geometry']
     wid = str(target['window_id'])
+    if target.get('override_redirect'):
+        return x11_unmanaged_foreground(query)
     if query.get('raise'):
         subprocess.run(['xdotool', 'windowactivate', '--sync', wid], check=True, timeout=3,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -421,6 +462,51 @@ def x11_foreground(query):
     return {'ok': ok, 'active': active, 'target': wid, 'stacking': stack,
             'obscuring_window': obscurer.get('name', 'unknown foreground window'),
             'obscuring_window_id': obscurer.get('window_id'), 'backend': 'ewmh'}
+
+
+def x11_ancestors(wid):
+    chain = [str(wid)]
+    for _ in range(12):
+        parent = re.search(r'Parent window id:\s*(0x[0-9a-fA-F]+)', run('xwininfo', '-id', chain[-1], '-tree'))
+        if not parent or int(parent[1], 16) in (0, int(chain[-1])):
+            break
+        chain.append(str(int(parent[1], 16)))
+    return chain
+
+
+def x11_unmanaged_foreground(query):
+    """Owned override-redirect windows (recording bar, selector covers).
+
+    They are outside EWMH stacking and never become _NET_ACTIVE_WINDOW, so the
+    witness is the server hit-test: pointer input needs the target in the
+    path at the input point (focus() selects at its centre). Keyboard input needs
+    the X input focus inside the target; a show-without-activating window
+    normally refuses it, naming where keys would really go.
+    """
+    target = query['geometry']
+    wid = str(target['window_id'])
+    if not owned(target.get('pid')):
+        return {'ok': False, 'backend': 'x11-unmanaged', 'obscuring_window': 'unowned override-redirect target',
+                'obscuring_window_id': wid}
+    point = query.get('point')
+    if point is not None:
+        hit = x11_hit(point)
+        ok = wid in hit['path']
+        return {'ok': ok, 'backend': 'x11-unmanaged-hit-test', 'target': wid,
+                'obscuring_window': None if ok else hit['name'],
+                'obscuring_window_id': None if ok else (hit['path'][-1] if hit['path'] else None)}
+    focus = x11_focus_owner()
+    ok = focus not in ('0', '1') and wid in x11_ancestors(focus)
+    name = ''
+    if not ok and focus not in ('0', '1'):
+        try:
+            name = run('xdotool', 'getwindowname', focus)
+        except subprocess.CalledProcessError:
+            pass
+    return {'ok': ok, 'backend': 'x11-input-focus', 'target': wid,
+            'obscuring_window': None if ok else 'keyboard focus ' + repr(name or 'unnamed window') +
+                ' (override-redirect target does not take keyboard focus)',
+            'obscuring_window_id': None if ok else focus}
 
 
 def shell_hit(query):

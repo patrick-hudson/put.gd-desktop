@@ -169,7 +169,14 @@ class DriverContext(Context):
         """Select an input target and verify/optionally raise it before input."""
         owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
         self._current_window, self._popup = owner, None
-        return self._guard(window=owner, raise_window=raise_window)
+        geometry = self.geometry(owner)
+        if geometry.get('override_redirect'):
+            # Unmanaged bars/covers never become the active window: select them
+            # by a server hit-test at their centre. Keyboard input to them is
+            # still refused unless the X input focus is really inside them.
+            centre = (geometry['x']+geometry['width']/2, geometry['y']+geometry['height']/2)
+            return self._guard(window=owner, point=centre, geometry=geometry)
+        return self._guard(window=owner, geometry=geometry, raise_window=raise_window)
 
     def _guard(self, window=None, point=None, geometry=None, popup=None, raise_window=False):
         self._check_time()
@@ -445,6 +452,8 @@ asyncio.run(main())
         D-Bus Activate/AT-SPI doAction shortcut. Query must include ownership
         (pid/application/owned); arbitrary first-match selection is forbidden.
         """
+        if self._input_poisoned:
+            raise RecipeBlocked('held-key release was not confirmed; further input is withheld for this run')
         if not any(k in query for k in ('pid','application','owned')):
             raise RecipeBlocked('desktop input query requires pid, application, or owned')
         nodes = self.accessible(dict(query, visible=True, showing=True))
