@@ -33,6 +33,35 @@ function describe(window, stack) {
     };
 }
 
+function actorDescription(actor) {
+    const [x, y] = actor.get_transformed_position();
+    const [w, h] = actor.get_transformed_size();
+    return {type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
+        style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? '',
+        text: actor.get_text?.() ?? '', role: Number(actor.accessible_role ?? -1),
+        rect: [x, y, w, h].map(Math.round)};
+}
+
+function pickedShellNodes(picked, x, y) {
+    // Only the actual input actor's descendants qualify. Walking the whole
+    // stage could find an old menu behind the actor currently covering it.
+    if (!picked || picked === global.stage)
+        return [];
+    const pending = [picked], nodes = [];
+    for (let count = 0; pending.length && count < 512; count++) {
+        const actor = pending.pop();
+        if (!actor.visible || !actor.mapped)
+            continue;
+        const description = actorDescription(actor);
+        const [left, top, w, h] = description.rect;
+        if (!(left <= x && x < left + w && top <= y && y < top + h))
+            continue;
+        nodes.push(description);
+        pending.push(...actor.get_children());
+    }
+    return nodes;
+}
+
 export default class LabWitness extends Extension {
     enable() {
         this._epoch = GLib.uuid_string_random();
@@ -85,18 +114,19 @@ export default class LabWitness extends Extension {
 
     Pick(x, y) {
         const index = new Map(windowActors().map((actor, i) => [actor, i]));
+        const pid = Number(GLib.file_read_link('/proc/self'));
         for (const mode of [Clutter.PickMode.REACTIVE, Clutter.PickMode.ALL]) {
             const chain = [];
-            for (let actor = global.stage.get_actor_at_pos(mode, x, y); actor; actor = actor.get_parent()) {
+            const picked = global.stage.get_actor_at_pos(mode, x, y);
+            for (let actor = picked; actor; actor = actor.get_parent()) {
                 if (actor instanceof Meta.WindowActor)
-                    return JSON.stringify({window: describe(actor.meta_window, index.get(actor) ?? -1), chain, mode});
-                chain.push({type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
-                            style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? ''});
+                    return JSON.stringify({pid, window: describe(actor.meta_window, index.get(actor) ?? -1), chain, mode});
+                chain.push(actorDescription(actor));
             }
             // Shell chrome (panel, banner, menu) is reactive: report it.
             if (mode === Clutter.PickMode.REACTIVE && chain.length > 1)
-                return JSON.stringify({window: null, chain, mode});
+                return JSON.stringify({pid, window: null, chain, mode, shell_nodes: [...pickedShellNodes(picked, x, y), ...chain]});
         }
-        return JSON.stringify({window: null, chain: [], mode: null});
+        return JSON.stringify({pid, window: null, chain: [], mode: null, shell_nodes: []});
     }
 }

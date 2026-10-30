@@ -170,8 +170,8 @@ class Context:
         without one (or when placement is implausible) rect/bounds are null with
         coordinate_error, never a guess. Rows also include out-of-tree accessibles
         seen by the run's observer: showing QMenu popups and the focused widget
-        (start_notifications starts it). role 'button' is normalized to
-        'push button'. Password text is never read. RecipeBlocked when
+        (start_notifications starts it). Roles retain the server spelling;
+        button/push button synonyms are normalized for matching. Password text is never read. RecipeBlocked when
         unavailable, including profile gaps.
         """
         raise NotImplementedError
@@ -219,6 +219,14 @@ class Context:
         Requires pid/application/owned in query and a compositor hit-test.
         Never calls AT-SPI doAction or D-Bus Activate.
         """
+        raise NotImplementedError
+
+    def double_click_accessible(self, query: dict, button: str = 'left') -> dict:
+        """One guarded desktop double-click; resolve and hit-test once for the pair."""
+        raise NotImplementedError
+
+    def scroll_accessible(self, query: dict, clicks: int) -> dict:
+        """Wheel pulses at an owned desktop node; fresh hit-test before each pulse."""
         raise NotImplementedError
 
     def hover_accessible(self, query: dict) -> dict:

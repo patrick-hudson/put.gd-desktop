@@ -208,6 +208,9 @@ class DriverContext(Context):
             # A just-mapped target may not be active yet (#750): the probe may
             # activate it once if the foreground is 0 or the same private process.
             query['settle'] = True
+            # NativeRegionAccessible's focused bit is the capture helper's
+            # successful keyboard-grab reply, rather than X input focus.
+            query['keyboard_grab'] = role == 'region'
         if self.profile.get('focus',{}).get('desktop_hit_test') in ('shell-at-spi','gnome-shell-at-spi'):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
@@ -549,10 +552,30 @@ asyncio.run(main())
     def click_accessible(self, query, button='left'):
         return self._accessible_pointer(query,button)
 
+    def double_click_accessible(self, query, button='left'):
+        self._click_count = 2
+        try:
+            return self._accessible_pointer(query,button)
+        finally:
+            self._click_count = 1
+
+    def scroll_accessible(self, query, clicks):
+        if type(clicks) is not int:
+            raise ValueError('desktop wheel clicks must be an integer')
+        return self._accessible_pointer(query,None,wheel=clicks)
+
     def hover_accessible(self, query):
         return self._accessible_pointer(query,None)
 
-    def _accessible_pointer(self, query, button, node=None):
+    def _desktop_guard(self, node, point):
+        witness = self._probe('foreground', {'desktop_node':node,'point':point,
+                              'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
+                              'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
+                              'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
+        if not witness.get('ok'):
+            raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
+
+    def _accessible_pointer(self, query, button, node=None, *, wheel=None):
         """Real pointer input to one visible desktop node, with a fresh hit-test.
 
         This is for desktop-drawn content (notifications/tray/browser), not a
@@ -574,17 +597,17 @@ asyncio.run(main())
             node = nodes[0]
         x,y,w,h = node['rect']
         point = (x+w/2,y+h/2)
-        witness = self._probe('foreground', {'desktop_node':node,'point':point,
-                              'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
-                              'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
-                              'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
-        if not witness.get('ok'):
-            raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
+        self._desktop_guard(node,point)
         mapped = self._map_geometry({'x':point[0],'y':point[1], 'coordinate_space':
                                       'framebuffer' if self.profile['session']=='x11' else 'logical'})
         scale = mapped.get('scale',1)
         px,py = (round((point[i]-mapped.get(('screen_x','screen_y')[i],0))*scale) for i in (0,1))
-        if button is None:
+        if wheel is not None:
+            for index in range(abs(wheel)):
+                if index:
+                    self._desktop_guard(node,point)
+                self._pointer_click(px,py,'wheel-up' if wheel>0 else 'wheel-down',mapped['head'],guarded=True)
+        elif button is None:
             w,h = self._dimensions(mapped['head'])
             if not 0 <= px < w or not 0 <= py < h:
                 raise RecipeBlocked('desktop hover point outside selected head')

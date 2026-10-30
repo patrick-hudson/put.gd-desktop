@@ -163,6 +163,9 @@ class RawNode:
     def getRoleName(self):
         return str(self._call(self.ACCESSIBLE, 'GetRoleName'))
 
+    def getRole(self):
+        return int(self._call(self.ACCESSIBLE, 'GetRole'))
+
     def get_process_id(self):
         return self.pid
 
@@ -596,6 +599,8 @@ def accessible(query):
                        'owned': is_owned(pid), 'objectName': object_name, 'accelerator': accelerator,
                        'visible': states['visible'], 'showing': states['showing'], 'enabled': states['enabled'],
                        'protected': protected, 'popup': popup, 'ancestors': ancestors}
+                if hasattr(node, 'getRole'):
+                    row['role_id'] = int(node.getRole())
                 row['bounds'] = dict(zip(('x', 'y', 'width', 'height'), rect)) if rect else None
                 row['coordinate_space'], reason = 'desktop', None
                 if wayland:
@@ -1090,6 +1095,9 @@ def x11_unmanaged_foreground(query):
         if mask & (0x1f << 8):  # Button1Mask..Button5Mask
             point = (px, py)
     if point is not None:
+        cover = shell_cover(point,query['shell_cover']) if query.get('shell_cover') else None
+        if cover:
+            return {'ok':False,'backend':'shell-at-spi-cover','target':wid,'obscuring_window':cover}
         hit = x11_hit(point)
         ok = wid in hit['path']
         return {'ok': ok, 'backend': 'x11-unmanaged-hit-test', 'target': wid,
@@ -1097,6 +1105,19 @@ def x11_unmanaged_foreground(query):
                 'obscuring_window_id': None if ok else (hit['path'][-1] if hit['path'] else None)}
     focus = x11_focus_owner()
     ok = focus not in ('0', '1') and wid in x11_ancestors(focus)
+    if not ok and query.get('keyboard_grab') and native_capture_process(target['pid']):
+        # The native helper reports focused iff xcb_grab_keyboard succeeded
+        # and selection has not finished. Arbitrary Qt focus and another
+        # process's override-redirect window cannot establish this contract.
+        rows = accessible({'owned':True,'pid':target['pid'],'name':'Capture region','role':'panel',
+                           'visible':True,'showing':True,'states':{'focused':True}})
+        rows = [r for r in rows if r.get('pid') == target['pid'] and r.get('states',{}).get('focused')
+                and r.get('rect') and intersect(dict(zip(('x','y','width','height'),r['rect'])),target)]
+        centre = (target['x']+target['width']/2,target['y']+target['height']/2)
+        cover = shell_cover(centre,query['shell_cover']) if query.get('shell_cover') else None
+        hit = x11_hit(centre)
+        if len(rows) == 1 and wid in hit['path'] and not cover:
+            return {'ok':True,'backend':'native-selector-keyboard-grab','target':wid,'obscuring_window':None}
     name = ''
     if not ok and focus not in ('0', '1'):
         try:
@@ -1107,6 +1128,15 @@ def x11_unmanaged_foreground(query):
             'obscuring_window': None if ok else 'keyboard focus ' + repr(name or 'unnamed window') +
                 ' (override-redirect target does not take keyboard focus)',
             'obscuring_window_id': None if ok else focus}
+
+
+def native_capture_process(pid):
+    import shutil
+    try:
+        expected = shutil.which('putgd-capture')
+        return bool(expected) and os.path.samefile('/proc/'+str(pid)+'/exe',expected)
+    except OSError:
+        return False
 
 
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi')
@@ -1215,6 +1245,27 @@ def shell_hit(query):
     return {'ok':False,'backend':'shell-at-spi-pick','obscuring_window':'compositor shell stage did not pick the expected notification control'}
 
 
+def shell_witness_hit(query):
+    """Bind the live AT-SPI node to the shell's actual picked actor and PID."""
+    expected = query['desktop_node']
+    pick = compositor_pick(query['compositor'],query['point'])
+    ok = (bool(query['shell_application']) and type(expected.get('pid')) is int and expected['pid'] > 0
+          and fnmatch.fnmatchcase(expected.get('application',''),query['shell_application'])
+          and expected.get('pid') == pick.get('pid') and pick.get('window') is None)
+    role = expected.get('role_id')
+    if role is None:
+        raise RuntimeError('native shell hit-test needs the server role identity')
+    rect = expected.get('rect')
+    ok = ok and bool(expected.get('name')) and bool(rect) and len(rect) == 4 and any(
+        expected['name'] in (actor.get('accessible'),actor.get('text')) and actor.get('role') == role
+        and actor.get('rect') and len(actor['rect']) == 4 and all(abs(a-b)<=1 for a,b in zip(actor['rect'],rect))
+        for actor in pick.get('shell_nodes',[]))
+    window = pick.get('window')
+    return {'ok':bool(ok),'backend':'gnome-native-shell-pick',
+            'obscuring_window':None if ok else (window.get('title') if window else
+                'native shell actor identity, role or bounds did not match the live desktop node')}
+
+
 def witness_foreground(query):
     """Wayland focus/occlusion from the compositor's own state (read-only witness).
 
@@ -1259,6 +1310,8 @@ def foreground(query):
     # X11 hit-test at a Cinnamon banner reaches the client window beneath it.
     # Muffin/Mutter shells pick their own stage through AT-SPI on X11 too.
     if query.get('desktop_node') and query.get('desktop_hit_test') in SHELL_PICKS:
+        if (query.get('compositor') or {}).get('kind') == 'gnome-lab-witness':
+            return shell_witness_hit(query)
         return shell_hit(query)
     if os.environ.get('XDG_SESSION_TYPE') == 'x11':
         return x11_foreground(query)

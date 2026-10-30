@@ -125,7 +125,8 @@ while True:
         # checks stay in-process, so typing and drag steps pay no startup cost.
         name, query = request['probe'], request['query']
         fresh = (name in ('accessible','control') or bool(query.get('accessible')) or
-                 (name == 'foreground' and bool(query.get('shell_cover')) and query.get('point') is not None) or
+                 (name == 'foreground' and (query.get('keyboard_grab') or
+                  (bool(query.get('shell_cover')) and query.get('point') is not None))) or
                  (os.environ.get('XDG_SESSION_TYPE') == 'wayland' and
                   name in ('geometry','foreground','windows')))
         if fresh:
