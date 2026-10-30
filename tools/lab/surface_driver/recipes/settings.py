@@ -928,7 +928,7 @@ def no_output(ctx):
     frame(ctx, 'local-recovery', 1)
 
 
-@recipe('capture.exceptions', timeout=240)
+@recipe('capture.exceptions', timeout=480)
 def capture_exceptions(ctx):
     fixture = ctx.fixture('settings-action-routes')
     opened(ctx, 1)
@@ -954,6 +954,7 @@ def capture_exceptions(ctx):
                    action + ' output inherits again')
         if action == 'record':
             ctx.wait(lambda: not any(k in get(ctx)['document']['actions']['record'] for k in ('destination', 'profileId', 'publicationMode')), 'record exception overrides are removed')
+            ctx.wait(lambda: not any(k in persisted(ctx)['actions']['record'] for k in ('destination', 'profileId', 'publicationMode')), 'record exception removal is persisted')
         else:
             saved(ctx, 'actions.' + action + '.destination', 'default', 1)
             saved(ctx, 'actions.' + action + '.profileId', None, 1)
