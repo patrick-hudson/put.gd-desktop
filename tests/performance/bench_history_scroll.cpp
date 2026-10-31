@@ -7,6 +7,7 @@
 #include "fixtures/Waits.h"
 #include "ui/UiApplicationController.h"
 #include "ui/MainWindow.h"
+#include "ui/HistoryModel.h"
 #include <QApplication>
 #include <QDateTime>
 #include <QDir>
@@ -16,8 +17,8 @@
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
-#include <QLabel>
 #include <QListView>
+#include <QPlainTextEdit>
 #include <QPainter>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -52,16 +53,22 @@ QJsonObject summary(QList<double> values){
  return {{"samples",int(values.size())},{"p50",values.at((values.size()-1)/2)},{"p95",at(.95)},{"max",values.last()},{"min",values.first()}};
 }
 double ms(const QElapsedTimer& t){return t.nsecsElapsed()/1e6;}
+// Selection clears the details view; the item's history.detail reply refills it.
+bool detailShown(const QListView* list,const QPlainTextEdit* details){
+ const auto id=list->currentIndex().data(HistoryModel::RecordRole).toJsonObject()["id"].toString();
+ return !id.isEmpty()&&details->toPlainText().contains(QStringLiteral("\"%1\"").arg(id));
+}
 struct Sample {double handled=0,painted=0,detailed=0;bool ok=false;};
 // One timed PageDown, kept out of line so a profiler can collect only these.
-Q_NEVER_INLINE Sample pageDown(QListView* list,QLabel* title,const PaintCounter& counter){
+Q_NEVER_INLINE Sample pageDown(QListView* list,QPlainTextEdit* details,const PaintCounter& counter){
  Sample sample;const int before=list->currentIndex().row(),paints=counter.paints;
  QElapsedTimer t;t.start();QTest::keyClick(list,Qt::Key_PageDown);sample.handled=ms(t);
  if(list->currentIndex().row()==before){qCritical("PageDown did not move the selection");return sample;}
  while(counter.paints==paints&&t.elapsed()<5000)QCoreApplication::processEvents();
+ if(counter.paints==paints){qCritical("PageDown painted no frame within 5 s");return sample;}
  sample.painted=ms(t);
- // The inspector follows: its detail request and layout for the new item.
- if(!waitFor([&]{return title->text()==list->currentIndex().data().toString();}))return sample;
+ // The inspector follows: its history.detail reply fills the details view.
+ if(!waitFor([&]{return detailShown(list,details);}))return sample;
  sample.detailed=ms(t);sample.ok=true;return sample;
 }
 }
@@ -92,18 +99,18 @@ int main(int argc,char** argv){
  device.send("activate",{{"view","history"}});
  MainWindow* window=nullptr;for(auto* w:QApplication::topLevelWidgets())if(auto* m=qobject_cast<MainWindow*>(w))window=m;
  if(!window){qCritical("Main window did not open");return 2;}window->resize(1320,880);
- auto* list=window->findChild<QListView*>("historyList");auto* title=window->findChild<QLabel*>("historyTitle");
- if(!list||!title||!waitFor([&]{return list->model()->rowCount()==50;},20000)){qCritical("Synthetic history did not load: %d rows",list?list->model()->rowCount():-1);return 2;}
+ auto* list=window->findChild<QListView*>("historyList");auto* details=window->findChild<QPlainTextEdit*>("historyDetails");
+ if(!list||!details||!waitFor([&]{return list->model()->rowCount()==50;},20000)){qCritical("Synthetic history did not load: %d rows",list?list->model()->rowCount():-1);return 2;}
  window->activateWindow();list->setFocus();list->setCurrentIndex(list->model()->index(0,0));
  // Thumbnails and the first preview load in the background before timing.
  settle(2000);
  PaintCounter counter;list->viewport()->installEventFilter(&counter);
  QList<double> keyToPaint,keyHandled,keyToDetail;int steps=0;
  for(int round=0;round<rounds;++round){
-  QTest::keyClick(list,Qt::Key_Home);if(!waitFor([&]{return title->text()==list->currentIndex().data().toString();}))return 2;settle(300);
+  QTest::keyClick(list,Qt::Key_Home);if(!waitFor([&]{return detailShown(list,details);}))return 2;settle(300);
   while(list->currentIndex().row()<list->model()->rowCount()-1){
    QCoreApplication::processEvents();settle(100);
-   const auto sample=pageDown(list,title,counter);if(!sample.ok)return 2;
+   const auto sample=pageDown(list,details,counter);if(!sample.ok)return 2;
    keyHandled.append(sample.handled);keyToPaint.append(sample.painted);keyToDetail.append(sample.detailed);++steps;
   }
  }
