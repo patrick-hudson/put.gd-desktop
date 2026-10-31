@@ -618,7 +618,7 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);auto original=std::make_unique<HistoryWindow>(fixture.session);auto& window=*original;window.show();auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);inspectRow(table,0);
   auto drain=qScopeGuard([&]{released.store(true);});
   QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{if(auto* dialog=deletionDialog())dialog->findChild<QPushButton*>("confirmActionButton")->click();});accept.start();
-  window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(entered->load());accept.stop();
+  window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(entered.load());accept.stop();
   const auto saved=window.saveViewState();QVERIFY(!saved["deletionId"].toString().isEmpty());original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));reopened.show();PUTGD_TRY_VERIFY(!reopened.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QPushButton* cancel=nullptr;for(auto* button:reopened.findChildren<QPushButton*>())if(button->text()=="Cancel deletion")cancel=button;QVERIFY(cancel);PUTGD_TRY_VERIFY(cancel->isVisible());QVERIFY(cancel->isEnabled());QVERIFY(!readableStatus(reopened.findChild<QLabel*>("historyOutcome")->text()).isEmpty());
   cancel->click();QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);PUTGD_TRY_VERIFY(status->text().contains("Deletion action accepted"));
   released.store(true);operations.shutdown(); // Drain the delayed worker while its service/fixture still exist.
