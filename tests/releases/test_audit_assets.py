@@ -45,6 +45,25 @@ class DownloadChecks(unittest.TestCase):
         with self.assertRaises(ValueError):
             audit_assets.checksums(self.root, self.expected)
 
+    def test_authenticated_list_resolves_draft_before_asset_snapshot(self):
+        metadata = {'id': 123, 'tag_name': 'v26.1031.3384', 'draft': True,
+                    'assets': [{'id': 456, 'name': 'package.deb', 'state': 'uploaded',
+                        'size': (self.root / 'package.deb').stat().st_size,
+                        'digest': 'sha256:' + self.digest}]}
+        with patch.object(audit_assets, 'run', side_effect=[json.dumps([metadata]), json.dumps(metadata)]) as api:
+            snapshot = audit_assets.remote_snapshot('owner/repo', 'v26.1031.3384', self.root, {'package.deb'})
+        self.assertTrue(snapshot['draft'])
+        self.assertIn('releases?per_page=100', api.call_args_list[0].args[-1])
+        self.assertEqual(api.call_args_list[1].args[-1], 'repos/owner/repo/releases/123')
+
+    def test_rebuild_must_reproduce_both_runtime_copies(self):
+        catalog = {'helperSha256': self.digest}
+        audit_assets.verify_rebuilt_proton({'rebuiltProton': {'sha256': self.digest, 'bundledSha256': self.digest}}, catalog)
+        for built in ({}, {'rebuiltProton': {'sha256': self.digest}},
+                      {'rebuiltProton': {'sha256': self.digest, 'bundledSha256': '0' * 64}}):
+            with self.assertRaises(ValueError):
+                audit_assets.verify_rebuilt_proton(built, catalog)
+
 
 class SourceChecks(unittest.TestCase):
     def make_archive(self, directory, path, body=b'source', recorded=None):

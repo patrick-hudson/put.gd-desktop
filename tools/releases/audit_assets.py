@@ -64,7 +64,20 @@ def checksums(directory, expected):
 
 
 def remote_snapshot(repository, tag, directory, expected):
-    metadata = json.loads(run('gh', 'api', f'repos/{repository}/releases/tags/{tag}'))
+    # Release-by-tag omits drafts. The authenticated list includes them; bind
+    # the selected ID before reading assets so the stable prepublication gate works.
+    page = 1
+    while True:
+        releases = json.loads(run('gh', 'api', f'repos/{repository}/releases?per_page=100&page={page}'))
+        matches = [item for item in releases if item['tag_name'] == tag]
+        if len(matches) > 1:
+            raise ValueError('Ambiguous release tag')
+        if matches:
+            metadata = json.loads(run('gh', 'api', f'repos/{repository}/releases/{matches[0]["id"]}'))
+            break
+        if len(releases) < 100:
+            raise ValueError('Release tag not found in authenticated inventory')
+        page += 1
     assets = metadata['assets']
     if metadata['tag_name'] != tag or {a['name'] for a in assets} != set(expected) or len(assets) != len(expected):
         raise ValueError('Remote release asset inventory differs from downloads')
@@ -127,6 +140,12 @@ def download_part(item, repository, directory):
         raise ValueError('Invalid Proton source delivery URL')
     run('gh', 'release', 'download', unquote(tail[0]), '--repo', repository,
         '--pattern', item['file'], '--dir', directory)
+
+
+def verify_rebuilt_proton(built, catalog):
+    if built is not None and (built.get('rebuiltProton', {}).get('sha256') != catalog['helperSha256']
+            or built.get('rebuiltProton', {}).get('bundledSha256') != catalog['helperSha256']):
+        raise ValueError('Source rebuild Proton helper differs from release catalog')
 
 
 def version_in_range(version, expression):
@@ -241,9 +260,7 @@ def audit(args):
         appimage_complete_sources.verify(sources, receipts['appimageCompleteSource'], receipts['appimage'])
         checks['completeSource'] = receipts['appimageCompleteSource']
         catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
-        if built is not None and (built.get('rebuiltProton', {}).get('sha256') != catalog['helperSha256']
-                or built.get('rebuiltProton', {}).get('bundledSha256') != catalog['helperSha256']):
-            raise ValueError('Source rebuild Proton helper differs from release catalog')
+        verify_rebuilt_proton(built, catalog)
         print('Verifying Proton source transport and packets', flush=True)
         parts = output / 'proton-sources'
         parts.mkdir()
@@ -332,9 +349,11 @@ def audit(args):
             if any(item not in published['components'] for item in declared):
                 raise ValueError('Published SBOM declarations differ from actual package: ' + label)
             checks['dependencies'][label] = fresh['components']
+        policy = sbom.load_policy()
         upstream = bun_advisories(bun_versions)
         checks['upstreamAdvisories'] = upstream
-        if any(item['severity'].capitalize() in ('High', 'Critical') and item['fixedIn'] for item in upstream):
+        if any(item['severity'].capitalize() in policy['severities']
+               and (item['fixedIn'] or not policy.get('requireFix', True)) for item in upstream):
             result['errors'].append('Official Bun advisories exceed the stable threshold; see upstreamAdvisories')
         write(regenerated / 'sbom-receipts.json', {'schemaVersion': 1, 'sboms': generated})
         print('Scanning with a fresh vulnerability database and stable policy', flush=True)
@@ -353,7 +372,6 @@ def audit(args):
         grype = output / 'grype'
         grype.mkdir()
         sbom.scan(tools_dir / 'grype', list(regenerated.glob('*.cdx.json')), grype)
-        policy = sbom.load_policy()
         today = datetime.datetime.now(datetime.timezone.utc).date()
         items, flagged, blocks = sbom.report(regenerated, grype, generated, policy, 'stable', db, today)
         write(output / 'vulnerability-report.json', {'releaseTag': args.tag, 'policyChannel': 'stable',
