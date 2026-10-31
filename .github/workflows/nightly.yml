@@ -115,6 +115,18 @@ jobs:
           path: build/publish/publication.json
           if-no-files-found: warn
           retention-days: 90
+      - name: Prune older nightly releases and unreferenced paired sources
+        run: |
+          sudo bash tools/ci/install-packages.sh --no-install-recommends zstd
+          python3 tools/releases/prune_nightlies.py --output build/publish/nightly-retention.json
+      - name: Retain nightly retention plan
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-retention-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/publish/nightly-retention.json
+          if-no-files-found: warn
+          retention-days: 90
 
   surface-map:
     # map.put.gd: every surface and interaction of this nightly, coloured by the
