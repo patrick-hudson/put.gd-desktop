@@ -1,7 +1,7 @@
 # SDK 0.23.0 / Crypto 2.2.0 / Bun 1.4.4 (#1071)
 
 On d69, repeated builds of the current helper reproduce SHA-256
-`cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149`.
+`9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586`.
 All 46 Bun tests (319 assertions), eleven compiled protocol cases and the full
 1,048,337-byte stdout regression pass. The compiler-backed source collector
 independently reproduces that hash and selects 7,395 public source files.
@@ -13,7 +13,12 @@ as an unbundled input; no preferred Rust-source or engine-rebuild claim is made.
 The helper now uses the official SDK server-time response hook, with an isolated
 real-Crypto regression test for header precedence, fallback and invalid values.
 The SDK credential parser/store interfaces used by secret_bridge are unchanged;
-no bridge API adaptation was needed.
+no bridge API adaptation was needed. SDK 0.23.0 requires an explicit NodeType
+argument to getAvailableName; both file preflight and quota-refusal reconciliation
+now pass NodeType.File. The two argument-shape regressions fail against the old
+call sites and pass with this adaptation. Full TypeScript checking now reports
+only three upstream Crypto/WebStream declaration errors, with no helper or test
+diagnostics; full type checking is not claimed as passing.
 
 Under d69's Proton lock, one guarded live smoke passed existing-runtime and
 private-broker checks before and after, list, new isolated test folder, synthetic

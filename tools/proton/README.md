@@ -165,3 +165,18 @@ completes the bounded P1 normal-use recovery campaign. The
 [P2 resource receipt](../../docs/evidence/2026-10-15-proton-p2-resources.md)
 records active uploads/cancel/retry/repeats and idle, including a rejected
 smaller-heap experiment. No runtime optimization was retained; P3–P6 stay open.
+
+Publish a versioned Proton source transport through the guarded publisher:
+
+```sh
+python3 tools/releases/publish_proton_sources.py \
+  --catalog tools/proton/notices/SOURCES.json \
+  --directory /absolute/path/to/verified/source-parts \
+  --commit FULL_SOURCE_COMMIT_SHA \
+  --notes /absolute/path/to/public-source-notes.md
+```
+
+The publisher verifies pinned local/uploaded bytes, resumes matching drafts and
+passes `--prerelease --latest=false` at creation and publication. It rejects an
+existing full release. Proton source releases must stay out of the stable
+installer channel; installer publication also verifies their prerelease status.
