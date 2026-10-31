@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "materialsReady": true,
-  "distributionReady": false,
+  "distributionReady": true,
   "published": true,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
   "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
@@ -21,13 +21,11 @@
     "openpgpModifiedCompiledRoundtripVerified": true,
     "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
-    "finalPackageAcceptanceVerified": false,
+    "finalPackageAcceptanceVerified": true,
     "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
-  "openGates": [
-    "Fresh final-helper SDK 0.23.0/Crypto 2.2.0 Cinnamon/GNOME/KDE functional/resource and final-package acceptance (P6)"
-  ],
+  "openGates": [],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
@@ -190,8 +188,19 @@
   },
   "desktopResourceAcceptance": {
     "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
-    "status": "open",
+    "status": "passed",
     "receipt": "tools/proton/native_relink/evidence/desktop-resource-current.json",
-    "historicalProofTransferred": false
+    "historicalProofTransferred": false,
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "receiptSha256": "2b4ab58ed44a851e59b8538ddceb8f7525a6c23a2bd6de72de9c590e91e2f455",
+    "scope": "Current-helper guest acceptance on #1080 CI DEBs, plus all five final-head installer Proton audits; exact tested package/build identities and build-time catalog flags remain in the receipt."
   }
 }

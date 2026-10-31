@@ -111,3 +111,26 @@ The [process-group replay](evidence/bounded-process-group-replay.json) records
 the intermediate runner and its configured deadline. Its file-backed stdout
 diagnostic is superseded by the [pipe-backed replay](evidence/pipe-backed-replay.json),
 which verifies the final runner and the complete large-output pipe regression.
+
+## Current helper desktop/resource acceptance
+
+The [current receipt](evidence/desktop-resource-current.json) records live Proton
+upload, share-link inspection and revocation on Cinnamon/X11 (m74),
+GNOME/Wayland (d69) and KDE/Wayland (k72), followed by two 301-second idle
+observations on each same used resident. All RSS, CPU, swap and helper gates
+passed. Guests installed the prebuilt #1080 head CI DEBs; the receipt distinguishes
+the producer head from the actual compiled CI merge identity.
+
+The tested installers retain their original pending catalog bytes. Acceptance is
+bound externally to helper `9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586`
+and the complete source pins. This update changes acceptance metadata without
+relabeling the tested package bytes. Guest observations do not establish physical
+hardware performance or full application feature/release acceptance.
+
+The allowlisted numeric packet is `evidence/p6/measurements.tar.gz`. Verify its
+SHA-256 against the receipt, extract it into a new private directory, then replay
+each desktop with `python3 tools/proton/native_relink/evidence/p6/replay.py EXTRACTED/cinnamon` (also
+`gnome` and `kde`). The original frozen observer, complementary scan and workload
+controls accompany those numeric records. Complete private archives, original
+failures, visual witnesses, baton checks and guarded overlay retirement receipts
+remain indexed on the builders.

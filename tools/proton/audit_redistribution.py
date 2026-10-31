@@ -39,6 +39,11 @@ def remaining_evidence(catalog, helper_sha256):
                 any(subject.get('sourcePins', {}).get(name) != catalog['sourcePins'][name]
                     for name in ('bun', 'webkit', 'tinycc'))):
             raise ValueError('native relink proof does not describe the current helper and native sources')
+    if proof.get('finalPackageAcceptanceVerified'):
+        subject = catalog.get('desktopResourceAcceptance', {})
+        if (subject.get('status') != 'passed' or subject.get('helperSha256') != helper_sha256 or
+                subject.get('sourcePins') != catalog['sourcePins']):
+            raise ValueError('desktop/resource acceptance does not describe the current helper and sources')
     gates = list(catalog['openGates'])
     if not catalog.get('published'):
         gates.append('Publish corresponding source assets with final binary packages')
