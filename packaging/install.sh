@@ -101,7 +101,11 @@ HELP
         note "Would download $base/$channel/checksums and $base/$channel/$package, then verify SHA-256."
         case "$package" in
             appimage) note 'Would install executable ~/.local/bin/putgd.AppImage (no sudo). Start: ~/.local/bin/putgd.AppImage' ;;
-            fedora44) note 'Would run sudo dnf install ./putgd-VERSION-fedora44-x86_64.rpm; package adds the signed pkg.put.gd update repository. Start: putgd' ;;
+            fedora44)
+                note 'Would run sudo dnf install ./putgd-VERSION-fedora44-x86_64.rpm; package adds the signed pkg.put.gd update repository. Start: putgd'
+                note 'Then, in the same sudo step, if noopenh264 is installed or either codec package is missing and fedora-cisco-openh264 is enabled: dnf install -y openh264 gstreamer1-plugin-openh264'
+                note 'If the codec is needed but the repo is disabled, print: sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1; sudo dnf install -y openh264 gstreamer1-plugin-openh264'
+                ;;
             *) note "Would run sudo apt install ./putgd-VERSION$suffix; package adds the signed pkg.put.gd update repository. Start: putgd" ;;
         esac
         # Keep the native command legible without relying on a known release version.
@@ -148,7 +152,24 @@ HELP
             if [ "$package" = fedora44 ]; then manager=dnf; else manager=apt; fi
             command -v "$manager" >/dev/null 2>&1 || die "Missing $manager; use --appimage"
             note "Using sudo only for $manager install; sudo and $manager may ask for confirmation on your terminal."
-            (cd "$work" && sudo "$manager" install "./$filename") < /dev/tty \
+            if [ "$package" = fedora44 ]; then
+                # Fixed local commands only; the verified basename is a positional argument.
+                (cd "$work" && sudo sh -c '
+                    set -eu
+                    dnf install "$1"
+                    if rpm -q noopenh264 >/dev/null 2>&1 || ! rpm -q openh264 gstreamer1-plugin-openh264 >/dev/null 2>&1; then
+                        if LC_ALL=C dnf -q repolist --enabled | awk '\''$1 == "fedora-cisco-openh264" { found=1 } END { exit !found }'\''; then
+                            printf "%s\n" "put.gd: Installing Cisco OpenH264 for recording; replacing the Fedora placeholder if present."
+                            dnf install -y openh264 gstreamer1-plugin-openh264
+                        else
+                            printf "%s\n" "put.gd: Recording needs Cisco OpenH264; fedora-cisco-openh264 is disabled or unavailable. Run:"
+                            printf "%s\n" "sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1" "sudo dnf install -y openh264 gstreamer1-plugin-openh264"
+                        fi
+                    fi
+                ' sh "./$filename") < /dev/tty
+            else
+                (cd "$work" && sudo "$manager" install "./$filename") < /dev/tty
+            fi \
                 || die 'Package installation failed (a terminal is required); use --appimage for a user install'
             note 'The package adds the signed pkg.put.gd repository for updates. Start: putgd'
             ;;
