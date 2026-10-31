@@ -1,0 +1,33 @@
+{
+  "seed": {
+    "integrity": "ok",
+    "historyRows": 10000,
+    "operationStates": {
+      "completed": 10000
+    },
+    "categories": {
+      "images": 5000,
+      "videos": 5000
+    }
+  },
+  "capture-empty": {
+    "integrity": "ok",
+    "historyRows": 0,
+    "operationStates": {
+      "cancelled": 35
+    },
+    "categories": {}
+  },
+  "capture-10k": {
+    "integrity": "ok",
+    "historyRows": 10000,
+    "operationStates": {
+      "cancelled": 35,
+      "completed": 10000
+    },
+    "categories": {
+      "images": 5000,
+      "videos": 5000
+    }
+  }
+}
