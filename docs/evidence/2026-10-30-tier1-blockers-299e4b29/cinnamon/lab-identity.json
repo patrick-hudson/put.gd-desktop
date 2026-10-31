@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "a1e73f6c-4fd8-4159-b725-820b281d1677",
+  "profile": "cinnamon-x11",
+  "pid": 45678,
+  "golden": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+  "golden_sha256": "23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7",
+  "overlay": "/home/user/t1/work/lab-runs/a1/disk.qcow2",
+  "qemu": null,
+  "createdAt": null,
+  "acceleration": "kvm",
+  "vnc_display": 20,
+  "ssh_port": 22220
+}

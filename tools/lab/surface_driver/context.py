@@ -67,6 +67,7 @@ class DriverContext(Context):
             self._input_poisoned = True  # An earlier recipe's release never completed.
         self.recipe = recipe
         self._current_window, self._popup, self._input_head = None, None, 0
+        self._recording_bar_before = None
         self.frames, self.notes, self.reviews = [], [], []
         self._noted_ids=set()
         self._notifications_since = time.time()
@@ -78,6 +79,12 @@ class DriverContext(Context):
 
     def call(self, method, params=None):
         self._check_time()
+        if method == 'recording.prepare' and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
+            # Layer-shell has no caption. Its bar may only be associated with
+            # an owned helper surface absent immediately before this prepare.
+            self._recording_bar_before = None
+            self._recording_bar_before = [w['id'] for w in self._probe(
+                'compositor_windows', {'compositor': self.profile['compositor']})['windows']]
         deadline=min(self._deadline,time.monotonic()+15)
         while True:
             response=self.cli(method,json.dumps(params or {}))
@@ -148,6 +155,9 @@ class DriverContext(Context):
         if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows','resize'):
             # Wayland AT-SPI extents are window-relative: the compositor witness
             # places them on the desktop and answers focus/hit-tests.
+            before = getattr(self, '_recording_bar_before', None)
+            if compositor.get('kind') == 'kwin-script' and before is not None:
+                compositor = dict(compositor, recording_bar_before=before)
             query = dict(query, compositor=compositor)
         source = Path(__file__).with_name('probe.py').read_text()
         persistent = getattr(self.target, 'probe', None)
@@ -356,6 +366,11 @@ class DriverContext(Context):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
         witness = self._probe('foreground', query)
+        if role.startswith('bar') and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
+            self.note('KWin recording bar input=' + json.dumps({
+                'pid': geometry.get('pid'), 'window_id': geometry.get('window_id'),
+                'rect': [geometry.get(k) for k in ('x', 'y', 'width', 'height')], 'point': point,
+                'before_prepare': getattr(self, '_recording_bar_before', None), 'foreground': witness}))
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')

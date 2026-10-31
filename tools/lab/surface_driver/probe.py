@@ -576,6 +576,7 @@ for (let i = 0; i < list.length; i++) {
                   frame: rect(w.frameGeometry), content: rect(w.clientGeometry), focus: w.active,
                   minimized: w.minimized, hidden: !!w.hidden, popup: !!w.popupWindow, dock: !!w.dock,
                   desktop: !!w.desktopWindow, normal: !!w.normalWindow, notification: !!(w.notification || w.criticalNotification),
+                  surface_class: w.toString().split("(")[0],
                   stack: i, transient_for: w.transientFor ? w.transientFor.internalId.toString() : null});
 }
 callDBus(RECEIVER, RECEIVER_PATH, "org.putgd.LabWitness", "Report", JSON.stringify({windows: windows}));
@@ -702,6 +703,8 @@ class WaylandPlacement:
                      (w['title'] == title or (anonymous_selector and not w['title'] and w['frame'][2:] == [width, height])) and
                      w.get('type') not in POPUP_WINDOW_TYPES and
                      0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
+            if not found:
+                found = self.recording_bar(pid, title, rect)
             # Qt reports a new (modal) window as showing before Mutter maps it:
             # the compositor lists it with an empty frame. Re-observe, bounded.
             unmapped = not found and any(w['pid'] == pid and w['title'] == title and not (w['frame'][2] and w['frame'][3])
@@ -730,6 +733,25 @@ class WaylandPlacement:
             raise RuntimeError('implausible decoration split for %r: frame %s vs content %dx%d' % (title, frame, width, height))
         return {'dx': frame[0] + side - x, 'dy': frame[1] + top - y, 'window_id': found[0]['id'], 'frame': frame}
 
+    def recording_bar(self, pid, title, rect):
+        """Narrow captionless KWin layer-shell association; never a title wildcard.
+
+        Layer-shell carries no xdg_toplevel title. Require the actual KWin
+        surface class, exact undecorated client size, owned recording helper
+        PID and a compositor identity new since recording.prepare. Ambiguous
+        surfaces still fail in _toplevel; foreground still picks the exact ID.
+        """
+        before = self.compositor.get('recording_bar_before')
+        if (self.compositor.get('kind') != 'kwin-script' or before is None
+                or title != 'put.gd recording controls' or not owned(pid)
+                or 'putgd-record' not in executable(pid)):
+            return []
+        return [w for w in self.windows() if w['pid'] == pid and w['id'] not in before
+                and not w['title'] and w.get('surface_class') == 'KWin::LayerShellV1Window'
+                and w.get('wm_class') == 'putgd-record'
+                and w.get('normal') and not w.get('popup')
+                and w.get('content') == w['frame'] and w['frame'][2:] == list(rect[2:])]
+
     def popup(self, pid, rect):
         key = ('popup', pid, tuple(rect))
         if key not in self._cache:
@@ -744,7 +766,9 @@ class WaylandPlacement:
 
     def same_process(self, pid):
         """What the compositor does show for this (owned) process, so a refusal is diagnosable."""
-        shown = ['%r %s type %s' % (w['title'], w['frame'], w.get('type')) for w in self.windows() if w['pid'] == pid][:4]
+        shown = ['%r %s type %s' % (w['title'], w['frame'], w.get('type'))
+                 + (' (%s)' % w['surface_class'] if w.get('surface_class') else '')
+                 for w in self.windows() if w['pid'] == pid][:16]
         return '; compositor has for pid %s: %s' % (pid, ', '.join(shown) if shown else 'no windows')
 
     def inside(self, rect, frame):
