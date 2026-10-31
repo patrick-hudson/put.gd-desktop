@@ -181,7 +181,7 @@ def _complete(scope, service, oid, kind='png'):
     ctx.note('historyId=' + detail['id'])
     ctx.expect(detail['uploadStatus'] == 'uploaded' and detail['local']['status'] == 'saved', 'remote and local writes confirmed')
     digest = _object(scope, service, detail)
-    return detail, _payload(ctx, detail['local']['path'], kind, digest)
+    return detail, digest if kind is None else _payload(ctx, detail['local']['path'], kind, digest)
 
 
 def _pattern(ctx):
@@ -301,9 +301,11 @@ def upload_clipboard(ctx):
                 history._click_history_node(ctx, history._command_control('clipboard'))
                 oid = history._new_operation(ctx, before, 'clipboard')['id']
                 track(scope, 'operation.cancel', oid)
-                detail, data = _complete(scope, service, oid, 'png' if kind == 'image' else 'txt')
+                detail, data = _complete(scope, service, oid, 'png' if kind == 'image' else None)
+                actual = hashlib.sha256(data).hexdigest() if kind == 'image' else data
+                ctx.note('clipboard_'+kind+'_source_sha256='+expected+'; uploaded_sha256='+actual)
                 _auto_copy(ctx, scope, detail)
-                ctx.expect(hashlib.sha256(data).hexdigest() == expected,
+                ctx.expect(actual == expected,
                            'uploaded clipboard '+kind+' SHA-256 equals independent source bytes')
                 ctx.note('upload_clipboard_'+kind+'_hash_match_count=1')
             except RecipeFailed as error:

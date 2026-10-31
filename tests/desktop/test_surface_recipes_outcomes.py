@@ -115,6 +115,18 @@ class ClipboardContext:
 class ClipboardOracles(unittest.TestCase):
     detail = {'receipt': {'directUrl': 'http://127.0.0.1:1234/exact-object'}}
 
+    def test_text_completion_uses_independent_object_hash_without_media_export(self):
+        ctx = SimpleNamespace(note=Mock(), expect=ClipboardContext().expect,
+            call=Mock(side_effect=[{'state':'completed'}, {'id':'row','uploadStatus':'uploaded','local':{'status':'saved'}}]))
+        records = [{'id':'row','operationId':'operation'}]
+        ctx.wait = Mock(side_effect=[{'state':'completed'}, records])
+        with patch.object(outcomes, '_frame'), patch.object(outcomes, '_object', return_value='source-sha') as obj, \
+             patch.object(outcomes, '_payload') as payload:
+            detail, digest = outcomes._complete(SimpleNamespace(ctx=ctx), object(), 'operation', None)
+        self.assertEqual(digest, 'source-sha')
+        obj.assert_called_once()
+        payload.assert_not_called()
+
     def test_wayland_text_reader_accepts_gnome_utf8_qualified_offer(self):
         for session, mime, selected in (('wayland', 'text/plain', 'text'),
                                         ('x11', 'text/plain', 'text/plain'),
