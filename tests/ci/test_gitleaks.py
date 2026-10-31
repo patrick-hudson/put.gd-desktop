@@ -71,6 +71,8 @@ class Sanitization(unittest.TestCase):
                             (('locations', 0, 'physicalLocation', 'region', 'startLine'), 'PRIVATE_SENTINEL'),
                             (('locations', 0, 'physicalLocation', 'region', 'startColumn'), False),
                             (('locations', 0, 'physicalLocation', 'region', 'endLine'), 0),
+                            (('locations', 0, 'physicalLocation', 'region'), {}),
+                            (('locations', 0, 'physicalLocation', 'region'), {'startColumn': 2}),
                             (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), {})):
             report = raw_report()
             target = report['runs'][0]['results'][0]

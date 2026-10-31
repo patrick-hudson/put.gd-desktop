@@ -40,7 +40,8 @@ def sanitize(report):
                 region = {key: physical['region'][key] for key in
                           ('startLine', 'endLine', 'startColumn', 'endColumn')
                           if key in physical['region']}
-                if any(type(value) is not int or value < 1 for value in region.values()):
+                if ('startLine' not in region
+                        or any(type(value) is not int or value < 1 for value in region.values())):
                     raise ValueError('Invalid SARIF region coordinates')
                 result['locations'].append({'physicalLocation': {
                     'artifactLocation': {'uri': physical['artifactLocation']['uri']},
