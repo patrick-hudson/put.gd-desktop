@@ -281,6 +281,12 @@ def upload_clipboard(ctx):
     from ..fixtures.uploads import clipboard_files, track
     with _lane(ctx) as (scope, service):
         source = ctx.fixture('image')
+        Image, _, _ = image_modules()
+        original = Image.new('RGB', (source.width, source.height))
+        from tools.lab.lab import FIXTURE_RGB
+        for index, color in enumerate(FIXTURE_RGB):
+            x, y = index % 2 * 320, index // 2 * 160
+            original.paste(color, (x, y, x + 320, y + 160))
         image_digest = history._local_digest(ctx, source.path)
         text = 'putgd Tier 1 clipboard: exact UTF-8 \u2713\nsecond line\n'
         text_path = scope.root + '/source.txt'
@@ -305,9 +311,19 @@ def upload_clipboard(ctx):
                 actual = hashlib.sha256(data).hexdigest() if kind == 'image' else data
                 ctx.note('clipboard_'+kind+'_source_sha256='+expected+'; uploaded_sha256='+actual)
                 _auto_copy(ctx, scope, detail)
-                ctx.expect(actual == expected,
-                           'uploaded clipboard '+kind+' SHA-256 equals independent source bytes')
-                ctx.note('upload_clipboard_'+kind+'_hash_match_count=1')
+                if kind == 'image':
+                    try:
+                        decoded = Image.open(io.BytesIO(data))
+                        decoded.load()
+                    except (OSError, ValueError) as error:
+                        raise RecipeFailed('uploaded clipboard image is not a decodable PNG') from error
+                    ctx.expect(decoded.format == 'PNG' and pixels_equal(decoded, original),
+                               'uploaded clipboard image dimensions and RGBA pixels equal independent source (tolerance=0)')
+                    ctx.note('clipboard_image_rgba_sha256='+hashlib.sha256(decoded.convert('RGBA').tobytes()).hexdigest()
+                             +'; PNG re-encode informational='+str(actual != expected))
+                else:
+                    ctx.expect(actual == expected, 'uploaded clipboard '+kind+' SHA-256 equals independent source bytes')
+                ctx.note('upload_clipboard_'+kind+('_pixels_match_count=1' if kind == 'image' else '_hash_match_count=1'))
             except RecipeFailed as error:
                 failures.append(str(error))
                 ctx.note(kind+' clipboard oracle failed: '+str(error))
@@ -328,7 +344,7 @@ def copy_image(ctx):
         _history(ctx, detail)
         ctx.click('historyInspectorMore', window='history')
         history._wait_menu(ctx, 'Copy image')
-        history._click_history_node(ctx, {'name': 'Copy image', 'role': 'menu item'})
+        ctx.click('text:Copy image', window='historyRowMenu')
         copied = ctx.wait(lambda: _clipboard_bytes(scope, 'image/png'), 'History Copy image offers desktop image/png')
         Image, _, _ = image_modules()
         try:
