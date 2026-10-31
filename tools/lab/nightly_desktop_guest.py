@@ -290,7 +290,10 @@ PROBES
     if row['desktop'] == 'fedora-gnome-wayland':
         from tools.lab.surface_driver.profiles import load_profile
         gnome = load_profile('ubuntu-gnome-wayland')
-        value.update(focus=gnome['focus'], compositor=gnome['compositor'])
+        # Fedora does not grant focus to every CLI-opened private window.
+        # Request the witness's explicit dock-like activation before each
+        # guarded gesture; the compositor hit-test/focus check still applies.
+        value.update(focus=dict(gnome['focus'], raise_before_input=True), compositor=gnome['compositor'])
     fragment.write_text(json.dumps(value, indent=2))
     lab.guest_preflight(run, stage='nightly-ready')
     return profiles
