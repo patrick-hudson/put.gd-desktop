@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 2,
+  "campaign": "tier1-phase-b",
+  "entries": [
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/cin-last/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; historyId=487a04a6-a747-4431-be14-c71e681a0e76; local-state={\"uploadStatus\": \"uploaded\", \"shareStatus\": \"shared\", \"linkAvailable\": true}; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; sharing_capable=True; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/__main__.finish/01-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/__main__.finish/02-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:07:56Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/cin-last/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; historyId=487a04a6-a747-4431-be14-c71e681a0e76; local-state={\"uploadStatus\": \"uploaded\", \"shareStatus\": \"shared\", \"linkAvailable\": true}; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; sharing_capable=True; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/__main__.finish/01-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/__main__.finish/02-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:07:56Z"
+    }
+  ]
+}

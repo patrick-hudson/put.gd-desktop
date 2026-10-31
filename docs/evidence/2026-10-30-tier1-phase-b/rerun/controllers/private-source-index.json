@@ -1,0 +1,10 @@
+{
+  "privateSources": [
+    {
+      "name": "s3-reconcile-r2.py",
+      "sha256": "169ea3dfb2ee0206af9c6468dd19663be642991dc4db8de50343d2f2c2088fee",
+      "archive": "work/tier1b and builder t1b",
+      "reason": "Conservative evidence scanner matches SDK credential-argument syntax; full source remains private."
+    }
+  ]
+}
