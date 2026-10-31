@@ -10,7 +10,7 @@ from tools.lab import lab
 
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '
-             'xdotool xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring')
+             'xdotool x11-utils x11-xserver-utils xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring')
 
 QUIET = r'''python3 - <<'NIGHTLY_QUIET'
 from pathlib import Path
@@ -88,7 +88,7 @@ def prepare(run, row, out):
     elif package == 'rpm':
         # Native Fedora golden already carries the system probes; refuse missing
         # dependencies instead of allowing dnf to upgrade a desktop stack.
-        lab.ssh(run, "python3 -c 'import pyatspi,dbus;from PyQt6.QtGui import QGuiApplication'\ncommand -v tesseract\n")
+        pass  # Individual probe diagnostics are recorded below.
     else:
         # Reuse Phase A's Atomic overlay layering; the immutable source stays
         # read-only. rpm-ostree install layers tools onto the pinned base.
@@ -111,7 +111,6 @@ if [ -n "$missing" ]; then sudo -n rpm-ostree install $missing; echo NIGHTLY_REB
             (out/'atomic-reboot.json').write_text(json.dumps(reboot(run), indent=2))
         if lab.ssh(run, 'rpm -q '+components).strip() != before:
             raise RuntimeError('Atomic overlay changed a desktop component; no acceptance run allowed')
-        lab.ssh(run, "python3 -c 'import pyatspi,dbus;from PyQt6.QtGui import QGuiApplication'\ncommand -v tesseract\n")
     # Record individual missing probe names, never Python tracebacks or inputs.
     probes = lab.guest_session(run, '''python3 - <<'PROBES'
 import importlib,json,shutil
