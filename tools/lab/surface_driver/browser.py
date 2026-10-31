@@ -324,6 +324,14 @@ def _failure_frame(ctx, state, timeouts, frames):
     Never raises: the recipe's own failure is the result, and the transaction is
     restored by default_browser either way.
     """
+    if getattr(ctx, '_live_admitted', False):
+        # Keep the recipient URL only in Firefox memory for the mandatory
+        # post-cleanup navigation. The live default masks the whole desktop.
+        try:
+            frames.append(asdict(ctx.frame('browser-failure-fully-masked', window=None)))
+        except Exception as error:
+            ctx.review('Failure frame unavailable (' + str(error)[:200] + ')')
+        return
     # Kiosk has no address bar. Blank the page before retaining failure
     # evidence, since error pages may echo a token-bearing request URL.
     try:
@@ -484,7 +492,11 @@ const matched = ['http:','https:'].includes(u.protocol) && hostOK && (named || (
 // Keep only a title we can prove contains no URL path, fragment, or arbitrary
 // page-supplied token: the filename, when it is present in the actual title.
 return {matched, url_host: matched ? u.hostname : '',
-  title: matched ? (title.includes(e.name) ? e.name : '[page title verified; redacted]') : ''};
+  title: matched ? (title.includes(e.name) ? e.name : '[page title verified; redacted]') : '',
+  diagnostic: matched ? null : {named,media,hostOK,status,content,complete:document.readyState==='complete',
+    focused:document.hasFocus(),fullscreen:innerWidth>=screen.width&&innerHeight>=screen.height,
+    blank:location.href==='about:blank',networkError:document.documentURI.startsWith('about:neterror'),
+    certificateError:document.documentURI.startsWith('about:certerror')}};
 '''
 
 # Two animation frames after the match, so the selected tab is painted before
@@ -1062,6 +1074,8 @@ def _observe(client, expect):
             client.call('WebDriver:SwitchToWindow', {'handle': handle, 'focus': False})
             result = client.script(_OBSERVE, [expect])
             if not (isinstance(result, dict) and result.get('matched')):
+                if isinstance(result, dict) and result.get('diagnostic'):
+                    reason = 'Recipient readiness: '+json.dumps(result['diagnostic'], sort_keys=True)
                 continue
             if client.script(_PAINTED, asynchronous=True) is not True:
                 continue
@@ -1212,6 +1226,11 @@ return {serviceWorkerAPI:typeof navigator.serviceWorker==='object',
             # URL lives only in this target process and Firefox, never in
             # arguments, transaction metadata or a browser receipt.
             url = client.script('return location.href;')
+            from urllib.parse import urlsplit
+            parsed = urlsplit(url)
+            if (parsed.scheme != 'https' or (values['kind'] == 's3' and parsed.hostname != 'put.gd')
+                    or (values['kind'] == 'proton' and not re.fullmatch(r'(?:[a-z0-9-]+\.)*proton\.(?:me|ch)', parsed.hostname or ''))):
+                raise _TargetError('Recipient URL is not on the expected live provider before fresh navigation')
             handle = client.call('WebDriver:GetWindowHandle')
             client.call('WebDriver:SwitchToWindow', {'handle':handle, 'focus':True})
             if not client.script('return document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height;'):

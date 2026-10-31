@@ -172,6 +172,7 @@ def _region_upload(ctx):
                     if ctx.destination == 'proton':
                         ctx.note('remote_hash_match_count=1')
                 except Exception as error:
+                    ctx.note('recipient_positive_failure='+ctx.evidence.redactor.exception(error))
                     browser_error = error
                 # Cleanup is inside the browser guard: its URL stays only in
                 # the private Firefox memory for the fresh negative check.
