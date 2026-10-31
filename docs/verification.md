@@ -606,8 +606,10 @@ records pull request #75, with final code `7aa1aff`:
   screencast protocol through AppRun's entry) and on Fedora. There it used its
   bundled x264, because the stock driver cannot encode H.264.
 - The Fedora `noopenh264` placeholder produced the actionable dialog on the
-  dashboard, and stock Fedora containers pull Cisco's OpenH264 through the
-  RPM's Recommends.
+  dashboard. The earlier container result does not prove that Recommends
+  replace an installed placeholder: on Fedora Workstation they do not
+  (issue #1091). Use `sudo dnf install openh264 gstreamer1-plugin-openh264`
+  explicitly; the one-line installer performs this step with the Cisco repo enabled.
 - The AppImage is 13.8 MB larger than nightly 317, and its idle family is
   within 0.6 MiB.
 

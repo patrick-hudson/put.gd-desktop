@@ -38,7 +38,7 @@ Choose **Record screen** on the rail, **Capture Screen Recording** in the tray, 
 Recording needs an H.264 encoder. When none works, put.gd says so and what to install instead of starting:
 
 - **Ubuntu, Kubuntu, Mint and Debian packages** bring one with their GStreamer dependencies.
-- **Fedora**: Fedora installs a placeholder OpenH264 library. Replace it with Cisco's: `sudo dnf install openh264 gstreamer1-plugin-openh264`. If the `fedora-cisco-openh264` repository was turned off, first run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1`.
+- **Fedora**: Fedora installs a placeholder OpenH264 library that the RPM's weak dependencies do not replace. Replace it explicitly with Cisco's: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The one-line installer runs this codec step for you when the repository is enabled and the placeholder remains or OpenH264 is missing. If the `fedora-cisco-openh264` repository was turned off, it prints the commands instead: first run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1`, then the codec install.
 - **AppImage**: it carries its own recorder. It encodes with your graphics driver where it can (VA-API or NVIDIA) and otherwise with its bundled x264 and x265, so it needs no setup.
 
 ## Destinations and credentials

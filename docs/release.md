@@ -279,7 +279,12 @@ substitute a newer-glibc build or omit KDE region support to produce an asset.
 Screen recording ships in every installer. The DEBs and the RPM depend on the
 distro's GStreamer plugin packages and link the distro FFmpeg; the RPM also
 recommends `gstreamer1-plugin-openh264` and `openh264`, Cisco's library that
-replaces Fedora's `noopenh264` placeholder. Each DEB therefore installs only
+replaces Fedora's `noopenh264` placeholder. Recommends do not replace an installed
+conflicting placeholder: Fedora recording needs the explicit command
+`sudo dnf install openh264 gstreamer1-plugin-openh264`. The one-line installer
+runs that codec step when the Cisco repository is enabled; otherwise it prints
+the enable-then-install commands (see [codec setup](recording.md#packages-and-codecs)).
+Each DEB therefore installs only
 on the release it was built for: the Ubuntu 24.04 and 26.04 DEBs need
 `libavcodec60` and `libavcodec62`, which Debian 13 does not ship, so Debian 13
 has its own DEB built against its `libavcodec61` (issue #85; see the
