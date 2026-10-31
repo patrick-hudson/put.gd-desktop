@@ -96,6 +96,53 @@ gh release download "$tag" -D "work/releases/$tag/assets"
 (cd "work/releases/$tag/assets" && sha256sum --check --strict SHA256SUMS)
 ```
 
+Run the repeatable byte/source/license/CVE audit on a builder (d69 preferred):
+
+```sh
+python3 tools/releases/audit_assets.py --tag "$tag" \
+  --directory "work/releases/$tag/assets" --output /short/private/exact-audit
+```
+
+Use a new private output directory. The driver downloads the linked complete and
+curated sources and the Proton source packets through `gh`, checks the package
+notices and source bindings, regenerates all five SBOMs, and applies the existing
+stable policy with a fresh Grype database. It also checks the embedded Bun version
+against Bun's official advisories, which can precede Grype coverage. Keep
+`audit.json`, `database.json`, the regenerated SBOMs and raw Grype/summary files,
+including failures. `--reuse-downloads PRIOR_AUDIT` reuses and re-verifies source
+bytes from a prior run. `--download` downloads a new installer directory too.
+
+The stable draft workflow runs this audit automatically on the uploaded draft's
+downloads and retains an `exact-asset-audit-TAG` artifact. Stable collection also
+requires its exact-source production rebuild receipt; nightly collection may omit
+that expensive rebuild. For a nightly rehearsal without that receipt, the first
+run retains `sources/source-archive.json` from `release-builds.json` and reports
+the missing rebuild. With the standard pinned SDK already provisioned (see
+[Build](build.md)), build the downloaded source and rerun in a new directory:
+
+```sh
+audit_output=/short/private/exact-audit
+python3 tools/releases/check_source_build.py \
+  --receipt "$audit_output/sources/source-archive.json" \
+  --sdk-prefix "$PWD/build/sdk" \
+  --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" \
+  --output /short/private/source-rebuild --bundle-proton
+python3 tools/releases/audit_assets.py --tag "$tag" \
+  --directory "work/releases/$tag/assets" \
+  --output /short/private/exact-audit-rebuilt --reuse-downloads "$audit_output" \
+  --source-build-result /short/private/source-rebuild/results.json
+```
+
+This rebuild must reproduce both shipped Proton helper copies. The audit also
+requires the producer's member receipt, verifies source files against the tagged
+Git blobs, and matches the delivered Proton catalog to `SOURCES.json` inside the
+curated source. Distinguish a new rebuild from CI receipts.
+
+The driver does not perform the manual Proton upstream/migration
+review, live-service compatibility or desktop acceptance. Any unexplained High or
+Critical finding with a fix blocks the stable cut; issue filing records the gap
+and does not waive it.
+
 Coverage and placement come from [the acceptance matrix](acceptance-matrix.md).
 Execution rules, including parallel Cinnamon/GNOME/KDE rows, physical gates,
 socket-path checks, the visible display wall and saved visuals, come from

@@ -26,6 +26,7 @@ private:
  QList<CaptureFrame> frames_;
  QString outcome_;
  QList<Surface*> surfaces_;
+ RegionPaintStats stats_;
  QRectF selection_;
  QPointF anchor_;
  bool dragging_=false,finished_=false;

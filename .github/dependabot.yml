@@ -15,9 +15,6 @@ updates:
     groups:
       github-actions:
         patterns: ['*']
-    ignore:
-      # Windows-only; the Windows rewrite owns it.
-      - dependency-name: ilammy/msvc-dev-cmd
     labels: [dependencies, 'area: ci']
     commit-message:
       prefix: 'deps:'

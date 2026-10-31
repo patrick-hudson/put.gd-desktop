@@ -9,25 +9,17 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
-## Published nightly physical native gates — 2026-10-31
+## Published nightly artifact/source/CVE audit — 2026-10-31
 
-Published `v26.1031.3384-nightly` / clean source `4d3840c6108c` was installed
-on the real m74 Cinnamon X11, f44 GNOME Wayland and k72 Plasma Wayland desktops;
-Aurora's AppImage stopped at native probe preflight before app launch. Local
-outcomes passed five of six recipes on m74 and k72; guarded-browser proof,
-physical GNOME window witnessing and Aurora Atomic probe admission remain
-blocked (#1060–#1062). No app compilation or live destination was used.
-
-m74's 10k fixture passed cold/closed CPU and memory, content-open and search
-limits. Warm drawable paint p95 was 138.854 ms empty and 158.401 ms with 10k
-(150 ms limit, #1063). History PageDown response upper-bound p95 was
-101.779 ms (100 ms limit, #1064); observer overhead is included. Capture-to-link
-p50/p95 was 814.546/947.144 ms, ungraded. Fifty actual native captures/uploads
-and both slow-network cases completed; populated Copy image/video/delete
-remain unassessed at the current AT-SPI boundary (#1066). Full results, samples, failed
-observers, source/asset/session identities, annotated visuals and cleanup are
-in [the physical native evidence](evidence/2026-10-31-native-pass/README.md).
-#379/#44 stay open; this does not certify stable bytes or complete U9.
+The [exact-asset rehearsal](evidence/2026-10-31-exact-asset-audit/README.md) covers
+`v26.1031.3384-nightly` (`4d3840c6108c`) on d69: all five packages/SBOMs,
+15 installer/support assets, four linked source assets and six Proton source
+packets. Checksums, notices and source closure pass; 30 FFmpeg/ICU findings match
+existing dispositions. Stable remains blocked by the HarfBuzz scan finding
+(#1055) and real embedded Bun High advisories missed by Grype (#1054). Code
+PR #1053 restores stable source-rebuild provenance and automates the uploaded-draft
+audit. This records artifact/source evidence and a manual upstream review, not
+legal, live-service, graphical or stable acceptance; #383/#511/#384 remain open.
 
 ## UI catalog reference images (#708) — 2026-10-30
 
@@ -614,8 +606,10 @@ records pull request #75, with final code `7aa1aff`:
   screencast protocol through AppRun's entry) and on Fedora. There it used its
   bundled x264, because the stock driver cannot encode H.264.
 - The Fedora `noopenh264` placeholder produced the actionable dialog on the
-  dashboard, and stock Fedora containers pull Cisco's OpenH264 through the
-  RPM's Recommends.
+  dashboard. The earlier container result does not prove that Recommends
+  replace an installed placeholder: on Fedora Workstation they do not
+  (issue #1091). Use `sudo dnf install openh264 gstreamer1-plugin-openh264`
+  explicitly; the one-line installer performs this step with the Cisco repo enabled.
 - The AppImage is 13.8 MB larger than nightly 317, and its idle family is
   within 0.6 MiB.
 

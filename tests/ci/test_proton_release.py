@@ -8,14 +8,11 @@ ROOT = Path(__file__).resolve().parents[2]
 class ProtonRelease(unittest.TestCase):
     def test_linux_tests_provision_and_bundle(self):
         text = (ROOT / '.github/workflows/ci.yml').read_text()
-        linux = text.split('  linux:\n', 1)[1].split('  portable:\n', 1)[0]
-        portable = text.split('  portable:\n', 1)[1].split('  packages:\n', 1)[0]
+        linux = text.split('  linux:\n', 1)[1].split('  sanitizers:\n', 1)[0]
         contracts = text.split('  contracts:\n', 1)[1].split('  linux:\n', 1)[0]
         self.assertIn('python3 tools/proton/provision_runtime.py', linux)
         self.assertIn('cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON', linux)
         self.assertIn('python3 tools/ci/contracts.py proton', contracts)
-        self.assertNotIn('PUTGD_BUNDLE_PROTON=ON', portable)
-        self.assertNotIn('provision_runtime.py', portable)
 
     def test_proton_contract_suites_are_selected(self):
         import importlib.util
@@ -29,7 +26,7 @@ class ProtonRelease(unittest.TestCase):
                       'tests/releases/test_check_source_build.py', 'tests/ci/test_proton_release.py'):
             self.assertIn(suite, release)
 
-    def test_native_and_portable_release_require_proton(self):
+    def test_native_and_appimage_release_require_proton(self):
         text = (ROOT / '.github/workflows/package.yml').read_text()
         native = text.split('  native:\n', 1)[1].split('  appimage:\n', 1)[0]
         appimage = text.split('  appimage:\n', 1)[1].split('  collect:\n', 1)[0]

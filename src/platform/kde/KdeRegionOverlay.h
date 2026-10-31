@@ -22,7 +22,7 @@ signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:
  friend class KdeRegionOverlayTest;
- void addSurface(const CaptureFrame&,QScreen*);
+ bool addSurface(const CaptureFrame&,QScreen*);
  void accept();
  bool eventFilter(QObject*,QEvent*) override;
  class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();
@@ -30,6 +30,7 @@ private:
  QList<CaptureFrame> frames_;QString outcome_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false,clearing_=false,dismissing_=false;QSet<QWindow*> awaitingFrames_;
  bool recording_=false,frozen_=false;
  int hintScreen_=0;
+ RegionPaintStats stats_;bool logged_=false;
  void repaint();
  RegionHintFade hint_{[this]{repaint();}};
  wl_callback* dismissal_=nullptr;

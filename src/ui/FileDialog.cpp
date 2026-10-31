@@ -227,6 +227,12 @@ void FileDialog::openFallback(const QString& reason){
  qCInfo(lcFileDialog).noquote()<<"fallback dialog, reason"<<reason;
  auto* dialog=new QFileDialog(owner_,options_.title,options_.folder);
  dialog->setObjectName("putgdFileDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->setWindowModality(Qt::ApplicationModal);
+#ifdef Q_OS_LINUX
+ // Qt's own widget dialog, never the platform theme's (#863). putgd-ui keeps the
+ // desktop's theme, whose native helper is GTK's chooser on GNOME, which never
+ // maps on GNOME 50 Wayland and leaves only an invisible modal blocker, or KDE's.
+ dialog->setOption(QFileDialog::DontUseNativeDialog);
+#endif
  if(options_.mode==Mode::Save){dialog->setAcceptMode(QFileDialog::AcceptSave);dialog->setFileMode(QFileDialog::AnyFile);if(!options_.name.isEmpty())dialog->selectFile(options_.name);}
  else if(options_.mode==Mode::Folder){dialog->setFileMode(QFileDialog::Directory);dialog->setOption(QFileDialog::ShowDirsOnly);}
  else dialog->setFileMode(QFileDialog::ExistingFile);

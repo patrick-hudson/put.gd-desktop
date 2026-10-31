@@ -32,7 +32,7 @@ METADATA = {
     20: {'labels': [], 'closes': []},
 }
 
-NIGHTLY = f"""## Changes since v0.1.1-nightly.4
+NIGHTLY = f"""## What's changed
 
 ### Fixes
 
@@ -53,6 +53,8 @@ NIGHTLY = f"""## Changes since v0.1.1-nightly.4
 ### Tests and CI
 
 - Complete overlapping uploads by name ([#8]({URL}/pull/8))
+
+## Downloads and sources
 
 Full comparison: {URL}/compare/v0.1.1-nightly.4...v0.1.1-nightly.12
 """
@@ -143,7 +145,7 @@ class Changelog(unittest.TestCase):
         text, looked_up = self.section('v0.1.1-rc.1')
         # The promotion pull request (#10, head nightly) is plumbing, not a change.
         self.assertEqual(looked_up, [2, 3, 4, 5, 6, 7, 8])
-        self.assertTrue(text.startswith('## Changes since v0.1.0\n'))
+        self.assertTrue(text.startswith("## What's changed\n"))
         self.assertIn(f'### Features\n\n- Reorder destinations in Settings ([#3]({URL}/pull/3)), '
                       f'closes [#11]({URL}/issues/11)\n', text)
         for heading in ('### Documentation', '### Lab', '### Tests and CI'):
@@ -179,7 +181,7 @@ class Changelog(unittest.TestCase):
         self.assertIsNone(changelog.previous_tag(self.root, 'v0.1.1-nightly.4'))
         text, looked_up = self.section('v0.1.1-nightly.4')
         self.assertEqual(looked_up, [2, 3])
-        self.assertTrue(text.startswith('## Changes in v0.1.1-nightly.4\n'))
+        self.assertTrue(text.startswith("## What's changed\n"))
         self.assertIn('first release of its kind', text)
 
     def test_nothing_merged_says_so(self):
@@ -189,6 +191,10 @@ class Changelog(unittest.TestCase):
         self.git('tag', 'v0.1.1-nightly.17')
         text, _ = self.section('v0.1.1-nightly.17')
         self.assertIn('No pull requests were merged since then.', text)
+        changes, delivery = text.split('## Downloads and sources\n', 1)
+        self.assertIn("## What's changed", changes)
+        self.assertNotIn('Full comparison:', changes)
+        self.assertIn('Full comparison:', delivery)
 
     def test_classify_titles(self):
         for title, group in [('feat: x', 'features'), ('fix(proton): x', 'uploads'), ('docs(evidence): x', 'docs'),
@@ -230,7 +236,7 @@ class Changelog(unittest.TestCase):
         self.assertEqual(changelog.previous_tag(self.root, 'v26.1023.19-nightly'), 'v26.1022.17-nightly')
         text, numbers = self.section('v26.1023.19-nightly')
         self.assertEqual(numbers, [22])
-        self.assertIn('## Changes since v26.1022.17-nightly', text)
+        self.assertIn('## Downloads and sources\n\nFull comparison: ' + URL + '/compare/v26.1022.17-nightly...', text)
 
     def test_unpublished_releases_never_start_the_changes(self):
         # A stable tag whose acceptance failed, or a nightly whose publication failed, was never released.
@@ -246,13 +252,15 @@ class Changelog(unittest.TestCase):
         text = changelog.section(self.root, 'v26.1023.22', REPO, lookup=None,
                                  released=lambda repository: released.append(repository) or {'v0.1.0'})
         self.assertEqual(released, [REPO])
-        self.assertIn('## Changes since v0.1.0', text)
+        self.assertIn('## Downloads and sources\n\nFull comparison: ' + URL + '/compare/v0.1.0...', text)
 
     def test_publish_keeps_staging_when_the_history_is_unavailable(self):
         with patch.object(changelog, 'section', side_effect=subprocess.CalledProcessError(128, 'git')), \
              patch.object(sys, 'stderr') as stderr:
             text = publish.changes_section('v0.1.1-nightly.12', {'repository': REPO})
         self.assertIn('could not be listed', text)
+        self.assertTrue(text.startswith("## What's changed\n"))
+        self.assertTrue(text.endswith('## Downloads and sources\n\n'))
         self.assertTrue(stderr.write.called)
 
 

@@ -21,8 +21,14 @@ class NativeTray;
 class TrayController final : public QObject {
  Q_OBJECT
 public:
- TrayController(OperationService&, std::function<void(const QString&)> openView,
+ // openView(view, activationToken): the token is the tray host's xdg-activation
+ // token for the click that asked for the view, or empty (#657).
+ using ViewOpener = std::function<void(const QString& view, const QString& activationToken)>;
+ TrayController(OperationService&, ViewOpener openView,
                 std::function<void()> quit, QObject* parent = nullptr);
+ TrayController(OperationService& operations, std::function<void(const QString&)> openView,
+                std::function<void()> quit, QObject* parent = nullptr)
+  : TrayController(operations, ViewOpener([open = std::move(openView)](const QString& view, const QString&) { open(view); }), std::move(quit), parent) {}
  ~TrayController() override;
  bool available() const;
  bool availabilityKnown() const;
@@ -34,6 +40,7 @@ public:
  // item; for a failed or partial upload, the failure in plain words, whether a
  // local copy was kept and what was copied (#152).
  static QString completionTitle(const QJsonObject& operation);
+ static QString diagnosticsActionText(const QJsonObject& operation);
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
  // A provider or operation error as a short lower-case phrase.
  static QString failureReason(const QJsonObject& error);
@@ -68,13 +75,16 @@ private:
  void invokeAction(const QString&, bool fromShortcut = false, const QJsonObject& options = {});
 #ifdef Q_OS_LINUX
  void openNotificationLink(const QUrl&);
+ // The graphical resident's toast, sent without waiting for the server (#597).
+ void showTrayMessage(const QString& title, const QString& message, bool warning);
+ int trayMessagesInFlight_ = 0;
 #endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;
  // The Show in folder button: a refusal is logged and said, never silent.
  void showSavedPackage(const QString& path);
  // `code` names the notification in the log, which records each one (#250).
- void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
+ void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {}, const QString& diagnosticsLabel = {});
  quint64 notifications_ = 0;
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();void refreshMenu();void cancelUploads();
@@ -99,7 +109,9 @@ private:
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;
- std::function<void(const QString&)> openView_;
+ ViewOpener openView_;
+ // The host's token while a native tray click is dispatched; empty otherwise.
+ QString activationToken_;
  std::function<void()> quit_;
  QSystemTrayIcon* tray_ = nullptr;
 #ifdef Q_OS_LINUX

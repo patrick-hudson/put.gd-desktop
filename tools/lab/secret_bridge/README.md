@@ -24,7 +24,7 @@ build/dependencies/proton-runtime/build-source/node_modules/@oven/bun-linux-x64/
   --outfile build/lab-secret-bridge/putgd-lab-proton-secrets
 ```
 
-Use the pinned Bun 1.4.2 artifact, then upload both executables to an owned
+Use the pinned Bun 1.4.4 artifact, then upload both executables to an owned
 absolute path in each disposable guest. The Qt relay refuses a symlink, a
 non-owned executable, or a group/world-writable executable. For Proton it locks
 exactly `/tmp/putgd-proton-accounts-UID/SHA256(reference UTF-8).lock` with

@@ -1,0 +1,4 @@
+linuxmint 22.3
+Cinnamon 6.6.4
+libqt6core6
+libqt6core6t64:amd64	6.4.2+dfsg-21.1build5

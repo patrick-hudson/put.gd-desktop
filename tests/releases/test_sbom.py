@@ -160,6 +160,68 @@ class Components(unittest.TestCase):
         (self.root / 'usr/lib/libicutu.so.73').write_bytes(b'synthetic tool utility library')
         self.assertEqual(dict(sbom.appimage_scope_properties(self.root, item))['putgd:toolsAbsent'], 'false')
 
+    def test_embedded_harfbuzz_scope_binds_qt_commit_library_bytes_and_absent_wasm_shaper(self):
+        gui = self.root / 'usr/lib/libQt6Gui.so.6'
+        gui.parent.mkdir(parents=True, exist_ok=True)
+        gui.write_bytes(b'synthetic Qt GUI with hb_shape and 14.5.0')
+        module = {'id': 'qtbase', 'source': {'commit': '1' * 40}, 'files': ['usr/lib/libQt6Core.so.6', 'usr/lib/libQt6Gui.so.6']}
+        entry = {'name': 'HarfBuzz-NG', 'version': '14.5.0', 'usedBy': ['libQt6Gui.so.6']}
+        before = dict(sbom.embedded_scope_properties(self.root, module, entry))
+        self.assertEqual(before, {'putgd:commit': '1' * 40, 'putgd:filesSha256': sbom.files_digest(self.root, ['usr/lib/libQt6Gui.so.6']),
+                                  'putgd:toolsAbsent': 'true'})
+        # Only HarfBuzz gets this scope; other attributions keep their plain records.
+        self.assertEqual(sbom.embedded_scope_properties(self.root, module, {'name': 'LibPNG', 'usedBy': ['libQt6Gui.so.6']}), [])
+        gui.write_bytes(b'synthetic rebuilt Qt GUI')
+        self.assertNotEqual(dict(sbom.embedded_scope_properties(self.root, module, entry))['putgd:filesSha256'],
+                            before['putgd:filesSha256'])
+        for marker in sbom.WASM_SHAPER_MARKERS:
+            with self.subTest(marker=marker):
+                gui.write_bytes(b'synthetic Qt GUI\0' + marker + b'\0(ii$*)\0')
+                self.assertEqual(dict(sbom.embedded_scope_properties(self.root, module, entry))['putgd:toolsAbsent'], 'false')
+        gui.write_bytes(b'synthetic Qt GUI')
+        for runtime in ('usr/lib/libiwasm.so', 'usr/lib/libvmlib.a'):
+            with self.subTest(runtime=runtime):
+                (self.root / runtime).write_bytes(b'synthetic WAMR')
+                self.assertEqual(dict(sbom.embedded_scope_properties(self.root, module, entry))['putgd:toolsAbsent'], 'false')
+                (self.root / runtime).unlink()
+        self.assertEqual(dict(sbom.embedded_scope_properties(self.root, module, entry))['putgd:toolsAbsent'], 'true')
+        with self.assertRaisesRegex(ValueError, 'missing from its Qt module'):
+            sbom.embedded_scope_properties(self.root, module, {**entry, 'usedBy': ['libQt6Gui.so.6', 'libQt6Widgets.so.6']})
+        gui.unlink()
+        with self.assertRaises(ValueError):
+            sbom.embedded_scope_properties(self.root, module, entry)
+
+    def test_appimage_harfbuzz_component_matches_its_scope_only_while_the_evidence_holds(self):
+        gui = self.root / 'usr/lib/libQt6Gui.so.6'
+        gui.parent.mkdir(parents=True, exist_ok=True)
+        gui.write_bytes(b'synthetic Qt GUI')
+        inventory = copy.deepcopy(INVENTORY)
+        qtbase = next(item for item in inventory['components'] if item['id'] == 'qtbase')
+        qtbase['files'] = ['usr/lib/libQt6Gui.so.6']
+        qtbase['embedded'].append({'name': 'HarfBuzz-NG', 'version': '14.5.0', 'license': 'MIT', 'usedBy': ['libQt6Gui.so.6']})
+        (self.root / 'usr/share/doc/putgd/bundled-components.json').write_text(json.dumps(inventory))
+        harfbuzz = self.by_name(sbom.appimage_components(self.root))['harfbuzz']
+        self.assertEqual(harfbuzz['cpe'], 'cpe:2.3:a:harfbuzz_project:harfbuzz:14.5.0:*:*:*:*:*:*:*')
+        props = properties(harfbuzz)
+        self.assertEqual(props['putgd:embeddedIn'], 'qtbase')
+        policy = {'schemaVersion': 2, 'severities': ['Critical', 'High'], 'requireFix': True,
+                  'block': {'development': False, 'nightly': False, 'stable': True},
+                  'ignore': [{'id': 'CVE-2026-113679', 'component': 'harfbuzz', 'reason': 'WASM shaper not built',
+                              'expires': '2027-01-29', 'scope': 'hb'}],
+                  'scopes': {'hb': {'package': 'appimage', 'component': 'harfbuzz', 'version': '14.5.0',
+                                    'properties': {key: props[key] for key in ('putgd:commit', 'putgd:filesSha256', 'putgd:toolsAbsent')}}}}
+        finding = {'id': 'CVE-2026-113679', 'severity': 'High', 'aliases': [], 'component': 'harfbuzz', 'version': '14.5.0',
+                   'origin': 'bundled', 'fixState': 'fixed', 'fixedIn': ['15.0.0'], 'package': 'appimage', 'properties': props}
+        today = datetime.date(2026, 11, 1)
+        items = [dict(finding)]
+        sbom.classify(items, policy, 'stable', today)
+        self.assertEqual(items[0]['status'], 'accepted until 2027-01-29')
+        gui.write_bytes(b'synthetic Qt GUI\0font_glyph_to_string\0')
+        changed = properties(self.by_name(sbom.appimage_components(self.root))['harfbuzz'])
+        items = [{**finding, 'properties': changed}]
+        sbom.classify(items, policy, 'stable', today)
+        self.assertEqual(items[0]['status'], 'blocking (acceptance scope mismatch)')
+
     def test_disposition_fingerprint_rejects_missing_or_external_files(self):
         for name in ['usr/lib/missing.so', '../outside']:
             with self.subTest(name=name), self.assertRaises(ValueError):
@@ -275,8 +337,16 @@ class Policy(unittest.TestCase):
         self.assertEqual(evidence['scopeFingerprints'], policy['scopes'])
         inputs = json.loads((sbom.ROOT / 'packaging/appimage/tools.lock.json').read_text())['buildInputs']
         for scope in policy['scopes'].values():
-            item = inputs[scope['component']]
-            self.assertEqual(scope['version'], item['release'])
+            if scope['component'] == 'harfbuzz':
+                # Embedded in the official Qt binaries: bound to the locked Qt and its qtbase commit.
+                item = next(item for item in inputs['qtLicenseSources'] if item['repository'].endswith('/qtbase.git'))
+                self.assertEqual(evidence['harfbuzz']['qt'], inputs['qt'], 'Qt changes require HarfBuzz disposition reassessment')
+                self.assertEqual(item['release'], inputs['qt'])
+                self.assertEqual(scope['version'], evidence['harfbuzz']['version'])
+                self.assertEqual(scope['properties']['putgd:commit'], evidence['harfbuzz']['qtSource']['commit'])
+            else:
+                item = inputs[scope['component']]
+                self.assertEqual(scope['version'], item['release'])
             self.assertEqual(scope['properties']['putgd:commit'], item['commit'])
         configure = json.loads((sbom.ROOT / 'packaging/appimage/media.json').read_text())['ffmpeg']['configure']
         self.assertEqual(evidence['ffmpeg']['configuredComponents'], configure,

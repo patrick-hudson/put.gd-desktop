@@ -1,7 +1,11 @@
 """Hosted workflow boundaries. actionlint in the contracts job parses the syntax."""
 import json
+import os
 from pathlib import Path
 import re
+import subprocess
+import sys
+import textwrap
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -59,16 +63,44 @@ class Workflows(unittest.TestCase):
         summary = job(ci, 'ci')
         self.assertIn('name: CI', summary)
         self.assertIn('if: always()', summary)
-        self.assertIn('needs: [changes, contracts, linux, portable, packages, pipewire]', summary)
+        self.assertIn('needs: [changes, contracts, linux, packages, pipewire]', summary)
         self.assertIn("'packages': 'success' if selected.get('packages') == 'true' else 'skipped'", summary)
         self.assertIn("'pipewire': 'success' if selected.get('pipewire') == 'true' and selected.get('packages') != 'true' else 'skipped'", summary)
+
+    def test_ci_summary_accepts_only_the_selected_successes(self):
+        summary = job(workflow('ci.yml'), 'ci')
+        script = textwrap.dedent(summary.split("python3 - <<'PY'\n", 1)[1].rsplit('          PY', 1)[0])
+        for build, packages, pipewire in ((False, False, False), (True, False, False),
+                                          (False, False, True), (True, True, True)):
+            expected = {'changes': 'success', 'contracts': 'success',
+                        'linux': 'success' if build else 'skipped',
+                        'packages': 'success' if packages else 'skipped',
+                        'pipewire': 'success' if pipewire and not packages else 'skipped'}
+            needs = {name: {'result': result} for name, result in expected.items()}
+            needs['changes']['outputs'] = {name: str(value).lower() for name, value in
+                                           (('build', build), ('packages', packages), ('pipewire', pipewire))}
+
+            def run():
+                return subprocess.run([sys.executable, '-c', script], capture_output=True, text=True,
+                                      env=dict(os.environ, NEEDS=json.dumps(needs)))
+
+            result = run()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for name, want in expected.items():
+                for result in ('failure', 'cancelled', 'skipped', 'success'):
+                    if result == want:
+                        continue
+                    with self.subTest(build=build, packages=packages, pipewire=pipewire,
+                                      job=name, result=result):
+                        needs[name]['result'] = result
+                        self.assertNotEqual(run().returncode, 0)
+                needs[name]['result'] = want
 
     def test_path_selection_gates_only_the_heavy_jobs(self):
         ci = workflow('ci.yml')
         self.assertIn('python3 tools/ci/changes.py', job(ci, 'changes'))
         self.assertNotIn('needs:', job(ci, 'contracts'))
-        for name in ('linux', 'portable'):
-            self.assertIn("if: needs.changes.outputs.build == 'true'", job(ci, name))
+        self.assertIn("if: needs.changes.outputs.build == 'true'", job(ci, 'linux'))
         self.assertIn("if: needs.changes.outputs.packages == 'true'", job(ci, 'packages'))
 
     def test_pipewire_check_links_the_appimage_plugin_on_a_pipewire_16_container(self):
@@ -117,12 +149,28 @@ class Workflows(unittest.TestCase):
         contracts = job(workflow('ci.yml'), 'contracts')
         for group in ('release', 'proton', 'lab', 'observer', 'evidence'):
             self.assertIn('python3 tools/ci/contracts.py ' + group, contracts)
-        self.assertEqual(contracts.count('if: always()'), 8)
+        self.assertEqual(contracts.count('if: always()'), 9)
         self.assertIn('python3-pil python3-pytest', contracts)
         self.assertIn('python3 -m pytest -v tests/desktop/test_surface*.py', contracts)
         self.assertIn('--junitxml=build/contracts/surface-tests.xml', contracts)
         self.assertIn('sha256sum --check --strict', contracts)
         self.assertIn('qemu-utils', contracts)
+
+    def test_contracts_scan_every_ref_for_leaked_secrets(self):
+        # A fork receives every public ref, so the scan reads all of them, with
+        # the pinned gitleaks release and the repository's narrow allowlist.
+        contracts = job(workflow('ci.yml'), 'contracts')
+        self.assertIn('fetch-depth: 0', contracts.split('- name:', 1)[0])
+        scan = contracts.split('- name: Scan every branch and tag for leaked secrets', 1)[1].split('- name:', 1)[0]
+        self.assertIn('if: always()', scan)
+        self.assertRegex(scan, r'gitleaks/releases/download/v8\.\d+\.\d+/gitleaks_8\.\d+\.\d+_linux_x64\.tar\.gz')
+        self.assertRegex(scan, r'echo "[0-9a-f]{64}  \$archive" \| sha256sum --check --strict')
+        for text in ('--config .gitleaks.toml', '--log-opts=--all', '--redact', '--exit-code 1',
+                     '--report-path build/contracts/gitleaks.sarif'):
+            self.assertIn(text, scan)
+        config = (ROOT / '.gitleaks.toml').read_text()
+        self.assertIn('useDefault = true', config)
+        self.assertNotRegex(config, r'(?m)^paths\s*=')
 
     def test_linux_tests_keep_their_isolation_and_skip_the_duplicate_release_compile(self):
         linux = job(workflow('ci.yml'), 'linux')
@@ -222,13 +270,6 @@ class Workflows(unittest.TestCase):
         self.assertEqual(spec['version'], {'major': 1, 'minor': 0})
         self.assertEqual(spec['local'], [{'cpu': [{'id': 'runner', 'slots': 3}]}])
         self.assertIn('RESOURCE_GROUPS "cpu:1"', (ROOT / 'cmake/TestPolicy.cmake').read_text())
-
-    def test_portable_compiles_windows_only(self):
-        portable = job(workflow('ci.yml'), 'portable')
-        self.assertIn('os: [windows-2022]', portable)
-        self.assertNotIn('macos', portable)
-        self.assertIn('cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH=', portable)
-        self.assertIn('--contract tools/ci/provision-portable-deps.sh', portable)
 
     def test_packages_build_every_format_and_collect_only_tagged_runs(self):
         packages = workflow('package.yml')

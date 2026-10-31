@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/home/user/s840ro/runtime/putgd/session.sock", "utf8Bytes": 44, "passed": true}, {"path": "/home/user/s840rx/runtime/putgd/session.sock", "utf8Bytes": 44, "passed": true}, {"path": "/tmp/.X11-unix/X1840", "utf8Bytes": 20, "passed": true}]}

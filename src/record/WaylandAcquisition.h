@@ -32,4 +32,27 @@ inline constexpr qint64 kMaxFrameAgeNs = 100'000'000;
 inline constexpr qint64 kFutureSlackNs = 5'000'000;
 struct FrameTime { qint64 running = 0; qint64 ageNs = -1; };  // ageNs -1: arrival time used
 FrameTime pipewireFrameTime(qint64 framePts, qint64 monotonicNow, qint64 runningNow, qint64 previous);
+
+// KWin 6.7 defers a screen-cast frame that arrives within an integer
+// millisecond interval of its previous send and stamps that send after its
+// synchronous readback, so a 60 Hz stream yields about 48 frames per second
+// and the arrivals jitter by a frame. The throttle only runs when the
+// negotiated max_framerate is non-zero, and KWin offers 0/1 as the minimum:
+// this capsfilter asks for it. A compositor whose range excludes 0/1 refuses
+// the link, and the pipeline retries without the filter.
+inline QString pipewireUnthrottledCaps() { return QStringLiteral(" ! video/x-raw,max-framerate=0/1"); }
+
+// Arrival times carry the delivery jitter (readback, deferral, scheduling):
+// about +-8 ms on KWin for a 16.7 ms frame, enough for videorate to put two
+// frames in one slot and none in the next (a repeat and a skip, 5 of 60 per
+// second). The cadence lock stamps each frame with new content on the slot
+// after the previous stamp as long as it arrived within `tolerance` of that
+// slot; a frame arriving earlier than that is an extra (a cursor move, a
+// second render before one presentation) and is dropped (-1); one arriving
+// later resynchronises to its arrival. Stamps therefore follow arrivals on
+// average (the audio offset #86 measured stays) and sit on the grid between
+// resyncs. `previous` -1 takes the arrival.
+struct FrameLock { qint64 periodNs = 0; qint64 toleranceNs = 0; };
+inline FrameLock frameLock(int fps) { const qint64 period = fps > 0 ? 1'000'000'000 / fps : 0; return {period, period * 7 / 10}; }
+qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& lock);
 }

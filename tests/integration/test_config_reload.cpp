@@ -36,6 +36,19 @@ private slots:
    const auto error=Settings::validate(rejected);QCOMPARE(error.code,QString("config_invalid"));
   }
  }
+ void recordingFrameRateDefaultsValidatesAndReloads() {
+  // #984: omitted means 30; 60 is the only alternative.
+  auto doc=Settings::defaults();QVERIFY(!doc["preferences"].toObject().contains("recordingFrameRate"));
+  QCOMPARE(Settings::fromValidated(doc).recordingFrameRate,30);
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));
+  auto preferences=doc["preferences"].toObject();preferences["recordingFrameRate"]=60;doc["preferences"]=preferences;
+  QVERIFY(!Settings::validate(doc));QVERIFY(settings.save(doc,{}));
+  QCOMPARE(settings.snapshot().recordingFrameRate,60);
+  for(const auto& invalid:QList<QJsonValue>{0,15,24,59,61,120,30.5,"60",true,QJsonValue::Null}) {
+   auto rejected=doc;auto prefs=rejected["preferences"].toObject();prefs["recordingFrameRate"]=invalid;rejected["preferences"]=prefs;
+   const auto error=Settings::validate(rejected);QCOMPARE(error.code,QString("config_invalid"));QCOMPARE(error.details["path"].toString(),QString("/preferences/recordingFrameRate"));
+  }
+ }
  void replacementsAndValidationHaveNoSideEffects() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());QVERIFY(settings.save(doc,{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QSignalSpy accepted(&settings,&SettingsService::accepted);
   for(int index=0;index<3;++index) {auto preferences=doc["preferences"].toObject();preferences["notifications"]=index%2==1;doc["preferences"]=preferences;QSaveFile file(settings.path());file.setDirectWriteFallback(false);QVERIFY(file.open(QIODevice::WriteOnly));file.write(QJsonDocument(doc).toJson());QVERIFY(file.commit());PUTGD_TRY_COMPARE(accepted.count(),index+1);QCOMPARE(settings.document(),doc);}

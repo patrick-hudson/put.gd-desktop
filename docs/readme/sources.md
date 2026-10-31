@@ -1,3 +1,46 @@
+# README image sources
+
+The current README uses three screenshots from the `ui-catalog` artifact of
+[CI run 41225146672](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41225146672),
+the newest successful CI run on `nightly` when collected on 2026-10-31.
+The run started at 17:33:59 UTC. Its manifest records source commit
+`8694706f3ae3e357f9bb3eb1f999f44a4ed278e4`, tree
+`f9c5d5de1cc05e10416a77f5ad74f4ac1ee6e632`, and build
+`26.1031.3481-dev+g8694706f3ae3`.
+
+These are current application widgets rendered with synthetic sample content,
+not real-desktop acceptance evidence. The catalog includes a deliberately fixed
+sample version in the main-window footer; it is not the source/build identity.
+The selected images contain no URLs, credentials, account names or personal data.
+
+| README file | Catalog source | Preparation |
+| --- | --- | --- |
+| `editor.png` | `20-editor-redact.png` | Full 1180 × 820 frame; hero, showing annotation and redaction tools |
+| `recording-bar.png` | `34-record-recording-bar.png` | Full 892 × 52 frame; recording with system audio, Pause and Stop |
+| `history.png` | `history-gallery-compact.png` | Crop `(0, 0, 1060, 440)` from 1060 × 680; keeps navigation and the complete first row of cards, excluding the partly visible second row and sample-version footer |
+
+Images retain the catalog's dark theme and native resolution. PNGs were losslessly
+re-encoded with Pillow; no widget content was painted over or replaced. There
+are no composites, generated illustrations or older screenshots in the README.
+
+Retrieve the source artifact with:
+
+```sh
+gh run download 41225146672 --repo patrick-hudson/put.gd-desktop \
+  --name ui-catalog --dir work/readme-draft/catalog
+```
+
+## Image checksums
+
+- `editor.png`: `488d8bf4fd005a46c47ac0077df20205e55bf43d2b654bdb871da75225fa3893`
+- `recording-bar.png`: `4dc7657b231cb40b6bccac36e2cb2aa4d91f720f671bd48425b2e4428b08dd24`
+- `history.png`: `11934c9efc717f9df97d7ecf3834b1240a1de8e9cf89344ebd8ab08a6cc94a04`
+
+## Retained assets from the previous README
+
+The files documented below remain in the repository for provenance. The current
+README does not reference them.
+
 # README assets
 
 Everything under `docs/readme/` exists only for the repository README. Nothing

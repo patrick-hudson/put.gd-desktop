@@ -90,7 +90,7 @@ function closed(actor) {equal([actor.destroyed, grabs], [true, 0]);}
     const {actor, result} = begin();
     equal(actor._instructionText.includes('Enter to capture'), true);
     equal(actor._instructionText.includes('Display 2 · Entire display · 1280 × 720 px'), true);
-    equal([actor._rectangle.x, actor._rectangle.y, actor._rectangle.width, actor._rectangle.height], [1920, -100, 1280, 720]);
+    equal([actor._rectangle.visible, actor._contrast.visible], [false, false]); // No outline until a region exists.
     key(actor, 'Left', 3);
     equal(actor._instructionText.includes('Enter to capture'), true);
     equal(actor._instructionText.includes('640 × 360'), true);
@@ -221,19 +221,50 @@ print('PASS recording selector purpose and live Enter hints');
     equal(RegionSelection.sizeLabel(null, scaledOutputs), '');
     equal(RegionSelection.textureArea([1920, 0, 1280, 720], 1.5, 4800, 1620), [2880, 0, 1920, 1080]);
     equal(RegionSelection.textureArea([1920, -100, 1280, 720], 1, 3200, 1080), [1920, 0, 1280, 620]);
+    // #1049: a window is captured on its head's output grid, not a 2x backing grid.
+    const secondary = {logical: [1280, 0, 1280, 800], density: 1.5};
+    equal(RegionSelection.outputGrid([1280, 0, 1280, 800], secondary), {pixels: [1920, 1200], logical: [1280, 0, 1280, 800]});
+    equal(RegionSelection.outputGrid([1281, 1, 100, 50], secondary), {pixels: [151, 76], logical: [1280 + 1 / 1.5, 1 / 1.5, 151 / 1.5, 76 / 1.5]});
+    equal(RegionSelection.outputGrid([100, 40, 640, 480], {logical: [0, 0, 1280, 800], density: 1}), {pixels: [640, 480], logical: [100, 40, 640, 480]});
+    equal(RegionSelection.outputGrid([-1270, 10, 640, 480], {logical: [-1280, 0, 1280, 800], density: 2}), {pixels: [1280, 960], logical: [-1270, 10, 640, 480]});
 }
 print('PASS hint pill and size label placement, label monitor, sizes and frozen texture areas');
 
+// Contract fallback colours to the actual palette fields, including RGB border
+// entries, so a future token change cannot leave an old literal in the Shell.
+{
+    const themeFile = Gio.File.new_for_path(ARGV[0]).get_parent().get_parent().get_parent().resolve_relative_path('src/ui/Theme.cpp');
+    const [, themeBytes] = themeFile.load_contents(null);
+    const theme = new TextDecoder().decode(themeBytes);
+    for (const [name, scheme] of [['dark', 'prefer-dark'], ['light', 'prefer-light']]) {
+        const block = theme.slice(theme.indexOf(`const Palette ${name}{`)).split('};')[0];
+        const fields = [...block.matchAll(/QColor\(([^)]+)\)/g)].map(match => match[1]);
+        const color = index => fields[index].replaceAll('"', '').toLowerCase();
+        equal(RegionSelection.pillTokens(scheme), {surfaceRaised: color(3), text: color(7), borderStrong: color(6)});
+    }
+    for (const scheme of ['prefer-dark', 'prefer-light']) {
+        const tokens = RegionSelection.pillTokens(scheme);
+        const actor = new globalThis.RegionSelector(false, null, '', null, {scheme, tokens});
+        equal(actor._hint.style, RegionSelection.pillStyle(tokens));
+        equal(actor._size.style, actor._hint.style);
+        actor.destroy();
+    }
+    let rejected = false;
+    try { RegionSelection.pillStyle({surfaceRaised: 'red; arbitrary: css', text: '#ffffff', borderStrong: '#737373'}); }
+    catch (_) { rejected = true; }
+    equal(rejected, true);
+}
 for (const scheme of ['prefer-dark', 'prefer-light', 'default']) {
-    const style = RegionSelection.pillStyle(scheme);
-    equal(style.includes(scheme === 'prefer-dark' ? '#191919' : '#eeeeeb'), true);
+    const tokens = RegionSelection.pillTokens(scheme);
+    const style = RegionSelection.pillStyle(tokens);
+    equal(style.includes(tokens.surfaceRaised), true);
     equal(style.includes(scheme === 'prefer-dark' ? '#f0f0ec' : '#292926'), true);
     equal(style.includes('border-radius: 999px'), true);
 }
 {
     const {actor, result} = begin();
     const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
-    equal(actor._hint.style, RegionSelection.pillStyle(settings.get_string('color-scheme')));
+    equal(actor._hint.style, RegionSelection.pillStyle(RegionSelection.pillTokens(settings.get_string('color-scheme'))));
     equal(actor._hint.text, 'Drag to select · Esc to cancel');
     equal(actor._hint.eased.opacity, 0);
     equal(actor._hint.eased.delay + actor._hint.eased.duration, 2000);

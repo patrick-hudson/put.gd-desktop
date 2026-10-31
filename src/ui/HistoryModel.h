@@ -2,6 +2,7 @@
 #include "UiSession.h"
 #include <QAbstractListModel>
 #include <QCache>
+#include <QDateTime>
 #include <QImage>
 #include <QJsonArray>
 #include <QSet>
@@ -45,8 +46,14 @@ public:
  static bool remoteDeletable(const QJsonObject& file);
 signals:void activityChanged();void busyChanged(bool);void loaded();void error(const QString&);
 private:
- void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;
- UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;
+ void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;bool scanDestinations()const;
+ // What the row offers and whether it failed: fixed until the next rebuild.
+ struct RowFacts {bool active=false,failed=false;QString primary;};
+ static RowFacts rowFacts(const QJsonObject&);
+ QString dayLabel(int row)const;
+ // Per row, kept with rows_: the parsed local creation time and facts that
+ // every paint asks for many times (#1064).
+ UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QList<QDateTime> createdAt_;QList<RowFacts> facts_;mutable QStringList dayLabels_;mutable QDate dayLabelsFor_;bool multipleDestinations_=false;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;
  bool queryBusy_=false,loadInFlight_=false,loadPending_=false,showCancelled_=false;int hiddenCancelled_=0;
  mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable bool thumbnailLoading_=false;mutable quint64 thumbnailGeneration_=0;
 };

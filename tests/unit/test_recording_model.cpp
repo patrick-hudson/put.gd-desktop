@@ -110,6 +110,18 @@ private slots:
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"fps", 0}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"fps", 61}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"fps", 29.97}}, config).code, QString("invalid_request"));
+        // #984: the adaptive rate is on unless a request turns it off, and round-trips.
+        QVERIFY(!recording::parseConfig({{"format", "mp4"}}, config));
+        QVERIFY(config.adaptiveFps);
+        QCOMPARE(config.toJson()["adaptiveFps"], QJsonValue(true));
+        QVERIFY(!recording::parseConfig({{"format", "mp4"}, {"fps", 60}, {"adaptiveFps", false}}, config));
+        QVERIFY(!config.adaptiveFps && config.fps == 60);
+        auto json = config.toJson();
+        json.remove("mime");
+        RecordingConfig copy;
+        QVERIFY(!recording::parseConfig(json, copy));
+        QVERIFY(!copy.adaptiveFps);
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"adaptiveFps", 1}}, config).code, QString("invalid_request"));
         // Silent formats cannot include audio; the microphone is reserved and refused.
         QCOMPARE(recording::parseConfig({{"format", "gif"}, {"audio", QJsonObject{{"system", true}}}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"audio", QJsonObject{{"microphone", true}}}}, config).code, QString("recording_unsupported"));

@@ -8,6 +8,8 @@
 #include <QVersionNumber>
 #include <QLibrary>
 #include <QProcess>
+#include <QLocalServer>
+#include <QLocalSocket>
 #include <QTemporaryDir>
 #include <QFile>
 #include <QFileInfo>
@@ -36,7 +38,7 @@ namespace {
 struct HelperSession {
  QTemporaryDir directory{"/tmp/putgd-capture-XXXXXX"};
  QString path,nonce=QUuid::createUuid().toString(QUuid::WithoutBraces),failure;
- QFile artifact;QProcess process;CaptureControl control{process};
+ QFile artifact;QProcess process;CaptureControl control{process};QProcessEnvironment environment=QProcessEnvironment::systemEnvironment();
  bool ready=false;int results=0,cancellations=0,errors=0;QJsonObject result;
  ~HelperSession(){if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(2000);}}
  QJsonObject command(const QString& cursor="0")const{return {{"nonce",nonce},{"generation","1"},{"cursor",cursor}};}
@@ -56,7 +58,7 @@ struct HelperSession {
    if(type=="cancelled")++cancellations;
    if(type=="error"){++errors;failure=payload["code"].toString();}
   });
-  process.start(PUTGD_REAL_CAPTURE_HELPER,{});if(!process.waitForStarted())return false;
+  process.setProcessEnvironment(environment);process.start(PUTGD_REAL_CAPTURE_HELPER,{});if(!process.waitForStarted())return false;
   return control.send("bootstrap",{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"nonce",nonce},{"generation","1"},{"target",frozen},{"cursor",QJsonObject{{"id","0"},{"cache",false}}},{"path",path},{"device",QString::number(qulonglong(identity.st_dev))},{"inode",QString::number(qulonglong(identity.st_ino))},{"limits",QJsonObject{{"imagePixels",10000000},{"imageBytes",40000000},{"maxFileBytes",40000000}}}});
  }
 };
@@ -167,6 +169,27 @@ private slots:
   }
   PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),ending=="eof"?3:0);QVERIFY(!QFile::exists(helper.path));
   if(ending=="cancel"||ending=="buffered-cancel"||ending=="eof"){QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.artifact.size(),qint64(0));QCOMPARE(helper.cancellations,ending=="eof"?0:1);}
+ }
+ void accessibilityStartsAfterTheSelectorMaps(){
+  // QGuiApplication::exec() would start Qt's AT-SPI bridge before the helper
+  // reads its bootstrap: 20-30 ms of synchronous D-Bus ahead of every selector
+  // (#1063). AT_SPI_BUS_ADDRESS makes Qt enable the bridge and connect here.
+  qputenv("XCURSOR_THEME","static");
+  QTemporaryDir bus("/tmp/putgd-a11y-XXXXXX");QVERIFY(bus.isValid());
+  QLocalServer server;QVERIFY(server.listen(bus.filePath("bus")));int connections=0;
+  // Refusing the connection keeps the helper's D-Bus handshake short.
+  connect(&server,&QLocalServer::newConnection,this,[&]{while(auto* socket=server.nextPendingConnection()){++connections;socket->abort();socket->deleteLater();}});
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  HelperSession helper;helper.environment.insert("AT_SPI_BUS_ADDRESS","unix:path="+bus.filePath("bus"));
+  QVERIFY2(helper.start(),qPrintable(helper.failure));PUTGD_TRY_VERIFY(helper.ready);
+  server.waitForNewConnection(0);QCOMPARE(connections,0);
+  QVERIFY(helper.control.send("preview",helper.command()));
+  PUTGD_TRY_VERIFY(!selectorWindows(connection,helper.process.processId()).isEmpty());
+  // Accessibility still starts once the selector is shown, without any input.
+  PUTGD_TRY_VERIFY(connections>0);
+  QVERIFY(helper.control.send("cancel",helper.envelope()));
+  PUTGD_TRY_COMPARE(helper.process.state(),QProcess::NotRunning);QCOMPARE(helper.process.exitStatus(),QProcess::NormalExit);QCOMPARE(helper.process.exitCode(),0);
+  QCOMPARE(helper.cancellations,1);QCOMPARE(helper.results,0);QCOMPARE(helper.errors,0);QCOMPARE(helper.artifact.size(),qint64(0));
  }
  void previewTermination_data(){
   QTest::addColumn<QString>("scenario");

@@ -1,4 +1,5 @@
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -197,9 +198,16 @@ const RegionSelection = {
     hint: 'Drag to select · Esc to cancel',
     hintHoldMs: 1700,
     hintFadeMs: 300,
-    pillStyle(scheme) {
-        const dark = scheme === 'prefer-dark';
-        return `background-color: ${dark ? '#191919' : '#eeeeeb'}; color: ${dark ? '#f0f0ec' : '#292926'}; border: 1px solid ${dark ? '#515151' : '#aaaaa3'}; border-radius: 999px; padding: 4px 12px; font-size: 10.5pt;`;
+    // Native fallback for older clients; keep this contracted to Theme.cpp.
+    pillTokens(scheme) {
+        return scheme === 'prefer-dark'
+            ? {surfaceRaised: '#2a2a2a', text: '#f0f0ec', borderStrong: '#737373'}
+            : {surfaceRaised: '#ffffff', text: '#292926', borderStrong: '#8e8e87'};
+    },
+    pillStyle(tokens) {
+        for (const key of ['surfaceRaised', 'text', 'borderStrong'])
+            check(/^#[0-9a-f]{6}$/i.test(tokens[key]), 'bridge_protocol', 'Invalid region theme token');
+        return `background-color: ${tokens.surfaceRaised}; color: ${tokens.text}; border: 1px solid ${tokens.borderStrong}; border-radius: 999px; padding: 4px 12px; font-size: 10.5pt;`;
     },
     switchDisplay(region, monitors, current, backwards = false) {
         const next = (current + (backwards ? -1 : 1) + monitors.length) % monitors.length;
@@ -256,6 +264,14 @@ const RegionSelection = {
         const bottom = Math.min(textureHeight, Math.ceil((y + height) * scale));
         return [left, top, Math.max(0, right - left), Math.max(0, bottom - top)];
     },
+    // A window's logical rectangle on its head's output pixel grid (#1049): the
+    // pixels a desktop capture of that head holds, and their logical extent.
+    outputGrid([x, y, width, height], {logical: [mx, my], density}) {
+        const left = Math.floor((x - mx) * density), top = Math.floor((y - my) * density);
+        const right = Math.ceil((x + width - mx) * density), bottom = Math.ceil((y + height - my) * density);
+        return {pixels: [right - left, bottom - top],
+            logical: [mx + left / density, my + top / density, (right - left) / density, (bottom - top) / density]};
+    },
     sizeLabel(region, outputs = []) {
         if (!(region?.width > 0 && region?.height > 0))
             return '';
@@ -293,7 +309,7 @@ const RegionSelection = {
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
     // frozen (#629): the stage screenshot taken before selection, drawn as the
     // backdrop; without it the selector is transparent over the live desktop.
-    _init(recording = false, outputs = null, outcome = '', frozen = null) {
+    _init(recording = false, outputs = null, outcome = '', frozen = null, appearance = {}) {
         super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
         this._outputs = outputs;
         this._outcome = outcome;
@@ -312,9 +328,9 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._recording = recording;
         this._keyboardMonitor = this._monitor();
         this._hintMonitor = this._keyboardMonitor;
-        // The capture bridge has no app scheme field; use the native preference.
+        // The resident resolves System/Dark/Light and supplies the app tokens.
         const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
-        const style = RegionSelection.pillStyle(settings.get_string('color-scheme'));
+        const style = RegionSelection.pillStyle(appearance.tokens ?? RegionSelection.pillTokens(settings.get_string('color-scheme')));
         this._hint = new St.Label({reactive: false, text: RegionSelection.hint, style});
         this.add_child(this._hint);
         this._size = new St.Label({reactive: false, visible: false, text: '', style});
@@ -438,8 +454,10 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         if (!monitor)
             return;
         const selected = this._region?.width > 0 && this._region?.height > 0;
-        if (!selected)
-            this._outline(monitor);
+        if (!selected) {
+            this._rectangle.hide();
+            this._contrast.hide();
+        }
         const hintMonitor = this._hintMonitor || monitor;
         this._hint.set_position(...RegionSelection.hintPosition(hintMonitor, this._hint.get_preferred_width(-1)[1],
             this._hint.get_preferred_height(-1)[1], selected ? this._region : null));
@@ -988,6 +1006,10 @@ export default class PutgdExtension extends Extension {
             const sender = Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
                 'org.freedesktop.DBus', 'GetNameOwner', new GLib.Variant('(s)', [CLIENT]),
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+            // A selection needs the pointer and keyboard put.gd's open tray menu
+            // holds, and must not show that menu (#924).
+            if (action !== 'desktop' && action !== 'window')
+                this._closeTrayMenu(sender);
             // Recording selects its own region later; only the key press is relayed.
             if (action === 'record') {
                 if (this._enabled)
@@ -1008,6 +1030,27 @@ export default class PutgdExtension extends Extension {
             // No resident bridge: binding has no capture or clipboard effect.
             this._drop(id);
         }
+    }
+
+    // put.gd's tray menu, drawn by the Shell's AppIndicator host, keeps its grab
+    // while the binding runs (it is allowed in POPUP mode, #341) and stays over
+    // a selection and in its picture (#924). Close it, as put.gd's own Qt tray
+    // menu closes; desktop and window captures keep menus in the picture.
+    // Only a menu whose StatusNotifierItem belongs to the resident is closed.
+    _closeTrayMenu(sender) {
+        const menu = Main.panel?.menuManager?.activeMenu;
+        const busName = menu?.isOpen ? menu.sourceActor?._indicator?.busName : null;
+        if (typeof busName !== 'string' || !busName)
+            return false;
+        try {
+            if (this._clientPid(busName) !== this._clientPid(sender))
+                return false;
+        } catch {
+            return false;
+        }
+        // BoxPointer.PopupAnimation.NONE: gone before the selection or freeze.
+        menu.close(0);
+        return true;
     }
 
     PrepareAsync([id, action], invocation) {
@@ -1059,12 +1102,22 @@ export default class PutgdExtension extends Extension {
             'capture_target', 'Frozen external window disappeared or changed geometry');
             request.stage = 'window-texture';
             const actorGeometry = [request.actor.x, request.actor.y, request.actor.width, request.actor.height];
+            const head = request.layout[request.window.get_monitor()];
+            check(head, 'display_changed', 'The focused window has no monitor');
             const content = request.actor.paint_to_content(null);
-            const texture = content.get_texture();
-            const width = texture.get_width();
-            const height = texture.get_height();
+            let texture = content.get_texture();
+            // paint_to_content renders at the ceiled resource scale: on a 1.5x
+            // head that is the 2x backing grid (#1049). Resample it, as the
+            // stage does, onto the head's output grid, so a window saves the
+            // same pixels as a desktop capture of that head.
+            const resample = Math.abs(texture.get_width() / Math.ceil(request.actor.width) - head.density) > 1e-6;
+            const grid = resample ? RegionSelection.outputGrid(actorGeometry, head)
+                : {pixels: [texture.get_width(), texture.get_height()], logical: actorGeometry};
+            const [width, height] = grid.pixels;
             check(width > 0 && height > 0 && width * height <= limits.imagePixels && width * height * 4 <= limits.imageBytes,
                 'input_excessive', 'Frozen window exceeds image limits');
+            if (resample)
+                texture = this._resample(texture, actorGeometry, head.density, grid);
             const stream = Gio.MemoryOutputStream.new_resizable();
             request.stage = 'window-encode';
             await Shell.Screenshot.composite_to_stream(texture, 0, 0, width, height, 1, null, 0, 0, 1, stream);
@@ -1074,7 +1127,7 @@ export default class PutgdExtension extends Extension {
             const data = bytesOf(stream);
             // Actor texture includes the compositor's frame/shadow; use its
             // actual logical extents instead of recapturing the current focus.
-            selection = actorGeometry;
+            selection = grid.logical;
             frames.push({identity: `window-${request.window.get_stable_sequence()}`, logical: selection,
                 native: [0, 0, width, height], density: width / selection[2], rotation: 0, offset: 0, length: data.length});
             parts.push(data);
@@ -1097,7 +1150,7 @@ export default class PutgdExtension extends Extension {
                     check(content && Number.isFinite(scale) && scale > 0, 'capture_failed', 'GNOME could not freeze the desktop');
                     frozen = {content, scale, texture: content.get_texture()};
                 }
-                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null);
+                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null, request.limits.appearance ?? {});
                 this._selector = request.selector = selector;
                 request.stage = 'region-select';
                 const selected = await selector.selectAsync();
@@ -1151,6 +1204,33 @@ export default class PutgdExtension extends Extension {
         request.metadata = {version: 1, requestId: request.id, mime: 'application/x-putgd-capture', bytes: total, frames, selection};
         request.actor = request.window = null;
         return request.metadata;
+    }
+
+    // Draws a window snapshot (paint_to_content covers the actor's whole-pixel
+    // logical bounds) onto the output grid with linear filtering, the way the
+    // stage draws a window buffer whose scale differs from its head's.
+    _resample(texture, [x, y, width, height], density, {pixels: [pixelWidth, pixelHeight], logical: [gx, gy]}) {
+        const context = global.stage.context.get_backend().get_cogl_context();
+        const target = Cogl.Texture2D.new_with_size(context, pixelWidth, pixelHeight);
+        check(target, 'capture_failed', 'GNOME could not allocate the window texture');
+        target.set_auto_mipmap(false);
+        const framebuffer = Cogl.Offscreen.new_with_texture(target);
+        try {
+            framebuffer.allocate();
+        } catch {
+            throw failure('capture_failed', 'GNOME could not allocate the window framebuffer');
+        }
+        framebuffer.clear4f(Cogl.BufferBit.COLOR, 0, 0, 0, 0);
+        framebuffer.orthographic(0, 0, pixelWidth, pixelHeight, 0, 1);
+        const pipeline = Cogl.Pipeline.new(context);
+        pipeline.set_layer_texture(0, texture);
+        pipeline.set_layer_filters(0, Cogl.PipelineFilter.LINEAR, Cogl.PipelineFilter.LINEAR);
+        pipeline.set_layer_wrap_mode(0, Cogl.PipelineWrapMode.CLAMP_TO_EDGE);
+        const left = (Math.floor(x) - gx) * density, top = (Math.floor(y) - gy) * density;
+        framebuffer.draw_textured_rectangle(pipeline, left, top,
+            left + Math.ceil(width) * density, top + Math.ceil(height) * density, 0, 0, 1, 1);
+        framebuffer.finish();
+        return target;
     }
 
     _pngSize(data) {
@@ -1293,21 +1373,30 @@ export default class PutgdExtension extends Extension {
     // Screen recording: the resident asks for a rectangle before the helper
     // starts the Mutter stream, so the region is chosen with the same selector
     // as screenshots. Release(id) cancels it.
-    SelectAreaAsync([id], invocation) {
+    SelectAreaAsync([selection], invocation) {
         this._run(invocation, async sender => {
             check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+            check(selection.length <= 4096, 'bridge_protocol', 'Invalid region appearance');
+            const options = selection.startsWith('{') ? JSON.parse(selection) : {id: selection};
+            const id = options.id;
             const request = this._new(id, sender);
-            request.action = 'select';
-            request.stage = 'region-select';
-            const selector = new RegionSelector(true);
-            this._selector = request.selector = selector;
-            const selected = await selector.selectAsync();
-            request.selector = null;
-            this._selector = null;
-            this._alive(request);
-            check(selected, 'cancelled', 'GNOME region selection cancelled');
-            this._finish(id);
-            return {version: 1, requestId: id, rect: rectangle(selected)};
+            try {
+                request.action = 'select';
+                request.stage = 'region-select';
+                const selector = new RegionSelector(true, null, '', null, options.appearance ?? {});
+                this._selector = request.selector = selector;
+                const selected = await selector.selectAsync();
+                request.selector = null;
+                this._selector = null;
+                this._alive(request);
+                check(selected, 'cancelled', 'GNOME region selection cancelled');
+                this._finish(id);
+                return {version: 1, requestId: id, rect: rectangle(selected)};
+            } finally {
+                // _run receives the JSON envelope, not this decoded request ID.
+                // Release a revoked grab or failed selector immediately as well.
+                this._drop(id);
+            }
         });
     }
 

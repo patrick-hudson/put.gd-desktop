@@ -108,8 +108,9 @@ def verify_proton(api, catalog):
             raise ValueError('Proton source URL differs from catalog file')
         metadata = api.json('releases/tags/' + quote(unquote(tail[0]), safe=''))
         matches = [asset for asset in metadata['assets'] if asset['name'] == item['file']]
-        if metadata.get('draft') is not False or len(matches) != 1:
-            raise ValueError('Proton source must already be publicly available')
+        if (metadata.get('draft') is not False or metadata.get('prerelease') is not True
+                or len(matches) != 1):
+            raise ValueError('Proton source must be publicly available as a prerelease, never stable/Latest')
         verify_asset(api, matches[0], item)
         if snapshot(api.json('releases/' + str(metadata['id']))) != snapshot(metadata):
             raise ValueError('Proton source release changed during verification')

@@ -1,0 +1,10 @@
+{
+  "removed": [
+    {
+      "name": "Editor R4 Cinnamon bx_k238wh6f",
+      "port": 6081,
+      "type": "vm"
+    }
+  ],
+  "otherRowsPreserved": 16
+}

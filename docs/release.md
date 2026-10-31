@@ -67,9 +67,10 @@ secret and only warns when the notification fails; see
 a rewritten committer date on `nightly` HEAD could cause that; check the commit
 and its date.
 
-Nightly notes state automated coverage: Linux test suites, Windows portable
-compilation, package audits and the extracted-source production build. They are
-development releases, not new graphical, memory or live-S3 certification.
+Nightly notes state automated coverage: Linux test suites, package audits and
+the extracted-source production build. put.gd ships only Linux DEB, RPM and
+AppImage packages; native Windows support was dropped on 2026-10-31. Nightlies
+are development releases, not new graphical, memory or live-S3 certification.
 
 ### Changes in the release notes
 
@@ -217,9 +218,9 @@ or SDK general availability is not a publication prerequisite; the concrete
 
 Linux x86-64 Build and release jobs provision and test the pinned official JS
 helper, enable its bundle explicitly, and require matching runtime, notices and
-source catalog in native/AppImage audits. Windows/macOS Proton support remains
-outside this release scope. The curated source archive includes Proton build
-inputs and its production rebuild checks the extracted helper.
+source catalog in native/AppImage audits. Proton ships on Linux only. The
+curated source archive includes Proton build inputs and its production rebuild
+checks the extracted helper.
 
 Every Proton-enabled release delivers the current `proton-source-catalog.json`.
 Its permanent URLs point to the unchanged corresponding-source transport parts,
@@ -279,7 +280,12 @@ substitute a newer-glibc build or omit KDE region support to produce an asset.
 Screen recording ships in every installer. The DEBs and the RPM depend on the
 distro's GStreamer plugin packages and link the distro FFmpeg; the RPM also
 recommends `gstreamer1-plugin-openh264` and `openh264`, Cisco's library that
-replaces Fedora's `noopenh264` placeholder. Each DEB therefore installs only
+replaces Fedora's `noopenh264` placeholder. Recommends do not replace an installed
+conflicting placeholder: Fedora recording needs the explicit command
+`sudo dnf install openh264 gstreamer1-plugin-openh264`. The one-line installer
+runs that codec step when the Cisco repository is enabled; otherwise it prints
+the enable-then-install commands (see [codec setup](recording.md#packages-and-codecs)).
+Each DEB therefore installs only
 on the release it was built for: the Ubuntu 24.04 and 26.04 DEBs need
 `libavcodec60` and `libavcodec62`, which Debian 13 does not ship, so Debian 13
 has its own DEB built against its `libavcodec61` (issue #85; see the
@@ -358,8 +364,8 @@ GNOME capture currently targets Shell 50 and requires the host extension.
 Release collection also emits the matching extension ZIP. Installing files inside
 an AppImage does not install a host extension. See [GNOME setup](desktops/gnome.md).
 Minimum-Qt DEB compatibility compilation is separate from GNOME/KDE compositor
-qualification. Windows CI compilation is future-platform evidence, not a
-native support claim.
+qualification. CI builds Linux only; historical Windows compilation does not
+represent a supported release target.
 
 ## Package repositories
 
@@ -489,6 +495,16 @@ without repeating that compilation. Collection always verifies its identity,
 size and checksum; a source-build receipt, when present, must match as well.
 
 ## SBOMs and vulnerability scans
+
+The stable draft workflow also runs `tools/releases/audit_assets.py` on exact
+GitHub downloads, including all five packages/SBOMs, the linked complete/curated
+sources and the pinned Proton transport parts. It verifies the published SBOM
+declarations against the extracted files before regenerating/scanning them with
+the current database and stable policy. Official Bun advisories supplement the
+scanner because a database can miss a newly published embedded-runtime advisory.
+The retained `exact-asset-audit-TAG` artifact includes failures and raw findings.
+See [the runbook](release-runbook.md#4-run-acceptance-on-the-stable-draft) for the
+builder command and the separate manual review/acceptance boundary.
 
 Every `package.yml` run, tagged or not, ends with an `sbom` job (#420). It
 downloads the five packages, pins Syft and Grype by version and SHA-256

@@ -1,0 +1,10 @@
+{
+  "removed": [
+    {
+      "name": "Editor R4 GNOME bx_k48yxtyc",
+      "port": 6083,
+      "type": "vm"
+    }
+  ],
+  "otherRowsPreserved": 17
+}

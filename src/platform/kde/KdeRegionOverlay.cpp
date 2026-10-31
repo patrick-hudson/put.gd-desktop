@@ -6,10 +6,12 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QPainter>
+#include <QPaintEvent>
 #include <QMouseEvent>
 #include <QKeyEvent>
 #include <QCloseEvent>
 #include <QtMath>
+#include <QElapsedTimer>
 #include <QWindow>
 #include <QTimer>
 #include <QCursor>
@@ -22,7 +24,12 @@ namespace putgd {
 class KdeRegionOverlay::Surface final:public QWidget {
 public:
  Surface(KdeRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect),identity_(frame.identity){
-  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),logicalRect_,owner_.frames_,false,owner_.outcome_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);resize(frame.logicalRect.size().toSize());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
+  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),logicalRect_,owner_.frames_,false,owner_.outcome_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);
+  // Place the window on its output before the platform window exists. Qt moves a
+  // top-level whose geometry centre lies on another screen to that screen, and
+  // the layer surface binds the QWindow's output: a surface left at (0,0) lands
+  // on the head at the origin and the other heads get no selector (#1048).
+  setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
 #ifdef PUTGD_NATIVE_REGION
   // An individual layer role is applied before show; ordinary app windows keep
   // their normal xdg-shell integration. Never mutate QT_WAYLAND_SHELL_INTEGRATION.
@@ -34,18 +41,24 @@ public:
   layer->setExclusiveZone(-1);layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
 #endif
  }
- void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_);update();}
+ // Damage only the outline rings and pills of the previous and next state;
+ // the frozen backdrop is blitted for those pixels alone and Qt Wayland
+ // commits that region, not a monitor-sized buffer, per pointer event (#6).
+ void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_);const auto next=chromeArea();update(painted_|next);painted_=next;}
+ QRegion chromeArea()const{const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
 protected:
- void paintEvent(QPaintEvent*) override{
-  QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+ void paintEvent(QPaintEvent* e) override{
+  QElapsedTimer work;work.start();
+  QPainter p(this);p.setClipRegion(e->region());p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);
   if(owner_.clearing_)return;
   const int own=ownScreen();
   if(owner_.frozen_&&!owner_.frames_[own].pixels.isNull())p.drawImage(rect(),owner_.frames_[own].pixels);
   // No scrim on any display (#629): the outline, a fading hint and the size.
-  const auto clipped=(owner_.selection_.isEmpty()&&owner_.frames_[activeScreen()].identity==identity_?logicalRect_:owner_.selection_.intersected(logicalRect_));
+  const auto clipped=owner_.selection_.intersected(logicalRect_);
   if(!clipped.isEmpty())paintSelectionOutline(p,clipped.translated(-logicalRect_.topLeft()));
   QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);
   paintRegionChrome(p,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
+  owner_.stats_.painted(work.nsecsElapsed()/1e6);
  }
  int ownScreen() const {for(int i=0;i<owner_.frames_.size();++i)if(owner_.frames_[i].identity==identity_)return i;return 0;}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
@@ -67,10 +80,11 @@ protected:
   }
  }
  void closeEvent(QCloseEvent* e) override{owner_.cancel({"display_changed","The compositor dismissed a selection surface",{}});e->accept();}
-private:KdeRegionOverlay& owner_;QRectF logicalRect_;QString identity_;
+private:KdeRegionOverlay& owner_;QRectF logicalRect_;QString identity_;QRegion painted_;
 };
 KdeRegionOverlay::KdeRegionOverlay(QList<CaptureFrame> frames,QObject* parent,bool recording,QString outcome,bool frozen):QObject(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),recording_(recording),frozen_(frozen){}
-void KdeRegionOverlay::repaint(){for(auto* surface:surfaces_)surface->update();}
+// The hint fade and the clearing commit before dismissal: clearing repaints everything.
+void KdeRegionOverlay::repaint(){for(auto* surface:surfaces_){if(clearing_)surface->update();else surface->updateSelection();}}
 KdeRegionOverlay::~KdeRegionOverlay(){
 #ifdef PUTGD_NATIVE_REGION
  if(dismissal_)wl_callback_destroy(dismissal_);
@@ -86,15 +100,21 @@ void KdeRegionOverlay::start(){
  hintScreen_=keyboardScreen_;
  for(const auto& frame:frames_){QScreen* match=nullptr;for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){match=screen;break;}if(!match){cancel({"display_changed","Capture output disappeared before selection",{}});return;}
   connect(match,&QScreen::geometryChanged,this,[this]{cancel({"display_changed","Display geometry changed during region selection",{}});});connect(match,&QScreen::logicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display scale changed during region selection",{}});});connect(match,&QScreen::physicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display density changed during region selection",{}});});connect(match,&QScreen::orientationChanged,this,[this]{cancel({"display_changed","Display rotation changed during region selection",{}});});
-  addSurface(frame,match);
+  if(!addSurface(frame,match))return;
  }
  hint_.start();
 #endif
 }
-void KdeRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){auto* surface=new Surface(*this,frame,screen);surfaces_.append(surface);surface->show();}
+bool KdeRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){
+ auto* surface=new Surface(*this,frame,screen);surfaces_.append(surface);surface->winId();
+ // Every output needs its own selector surface; one that Qt moved elsewhere
+ // would leave its head without input and map drags to the wrong output.
+ if(surface->windowHandle()->screen()!=screen){cancel({"display_changed","A selection surface is not on its output",{}});return false;}
+ surface->show();return true;
+}
 void KdeRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
 void KdeRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=kdeRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
-void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=kdeRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();for(auto* surface:surfaces_)surface->updateSelection();}
+void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=kdeRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();++stats_.moves;for(auto* surface:surfaces_)surface->updateSelection();}
 void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}accept();
 }
 void KdeRegionOverlay::accept(){
@@ -136,7 +156,7 @@ void KdeRegionOverlay::dismiss(){
  wl_callback_add_listener(dismissal_,&listener,this);wl_display_flush(native->display());
 #endif
 }
-void KdeRegionOverlay::finish(){finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
+void KdeRegionOverlay::finish(){if(stats_.paints&&!logged_){logged_=true;regionDebugLog(stats_.summary(QStringLiteral("kde region")));}finished_=true;hint_.stop();for(auto* surface:surfaces_)surface->hide();}
 void KdeRegionOverlay::cancel(Error error){
  if(finished_){
 #ifdef PUTGD_NATIVE_REGION

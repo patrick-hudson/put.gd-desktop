@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "scope": "CI installer Proton integrity, embedded runtime identity and official Bun advisories only",
+  "date": "2026-10-31T19:49:30.569208+00:00",
+  "host": "debian",
+  "auditorCommit": "b1a7f0c39f4fd8a124e50c6120ea3e6197b5da86",
+  "auditorScriptSha256": "c11813c09a880e492790b67e603bfc807ca1077c60e05861685a87048b2fbad2",
+  "packages": [
+    {
+      "file": "appimage/putgd-26.1031.3511-dev+g3014a3a06688-x86_64.AppImage",
+      "sha256": "cda40d47820903e22b3878e92084b26174a96c9013996edd514286ac6780e7ad",
+      "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "8d4d54b2db415f29eb1f5d733b697b79535115b792b7c87bba6472bb7235ede3"
+    },
+    {
+      "file": "debian13/putgd_26.1031.3511~dev+g3014a3a06688_amd64.deb",
+      "sha256": "9c6650c24429b51caf5237c04e4d07786843e01c72322f0404047e7f433695ac",
+      "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "8d4d54b2db415f29eb1f5d733b697b79535115b792b7c87bba6472bb7235ede3"
+    },
+    {
+      "file": "fedora44/putgd-26.1031.3511~dev+g3014a3a06688-1.fc44.x86_64.rpm",
+      "sha256": "130557f90146225c89d84eb1c1d5798448eb43ddd83cfe9bfb9a8d4f583e4def",
+      "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "8d4d54b2db415f29eb1f5d733b697b79535115b792b7c87bba6472bb7235ede3"
+    },
+    {
+      "file": "ubuntu24.04/putgd_26.1031.3511~dev+g3014a3a06688_amd64.deb",
+      "sha256": "721285333adb58ad6309d904a61475e08ec0806e16e915bb2553932d651bbd1b",
+      "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "8d4d54b2db415f29eb1f5d733b697b79535115b792b7c87bba6472bb7235ede3"
+    },
+    {
+      "file": "ubuntu26.04/putgd_26.1031.3511~dev+g3014a3a06688_amd64.deb",
+      "sha256": "b29172c79f7a979d23a1ced539a821dd0e365f06e120000419d3059e129df0c4",
+      "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "8d4d54b2db415f29eb1f5d733b697b79535115b792b7c87bba6472bb7235ede3"
+    }
+  ],
+  "errors": [],
+  "bunFindings": [],
+  "producer": {
+    "runUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41234795241",
+    "headSha": "b1a7f0c39f4fd8a124e50c6120ea3e6197b5da86"
+  },
+  "scopeNote": "Five actual CI installers carrying the published/current native-proof catalog. Subsequent changes tighten source-publication/proof-runner controls; the shipping helper and catalog bytes are unchanged. Final-head checks are reported separately."
+}

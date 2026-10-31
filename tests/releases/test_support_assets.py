@@ -134,6 +134,10 @@ class Sources(unittest.TestCase):
         part = {'file': asset['name'], 'bytes': asset['size'], 'sha256': asset['digest'][7:],
                 'url': 'https://github.com/owner/repo/releases/download/pinned/' + asset['name']}
         sources.verify_proton(self.api, {'delivery': {'parts': [part]}})
+        self.api.metadata['prerelease'] = False
+        with self.assertRaisesRegex(ValueError, 'prerelease'):
+            sources.verify_proton(self.api, {'delivery': {'parts': [part]}})
+        self.api.metadata['prerelease'] = True
         for field, value in [('sha256', 'c' * 64), ('bytes', 0), ('url', 'https://evil.invalid/source'),
                              ('url', 'https://github.com/owner/repo/releases/download/pinned/other')]:
             with self.subTest(field=field), self.assertRaises(ValueError):

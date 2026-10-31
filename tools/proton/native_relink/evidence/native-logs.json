@@ -1,0 +1,35 @@
+{
+  "archive": "native-logs.tar.gz",
+  "sha256": "64b737d487bdf6f17521a46c1504df4c4d95c7ae65f4c18b8ff5b53ff5b49d5c",
+  "files": {
+    "06-native-resume-j4.log": {
+      "bytes": 42457,
+      "sha256": "8ecd9d8ef89ea2bfb10000ed4368140f702e27fb652c6b16db9c5820e5df2cca"
+    },
+    "compiled-helper-native-revision.log": {
+      "bytes": 97,
+      "sha256": "39b4f6123b51c44eeec1c97d454357d3b677887e36e810eb0057a64488509020"
+    },
+    "compiled-helper-tinycc-ffi.log": {
+      "bytes": 34,
+      "sha256": "55e4aceaf3d0318065eb7ed90cca5d1eb6740851205c51baf3e2c02709a505cd"
+    },
+    "native-helper-smoke.log": {
+      "bytes": 62,
+      "sha256": "df1747b927df8e40609e1f5d6ce7fe145a341739e448b7c1bb358e606ed161a5"
+    },
+    "native-helper-tests.log": {
+      "bytes": 5438,
+      "sha256": "b3f3633a3c42edeb1d29349cbf5fa6c9fb14aa4fc28c3977357ab8871187b8f1"
+    },
+    "native-openpgp-crypto.log": {
+      "bytes": 161,
+      "sha256": "3fbacd41c18ca8624f25f9db85faa0abe969992c39649e3c773738e366102538"
+    },
+    "native-tinycc-ffi.log": {
+      "bytes": 34,
+      "sha256": "55e4aceaf3d0318065eb7ed90cca5d1eb6740851205c51baf3e2c02709a505cd"
+    }
+  },
+  "scope": "Selected public native-build, current-helper test, marker, TinyCC and synthetic crypto logs. Complete logs/executables and restore index remain on d69 under the retention receipt."
+}

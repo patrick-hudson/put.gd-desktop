@@ -65,7 +65,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 Package: @openpgp/web-stream-tools 0.3.1
-Classification: installed-not-bundled
+Classification: bundled-js
 Declared license: MIT
 Integrity: sha512-EV+VQ4Dr8b+JmlGnc74FLgx7EhLyydOr4j6s6Hp+2scQh6sLQMs2h+1oEYUIslXcQPicWKG5ZQx+/dua0dgPWA==
 
@@ -93,28 +93,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
-Package: @oven/bun-linux-x64 1.4.2
+Package: @oven/bun-linux-x64 1.4.4
 Classification: embedded-runtime
 Declared license: MIT
-Integrity: sha512-9/E/UXOTpSo3YsV5g+FhtTd/qTpiWoKuxS12cqtuYA1ssu9fRAoPQnipFgGyck3tWO63iUdxBiygq+kELFawng==
+Integrity: sha512-CHbbkmHVM28T1GFq+6GL4Ao4ujwwYwj1CxFFwEFzLanPfNsId9AhbIP0Q4reWuWBkGimUkoQygrK7Rgjtj3vog==
 
 No top-level license text shipped in this npm package.
 
 
-Package: @oven/bun-linux-x64-musl 1.4.2
+Package: @oven/bun-linux-x64-musl 1.4.4
 Classification: installed-not-bundled
 Declared license: MIT
-Integrity: sha512-vVTKUg1bnPhRP/Hp73jIVoFh2vPFNYEqYX0ERKfZBOQEEHitNAeukZzzuUDZS0SoDCIpuWUGSpd/CDMbjdR+Uw==
+Integrity: sha512-lEEjNOJJrbGZu2NVcPI4uXdILcpspezWkA8R/Jr0RCGhM6zQd0Y7JBIIKNAmbX59EeWpeEz7Q78iLbpcAUypUA==
 
 No top-level license text shipped in this npm package.
 
 
-Package: @protontech/crypto 2.0.1
+Package: @protontech/crypto 2.2.0
 Classification: bundled-js
 Declared license: GPL-3.0
-Integrity: sha512-D3M023jLq/aMNCSr5p1KVlLV0grAeVXpUh8WyN2HITCIX83KLJo5BReNbVT1mXMvodPf/qYIxUoYXyaEW3pfOQ==
+Integrity: sha512-WjoNBMn07LxnYE6QLgniEnNfP0Apmvqgi8P48udFtvAxhSnVwiHqmXxMaVHJxBRaJev/DlOKJ67OGYj+3yGYPA==
 
-Selected official source override: {"license": "GPL-3.0", "registryVersion": "2.0.0", "sha256": {"LICENSE": "1b3782ccad7b8614100cda30d3faf42fc39f2e97932908c543005053b654ca68", "SOURCE-README.md": "58268875886de4d011ec74ff9a3c1256ad4a0432266c5a5b1a7bc1103ae1f9fa", "package.json": "9bba28a55eeed25232318935f0d4ed133cfeb19cd446e9a3d6aa4d8329bcfa84", "src/compatibilityChecks.ts": "a8db8edbe219e45c48620cd7946f2122b4df6b31d0ca1884fe7db526312bd16f", "src/constants.ts": "3de35ea983095e8a7f464eae255ef1f6271b28c05af5eaca433a775f1b3c1a21", "src/index.ts": "b14ff9b209a60d828acf05f3b397360bf58abf8dba95187f87af314b42e2938c", "src/pmcrypto/README.md": "1a5f6248f2734d35557ebd5012603c2e332af2968e254e4a007b0958a57a9ded", "src/pmcrypto/bigInteger.ts": "8c1b9c1d70f0a7ceb8350c359a3d2b5c325e74c31cbba4df9f03f7370772b5b4", "src/pmcrypto/constants.ts": "9709ad1ae7299d29757af42daf5d7289d801df0f70142cd2061f41a75dc371ed", "src/pmcrypto/crypto/argon2.ts": "061623082cc1d9269e0ef7eef5fcc72a3a64b235f654b457a20ed8748c71dc6a", "src/pmcrypto/crypto/hash.ts": "b38eafe3fac295f2efdccf5a743c20e90cfbbbd7fa3643a7c0a1201d48d17779", "src/pmcrypto/crypto/utils.ts": "971089a7387d56a9b6a0f239b38a3f5d37849a72e24463bd12262753817d9490", "src/pmcrypto/index.ts": "3ab6fc28b3afc48afa79cabf6c854c1d73bae2812b8dfe12cc703c4f9d7aa5bc", "src/pmcrypto/key/check.ts": "78ccaf44979ea06e90864dbd797a575312503f63bf33f2fc1b73fd97e02692fb", "src/pmcrypto/key/decrypt.js": "4c668babadf30eeb5b380683168fb1cdf7c85ef56ddb91d72aaacb673519fe36", "src/pmcrypto/key/encrypt.js": "2efbe30468c6f05cb96f751c949a087867df0f427c69751b96ddb1bcc29371f3", "src/pmcrypto/key/forwarding.ts": "b655a2fc7d93a71754accdad12ba8c5dc2c3ad5ad5fe8396dde68225f2264755", "src/pmcrypto/key/utils.d.ts": "0b6625da395070e8abf99395f8bdc1f42fd46fec74d7a739f4ff07a810fc9b20", "src/pmcrypto/key/utils.js": "a302a6a3e0f00aef3025e9c531401fa97b6420c64221452909740516b86588a0", "src/pmcrypto/message/context.ts": "51c8898cf85875cde2f8f4bb6fb762377b74caea479b837b98de125632384e56", "src/pmcrypto/message/decrypt.js": "38d3f542f5843dfc7c8da22c5a321a24603f8fabd32b52a2f6dafeafd25d2b33", "src/pmcrypto/message/encrypt.js": "4071498caccbabe974583f9c6cb2d461be83bb265fa267bd49e618e92ab94892", "src/pmcrypto/message/parseMail.ts": "a2e0131bff419c5526557220b99738d701040696c74190a345037199453c2e44", "src/pmcrypto/message/processMIME.ts": "b2834b15749fa2db3d48999f61ea11b57fb5a9474df20158166fe8c860a397ed", "src/pmcrypto/message/sign.js": "d1755c84798595c009382139cb4e5fc3801a0261827c3a7fcd7e814dbf35d794", "src/pmcrypto/message/utils.ts": "78d315cf7b76a39f961b9056bdb29755344178ee7b0120f2fb22a7d64009899d", "src/pmcrypto/message/verify.d.ts": "0ebafd9d74059dfe72ffdc086932b4a7b9f2149045fe4d1dabbd74a7f0cd275a", "src/pmcrypto/message/verify.js": "be2a4312d181d736a594229de5b21ae4ad2ffb68abff103d90d55447d6afcfc2", "src/pmcrypto/openpgp.ts": "0e86da2195054566855513cd93b256c99343c12d807e39d7f7e144f7e99e7878", "src/pmcrypto/pmcrypto.d.ts": "954906bd284e5a30567ace256147efde1ef9376735bfd49ea1af025a0370e64a", "src/pmcrypto/pmcrypto.js": "f59b68420f2f868eb96c69775f11ea386420b71dbd122f42002d273f4bb4c90c", "src/pmcrypto/serverTime.ts": "d6cb144e73ee1bfb33b1825a9a0a18aaf4637f289e7eb8b8e48d76129fc31e22", "src/pmcrypto/utils.ts": "f59b96cd2de0f79393c37f73a62ad0f8c2baf90f8354520b238ad1b147487289", "src/polyfill.ts": "0b792c98aa11f7e358e8e16e1652bd072e41fe49bfce79932643b83e5519407f", "src/proxy/endpoint/api.models.ts": "0c88aba372be8dec96fe83047a1c88962eaa63a1d05d1948302e58b4edfaaa90", "src/proxy/endpoint/api.ts": "10201c4305cf60ee53e0ecfa6c09502561e78bbc5fcff06bd67faf25e2ecae5e", "src/proxy/endpoint/workerPool/bundlers/README.md": "c4195408e78e3e85cf5e7d5edea3049c7ec44a75546a1fb0ec479bb92c97a58e", "src/proxy/endpoint/workerPool/bundlers/genericProvider.ts": "5babb9a383f4dcf929719db96aee8dc0d32bf4042a9c42f62aaa583f9937c312", "src/proxy/endpoint/workerPool/bundlers/interface.ts": "433aeb9c8e2ca715ed4cf06db260f1180722485f335b53e47ee5025a5410c5bf", "src/proxy/endpoint/workerPool/bundlers/webpackProvider.ts": "45c127a19117f0d1a395bc7f3d048998a0f2d3624df200d4f91a2d5d084ff85e", "src/proxy/endpoint/workerPool/getWorkerPool.ts": "932909142d5a34f010438fe162e992b6d68cdbd80c78efe486dc3e33390d24e0", "src/proxy/endpoint/workerPool/transferHandlers/index.ts": "2753d3b9ae2b42d47595980c7b14d0cbac394a06f24e37c903aace13ab7de9d7", "src/proxy/endpoint/workerPool/transferHandlers/streamHandler.ts": "17e3a70ceae19525a24c8250b4a147cd701b90203fe0d4b2e0388cb5be17722c", "src/proxy/endpoint/workerPool/worker.ts": "c411e965762c38393409fe84a178f4f53a65c8a393ae543b75e1505dad7e7785", "src/proxy/helpers.ts": "bf3bffc215459cfdd936b5f9590f8002f805aaab88cfae618d29c10fbbe2925a", "src/proxy/index.ts": "28a6a55637815342e4bf65dfce63814d39172ae042bff8008816d232bb1b7a8b", "src/proxy/proxy.ts": "f85e83753a360237c2a1cce2d2354bc408046f429e8a01032f2220cfddf12c57", "src/proxy/sentry.ts": "eeee6a4a40500c94fa248848b5b80fba04e918b795ef12280f6da88a0a92a736", "src/serverTime.ts": "90dacf7636c9da8eca570aaaa95527a1ea0dc80b31ae10273250d17255edd31e", "src/srp/constants.ts": "d8221b23f41ebd72fd9b45c63df7858919015aa60da4214f03625bc714e2152c", "src/srp/getAuthVersionWithFallback.ts": "a03ec7da58c038418752ed03bf7ef23b280ed4295e4afd688648d902d54abd2d", "src/srp/index.ts": "31ab40373806f0e855e4aac4a0c22a652aa7a564ed7469b2540db8e3200de002", "src/srp/interface.ts": "19dbc8a9cef5806dcfb9f06d9fd3be0742d5feff390f3c6da70180289509a1c6", "src/srp/keys.ts": "7ddf5ec9716899e85d3abe93482e2feb3f35ac13f05e5b88e91d299d1e8b7420", "src/srp/passwords.ts": "706242e1cf999757c5d9db2e9731ac1e3f4d82d5d17400c5e17c6c501f7989e3", "src/srp/srp.ts": "5cee29beb9c6fcdeb25e8126ad06100ba686d1edd9890910578a0393f9d7da9b", "src/srp/utils/modulus.ts": "6ca1b840eb0e3e8a4c098aa32e5add1ac89fa7495320328ef91e6319969f99c3", "src/srp/utils/username.ts": "278f106e7e6abbf02a25860da0f404e25714d103bcc129de252e56f0994aacac", "src/subtle/README.md": "a89371f5058e543e95cc48ece996ec42e63832d5404b6daf2bb1313616eef103", "src/subtle/ad-hoc/encryptedSearch.ts": "57c84dface3eeca188e7b42833f321d009d901f1150510562af0707f63492ea7", "src/subtle/aesGcm.ts": "bf890d1bfe35304ab6281fb7403b6b1a8a05a72469098e43a41ec93a5b8e4dd9", "src/subtle/hash.ts": "e6b96fc873d59d98db4e1e6e2bb473fc0bc24b61eb1bba302599537fa46d5929", "src/subtle/hmac.ts": "a1f21419c052f3e2b012f5309d31c1a2f63dba2bf14f28957a4dbfc06abfb67a", "src/utils.ts": "80a653781db24817e6f16cf793b38cdcb5d0c492317297e99e293033a8855adf"}, "sourceReference": "956a713c0823b365cc512018974eb4fcba47c9dd", "sourceUrl": "https://github.com/ProtonMail/WebPackages.git", "version": "2.0.1"}
+Selected official source override: {"license": "GPL-3.0", "registryVersion": "2.2.0", "sha256": {"LICENSE": "1b3782ccad7b8614100cda30d3faf42fc39f2e97932908c543005053b654ca68", "SOURCE-README.md": "58268875886de4d011ec74ff9a3c1256ad4a0432266c5a5b1a7bc1103ae1f9fa", "package.json": "70c9c33a27b09c58420ae2c06b3a422ebeca5fa5346722f80f14c6f568cf1687", "src/compatibilityChecks.ts": "4df785adec3c8eaec1c52492a60fc6eb7dbc76e0becfca15fa53f803e6652fb9", "src/constants.ts": "3de35ea983095e8a7f464eae255ef1f6271b28c05af5eaca433a775f1b3c1a21", "src/index.ts": "b14ff9b209a60d828acf05f3b397360bf58abf8dba95187f87af314b42e2938c", "src/jsmimeparser/LICENSE": "d7cc10b09e57053b82df0c5533b7c3e28e011746af67e4915353b8f6a2d7cb96", "src/jsmimeparser/README.md": "c85cc3aff0e4aa66cff3fa7b67e94422f68ad8a1184176ab6bb71fd565537c75", "src/jsmimeparser/RelatedSpecifications.mkd": "1cc9414b870a7437a263aca3ff2fa1131b4c672bae8182afca50e80e49034254", "src/jsmimeparser/headerEmitter.js": "1e03f1425a552b1fcd4ed15d33b72f08549a2e288ff42711c6bda1e00b212bd1", "src/jsmimeparser/headerParser.js": "be33f381b90d6007e9b039fe757bb5e3ed42c4fa8051220883a288df3be4b0f6", "src/jsmimeparser/index.d.ts": "eba09d540ad8bca64984c975cf2f718d49a1a795c3d6668fa465261baf71eb54", "src/jsmimeparser/index.js": "b99bd37eff8fe3f508b04f305eaeb4fdbe590d6c558047d6054ed8159eb1185a", "src/jsmimeparser/jsmime.js": "4ee9a70e2ff6cb995256da43ff9c68196cfe6b7fae093ac3ffc357b59b4c3253", "src/jsmimeparser/mailParser.js": "42ba65285682aef0eb697a2d0c1926f916f6376d611393a2ee319a9690482b3b", "src/jsmimeparser/rawMimeParser.js": "94db563609e1f8b58390b09c51c75081be535832cdc8456ec8e51ee983de24f6", "src/jsmimeparser/structuredHeaders.js": "1e50d3e94a7efa5e08adc69c055723f1c7b7b32613a11c30aeab10c1a3164be5", "src/jsmimeparser/textDecoders.js": "fa82f0a184f53dfcb0687cca7f11ad092860d1bac2fb74a1d0c5bcd0b6f6ee66", "src/jsmimeparser/utils.js": "2eead73028ffa196915aa6ea51f142064ca428b4532fc405550210508cbdd92a", "src/pmcrypto/README.md": "1a5f6248f2734d35557ebd5012603c2e332af2968e254e4a007b0958a57a9ded", "src/pmcrypto/bigInteger.ts": "8c1b9c1d70f0a7ceb8350c359a3d2b5c325e74c31cbba4df9f03f7370772b5b4", "src/pmcrypto/constants.ts": "9709ad1ae7299d29757af42daf5d7289d801df0f70142cd2061f41a75dc371ed", "src/pmcrypto/crypto/argon2.ts": "061623082cc1d9269e0ef7eef5fcc72a3a64b235f654b457a20ed8748c71dc6a", "src/pmcrypto/crypto/hash.ts": "06a69fdfae5bc993f9d0cc309923feae0b0a95fe808dc8602cb9c7dc73d6ec10", "src/pmcrypto/crypto/utils.ts": "971089a7387d56a9b6a0f239b38a3f5d37849a72e24463bd12262753817d9490", "src/pmcrypto/index.ts": "3ab6fc28b3afc48afa79cabf6c854c1d73bae2812b8dfe12cc703c4f9d7aa5bc", "src/pmcrypto/key/check.ts": "78ccaf44979ea06e90864dbd797a575312503f63bf33f2fc1b73fd97e02692fb", "src/pmcrypto/key/decrypt.js": "4c668babadf30eeb5b380683168fb1cdf7c85ef56ddb91d72aaacb673519fe36", "src/pmcrypto/key/encrypt.js": "2efbe30468c6f05cb96f751c949a087867df0f427c69751b96ddb1bcc29371f3", "src/pmcrypto/key/forwarding.ts": "b655a2fc7d93a71754accdad12ba8c5dc2c3ad5ad5fe8396dde68225f2264755", "src/pmcrypto/key/utils.d.ts": "0b6625da395070e8abf99395f8bdc1f42fd46fec74d7a739f4ff07a810fc9b20", "src/pmcrypto/key/utils.js": "a302a6a3e0f00aef3025e9c531401fa97b6420c64221452909740516b86588a0", "src/pmcrypto/message/context.ts": "51c8898cf85875cde2f8f4bb6fb762377b74caea479b837b98de125632384e56", "src/pmcrypto/message/decrypt.js": "2d0a53e45342a9f0e7f6200df70adb745d4d9759e7e8d300481ae71dda599ce9", "src/pmcrypto/message/encrypt.js": "4071498caccbabe974583f9c6cb2d461be83bb265fa267bd49e618e92ab94892", "src/pmcrypto/message/parseMail.ts": "a82ee8ea28c6bc386690c7725a4841d2f6e95941397ffdc583ae227f86b09476", "src/pmcrypto/message/processMIME.ts": "b2834b15749fa2db3d48999f61ea11b57fb5a9474df20158166fe8c860a397ed", "src/pmcrypto/message/sign.js": "d1755c84798595c009382139cb4e5fc3801a0261827c3a7fcd7e814dbf35d794", "src/pmcrypto/message/utils.ts": "78d315cf7b76a39f961b9056bdb29755344178ee7b0120f2fb22a7d64009899d", "src/pmcrypto/message/verify.d.ts": "0ebafd9d74059dfe72ffdc086932b4a7b9f2149045fe4d1dabbd74a7f0cd275a", "src/pmcrypto/message/verify.js": "0734f7674a00ee281ac8e3a5cc550ac42dfbbd08e3213a5def468ae2efc4dc6e", "src/pmcrypto/openpgp.ts": "0e86da2195054566855513cd93b256c99343c12d807e39d7f7e144f7e99e7878", "src/pmcrypto/pmcrypto.d.ts": "954906bd284e5a30567ace256147efde1ef9376735bfd49ea1af025a0370e64a", "src/pmcrypto/pmcrypto.js": "f59b68420f2f868eb96c69775f11ea386420b71dbd122f42002d273f4bb4c90c", "src/pmcrypto/serverTime.ts": "7556ff7cfae828424061f4fbd9ba3ffc0a639cbf77809d058c512304ae8fb4ee", "src/pmcrypto/utils.ts": "f59b96cd2de0f79393c37f73a62ad0f8c2baf90f8354520b238ad1b147487289", "src/polyfill.ts": "0b792c98aa11f7e358e8e16e1652bd072e41fe49bfce79932643b83e5519407f", "src/proxy/endpoint/api.models.ts": "1f52e1c68ff264ffc538f62e6d1d6aac896cbc19638105e10b752c8b7eb2aaa4", "src/proxy/endpoint/api.ts": "9bc787cd73a45263efe9c3b8656a58fb68672c99d5a08ca65f08bd61560ca844", "src/proxy/endpoint/workerPool/bundlers/README.md": "c4195408e78e3e85cf5e7d5edea3049c7ec44a75546a1fb0ec479bb92c97a58e", "src/proxy/endpoint/workerPool/bundlers/genericProvider.ts": "5babb9a383f4dcf929719db96aee8dc0d32bf4042a9c42f62aaa583f9937c312", "src/proxy/endpoint/workerPool/bundlers/interface.ts": "433aeb9c8e2ca715ed4cf06db260f1180722485f335b53e47ee5025a5410c5bf", "src/proxy/endpoint/workerPool/bundlers/webpackProvider.ts": "45c127a19117f0d1a395bc7f3d048998a0f2d3624df200d4f91a2d5d084ff85e", "src/proxy/endpoint/workerPool/getWorkerPool.ts": "fb546eb83662c716e6fcb6f8a6f69e2f25a021b5349bdaa8b20d3c7e0c707653", "src/proxy/endpoint/workerPool/transferHandlers/index.ts": "d796d987981432d1693fa4e673c38c2bd0cafd27810680e300652e9af2f68351", "src/proxy/endpoint/workerPool/transferHandlers/streamHandler.ts": "c407ac9e522f5f2f1e68be7b1dec7303eb2ff62ca2dacdae428a2c20d9935b52", "src/proxy/endpoint/workerPool/worker.ts": "c411e965762c38393409fe84a178f4f53a65c8a393ae543b75e1505dad7e7785", "src/proxy/helpers.ts": "bf3bffc215459cfdd936b5f9590f8002f805aaab88cfae618d29c10fbbe2925a", "src/proxy/index.ts": "28a6a55637815342e4bf65dfce63814d39172ae042bff8008816d232bb1b7a8b", "src/proxy/proxy.ts": "643ed63c83230ba98596383f039fe1e1e6a19cfde272266bb4c0707dd1694d7b", "src/proxy/sentry.ts": "eeee6a4a40500c94fa248848b5b80fba04e918b795ef12280f6da88a0a92a736", "src/serverTime.ts": "6bc715fff5a408071b767c378a69f286d2e3b59ca5c80a3ef90f01a1d1bad676", "src/srp/constants.ts": "d8221b23f41ebd72fd9b45c63df7858919015aa60da4214f03625bc714e2152c", "src/srp/getAuthVersionWithFallback.ts": "a03ec7da58c038418752ed03bf7ef23b280ed4295e4afd688648d902d54abd2d", "src/srp/index.ts": "31ab40373806f0e855e4aac4a0c22a652aa7a564ed7469b2540db8e3200de002", "src/srp/interface.ts": "19dbc8a9cef5806dcfb9f06d9fd3be0742d5feff390f3c6da70180289509a1c6", "src/srp/keys.ts": "7ddf5ec9716899e85d3abe93482e2feb3f35ac13f05e5b88e91d299d1e8b7420", "src/srp/passwords.ts": "706242e1cf999757c5d9db2e9731ac1e3f4d82d5d17400c5e17c6c501f7989e3", "src/srp/srp.ts": "5cee29beb9c6fcdeb25e8126ad06100ba686d1edd9890910578a0393f9d7da9b", "src/srp/utils/modulus.ts": "6ca1b840eb0e3e8a4c098aa32e5add1ac89fa7495320328ef91e6319969f99c3", "src/srp/utils/username.ts": "278f106e7e6abbf02a25860da0f404e25714d103bcc129de252e56f0994aacac", "src/subtle/README.md": "a89371f5058e543e95cc48ece996ec42e63832d5404b6daf2bb1313616eef103", "src/subtle/ad-hoc/encryptedSearch.ts": "9585aac7268246b92786b3c121f5411852d3e8fe1351615b345fbccacda52dd8", "src/subtle/aesGcm.ts": "bf890d1bfe35304ab6281fb7403b6b1a8a05a72469098e43a41ec93a5b8e4dd9", "src/subtle/hash.ts": "e6b96fc873d59d98db4e1e6e2bb473fc0bc24b61eb1bba302599537fa46d5929", "src/subtle/hmac.ts": "a1f21419c052f3e2b012f5309d31c1a2f63dba2bf14f28957a4dbfc06abfb67a", "src/utils.ts": "80a653781db24817e6f16cf793b38cdcb5d0c492317297e99e293033a8855adf"}, "sourceReference": "68b93b7d2cadd043cd08203710af382706ed1458", "sourceUrl": "https://github.com/ProtonMail/WebPackages.git", "version": "2.2.0"}
 
 LICENSE:
                     GNU GENERAL PUBLIC LICENSE
@@ -740,39 +740,10 @@ copy of the Program in return for a fee.
                      END OF TERMS AND CONDITIONS
 
 
-Package: @openpgp/web-stream-tools 0.1.3
+Package: @protontech/drive-sdk 0.23.0
 Classification: bundled-js
 Declared license: MIT
-Integrity: sha512-mT/ds43cH6c+AO5RFpxs+LkACr7KjC3/dZWHrP6KPrWJu4uJ/XJ+p7telaoYiqUfdjiiIvdNSOfhezW9fkmboQ==
-
-LICENSE:
-(The MIT License)
-
-Copyright (c) 2018 Proton Technologies A.G.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-Package: @protontech/drive-sdk 0.22.2
-Classification: bundled-js
-Declared license: MIT
-Integrity: sha512-J5qM6SkQ2TsymagFJR3Al+f3TjFzwxb+eUUK6ZDMlzv52MOCDjNNaOIHF3+44uXI/Lka0g1kaSaTF2tFISL6tw==
+Integrity: sha512-64oDsEBwjRiuQCxVi/ogoiked8Whm+I3DorUkD4n4esaqREBQ1qHTobzwkKFR+4h8kkc7K5KcjPMPDfZiD8lHw==
 
 LICENSE:
 The MIT License
@@ -826,10 +797,10 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-Package: @types/bun 1.4.2
+Package: @types/bun 1.4.4
 Classification: build-only
 Declared license: MIT
-Integrity: sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ==
+Integrity: sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ==
 
 LICENSE:
     MIT License
@@ -935,18 +906,18 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-Package: bun 1.4.2
+Package: bun 1.4.4
 Classification: build-only
 Declared license: MIT
-Integrity: sha512-TrSXo6HJfIEaczpb3kjX82I2pL47vK1QUNmHRCUdz9IzaOwa9lzOXSWwu2l18YHE3sNfGRapVLd4nNm+22vVVA==
+Integrity: sha512-hj0ASdG6PNjLZGFAXktWb3Uaj/dcv/1wCsIttoEXADNIQBsGjTr+5uLKYbrDkuc7NT0Tkj4yPIqJI2jDxXdvVg==
 
 No top-level license text shipped in this npm package.
 
 
-Package: bun-types 1.4.2
+Package: bun-types 1.4.4
 Classification: build-only
 Declared license: MIT
-Integrity: sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w==
+Integrity: sha512-yjrJh5oGX7mMPKGd19YXyIjmEuj4G4zNC30bs7PM9Az7NQ3ndF3j6hbeRdvJTRQEhJ/FYQwW0a2moweEi2hMxQ==
 
 No top-level license text shipped in this npm package.
 
@@ -1596,33 +1567,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
   This Source Code Form is "Incompatible With Secondary Licenses", as
   defined by the Mozilla Public License, v. 2.0.
-
-
-Package: @protontech/jsmimeparser 3.0.2
-Classification: bundled-js
-Declared license: MIT
-Integrity: sha512-PConkdRdY8xc1A8+oEmQ2pGC7nnJPqWwkUb/+odjFPbof2w3zpIws77D9J9assvZg8OdB8dRe/cZdBU+BCijgA==
-
-LICENSE:
-Copyright (c) 2013 Joshua Cranmer
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
 
 
 Package: ky 1.14.3

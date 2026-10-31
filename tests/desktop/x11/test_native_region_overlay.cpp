@@ -194,6 +194,74 @@ private slots:
   QVERIFY2(dark,"The outline needs opaque dark pixels to remain visible over white content");
   QVERIFY2(light,"The outline needs opaque light pixels to remain visible over dark content");
  }
+ void burstOfMotionsCoalescesIntoPacedPresents(){
+  // #6: a pointer reporting at 500-1000 Hz must not queue one monitor-sized
+  // redraw per event. Motions are coalesced into at most one present per
+  // display refresh, each present damaging only the strips that changed, and
+  // the outline still lands exactly where the last motion left it.
+  motion({100,400});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  motion({40,40});button(1,true);const auto releaseButton=qScopeGuard([&]{button(1,false);});motion({60,60});PUTGD_TRY_VERIFY(white({44,41}));
+  const auto before=overlay.stats();QVERIFY(before.presents>=1);QVERIFY(before.frameIntervalMs>=4&&before.frameIntervalMs<=33);
+  QElapsedTimer clock;clock.start();
+  const int burst=400;
+  for(int i=0;i<burst;++i){motion({200+i*2,150+i});if(i%50==49)QCoreApplication::processEvents();}
+  const qint64 burstMs=std::max<qint64>(1,clock.elapsed());
+  // The last motion, root (998,549), is logical (819,274.5) on the scaled right
+  // display: the left surface's bottom edge ends at y=275 (white row 273), the
+  // right surface's right edge at native x=998 (white columns 994-995, pen 2)
+  // and its bottom at native y=549 (white rows 545-546).
+  PUTGD_TRY_VERIFY(white({300,273}));PUTGD_TRY_VERIFY(white({994,300}));PUTGD_TRY_VERIFY(white({800,545}));
+  const auto after=overlay.stats();
+  QVERIFY2(after.motions-before.motions==burst,qPrintable(QString::number(after.motions-before.motions)));
+  // Presents are bounded by elapsed time at the refresh rate, plus one for the
+  // first motion of the burst and one for the final catch-up frame.
+  const qint64 presents=after.presents-before.presents;
+  const qint64 allowed=burstMs/after.frameIntervalMs+3;
+  QVERIFY2(presents>=1&&presents<=allowed,qPrintable(QStringLiteral("%1 presents for %2 motions in %3 ms at %4 ms frames").arg(presents).arg(burst).arg(burstMs).arg(after.frameIntervalMs)));
+  QVERIFY(presents<burst/4);
+  QVERIFY(after.fullRedraws==before.fullRedraws);
+  // Partial damage: the interior stays transparent, the first outline's right
+  // and bottom edges (x=57..59, y=57..59) are gone, and the shared left and
+  // top edges still show.
+  const auto interior=pixels({500,300});QVERIFY(interior.size()==4&&quint8(interior[3])==0);
+  const auto oldRight=pixels({58,50});QVERIFY(oldRight.size()==4&&quint8(oldRight[3])==0);
+  const auto oldBottom=pixels({50,58});QVERIFY(oldBottom.size()==4&&quint8(oldBottom[3])==0);
+  QVERIFY(white({41,200}));QVERIFY(white({300,41}));
+  button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
+ void firstOutlineIsNotPacedBehindThePress(){
+  // #1063: the press frame shows no outline, so the drag's first outline is
+  // drawn when its motion arrives, not a frame interval later; a press and the
+  // motion queued behind it are read as one batch and presented once.
+  motion({100,400});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  const auto releaseButton=qScopeGuard([&]{button(1,false);});
+  xcb_test_fake_input(connection_,XCB_MOTION_NOTIFY,0,XCB_CURRENT_TIME,root_,40,40,0);
+  xcb_test_fake_input(connection_,XCB_BUTTON_PRESS,1,XCB_CURRENT_TIME,root_,0,0,0);
+  xcb_test_fake_input(connection_,XCB_MOTION_NOTIFY,0,XCB_CURRENT_TIME,root_,400,300,0);xcb_flush(connection_);
+  PUTGD_TRY_VERIFY(white({300,41}));PUTGD_TRY_VERIFY(white({41,200}));
+  const auto stats=overlay.stats();
+  QVERIFY2(stats.waits>=1&&stats.waitMaxMs<stats.frameIntervalMs/2.0,qPrintable(QStringLiteral("first outline waited %1 ms at %2 ms frames").arg(stats.waitMaxMs).arg(stats.frameIntervalMs)));
+  overlay.cancel();PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
+ void pillsFollowPreloadedFonts(){
+  // The capture helper loads the pill font on a worker; frames meanwhile
+  // carry the outline alone, and the hint and size pills still arrive.
+  auto fonts=NativeRegionOverlay::preloadFonts();const auto join=qScopeGuard([&]{fonts.join();});
+  motion({100,700});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  const auto releaseButton=qScopeGuard([&]{button(1,false);});
+  motion({40,300});button(1,true);motion({400,500});PUTGD_TRY_VERIFY(white({44,301}));
+  const auto pills=[&]{
+   const auto w=at({10,10});if(!w)return false;
+   const auto image=x11::reply(xcb_get_image_reply(connection_,xcb_get_image(connection_,XCB_IMAGE_FORMAT_Z_PIXMAP,w,0,0,640,800,~0u),nullptr));if(!image)return false;
+   const QImage rendered(xcb_get_image_data(image.get()),640,800,QImage::Format_ARGB32_Premultiplied);
+   // The hint pill sits away from the selection at the top; the size pill below it.
+   int hint=0,size=0;
+   for(int y=0;y<800;++y)for(int x=0;x<640;++x){const auto c=rendered.pixelColor(x,y);if(c.alpha()!=255||(x>=37&&x<=403&&y>=297&&y<=503))continue;(y<160?hint:size)+=1;}
+   return hint>100&&size>100;
+  };
+  PUTGD_TRY_VERIFY(pills());
+  overlay.cancel();PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
  void movingOutlineClearsPreviousPixels(){
   NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);motion({40,40});button(1,true);motion({1200,600});
   auto whiteCount=[&]{const auto bytes=pixels({1196,300},8);int count=0;for(int i=0;i+3<bytes.size();i+=4)if(quint8(bytes[i])==255&&quint8(bytes[i+1])==255&&quint8(bytes[i+2])==255&&quint8(bytes[i+3])==255)++count;return count;};

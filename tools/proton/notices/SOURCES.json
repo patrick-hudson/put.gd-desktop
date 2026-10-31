@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "materialsReady": true,
-  "distributionReady": false,
+  "distributionReady": true,
   "published": true,
-  "distributionRequirement": "Retain public corresponding-source availability. Deliver this current catalog beside the installers; its permanent checksum-pinned dependency URLs may be linked instead of copying unchanged transport parts to every release. Deliver the current application source overlay in the linked sources release.",
-  "helperSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0",
+  "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
   "sourcePins": {
-    "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
-    "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
+    "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+    "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
     "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
-    "bun": "744846f844374847c902b5e7fd59b4342a51ef99",
-    "webkit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+    "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
     "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
     "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
   },
@@ -21,31 +21,29 @@
     "openpgpModifiedCompiledRoundtripVerified": true,
     "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
-    "finalPackageAcceptanceVerified": false,
+    "finalPackageAcceptanceVerified": true,
     "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
-  "openGates": [
-    "Fresh final-helper functional, resource and actual package acceptance (P6)"
-  ],
+  "openGates": [],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
-      "bytes": 3223548,
-      "sha256": "0dd9bb6985606925b4cd71d85d23079c14b480f4f6c7d5df0d32fa8e89197fd6",
-      "purpose": "Proton component sources, locks, provisioner, audit/tests, notices and CMake integration; SOURCES.json accompanies separately to avoid a hash cycle"
+      "bytes": 22309512,
+      "sha256": "9836f279d2e90fc3bdabf8a9c98494c82eb79172ba5c77d77e33a865eeadb4ac",
+      "purpose": "SDK 0.23.0/Crypto 2.2.0 dependency-update controls, tests, source/notice selection, current Bun 1.4.4 native replay recipe and adapter/CMake/audit sources. SOURCES.json and subsequent run receipts accompany the current application source separately to avoid hash cycles."
     },
     {
       "filename": "putgd-proton-helper-rebuild.tar.gz",
-      "bytes": 15261507,
-      "sha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
-      "purpose": "Original patched helper/SDK/account/crypto source graph and dependencies; 6298 public files. Apply applicationSourceOverlay from the current application source archive for the current helper."
+      "bytes": 15994986,
+      "sha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
+      "purpose": "SDK 0.23.0/Crypto 2.2.0/OpenPGP 6.3.1 patched helper and matching locked dependencies, 7395 public files; includes unbundled SDK search vendor WASM as an input, not a rebuilt or embedded search engine."
     },
     {
       "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
-      "bytes": 326295,
-      "sha256": "7e726a9974c73616d8c47c60a84939238970066088e47b8e93eb4d1fc2aa506a",
-      "purpose": "Official GPL source snapshot, historical evidence and recovered predecessor notices; no retroactive interpretation of 2.0.0 ISC metadata"
+      "bytes": 1630506,
+      "sha256": "c6bcd11530ad175b42745e7bde8b820a44afa2a9ff049524a3e823adf7e83b5d",
+      "purpose": "Complete official WebPackages 2.2.0 preferred repository source/build locks, GPL and MIME parser MIT/MPL notices, SDK search scope, and the unchanged historical crypto provenance packet."
     },
     {
       "filename": "putgd-proton-openpgp-preferred-source.tar.gz",
@@ -54,10 +52,10 @@
       "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source and prebundled preferred source/notices; use accompanying supplement for clean pinned compiler replay"
     },
     {
-      "filename": "putgd-proton-bun-sources-1.4.2.tar",
-      "bytes": 2352957440,
-      "sha256": "754765f1f38e6e57e369806ac8e19b190a6eea812696848003bd40df9f06df27",
-      "purpose": "Full pinned Bun/WebKit/native/Cargo/npm source/build inputs, patches and offline reconstruction; includes optional build-tool binaries, not a pure text-only source archive"
+      "filename": "putgd-proton-bun-sources-1.4.4.tar",
+      "bytes": 2240788480,
+      "sha256": "0a58af4f9af2a0d9ee61fb381025826bd91bdc393ba1f06f8d67e5eb03c70e8f",
+      "purpose": "Unchanged Bun 1.4.4/WebKit/TinyCC preferred sources and offline inputs, ICU, pinned Rust standard-library source and original recipes. Current native replay controls and receipts accompany the current application source; consult nativeRelinkProof."
     },
     {
       "filename": "putgd-proton-native-rebuild-supplement.tar.gz",
@@ -67,57 +65,57 @@
     }
   ],
   "rebuildToolchains": {
-    "nativeCpp": "LLVM 21.1.8",
-    "rustNightly": "2026-07-20",
-    "rustSource": "9f36de775bc636c8e88c31a173c2bcb6995956a0",
-    "cargoSource": "3efb1f477e99b42974b982d939fd100303cdf7db",
+    "nativeCpp": "LLVM 23.1.5",
+    "rustNightly": "2026-09-15",
+    "rustSource": "574ff7d98bd6d037e5236a8453029173b32631fd",
+    "cargoSource": "7941be6fb416b4cd9666aef7b858dfea25587a8c",
     "profile": "release-local with local JSC and system ICU 74.2",
     "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
     "nativeOrWasmByteIdentityClaimed": false
   },
   "delivery": {
     "file": "putgd-proton-corresponding-source.tar.gz",
-    "bytes": 2484914096,
-    "sha256": "74ccb7b1be2c3fd3db2ed70222e1dd06a1dea0eb901448170a76709bcfe4c8ab",
+    "bytes": 2394441755,
+    "sha256": "d002d29acbdb4a8a7becb0754b8ca63d4e1bdd0ff6bb1ddb276de05cc49e2f5b",
     "parts": [
       {
         "file": "putgd-proton-corresponding-source.tar.gz.part1",
         "bytes": 1300000000,
-        "sha256": "ed4ad0f31dc9a8e8e47f2e0ad7ce8b61bd812240640095866ae1ac036abab757",
-        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part1"
+        "sha256": "b5ff5d79324a57e3d51c573c2f77b68bee0dd1e80b84c885e5c177c0e744f85f",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part1"
       },
       {
         "file": "putgd-proton-corresponding-source.tar.gz.part2",
-        "bytes": 1184914096,
-        "sha256": "9b47aab2e8229fda914fdb142812893c78fb04d51f91850b782f957868b36684",
-        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part2"
+        "bytes": 1094441755,
+        "sha256": "78ac53ae7970d5ef2757801762dd6794bd7d471e0c7022026f63323485a8c361",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part2"
       }
     ]
   },
   "publication": {
-    "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.22.2-crypto2.0.1",
-    "publishedAt": "2026-10-15T22:52:51Z",
-    "releaseId": 414343618,
-    "scope": "Verified corresponding-source materials only; final binary package acceptance is recorded separately"
+    "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.4",
+    "scope": "SDK 0.23.0/Crypto 2.2.0/OpenPGP 6.3.1/Bun 1.4.4 corresponding-source delivery. Native and desktop/resource acceptance are independently recorded by the current application catalog.",
+    "verificationReceipt": "tools/proton/native_relink/evidence/source-publication.json",
+    "verificationReceiptSha256": "36b511c201416ccab3bce138b199b456ea1c8291536ceea621da1772dcbc91c0",
+    "sourceTagCommit": "7b0b7badc78e273d2b59f3258f5f97aa371866ec"
   },
   "applicationSourceOverlay": {
     "required": true,
     "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
-    "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+    "baseSourceArtifactSha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
     "repository": "https://github.com/patrick-hudson/put.gd-desktop",
-    "sourceCommit": "692a93265208bc6e7b5d4800e5259fa663db97d9",
-    "delivery": "Included in the current put.gd application source archive in the linked sources release. Fetch the six unchanged original packets from the permanent delivery URLs in this catalog, then apply the listed files before rebuilding the current helper.",
-    "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). No SDK, crypto, Bun or dependency source changes.",
+    "delivery": "Included in the current application source archive. Apply the listed checksum-verified files to the current helper packet, then compile with the pinned official Bun 1.4.4 executable.",
+    "reason": "Current SDK 0.23.0/Crypto 2.2.0 helper, official server-time hook and matching locked graph with Bun 1.4.4; historical helpers are not current rebuild inputs.",
     "files": [
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "4a1b18be9770f0a12eb4866155e3650f99a5a5c20dfcfed7f0228d702dc468a3"
+        "sha256": "db3858fca53262970442805fa4ff1ad5c254a2f9c96a70954897e20962a3ca98"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "bb88413cb8ec35b995cd29971e43e5ac113861047f43ffbb3f9655e99c09e63f"
+        "sha256": "83ee273493b7edca7f0f66091786a253300e21dec290eb6fe7abf9379d14e724"
       },
       {
         "source": "tools/proton/protocol.ts",
@@ -132,9 +130,77 @@
       {
         "source": "tools/proton/account.ts",
         "destination": "build-source/account.ts",
-        "sha256": "4e2209a305ff23ccc870511585fbdf93fafd192ebb575dc116c00de01ff16a01"
+        "sha256": "65f98bf072ea82c4a60150ec310e586dded805b1cf54424907d8712fb27b50de"
+      },
+      {
+        "source": "tools/proton/crypto-cache.ts",
+        "destination": "build-source/crypto-cache.ts",
+        "sha256": "ce92f727d394362cf0f85684c358e5d345e6cf7acdc32e518da6ab7e962c57b1"
+      },
+      {
+        "source": "tools/proton/stdout.ts",
+        "destination": "build-source/stdout.ts",
+        "sha256": "38a846328dd9f95b1deadf5929dd8a667ae4a4ef8d32ba87288fab350a64ba82"
+      },
+      {
+        "source": "tools/proton/progress.ts",
+        "destination": "build-source/progress.ts",
+        "sha256": "64f643289756a8c4b2df28448c80920069ee69117d7cdaab3b21ca1032e39634"
+      },
+      {
+        "source": "tools/proton/package.json",
+        "destination": "build-source/package.json",
+        "sha256": "f0bf30c155b968fa5ed06e30a123b80c45391e999dabe9df64ce97376293a517"
+      },
+      {
+        "source": "tools/proton/package-lock.json",
+        "destination": "build-source/package-lock.json",
+        "sha256": "535b88c77a9433c3cf8722786a56a6a3b1fccd923315f5e0df7abebad86b74d1"
       }
     ],
     "exactHelperRebuildVerified": true
+  },
+  "searchScope": {
+    "sdkVersion": "0.23.0",
+    "embeddedAdapter": "src/search/sdkCapabilities.ts",
+    "searchEngineBundled": false,
+    "boltffiRuntimeBundled": false,
+    "vendorWasmBundled": false,
+    "vendorWasmSourcePacket": "putgd-proton-helper-rebuild.tar.gz",
+    "preferredRustSourceClaimed": false
+  },
+  "nativeRelinkProof": {
+    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "receipt": "tools/proton/native_relink/evidence/native-proof.json",
+    "receiptSha256": "9d47aba1ec3674404f7905fad27999ac589efde49e08b5c1c9f12b643f624985",
+    "nativeBunSha256": "e2501fe8a1f12058166923347657d1a0732eac06d9361beff21b26f5870ef401",
+    "proofHelperSha256": "872e0637c2ca790132364509e2680d1553121518be8f894eacf014cab7e282d6",
+    "scope": "Offline modification/relink of the final helper using source-built Bun/JavaScriptCore/TinyCC; no native byte identity, account or desktop/resource acceptance claim."
+  },
+  "desktopResourceAcceptance": {
+    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "status": "passed",
+    "receipt": "tools/proton/native_relink/evidence/desktop-resource-current.json",
+    "historicalProofTransferred": false,
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "receiptSha256": "2b4ab58ed44a851e59b8538ddceb8f7525a6c23a2bd6de72de9c590e91e2f455",
+    "scope": "Current-helper guest acceptance on #1080 CI DEBs, plus all five final-head installer Proton audits; exact tested package/build identities and build-time catalog flags remain in the receipt."
   }
 }

@@ -280,6 +280,15 @@
       "expires": "2027-01-21",
       "issue": 511,
       "evidence": "packaging/sbom/dispositions/511.json"
+    },
+    {
+      "id": "CVE-2026-113679",
+      "component": "harfbuzz",
+      "scope": "appimage-harfbuzz-14.5.0",
+      "reason": "Affected code is not built or shipped: HarfBuzz's experimental WebAssembly shaper (hb-wasm-api/hb-wasm-shape, WAMR). Qt 6.12.0's bundled HarfBuzz compiles neither file and does not define HAVE_WASM; verified against the Qt source, the official binary's configuration and the exact libQt6Gui.so.6.",
+      "expires": "2027-01-29",
+      "issue": 1055,
+      "evidence": "packaging/sbom/dispositions/511.json"
     }
   ],
   "scopes": {
@@ -300,6 +309,16 @@
       "properties": {
         "putgd:commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf",
         "putgd:filesSha256": "21a40d23f96b21706481da95efd2205f6a93216d052f1afc83b640d2decfefd3",
+        "putgd:toolsAbsent": "true"
+      }
+    },
+    "appimage-harfbuzz-14.5.0": {
+      "package": "appimage",
+      "component": "harfbuzz",
+      "version": "14.5.0",
+      "properties": {
+        "putgd:commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+        "putgd:filesSha256": "e8906210d9994d70ab90f6d810144fce7481165e3588107ba9522380a21677bd",
         "putgd:toolsAbsent": "true"
       }
     }

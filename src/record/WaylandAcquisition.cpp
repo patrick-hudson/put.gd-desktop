@@ -26,4 +26,12 @@ FrameTime pipewireFrameTime(qint64 framePts, qint64 monotonicNow, qint64 running
     if (previous >= 0 && result.running <= previous) result.running = previous + 1;
     return result;
 }
+qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& lock) {
+    const qint64 arrival = std::max<qint64>(0, arrivalRunning);
+    if (previous < 0 || lock.periodNs <= 0) return previous >= 0 && arrival <= previous ? previous + 1 : arrival;
+    const qint64 slot = previous + lock.periodNs;
+    if (arrival < slot - lock.toleranceNs) return -1;
+    if (arrival > slot + lock.toleranceNs) return arrival;
+    return slot;
+}
 }

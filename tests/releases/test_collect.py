@@ -109,7 +109,7 @@ class ReleaseCollection(unittest.TestCase):
         compiled = {**identity, 'dirty': None, 'sourceProvenance': 'supplied',
                     'version': self.source_receipt['localBuild']['version'],
                     'packageVersion': identity['baseVersion'] + '~dev+g' + identity['gitCommit'][:12]}
-        self.source_result = {'passed': True, 'compiledBuild': compiled,
+        self.source_result = {'passed': True, 'archive': self.source_receipt['artifact'], 'compiledBuild': compiled,
                               'rebuiltProton': {'sha256': catalog['helperSha256'], 'bundledSha256': catalog['helperSha256']},
                               'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker']}
         (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
@@ -177,9 +177,8 @@ class ReleaseCollection(unittest.TestCase):
 
     def test_installer_layout_links_sources_and_keeps_debug_out_of_public_assets(self):
         import support_assets
-        # Tagged builds do not recompile the source export or carry unchanged
-        # Proton archives/debug payloads through the collection job.
-        (self.inputs / 'release-native-ubuntu24.04/source-build-results.json').unlink()
+        # Stable builds retain the rebuild receipt while unchanged Proton
+        # archives/debug payloads stay out of the public installer release.
         shutil.rmtree(self.inputs / 'proton-sources')
         for path in self.inputs.glob('release-*/debug-symbols-*'):
             path.unlink()
@@ -371,7 +370,7 @@ class ReleaseCollection(unittest.TestCase):
 
     def test_failed_other_commit_or_missing_helper_source_build_rejected(self):
         path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
-        for changed in ({'passed': False}, {'compiledBuild': {**self.source_result['compiledBuild'], 'gitCommit': '0' * 40}},
+        for changed in ({'passed': False}, {'archive': {**self.source_receipt['artifact'], 'sha256': '0' * 64}}, {'compiledBuild': {**self.source_result['compiledBuild'], 'gitCommit': '0' * 40}},
                         {'identityMatchedPrograms': ['putgd']}):
             with self.subTest(changed=changed):
                 path.write_text(json.dumps({**self.source_result, **changed}))
@@ -510,6 +509,13 @@ class ReleaseCollection(unittest.TestCase):
             self.run_collection()
         self.assertFalse(self.output.exists())
 
+    def test_stable_installer_collection_requires_exact_source_rebuild(self):
+        (self.inputs / 'release-native-ubuntu24.04/source-build-results.json').unlink()
+        with patch.object(collect, 'verify', return_value=self.release):
+            with self.assertRaises(FileNotFoundError):
+                collect.collect(self.root, self.inputs, self.output, TAG, installers_only=True)
+        self.assertFalse(self.output.exists())
+
     def nightly_inputs(self):
         # U1 covers exact Git-tag verification; this fixture starts at its verified
         # identity boundary and tests the real collector/archive byte pipeline.
@@ -530,6 +536,8 @@ class ReleaseCollection(unittest.TestCase):
         archive = directory / ('putgd-' + version + '-source.tar.gz')
         self.source_receipt = create_archive(self.root, archive, receipt['build'])
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
+        self.source_result['archive'] = self.source_receipt['artifact']
+        (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
         return tag, archive
 
     def test_nightly_cli_preserves_all_twenty_one_raw_assets_and_exact_compiled_source(self):

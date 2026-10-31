@@ -1,1 +1,0 @@
-{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/tmp/npb4/native-burst/runtime/putgd/session.sock", "utf8Bytes": 49, "passed": true}, {"path": "/tmp/npb4/history-functionals/runtime/putgd/session.sock", "utf8Bytes": 56, "passed": true}, {"path": "/tmp/bg4/runtime/putgd/session.sock", "utf8Bytes": 35, "passed": true}]}

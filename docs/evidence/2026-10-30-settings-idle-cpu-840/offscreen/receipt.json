@@ -1,0 +1,53 @@
+{
+  "placement": "boat",
+  "platform": "offscreen",
+  "accessibilityForced": false,
+  "resident": 307516,
+  "seconds": 5,
+  "binaries": {
+    "putgd": "0772e418e9c405c1592b8979b46de5860a5a5a0b79f8c2e68d1037ab6dba1f2a",
+    "putgd-cli": "d27d8d053b7dc964a596ad11a83c7796836fba1901ca132fd6cc61483034cb06",
+    "putgd-ui": "6db07dfa39fd15ed7a142a8773fe09888d571c7a73ee6d41f85417287b91408f"
+  },
+  "samples": [
+    {
+      "view": "history",
+      "uiPid": 307527,
+      "ticks": 0,
+      "elapsed": 5.000170896999407,
+      "cpuPercent": 0.0
+    },
+    {
+      "view": "settings",
+      "uiPid": 307527,
+      "ticks": 0,
+      "elapsed": 5.0001400529999955,
+      "cpuPercent": 0.0
+    },
+    {
+      "view": "history",
+      "uiPid": 307527,
+      "ticks": 0,
+      "elapsed": 5.000119561000247,
+      "cpuPercent": 0.0
+    },
+    {
+      "view": "settings",
+      "uiPid": 307527,
+      "ticks": 0,
+      "elapsed": 5.000560208000024,
+      "cpuPercent": 0.0
+    }
+  ],
+  "build": {
+    "schemaVersion": 1,
+    "version": "26.1030.2615-dev+gbe8bc6b13f28",
+    "baseVersion": "26.1030.2615",
+    "packageVersion": "26.1030.2615~dev+gbe8bc6b13f28",
+    "gitCommit": "be8bc6b13f28afd03c835211f98f608909b84b6f",
+    "gitTree": "17352781d921c64e2ee9a28ee92ef371225430a0",
+    "commitCount": 2615,
+    "dirty": false,
+    "sourceProvenance": "git"
+  }
+}

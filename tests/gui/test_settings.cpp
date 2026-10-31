@@ -100,6 +100,59 @@ class SettingsGui:public QObject {
 public slots:
  void recordProtonUrl(const QUrl& url){openedUrls_.append(url);}
 private slots:
+ void idleSettingsLayoutSettles_data(){
+  QTest::addColumn<int>("page");QTest::addColumn<QSize>("size");
+  for(int page=0;page<4;++page)for(const auto size:{QSize(1440,960),QSize(1060,680)})QTest::newRow(qPrintable(QString("page%1-%2").arg(page).arg(size.width())))<<page<<size;
+ }
+ void idleSettingsLayoutSettles(){
+  QFETCH(int,page);QFETCH(QSize,size);
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(size);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(page);
+  class Events final:public QObject {
+  public:
+   explicit Events(QWidget* root):root_(root){quiet.start();qApp->installEventFilter(this);}
+   ~Events()override{qApp->removeEventFilter(this);}
+   int layouts=0,paints=0;QElapsedTimer quiet;QHash<QString,int> sources;
+  protected:
+   bool eventFilter(QObject* object,QEvent* event)override{
+    if(event->type()!=QEvent::LayoutRequest&&event->type()!=QEvent::Paint)return false;
+    auto* widget=qobject_cast<QWidget*>(object);if(!widget||(widget!=root_&&!root_->isAncestorOf(widget)))return false;
+    if(event->type()==QEvent::Paint)++paints;else{++layouts;quiet.restart();++sources[widget->objectName()+":"+widget->metaObject()->className()];}return false;
+   }
+  private:QWidget* root_;
+  } events(&window);
+  window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  // Include retained, hidden pages: they must settle too. A layout feedback
+  // loop never reaches this quiet interval, regardless of machine speed.
+  const bool settled=putgd::test::waitFor([&]{return events.quiet.elapsed()>=100;});
+  if(!settled)qWarning()<<"Unsettled Settings layouts:"<<events.layouts<<events.sources;
+  QVERIFY(settled);events.layouts=events.paints=0;
+  PUTGD_VERIFY_STEADY(events.layouts<64&&events.paints<64,1000);
+  qInfo()<<"Idle Settings layout/paint events:"<<events.layouts<<events.paints;
+ }
+ void emptyShortcutRecordingPromptFitsAndSettles(){
+  QWidget window;window.setFixedSize(760,900);auto* layout=new QVBoxLayout(&window);auto* editor=new ShortcutEditor;layout->addWidget(editor);
+  // Hold the surrounding geometry steady: the placeholder must be a sizing input itself.
+  editor->findChild<QWidget*>("shortcutPreferenceCard")->setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed);
+  auto* status=editor->findChild<QLabel*>("shortcutRecordingStatus");status->setText("Ready to record");status->setFixedHeight(status->fontMetrics().height());auto policy=status->sizePolicy();policy.setRetainSizeWhenHidden(true);status->setSizePolicy(policy);
+  auto actions=Settings::defaults()["actions"].toObject();for(const auto& name:Settings::presentationOrder()){auto action=actions[name].toObject();action["shortcut"]="";actions[name]=action;}
+  editor->setActions(actions);editor->setRecordingControl([](bool,auto reply){reply({});});PreferenceRows::alignChoices(&window);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* input=editor->editors().value("region");auto* record=editor->findChild<QPushButton*>("recordRegionShortcut");QVERIFY(input&&record);PUTGD_VERIFY_STEADY(input->placeholderText()=="Not set",100);const int idleWidth=input->width();QSignalSpy changed(input,&QLineEdit::textChanged);
+  record->click();QCOMPARE(input->placeholderText(),QString("Press shortcut…"));QCOMPARE(changed.count(),0);
+  PUTGD_TRY_VERIFY(input->contentsRect().width()>=input->fontMetrics().horizontalAdvance(input->placeholderText())+4);
+  editor->cancelRecording();PUTGD_TRY_COMPARE(input->width(),idleWidth);PUTGD_VERIFY_STEADY(input->width()==idleWidth,100);
+ }
+ void updateChannelHelpReservesItsHeightAfterItAppears(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);QJsonObject update;
+  fixture.server.setUiDiagnostics([&]{auto data=fixture.operations().diagnostics();data["update"]=update;return data;});
+  MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();PUTGD_TRY_VERIFY(fixture.session.ready());
+  auto* channel=window.findChild<QComboBox*>("updateChannel");auto* source=window.findChild<QLabel*>("updateChannelSource");QVERIFY(channel&&source);
+  for(int pass=0;pass<2;++pass){
+   update={{"supported",true},{"check",true},{"channelSource","repository"},{"channel","nightly"},{"build",QJsonObject{{"version","26.1026.1-nightly"},{"channel","nightly"},{"supported",true}}},{"action",QJsonObject{{"kind","software-updates"},{"repository","managed"},{"file","/etc/yum.repos.d/putgd.repo"}}}};fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(source->isVisibleTo(window.settings()));
+   const auto fits=[&]{return source->mapTo(&window,QPoint()).y()>=channel->mapTo(&window,QPoint(0,channel->height())).y()&&source->parentWidget()->rect().contains(source->geometry())&&source->height()>=source->heightForWidth(source->width());};
+   PUTGD_VERIFY_STEADY(fits(),200);
+   update["channelSource"]="setting";fixture.session.refreshSnapshot();PUTGD_TRY_VERIFY(!source->isVisibleTo(window.settings()));
+  }
+ }
  void stackedLabelsStayCloseToTheirNextWidget_data(){QTest::addColumn<int>("pixels");QTest::newRow("100")<<14;QTest::newRow("125")<<18;QTest::newRow("150")<<21;}
  void stackedLabelsStayCloseToTheirNextWidget(){
   QFETCH(int,pixels);Fonts::load();Ui::apply(*qApp);const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});auto font=original;font.setPixelSize(pixels);qApp->setFont(font);QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,900);window.show();int checked=0;
@@ -885,6 +938,20 @@ private slots:
   // A change made through the CLI/MCP path shows in the open window.
   auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["regionSelectionMode"]="live";doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
   PUTGD_TRY_COMPARE(mode->currentData().toString(),QString("live"));
+ }
+ void recordingFrameRateLivesOnTheCapturePage(){
+  // #984: 30 (default) or 60 frames per second for new recordings, saved to the shared config.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);
+  auto* rate=window.findChild<QComboBox*>("recordingFrameRate");QVERIFY(rate);QVERIFY(tabs->widget(1)->isAncestorOf(rate));QVERIFY(!tabs->widget(0)->isAncestorOf(rate));
+  QCOMPARE(rate->count(),2);QCOMPARE(rate->itemText(0),QString("30 frames per second"));QCOMPARE(rate->itemText(1),QString("60 frames per second"));QCOMPARE(rate->currentData().toInt(),30);QCOMPARE(rate->accessibleName(),QString("Frame rate"));
+  auto* help=window.findChild<QToolButton*>("recordingFrameRateHelp");QVERIFY(help);QVERIFY(help->accessibleDescription().contains("can't keep up"));
+  // An untouched configuration keeps no key; choosing 60 writes it.
+  QVERIFY(!service.document()["preferences"].toObject().contains("recordingFrameRate"));
+  rate->setCurrentIndex(rate->findData(60));PUTGD_TRY_COMPARE(service.snapshot().recordingFrameRate,60);
+  QCOMPARE(service.document()["preferences"].toObject()["recordingFrameRate"].toInt(),60);
+  // A change made through the CLI/MCP path shows in the open window.
+  auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["recordingFrameRate"]=30;doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
+  PUTGD_TRY_COMPARE(rate->currentData().toInt(),30);
  }
  void captureDefaultAndExplicitExceptionPersistAcrossReopen(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
@@ -2416,6 +2483,17 @@ QVERIFY(!access->placeholderText().isEmpty());QVERIFY(!access->placeholderText()
  }
  void destinationFooterAndActionsShareTheFormColumn(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1600,1100);window.navigate("destinations");window.show();auto* footer=window.findChild<QWidget*>("destinationStatusRow");auto* more=window.findChild<QPushButton*>("destinationActions");auto* list=window.findChild<QListWidget*>("destinationList");QVERIFY(footer&&more&&list);PUTGD_TRY_VERIFY(footer->width()<=Ui::scaled(880)+56);QCOMPARE(more->size(),QSize(Ui::scaled(36),Ui::scaled(36)));QCOMPARE(list->iconSize(),QSize(Ui::scaled(Ui::Metric::icon),Ui::scaled(Ui::Metric::icon)));auto* test=window.findChild<QPushButton*>("testDestination");QVERIFY(window.findChild<QScrollArea*>("destinationScroll")->widget()->isAncestorOf(test));
+ }
+ void compactPageHeaderHasNoStaleLayoutItemHeight(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();
+  auto state=window.settings()->saveViewState();state["conflict"]=true;QVERIFY(window.settings()->restoreViewState(state));
+  auto* heading=window.findChild<QLabel*>("settingsPageHeadingGeneral");auto* header=heading->parentWidget();
+  for(int i=0;i<12;++i){window.resize(1440,1200);PUTGD_TRY_VERIFY(!heading->property("compactHeading").toBool());window.resize(1060,680);PUTGD_TRY_VERIFY(heading->property("compactHeading").toBool());PUTGD_TRY_COMPARE(header->height(),header->sizeHint().height());QCOMPARE(header->height(),header->layout()->sizeHint().height());}
+  // Replay Qt assigning the reported stale +7 px through the real layout item.
+  auto* layout=header->parentWidget()->layout();auto* item=layout->itemAt(layout->indexOf(header));
+  auto allocation=item->geometry();allocation.setHeight(header->sizeHint().height()+7);item->setGeometry(allocation);
+  QCOMPARE(header->height(),header->sizeHint().height());
+  layout->invalidate();layout->activate();QCOMPARE(header->height(),header->layout()->sizeHint().height());
  }
  void conflictOutranksOutputNoticesAndCompactHeadingsRecover(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));auto doc=Settings::defaults();auto archive=doc["archive"].toObject();archive["keepUploads"]=false;doc["archive"]=archive;QVERIFY(service.save(doc,{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.resize(1060,680);window.navigate("settings");window.show();auto* settings=window.settings();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);PUTGD_TRY_VERIFY(window.findChild<QWidget*>("captureOutputBlock")->isVisible());auto state=settings->saveViewState();state["conflict"]=true;QVERIFY(settings->restoreViewState(state));PUTGD_TRY_VERIFY(window.findChild<QWidget*>("captureOutputBlock")->isHidden());tabs->setCurrentIndex(0);PUTGD_TRY_VERIFY(window.findChild<QWidget*>("commandOutputWarning")->isHidden());auto* heading=window.findChild<QLabel*>("settingsPageHeadingGeneral");auto* intro=window.findChild<QLabel*>("settingsPageDescriptionGeneral");QVERIFY(heading&&intro);PUTGD_TRY_VERIFY(heading->property("compactHeading").toBool());QVERIFY(intro->isHidden());auto* page=qobject_cast<QScrollArea*>(tabs->currentWidget());QCOMPARE(page->widget()->layout()->contentsMargins(),QMargins(Ui::space(Ui::Space::xxl),qMin(Ui::pageHeaderTop(),Ui::space(Ui::Space::l)),Ui::space(Ui::Space::xxl),Ui::space(Ui::Space::xl)));QCOMPARE(page->widget()->layout()->spacing(),Ui::space(Ui::Space::xxl));QCOMPARE(heading->font().pixelSize(),Ui::font(Ui::Type::compactPage,true).pixelSize());QVERIFY(heading->font().pixelSize()>Ui::font(Ui::Type::section,true).pixelSize());const auto scheme=Theme::scheme();Theme::setScheme(scheme==Theme::Scheme::Dark?Theme::Scheme::Light:Theme::Scheme::Dark);QCOMPARE(heading->font().pixelSize(),Ui::font(Ui::Type::compactPage,true).pixelSize());Theme::setScheme(scheme);window.resize(1440,1200);PUTGD_TRY_VERIFY(!heading->property("compactHeading").toBool());QVERIFY(intro->isHidden());

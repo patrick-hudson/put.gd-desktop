@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/511",
   "reviewDate": "2026-10-23",
-  "scope": "Only the audited AppImage FFmpeg and ICU builds. Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
+  "scope": "Only the audited AppImage FFmpeg and ICU builds, and Qt's embedded HarfBuzz in the exact official libQt6Gui.so.6 (#1055). Does not waive other CVEs, native/system dependencies or release/desktop acceptance.",
   "package": {
     "ciRun": 40045151634,
     "ciArtifact": 12540539510,
@@ -42,6 +42,16 @@
       "properties": {
         "putgd:commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf",
         "putgd:filesSha256": "21a40d23f96b21706481da95efd2205f6a93216d052f1afc83b640d2decfefd3",
+        "putgd:toolsAbsent": "true"
+      }
+    },
+    "appimage-harfbuzz-14.5.0": {
+      "package": "appimage",
+      "component": "harfbuzz",
+      "version": "14.5.0",
+      "properties": {
+        "putgd:commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+        "putgd:filesSha256": "e8906210d9994d70ab90f6d810144fce7481165e3588107ba9522380a21677bd",
         "putgd:toolsAbsent": "true"
       }
     }
@@ -594,6 +604,141 @@
       "https://github.com/unicode-org/icu/blob/680f521746a3bd6a86f25f25ee50a62d88b489cf/icu4c/source/tools/genrb/Makefile.in",
       "https://github.com/unicode-org/icu/blob/680f521746a3bd6a86f25f25ee50a62d88b489cf/icu4c/source/tools/genrb/reslist.cpp",
       "https://github.com/unicode-org/icu/blob/680f521746a3bd6a86f25f25ee50a62d88b489cf/icu4c/source/tools/genrb/sources.txt"
+    ]
+  },
+  "harfbuzz": {
+    "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/1055",
+    "reviewDate": "2026-10-31",
+    "id": "CVE-2026-113679",
+    "aliases": [
+      "GHSA-hqgm-v7cx-mq25"
+    ],
+    "severity": "High",
+    "reportedFixVersions": [
+      "15.0.0"
+    ],
+    "qt": "6.12.0",
+    "version": "14.5.0",
+    "assessment": "Affected code is not built or shipped. CVE-2026-113679 is an out-of-bounds host write through the font_glyph_to_string WAMR import of HarfBuzz's experimental WebAssembly shaper (hb-wasm-api-font.hh, registered by hb-wasm-api-list.hh and compiled only into hb-wasm-api.cc/hb-wasm-shape.cc under HAVE_WASM). Qt 6.12.0's BundledHarfbuzz target compiles 70 HarfBuzz sources, none of them hb-wasm-*, and defines no HAVE_WASM, so hb-shaper-list.hh registers only the ot and fallback shapers. The official Qt 6.12.0 binaries were configured -qt-harfbuzz; the AppImage's libQt6Gui.so.6 is that official file byte for byte, links no libharfbuzz or WAMR library and contains none of the shaper's import names.",
+    "decision": "Scoped disposition, not an update: no Qt release carries HarfBuzz 15.0.0 (v6.12.0 ships 14.5.0; the 6.12 and dev branches 14.6.0, also affected), and rebuilding qtbase against a newer HarfBuzz would replace the official Qt binaries, their SBOM-based notices and ABI with the official Qt Wayland/SVG/image format modules for code that is not compiled. Revisit when a Qt release ships HarfBuzz >= 15.0.0.",
+    "upstreamFix": {
+      "repository": "https://github.com/harfbuzz/harfbuzz",
+      "commit": "5e821de8256d01780566b5c8ab7886fae4c93da8",
+      "changedFiles": [
+        "src/hb-wasm-api-font.hh",
+        "src/hb-wasm-api-list.hh",
+        "src/hb-wasm-api.h"
+      ]
+    },
+    "qtSource": {
+      "repository": "https://github.com/qt/qtbase.git",
+      "commit": "025bdad181de241e81bf853c8a2d7bf3d19261a9",
+      "cmakeLists": "src/3rdparty/harfbuzz-ng/CMakeLists.txt",
+      "compiledHarfbuzzSources": 70,
+      "compiledWasmSources": [],
+      "presentButNotCompiled": [
+        "src/hb-wasm-api.cc",
+        "src/hb-wasm-shape.cc"
+      ],
+      "defines": [
+        "HAVE_ATEXIT",
+        "HAVE_CONFIG_H",
+        "HB_EXTERN=",
+        "HB_NDEBUG",
+        "HB_NO_UNICODE_FUNCS",
+        "QT_NO_VERSION_TAGGING",
+        "HAVE_PTHREAD",
+        "HAVE_SCHED_H",
+        "HAVE_SCHED_YIELD",
+        "HAVE_OT",
+        "HAVE_FALLBACK"
+      ],
+      "configHDefinesHaveWasm": false
+    },
+    "officialBinaryConfiguration": {
+      "install": "aqtinstall 3.3.0: install-qt linux desktop 6.12.0 linux_gcc_64 --archives qtbase",
+      "config_qtbase.opt": {
+        "sha256": "c5eb4c32a2b7d5a83215e038340fa6c6d6dada6d1bf0f3ae7123cce80e5abce5",
+        "harfbuzz": "-qt-harfbuzz"
+      },
+      "config_qtbase.summary": {
+        "sha256": "ce733a0c854c434151f4d1c8e0ed54caba553be24af6db5e4c9c1b12dcb0388a",
+        "harfbuzz": "HarfBuzz yes; Using system HarfBuzz no"
+      },
+      "qtgui-config_p.h": {
+        "sha256": "d8d84992f6627d7ad883b0e8612e46c8c2cb6083b2cd1ec8b2f73700d033adf3",
+        "features": {
+          "QT_FEATURE_harfbuzz": 1,
+          "QT_FEATURE_system_harfbuzz": -1
+        }
+      },
+      "sbom/qtbase-6.12.0.spdx": {
+        "sha256": "7a36cba7d583e0d57214d5172af7d84ec06e3d1127297966e48874f67b906c93",
+        "package": "BundledHarfbuzz 14.5.0"
+      },
+      "lib/libQt6Gui.so.6.12.0": {
+        "sha256": "392cf5a2fed77ca7b861484ae0f25a2f7f54789024e79518c6c28e1ddf5b4b1a"
+      }
+    },
+    "inspection": {
+      "host": "Debian 13 physical builder 192.168.68.69 (SSH only)",
+      "package": {
+        "tag": "v26.1031.3384-nightly",
+        "file": "putgd-26.1031.3384-nightly-x86_64.AppImage",
+        "sha256": "ef0ae99f5b3990241eac14977be82fa779da40c8f741e4e8885c626d59f2fce2"
+      },
+      "libraryFiles": [
+        {
+          "path": "usr/lib/libQt6Gui.so.6",
+          "sha256": "392cf5a2fed77ca7b861484ae0f25a2f7f54789024e79518c6c28e1ddf5b4b1a",
+          "bytes": 11572856,
+          "identicalToOfficial": "lib/libQt6Gui.so.6.12.0",
+          "embeddedHarfbuzzVersion": "14.5.0",
+          "needed": [
+            "libEGL.so.1",
+            "libX11.so.6",
+            "libglib-2.0.so.0",
+            "libQt6DBus.so.6",
+            "libxkbcommon.so.0",
+            "libGL.so.1",
+            "libz.so.1",
+            "libfreetype.so.6",
+            "libfontconfig.so.1",
+            "libgthread-2.0.so.0",
+            "libQt6Core.so.6",
+            "libstdc++.so.6",
+            "libm.so.6",
+            "libgcc_s.so.1",
+            "libc.so.6"
+          ],
+          "wasmShaperMarkers": []
+        }
+      ],
+      "wasmRuntimeLibraries": [],
+      "bundledLibharfbuzz": []
+    },
+    "positiveControl": {
+      "description": "HarfBuzz 14.5.0's shaper sources, compiled with -DHAVE_WASM against WAMR's public headers, contain the import names the scope checks for; the shipped libQt6Gui.so.6 contains none.",
+      "harfbuzzCommit": "863d3f7787c6df18d20e4535c5906bf3eb803bd5",
+      "wamrCommit": "f8ed1f442969c806ced7b127d4e4d397bf051737",
+      "command": "g++ -std=c++17 -O2 -c -DHAVE_WASM -DHB_NDEBUG -Ihb/src -Iwamr/core/iwasm/include hb/src/hb-wasm-shape.cc",
+      "markersInShaperObject": [
+        "font_glyph_to_string",
+        "buffer_contents_realloc",
+        "glyph_outline_free",
+        "feature_copy_contents",
+        "features_free",
+        "shape_plan_create"
+      ]
+    },
+    "scopeGuard": "tools/releases/sbom.py embedded_scope_properties: putgd:commit is the Qt module's source commit, putgd:filesSha256 hashes the Qt libraries the HarfBuzz attribution names (usedBy), and putgd:toolsAbsent is false when any shipped file is a WAMR runtime (libiwasm/libvmlib) or those libraries contain a WASM shaper import name. A Qt update, a rebuilt or patched libQt6Gui or a WASM-enabled HarfBuzz revokes the acceptance.",
+    "references": [
+      "https://github.com/advisories/GHSA-hqgm-v7cx-mq25",
+      "https://github.com/harfbuzz/harfbuzz/commit/5e821de8256d01780566b5c8ab7886fae4c93da8",
+      "https://github.com/qt/qtbase/blob/025bdad181de241e81bf853c8a2d7bf3d19261a9/src/3rdparty/harfbuzz-ng/CMakeLists.txt",
+      "https://github.com/qt/qtbase/blob/025bdad181de241e81bf853c8a2d7bf3d19261a9/src/3rdparty/harfbuzz-ng/config.h",
+      "https://github.com/harfbuzz/harfbuzz/blob/14.5.0/src/hb-shaper-list.hh",
+      "https://github.com/patrick-hudson/put.gd-desktop/blob/957f6bfadc08c00e8552b74bb97a2e7910eb7033/docs/evidence/2026-10-31-exact-asset-audit/README.md"
     ]
   },
   "stillReported": [

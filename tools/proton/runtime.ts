@@ -99,7 +99,7 @@ export async function checkName(ctx: Context, request: JsonObject) {
     try {
         const folder = await destinationFolder(ctx, request);
         const candidate = name(request.candidate);
-        const available = await ctx.sdk.getAvailableName(folder.uid, candidate);
+        const available = await ctx.sdk.getAvailableName(folder.uid, candidate, NodeType.File);
         if (typeof available !== 'string' || !available) return status('inconclusive');
         return status(available === candidate ? 'absent' : 'present', {
             objectReference: reference(request), concurrencyToken: '' });
@@ -134,7 +134,7 @@ async function reconcile(ctx: Context, request: JsonObject) {
 // The hashed availability query counts completed files and unfinished drafts, so a free
 // name proves neither exists. Any doubt, including a failed query, keeps the outcome unknown.
 async function nameStillFree(ctx: Context, folderUid: string, candidate: string): Promise<boolean> {
-    try { return await ctx.sdk.getAvailableName(folderUid, candidate) === candidate; }
+    try { return await ctx.sdk.getAvailableName(folderUid, candidate, NodeType.File) === candidate; }
     catch { return false; }
 }
 export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {

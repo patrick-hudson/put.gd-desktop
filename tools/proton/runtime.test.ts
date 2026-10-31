@@ -12,6 +12,31 @@ import { AccountApiError, ApiClient } from 'proton-drive-sdk-account';
 
 type Context = Parameters<typeof inspectAccount>[0];
 type Call = { method: string; args: unknown[] };
+test('account response hooks synchronize crypto server time using official header precedence', async () => {
+    // Crypto time is monotonic module state: isolate it from other SDK tests.
+    const script = `
+        import assert from 'node:assert/strict';
+        import { accountResponseHooks } from './account.ts';
+        import { serverTime } from '@protontech/crypto/serverTime';
+        const hooks = accountResponseHooks(() => { throw new Error('unexpected requirement refusal'); });
+        for (const [headers, expected] of [
+            [{ date: 'Fri, 09 Oct 2026 05:00:00 GMT' }, '2026-10-09T05:00:00.000Z'],
+            [{ 'x-pm-date': 'invalid', date: 'Sat, 10 Oct 2026 05:00:00 GMT' }, '2026-10-10T05:00:00.000Z'],
+            [{ 'x-pm-date': 'Sun, 11 Oct 2026 06:00:00 GMT', date: 'Mon, 12 Oct 2026 06:00:00 GMT' }, '2026-10-11T06:00:00.000Z'],
+            [{ date: 'invalid' }, '2026-10-11T06:00:00.000Z'],
+        ]) {
+            for (const hook of hooks) await hook(new Request('https://synthetic.invalid'), {}, new Response(null, { headers }), {});
+            assert.equal(serverTime().toISOString(), expected);
+        }
+        console.log('server-time-hooks-passed');`;
+    const child = Bun.spawn([process.execPath, '--eval', script], {
+        cwd: import.meta.dir, stdout: 'pipe', stderr: 'pipe',
+    });
+    const [stdout, stderr, code] = await Promise.all([
+        new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited,
+    ]);
+    expect(code).toBe(0); expect(stderr).toBe(''); expect(stdout.trim()).toBe('server-time-hooks-passed');
+});
 const destination = { providerId: 'proton-drive', profileId: 'profile', profileRevision: 'revision',
     settings: { accountRootUid: 'root', folderUid: '' }, credentials: { mode: 'keychain', reference: 'synthetic-reference' } };
 const setup = { schemaVersion: 1, method: 'inspectAccount', destination, options: { name: 'Uploads' } };
@@ -105,7 +130,7 @@ test('name preflight uses SDK hashed availability without listing unrelated fold
         const result = await checkName(stub.ctx, request);
         expect(result.status).toBe(available === 'photo.png' ? 'absent' : 'present');
         expect(stub.calls.map(call => call.method)).toEqual(['root', 'node', 'available']);
-        expect(stub.calls[2].args).toEqual(['folder', 'photo.png']);
+        expect(stub.calls[2].args).toEqual(['folder', 'photo.png', NodeType.File]);
     }
 });
 test('failed name availability is inconclusive rather than permission-as-absence', async () => {
@@ -252,7 +277,7 @@ test('a plan or quota refusal settles as failed only when the name is still free
                     artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
                 expect(result.status).toBe(expected);
                 expect(result.error.code).toBe(code);
-                expect(stub.calls.filter(call => call.method === 'available').map(call => call.args)).toEqual([['folder', 'photo.png']]);
+                expect(stub.calls.filter(call => call.method === 'available').map(call => call.args)).toEqual([['folder', 'photo.png', NodeType.File]]);
                 expect(JSON.stringify(result)).not.toContain('synthetic-private-provider-detail');
             }
         }

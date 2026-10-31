@@ -98,6 +98,15 @@ helper/package lifecycle and release acceptance remain separate gates in
 
 The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on Shell's own session-bus connection. The native adapter resolves and pins the unique owner of `org.gnome.Shell`; it owns `org.putgd.App.Gnome50`, and the extension accepts only that name's current unique owner. D-Bus authenticates the session user. This prevents other session-bus names from submitting capture/clipboard requests and avoids using a caller allow-list workaround. Same-user process compromise is outside this session IPC boundary.
 
+Extension **v18** (PR #1056) captures a window on its head's output pixel grid,
+the same grid used for desktop and region capture of that head. When
+`paint_to_content()` returns a backing texture at a ceiled scale (for example
+2× on a 1.5× head), the extension resamples it with linear filtering onto the
+head's grid. Integer-scale captures keep the previous path. A client already
+rendering at fractional scale can have slightly softer edges because Mutter
+upscales its actor before this downscale. Verify the loaded version after
+logging out and back in; installed files alone do not prove v18 is running.
+
 Shell hotkeys freeze their external window actor/frame or clipboard revision inside the compositor callback, then dispatch a prepared UUID ticket to the adapter. GUI/CLI requests freeze through Prepare before journal work yields. Protocol version 1 uses opaque UUID request IDs, frozen preparation tickets, one-time acquisition, explicit cancellation/release, bounded PNG/MIME bytes, and at most 64 KiB decoded bytes per base64 chunk. Metadata includes exact byte lengths and each capture frame's identity, logical/native rectangles, density, and orientation. The adapter validates metadata before decoding on a worker. Clipboard revisions come from CLIPBOARD owner changes without reading payloads. Result transfer checks a frozen CLIPBOARD revision and copy epoch at ownership commit, so changed owners or newer invocations return `copy_suppressed`. Missing endpoints, incompatible protocol/Shell versions, stale tickets, vanished external targets, changed monitor layouts, unsupported offers, oversized offers, cancellation, and transfer deadlines produce distinct actionable results.
 
 Window capture refuses put.gd's own windows with `capture_target` before any

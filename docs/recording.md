@@ -77,11 +77,11 @@ All methods go through `putgd-cli` unchanged. `id` is the recording ID.
 | Method | Params | Result / effect |
 | --- | --- | --- |
 | `recording.capabilities` | | availability and reason, target kinds, formats, codecs per format, audio sources, `active` recording ID, limits, `timeUnit`; no capture, no prompt |
-| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
+| `recording.prepare` | `target {kind: monitor\|desktop\|region\|window, identity?, rect?}`, `format mp4\|webm\|gif\|webp`, `codec?`, `fps? (1–60; omitted: preferences.recordingFrameRate)`, `adaptiveFps? (boolean, default true)`, `audio? {system?, microphone?}`, `maxEdge?` | durable intent, then ready bounds/controls and any OS consent; replies at once with `state: preparing`; poll `inspect` for `ready`. A region without `rect` opens the desktop's selector (Escape cancels; `inspect` shows `selecting: true`); the chosen bounds appear in `inspect` as `target.rect`, and `overlayExcluded` / `overlayPlacement` say whether the control bar stayed out of the recorded pixels. Refused with `disk_space_insufficient` (details `freeBytes`, `reserveBytes`, `availableBytes`, `requiredBytes`, `shortfallBytes`, `hint`) before anything is accepted when free disk above the reserve can't hold three 64 MiB budgets (#213) |
 | `recording.select` | `{id, rect: [x, y, w, h]}` | completes an open region selector with that rectangle as a drag would (X11 root pixels, logical desktop pixels on Wayland); `recording_state` when no selector is open |
 | `recording.start` / `pause` / `resume` / `stop` | `{id}` | acknowledged once the backend reached the state; a duplicate of the in-flight command returns the current state, a different one is `recording_busy`; an acknowledged user `stop` returns `durationUs` and `stopReason: user` and enters `reviewing`, including when stopped through CLI, MCP or the toggle shortcut. A `stop` that arrives after the helper stopped on its own (its budget) answers with the existing `reviewing` state and preserves `stopReason: budget` and `stopDetails`, like a duplicate stop |
 | `recording.cancel` | `{id}` | discards the clip; the operation ends `cancelled` |
-| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`exportFraction` while exporting), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, and after a budget stop `stopDetails` (`reason` `disk_space` or `max_file_bytes`, `message`, `hint`, `budgetBytes`, `maxFileBytes`, `durationUs`, and for the disk `freeBytes`, `reserveBytes`, `availableBytes`; see [Capture and export engine](#capture-and-export-engine-x11)), error; an ended session is `recording_unavailable` and its operation holds the outcome |
+| `recording.inspect` | `{id}` | state, pending command, `selecting`, target, config, canvas, `durationUs`, `retainedUs`, edit, progress (`frameRate`, optional `frameRateReduced`, `framesDelivered`, `framesCaptured`; `exportFraction` while exporting; see [Frame rate](#frame-rate)), `overlayExcluded`, `overlayPlacement`, `lastExport`, `stopReason` (`user` or `budget`) once the capture stopped, and after a budget stop `stopDetails` (`reason` `disk_space` or `max_file_bytes`, `message`, `hint`, `budgetBytes`, `maxFileBytes`, `durationUs`, and for the disk `freeBytes`, `reserveBytes`, `availableBytes`; see [Capture and export engine](#capture-and-export-engine-x11)), error; an ended session is `recording_unavailable` and its operation holds the outcome |
 | `recording.raise` / `recording.overlay` | `{id}` / `{id, visible}` | overlay control; a hidden bar stays hidden through state changes until `raise` (a full-screen clip without the handle); the recording indicator stays visible |
 | `recording.edit` | `{id, revision, commands[1–100]}` | atomic `setTrim {start, end\|null}`, `resetTrim`, `addMask {mask}`, `updateMask {maskId, mask}`, `removeMask {maskId}` |
 | `recording.preview` | `{id, time, maxEdge? 64–1600}` | one PNG frame (base64 `png`) at clip time with current trim/masks, plus `retained`, `outputTimeUs`, `revision`; returned only to the requesting client |
@@ -134,10 +134,59 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 
 | Field | Meaning |
 | --- | --- |
+| `preferences.recordingFrameRate` | Optional, `30` (default) or `60`; Settings → Capture → Screen recording → Frame rate. Used by `recording.prepare` when `fps` is omitted; an explicit `fps` wins |
 | `actions.record` | Optional route like the other actions; absent documents inherit the region route with no shortcut |
 | `naming.recordingTemplate` | Optional, default `Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
 | `limits.recordingAnimationSeconds` | Optional, default 60 |
 | `limits.recordingAnimationEdge` | Optional, default 1280 |
+
+### Frame rate
+
+Settings → Capture → **Screen recording → Frame rate** chooses 30 (default)
+or 60 frames per second for new recordings. An untouched configuration keeps
+no key and uses 30; an existing explicit key is preserved when saved. CLI `settings.patch` and MCP `patch_configuration` set
+`preferences.recordingFrameRate`; an explicit `recording.prepare` `fps` overrides it.
+
+![Settings → Capture → Screen recording → Frame rate, with the new control annotated](https://github.com/patrick-hudson/put.gd-desktop/blob/fd139d3349b0dddb6a24bb889b2f0b1a55ceba78/docs/evidence/2026-10-31-recording-rate/settings-frame-rate-annotated.png?raw=true)
+
+This is a synthetic UI catalog render, not desktop acceptance. Its provenance
+and the bounded physical measurements are in the [frame-rate receipt](evidence/2026-10-31-recording-rate/README.md).
+
+The adaptive rate is enabled by default. The helper samples one window per
+second, waits two warm-up windows, then lowers the rate after three bad windows
+in a row. A good window resets that count. A window is bad when:
+
+- the capture queue leaked at least three frames and more than 5% of delivered
+  frames (`encoder`);
+- X11's `ximagesrc` grabbed under 80% of the configured rate (`capture`);
+- the machine was at least 90% busy while the recorder used at least half a
+  CPU core (`cpu`, sampled from `/proc`).
+
+Queue leaks and late grabs step 60 → 30 → 15; other explicit rates halve to a
+15 fps floor. CPU pressure alone only lowers rates above 30, so it never takes
+30 fps below that floor. Each reduction restarts the warm-up. The rate never
+rises during the recording. X11 gates frames after the source; PipeWire changes
+the cadence lock's period, retaining its configured-frame tolerance.
+`videorate` follows `videoconvert`, so repeated frames are not converted again.
+The clip keeps its configured frame rate and full timeline; repeated frames
+fill the lowered capture cadence. Software x264 still encodes those repeats,
+so lowering capture rate alone has a limited CPU benefit ([#1045](https://github.com/patrick-hudson/put.gd-desktop/issues/1045)).
+
+`recording.inspect` (MCP `get_recording`) reports these under `progress`:
+
+| Field | Meaning |
+| --- | --- |
+| `frameRate` | Current adaptive capture rate, not a measured distinct-frame rate |
+| `frameRateReduced` | Present after a reduction: latest `{from, to, reason, atUs}`; reason is `encoder`, `capture` or `cpu`, and `atUs` is retained clip time in microseconds |
+| `framesDelivered` | Cumulative frames delivered by the source to the gate |
+| `framesCaptured` | Cumulative frames kept by the gate before `videorate` adds repeats |
+
+For lab A/B runs, set `recording.prepare` `adaptiveFps: false` (MCP
+`adaptive_fps: false`) or `PUTGD_RECORD_ADAPTIVE_RATE=off` in the helper's
+environment. `PUTGD_RECORD_DEBUG_LOG` includes one `rate window:` line per
+second with delivered/leaked counts and machine/recorder CPU shares, plus
+`rate lowered …` when it changes. Use synthetic content and the desktop lock
+when running the [fluidity harness](remote-builders.md).
 
 ## Process boundary
 
@@ -436,7 +485,7 @@ backend.
 
 | Event | Meaning |
 | --- | --- |
-| `progress {durationUs, bytes, paused, encoder, audioEncoder}` / `{exportFraction}` | retained time and file size while recording (once a second); export progress (at most ten a second, so a fast GPU export stays inside the control channel's frame rate) |
+| `progress {durationUs, bytes, paused, encoder, audioEncoder, frameRate, frameRateReduced?, framesDelivered, framesCaptured}` / `{exportFraction}` | retained time and file size while recording (once a second); export progress (at most ten a second, so a fast GPU export stays inside the control channel's frame rate) |
 | `selecting {selector: x11\|kde-layer-shell}` | the helper's region selector is open; `recording.select` can complete it |
 | `started`, `paused`, `resumed` | the bar's Record / Pause / Resume |
 | `stopped {durationUs, canvas, reason: user\|budget}` | the clip is finalized and under review; after `budget` the resident sends the helper `notice {text}`, which the review window shows as its banner |
@@ -541,8 +590,35 @@ Lab A/B runs: `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=compositor` maps each frame's
 header time instead of stamping its arrival, and `=legacy` restores the
 pipeline before #86 (`pipewiresrc do-timestamp=true` on its own stream clock).
 With `PUTGD_RECORD_DEBUG_LOG` set, stopping logs the pipeline clock, the
-lateness of video and audio at their encoders and the age of the compositor
-frame times (min/mean/max).
+lateness of video and audio at their encoders, the age of the compositor
+frame times (min/mean/max), and `frames: N reached the video encoder, M
+leaked at the capture queue`.
+
+The stamping probe copies each PipeWire frame out on the source thread, so the
+compositor's stream buffers (KWin offers 2–4) return at once instead of
+waiting in the capture queue and the converter; a compositor skips a frame
+whenever none is free (#6). KWin 6.7's screencast throttle runs only when
+the negotiated `max_framerate` is non-zero, with an integer-millisecond
+interval stamped after its synchronous readback, which stretched every
+interval to about 20 ms (48 records per second, 31 distinct frames in the
+clip before PR #981). KWin offers `maxFramerate` as a range whose minimum is
+0/1, so the source is followed by `video/x-raw,max-framerate=0/1`; a
+compositor whose range starts above zero refuses the link and the pipeline
+retries without the filter. KWin then delivers about 66 records per second
+holding 60 distinct contents. A frame identical to the previous kept one
+(the same presentation recorded again after a cursor move or a second
+render) is dropped before the copy, and the rest take cadence-locked stamps:
+each new frame takes the slot one period after the previous stamp as long as
+it arrived within 0.7 of a period of that slot, an earlier extra is dropped
+and a later one resynchronises to its arrival (`lockedFrameTime`). Stamps
+follow arrivals on average, so the audio offset #86 measured stays, and sit
+on the grid between resyncs; raw arrivals under the same jitter cost five
+frames a second in `videorate`. `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=arrival`
+restores raw arrival stamps for lab A/B runs. On aurora-amd (Plasma 6.7.5)
+a 60 fps monitor recording holds 59.6–59.9 distinct frames per second.
+The #983 recheck on nightly `26.1031.3384` measured 59.72 / 59.81 distinct
+frames/s; PR #981 already contains that fix. See the [receipt](evidence/2026-10-31-recording-rate/README.md)
+for exact hosts, workloads and limitations.
 
 ### Wayland selection, bounds and bar
 
@@ -629,9 +705,21 @@ region as root coordinates inside the root, a window by decimal or `0x` XID
 (captured through `ximagesrc xid=`, so it keeps its identity when moved).
 Dimensions shrink to even values rather than growing into unselected pixels.
 
-The live pipeline is `ximagesrc → videoconvert → H.264 encoder → h264parse →
-matroskamux` with `pulsesrc device=@DEFAULT_MONITOR@ → AAC` when system audio
-is requested. Encoders are tried in order `vah264lpenc, vah264enc,
+The live pipeline is `ximagesrc → queue (leaky) → videoconvert → videorate →
+queue → H.264 encoder → h264parse → matroskamux` with `pulsesrc
+device=@DEFAULT_MONITOR@ → AAC` when system audio is requested (#6, PR #981).
+Capture, conversion and encoding run in their own threads: the capture queue
+leaks its oldest frame rather than block the source when the stages behind it
+fall behind, `videorate` restores the constant rate, and a frame the queue
+had to leak is counted (`framesDropped` in `status()`, `frames:` in the debug
+log). `videorate` also matters on X11 because ximagesrc skips frame numbers
+when a grab runs late and the `va` encoders stamp their output contiguously
+regardless: without it a 10 s recording on a three-monitor desktop played in
+7.4 s. x264 runs frame threads with a short lookahead and a preset chosen by
+pixel rate (veryfast up to about 1080p30, superfast to 1440p30 or 1080p60,
+ultrafast above); zerolatency's two sliced threads stalled the capture at
+1080p. The CPU stages take about two thirds of the cores, bounded, so the
+desktop being recorded keeps its own. Encoders are tried in order `vah264lpenc, vah264enc,
 vaapih264enc, x264enc, openh264enc` (AAC: `avenc_aac, fdkaacenc, voaacenc`)
 by actually starting the pipeline, GPU first, and the chosen names are
 reported in `recording.inspect` progress. The VA encoders take NV12, the CPU
@@ -771,6 +859,15 @@ trim start (Matroska clips whose first cluster has no cue point otherwise
 start at the next keyframe). Preview decodes the frame at or after the
 requested time and applies the masks active at that source time with a box
 blur or a solid fill, so preview and export agree on timing and placement.
+
+Selectors (the X11 native overlay, the Qt fallback, the KDE Wayland layer
+surfaces and the recorder's own) repaint only the outline strips and the pills
+of the previous and the next state, and the native overlay presents at most
+once per display refresh (#6). `PUTGD_REGION_DEBUG_LOG=<file>` appends one
+line per selection with the pointer moves, paints or presents and their
+timing. `tools/lab/fluidity.py` and `tools/lab/fluidity_run.py` measure a
+recording's distinct frames per second and a drag's cost per build on a
+physical desktop ([receipt](evidence/2026-10-31-fluidity-campaign.md)).
 
 Lab diagnostics: `PUTGD_RECORD_DEBUG_LOG=<file>` appends pipeline and command
 traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip,
@@ -922,7 +1019,7 @@ than all of them.
 | Package | Live H.264, in preference order | Export H.264 | Setup |
 | --- | --- | --- | --- |
 | DEB (Ubuntu 24.04 / Mint 22.3, Ubuntu 26.04 / Kubuntu, Debian 13) | `vah264lpenc`/`vah264enc` (plugins-bad, or plugins-extra on 26.04), `vaapih264enc` (Recommends `gstreamer1.0-vaapi`), `x264enc` (Recommends `gstreamer1.0-plugins-ugly`), `openh264enc` (plugins-bad, a Depends) | `h264_nvenc`, `h264_vaapi`, `libx264`, `libopenh264` | none: plugins-bad always brings `openh264enc` and `voaacenc` |
-| RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora Workstation ships `libopenh264` as the `noopenh264` placeholder until Cisco's `openh264` replaces it: `sudo dnf install openh264 gstreamer1-plugin-openh264`. The RPM recommends both, so a default `dnf install` brings them when the `fedora-cisco-openh264` repository is on (Fedora's default); if it was turned off, run `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1` first |
+| RPM (Fedora 44) | `vah264*enc` (stock Intel and AMD drivers have no H.264 encode; RPM Fusion's do), `openh264enc` (Recommends `gstreamer1-plugin-openh264`) | `h264_nvenc`, `h264_vaapi`, `libopenh264` | Fedora Workstation ships the `noopenh264` placeholder. The RPM's Recommends do not replace an installed conflicting placeholder, even with weak dependencies and `fedora-cisco-openh264` enabled. Run `sudo dnf install openh264 gstreamer1-plugin-openh264` explicitly. The one-line installer runs this codec step for you when the repository is enabled and the placeholder remains or either codec package is missing. If the repository is disabled, it prints the commands: first `sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1`, then the codec install. It does not change repository settings silently |
 | AppImage | `vah264lpenc`/`vah264enc`, `vaapih264enc` through the host's VA-API driver, then the bundled `x264enc` | `h264_nvenc`, `h264_vaapi` through the host's driver, then the bundled `libx264`; H.265 `hevc_nvenc`, `hevc_vaapi`, then the bundled `libx265` | none: the bundled x264/x265 cover hosts whose driver cannot encode |
 
 On Fedora with the placeholder the probe reports `h264_encoder_unusable`

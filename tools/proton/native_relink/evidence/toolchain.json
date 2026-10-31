@@ -1,0 +1,43 @@
+{
+  "rustc": {
+    "path": "/opt/rust/bin/rustc",
+    "sha256": "4a049908903487fd0544422fdb8e95d0f4b5e50aca423b2da1a4c7e2773de604",
+    "version": "rustc 1.100.0-nightly (574ff7d98 2026-09-14)\nbinary: rustc\ncommit-hash: 574ff7d98bd6d037e5236a8453029173b32631fd\ncommit-date: 2026-09-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.100.0-nightly\nLLVM version: 23.1.1\n"
+  },
+  "cargo": {
+    "path": "/opt/rust/bin/cargo",
+    "sha256": "f2fd1f22fcc012977c5d27e72a590c7133cfd9bf7881d6f40da99882290465cb",
+    "version": "cargo 1.100.0-nightly (7941be6fb 2026-09-11)\nrelease: 1.100.0-nightly\ncommit-hash: 7941be6fb416b4cd9666aef7b858dfea25587a8c\ncommit-date: 2026-09-11\nhost: x86_64-unknown-linux-gnu\nlibgit2: 1.9.6 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:OpenSSL/3.6.3)\nssl: OpenSSL 3.6.3 9 Jun 2026\nos: Ubuntu 24.4.0 (noble) [64-bit]\n"
+  },
+  "clang": {
+    "path": "/usr/lib/llvm-23/bin/clang",
+    "sha256": "66d3bf40fa79d648e1b9de1147edbabc859a63a11ac11a5c70e6edccd4f3d32b",
+    "version": "Ubuntu clang version 23.1.5 (++20261028083854+a738f2737189-1~exp1~20261028203912.92)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-23/bin\n"
+  },
+  "clang++": {
+    "path": "/usr/lib/llvm-23/bin/clang++",
+    "sha256": "66d3bf40fa79d648e1b9de1147edbabc859a63a11ac11a5c70e6edccd4f3d32b",
+    "version": "Ubuntu clang version 23.1.5 (++20261028083854+a738f2737189-1~exp1~20261028203912.92)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-23/bin\n"
+  },
+  "ld.lld": {
+    "path": "/usr/lib/llvm-23/bin/ld.lld",
+    "sha256": "65796bf5bf6380c29cb8c6da9a077d10e2492a13af9f1c31b4b0f27b2497bb94",
+    "version": "Ubuntu LLD 23.1.5 (compatible with GNU linkers)\n"
+  },
+  "llvm-ar": {
+    "path": "/usr/lib/llvm-23/bin/llvm-ar",
+    "sha256": "79bd935a26b42143731fa417e6526ec138469fa9ae27291175c698482c065241",
+    "version": "Ubuntu LLVM version 23.1.5\n  Optimized build.\n"
+  },
+  "ninja": {
+    "path": "/usr/bin/ninja",
+    "sha256": "5965527e09fe2b3787772aa4f711d6a36b393e7f2fcaa744a7a96c5a4ddf59cb",
+    "version": "1.11.1\n"
+  },
+  "systemIcuVersion": [
+    "74.2",
+    "74.2"
+  ],
+  "stdCargoLockSha256": "75848db58a70444bfb62c649b103d19c5d92fede325eb0c8c0e5442848448669",
+  "stdVendorPackages": 31
+}

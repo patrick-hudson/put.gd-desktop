@@ -75,6 +75,7 @@ if '--build' not in sys.argv:
     def test_existing_source_recipe_stays_non_proton_by_default(self):
         result = self.build()
         self.assertTrue(result['passed'])
+        self.assertEqual(result['archive'], json.loads(self.receipt.read_text())['artifact'])
         self.assertEqual(len(result['commands']), 2)
         self.assertNotIn('rebuiltProton', result)
 
@@ -82,6 +83,7 @@ if '--build' not in sys.argv:
         result = self.build(bundle_proton=True, proton_source=self.root / 'proton-sdk',
                             proton_crypto_source=self.root / 'proton-crypto', proton_offline=True)
         self.assertTrue(result['passed'])
+        self.assertEqual(result['archive'], json.loads(self.receipt.read_text())['artifact'])
         source = self.root / 'output/source'
         arguments = json.loads((source / 'build/dependencies/proton-runtime/provision-arguments.json').read_text())
         self.assertEqual(arguments, ['--source', str(self.root / 'proton-sdk'), '--crypto-source',

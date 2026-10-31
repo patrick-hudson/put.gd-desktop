@@ -207,6 +207,21 @@ private slots:
   h.backend->sink({{"id",second},{"event","failed"},{"error",QJsonObject{{"code","recording_source_lost"},{"message","Synthetic source vanished"}}}});
   PUTGD_TRY_COMPARE(journal.operation(second).state,QString("failed"));QCOMPARE(journal.operation(second).error.code,QString("recording_source_lost"));QCOMPARE(h.backend->exports,1);
  }
+ // #984: a recording without a rate takes the one chosen in Settings, an
+ // explicit fps wins, and the helper's lowered rate reaches inspect's progress.
+ void settingsFrameRateAndTheLoweredRateReachTheRecording(){
+  Harness h;PUTGD_TRY_VERIFY(h.operations->ready());
+  auto id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.fps,30);QVERIFY(h.backend->lastConfig.adaptiveFps);QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  auto doc=h.settings.document();auto prefs=doc["preferences"].toObject();prefs["recordingFrameRate"]=60;doc["preferences"]=prefs;QVERIFY(h.settings.save(doc,h.settings.revision()));
+  id=h.prepareReady();QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.fps,60);QCOMPARE(h.rec("inspect",{{"id",id}}).result["config"].toObject()["fps"].toInt(),60);
+  QVERIFY(!h.rec("start",{{"id",id}}).error);
+  h.backend->sink({{"id",id},{"event","progress"},{"durationUs",6000000.0},{"frameRate",30},{"frameRateReduced",QJsonObject{{"from",60},{"to",30},{"reason","cpu"},{"atUs",5100000.0}}}});
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["frameRate"].toInt(),30);
+  QCOMPARE(h.rec("inspect",{{"id",id}}).result["progress"].toObject()["frameRateReduced"].toObject()["reason"].toString(),QString("cpu"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  id=h.prepareReady({{"fps",24},{"adaptiveFps",false}});QVERIFY(!id.isEmpty());QCOMPARE(h.backend->lastConfig.fps,24);QVERIFY(!h.backend->lastConfig.adaptiveFps);QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"adaptiveFps","yes"}}).error.code,QString("invalid_request"));
+ }
  // #213: a disk that can't fund a minimum budget refuses prepare with its figures,
  // before any operation is accepted; a budget stop answers a later stop.
  void lowDiskRefusesPrepareAndBudgetStopAnswersStop(){

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Select CI jobs from a pull request's changed paths.
 
-The contracts job always runs. `build` selects the Linux test matrix and the
-portable compiles; `packages` selects the native/AppImage package builds;
+The contracts job always runs. `build` selects the Linux test matrix; `packages` selects the native/AppImage package builds;
 `sanitizers` selects the clang ASan/UBSan core contract job; `pipewire` selects
 the AppImage pipewiresrc check against a PipeWire 1.6 daemon.
 Any path not explicitly known to be build-neutral selects `build`, so a new
@@ -25,8 +24,8 @@ DOCUMENTATION_FILES = frozenset({'README.md', 'AGENTS.md', 'CLAUDE.md', 'CHANGEL
 CONTRACT_PREFIXES = ('tools/lab/', 'tools/maintenance/', 'tools/mcp/',
                      'tests/ci/', 'tests/releases/', 'tests/maintenance/')
 CONTRACT_SUFFIXES = {'tests/desktop': ('.py', '.yaml'), 'tests/performance': ('.py',)}
-# The dependency bots' configuration; renovate.yml checks Renovate's on its own pull requests.
-CONTRACT_FILES = frozenset({'.github/renovate.json', '.github/dependabot.yml'})
+# Dependency-bot settings and the contracts job's secret-scan allowlist.
+CONTRACT_FILES = frozenset({'.github/renovate.json', '.github/dependabot.yml', '.gitleaks.toml'})
 
 # Inputs to the package builders, the curated source archive or CI itself.
 PACKAGING_PREFIXES = ('packaging/', 'tools/releases/', 'tools/proton/', 'tools/ci/',
@@ -123,7 +122,7 @@ def main():
     if os.environ.get('GITHUB_STEP_SUMMARY'):
         with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as stream:
             stream.write('| Job group | Selected |\n| --- | --- |\n| contracts | yes |\n')
-            stream.write(f"| linux, portable | {'yes' if result['build'] else 'no'} |\n")
+            stream.write(f"| linux | {'yes' if result['build'] else 'no'} |\n")
             stream.write(f"| packages | {'yes' if result['packages'] else 'no'} |\n")
             stream.write(f"| sanitizers | {'yes' if result['sanitizers'] else 'no'} |\n")
             stream.write(f"| pipewire | {'yes' if result['pipewire'] else 'no'} |\n")

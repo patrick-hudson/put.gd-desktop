@@ -8,13 +8,14 @@ import platform
 import shutil
 import subprocess
 
-from audit_redistribution import inventory
+from audit_redistribution import inventory, search_import_graph
 
 ROOT = Path(__file__).resolve().parent
 SOURCE_PATHS = ['cli/src/credentials/credentials.ts', 'cli/src/credentials/constants.ts',
                 'cli/src/credentials/secretCredentialsStore.ts', 'cli/src/credentials/parseCredentials.ts',
                 'cli/src/credentials/interface.ts', 'cli/src/config.ts', 'cli/src/clientUid.ts',
                 'cli/src/api/httpClient.ts', 'cli/src/api/driveAccountAdapter.ts', 'cli/src/api/apiRequirements.ts',
+                'cli/src/api/serverTimeHook.ts',
                 'incubating/account/js/src', 'config/js/patches/@protontech%2Fcrypto@2.0.0.patch', 'LICENSE.md']
 
 def run(args, cwd, capture=False):
@@ -34,7 +35,7 @@ def patch_once(path, before, after):
 CRYPTO_SOURCE_PATHS = ['packages/crypto/src', 'packages/crypto/package.json', 'LICENSE', 'README.md']
 REDISTRIBUTION_FILES = ['BUN-THIRD-PARTY-NOTICES.txt.gz', 'BUN-NOTICE-PROVENANCE.json.gz',
                         'BUN-LINUX-ATTRIBUTION.md', 'OPENPGP-PREBUNDLED-NOTICES.txt',
-                        'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'LICENSE.icu4c-78.3',
+                        'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'LICENSE.jsmimeparser-MIT', 'LICENSE.MPL-2.0', 'LICENSE.icu4c-78.3',
                         'CRYPTO-PROVENANCE.md', 'SOURCES.json', 'REBUILD.md', 'OPENPGP-REBUILD.patch']
 
 def apply_crypto_source(work, source, lock):
@@ -137,6 +138,8 @@ def main():
     shutil.copyfile(ROOT / 'package-lock.json', work / 'package-lock.json')
     run(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund', *(['--offline'] if args.offline else [])], work)
     bun = work / 'node_modules/@oven/bun-linux-x64/bin/bun'
+    if sha256(bun) != lock['bunSha256']:
+        parser.error('Pinned official Bun executable checksum failed')
     if run([str(bun), '--version'], work, True).strip() != lock['bunVersion']:
         parser.error('Pinned Bun version check failed')
     upstream = work / 'upstream'
@@ -183,8 +186,9 @@ def main():
     (work / 'tsconfig.json').write_text(json.dumps(config, indent=2) + '\n')
     run([str(bun), 'test', './protocol.test.ts', './runtime.test.ts', './crypto-cache.test.ts', './progress.test.ts'], work)
     candidate = output / 'putgd-proton-runtime.new'
-    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts',
+    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts', f'--compile-executable-path={bun}',
          f'--outfile={candidate}', f'--metafile={output / "build-metafile.json"}'], work)
+    search_graph = search_import_graph(json.loads((output / 'build-metafile.json').read_text()))
     version = json.loads(run([str(candidate), '--version'], output, True))
     if version['bunVersion'] != lock['bunVersion'] or version['sdkVersion'] != 'js@' + lock['sdkVersion']:
         parser.error('Compiled runtime version check failed')
@@ -197,7 +201,7 @@ def main():
         parser.error('Compiled one-request protocol smoke failed')
     run(['python3', str(ROOT / 'smoke_test.py'), '--runtime', str(candidate)], output)
     stdout_fixture = output / 'stdout-fixture-test'
-    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './stdout_fixture.ts',
+    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './stdout_fixture.ts', f'--compile-executable-path={bun}',
          f'--outfile={stdout_fixture}'], work)
     captured = subprocess.run([str(stdout_fixture)], capture_output=True, check=True, timeout=10)
     expected_stdout = b'{"synthetic":"' + b'x' * (1024 * 1024 - 256) + b'"}\n'
@@ -213,8 +217,10 @@ def main():
     for name in REDISTRIBUTION_FILES:
         shutil.copyfile(ROOT / 'notices' / name, redistribution / name)
     manifest = {'schemaVersion': 1, 'artifact': artifact.name, 'sha256': sha256(artifact),
+                'searchImportGraph': search_graph,
                 'sourceReference': commit, 'appVersion': version['appVersion'], 'sdkVersion': version['sdkVersion'],
-                'bunVersion': version['bunVersion'], 'protocolVersion': 1,
+                'bunVersion': version['bunVersion'], 'bunSourceReference': lock['bunSourceReference'],
+                'bunSha256': sha256(bun), 'protocolVersion': 1,
                 'cryptoVersion': lock['cryptoVersion'], 'cryptoSourceReference': lock['cryptoSourceReference'],
                 'sourceOverrides': source_overrides,
                 'redistributionFilesSha256': {name: sha256(redistribution / name) for name in REDISTRIBUTION_FILES},

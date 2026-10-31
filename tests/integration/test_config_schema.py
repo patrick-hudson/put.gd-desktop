@@ -56,6 +56,16 @@ class ConfigurationSchema(unittest.TestCase):
         for mode in ('frozen', 'screenshot', True, None, 1):
             self.assertFalse(validator.is_valid(legacy | {'regionSelectionMode': mode}))
 
+    def test_recording_frame_rate(self):
+        # #984: 30 by default (omitted), or 60.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        for rate in (30, 60):
+            self.assertTrue(validator.is_valid(legacy | {'recordingFrameRate': rate}))
+        for rate in (0, 15, 24, 59, 61, 30.5, '60', None):
+            self.assertFalse(validator.is_valid(legacy | {'recordingFrameRate': rate}))
+
     def test_update_check_preferences(self):
         # #293: optional; check and channel each optional inside it.
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())

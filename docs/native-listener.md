@@ -21,6 +21,15 @@ not absence of a tray host. Host loss and return are tested separately from
 initial startup; a missing host preserves settings access. Notifications use the
 accepted user preference.
 
+On Wayland only the compositor decides whether a window comes forward. Plasma's
+and GNOME's tray hosts call `ProvideXdgActivationToken` on the item just before
+they activate it or send a menu entry's `clicked` (#657). `NativeTray` keeps that
+token for the next click only (10 s at most, printable ASCII up to 512
+characters). A view that click opens receives it through the helper's `activate`
+frame, and "Capture region & edit" passes it to an open editor's raise. Without
+a token, KWin keeps the window behind the focused application and turns its
+taskbar entry orange, and GNOME shows "… is ready" instead.
+
 `X11Clipboard` owns the output selection in the resident. It retains one encoded
 payload for legitimate native clipboard ownership, sharing an image's existing
 QByteArray storage rather than decoding or duplicating that image. Text and URI

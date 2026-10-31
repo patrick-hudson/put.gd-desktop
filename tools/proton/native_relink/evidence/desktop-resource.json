@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "issue": 1071,
+  "date": "2026-10-31",
+  "status": "blocked",
+  "productionHelperSha256": "4683e9fb28673df66a590660f2932f5b202fd61b1c229f49c61b8e8754113be4",
+  "nativeDesktopAttempt": {
+    "host": "f44",
+    "os": "Fedora 44",
+    "compositor": "GNOME Shell 50.6",
+    "session": {
+      "XDG_SESSION_TYPE": "wayland",
+      "XDG_CURRENT_DESKTOP": "GNOME",
+      "QT_QPA_PLATFORM": "wayland"
+    },
+    "build": {
+      "schemaVersion": 1,
+      "version": "26.1031.3479-dev+gd845028cfaac",
+      "baseVersion": "26.1031.3479",
+      "packageVersion": "26.1031.3479~dev+gd845028cfaac",
+      "gitCommit": "d845028cfaace6d3d28f32dbe791494359703161",
+      "gitTree": "82b9079db66ae0f2a84096468b2b64b3fbd32411",
+      "commitCount": 3479,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "packageSha256": "4b8e062827b02482525f4cdf5c4ecf4dccdfd92d5d7c44a6a671b4f2b53d328c",
+    "nativeCoverVerified": true,
+    "accountInspectionPassed": true,
+    "isolatedFolderCreated": true,
+    "destinationCheckPassed": true,
+    "clipboardCapturePassed": false,
+    "failure": "helper_unavailable: the physical GNOME host has no installed put.gd Shell companion; both clipboard operations failed before artifact creation and SDK upload",
+    "functionalResourceAcceptancePassed": false,
+    "visual": {
+      "hostPath": "/home/patrick/work/b1071/accept-3/small-first-activity.png",
+      "sha256": "73a26280c2f82d21cb74a08b181b8ed9be2ffbcd3ea381362a6ef8e438d878a8"
+    },
+    "rawEvidence": "f44:/home/patrick/work/b1071/accept-1, accept-2, accept-3",
+    "recovery": {
+      "source": "production operation.inspect on retained isolated journal",
+      "operations": [
+        {
+          "operationId": "2b969c64-c1e0-4eed-8b25-49d94782ef73",
+          "state": "failed",
+          "errorCode": "helper_unavailable",
+          "items": 0
+        },
+        {
+          "operationId": "24e06524-1a6d-4b0c-b621-3c2a6ec213d0",
+          "state": "failed",
+          "errorCode": "helper_unavailable",
+          "items": 0
+        }
+      ],
+      "confirmedUploads": 0,
+      "confirmedLinks": 0,
+      "objectsDeleted": 0,
+      "folderRetained": true,
+      "sessionCopied": false
+    },
+    "cleanup": "Native test resident, UI, cover and input agent exited; desktop and Proton locks released with cleanup receipts; no remote file deletion and no session copying",
+    "setupAttempts": [
+      {
+        "attempt": 1,
+        "result": "no app launched; compositor environment lacked DISPLAY/WAYLAND_DISPLAY; corrected from the user service environment",
+        "savedVisual": false
+      },
+      {
+        "attempt": 2,
+        "result": "saved native Settings visual; frozen active observer rejected an unaccounted current product child; no account operation",
+        "savedVisual": true
+      },
+      {
+        "attempt": 3,
+        "result": "account inspection/folder/test succeeded; native clipboard acquisition failed; active observer and focus guard also failed; no resource acceptance",
+        "savedVisual": true
+      }
+    ],
+    "cleanupReceipts": [
+      "/home/patrick/putgd-lab/locks/history/2026-10-31T17-48-38Z-proton-release.json",
+      "/home/patrick/putgd-lab/locks/history/2026-10-31T17-48-39Z-release.json"
+    ],
+    "harnessSource": {
+      "hostPath": "/home/patrick/work/b1071/tools/accept_native.py",
+      "sha256": "190243d31006ddd459607d62fddadd7bd291bc5d4596fd5691f9a53b6608b4ad"
+    }
+  },
+  "nightly": {
+    "trackingIssue": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003",
+    "releaseAtInspection": "v26.1031.3384-nightly",
+    "sourceAtInspection": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "bundledRuntimeUpdateMergedAt": "2026-10-31T17:33:56Z",
+    "coversCurrentHelper": false,
+    "reason": "Latest nightly predates #1067. Its live desktop cells are not current Bun 1.4.4 evidence.",
+    "resourceCoverage": "The published table and desktop receipts inspected do not record the original P6 whole-family active measurements and two 300-second same-resident post-use idle windows; those receipts are still needed."
+  },
+  "remainingCriteria": {
+    "desktops": [
+      "Cinnamon/X11",
+      "GNOME/Wayland",
+      "KDE/Wayland"
+    ],
+    "activeMemory": "Observe resident and all product descendants; report RSS/PSS/private/swap/CPU and helper lifetime. No arbitrary active-RSS rejection ceiling.",
+    "postUse": "Two 300-second windows on the same used resident: RSS <=40 MiB, CPU <0.5% of one core, zero swap, no surviving helpers.",
+    "functional": "Current-helper live app workload, cancellation/retry, repetitions, exact native clipboard result and restart identity; preserve visible native evidence.",
+    "historicalReference": "docs/evidence/2026-10-15-proton-p4-p6-acceptance.md"
+  },
+  "otherDesktopsAtInspection": {
+    "Cinnamon/X11": "m74 desktop held by an existing capture/History profiling session; not disturbed",
+    "KDE/Wayland": "k72 had heavy existing SSH work; no quiet resource campaign started"
+  },
+  "scope": "Historical pre-upgrade attempt only: SDK 0.22.2/Crypto 2.0.1. No desktop or resource acceptance transfers to the current SDK 0.23.0/Crypto 2.2.0 helper."
+}

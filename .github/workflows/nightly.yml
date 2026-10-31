@@ -115,6 +115,18 @@ jobs:
           path: build/publish/publication.json
           if-no-files-found: warn
           retention-days: 90
+      - name: Prune older nightly releases and unreferenced paired sources
+        run: |
+          sudo bash tools/ci/install-packages.sh --no-install-recommends zstd
+          python3 tools/releases/prune_nightlies.py --output build/publish/nightly-retention.json
+      - name: Retain nightly retention plan
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nightly-retention-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/publish/nightly-retention.json
+          if-no-files-found: warn
+          retention-days: 90
 
   surface-map:
     # map.put.gd: every surface and interaction of this nightly, coloured by the
@@ -190,7 +202,7 @@ jobs:
           done
           aws s3 cp build/surface-map/map.json "s3://$MAP_BUCKET/map.json" \
             --cache-control "public, max-age=300" --content-type "application/json"
-          aws cloudfront create-invalidation --distribution-id "$MAP_DISTRIBUTION_ID" --paths "/" "/index.html" "/map.json" "/404.html"
+          aws cloudfront create-invalidation --distribution-id "$MAP_DISTRIBUTION_ID" --paths "/*"
           echo "Published the surface map for \`$TAG\` to https://map.put.gd/." >> "$GITHUB_STEP_SUMMARY"
       - name: Retain the rendered map
         if: always()

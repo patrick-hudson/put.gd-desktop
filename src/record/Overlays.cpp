@@ -21,8 +21,10 @@
 #include <QLabel>
 #include <QMouseEvent>
 #include <QFontMetricsF>
+#include <QElapsedTimer>
 #include <QPalette>
 #include <QPainter>
+#include <QPaintEvent>
 #include <QPushButton>
 #include <QScreen>
 #include <QTimer>
@@ -142,17 +144,34 @@ public:
         setFocusPolicy(Qt::StrongFocus);
         connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, qOverload<>(&QWidget::update));
     }
-    void refresh() { describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_); update(); }
+    // Damage only the outline rings and pills of the previous and next state,
+    // so a pointer event costs a few strips, not a monitor-sized repaint (#6).
+    void refresh() {
+        describeRegion(this, owner_.selection_, true, displayName(QGuiApplication::screens()[activeScreen()]), QGuiApplication::screens()[activeScreen()]->geometry(), regionScreenFrames(), owner_.dragging_);
+        const auto next = chromeArea();
+        update(painted_ | next);
+        painted_ = next;
+    }
+    QRegion chromeArea() const {
+        const int own = std::max(0, int(QGuiApplication::screens().indexOf(screen())));
+        QList<QRectF> displays;
+        for (auto* output : QGuiApplication::screens()) displays.append(output->geometry());
+        return regionChromeArea(rect(), QFontMetrics(font()), owner_.selection_.translated(-logical_.topLeft()), regionSizeLabel(owner_.selection_), own == owner_.hintScreen_ && owner_.hint_.visible(), regionLabelDisplay(displays, owner_.selection_) == own);
+    }
 protected:
-    void paintEvent(QPaintEvent*) override {
+    void paintEvent(QPaintEvent* e) override {
+        QElapsedTimer work;
+        work.start();
         QPainter painter(this);
+        painter.setClipRegion(e->region());
         // No scrim on any display (#629): the outline, a fading hint and the size.
-        const auto clipped = owner_.selection_.isEmpty() && screen() == QGuiApplication::screens()[activeScreen()] ? logical_ : owner_.selection_.intersected(logical_);
+        const auto clipped = owner_.selection_.intersected(logical_);
         if (!clipped.isEmpty()) paintSelectionOutline(painter, clipped.translated(-logical_.topLeft()));
         const int own = std::max(0, int(QGuiApplication::screens().indexOf(screen())));
         QList<QRectF> displays;
         for (auto* output : QGuiApplication::screens()) displays.append(output->geometry());
         paintRegionChrome(painter, rect(), owner_.selection_.translated(-logical_.topLeft()), regionSizeLabel(owner_.selection_), own == owner_.hintScreen_, owner_.hint_.opacity(), regionLabelDisplay(displays, owner_.selection_) == own);
+        owner_.stats_.painted(work.nsecsElapsed() / 1e6);
     }
     void mousePressEvent(QMouseEvent* e) override {
         if (e->button() == Qt::RightButton) { owner_.cancel(); return; }
@@ -181,9 +200,10 @@ protected:
 private:
     SelectionOverlay& owner_;
     QRectF logical_;
+    QRegion painted_;
 };
 SelectionOverlay::SelectionOverlay(QObject* parent) : QObject(parent) {}
-void SelectionOverlay::repaintSurfaces() { for (auto* surface : surfaces_) surface->update(); }
+void SelectionOverlay::repaintSurfaces() { for (auto* surface : surfaces_) surface->refresh(); }
 SelectionOverlay::~SelectionOverlay() { finish(); for (auto* s : surfaces_) delete s; }
 void SelectionOverlay::start() {
     for (QScreen* screen : QGuiApplication::screens()) { auto* surface = new Surface(*this, screen); surfaces_.append(surface); surface->show(); surface->raise(); }
@@ -195,7 +215,7 @@ void SelectionOverlay::start() {
     connect(qGuiApp, &QGuiApplication::screenRemoved, this, [this] { cancel({"display_changed", "Display changed during region selection", {}}); });
 }
 void SelectionOverlay::press(QPointF point) { if (finished_) return; keyboardScreen_ = -1; anchor_ = point; dragging_ = true; selection_ = QRectF(point, QSizeF{}); for (auto* surface : surfaces_) surface->refresh(); }
-void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return; selection_ = QRectF(anchor_, point).normalized(); for (auto* s : surfaces_) s->refresh(); }
+void SelectionOverlay::move(QPointF point) { if (!dragging_ || finished_) return; selection_ = QRectF(anchor_, point).normalized(); ++stats_.moves; for (auto* s : surfaces_) s->refresh(); }
 void SelectionOverlay::release(QPointF point) {
     if (!dragging_ || finished_) return;
     move(point);
@@ -209,7 +229,12 @@ void SelectionOverlay::complete(const QRect& root) {
     finish();
     emit selected(root);
 }
-void SelectionOverlay::finish() { finished_ = true; hint_.stop(); for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); } }
+void SelectionOverlay::finish() {
+    if (!finished_ && stats_.paints) regionDebugLog(stats_.summary(QStringLiteral("record selection")));
+    finished_ = true;
+    hint_.stop();
+    for (auto* s : surfaces_) { s->releaseKeyboard(); s->releaseMouse(); s->hide(); }
+}
 void SelectionOverlay::cancel(Error error) { if (finished_) return; finish(); emit cancelled(error); }
 
 BoundsOverlay::BoundsOverlay(QObject* parent) : QObject(parent) {}
@@ -268,11 +293,10 @@ void BoundsOverlay::showBounds(const QRect& root) {
     const QRect inner = root.adjusted(-1, -1, 1, 1);
     const QList<QRect> lines{QRect(inner.left(), inner.top(), inner.width(), 1), QRect(inner.left(), root.bottom() + 1, inner.width(), 1), QRect(inner.left(), root.top(), 1, root.height()), QRect(root.right() + 1, root.top(), 1, root.height())};
     for (const auto& line : lines) add(ring_, line, QColor(0, 0, 0, 200));
-    // KWin stacks overlay layer surfaces in the order they map, and raise() does
-    // not reorder them: strips mapped at Record would cover the bar (#127). On
-    // the layer shell they are mapped now, clear, before the bar, and Record
-    // only darkens them.
-    if (dimmed_ || surfaceMode() == SurfaceMode::LayerShell) addDim(dimmed_ ? dimColor : Qt::transparent);
+    // KWin layer surfaces and Mutter override-redirect windows follow map order
+    // (#127, #599). Map clear dim strips before the bar on both paths; Record
+    // only changes their colour and never puts new windows above the controls.
+    if (dimmed_ || surfaceMode() == SurfaceMode::LayerShell || surfaceMode() == SurfaceMode::X11) addDim(dimmed_ ? dimColor : Qt::transparent);
 }
 void BoundsOverlay::addDim(const QColor& color) {
     for (auto* w : dim_) delete w;
@@ -286,7 +310,7 @@ void BoundsOverlay::addDim(const QColor& color) {
 }
 void BoundsOverlay::setDimmed(bool dimmed) {
     dimmed_ = dimmed;
-    if (surfaceMode() == SurfaceMode::LayerShell && !dim_.isEmpty()) {
+    if ((surfaceMode() == SurfaceMode::LayerShell || surfaceMode() == SurfaceMode::X11) && !dim_.isEmpty()) {
         for (auto* w : dim_) static_cast<PassiveSurface*>(w)->setColor(dimmed ? dimColor : QColor(Qt::transparent));
         return;
     }

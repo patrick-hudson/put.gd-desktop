@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "scope": "CI installer Proton integrity, embedded runtime identity and official Bun advisories only",
+  "date": "2026-10-31T18:42:05.446446+00:00",
+  "host": "debian",
+  "auditorCommit": "2d64f2e366ee101a897bd74a7c91abff03e533b1",
+  "auditorScriptSha256": "c11813c09a880e492790b67e603bfc807ca1077c60e05861685a87048b2fbad2",
+  "packages": [
+    {
+      "file": "putgd_26.1031.3488~dev+gdc57e78a3f59_amd64.deb",
+      "sha256": "7288118d34a772dbd5555962feb1a43c1210cab9f003874c1ffb2d61a67d1780",
+      "helperSha256": "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.4",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "1d80720af8cb28f0638b9318d6b15fc78b46d5939c4f1c7c5908d12388af0803"
+    }
+  ],
+  "errors": [],
+  "bunFindings": [],
+  "producer": {
+    "runUrl": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41230231374",
+    "headSha": "2d64f2e366ee101a897bd74a7c91abff03e533b1",
+    "artifactId": 13053417422,
+    "artifactName": "release-native-debian13"
+  },
+  "advisoryTransport": {
+    "scope": "Actual public GitHub Bun advisory API, live unauthenticated HTTPS pagination on d69; no cached or synthetic findings",
+    "url": "https://api.github.com/repos/oven-sh/bun/security-advisories?per_page=100",
+    "builderHasGitHubCredentials": false,
+    "adapterSha256": "a9e0c6982c26022fdbefe7d511839dc83be7997444ba3cc5493e94408770293a"
+  },
+  "catalogScope": "Historical pre-nodeType SDK API adaptation candidate; not final-helper or native-proof acceptance."
+}

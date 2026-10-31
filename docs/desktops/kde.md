@@ -18,6 +18,10 @@ Region selection also needs the current distro LayerShellQt interface developmen
 package with Qt 6.5 or later for per-window shell integration: ScreenShot2's interactive method selects a **window or whole screen**,
 not a rectangular region. The adapter uses compositor-positioned overlay layer
 surfaces to show the required crosshair and rectangle over the live desktop.
+Each output has its own selector surface placed at that output's logical
+rectangle and bound to its QWindow screen, including secondary and portrait
+heads and layouts with gaps. A surface on the wrong output is refused with
+`display_changed` (PR #1056).
 After selection, it hides those surfaces and awaits a Wayland display sync before
 requesting current screen pixels. The selected layout stays fixed throughout;
 layout changes cancel acquisition. Native compositor evidence must verify that

@@ -41,6 +41,14 @@ class CaptureProcessTests final:public QObject {
  Q_OBJECT
 private slots:
  void cleanup(){qunsetenv("PUTGD_TEST_CAPTURE_MODE");qunsetenv("PUTGD_TEST_CAPTURE_TRACE");}
+ void resolvedAppearanceReachesTheIsolatedCaptureHelper(){
+  QTemporaryDir directory("/tmp/putgd-theme-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
+  for(const auto& scheme:QStringList{"light","dark"}){
+   const QJsonObject appearance{{"scheme",scheme},{"theme","system"}};int count=0;putgd::Error error;controller.start(snapshot(),{},[&](putgd::PayloadResult value){error=value.error;++count;},{},false,appearance);
+   PUTGD_TRY_COMPARE(count,1);QVERIFY2(!error,qPrintable(error.message));QVERIFY(!controller.busy());const auto frames=cursorTrace(trace);QVERIFY(frames.size()>=2);QCOMPARE(frames[frames.size()-2]["appearance"].toObject(),appearance);
+  }
+ }
  void malformedReadyCursorIsRejectedBeforeBegin_data(){
   QTest::addColumn<QByteArray>("mode");QTest::addColumn<QString>("code");
   for(const char* mode:{"cursor-id","cursor-id-negative","cursor-id-overflow","cursor-extra", "cursor-zero-width","cursor-wide","cursor-negative-height","cursor-fraction","cursor-string-coordinate","cursor-xhot-outside","cursor-yhot-outside","cursor-short-pixels","cursor-invalid-base64","cursor-noncanonical-base64","cursor-long-pixels","cursor-nonlatin-pixels","cursor-pixels-type"})
