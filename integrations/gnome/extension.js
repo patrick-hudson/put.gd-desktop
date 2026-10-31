@@ -990,6 +990,10 @@ export default class PutgdExtension extends Extension {
             const sender = Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
                 'org.freedesktop.DBus', 'GetNameOwner', new GLib.Variant('(s)', [CLIENT]),
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+            // A selection needs the pointer and keyboard put.gd's open tray menu
+            // holds, and must not show that menu (#924).
+            if (action !== 'desktop' && action !== 'window')
+                this._closeTrayMenu(sender);
             // Recording selects its own region later; only the key press is relayed.
             if (action === 'record') {
                 if (this._enabled)
@@ -1010,6 +1014,27 @@ export default class PutgdExtension extends Extension {
             // No resident bridge: binding has no capture or clipboard effect.
             this._drop(id);
         }
+    }
+
+    // put.gd's tray menu, drawn by the Shell's AppIndicator host, keeps its grab
+    // while the binding runs (it is allowed in POPUP mode, #341) and stays over
+    // a selection and in its picture (#924). Close it, as put.gd's own Qt tray
+    // menu closes; desktop and window captures keep menus in the picture.
+    // Only a menu whose StatusNotifierItem belongs to the resident is closed.
+    _closeTrayMenu(sender) {
+        const menu = Main.panel?.menuManager?.activeMenu;
+        const busName = menu?.isOpen ? menu.sourceActor?._indicator?.busName : null;
+        if (typeof busName !== 'string' || !busName)
+            return false;
+        try {
+            if (this._clientPid(busName) !== this._clientPid(sender))
+                return false;
+        } catch {
+            return false;
+        }
+        // BoxPointer.PopupAnimation.NONE: gone before the selection or freeze.
+        menu.close(0);
+        return true;
     }
 
     PrepareAsync([id, action], invocation) {
