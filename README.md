@@ -1,5 +1,10 @@
 # put.gd
 
+[![CI](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml/badge.svg?branch=nightly)](https://github.com/patrick-hudson/put.gd-desktop/actions/workflows/ci.yml?query=branch%3Anightly)
+[![Nightly](https://img.shields.io/github/v/release/patrick-hudson/put.gd-desktop?include_prereleases&filter=v*-nightly&label=nightly)](https://github.com/patrick-hudson/put.gd-desktop/releases)
+[![Download AppImage](https://img.shields.io/badge/download-AppImage-2ea44f?logo=linux&logoColor=white)](https://app.put.gd/dl/nightly/appimage)
+[![License: MIT](https://img.shields.io/github/license/patrick-hudson/put.gd-desktop)](LICENSE)
+
 put.gd captures screenshots and screen recordings on Linux, uploads them to your storage, and copies a shareable link to the clipboard. Edit and redact images before uploading, then find previous captures and links in History. Use S3-compatible storage, Backblaze B2 or Proton Drive, or keep captures local.
 
 ![The put.gd image editor with crop, annotation, redaction and blur tools, and an explicit Upload button](docs/readme/editor.png)
