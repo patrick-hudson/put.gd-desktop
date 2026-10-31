@@ -298,11 +298,11 @@ def open_and_verify(ctx, trigger, expect):
 KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
-def live_download_digest(ctx, kind, saved_path):
+def live_download_digest(ctx, kind, saved_path, filename=None):
     """Download original recipient bytes and compare with the saved PNG in guest RAM."""
     active = _ACTIVE[id(ctx)]
     return _remote(ctx, 'download-digest', dict(active['state'], kind=kind,
-                   saved_path=saved_path, app_root=ctx.target.root), timeout=150)
+                   saved_path=saved_path, app_root=ctx.target.root, filename=filename), timeout=190)
 
 
 def live_link_unavailable(ctx, kind):
@@ -884,6 +884,13 @@ def _prepare(options):
         # activation environment, and a new parent must retain our ownership.
         scoped = {'XDG_CACHE_HOME': str(directory / 'xdg-cache'), 'XDG_STATE_HOME': str(directory / 'xdg-state'),
                   'XDG_RUNTIME_DIR': os.environ['XDG_RUNTIME_DIR']}
+        if options.get('live_downloads'):
+            temporary = directory/'tmp'
+            temporary.mkdir(mode=0o700)
+            scoped['TMPDIR'] = str(temporary)
+            # Downloads.getList is a Gecko API. This test-only permission is
+            # confined to the admitted guest's disposable tmpfs profile.
+            scoped['MOZ_REMOTE_ALLOW_SYSTEM_ACCESS'] = '1'
         if display := os.environ.get('WAYLAND_DISPLAY'):
             # Target already resolved this socket before isolating runtime.
             # A relative native-session name would resolve inside our private
@@ -895,6 +902,8 @@ def _prepare(options):
         # remoting. If that instance has gone, the handler starts one on the
         # same profile and Marionette port, so observation still attaches.
         argv = command + ['--profile', str(directory), '--kiosk']
+        if options.get('live_downloads'):
+            argv += ['--remote-allow-system-access']  # Older release Firefox.
         desktop_argv = (['MOZ_APP_REMOTINGNAME=' + token, 'XDG_CONFIG_HOME=' + str(config),
                          'XDG_DATA_HOME=' + str(data)] + [k + '=' + v for k, v in scoped.items()]
                         + argv + ['--marionette', '%u'])
@@ -1103,6 +1112,176 @@ def _live_saved_capture(values):
     return original
 
 
+def _firefox_downloads(client, directory, expected_name):
+    """Read Gecko's owned-profile list; URL/message fields never leave Firefox."""
+    client.call('Marionette:SetContext', {'value': 'chrome'})
+    try:
+        value = client.script("""
+const done=arguments[arguments.length-1];
+(async()=>{
+ const {Downloads}=ChromeUtils.importESModule('resource://gre/modules/Downloads.sys.mjs');
+ const all=await (await Downloads.getList(Downloads.ALL)).getAll();
+ const flags=['becauseSourceFailed','becauseTargetFailed','becauseBlockedByParentalControls',
+  'becauseBlockedByReputationCheck','becauseBlockedByPolicy','becauseBlockedByContentAnalysis'];
+ done({available:true,entries:all.slice(0,20).map(d=>({stopped:d.stopped,succeeded:d.succeeded,
+  canceled:d.canceled,hasPartialData:d.hasPartialData,hasBlockedData:d.hasBlockedData,
+  currentBytes:d.currentBytes,totalBytes:d.totalBytes,target:d.target.path,
+  partFilePath:d.target.partFilePath||null,targetExists:d.target.exists,
+  error:d.error?{result:d.error.result,...Object.fromEntries(flags.map(k=>[k,!!d.error[k]]))}:null}))});
+})().catch(()=>done({available:false,entries:[]}));
+""", asynchronous=True)
+    finally:
+        client.call('Marionette:SetContext', {'value': 'content'})
+    if not isinstance(value, dict) or not value.get('available'):
+        raise _TargetError('Firefox Download-list API unavailable')
+    boolean_fields = ('stopped','succeeded','canceled','hasPartialData','hasBlockedData','targetExists')
+    error_fields = ('becauseSourceFailed','becauseTargetFailed','becauseBlockedByParentalControls',
+                    'becauseBlockedByReputationCheck','becauseBlockedByPolicy','becauseBlockedByContentAnalysis')
+    clean = {'available': True, 'entries': []}
+    for row in value.get('entries', []):
+        entry = {key: bool(row.get(key)) for key in boolean_fields}
+        for key in ('currentBytes','totalBytes'):
+            entry[key] = row.get(key) if type(row.get(key)) in (int,float) else None
+        entry.update(target=row.get('target'), partFilePath=row.get('partFilePath'))
+        error = row.get('error')
+        entry['error'] = ({'result':error.get('result') if type(error.get('result')) is int else None,
+                           **{key:bool(error.get(key)) for key in error_fields}} if isinstance(error,dict) else None)
+        clean['entries'].append(entry)
+    value = clean
+    # Exact target paths are useful diagnostics, but only local paths in this
+    # disposable guest's RAM destinations may cross the helper boundary.
+    allowed = [Path(directory), Path.home()/'Downloads', Path('/tmp')]
+    for row in value['entries']:
+        for key in ('target', 'partFilePath'):
+            path = row.get(key)
+            if path is None:
+                continue
+            if (not isinstance(path, str) or any(c in path for c in ('\0','\n','\r','?','#', '://'))
+                    or not Path(path).is_absolute() or '..' in Path(path).parts
+                    or not any(Path(path).is_relative_to(base) for base in allowed)):
+                row[key] = '[target path withheld: outside guarded destinations]'
+    return value
+
+
+def _recipient_preview_pixels(client, original):
+    """Compare decoded PNG pixels, never claim an original-file hash."""
+    import struct
+    if original[:8] != b'\x89PNG\r\n\x1a\n' or original[12:16] != b'IHDR':
+        raise _TargetError('Saved preview oracle is not PNG')
+    width, height = struct.unpack('>II', original[16:24])
+    if not 0 < width*height <= 1_000_000:
+        raise _TargetError('Preview pixel oracle exceeds its bounded allocation')
+    from PyQt6.QtGui import QImage
+    image = QImage.fromData(original, 'PNG').convertToFormat(QImage.Format.Format_RGBA8888)
+    if image.isNull() or (image.width(), image.height()) != (width, height):
+        raise _TargetError('Saved preview oracle could not be decoded')
+    expected = image.constBits().asstring(width*height*4)
+    value = client.script("""
+const images=[...document.images].filter(e=>(e.currentSrc||e.src).startsWith('blob:')&&e.complete&&e.naturalWidth>0);
+if(images.length!==1)return null;
+const im=images[0],c=document.createElement('canvas');c.width=arguments[0];c.height=arguments[1];
+const ctx=c.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=false;
+ctx.drawImage(im,0,0,c.width,c.height);const a=ctx.getImageData(0,0,c.width,c.height).data;
+let s='';for(let i=0;i<a.length;i+=16384)s+=String.fromCharCode(...a.subarray(i,i+16384));
+return {width:c.width,height:c.height,naturalWidth:im.naturalWidth,naturalHeight:im.naturalHeight,rgba:btoa(s)};
+""", [width, height])
+    if not isinstance(value, dict) or not isinstance(value.get('rgba'), str):
+        return {'matches': False, 'comparison': 'decrypted-image-pixels', 'tolerance': 0}
+    actual = base64.b64decode(value.pop('rgba'), validate=True)
+    result = {**value, 'matches': actual == expected, 'comparison': 'decoded-RGBA', 'tolerance': 0,
+              'scaling': 'none' if (value['naturalWidth'],value['naturalHeight'])==(width,height) else 'nearest-to-saved-dimensions',
+              'savedPixelSha256':hashlib.sha256(expected).hexdigest(),
+              'previewPixelSha256':hashlib.sha256(actual).hexdigest()}
+    if len(actual) != len(expected):
+        result['matches'] = False
+    return result
+
+
+def _completed_recipient_file(observation, original, expected_name):
+    """Use Firefox's actual completed target, including a Downloads fallback."""
+    complete = [r for r in observation['entries'] if r['succeeded'] and r['stopped'] and not r['error']]
+    if len(complete) != 1:
+        return None
+    path = Path(complete[0]['target'])
+    # Never follow an arbitrary filesystem target exposed by a browser record.
+    if path.name != expected_name:
+        return None
+    if not path.exists():
+        return None
+    info = path.lstat()
+    if path.is_symlink() or not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or not 0 < info.st_size <= 32*1024*1024:
+        raise _TargetError('Recipient target is not an owned bounded regular file')
+    fs = subprocess.run(['stat','-f','-c','%T',str(path)],capture_output=True,text=True,check=True)
+    if fs.stdout.strip() != 'tmpfs':
+        raise _TargetError('Recipient target is outside guest RAM')
+    with os.fdopen(os.open(path,os.O_RDONLY|os.O_NOFOLLOW), 'rb') as stream:
+        current = os.fstat(stream.fileno())
+        if (current.st_dev,current.st_ino) != (info.st_dev,info.st_ino):
+            raise _TargetError('Recipient target changed identity')
+        data = stream.read(32*1024*1024+1)
+    return {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
+            'matches':data==original}
+
+
+def _proton_recipient_download(client, values, directory, original):
+    preview = _recipient_preview_pixels(client, original)
+    handle = client.call('WebDriver:GetWindowHandle')
+    observations = []
+    expected_name = values.get('filename') or Path(values['saved_path']).name
+    def observe(phase):
+        result = _firefox_downloads(client, directory, expected_name)
+        result['phase'] = phase
+        result['partFileCount'] = len(list(Path(directory).glob('*.part')))
+        observations.append(result)
+        return result
+    try:
+        deadline = time.monotonic()+30
+        while True:
+            node = client.script("""
+const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(e=>{
+const r=e.getBoundingClientRect(),s=getComputedStyle(e),n=(e.getAttribute('aria-label')||e.textContent||'').trim();
+return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.pointerEvents!=='none'&&!e.disabled&&e.getAttribute('aria-disabled')!=='true'&&/^Download(?: file)?$/i.test(n)});
+return nodes.length===1?nodes[0]:null;
+""")
+            if node or time.monotonic() >= deadline:
+                break
+            time.sleep(.25)
+        element = node.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(node,dict) else None
+        if not element:
+            observe('no-unique-download-control')
+            return {'matches':False,'preview':preview,'downloadObservations':observations}
+        client.call('WebDriver:ElementClick',{'id':element})
+        observe('immediately-after-trusted-click')  # Before any corrective action.
+        # A real confirm menu is the only extra click admitted here.
+        menu = client.script("""
+const nodes=[...document.querySelectorAll('[role=menu] [role=menuitem],[role=menu] button,[role=dialog] button')].filter(e=>{
+ const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&!e.disabled&&/^Download(?: file)?$/i.test((e.getAttribute('aria-label')||e.textContent||'').trim())});
+return nodes.length===1?nodes[0]:null;
+""")
+        menu_id = menu.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(menu,dict) else None
+        if menu_id:
+            client.call('WebDriver:ElementClick',{'id':menu_id})
+            observe('after-visible-download-confirm-menu')
+        deadline = time.monotonic()+120
+        sampled = False
+        while True:
+            current = _firefox_downloads(client, directory, expected_name)
+            received = _completed_recipient_file(current, original, expected_name)
+            if received:
+                current['phase']='completed';observations.append(current)
+                return {**received,'preview':preview,'downloadObservations':observations}
+            if not sampled and time.monotonic() > deadline-115:
+                current['phase']='five-seconds-after-click';observations.append(current);sampled=True
+            if time.monotonic() >= deadline:
+                current['phase']='completion-deadline';observations.append(current)
+                return {'matches':False,'preview':preview,'downloadObservations':observations}
+            time.sleep(1)
+    finally:
+        # Streaming helpers can open a new tab. The original share URL stays
+        # only in this browser tab for the mandatory post-revocation check.
+        client.call('WebDriver:SwitchToWindow',{'handle':handle,'focus':True})
+
+
 def _target(action, values):
     if action in ('prepare', 'recover'):
         if action == 'prepare':
@@ -1145,30 +1324,8 @@ def _target(action, values):
                 raise _TargetError('Live recipient download requires a new empty tmpfs directory')
             original = _live_saved_capture(values)
             if values['kind'] == 'proton':
-                deadline = time.monotonic()+30
-                while True:
-                    node = client.script("""
-// Filename readiness can precede decryption. This lane uploads PNGs: wait
-// for their decrypted preview before activating the recipient download.
-const preview=[...document.images].some(e=>(e.currentSrc||e.src).startsWith('blob:')&&e.complete&&e.naturalWidth>0);
-if(!preview)return null;
-const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(el=>{
- const r=el.getBoundingClientRect();const label=(el.getAttribute('aria-label')||el.textContent||'').trim();
- return r.width>0&&r.height>0&&!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&
-  getComputedStyle(el).pointerEvents!=='none'&&/^Download(?: file)?$/i.test(label);
-});
-return nodes.length===1?nodes[0]:null;
-""")
-                    if node or time.monotonic()>=deadline:
-                        break
-                    time.sleep(.25)
-                element = node.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(node, dict) else None
-                clicked = bool(element)
-                if clicked:
-                    # WebDriver's trusted pointer action supplies user activation
-                    # for Proton's download/popup flow; DOM click() does not.
-                    client.call('WebDriver:ElementClick', {'id': element})
-            elif values['kind'] == 's3':
+                return _proton_recipient_download(client, values, directory, original)
+            if values['kind'] == 's3':
                 # Fetch the original image in the recipient Firefox origin;
                 # canvas serialization would not prove the uploaded bytes.
                 received = client.script("""
@@ -1188,40 +1345,6 @@ fetch(images[0].currentSrc||images[0].src,{cache:'no-store',credentials:'omit'})
                         received['sha256']==hashlib.sha256(original).hexdigest()}
             else:
                 raise _TargetError('Unsupported live recipient provider')
-            if not clicked:
-                raise _TargetError('Recipient page has no unique enabled Download control')
-            deadline = time.monotonic()+120
-            while time.monotonic()<deadline:
-                files = list(directory.iterdir())
-                complete = [p for p in files if not p.name.endswith(('.part', '.tmp'))]
-                if len(complete)==1 and len(files)==1:
-                    path = complete[0]
-                    info = path.lstat()
-                    if (not stat.S_ISREG(info.st_mode) or path.is_symlink() or info.st_uid!=os.getuid()
-                            or not 0<info.st_size<=32*1024*1024):
-                        raise _TargetError('Recipient download is not an owned bounded regular file')
-                    with os.fdopen(os.open(path, os.O_RDONLY|os.O_NOFOLLOW), 'rb') as stream:
-                        current=os.fstat(stream.fileno())
-                        if (not stat.S_ISREG(current.st_mode) or current.st_uid!=os.getuid()
-                                or current.st_ino!=info.st_ino or current.st_dev!=info.st_dev):
-                            raise _TargetError('Recipient download changed identity before reading')
-                        data=stream.read(32*1024*1024+1)
-                    if len(data)>32*1024*1024:
-                        raise _TargetError('Recipient download exceeded the bounded in-memory limit')
-                    digest=hashlib.sha256(data).hexdigest()
-                    return {'bytes':len(data),'sha256':digest,
-                            'matches':len(original)<=32*1024*1024 and data==original and
-                                      digest==hashlib.sha256(original).hexdigest()}
-                time.sleep(.5)
-            diagnostic = client.script("""
-const text=document.body?.innerText||'';
-return {serviceWorkerAPI:typeof navigator.serviceWorker==='object',
- downloading:/downloading|decrypting/i.test(text),downloadError:/download failed|unable to download|could not download/i.test(text),
- blobPreview:[...document.images].some(e=>(e.currentSrc||e.src).startsWith('blob:')&&e.complete&&e.naturalWidth>0),
- focused:document.hasFocus()};
-""")
-            # Fixed boolean fields only, never page text, hrefs or filenames.
-            raise _TargetError('Recipient download deadline: '+json.dumps(diagnostic, sort_keys=True))
         if action == 'unavailable':
             # URL lives only in this target process and Firefox, never in
             # arguments, transaction metadata or a browser receipt.

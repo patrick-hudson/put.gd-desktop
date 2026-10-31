@@ -1,5 +1,6 @@
 """Synthetic safety/oracle checks; these do not establish desktop acceptance."""
 import io
+import base64
 import contextlib
 import hashlib
 import json
@@ -16,9 +17,45 @@ from tools.lab.surface_driver.fixtures.base import Fixture
 from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3
 from tools.lab.surface_driver.run import discover, validate_recipes
 from tools.lab.surface_driver.recipes import outcomes_live
+from tools.lab.surface_driver import browser
 
 
 class LiveOutcomes(unittest.TestCase):
+    def test_download_list_drops_source_and_error_messages_and_restores_context(self):
+        raw={'available':True,'entries':[{'target':'/tmp/capture.png','sourceUrl':'https://invalid.example/private-token',
+             'error':{'result':123,'message':'https://invalid.example/private-token','becauseTargetFailed':True}}]}
+        client=Mock();client.script.return_value=raw
+        value=browser._firefox_downloads(client,'/dev/shm/test-downloads','capture.png')
+        self.assertNotIn('private-token',repr(value))
+        self.assertEqual(value['entries'][0]['error']['result'],123)
+        self.assertTrue(value['entries'][0]['error']['becauseTargetFailed'])
+        self.assertEqual(client.call.call_args_list[-1].args,('Marionette:SetContext',{'value':'content'}))
+        client.script.side_effect=RuntimeError('synthetic API failure')
+        with self.assertRaises(RuntimeError):browser._firefox_downloads(client,'/dev/shm/test-downloads','capture.png')
+        self.assertEqual(client.call.call_args_list[-1].args,('Marionette:SetContext',{'value':'content'}))
+
+    def test_completed_download_hash_uses_browser_target_and_rejects_wrong_bytes(self):
+        with tempfile.TemporaryDirectory(dir='/dev/shm') as td:
+            p=Path(td)/'capture.png';p.write_bytes(b'synthetic original')
+            record={'entries':[{'succeeded':True,'stopped':True,'error':None,'target':str(p)}]}
+            self.assertTrue(browser._completed_recipient_file(record,b'synthetic original','capture.png')['matches'])
+            self.assertFalse(browser._completed_recipient_file(record,b'other original','capture.png')['matches'])
+            self.assertIsNone(browser._completed_recipient_file(record,b'synthetic original','other.png'))
+
+    def test_preview_compares_decoded_pixels_with_zero_tolerance(self):
+        try:from PyQt6.QtGui import QImage
+        except ImportError:self.skipTest('real Qt PNG decoder required on the builder')
+        from PIL import Image
+        stream=io.BytesIO();Image.new('RGBA',(2,1),(10,20,30,255)).save(stream,format='PNG')
+        rgba=bytes((10,20,30,255))*2
+        client=Mock()
+        def result():return {'width':2,'height':1,'naturalWidth':2,'naturalHeight':1,'rgba':base64.b64encode(rgba).decode()}
+        client.script.side_effect=lambda *a,**k:result()
+        self.assertTrue(browser._recipient_preview_pixels(client,stream.getvalue())['matches'])
+        rgba=bytes((11,20,30,255))*2
+        proof=browser._recipient_preview_pixels(client,stream.getvalue())
+        self.assertFalse(proof['matches']);self.assertEqual(proof['tolerance'],0)
+
     def test_scoped_missing_head_requires_404_and_rejects_root_prefix(self):
         class ServiceError(Exception):
             def __init__(self,status):self.response={'ResponseMetadata':{'HTTPStatusCode':status}}
@@ -43,6 +80,8 @@ class LiveOutcomes(unittest.TestCase):
         client.head_object.return_value={'ContentLength':len(data)}
         client.get_object.return_value={'Body':io.BytesIO(data)}
         verify_s3(SimpleNamespace(expect=expect),fx,detail,data)
+        detail['receipt']['directUrl']='https://s3.us-east-1.amazonaws.com/put.gd/'+key
+        with self.assertRaises(RecipeFailed):verify_s3(SimpleNamespace(expect=expect),fx,detail,data)
         detail['receipt']['directUrl']='https://put.gd/foreign/capture.png'
         with self.assertRaises(RecipeFailed):verify_s3(SimpleNamespace(expect=expect),fx,detail,data)
 
@@ -69,9 +108,9 @@ class LiveOutcomes(unittest.TestCase):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
         ctx=SimpleNamespace(expect=expect)
-        client=Mock();fx=Fixture(client=client,bucket='synthetic',prefix='owned/',region='us-east-1')
-        detail={'receipt':{'objectReference':{'key':'foreign/object'},'destination':{'settings':{'bucket':'synthetic'}},
-                           'directUrl':'https://synthetic.s3.us-east-1.amazonaws.com/owned/object'}}
+        client=Mock();fx=Fixture(client=client,bucket='put.gd',prefix='owned/',region='us-east-1')
+        detail={'receipt':{'objectReference':{'key':'foreign/object'},'destination':{'settings':{'bucket':'put.gd'}},
+                           'directUrl':'https://put.gd/owned/object'}}
         with self.assertRaises(RecipeFailed):verify_s3(ctx,fx,detail,b'expected')
         client.get_object.assert_not_called();client.head_object.assert_not_called()
         detail['receipt']['objectReference']['key']='owned/object'
@@ -93,7 +132,7 @@ class LiveOutcomes(unittest.TestCase):
             if not ok:raise RecipeFailed(note)
         class Missing(Exception):pass
         client=Mock();client.exceptions.NoSuchKey=Missing
-        fx=Fixture(client=client,bucket='synthetic',prefix='owned/',pending={'remote':True})
+        fx=Fixture(client=client,bucket='put.gd',prefix='owned/',pending={'remote':True})
         ctx=SimpleNamespace(expect=expect,note=Mock())
         item=dict(error={'code':'s3_permission_denied','details':{'httpStatus':403,'requestStage':'upload_put'}},
                   candidate='capture.png',objectReference={'key':'foreign/capture.png'})
@@ -184,13 +223,14 @@ class LiveOutcomes(unittest.TestCase):
             client=Mock()
             def receive(*a,**kw):
                 (downloads/'received.png').write_bytes(b'\x89PNG\r\n\x1a\nwrong bytes')
-                return {'element-6066-11e4-a52e-4f735466cecf':'synthetic-control'}
+                return None if 'role=menu' in a[0] else {'element-6066-11e4-a52e-4f735466cecf':'synthetic-control'}
             client.script.side_effect=receive
-            args=dict(directory=str(state),port=1,kind='proton',saved_path=str(saved),app_root=str(app))
-            with patch.object(browser,'_Marionette',return_value=client),patch.object(browser.subprocess,'run',return_value=SimpleNamespace(stdout='tmpfs\n')):
+            args=dict(directory=str(state),port=1,kind='proton',saved_path=str(saved),app_root=str(app),filename='received.png')
+            observation=lambda *a,**k:{'available':True,'entries':[{'succeeded':True,'stopped':True,'error':None,'target':str(downloads/'received.png')}]}
+            with patch.object(browser,'_recipient_preview_pixels',return_value={'matches':True}),patch.object(browser,'_firefox_downloads',side_effect=observation),patch.object(browser,'_Marionette',return_value=client),patch.object(browser.subprocess,'run',return_value=SimpleNamespace(stdout='tmpfs\n')):
                 result=browser._target('download-digest',args)
                 self.assertFalse(result['matches'])
-                self.assertEqual(set(result),{'bytes','sha256','matches'})
+                self.assertEqual(set(result),{'bytes','sha256','matches','preview','downloadObservations'})
                 client.call.assert_any_call('WebDriver:ElementClick',{'id':'synthetic-control'})
                 for path in (foreign,link):
                     (downloads/'received.png').unlink(missing_ok=True)

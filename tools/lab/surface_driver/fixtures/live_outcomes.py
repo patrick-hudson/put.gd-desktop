@@ -225,13 +225,9 @@ def verify_s3(ctx, fixture, detail, data=None, *, absent=False):
     else:
         import hashlib
         link = urlsplit(receipt['directUrl'])
-        endpoint = 's3.'+fixture.region+'.amazonaws.com'
-        public = fixture.bucket == 'put.gd' and link.hostname == 'put.gd'
-        virtual = link.hostname == fixture.bucket+'.'+endpoint
-        expected_path = '/'+key if public or virtual else '/'+fixture.bucket+'/'+key
-        ctx.expect(link.scheme == 'https' and link.hostname in (endpoint, fixture.bucket+'.'+endpoint, 'put.gd' if public else endpoint)
+        ctx.expect(link.scheme == 'https' and fixture.bucket == 'put.gd' and link.hostname == 'put.gd'
                    and not link.username and not link.password and link.port in (None, 443)
-                   and not link.query and not link.fragment and unquote(link.path) == expected_path,
+                   and not link.query and not link.fragment and unquote(link.path) == '/'+key,
                    'copied public S3 link identifies the same independently verified key')
         head = fixture.client.head_object(Bucket=fixture.bucket, Key=key)
         ctx.expect(head['ContentLength'] == len(data), 'S3 HEAD length matches saved file')

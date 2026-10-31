@@ -119,6 +119,12 @@ def _region_upload(ctx):
     scope = ctx._fixture_manager.scope
     service = provider(scope)
     scene, oracle = outcomes._pattern(ctx)
+    if ctx.destination == 's3':
+        resolved = next(p for p in ctx.call('settings.get')['document']['profiles'] if p['id'] == service.profile_id)
+        ctx.expect(resolved['settings'].get('publicUrlBase') == 'https://put.gd'
+                   and resolved['settings'].get('objectPrefix') == service.prefix,
+                   'resolved S3 profile uses CloudFront and this exact acceptance prefix')
+        ctx.note('s3_resolved_cloudfront_base_count=1')
     detail, cleaned, owned = None, False, False
     try:
         with selectors._portal_scope(ctx):
@@ -158,46 +164,60 @@ def _region_upload(ctx):
                 def paste():
                     ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
                     ctx.keys('Ctrl+L', 'Ctrl+V', 'Return')
-                browser_error = None
+                browser_error, preview_only = None, False
                 try:
                     opened = open_and_verify(ctx, paste, {'kind': ctx.destination, 'name': detail['name'], 'preview': True})
                     ctx.expect(opened['matched'] and opened['frames'], 'guarded Firefox displays the copied link')
                     try:
-                        downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'])
+                        downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'], filename=detail['name'])
                     except RuntimeError as error:
                         # The helper emits only our static, allowlisted errors.
                         ctx.note(str(error))
                         raise
-                    ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
-                               'Firefox recipient original bytes SHA-256 equals saved file in guest')
-                    ctx.note('browser_hash_match_count=1')
                     if ctx.destination == 'proton':
-                        ctx.note('remote_hash_match_count=1')
+                        ctx.note('firefox_download_list='+json.dumps(downloaded['downloadObservations'], sort_keys=True))
+                        ctx.note('recipient_preview_pixels='+json.dumps(downloaded['preview'], sort_keys=True))
+                        if not downloaded['matches'] and downloaded['preview'].get('matches'):
+                            ctx.expect(bool(downloaded['downloadObservations']) and
+                                       all(o.get('available') for o in downloaded['downloadObservations']),
+                                       'P-preview requires Firefox own Download-list state')
+                            ctx.note('preview_match_count=1; recipient_proof=P-preview; original_byte_hash=unproven')
+                            preview_only = True
+                    if not preview_only:
+                        ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
+                                   'Firefox recipient original bytes SHA-256 equals saved file in guest')
+                        ctx.note('browser_hash_match_count=1')
+                        if ctx.destination == 'proton':
+                            ctx.note('remote_hash_match_count=1')
                 except Exception as error:
                     ctx.note('recipient_positive_failure='+ctx.evidence.redactor.exception(error))
                     browser_error = error
                 # Cleanup is inside the browser guard: its URL stays only in
                 # the private Firefox memory for the fresh negative check.
                 _cleanup(ctx, detail)
-                cleaned = True
-                service.pending['remote'] = False
                 if ctx.destination == 's3':
                     verify_s3(ctx, service, detail, absent=True)
+                cleaned = True
+                service.pending['remote'] = False
                 ctx.click('windowClose', window='history')
-                negative = live_link_unavailable(ctx, ctx.destination)
                 if ctx.destination == 's3':
                     # Origin GET 404 above is decisive. CloudFront can retain
                     # the previously public image until its cache expires.
-                    ctx.expect(negative['hostOK'] and negative['complete'] and negative['status'] in (200,403,404,410),
-                               'fresh CloudFront navigation has an observed HTTP status')
-                    ctx.note('cloudfront_after_delete_status='+str(negative['status']))
-                    if negative['status'] in (403,404,410):
-                        ctx.note('unavailable_link_count=1')
+                    try:
+                        negative = live_link_unavailable(ctx, 's3')
+                        ctx.note('cloudfront_after_delete_status='+str(negative['status']))
+                        if negative['status'] in (403,404,410):
+                            ctx.note('unavailable_link_count=1')
+                    except RuntimeError as error:
+                        ctx.note('cloudfront_after_delete_informational='+ctx.evidence.redactor.exception(error))
                 else:
+                    negative = live_link_unavailable(ctx, 'proton')
                     ctx.expect(negative['unavailable'], 'fresh link navigation no longer resolves after UI cleanup')
                     ctx.note('unavailable_link_count=1')
                 if browser_error is not None:
                     raise browser_error
+                if preview_only:
+                    ctx.blocked('P-preview: decrypted pixels match and Firefox Download list recorded; original-byte hash unproven; coordinator acceptance pending', issue=978)
             finally:
                 ctx.profile['windows'] = previous
     finally:
@@ -205,6 +225,8 @@ def _region_upload(ctx):
             failed = sys.exc_info()[0] is not None
             try:
                 _cleanup(ctx, detail)
+                if ctx.destination == 's3':
+                    verify_s3(ctx, service, detail, absent=True)
                 service.pending['remote'] = False
             except Exception as error:
                 ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
