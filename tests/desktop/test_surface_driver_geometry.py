@@ -98,7 +98,7 @@ class SelectorMapping(unittest.TestCase):
         self.ctx._probe = Mock(side_effect=RecipeBlocked(
             'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)'))
         def bounded(predicate, what, timeout):
-            self.assertEqual(timeout, 10)
+            self.assertEqual(timeout, 30)
             self.assertIsNone(predicate())
             raise RecipeFailed('timeout: ' + what)
         self.ctx.wait = bounded

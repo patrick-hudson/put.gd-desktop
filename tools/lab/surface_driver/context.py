@@ -280,7 +280,7 @@ class DriverContext(Context):
                     if str(error) != 'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)':
                         raise
                     return None
-            result = self.wait(mapped, window + ' owned selector geometry', timeout=10)
+            result = self.wait(mapped, window + ' owned selector geometry', timeout=30)
         else:
             result = self._probe('geometry', query)
         if window in ('region', 'recsel'):
