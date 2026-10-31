@@ -61,7 +61,9 @@ def _cleanup(ctx, detail):
         ctx.expect(final['shareStatus'] == 'revoked' and not final['linkAvailable'], 'History confirms link revoked')
         ctx.note('revocation_count=1')
     else:
-        ctx.click('deleteHistoryRemote', window='history')
+        # Qt 6.4 does not expose this button's objectName. The exact caption
+        # still binds the unique visible owned inspector action.
+        ctx.click('text:Delete from destination…', window='history')
         history._wait_window(ctx, 'confirmAction')
         ctx.call('ui.history', {'action': 'copyDeletionDetails'})
         prepared = json.loads(ctx.clipboard_text())
