@@ -19,7 +19,7 @@ class Reuse(unittest.TestCase):
                     'event': 'push', 'status': 'completed', 'conclusion': 'success',
                     'path': '.github/workflows/ci.yml', 'repository': {'full_name': 'owner/repo'},
                     'html_url': 'https://github.com/owner/repo/actions/runs/123'}
-        names = ['contracts', 'linux (24.04)', 'linux (26.04)', 'portable (windows-2022)',
+        names = ['contracts', 'linux (24.04)', 'linux (26.04)',
                  'sanitizers (clang ASan/UBSan)', 'CI']
         self.jobs = {'total_count': len(names), 'jobs': [
             {'id': i, 'name': name, 'conclusion': 'success'} for i, name in enumerate(names, 1)]}

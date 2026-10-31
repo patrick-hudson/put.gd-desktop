@@ -55,10 +55,9 @@ class RenovateConfig(unittest.TestCase):
         seen = {match['depName'] for match in python_pattern(managers[1]['matchStrings'][0]).finditer(text)}
         self.assertEqual(seen, pinned)
 
-    def test_windows_pins_stay_with_the_windows_rewrite(self):
+    def test_regex_managers_leave_workflow_actions_to_dependabot(self):
         for manager in CONFIG['customManagers']:
             for path in managed_files(manager):
-                self.assertNotIn('portable', path)
                 self.assertFalse(path.startswith('.github/workflows/'), path)
 
     def test_post_upgrade_task_is_the_allowed_refresh_command(self):
@@ -75,7 +74,6 @@ class RenovateConfig(unittest.TestCase):
         self.assertEqual(re.findall(r'package-ecosystem: (\S+)', text), ['github-actions'])
         self.assertIn('target-branch: nightly', text)
         self.assertIn("patterns: ['*']", text)
-        self.assertIn('dependency-name: ilammy/msvc-dev-cmd', text)
 
     def test_bundled_component_majors_and_the_proton_helper_wait_for_approval(self):
         approved = [rule for rule in CONFIG['packageRules'] if rule.get('dependencyDashboardApproval')]

@@ -243,7 +243,7 @@ def publish_nightly(args, release, listed):
         notes.write_text(f'Nightly {parse_tag(args.tag).base_version}: a build-tested development '
             f'release of commit {release["gitCommit"]}.\n\n'
             + changes_section(args.tag, producer) +
-            'Automated coverage: Linux test suites, Windows/macOS portable compilation, '
+            'Automated coverage: Linux test suites, '
             'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
             'and production compilation of the exact curated source tarball. '
             'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'

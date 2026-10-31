@@ -16,7 +16,7 @@ def find_run(repository, commit, *, api=github):
                        'status': 'success', 'per_page': 100})
     prefix = f'repos/{repository}/actions'
     runs = api(prefix + '/workflows/ci.yml/runs?' + query)['workflow_runs']
-    required = {'contracts', 'linux (24.04)', 'linux (26.04)', 'portable (windows-2022)',
+    required = {'contracts', 'linux (24.04)', 'linux (26.04)',
                 'sanitizers (clang ASan/UBSan)', 'CI'}
     for run in runs:
         if (run.get('head_sha') != commit or run.get('head_branch') != 'nightly'
