@@ -1,0 +1,31 @@
+{
+  "lends": [
+    {
+      "receiptDirectory": "2026-10-31T05-01-54Z-rk1",
+      "finalStep": "cleaned",
+      "testExit": 1,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-14-37Z-rk1",
+      "finalStep": "cleaned",
+      "testExit": 1,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-19-13Z-rk1",
+      "finalStep": "cleaned",
+      "testExit": 0,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    }
+  ]
+}

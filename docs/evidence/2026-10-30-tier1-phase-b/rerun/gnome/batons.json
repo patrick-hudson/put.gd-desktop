@@ -1,0 +1,22 @@
+{
+  "lends": [
+    {
+      "receiptDirectory": "2026-10-31T05-26-54Z-rg1",
+      "finalStep": "cleaned",
+      "testExit": 1,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    },
+    {
+      "receiptDirectory": "2026-10-31T05-32-44Z-rg1",
+      "finalStep": "cleaned",
+      "testExit": 1,
+      "carryBackStates": [
+        "replace_confirmed"
+      ],
+      "guestEntryState": "cleanup_confirmed"
+    }
+  ]
+}

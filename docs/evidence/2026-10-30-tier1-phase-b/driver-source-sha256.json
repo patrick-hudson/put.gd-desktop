@@ -1,0 +1,10 @@
+{
+  "commit": "5a3c11af98501ba2da13168736ea74fa49a1cf04",
+  "files": {
+    "tools/lab/surface_driver/browser.py": "163b32fa6e66e8b0575a8e7d38a00ee782fb428e7e866fec2805a2a2bc11163a",
+    "tools/lab/surface_driver/run.py": "a481f5e23f33c41b0c4c1cf431d10ef70fa85197a37784feed9e6d704a114c0e",
+    "tools/lab/surface_driver/fixtures/live_outcomes.py": "27f369e20c7ca8da1b191b27f3a9f4850d651214de01472ff091424e72ef98e9",
+    "tools/lab/surface_driver/recipes/outcomes_live.py": "9ba42bef0c53b5263c086fd659c48d9fd26b0a71848b9c2372b5abe4dff0dd31",
+    "tests/desktop/test_surface_outcomes_live.py": "2daea5891dc30f2c5a62be4ef96f26fe91e381109d1f755ca289ec4b43e96021"
+  }
+}

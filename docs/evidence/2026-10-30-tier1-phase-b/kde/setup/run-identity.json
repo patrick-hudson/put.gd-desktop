@@ -1,0 +1,12 @@
+{
+  "id": "e8d7c156-58b8-4a6c-90a0-b4d7cdb82f5e",
+  "profile": "kde-wayland",
+  "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-459d0181e995/image.qcow2",
+  "golden_sha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+  "overlay": "/home/patrick/t1b/work/lab-runs/bk1/disk.qcow2",
+  "ssh_port": 22434,
+  "vnc_display": 20,
+  "acceleration": "kvm",
+  "guest_user": "lab",
+  "pid": 2183651
+}

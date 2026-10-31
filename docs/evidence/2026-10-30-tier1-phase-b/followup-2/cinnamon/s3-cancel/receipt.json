@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "d69",
+    "placement": "guest",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {},
+    "cleanup_errors": [],
+    "private_cleanup": "reconciled-preinput-root-removed"
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3-cancel/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; cancelled_before_upload_count=1; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; retained_s3_credential_cleanup_count=1; desktop frame cancelled-before-upload-confirmed masked by live evidence policy; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "cancelled-before-upload-confirmed",
+          "path": "frames/__main__.finish/01-cancelled-before-upload-confirmed.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:25:17Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 8,
+    "pngs": 3,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

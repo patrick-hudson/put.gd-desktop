@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/run/user/1000/bcs1/runtime/putgd/session.sock", "utf8Bytes": 46, "passed": true}]}

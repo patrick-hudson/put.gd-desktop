@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "f44",
+    "placement": "guest",
+    "guest": "kde-wayland",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "run_id": "eb888216-2d5d-4f69-9ffb-2eb0d7abe2d4",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/patrick/t1b/work/lab-runs/rk1",
+      "session_root": "/dev/shm/rks2",
+      "socket": "/dev/shm/rks2/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "kwin_entry_staging": [],
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "wayland",
+      "pid": 34008,
+      "start": "68763",
+      "boot": "1cc01047-eed0-4dd4-91f6-02e0c337dec2",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "plasmashell",
+      "pid": 1492,
+      "start": 1687,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "0920a9cf-7d17-4c39-8950-ea868e81d37c"
+      }
+    ],
+    "private_cleanup": "not-owned-or-retained",
+    "cleanup_errors": [
+      "private session root cleanup refused"
+    ],
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; Capture operation 0920a9cf-7d17-4c39-8950-ea868e81d37c; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; historyId=22ddf47e-304a-41e5-8ef5-e154c0329434; desktop frame after masked by live evidence policy; cleanup receipt belongs to this exact operation and bridged destination; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:08:44Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; Capture operation 0920a9cf-7d17-4c39-8950-ea868e81d37c; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; historyId=22ddf47e-304a-41e5-8ef5-e154c0329434; desktop frame after masked by live evidence policy; cleanup receipt belongs to this exact operation and bridged destination; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:08:44Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; Capture operation 0920a9cf-7d17-4c39-8950-ea868e81d37c; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; historyId=22ddf47e-304a-41e5-8ef5-e154c0329434; desktop frame after masked by live evidence policy; cleanup receipt belongs to this exact operation and bridged destination; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:08:44Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; Capture operation 0920a9cf-7d17-4c39-8950-ea868e81d37c; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; historyId=22ddf47e-304a-41e5-8ef5-e154c0329434; desktop frame after masked by live evidence policy; cleanup receipt belongs to this exact operation and bridged destination; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:08:44Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; Capture operation 0920a9cf-7d17-4c39-8950-ea868e81d37c; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; historyId=22ddf47e-304a-41e5-8ef5-e154c0329434; desktop frame after masked by live evidence policy; cleanup receipt belongs to this exact operation and bridged destination; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:08:44Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; Capture operation 0920a9cf-7d17-4c39-8950-ea868e81d37c; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; historyId=22ddf47e-304a-41e5-8ef5-e154c0329434; desktop frame after masked by live evidence policy; cleanup receipt belongs to this exact operation and bridged destination; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:08:44Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 9,
+    "pngs": 3,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

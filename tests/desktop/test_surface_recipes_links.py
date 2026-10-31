@@ -117,6 +117,16 @@ class BrowserContracts(unittest.TestCase):
         self.assertIn(('remote', 'restore'), self.context.events)
         self.assertNotIn(id(self.context), browser._ACTIVE)
 
+    def test_live_failure_frame_preserves_recipient_for_fresh_navigation(self):
+        self.context._live_admitted = True
+        frames = []
+        with patch.object(browser, '_remote') as remote:
+            browser._failure_frame(self.context, {}, {}, frames)
+        remote.assert_not_called()  # about:blank would discard the recipient.
+        self.assertEqual(len(frames), 1)
+        self.assertIn(('frame', 'browser-failure-fully-masked', None), self.context.events)
+        self.assertEqual(self.context.declarations, [None])  # Full live mask.
+
     def test_trigger_exception_restores_and_saves_safe_failure(self):
         def fail():
             raise RecipeFailed('test failure')

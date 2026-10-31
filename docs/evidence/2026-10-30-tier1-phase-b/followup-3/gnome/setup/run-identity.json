@@ -1,0 +1,12 @@
+{
+  "id": "572e23e1-606a-4cd1-82d0-cc4aa8be8f69",
+  "profile": "gnome-wayland",
+  "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+  "golden_sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+  "overlay": "/home/patrick/t1b/work/lab-runs/r4g/disk.qcow2",
+  "ssh_port": 22222,
+  "vnc_display": 20,
+  "acceleration": "kvm",
+  "guest_user": "lab",
+  "pid": 3829096
+}

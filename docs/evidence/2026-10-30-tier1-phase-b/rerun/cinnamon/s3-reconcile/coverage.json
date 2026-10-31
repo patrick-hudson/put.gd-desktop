@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "campaign": "tier1-phase-b",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/cin-s3-reconcile/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=7532717a-031f-415c-9a26-c8c5772c4c09; retained-failure={\"operationState\": \"partial\", \"operationError\": \"\", \"uploadStatus\": \"failed\", \"shareStatus\": \"not_requested\", \"linkAvailable\": false, \"detailError\": \"s3_permission_denied\", \"hasReceipt\": true, \"itemErrors\": [\"s3_permission_denied\"], \"itemFieldNames\": [[\"artifact\", \"candidate\", \"concurrencyToken\", \"condition\", \"error\", \"local\", \"objectReference\", \"phase\", \"publicationId\", \"receipt\", \"remoteStatus\", \"shareIntent\", \"shareIntentOptions\", \"shareStatus\", \"uploadProgress\", \"uploadStatus\"]]}; failed_upload_absence_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; retained_failed_capture_sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; retained_s3_credential_cleanup_count=1; desktop frame after masked by live evidence policy",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:13:41Z"
+    }
+  ]
+}

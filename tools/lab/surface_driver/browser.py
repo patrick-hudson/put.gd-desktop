@@ -1,6 +1,7 @@
 """Real default-Firefox verification, with target-side URL/token confinement.
 
-Only stdlib is required on the target. Marionette is Firefox's shipped remote
+Normal browser actions need only stdlib on the target; the live Proton pixel
+oracle also uses the guest's distro PyQt6 PNG decoder. Marionette is Firefox's shipped remote
 protocol (firefox-source-docs.mozilla.org/remote/marionette/Protocol.html).
 The temporary handler launches Firefox itself; it never records URL arguments.
 Profile fragments may set ``browser.command`` (argv, e.g. snap run firefox),
@@ -120,7 +121,11 @@ class default_browser:
         ctx = self.ctx
         if id(ctx) in _ACTIVE:
             raise RuntimeError('Nested default_browser transactions are unsupported')
-        options = ctx.profile.get('browser', {})
+        options = dict(ctx.profile.get('browser', {}))
+        options.pop('live_downloads', None)
+        if (getattr(ctx, '_live_admitted', False) and ctx.placement == 'guest'
+                and ctx.destination == 'proton'):
+            options['live_downloads'] = True
         self.timeouts = _timeouts(options)
         self.guard = armed(ctx.review, label='the Firefox restore')
         self.guard.__enter__()
@@ -266,7 +271,7 @@ def open_and_verify(ctx, trigger, expect):
             return result
         try:
             result = ctx.wait(observe, 'default Firefox loaded the expected page content',
-                              timeout=timeouts['page'])
+                              timeout=max(timeouts['page'], 120) if expect['kind'] == 'proton' else timeouts['page'])
         except RecipeFailed as error:
             if pending:
                 raise RecipeFailed(str(error) + '; last Firefox answer: ' + pending[0]) from None
@@ -294,12 +299,40 @@ def open_and_verify(ctx, trigger, expect):
 KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
+def live_download_digest(ctx, kind, saved_path, filename=None):
+    """Download original recipient bytes and compare with the saved PNG in guest RAM."""
+    active = _ACTIVE[id(ctx)]
+    return _remote(ctx, 'download-digest', dict(active['state'], kind=kind,
+                   saved_path=saved_path, app_root=ctx.target.root, filename=filename), timeout=190)
+
+
+def live_link_unavailable(ctx, kind):
+    """Reload the existing URL without returning it or trusting a cached preview."""
+    active = _ACTIVE[id(ctx)]
+    result = _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=160)
+    ctx.note('recipient_unavailable_observation='+json.dumps(result, sort_keys=True))
+    ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
+    label = 'browser-cloudfront-status-'+str(result.get('status', 0)) if kind == 's3' else (
+        'browser-link-unavailable' if result.get('unavailable') else 'browser-link-unavailable-failed')
+    ctx.frame(label,
+              window=None, desktop_safe=KIOSK_SAFE)
+    return result
+
+
 def _failure_frame(ctx, state, timeouts, frames):
     """Save a full-desktop failure frame only over a proven blank kiosk.
 
     Never raises: the recipe's own failure is the result, and the transaction is
     restored by default_browser either way.
     """
+    if getattr(ctx, '_live_admitted', False):
+        # Keep the recipient URL only in Firefox memory for the mandatory
+        # post-cleanup navigation. The live default masks the whole desktop.
+        try:
+            frames.append(asdict(ctx.frame('browser-failure-fully-masked', window=None)))
+        except Exception as error:
+            ctx.review('Failure frame unavailable (' + str(error)[:200] + ')')
+        return
     # Kiosk has no address bar. Blank the page before retaining failure
     # evidence, since error pages may echo a token-bearing request URL.
     try:
@@ -440,24 +473,31 @@ const painted = el => {
 const media = [...document.querySelectorAll('img,video,canvas')].some(el =>
   visible(el) && (el.tagName==='IMG' ? el.complete && el.naturalWidth>0 :
   el.tagName==='VIDEO' ? el.readyState>=2 : painted(el)));
-// A Download button alone says nothing about decryption or completed bytes.
+// Readiness is separate from the later mandatory original-byte download.
 const status = performance.getEntriesByType('navigation')[0]?.responseStatus || 0;
 const error = /^(404|403|500|AccessDenied|NoSuchKey|Error response)/i.test(text.trim()) ||
               /Problem loading page|Server Not Found|Error response|Access Denied/i.test(title);
-const content = e.kind==='proton' ? text.includes(e.name) && media :
+const protonMedia=[...document.querySelectorAll('img,video,canvas')].some(el =>
+ visible(el) && (el.tagName==='IMG' ? el.complete && el.naturalWidth>0 &&
+ (el.currentSrc||el.src).startsWith('blob:') : el.tagName==='VIDEO' ? el.readyState>=2 : painted(el)));
+const content = e.kind==='proton' ? text.includes(e.name) || protonMedia :
                 (media || text.trim().length>0);
 const hostOK = e.url_host ? u.hostname===e.url_host :
                e.kind==='proton' ? /(^|\.)proton\.(me|ch)$/.test(u.hostname) : true;
-const matched = ['http:','https:'].includes(u.protocol) && hostOK && named &&
+const matched = ['http:','https:'].includes(u.protocol) && hostOK && (named || (e.kind==='proton' && protonMedia)) &&
   title.length>0 && document.visibilityState==='visible' && document.hasFocus() &&
   innerWidth>=screen.width && innerHeight>=screen.height &&
   document.readyState==='complete' && status<400 && !error &&
-  content && (!e.preview || media || (e.kind!=='proton' && text.trim().length>0)) &&
+  content && (!e.preview || e.kind==='proton' || media || text.trim().length>0) &&
   (!e.text || text.includes(e.text));
 // Keep only a title we can prove contains no URL path, fragment, or arbitrary
 // page-supplied token: the filename, when it is present in the actual title.
 return {matched, url_host: matched ? u.hostname : '',
-  title: matched ? (title.includes(e.name) ? e.name : '[page title verified; redacted]') : ''};
+  title: matched ? (title.includes(e.name) ? e.name : '[page title verified; redacted]') : '',
+  diagnostic: matched ? null : {named,media,hostOK,status,content,complete:document.readyState==='complete',
+    focused:document.hasFocus(),fullscreen:innerWidth>=screen.width&&innerHeight>=screen.height,
+    blank:location.href==='about:blank',networkError:document.documentURI.startsWith('about:neterror'),
+    certificateError:document.documentURI.startsWith('about:certerror')}};
 '''
 
 # Two animation frames after the match, so the selected tab is painted before
@@ -774,6 +814,8 @@ def _prepare(options):
     command = options.get('command', ['firefox'])
     if not isinstance(command, list) or not command or not all(isinstance(x, str) for x in command):
         raise ValueError('browser.command must be argv')
+    if options.get('live_downloads') and any(arg.startswith(('-private', '--private')) for arg in command):
+        raise _TargetError('Streaming recipient Firefox must not use a private-browsing command flag')
     recovered = _recover(root, timeouts['cleanup'] - 30)
     created = []
     _make_directories(root, created)
@@ -817,6 +859,24 @@ def _prepare(options):
                        'browser.link.open_newwindow': 3, 'browser.link.open_newwindow.override.external': 3,
                        'browser.sessionstore.resume_from_crash': False,
                        'signon.rememberSignons': False, 'browser.privatebrowsing.autostart': True}
+        downloads = directory/'downloads'
+        downloads.mkdir(mode=0o700)
+        preferences.update({'browser.download.folderList': 2, 'browser.download.dir': str(downloads),
+                            'browser.download.useDownloadDir': True, 'browser.download.always_ask_before_handling_new_types': False,
+                            'browser.helperApps.neverAsk.saveToDisk': 'image/png,application/octet-stream,application/zip',
+                            'browser.cache.disk.enable': False, 'browser.cache.memory.enable': False,
+                            'network.http.use-cache': False})
+        if options.get('live_downloads'):
+            fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
+            if fs.stdout.strip() != 'tmpfs':
+                raise _TargetError('Live download popup policy requires the admitted tmpfs profile')
+            # A public recipient's streamed download can open a helper after
+            # asynchronous decryption, beyond Firefox's transient activation.
+            # Keep this permission inside the disposable guest RAM profile.
+            preferences['dom.disable_open_during_load'] = False
+            preferences['browser.privatebrowsing.autostart'] = False
+            preferences['dom.serviceWorkers.enabled'] = True
+            preferences['dom.indexedDB.enabled'] = True
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         # Cache and state are the transaction's own, removed with it: the
@@ -825,6 +885,13 @@ def _prepare(options):
         # activation environment, and a new parent must retain our ownership.
         scoped = {'XDG_CACHE_HOME': str(directory / 'xdg-cache'), 'XDG_STATE_HOME': str(directory / 'xdg-state'),
                   'XDG_RUNTIME_DIR': os.environ['XDG_RUNTIME_DIR']}
+        if options.get('live_downloads'):
+            temporary = directory/'tmp'
+            temporary.mkdir(mode=0o700)
+            scoped['TMPDIR'] = str(temporary)
+            # Downloads.getList is a Gecko API. This test-only permission is
+            # confined to the admitted guest's disposable tmpfs profile.
+            scoped['MOZ_REMOTE_ALLOW_SYSTEM_ACCESS'] = '1'
         if display := os.environ.get('WAYLAND_DISPLAY'):
             # Target already resolved this socket before isolating runtime.
             # A relative native-session name would resolve inside our private
@@ -836,6 +903,8 @@ def _prepare(options):
         # remoting. If that instance has gone, the handler starts one on the
         # same profile and Marionette port, so observation still attaches.
         argv = command + ['--profile', str(directory), '--kiosk']
+        if options.get('live_downloads'):
+            argv += ['--remote-allow-system-access']  # Older release Firefox.
         desktop_argv = (['MOZ_APP_REMOTINGNAME=' + token, 'XDG_CONFIG_HOME=' + str(config),
                          'XDG_DATA_HOME=' + str(data)] + [k + '=' + v for k, v in scoped.items()]
                         + argv + ['--marionette', '%u'])
@@ -1015,6 +1084,8 @@ def _observe(client, expect):
             client.call('WebDriver:SwitchToWindow', {'handle': handle, 'focus': False})
             result = client.script(_OBSERVE, [expect])
             if not (isinstance(result, dict) and result.get('matched')):
+                if isinstance(result, dict) and result.get('diagnostic'):
+                    reason = 'Recipient readiness: '+json.dumps(result['diagnostic'], sort_keys=True)
                 continue
             if client.script(_PAINTED, asynchronous=True) is not True:
                 continue
@@ -1027,6 +1098,211 @@ def _observe(client, expect):
         time.sleep(.5)  # Compositor presentation after the content paint.
         return result
     return {'pending': reason} if reason else {}
+
+
+def _live_saved_capture(values):
+    saved = Path(values['saved_path'])
+    root = Path(values['app_root'])
+    if saved.is_symlink() or not saved.resolve(strict=True).is_relative_to(root.resolve(strict=True)):
+        raise _TargetError('Saved capture is outside the owned app root')
+    with os.fdopen(os.open(saved, os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK), 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or not 0<info.st_size<=32*1024*1024:
+            raise _TargetError('Saved capture is not an owned bounded regular file')
+        original=stream.read(32*1024*1024+1)
+    return original
+
+
+def _firefox_downloads(client, directory, expected_name):
+    """Read Gecko's owned-profile list; URL/message fields never leave Firefox."""
+    client.call('Marionette:SetContext', {'value': 'chrome'})
+    try:
+        value = client.script("""
+const done=arguments[arguments.length-1];
+(async()=>{
+ const {Downloads}=ChromeUtils.importESModule('resource://gre/modules/Downloads.sys.mjs');
+ const all=await (await Downloads.getList(Downloads.ALL)).getAll();
+ const flags=['becauseSourceFailed','becauseTargetFailed','becauseBlockedByParentalControls',
+  'becauseBlockedByReputationCheck','becauseBlockedByPolicy','becauseBlockedByContentAnalysis'];
+ done({available:true,entries:all.slice(0,20).map(d=>({stopped:d.stopped,succeeded:d.succeeded,
+  canceled:d.canceled,hasPartialData:d.hasPartialData,hasBlockedData:d.hasBlockedData,
+  currentBytes:d.currentBytes,totalBytes:d.totalBytes,target:d.target.path,
+  partFilePath:d.target.partFilePath||null,targetExists:d.target.exists,
+  error:d.error?{result:d.error.result,...Object.fromEntries(flags.map(k=>[k,!!d.error[k]]))}:null}))});
+})().catch(()=>done({available:false,entries:[]}));
+""", asynchronous=True)
+    finally:
+        client.call('Marionette:SetContext', {'value': 'content'})
+    if not isinstance(value, dict) or not value.get('available'):
+        raise _TargetError('Firefox Download-list API unavailable')
+    boolean_fields = ('stopped','succeeded','canceled','hasPartialData','hasBlockedData','targetExists')
+    error_fields = ('becauseSourceFailed','becauseTargetFailed','becauseBlockedByParentalControls',
+                    'becauseBlockedByReputationCheck','becauseBlockedByPolicy','becauseBlockedByContentAnalysis')
+    clean = {'available': True, 'entries': []}
+    for row in value.get('entries', []):
+        entry = {key: bool(row.get(key)) for key in boolean_fields}
+        for key in ('currentBytes','totalBytes'):
+            entry[key] = row.get(key) if type(row.get(key)) in (int,float) else None
+        entry.update(target=row.get('target'), partFilePath=row.get('partFilePath'))
+        error = row.get('error')
+        entry['error'] = ({'result':error.get('result') if type(error.get('result')) is int else None,
+                           **{key:bool(error.get(key)) for key in error_fields}} if isinstance(error,dict) else None)
+        clean['entries'].append(entry)
+    value = clean
+    # Exact target paths are useful diagnostics, but only local paths in this
+    # disposable guest's RAM destinations may cross the helper boundary.
+    allowed = [Path(directory), Path.home()/'Downloads', Path('/tmp')]
+    for row in value['entries']:
+        for key in ('target', 'partFilePath'):
+            path = row.get(key)
+            if path is None:
+                continue
+            if (not isinstance(path, str) or any(c in path for c in ('\0','\n','\r','?','#', '://'))
+                    or not Path(path).is_absolute() or '..' in Path(path).parts
+                    or not any(Path(path).is_relative_to(base) for base in allowed)):
+                row[key] = '[target path withheld: outside guarded destinations]'
+    return value
+
+
+def _recipient_preview_pixels(client, original):
+    """Compare decoded PNG pixels, never claim an original-file hash."""
+    import struct
+    if original[:8] != b'\x89PNG\r\n\x1a\n' or original[12:16] != b'IHDR':
+        raise _TargetError('Saved preview oracle is not PNG')
+    width, height = struct.unpack('>II', original[16:24])
+    if not 0 < width*height <= 1_000_000:
+        raise _TargetError('Preview pixel oracle exceeds its bounded allocation')
+    from PyQt6.QtGui import QImage
+    image = QImage.fromData(original, 'PNG').convertToFormat(QImage.Format.Format_RGBA8888)
+    if image.isNull() or (image.width(), image.height()) != (width, height):
+        raise _TargetError('Saved preview oracle could not be decoded')
+    expected = image.constBits().asstring(width*height*4)
+    value = client.script("""
+const images=[...document.images].filter(e=>(e.currentSrc||e.src).startsWith('blob:')&&e.complete&&e.naturalWidth>0);
+if(images.length!==1)return null;
+const im=images[0],c=document.createElement('canvas');c.width=arguments[0];c.height=arguments[1];
+const ctx=c.getContext('2d',{willReadFrequently:true});ctx.imageSmoothingEnabled=false;
+ctx.drawImage(im,0,0,c.width,c.height);const a=ctx.getImageData(0,0,c.width,c.height).data;
+let s='';for(let i=0;i<a.length;i+=16384)s+=String.fromCharCode(...a.subarray(i,i+16384));
+return {width:c.width,height:c.height,naturalWidth:im.naturalWidth,naturalHeight:im.naturalHeight,rgba:btoa(s)};
+""", [width, height])
+    if not isinstance(value, dict) or not isinstance(value.get('rgba'), str):
+        return {'matches': False, 'comparison': 'decrypted-image-pixels', 'tolerance': 0}
+    actual = base64.b64decode(value.pop('rgba'), validate=True)
+    result = {**value, 'matches': actual == expected, 'comparison': 'decoded-RGBA', 'tolerance': 0,
+              'scaling': 'none' if (value['naturalWidth'],value['naturalHeight'])==(width,height) else 'nearest-to-saved-dimensions',
+              'savedPixelSha256':hashlib.sha256(expected).hexdigest(),
+              'previewPixelSha256':hashlib.sha256(actual).hexdigest()}
+    if len(actual) != len(expected):
+        result['matches'] = False
+    return result
+
+
+def _public_s3_digest(client, original):
+    """Independent guest GET; the working URL never leaves this RAM process."""
+    from urllib.parse import urlsplit
+    from urllib.request import Request, urlopen
+    url = client.script('return location.href;')
+    parsed = urlsplit(url)
+    if (parsed.scheme != 'https' or parsed.hostname != 'put.gd' or parsed.username or parsed.password
+            or parsed.port not in (None, 443) or parsed.query or parsed.fragment
+            or not re.fullmatch(r'/acceptance/tier1-live/[0-9a-f]{32}/[^/]+', parsed.path)):
+        raise _TargetError('Guest public GET is outside the exact acceptance URL shape')
+    try:
+        with urlopen(Request(url, headers={'Cache-Control':'no-cache'}), timeout=30) as response:
+            if response.status != 200 or response.geturl() != url:
+                raise _TargetError('Guest public GET did not return an unredirected HTTP 200')
+            data = response.read(32*1024*1024+1)
+    except Exception:
+        raise _TargetError('Guest public GET failed; URL and network details withheld') from None
+    if not 0 < len(data) <= 32*1024*1024:
+        raise _TargetError('Guest public GET exceeded its bounded payload size')
+    return {'status':200, 'bytes':len(data), 'sha256':hashlib.sha256(data).hexdigest(), 'matches':data == original}
+
+
+def _completed_recipient_file(observation, original, expected_name):
+    """Use Firefox's actual completed target, including a Downloads fallback."""
+    complete = [r for r in observation['entries'] if r['succeeded'] and r['stopped'] and not r['error']]
+    if len(complete) != 1:
+        return None
+    path = Path(complete[0]['target'])
+    # Never follow an arbitrary filesystem target exposed by a browser record.
+    if path.name != expected_name:
+        return None
+    if not path.exists():
+        return None
+    info = path.lstat()
+    if path.is_symlink() or not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or not 0 < info.st_size <= 32*1024*1024:
+        raise _TargetError('Recipient target is not an owned bounded regular file')
+    fs = subprocess.run(['stat','-f','-c','%T',str(path)],capture_output=True,text=True,check=True)
+    if fs.stdout.strip() != 'tmpfs':
+        raise _TargetError('Recipient target is outside guest RAM')
+    with os.fdopen(os.open(path,os.O_RDONLY|os.O_NOFOLLOW), 'rb') as stream:
+        current = os.fstat(stream.fileno())
+        if (current.st_dev,current.st_ino) != (info.st_dev,info.st_ino):
+            raise _TargetError('Recipient target changed identity')
+        data = stream.read(32*1024*1024+1)
+    return {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),
+            'matches':data==original}
+
+
+def _proton_recipient_download(client, values, directory, original):
+    preview = _recipient_preview_pixels(client, original)
+    handle = client.call('WebDriver:GetWindowHandle')
+    observations = []
+    expected_name = values.get('filename') or Path(values['saved_path']).name
+    def observe(phase):
+        result = _firefox_downloads(client, directory, expected_name)
+        result['phase'] = phase
+        result['partFileCount'] = len(list(Path(directory).glob('*.part')))
+        observations.append(result)
+        return result
+    try:
+        deadline = time.monotonic()+30
+        while True:
+            node = client.script("""
+const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(e=>{
+const r=e.getBoundingClientRect(),s=getComputedStyle(e),n=(e.getAttribute('aria-label')||e.textContent||'').trim();
+return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.pointerEvents!=='none'&&!e.disabled&&e.getAttribute('aria-disabled')!=='true'&&/^Download(?: file)?$/i.test(n)});
+return nodes.length===1?nodes[0]:null;
+""")
+            if node or time.monotonic() >= deadline:
+                break
+            time.sleep(.25)
+        element = node.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(node,dict) else None
+        if not element:
+            observe('no-unique-download-control')
+            return {'matches':False,'preview':preview,'downloadObservations':observations}
+        client.call('WebDriver:ElementClick',{'id':element})
+        observe('immediately-after-trusted-click')  # Before any corrective action.
+        # A real confirm menu is the only extra click admitted here.
+        menu = client.script("""
+const nodes=[...document.querySelectorAll('[role=menu] [role=menuitem],[role=menu] button,[role=dialog] button')].filter(e=>{
+ const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&!e.disabled&&/^Download(?: file)?$/i.test((e.getAttribute('aria-label')||e.textContent||'').trim())});
+return nodes.length===1?nodes[0]:null;
+""")
+        menu_id = menu.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(menu,dict) else None
+        if menu_id:
+            client.call('WebDriver:ElementClick',{'id':menu_id})
+            observe('after-visible-download-confirm-menu')
+        deadline = time.monotonic()+120
+        sampled = False
+        while True:
+            current = _firefox_downloads(client, directory, expected_name)
+            received = _completed_recipient_file(current, original, expected_name)
+            if received:
+                current['phase']='completed';observations.append(current)
+                return {**received,'preview':preview,'downloadObservations':observations}
+            if not sampled and time.monotonic() > deadline-115:
+                current['phase']='five-seconds-after-click';observations.append(current);sampled=True
+            if time.monotonic() >= deadline:
+                current['phase']='completion-deadline';observations.append(current)
+                return {'matches':False,'preview':preview,'downloadObservations':observations}
+            time.sleep(1)
+    finally:
+        # Streaming helpers can open a new tab. The original share URL stays
+        # only in this browser tab for the mandatory post-revocation check.
+        client.call('WebDriver:SwitchToWindow',{'handle':handle,'focus':True})
 
 
 def _target(action, values):
@@ -1062,6 +1338,71 @@ def _target(action, values):
                 _write_transaction(transaction)
                 return {'matched': False, 'foreign': len(foreign)}
             return result  # falsy until ctx.wait's deadline
+        if action == 'download-digest':
+            directory = Path(transaction['directory'])/'downloads'
+            # The live fixture insists on a runtime profile. Verify the actual
+            # mount as well before letting Firefox write any recipient bytes.
+            fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
+            if fs.stdout.strip() != 'tmpfs' or any(directory.iterdir()):
+                raise _TargetError('Live recipient download requires a new empty tmpfs directory')
+            original = _live_saved_capture(values)
+            if values['kind'] == 'proton':
+                return _proton_recipient_download(client, values, directory, original)
+            if values['kind'] == 's3':
+                # Firefox has already rendered the exact copied image URL.
+                # Fetch independently in the guest: native image documents can
+                # restrict page-script fetch/crypto, which is not app behavior.
+                received = _public_s3_digest(client, original)
+                if (not isinstance(received, dict) or set(received) != {'status','bytes','sha256','matches'}
+                        or received['status'] != 200):
+                    raise _TargetError('Guest could not hash the original public S3 image')
+                return {**received, 'guestGet':dict(received)}
+            else:
+                raise _TargetError('Unsupported live recipient provider')
+        if action == 'unavailable':
+            # URL lives only in this target process and Firefox, never in
+            # arguments, transaction metadata or a browser receipt.
+            url = client.script('return location.href;')
+            from urllib.parse import urlsplit
+            parsed = urlsplit(url)
+            if (parsed.scheme != 'https' or (values['kind'] == 's3' and parsed.hostname != 'put.gd')
+                    or (values['kind'] == 'proton' and not re.fullmatch(r'(?:[a-z0-9-]+\.)*proton\.(?:me|ch)', parsed.hostname or ''))):
+                raise _TargetError('Recipient URL is not on the expected live provider before fresh navigation')
+            handle = client.call('WebDriver:GetWindowHandle')
+            client.call('WebDriver:SwitchToWindow', {'handle':handle, 'focus':True})
+            if not client.script('return document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height;'):
+                raise _TargetError('Recipient kiosk did not regain foreground for fresh navigation')
+            client.call('WebDriver:Navigate', {'url':'about:blank'})
+            # All HTTP memory/disk caches are disabled in this private profile.
+            # Start from blank so the former preview cannot prove absence.
+            try:
+                client.call('WebDriver:Navigate', {'url':url})
+            except _Timeout:
+                if client.broken:
+                    raise
+                # Page-load timeout does not cancel navigation. Observe its
+                # final rendered state over the provider-specific deadline.
+            deadline=time.monotonic()+(120 if values['kind']=='proton' else 45)
+            while True:
+                result=client.script("""
+const text=(document.body?.innerText||'').trim();
+const status=performance.getEntriesByType('navigation')[0]?.responseStatus||0;
+const media=[...document.querySelectorAll('img,video,canvas')].some(e=>
+ e.tagName==='IMG'?e.complete&&e.naturalWidth>0&&
+  (arguments[0]!=='proton'||(e.currentSrc||e.src).startsWith('blob:')):
+ e.tagName==='VIDEO'?e.readyState>=2:false);
+const hostOK=location.hostname===new URL(arguments[1]).hostname;
+const missing=arguments[0]==='proton'?
+ /not found|unavailable|has expired|has been revoked|has been deleted|has been disabled|no longer (?:available|exists)|cannot be accessed|could not be found|does not exist|doesn't exist/i.test(text):
+ ([403,404,410].includes(status)||status===0)&&/NoSuchKey|AccessDenied|not found|404|403|410/i.test(text);
+return {unavailable:hostOK&&document.readyState==='complete'&&missing&&!media,
+        missing,media,hostOK,complete:document.readyState==='complete',status,
+        httpUnavailable:[403,404,410].includes(status)};
+""", [values['kind'], url])
+                if (result['unavailable'] or (values['kind']=='s3' and result['complete'] and result['hostOK']
+                        and result['status'] in (200, 403, 404, 410)) or time.monotonic()>=deadline):
+                    return result
+                time.sleep(.5)
         raise ValueError('Unknown browser helper action')
     finally:
         if client is not None:
