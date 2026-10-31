@@ -203,10 +203,21 @@ class Driver:
         self.entries = []
 
     # -- fixture ------------------------------------------------------------
-    def open_fixture(self, ticks):
-        command = [sys.executable, str(HERE / 'fluidity.py'), 'fixture', '--seconds', '0', '--ticks', str(ticks)]
+    def chosen_output(self):
+        """The session output to cover and record: --output by connector name, else the only one."""
+        outputs = json.loads(subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'outputs'], env=self.env, capture_output=True, text=True, timeout=30).stdout)
+        candidates = outputs.get('outputs') or []
         if self.args.output:
-            command += ['--output', self.args.output]
+            candidates = [o for o in candidates if o.get('name') == self.args.output]
+        if len(candidates) != 1:
+            raise RunError('choose one output with --output: %s' % json.dumps(outputs))
+        return candidates[0]
+
+    def open_fixture(self, ticks, output):
+        # GTK names monitors by model; the fixture also matches "WxH+X+Y".
+        rect = output['rect']
+        command = [sys.executable, str(HERE / 'fluidity.py'), 'fixture', '--seconds', '0', '--ticks', str(ticks),
+                   '--output', '%dx%d+%d+%d' % (rect[2], rect[3], rect[0], rect[1])]
         self.fixture = subprocess.Popen(command, env=self.env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=open(self.run / 'logs' / 'fixture.log', 'a'), text=True)
         line = self.fixture.stdout.readline()
         try:
@@ -301,15 +312,17 @@ class Driver:
         label = '%s-%d' % (build.label, number)
         ticks = self.run / 'logs' / ('ticks-%s.log' % label)
         result = {'build': build.label, 'round': number, 'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
-        info = self.open_fixture(ticks)
+        output = self.chosen_output()
+        info = self.open_fixture(ticks, output)
         result['fixture'] = info
+        result['output'] = output
         try:
             caps = self.start_resident(build, label)
             result['acquisition'] = caps.get('acquisition')
             result['liveEncoders'] = (caps.get('gstreamer') or {}).get('usableH264Encoders')
             target = {'kind': a.target}
-            if a.target == 'monitor' and info.get('output'):
-                target['identity'] = info['output']
+            if a.target == 'monitor':
+                target['identity'] = output['name']
             if a.rect:
                 target['rect'] = [int(v) for v in a.rect.split(',')]
             prepared = self.cli(build, 'recording.prepare', {'target': target, 'format': 'mp4', 'fps': a.fps, 'audio': {'system': False}})
@@ -412,8 +425,7 @@ class Driver:
         a = self.args
         label = '%s-%d' % (build.label, number)
         result = {'build': build.label, 'round': number, 'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
-        outputs = json.loads(subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'outputs'], env=self.env, capture_output=True, text=True, timeout=30).stdout)
-        geometry = (outputs['outputs'][0]['rect'] if not a.output else next(o['rect'] for o in outputs['outputs'] if o['name'] == a.output))
+        geometry = self.chosen_output()['rect']
         try:
             self.start_resident(build, label)
             start = tuple(int(v) for v in a.start.split(',')) if a.start else (geometry[0] + geometry[2] // 5, geometry[1] + geometry[3] // 5)
