@@ -1,0 +1,44 @@
+{
+  "verified": true,
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+  "transportSha256": "d002d29acbdb4a8a7becb0754b8ca63d4e1bdd0ff6bb1ddb276de05cc49e2f5b",
+  "verifiedInnerPackets": [
+    {
+      "filename": "putgd-proton-build-controls.tar.gz",
+      "bytes": 22309512,
+      "sha256": "9836f279d2e90fc3bdabf8a9c98494c82eb79172ba5c77d77e33a865eeadb4ac",
+      "purpose": "SDK 0.23.0/Crypto 2.2.0 dependency-update controls, tests, source/notice selection, current Bun 1.4.4 native replay recipe and adapter/CMake/audit sources. SOURCES.json and subsequent run receipts accompany the current application source separately to avoid hash cycles."
+    },
+    {
+      "filename": "putgd-proton-helper-rebuild.tar.gz",
+      "bytes": 15994986,
+      "sha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
+      "purpose": "SDK 0.23.0/Crypto 2.2.0/OpenPGP 6.3.1 patched helper and matching locked dependencies, 7395 public files; includes unbundled SDK search vendor WASM as an input, not a rebuilt or embedded search engine."
+    },
+    {
+      "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
+      "bytes": 1630506,
+      "sha256": "c6bcd11530ad175b42745e7bde8b820a44afa2a9ff049524a3e823adf7e83b5d",
+      "purpose": "Complete official WebPackages 2.2.0 preferred repository source/build locks, GPL and MIME parser MIT/MPL notices, SDK search scope, and the unchanged historical crypto provenance packet."
+    },
+    {
+      "filename": "putgd-proton-openpgp-preferred-source.tar.gz",
+      "bytes": 86740453,
+      "sha256": "b980431b29868350e6b09cee3782db60cfaffe9ffba4b74d722e0b97984a621c",
+      "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source and prebundled preferred source/notices; use accompanying supplement for clean pinned compiler replay"
+    },
+    {
+      "filename": "putgd-proton-bun-sources-1.4.4.tar",
+      "bytes": 2240788480,
+      "sha256": "0a58af4f9af2a0d9ee61fb381025826bd91bdc393ba1f06f8d67e5eb03c70e8f",
+      "purpose": "Unchanged Bun 1.4.4/WebKit/TinyCC preferred sources and offline inputs, ICU, pinned Rust standard-library source and original recipes. Current native replay controls and receipts accompany the current application source; consult nativeRelinkProof."
+    },
+    {
+      "filename": "putgd-proton-native-rebuild-supplement.tar.gz",
+      "bytes": 47345002,
+      "sha256": "a8ca1e3a313a40d55542470a01770cfd7037e221e3761156c18ee7723f7034fc",
+      "purpose": "Corrected native/Argon rebuild recipes, pinned disposable toolchains, Rust standard-library preferred source/notices, proof fixtures and optional published bootstrap Bun; supersedes original preflight and Argon replay commands"
+    }
+  ],
+  "accountsOrSessionsRead": false
+}
