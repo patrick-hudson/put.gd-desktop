@@ -38,6 +38,7 @@ class Installer(unittest.TestCase):
         for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir'):
             (self.bin / name).symlink_to(shutil.which(name))
         self.tool('uname', "import os; print(os.environ['ARCH'])")
+        self.tool('getconf', "import os; print(os.environ.get('GLIBC', 'glibc 2.39'))")
         for name in ('apt', 'dnf', 'sudo'):
             self.tool(name, "import json, os, sys\nwith open(os.environ['CALLS'], 'a') as f: "
                       "f.write(json.dumps(sys.argv) + '\\n')")
@@ -139,6 +140,14 @@ else:
             self.assertEqual(installed.stat().st_mode & 0o777, 0o755)
         self.assertFalse(any(Path(call[0]).name == 'sudo' for call in self.calls()))
         self.assertFalse(list(self.root.glob('putgd-install.*')))
+
+    def test_appimage_rejects_incompatible_libc_before_downloading(self):
+        for version in ('glibc 2.35', 'glibc 2.38', 'musl 1.2'):
+            self.env['GLIBC'] = version
+            self.assertIn('glibc 2.39+', self.run_script('--appimage', ok=False))
+            self.assertEqual(self.calls(), [])
+        self.env['GLIBC'] = 'glibc 2.43'
+        self.assertIn('stable / appimage', self.run_script('--appimage', '--dry-run'))
 
     def test_native_uses_only_one_sudo_step(self):
         for distro, package, manager, extension in (

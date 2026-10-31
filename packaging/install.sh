@@ -7,7 +7,7 @@ main() {
     note() { printf 'put.gd: %s\n' "$*"; }
     fetch() {
         curl --proto '=https' --proto-redir '=https' --connect-timeout 30 \
-            --retry 2 --fail --silent --show-error --location "$@"
+            --speed-limit 1024 --speed-time 60 --retry 2 --fail --silent --show-error --location "$@"
     }
     usage() {
         cat <<'HELP'
@@ -67,6 +67,14 @@ HELP
             [ -n "$package" ] || note 'No matching distro package is published; using AppImage.'
         fi
         package=${package:-appimage}
+    fi
+    if [ "$package" = appimage ]; then
+        libc=$(getconf GNU_LIBC_VERSION 2>/dev/null) \
+            || die 'AppImage requires glibc 2.39+; use a supported distro or build from source'
+        case "$libc" in 'glibc '*) ;; *) die 'AppImage requires glibc 2.39+' ;; esac
+        awk -v version="${libc#glibc }" 'BEGIN {
+            split(version, p, "."); exit !(p[1] > 2 || (p[1] == 2 && p[2] >= 39))
+        }' || die "AppImage requires glibc 2.39+ (found $libc); upgrade your distro or build from source"
     fi
 
     base=https://app.put.gd/dl
