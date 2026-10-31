@@ -174,6 +174,19 @@ class NightlyTests(unittest.TestCase):
             link=Path(tmp)/'link';link.symlink_to(path)
             with self.assertRaises(RuntimeError):nightly.private_file(link)
 
+    def test_pre_export_provisioning_failure_is_not_an_outstanding_baton(self):
+        with tempfile.TemporaryDirectory() as tmp,patch.object(nightly.Path,'home',return_value=Path(tmp)):
+            locks=Path(tmp)/'putgd-lab/locks';locks.mkdir(parents=True)
+            registry=locks/'proton-registry.json'
+            registry.write_text(json.dumps(dict(lastLend=dict(run='/previous',carriedBack='receipt.json'))))
+            self.assertFalse(nightly.baton_returned('/current'))
+            (locks/'proton.lock').write_text('blocked: lent copy outstanding, run recover\n')
+            with self.assertRaisesRegex(RuntimeError,'carry-back unresolved'):
+                nightly.baton_returned('/current')
+            (locks/'proton.lock').unlink()
+            registry.write_text(json.dumps(dict(lastLend=dict(run='/current',carriedBack='receipt.json'))))
+            self.assertTrue(nightly.baton_returned('/current'))
+
     def test_checksum_failure_blocks_before_guest_launch(self):
         class GitHub:
             repo='owner/repo'

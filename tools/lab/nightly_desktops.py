@@ -308,6 +308,18 @@ def retire(run, out, rows):
          images_root=Path(info['golden']).parents[1]))
 
 
+def baton_returned(run):
+    locks = Path.home()/'putgd-lab/locks'
+    last = json.loads((locks/'proton-registry.json').read_text()).get('lastLend', {})
+    if last.get('run') == str(run) and last.get('carriedBack'):
+        return True
+    proton = locks/'proton.lock'
+    if proton.exists() and 'lent copy outstanding' in proton.read_text():
+        raise RuntimeError('Proton carry-back unresolved; overlay retained')
+    # lend may stop while preparing the guest, before exporting any session.
+    return False
+
+
 def worker(config, tag, identity, artifacts, out):
     from tools.lab import lab
     from tools.lab.nightly_desktop_guest import prepare
@@ -409,11 +421,10 @@ def worker(config, tag, identity, artifacts, out):
                             cells[flow].update(observed)
                             if destination == 'proton':
                                 # lend must have returned the baton even when assertions failed.
-                                registry = json.loads((Path.home()/'putgd-lab/locks/proton-registry.json').read_text())
-                                last = registry.get('lastLend', {})
-                                if last.get('run') != str(run) or not last.get('carriedBack'):
-                                    raise RuntimeError('Proton baton not confirmed returned; overlay retained')
+                                returned = baton_returned(run)
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
+                                if not returned:
+                                    raise NotRun('Proton guest provisioning did not complete; source check passed')
                             if observed['status'] == 'green':
                                 break
                         cells[flow]['seconds'] = round(time.monotonic()-flow_started, 3)
