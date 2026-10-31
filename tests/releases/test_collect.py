@@ -109,7 +109,7 @@ class ReleaseCollection(unittest.TestCase):
         compiled = {**identity, 'dirty': None, 'sourceProvenance': 'supplied',
                     'version': self.source_receipt['localBuild']['version'],
                     'packageVersion': identity['baseVersion'] + '~dev+g' + identity['gitCommit'][:12]}
-        self.source_result = {'passed': True, 'compiledBuild': compiled,
+        self.source_result = {'passed': True, 'archive': self.source_receipt['artifact'], 'compiledBuild': compiled,
                               'rebuiltProton': {'sha256': catalog['helperSha256'], 'bundledSha256': catalog['helperSha256']},
                               'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker', 'putgd-b2-worker']}
         (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
@@ -370,7 +370,7 @@ class ReleaseCollection(unittest.TestCase):
 
     def test_failed_other_commit_or_missing_helper_source_build_rejected(self):
         path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
-        for changed in ({'passed': False}, {'compiledBuild': {**self.source_result['compiledBuild'], 'gitCommit': '0' * 40}},
+        for changed in ({'passed': False}, {'archive': {**self.source_receipt['artifact'], 'sha256': '0' * 64}}, {'compiledBuild': {**self.source_result['compiledBuild'], 'gitCommit': '0' * 40}},
                         {'identityMatchedPrograms': ['putgd']}):
             with self.subTest(changed=changed):
                 path.write_text(json.dumps({**self.source_result, **changed}))
@@ -536,6 +536,8 @@ class ReleaseCollection(unittest.TestCase):
         archive = directory / ('putgd-' + version + '-source.tar.gz')
         self.source_receipt = create_archive(self.root, archive, receipt['build'])
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
+        self.source_result['archive'] = self.source_receipt['artifact']
+        (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
         return tag, archive
 
     def test_nightly_cli_preserves_all_twenty_one_raw_assets_and_exact_compiled_source(self):

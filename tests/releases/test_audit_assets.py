@@ -81,16 +81,27 @@ class SourceChecks(unittest.TestCase):
         artifact = directory / 'source.tar.gz'
         identity = {'gitCommit': 'a' * 40}
         content = {'source/source-info.json': json.dumps({'identity': identity, 'files': [
-            {'path': path, 'bytes': len(body), 'sha256': hashlib.sha256(recorded or body).hexdigest()}]}).encode(),
+            {'path': path, 'mode': '0644', 'bytes': len(body), 'sha256': hashlib.sha256(recorded or body).hexdigest()}]}).encode(),
             'source/' + path: body}
         with tarfile.open(artifact, 'w:gz') as archive:
+            directories = set()
+            for name in content:
+                parent = Path(name).parent
+                while str(parent) != '.':
+                    directories.add(parent.as_posix())
+                    parent = parent.parent
+            for name in sorted(directories):
+                member = tarfile.TarInfo(name)
+                member.type = tarfile.DIRTYPE
+                member.mode = 0o755
+                archive.addfile(member)
             for name, value in content.items():
                 member = tarfile.TarInfo(name)
                 member.size = len(value)
                 archive.addfile(member, io.BytesIO(value))
         return artifact, {'archiveRoot': 'source', 'identity': identity, 'members': [
-            {'path': path, 'bytes': len(body), 'sha256': hashlib.sha256(recorded or body).hexdigest()},
-            {'path': 'source-info.json', 'bytes': len(content['source/source-info.json']),
+            {'path': path, 'mode': '0644', 'bytes': len(body), 'sha256': hashlib.sha256(recorded or body).hexdigest()},
+            {'path': 'source-info.json', 'mode': '0644', 'bytes': len(content['source/source-info.json']),
              'sha256': hashlib.sha256(content['source/source-info.json']).hexdigest()}]}
 
     def test_source_hashes_and_private_path_exclusion(self):
@@ -154,7 +165,7 @@ class SourceChecks(unittest.TestCase):
                 if item['path'] == 'src/main.cpp':
                     item.update(bytes=len(changed), sha256=hashlib.sha256(changed).hexdigest())
             contents[prefix + 'source-info.json'] = json.dumps(info).encode()
-            receipt['members'] = info['files'] + [{'path': 'source-info.json',
+            receipt['members'] = info['files'] + [{'path': 'source-info.json', 'mode': '0644',
                 'bytes': len(contents[prefix + 'source-info.json']),
                 'sha256': hashlib.sha256(contents[prefix + 'source-info.json']).hexdigest()}]
             with tarfile.open(artifact, 'w:gz') as tar:
@@ -164,6 +175,32 @@ class SourceChecks(unittest.TestCase):
                     tar.addfile(member, io.BytesIO(body))
             with self.assertRaisesRegex(ValueError, 'differs from committed Git source'):
                 audit_assets.source_export(artifact, receipt, root)
+
+    def test_tar_header_file_and_directory_modes_are_verified(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for target, mode in (('source/src/main.cpp', 0o755), ('source/src', 0o777)):
+                artifact, receipt = self.make_archive(root, 'src/main.cpp')
+                with tarfile.open(artifact) as tar:
+                    entries = [(m, tar.extractfile(m).read() if m.isfile() else None) for m in tar]
+                with tarfile.open(artifact, 'w:gz') as tar:
+                    for member, body in entries:
+                        if member.name == target:
+                            member.mode = mode
+                        tar.addfile(member, io.BytesIO(body) if body is not None else None)
+                with self.subTest(target=target), self.assertRaises(ValueError):
+                    audit_assets.source_export(artifact, receipt)
+
+    def test_rebuild_archive_binding_and_recorded_legacy_parameters(self):
+        receipt = {'artifact': {'file': 'source.tar.gz', 'sha256': 'a' * 64, 'bytes': 123},
+                   'identity': {'gitCommit': 'b' * 40}}
+        params = {'archive': receipt['artifact'], 'identity': receipt['identity'], 'bundleProton': True}
+        bound = audit_assets.bind_rebuild_archive({'passed': True}, receipt, params)
+        self.assertEqual(bound['archive'], receipt['artifact'])
+        with self.assertRaises(ValueError):
+            audit_assets.bind_rebuild_archive({'passed': True}, receipt)
+        with self.assertRaises(ValueError):
+            audit_assets.bind_rebuild_archive({'archive': {**receipt['artifact'], 'sha256': 'c' * 64}}, receipt)
 
 
 class AdvisoryRanges(unittest.TestCase):

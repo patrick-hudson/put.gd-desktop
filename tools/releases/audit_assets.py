@@ -104,7 +104,11 @@ def release_identity(root, tag, identity):
 
 def source_export(path, receipt, git_root=None):
     """Verify every curated source member and reject non-production paths."""
-    prefix = receipt['archiveRoot'] + '/'
+    root_name = receipt['archiveRoot']
+    if Path(root_name).name != root_name or root_name in ('', '.', '..'):
+        raise ValueError('Unsafe source export root')
+    source_archive._safe_path(root_name)
+    prefix = root_name + '/'
     catalog_sha = None
     with tarfile.open(path) as archive:
         info = json.load(archive.extractfile(prefix + 'source-info.json'))
@@ -126,26 +130,38 @@ def source_export(path, receipt, git_root=None):
                         or item['sha256'] != hashlib.sha256(blobs[oid]).hexdigest()):
                     raise ValueError('Source export differs from committed Git source: ' + item['path'])
         expected = {prefix + item['path']: item for item in info['files']}
-        seen = set()
+        records = {prefix + item['path']: item for item in members}
+        if len(records) != len(members) or set(records) != set(expected) | {prefix + 'source-info.json'}:
+            raise ValueError('Invalid independent source member inventory')
+        directories = {prefix.rstrip('/')}
+        for name in records:
+            parent = Path(name).parent
+            while str(parent) != '.':
+                directories.add(parent.as_posix())
+                parent = parent.parent
+        seen, seen_dirs = set(), set()
         for member in archive:
+            if member.uid != 0 or member.gid != 0:
+                raise ValueError('Source export member is not root-owned')
             if member.isdir():
+                if member.name not in directories or member.name in seen_dirs or member.mode != 0o755:
+                    raise ValueError('Invalid source export directory or mode')
+                seen_dirs.add(member.name)
                 continue
             if not member.isfile() or member.name in seen:
                 raise ValueError('Unsafe/duplicate source export member')
             seen.add(member.name)
-            if member.name == prefix + 'source-info.json':
-                continue
-            item = expected.get(member.name)
+            item = records.get(member.name)
             if item is not None:
                 source_archive._safe_path(item['path'])
-            if (item is None or not (source_archive._included(item['path']) or item['path'] == 'README_SOURCE.md')
-                    or member.size != item['bytes']
+            if (item is None or not (source_archive._included(item['path']) or item['path'] in ('README_SOURCE.md', 'source-info.json'))
+                    or member.size != item['bytes'] or member.mode != int(item['mode'], 8)
                     or hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest() != item['sha256']):
-                raise ValueError('Source export file mismatch: ' + member.name)
+                raise ValueError('Source export file mismatch or mode: ' + member.name)
             if item['path'] == 'tools/proton/notices/SOURCES.json':
                 catalog_sha = item['sha256']
-        if seen != set(expected) | {prefix + 'source-info.json'}:
-            raise ValueError('Missing source export member')
+        if seen != set(records) or seen_dirs != directories:
+            raise ValueError('Missing source export member or directory')
     return {'files': len(expected), 'identity': info['identity'], 'sha256': sha256(path),
             'protonSourceCatalogSha256': catalog_sha}
 
@@ -164,6 +180,22 @@ def download_part(item, repository, directory):
         raise ValueError('Invalid Proton source delivery URL')
     run('gh', 'release', 'download', unquote(tail[0]), '--repo', repository,
         '--pattern', item['file'], '--dir', directory)
+
+
+def bind_rebuild_archive(built, receipt, parameters=None):
+    if built is None:
+        return None
+    if 'archive' not in built:
+        # Older check_source_build.py results have the exact input binding in
+        # the companion parameters.json. Preserve that recorded evidence.
+        if (not parameters or parameters.get('archive') != receipt['artifact']
+                or parameters.get('identity') != receipt['identity']
+                or parameters.get('bundleProton') is not True):
+            raise ValueError('Source rebuild has no exact archive binding')
+        built = {**built, 'archive': parameters['archive']}
+    if built['archive'] != receipt['artifact']:
+        raise ValueError('Source rebuild archive differs from downloaded source')
+    return built
 
 
 def verify_rebuilt_proton(built, catalog):
@@ -274,6 +306,11 @@ def audit(args):
         write(sources / 'source-archive.json', source_receipt)
         built = (json.loads(args.source_build_result.read_text()) if args.source_build_result
                  else receipts['sourceBuild'])
+        parameters = None
+        if built is not None and 'archive' not in built and args.source_build_result:
+            parameters = json.loads(args.source_build_result.with_name('parameters.json').read_text())
+            checks['sourceRebuildParameters'] = parameters
+        built = bind_rebuild_archive(built, source_receipt, parameters)
         if built is not None:
             write(sources / 'source-build-results.json', built)
         archive, _, built = verified_source(sources, release, require_build=built is not None)

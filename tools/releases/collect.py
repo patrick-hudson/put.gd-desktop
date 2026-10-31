@@ -75,7 +75,7 @@ def verified_source(directory, release, *, require_build=True):
     required = set(PROGRAMS) - {'putgd-launcher'}
     # Optional helpers check_source_build.py reports when the builder has their dependencies.
     allowed = required | {'putgd-kde-region', 'putgd-record'}
-    if (build.get('passed') is not True or build.get('compiledBuild') != expected
+    if (build.get('passed') is not True or build.get('archive') != artifact or build.get('compiledBuild') != expected
             or not isinstance(programs, list) or not all(isinstance(name, str) for name in programs)
             or len(programs) != len(set(programs)) or not required.issubset(programs)
             or not set(programs).issubset(allowed)):
