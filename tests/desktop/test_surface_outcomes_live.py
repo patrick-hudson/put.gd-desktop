@@ -132,6 +132,18 @@ class LiveOutcomes(unittest.TestCase):
         outcomes_live._owned(ctx,service,detail,'owned-operation')
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'different-operation')
 
+    def test_s3_caption_binding_still_refuses_foreign_prepared_target(self):
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),frame=Mock(),
+                            call=Mock(),clipboard_text=lambda:json.dumps({'targets':[{'historyId':'foreign'}],
+                                                                         'acknowledgement':'synthetic'}),expect=expect)
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window'),patch.object(outcomes_live.history,'_confirm_button') as confirm:
+            with self.assertRaises(RecipeFailed):outcomes_live._cleanup(ctx,{'id':'owned'})
+        ctx.click.assert_called_once_with('text:Delete from destination…',window='history')
+        confirm.assert_not_called()
+
     def test_saved_hash_cannot_read_a_foreign_file_or_symlink(self):
         def execute(code):
             output=io.StringIO()
