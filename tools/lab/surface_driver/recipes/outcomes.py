@@ -167,6 +167,21 @@ def _pattern(ctx):
         last[0] = current
         return current if same else None
     image = ctx.wait(stable, 'frozen independent pattern frame', interval=.5)
+    if not pattern_visible(image, scene.rect):
+        from ..receipts import write_json
+        layout = ctx._probe('layout', {'compositor': ctx.profile.get('compositor')})
+        if ctx.profile.get('session') == 'x11':
+            ids = [str(w['id']) for w in layout['windows']]
+            result = ctx.shell("python3 - <<'CLASSES'\nimport json,subprocess\n"+
+                "ids="+repr(ids)+"\nprint(json.dumps({wid:subprocess.run(['xprop','-id',wid,'WM_CLASS'],capture_output=True,text=True).stdout.strip() for wid in ids}))\nCLASSES")
+            ctx.expect(result['returncode'] == 0, 'pattern obstruction classes read')
+            classes = json.loads(result['stdout'])
+            for window in layout['windows']:
+                window['class'] = classes.get(str(window['id']), '')
+        layout['pattern_rect'] = list(scene.rect)
+        write_json(ctx.out/'pattern-occlusion.json', layout, redactor=ctx.evidence.redactor)
+        ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png',
+                           [[0, 0, image.width, image.height]], fallback=True)
     ctx.expect(pattern_visible(image, scene.rect), 'known fullscreen pattern covers the chosen monitor without foreign UI')
     _frame(ctx, 'independent-frozen-pattern')
     return scene, image

@@ -13,12 +13,39 @@ from unittest.mock import Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.fixtures.base import Fixture
-from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3, reconcile_refused_s3
+from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3, reconcile_refused_s3, preflight_s3
 from tools.lab.surface_driver.run import discover, validate_recipes
 from tools.lab.surface_driver.recipes import outcomes_live
 
 
 class LiveOutcomes(unittest.TestCase):
+    def test_scoped_missing_head_requires_404_and_rejects_root_prefix(self):
+        class ServiceError(Exception):
+            def __init__(self,status):self.response={'ResponseMetadata':{'HTTPStatusCode':status}}
+        client=Mock();client.exceptions.ClientError=ServiceError
+        ctx=SimpleNamespace(note=Mock());prefix='acceptance/tier1-live/'+'a'*32+'/'
+        with self.assertRaises(RecipeBlocked):preflight_s3(ctx,client,'put.gd','putgd-tier1-unscoped/')
+        client.head_object.assert_not_called()
+        client.head_object.side_effect=ServiceError(404)
+        preflight_s3(ctx,client,'put.gd',prefix)
+        client.head_object.assert_called_once_with(Bucket='put.gd',Key=prefix+'missing-preflight.png')
+        ctx.note.assert_called_once_with('s3_missing_head_404_count=1')
+        client.head_object.side_effect=ServiceError(403)
+        with self.assertRaises(RecipeBlocked):preflight_s3(ctx,client,'put.gd',prefix)
+
+    def test_cloudfront_link_is_bound_to_the_exact_authenticated_key(self):
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        client=Mock();fx=Fixture(client=client,bucket='put.gd',prefix='acceptance/tier1-live/owned/',region='us-east-1')
+        data=b'synthetic png';key=fx.prefix+'capture.png'
+        detail={'receipt':{'objectReference':{'key':key},'destination':{'settings':{'bucket':'put.gd'}},
+                           'directUrl':'https://put.gd/'+key}}
+        client.head_object.return_value={'ContentLength':len(data)}
+        client.get_object.return_value={'Body':io.BytesIO(data)}
+        verify_s3(SimpleNamespace(expect=expect),fx,detail,data)
+        detail['receipt']['directUrl']='https://put.gd/foreign/capture.png'
+        with self.assertRaises(RecipeFailed):verify_s3(SimpleNamespace(expect=expect),fx,detail,data)
+
     def test_key_two_only_and_explicit_shared_bucket(self):
         pair='AKIA'+'A'*16+' '+'b'*40+'\n'
         first='Set 1\nAccess key ID: first-synthetic\nSecret access key: first-secret\nBucket: synthetic-bucket\nEndpoint / Region:\nAWS Region ID: us-east-2\nS3 Endpoint: https://s3.us-east-2.amazonaws.com\n\n'

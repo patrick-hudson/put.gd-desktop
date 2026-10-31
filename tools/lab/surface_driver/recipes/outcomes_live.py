@@ -181,9 +181,18 @@ def _region_upload(ctx):
                 if ctx.destination == 's3':
                     verify_s3(ctx, service, detail, absent=True)
                 ctx.click('windowClose', window='history')
-                ctx.expect(live_link_unavailable(ctx, ctx.destination)['unavailable'],
-                           'fresh link navigation no longer resolves after UI cleanup')
-                ctx.note('unavailable_link_count=1')
+                negative = live_link_unavailable(ctx, ctx.destination)
+                if ctx.destination == 's3':
+                    # Origin GET 404 above is decisive. CloudFront can retain
+                    # the previously public image until its cache expires.
+                    ctx.expect(negative['hostOK'] and negative['complete'] and negative['status'] in (200,403,404,410),
+                               'fresh CloudFront navigation has an observed HTTP status')
+                    ctx.note('cloudfront_after_delete_status='+str(negative['status']))
+                    if negative['status'] in (403,404,410):
+                        ctx.note('unavailable_link_count=1')
+                else:
+                    ctx.expect(negative['unavailable'], 'fresh link navigation no longer resolves after UI cleanup')
+                    ctx.note('unavailable_link_count=1')
                 if browser_error is not None:
                     raise browser_error
             finally:

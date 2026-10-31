@@ -111,7 +111,8 @@ def provider(scope):
     scope.finalizers[:] = [(priority, label, guarded(function) if label in
                            ('owned history and cache', 'accepted settings', 'owned directory') else function)
                           for priority, label, function in scope.finalizers]
-    profile_id, prefix = 'tier1-live', 'putgd-tier1-'+uuid.uuid4().hex+'/'
+    profile_id = 'tier1-live'
+    prefix = ('acceptance/tier1-live/' if ctx.destination == 's3' else 'putgd-tier1-')+uuid.uuid4().hex+'/'
     fixture = Fixture(profile_id=profile_id, prefix=prefix, pending=pending)
     if ctx.destination == 's3':
         from tools.lab import provision_live_credentials as bridge
@@ -127,8 +128,8 @@ def provider(scope):
         for value in keys.values():
             if value:
                 ctx.evidence.redactor.remember(value, opaque=True)
-        if not settings.get('bucket'):
-            raise RecipeBlocked('Key set 2 has no explicit shared bucket')
+        if settings.get('bucket') != 'put.gd':
+            raise RecipeBlocked('Tier 1 key set 2 requires the explicitly authorized shared bucket')
         options = dict(aws_access_key_id=keys['accessKey'], aws_secret_access_key=keys['secretKey'],
                        aws_session_token=keys.get('sessionToken') or None,
                        config=Config(connect_timeout=10, read_timeout=20, retries={'total_max_attempts': 2, 'mode': 'standard'}))
@@ -141,8 +142,9 @@ def provider(scope):
         if not re.fullmatch(r'[a-z]{2}(?:-gov)?-[a-z]+-[1-9][0-9]?', region):
             raise RecipeBlocked('S3 shared region is not a standard AWS region identifier')
         session = boto3.Session(region_name=region)
-        client = session.client('s3', region_name=region, **options)
+        client = session.client('s3', region_name=region, endpoint_url='https://s3.'+region+'.amazonaws.com', **options)
         scope.defer('independent S3 client', client.close)
+        preflight_s3(ctx, client, settings['bucket'], prefix)
         guest = proton_lab.Guest(ctx.target.run)
         broker = guest.place_brokers(Path.home()/'putgd-lab/proton/guest-bridge')['qt']
         scope.defer('guest bridge executables', guest.remove_brokers, priority=-10)
@@ -157,7 +159,7 @@ def provider(scope):
         bridge._update_receipt(receipt, state, state='import_confirmed')
         provider_settings = json.loads((Path(__file__).resolve().parents[4]/'config/development.example.json').read_text())['profiles'][0]['settings']
         provider_settings.update(bucket=settings['bucket'], region=region, endpoint='https://s3.'+region+'.amazonaws.com',
-                                 objectPrefix=prefix, publicUrlBase=None, aclMode='omit', addressing='auto')
+                                 objectPrefix=prefix, publicUrlBase='https://put.gd', aclMode='omit', addressing='auto')
         fixture.update(client=client, bucket=settings['bucket'], region=region)
         provider_name = 's3'
     else:
@@ -193,6 +195,20 @@ def provider(scope):
     return fixture
 
 
+def preflight_s3(ctx, client, bucket, prefix):
+    """One read-only HEAD, confined to the acceptance identity's new prefix."""
+    if bucket != 'put.gd' or not re.fullmatch(r'acceptance/tier1-live/[0-9a-f]{32}/', prefix):
+        raise RecipeBlocked('S3 preflight cannot leave the authorized new acceptance prefix')
+    try:
+        client.head_object(Bucket=bucket, Key=prefix+'missing-preflight.png')
+    except client.exceptions.ClientError as error:
+        if error.response.get('ResponseMetadata', {}).get('HTTPStatusCode') == 404:
+            ctx.note('s3_missing_head_404_count=1')
+            return
+        raise RecipeBlocked('S3 missing-key HEAD did not return 404; no upload attempted') from None
+    raise RecipeBlocked('S3 preflight key unexpectedly exists; no upload attempted')
+
+
 def verify_s3(ctx, fixture, detail, data=None, *, absent=False):
     """Read only the exact newly owned key; never list or mutate a bucket."""
     receipt = detail['receipt']
@@ -203,15 +219,17 @@ def verify_s3(ctx, fixture, detail, data=None, *, absent=False):
         try:
             fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'].close()
         except fixture.client.exceptions.NoSuchKey:
+            ctx.note('s3_origin_absence_count=1')
             return
         ctx.expect(False, 'authenticated S3 GET still resolves after app deletion')
     else:
         import hashlib
         link = urlsplit(receipt['directUrl'])
         endpoint = 's3.'+fixture.region+'.amazonaws.com'
+        public = fixture.bucket == 'put.gd' and link.hostname == 'put.gd'
         virtual = link.hostname == fixture.bucket+'.'+endpoint
-        expected_path = '/'+key if virtual else '/'+fixture.bucket+'/'+key
-        ctx.expect(link.scheme == 'https' and link.hostname in (endpoint, fixture.bucket+'.'+endpoint)
+        expected_path = '/'+key if public or virtual else '/'+fixture.bucket+'/'+key
+        ctx.expect(link.scheme == 'https' and link.hostname in (endpoint, fixture.bucket+'.'+endpoint, 'put.gd' if public else endpoint)
                    and not link.username and not link.password and link.port in (None, 443)
                    and not link.query and not link.fragment and unquote(link.path) == expected_path,
                    'copied public S3 link identifies the same independently verified key')

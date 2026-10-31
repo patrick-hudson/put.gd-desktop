@@ -121,6 +121,7 @@ class default_browser:
         if id(ctx) in _ACTIVE:
             raise RuntimeError('Nested default_browser transactions are unsupported')
         options = dict(ctx.profile.get('browser', {}))
+        options.pop('live_downloads', None)
         if (getattr(ctx, '_live_admitted', False) and ctx.placement == 'guest'
                 and ctx.destination == 'proton'):
             options['live_downloads'] = True
@@ -310,7 +311,9 @@ def live_link_unavailable(ctx, kind):
     result = _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=160)
     ctx.note('recipient_unavailable_observation='+json.dumps(result, sort_keys=True))
     ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
-    ctx.frame('browser-link-unavailable' if result.get('unavailable') else 'browser-link-unavailable-failed',
+    label = 'browser-cloudfront-status-'+str(result.get('status', 0)) if kind == 's3' else (
+        'browser-link-unavailable' if result.get('unavailable') else 'browser-link-unavailable-failed')
+    ctx.frame(label,
               window=None, desktop_safe=KIOSK_SAFE)
     return result
 
@@ -798,6 +801,8 @@ def _prepare(options):
     command = options.get('command', ['firefox'])
     if not isinstance(command, list) or not command or not all(isinstance(x, str) for x in command):
         raise ValueError('browser.command must be argv')
+    if options.get('live_downloads') and any(arg.startswith(('-private', '--private')) for arg in command):
+        raise _TargetError('Streaming recipient Firefox must not use a private-browsing command flag')
     recovered = _recover(root, timeouts['cleanup'] - 30)
     created = []
     _make_directories(root, created)
@@ -856,6 +861,9 @@ def _prepare(options):
             # asynchronous decryption, beyond Firefox's transient activation.
             # Keep this permission inside the disposable guest RAM profile.
             preferences['dom.disable_open_during_load'] = False
+            preferences['browser.privatebrowsing.autostart'] = False
+            preferences['dom.serviceWorkers.enabled'] = True
+            preferences['dom.indexedDB.enabled'] = True
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         # Cache and state are the transaction's own, removed with it: the
@@ -1232,9 +1240,11 @@ const missing=arguments[0]==='proton'?
  /not found|unavailable|has expired|has been revoked|has been deleted|has been disabled|no longer (?:available|exists)|cannot be accessed|could not be found|does not exist|doesn't exist/i.test(text):
  ([403,404,410].includes(status)||status===0)&&/NoSuchKey|AccessDenied|not found|404|403|410/i.test(text);
 return {unavailable:hostOK&&document.readyState==='complete'&&missing&&!media,
-        missing,media,hostOK,complete:document.readyState==='complete',httpUnavailable:[403,404,410].includes(status)};
+        missing,media,hostOK,complete:document.readyState==='complete',status,
+        httpUnavailable:[403,404,410].includes(status)};
 """, [values['kind'], url])
-                if result['unavailable'] or time.monotonic()>=deadline:
+                if (result['unavailable'] or (values['kind']=='s3' and result['complete'] and result['hostOK']
+                        and result['status'] in (200, 403, 404, 410)) or time.monotonic()>=deadline):
                     return result
                 time.sleep(.5)
         raise ValueError('Unknown browser helper action')
