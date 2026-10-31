@@ -268,6 +268,8 @@ private slots:
   QVERIFY(dialog.open({FileDialog::Mode::Save,"Save a copy",folder.path(),"copy.png",{{"PNG image",{"*.png"}}}},[&](const FileDialog::Result& r){answer=r.path;}));
   auto* fallback=waitForFallback(dialog);QVERIFY(fallback);QCOMPARE(chooser_->calls,0);
   QCOMPARE(dialog.state()["fallbackReason"].toString(),QString("disabled"));
+  // Qt's widget dialog, never a platform theme's native one that may not map (#863).
+  QVERIFY(fallback->testOption(QFileDialog::DontUseNativeDialog));QVERIFY(fallback->findChild<QLineEdit*>("fileNameEdit"));
   QCOMPARE(fallback->windowTitle(),QString("Save a copy"));QCOMPARE(fallback->nameFilters(),QStringList{"PNG image (*.png)"});
   // selectFile leaves a focused name field alone; type the name as a user does.
   auto* field=fallback->findChild<QLineEdit*>("fileNameEdit");QVERIFY(field);field->setText("chosen.png");QMetaObject::invokeMethod(fallback,"accept");
