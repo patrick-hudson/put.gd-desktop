@@ -1,0 +1,1 @@
+{"nativeGuestDesktopConfig": true, "configHome": "/home/lab/.config", "settings": {"org.gnome.software.download-updates": false, "org.gnome.software.allow-updates": false, "org.gnome.desktop.notifications.show-banners": false}, "maskedAutostart": ["update-notifier.desktop", "org.gnome.Software.desktop"], "overlayOnly": true}

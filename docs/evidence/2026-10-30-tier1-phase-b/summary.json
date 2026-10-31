@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "scope": "coordinator-follow-up-5-final-s3-cells",
+  "scope": "coordinator-follow-up-6-final-gnome-s3",
   "release": "v26.1030.3203-nightly",
   "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
   "catalogCiRun": 41111404666,
@@ -11,17 +11,17 @@
   "uiDeletions": 1,
   "independentUnavailableLinks": 0,
   "s3OriginAbsenceProofs": 1,
-  "s3MissingHead404": 2,
+  "s3MissingHead404": 1,
   "verifiedBrowserHashes": 0,
   "uiRevocations": 0,
   "batonsLent": 0,
   "batonsReturned": 0,
-  "overlaysRetired": 2,
+  "overlaysRetired": 1,
   "protonUsed": false,
   "locksReleased": true,
   "matrixResults": {
     "gnome": {
-      "s3": "F",
+      "s3": "P",
       "proton": "P"
     },
     "kde": {
@@ -34,16 +34,10 @@
     }
   },
   "cloudfrontAfterDeletion": {
-    "gnome": {
-      "notRun": true,
-      "reason": "pattern guard stopped before capture and upload"
-    },
-    "kde": {
-      "status": 200,
-      "informational": true
-    }
+    "status": 200,
+    "informational": true
   },
-  "coverageSha256": "33770a150c520613d2563fb748f3e94d902c33f0df69d203445664f5b6ecac62",
+  "coverageSha256": "8d97f47c74ba659e2b66b3bb278810d05740d3d88e7eb35a2654558dae674d0a",
   "issues": [
     978,
     992,
@@ -51,20 +45,6 @@
     997
   ],
   "previousCumulative": {
-    "verifiedRemoteHashes": 12,
-    "batonsLent": 24,
-    "overlaysRetired": 13,
-    "s3MissingHead404": 10,
-    "verifiedGuestPublicHashes": 1,
-    "uiRevocations": 13,
-    "completedUploads": 22,
-    "verifiedBrowserHashes": 3,
-    "uiDeletions": 9,
-    "independentUnavailableLinks": 12,
-    "s3OriginAbsenceProofs": 9,
-    "batonsReturned": 24
-  },
-  "cumulative": {
     "overlaysRetired": 15,
     "verifiedRemoteHashes": 13,
     "uiDeletions": 10,
@@ -78,5 +58,31 @@
     "batonsReturned": 24,
     "s3OriginAbsenceProofs": 10
   },
-  "finalAcceptedMatrix": null
+  "cumulative": {
+    "verifiedRemoteHashes": 14,
+    "batonsLent": 24,
+    "verifiedBrowserHashes": 3,
+    "s3MissingHead404": 13,
+    "uiDeletions": 11,
+    "independentUnavailableLinks": 12,
+    "s3OriginAbsenceProofs": 11,
+    "verifiedGuestPublicHashes": 3,
+    "completedUploads": 24,
+    "batonsReturned": 24,
+    "uiRevocations": 13,
+    "overlaysRetired": 16
+  },
+  "finalAcceptedMatrix": {
+    "completedUploads": 6,
+    "verifiedRemoteHashes": 6,
+    "verifiedGuestPublicHashes": 3,
+    "verifiedBrowserHashes": 3,
+    "uiDeletions": 3,
+    "uiRevocations": 3,
+    "s3OriginAbsenceProofs": 3,
+    "protonUnavailablePageProofs": 3,
+    "batonsLent": 3,
+    "batonsReturned": 3,
+    "proofOverlays": 5
+  }
 }
