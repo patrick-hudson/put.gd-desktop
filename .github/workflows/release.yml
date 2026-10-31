@@ -84,6 +84,26 @@ jobs:
           path: build/publish/sources
       - name: Stage verified GitHub draft
         run: python3 tools/releases/publish.py --tag "$TAG" --directory build/publish
+      - name: Audit the exact staged downloads with stable policy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm cpio binutils
+          python3 tools/releases/audit_assets.py --tag "$TAG" --download \
+            --directory "$RUNNER_TEMP/exact-assets" --output "$RUNNER_TEMP/exact-audit"
+      - name: Retain exact-asset audit, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: exact-asset-audit-${{ needs.tag.outputs.tag }}
+          path: |
+            ${{ runner.temp }}/exact-audit/audit.json
+            ${{ runner.temp }}/exact-audit/database.json
+            ${{ runner.temp }}/exact-audit/vulnerability-*.json
+            ${{ runner.temp }}/exact-audit/vulnerability-*.md
+            ${{ runner.temp }}/exact-audit/grype/*.json
+            ${{ runner.temp }}/exact-audit/sboms/*.json
+          if-no-files-found: warn
+          retention-days: 90
       - name: Summarize next steps
         run: |
           {

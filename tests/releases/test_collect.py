@@ -177,9 +177,8 @@ class ReleaseCollection(unittest.TestCase):
 
     def test_installer_layout_links_sources_and_keeps_debug_out_of_public_assets(self):
         import support_assets
-        # Tagged builds do not recompile the source export or carry unchanged
-        # Proton archives/debug payloads through the collection job.
-        (self.inputs / 'release-native-ubuntu24.04/source-build-results.json').unlink()
+        # Stable builds retain the rebuild receipt while unchanged Proton
+        # archives/debug payloads stay out of the public installer release.
         shutil.rmtree(self.inputs / 'proton-sources')
         for path in self.inputs.glob('release-*/debug-symbols-*'):
             path.unlink()
@@ -508,6 +507,13 @@ class ReleaseCollection(unittest.TestCase):
         path.write_text(json.dumps(receipt))
         with self.assertRaisesRegex(ValueError, 'identity'):
             self.run_collection()
+        self.assertFalse(self.output.exists())
+
+    def test_stable_installer_collection_requires_exact_source_rebuild(self):
+        (self.inputs / 'release-native-ubuntu24.04/source-build-results.json').unlink()
+        with patch.object(collect, 'verify', return_value=self.release):
+            with self.assertRaises(FileNotFoundError):
+                collect.collect(self.root, self.inputs, self.output, TAG, installers_only=True)
         self.assertFalse(self.output.exists())
 
     def nightly_inputs(self):
