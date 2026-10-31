@@ -354,7 +354,7 @@ class Driver:
         ticks = self.run / 'logs' / ('ticks-%s.log' % label)
         result = {'build': build.label, 'round': number, 'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
         output = self.chosen_output()
-        info = self.open_fixture(ticks, output)
+        info = self.open_fixture(ticks, output) if not a.static else {'ok': True, 'state': 'static'}
         result['fixture'] = info
         result['output'] = output
         try:
@@ -385,6 +385,7 @@ class Driver:
             tick_end = self.last_tick(ticks)
             result['progress'] = progress.get('progress')
             result['durationUs'] = stopped.get('durationUs')
+            result['wallSecondsRecorded'] = round(a.seconds, 3)
             result['load'] = os.getloadavg()[0]
             copy = self.run / 'out' / ('%s.mp4' % label)
             self.cli(build, 'recording.saveCopy', {'id': rid, 'path': str(copy), 'overwrite': True})
@@ -560,6 +561,7 @@ def main(argv=None):
             p.add_argument('--rect')
             p.add_argument('--real-data-home', action='store_true')
             p.add_argument('--kwin-entry', action='append', metavar='LABEL')
+            p.add_argument('--static', action='store_true', help='record the idle desktop without the fixture (keepalive and duration check)')
         else:
             p.add_argument('--input-socket')
             p.add_argument('--action', choices=('region', 'record', 'edit'), default='region', help='which drag-to-select to open')

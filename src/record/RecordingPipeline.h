@@ -84,7 +84,11 @@ private:
     // presentation again after a cursor move or a second render) is dropped
     // before it is copied; the rest take cadence-locked stamps. lastKept holds
     // the previous kept copy for the comparison and is released at teardown.
-    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0; bool compositorTimes = false, locked = true; Spread age, interval; FrameLock lock; };
+    // An identical frame still passes once no frame has passed for a period:
+    // pipewiresrc resends the last frame of a static screen (keepalive-time),
+    // and those resends keep the clip's timeline and the retained duration
+    // advancing through videorate.
+    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0; bool compositorTimes = false, locked = true; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).

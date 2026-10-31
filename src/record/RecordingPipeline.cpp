@@ -178,9 +178,11 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
             }
             gst_buffer_unmap(buffer, &map);
         }
-        if (same) { ++clock->sameContents; return GST_PAD_PROBE_DROP; }
-    }
-    ++clock->distinctContents;
+        // A static screen's keepalive resends pass once per period so the timeline advances.
+        if (same && (clock->lastPassed < 0 || running - clock->lastPassed < clock->lock.periodNs)) { ++clock->sameContents; return GST_PAD_PROBE_DROP; }
+        if (!same) ++clock->distinctContents;
+    } else ++clock->distinctContents;
+    clock->lastPassed = running;
     auto frame = pipewireFrameTime(headerPts, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);

@@ -36,7 +36,20 @@ PATH_PARAM = '/sys/module/firmware_class/parameters/path'
 
 
 def sudo_write(path, value):
-    subprocess.run(['sudo', '-n', 'sh', '-c', 'printf %s "$1" > "$2"', 'sh', value, path], check=True)
+    # printf %s of an empty string writes nothing, so clearing a string
+    # parameter sends a single NUL, which the kernel stores as "".
+    script = 'printf "\\0" > "$2"' if value == '' else 'printf %s "$1" > "$2"'
+    subprocess.run(['sudo', '-n', 'sh', '-c', script, 'sh', value, path], check=True)
+
+
+def valid_edid(data):
+    """The base block and every declared extension block carry their checksums."""
+    if len(data) < 128 or data[:8] != bytes.fromhex('00ffffffffffff00'):
+        return False
+    blocks = 1 + data[126]
+    if len(data) < 128 * blocks:
+        return False
+    return all(sum(data[i * 128:(i + 1) * 128]) % 256 == 0 for i in range(blocks))
 
 
 def connectors(card):
@@ -74,15 +87,38 @@ def add(args):
     target = FIRMWARE / 'edid' / 'lab.bin'
     target.parent.mkdir(parents=True, exist_ok=True)
     data = edid.read_bytes()
-    if len(data) < 128 or data[:8] != bytes.fromhex('00ffffffffffff00') or sum(data[:128]) % 256:
-        print('%s is not a valid EDID' % edid, file=sys.stderr)
+    if not valid_edid(data):
+        print('%s is not a valid EDID (header, block count or checksums)' % edid, file=sys.stderr)
         return 2
+    known = connectors(args.card)
+    unknown = [c for c in args.connector if c not in known]
+    if unknown:
+        print('unknown connectors: %s (have %s)' % (', '.join(unknown), ', '.join(known)), file=sys.stderr)
+        return 2
+    # These parameters are system-wide: refuse to replace someone else's overrides.
+    mapping = ','.join('%s:edid/lab.bin' % c for c in args.connector)
+    for param, mine in ((EDID_PARAM, mapping), (PATH_PARAM, str(FIRMWARE))):
+        current = read(param)
+        if current and current != mine:
+            print('%s is already set to [%s]; remove that first' % (param, current), file=sys.stderr)
+            return 2
     target.write_bytes(data)
     os.chmod(target, 0o644)
-    sudo_write(PATH_PARAM, str(FIRMWARE))
-    sudo_write(EDID_PARAM, ','.join('%s:edid/lab.bin' % c for c in args.connector))
-    for name in args.connector:
-        sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'on')
+    forced = []
+    try:
+        sudo_write(PATH_PARAM, str(FIRMWARE))
+        sudo_write(EDID_PARAM, mapping)
+        for name in args.connector:
+            sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'on')
+            forced.append(name)
+    except subprocess.CalledProcessError as error:
+        # Roll back what was forced so far and the overrides.
+        for name in forced:
+            subprocess.run(['sudo', '-n', 'sh', '-c', 'printf %s "$1" > "$2"', 'sh', 'detect', '/sys/class/drm/%s-%s/status' % (args.card, name)])
+        sudo_write(EDID_PARAM, '')
+        sudo_write(PATH_PARAM, '')
+        print('forcing failed (%s); rolled back' % error, file=sys.stderr)
+        return 1
     time.sleep(2)
     return status(args)
 
