@@ -153,7 +153,8 @@ def version_in_range(version, expression):
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise ValueError('Unsupported embedded Bun version')
     selected = tuple(map(int, version.split('.')))
-    for alternative in expression.split('||'):
+    normalized = re.sub(r'(>=|<=|>|<|=)\s+', r'\1', expression)
+    for alternative in normalized.split('||'):
         clauses = alternative.replace(',', ' ').split()
         if not clauses:
             raise ValueError('Empty upstream advisory version range')
