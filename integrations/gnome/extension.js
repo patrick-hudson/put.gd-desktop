@@ -1,4 +1,5 @@
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
@@ -262,6 +263,14 @@ const RegionSelection = {
         const right = Math.min(textureWidth, Math.ceil((x + width) * scale));
         const bottom = Math.min(textureHeight, Math.ceil((y + height) * scale));
         return [left, top, Math.max(0, right - left), Math.max(0, bottom - top)];
+    },
+    // A window's logical rectangle on its head's output pixel grid (#1049): the
+    // pixels a desktop capture of that head holds, and their logical extent.
+    outputGrid([x, y, width, height], {logical: [mx, my], density}) {
+        const left = Math.floor((x - mx) * density), top = Math.floor((y - my) * density);
+        const right = Math.ceil((x + width - mx) * density), bottom = Math.ceil((y + height - my) * density);
+        return {pixels: [right - left, bottom - top],
+            logical: [mx + left / density, my + top / density, (right - left) / density, (bottom - top) / density]};
     },
     sizeLabel(region, outputs = []) {
         if (!(region?.width > 0 && region?.height > 0))
@@ -1092,13 +1101,16 @@ export default class PutgdExtension extends Extension {
                 JSON.stringify(rectangle(request.window.get_frame_rect())) === JSON.stringify(request.frame),
             'capture_target', 'Frozen external window disappeared or changed geometry');
             request.stage = 'window-texture';
-            const actorGeometry = [request.actor.x, request.actor.y, request.actor.width, request.actor.height];
-            const content = request.actor.paint_to_content(null);
-            const texture = content.get_texture();
-            const width = texture.get_width();
-            const height = texture.get_height();
+            // paint_to_content renders at the ceiled resource scale: a 1.5x head
+            // gave the 2x backing grid. Render at the window's head scale instead,
+            // on the same output pixel grid as a desktop capture of that head.
+            const head = request.layout[request.window.get_monitor()];
+            check(head, 'display_changed', 'The focused window has no monitor');
+            const grid = RegionSelection.outputGrid([request.actor.x, request.actor.y, request.actor.width, request.actor.height], head);
+            const [width, height] = grid.pixels;
             check(width > 0 && height > 0 && width * height <= limits.imagePixels && width * height * 4 <= limits.imageBytes,
                 'input_excessive', 'Frozen window exceeds image limits');
+            const texture = this._paintWindow(request.actor, grid.logical, width, height);
             const stream = Gio.MemoryOutputStream.new_resizable();
             request.stage = 'window-encode';
             await Shell.Screenshot.composite_to_stream(texture, 0, 0, width, height, 1, null, 0, 0, 1, stream);
@@ -1106,9 +1118,9 @@ export default class PutgdExtension extends Extension {
             check(JSON.stringify(rectangle(request.window.get_frame_rect())) === JSON.stringify(request.frame),
                 'capture_target', 'Frozen window geometry changed during capture');
             const data = bytesOf(stream);
-            // Actor texture includes the compositor's frame/shadow; use its
-            // actual logical extents instead of recapturing the current focus.
-            selection = actorGeometry;
+            // The texture includes the compositor's frame/shadow; use its
+            // logical extents instead of recapturing the current focus.
+            selection = grid.logical;
             frames.push({identity: `window-${request.window.get_stable_sequence()}`, logical: selection,
                 native: [0, 0, width, height], density: width / selection[2], rotation: 0, offset: 0, length: data.length});
             parts.push(data);
@@ -1185,6 +1197,34 @@ export default class PutgdExtension extends Extension {
         request.metadata = {version: 1, requestId: request.id, mime: 'application/x-putgd-capture', bytes: total, frames, selection};
         request.actor = request.window = null;
         return request.metadata;
+    }
+
+    // Mutter's window snapshot (create_framebuffer_from_window_actor) at an
+    // explicit scale: [x, y, width, height] stage logical onto width x height pixels.
+    _paintWindow(actor, [x, y, width, height], pixelWidth, pixelHeight) {
+        const context = global.stage.context.get_backend().get_cogl_context();
+        const texture = Cogl.Texture2D.new_with_size(context, pixelWidth, pixelHeight);
+        check(texture, 'capture_failed', 'GNOME could not allocate the window texture');
+        texture.set_auto_mipmap(false);
+        const framebuffer = Cogl.Offscreen.new_with_texture(texture);
+        try {
+            framebuffer.allocate();
+        } catch {
+            throw failure('capture_failed', 'GNOME could not allocate the window framebuffer');
+        }
+        framebuffer.clear4f(Cogl.BufferBit.COLOR, 0, 0, 0, 0);
+        framebuffer.orthographic(0, 0, width, height, 0, 1);
+        framebuffer.translate(-x, -y, 0);
+        actor.inhibit_culling();
+        try {
+            const paint = Clutter.PaintContext.new_for_framebuffer(framebuffer, null, Clutter.PaintFlag.NONE,
+                actor.get_color_state());
+            actor.paint(paint);
+            paint.destroy();
+        } finally {
+            actor.uninhibit_culling();
+        }
+        return texture;
     }
 
     _pngSize(data) {

@@ -24,7 +24,12 @@ namespace putgd {
 class KdeRegionOverlay::Surface final:public QWidget {
 public:
  Surface(KdeRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect),identity_(frame.identity){
-  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),logicalRect_,owner_.frames_,false,owner_.outcome_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);resize(frame.logicalRect.size().toSize());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
+  setFont(nativeRegionFont());setObjectName("putgd-kde-region-overlay");setAccessibleName(owner_.recording_?"Recording region":"Capture region");describeRegion(this,{},owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),logicalRect_,owner_.frames_,false,owner_.outcome_);setAttribute(Qt::WA_TranslucentBackground);setScreen(screen);
+  // Place the window on its output before the platform window exists. Qt moves a
+  // top-level whose geometry centre lies on another screen to that screen, and
+  // the layer surface binds the QWindow's output: a surface left at (0,0) lands
+  // on the head at the origin and the other heads get no selector (#1048).
+  setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);
 #ifdef PUTGD_NATIVE_REGION
   // An individual layer role is applied before show; ordinary app windows keep
   // their normal xdg-shell integration. Never mutate QT_WAYLAND_SHELL_INTEGRATION.
@@ -95,12 +100,18 @@ void KdeRegionOverlay::start(){
  hintScreen_=keyboardScreen_;
  for(const auto& frame:frames_){QScreen* match=nullptr;for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){match=screen;break;}if(!match){cancel({"display_changed","Capture output disappeared before selection",{}});return;}
   connect(match,&QScreen::geometryChanged,this,[this]{cancel({"display_changed","Display geometry changed during region selection",{}});});connect(match,&QScreen::logicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display scale changed during region selection",{}});});connect(match,&QScreen::physicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display density changed during region selection",{}});});connect(match,&QScreen::orientationChanged,this,[this]{cancel({"display_changed","Display rotation changed during region selection",{}});});
-  addSurface(frame,match);
+  if(!addSurface(frame,match))return;
  }
  hint_.start();
 #endif
 }
-void KdeRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){auto* surface=new Surface(*this,frame,screen);surfaces_.append(surface);surface->show();}
+bool KdeRegionOverlay::addSurface(const CaptureFrame& frame,QScreen* screen){
+ auto* surface=new Surface(*this,frame,screen);surfaces_.append(surface);surface->winId();
+ // Every output needs its own selector surface; one that Qt moved elsewhere
+ // would leave its head without input and map drags to the wrong output.
+ if(surface->windowHandle()->screen()!=screen){cancel({"display_changed","A selection surface is not on its output",{}});return false;}
+ surface->show();return true;
+}
 void KdeRegionOverlay::select(const QRectF& logical){if(finished_||logical.isEmpty())return;press(logical.topLeft());release(logical.bottomRight());}
 void KdeRegionOverlay::press(QPointF p){if(finished_)return;keyboardScreen_=-1;anchor_=kdeRegionEdge(p);dragging_=true;selection_=QRectF(anchor_,QSizeF{});for(auto* surface:surfaces_)surface->updateSelection();}
 void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const auto endpoint=kdeRegionEdge(p);selection_=QRectF(anchor_,endpoint).normalized();++stats_.moves;for(auto* surface:surfaces_)surface->updateSelection();}

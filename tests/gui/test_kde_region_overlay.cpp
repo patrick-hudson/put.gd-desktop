@@ -111,6 +111,42 @@ private slots:
    overlay.clearing_=true;const auto cleared=surface->grab().toImage();for(int y=0;y<cleared.height();++y)for(int x=0;x<cleared.width();++x)QCOMPARE(cleared.pixelColor(x,y).alpha(),0);
   }
  }
+ // #1048: each output's surface is on that output, and drags map to the global
+ // layout. Runs under the kde_region_overlay_multihead ctest's three-screen
+ // fixture: side by side, then a 128 px gap and a portrait head.
+ void surfacesStayOnTheirOutputs(){
+  const auto screens=QGuiApplication::screens();if(screens.size()<3)QSKIP("Needs the three-screen offscreen fixture");
+  QList<CaptureFrame> frames;for(auto* screen:screens)frames.append(CaptureFrame{screen->name(),screen->geometry(),screen->geometry(),1,0,{}});
+  const auto open=[&](KdeRegionOverlay& overlay){
+   QList<QWidget*> surfaces;overlay.frames_=frames;
+   for(int i=0;i<frames.size();++i){if(!overlay.addSurface(frames[i],screens[i]))return QList<QWidget*>{};surfaces.append(overlay.surfaces_.last());}
+   return surfaces;
+  };
+  const auto encoded=[&](const QRectF& selection){Error error;const auto rectangle=kdeRegionRectangle(kdeRegionRectangle(selection),frames,error);return error?QRectF():rectangle;};
+  {
+   KdeRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);
+   for(int i=0;i<3;++i){QCOMPARE(surfaces[i]->windowHandle()->screen(),screens[i]);QCOMPARE(surfaces[i]->geometry(),screens[i]->geometry());QVERIFY(surfaces[i]->isVisible());}
+   // A region inside the secondary head (the #380 inside-1 drag).
+   QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+   QTest::mousePress(surfaces[1],Qt::LeftButton,{},QPoint(80,80));QTest::mouseMove(surfaces[1],QPoint(240,200));QTest::mouseRelease(surfaces[1],Qt::LeftButton,{},QPoint(240,200));
+   QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
+   QCOMPARE(selected,QRectF(1360,80,160,120));QCOMPARE(encoded(selected),selected);
+  }
+  {
+   // A span: the press surface keeps the pointer grab past its right edge.
+   KdeRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+   QTest::mousePress(surfaces[0],Qt::LeftButton,{},QPoint(640,400));QTest::mouseMove(surfaces[0],QPoint(1920,440));QTest::mouseRelease(surfaces[0],Qt::LeftButton,{},QPoint(1920,440));
+   QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
+   QCOMPARE(selected,QRectF(640,400,1280,40));QCOMPARE(encoded(selected),selected);
+  }
+  {
+   // The portrait head beyond the gap.
+   KdeRegionOverlay overlay({});const auto surfaces=open(overlay);QCOMPARE(surfaces.size(),3);QSignalSpy accepted(&overlay,&KdeRegionOverlay::selected);
+   QTest::mousePress(surfaces[2],Qt::LeftButton,{},QPoint(100,900));QTest::mouseRelease(surfaces[2],Qt::LeftButton,{},QPoint(260,1020));
+   QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
+   QCOMPARE(selected,QRectF(2788,900,160,120));QCOMPARE(encoded(selected),selected);
+  }
+ }
  void screenshotFirstDrawsTheFrozenFrame(){
   // #629: the frozen pixels are the backdrop; the selection only adds an outline.
   QImage pixels(1600,1200,QImage::Format_RGB32);pixels.fill(QColor(Qt::magenta));
