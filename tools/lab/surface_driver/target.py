@@ -690,12 +690,18 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
         port = self.physical.config['vnc_port'] if self.physical else 5900+self.info['vnc_display']+head
         if self.info.get('heads'):
             port = next(row['port'] for row in self.info['heads'] if row['head']==head)
-        client = rfb.RFB(port)
-        try:
-            width, height, pixels = client.frame()
-            return Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX')
-        finally:
-            client.close()
+        for attempt in range(2):
+            client = None
+            try:
+                client = rfb.RFB(port)
+                width, height, pixels = client.frame()
+                return Image.frombytes('RGB', (width, height), pixels, 'raw', 'BGRX')
+            except TimeoutError:
+                if attempt:
+                    raise
+            finally:
+                if client is not None:
+                    client.close()
 
     def screenshot(self, path, head=0):
         # Legacy direct callers have no sensitivity geometry: fail closed with

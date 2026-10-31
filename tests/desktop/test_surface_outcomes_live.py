@@ -20,12 +20,15 @@ from tools.lab.surface_driver.recipes import outcomes_live
 
 class LiveOutcomes(unittest.TestCase):
     def test_key_two_only_and_explicit_shared_bucket(self):
-        parsed=key_set_two('Access key ID: first-synthetic\nSecret access key: first-secret\nBucket: synthetic-bucket\n'
-                           'Access key ID: second-synthetic\nSecret access key: second-secret\n')
-        self.assertEqual(parsed['credentials']['accessKey'],'second-synthetic')
-        self.assertEqual(parsed['credentials']['secretKey'],'second-secret')
-        self.assertEqual(parsed['settings'],{'bucket':'synthetic-bucket'})
-        for text in ('Access key ID: only-one\nSecret access key: example', 'unlabelled text'):
+        pair='AKIA'+'A'*16+' '+'b'*40+'\n'
+        first='Set 1\nAccess key ID: first-synthetic\nSecret access key: first-secret\nBucket: synthetic-bucket\nEndpoint / Region:\nAWS Region ID: us-east-2\nS3 Endpoint: https://s3.us-east-2.amazonaws.com\n\n'
+        other='Backblaze B2\napplicationKey: unrelated\nCloudflare R2\nAccess key ID: r2-synthetic\nSecret access key: r2-secret\nRegion: auto\n'
+        parsed=key_set_two(first+pair+other)
+        self.assertEqual(parsed['credentials'],dict(accessKey='AKIA'+'A'*16,secretKey='b'*40,sessionToken=''))
+        self.assertEqual(parsed['settings'],{'bucket':'synthetic-bucket','region':'us-east-2'})
+        for text in (first+other, first+pair+pair+other, first+other+pair,
+                     first+pair+pair.replace('b'*40,'b'*39)+other, first+pair.replace('b'*40,'b'*39)+other,
+                     first.replace('AWS Region ID: us-east-2\n','')+pair+other, 'unlabelled text'):
             with self.assertRaises(RecipeBlocked):key_set_two(text)
 
     def test_live_rejects_boat_native_wrong_desktop_before_secret_read(self):
@@ -65,7 +68,7 @@ class LiveOutcomes(unittest.TestCase):
                             expect=lambda ok,note:self.assertTrue(ok,note))
         def observed(*args):
             spec=ctx.profile['windows']['confirmAction']
-            self.assertNotIn('accessible',spec)  # Alert message must not be rejected as a non-dialog.
+            self.assertEqual(spec['accessible'],{'role':'alert','name':'Revoke share link'})
             self.assertEqual(spec['title'],'^Revoke share link$')
         with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window',side_effect=observed),patch.object(outcomes_live.history,'_confirm_button'):
             outcomes_live._cleanup(ctx,{'id':'owned-history'})
@@ -100,6 +103,18 @@ class LiveOutcomes(unittest.TestCase):
             self.assertEqual(outcomes_live._saved_digest(scope,str(payload)),hashlib.sha256(data).hexdigest())
             for path in (foreign,link):
                 with self.assertRaises(AssertionError):outcomes_live._saved_digest(scope,str(path))
+
+    def test_frame_transport_retries_one_timeout_and_closes_both_clients(self):
+        from tools.lab.surface_driver.target import Target
+        from tools.lab.surface_driver import target
+        ctx=SimpleNamespace(physical=None,info={'vnc_display':20})
+        first,second=Mock(),Mock()
+        first.frame.side_effect=TimeoutError()
+        second.frame.return_value=(1,1,b'\x00\x00\x00\x00')
+        with patch.object(target.rfb,'RFB',side_effect=[first,second]) as connect:
+            image=Target.capture_image.__wrapped__(ctx)
+        self.assertEqual(image.size,(1,1));self.assertEqual(connect.call_count,2)
+        first.close.assert_called_once();second.close.assert_called_once()
 
 
 if __name__=='__main__':unittest.main()

@@ -266,7 +266,7 @@ def open_and_verify(ctx, trigger, expect):
             return result
         try:
             result = ctx.wait(observe, 'default Firefox loaded the expected page content',
-                              timeout=timeouts['page'])
+                              timeout=max(timeouts['page'], 120) if expect['kind'] == 'proton' else timeouts['page'])
         except RecipeFailed as error:
             if pending:
                 raise RecipeFailed(str(error) + '; last Firefox answer: ' + pending[0]) from None
@@ -294,16 +294,20 @@ def open_and_verify(ctx, trigger, expect):
 KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
-def live_download_digest(ctx):
-    """Recipient download, bounded and hashed in the guest's RAM filesystem."""
+def live_download_digest(ctx, kind, saved_path):
+    """Download original recipient bytes and compare with the saved PNG in guest RAM."""
     active = _ACTIVE[id(ctx)]
-    return _remote(ctx, 'download-digest', active['state'], timeout=120)
+    return _remote(ctx, 'download-digest', dict(active['state'], kind=kind,
+                   saved_path=saved_path, app_root=ctx.target.root), timeout=150)
 
 
 def live_link_unavailable(ctx, kind):
     """Reload the existing URL without returning it or trusting a cached preview."""
     active = _ACTIVE[id(ctx)]
-    return _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=120)
+    result = _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=160)
+    if result.get('unavailable'):
+        ctx.frame('browser-link-unavailable', window=None, desktop_safe=KIOSK_SAFE)
+    return result
 
 
 def _failure_frame(ctx, state, timeouts, frames):
@@ -452,19 +456,22 @@ const painted = el => {
 const media = [...document.querySelectorAll('img,video,canvas')].some(el =>
   visible(el) && (el.tagName==='IMG' ? el.complete && el.naturalWidth>0 :
   el.tagName==='VIDEO' ? el.readyState>=2 : painted(el)));
-// A Download button alone says nothing about decryption or completed bytes.
+// Readiness is separate from the later mandatory original-byte download.
 const status = performance.getEntriesByType('navigation')[0]?.responseStatus || 0;
 const error = /^(404|403|500|AccessDenied|NoSuchKey|Error response)/i.test(text.trim()) ||
               /Problem loading page|Server Not Found|Error response|Access Denied/i.test(title);
-const content = e.kind==='proton' ? text.includes(e.name) && media :
+const protonMedia=[...document.querySelectorAll('img,video,canvas')].some(el =>
+ visible(el) && (el.tagName==='IMG' ? el.complete && el.naturalWidth>0 &&
+ (el.currentSrc||el.src).startsWith('blob:') : el.tagName==='VIDEO' ? el.readyState>=2 : painted(el)));
+const content = e.kind==='proton' ? text.includes(e.name) || protonMedia :
                 (media || text.trim().length>0);
 const hostOK = e.url_host ? u.hostname===e.url_host :
                e.kind==='proton' ? /(^|\.)proton\.(me|ch)$/.test(u.hostname) : true;
-const matched = ['http:','https:'].includes(u.protocol) && hostOK && named &&
+const matched = ['http:','https:'].includes(u.protocol) && hostOK && (named || (e.kind==='proton' && protonMedia)) &&
   title.length>0 && document.visibilityState==='visible' && document.hasFocus() &&
   innerWidth>=screen.width && innerHeight>=screen.height &&
   document.readyState==='complete' && status<400 && !error &&
-  content && (!e.preview || media || (e.kind!=='proton' && text.trim().length>0)) &&
+  content && (!e.preview || e.kind==='proton' || media || text.trim().length>0) &&
   (!e.text || text.includes(e.text));
 // Keep only a title we can prove contains no URL path, fragment, or arbitrary
 // page-supplied token: the filename, when it is present in the actual title.
@@ -834,7 +841,8 @@ def _prepare(options):
         preferences.update({'browser.download.folderList': 2, 'browser.download.dir': str(downloads),
                             'browser.download.useDownloadDir': True, 'browser.download.always_ask_before_handling_new_types': False,
                             'browser.helperApps.neverAsk.saveToDisk': 'image/png,application/octet-stream,application/zip',
-                            'browser.cache.disk.enable': False})
+                            'browser.cache.disk.enable': False, 'browser.cache.memory.enable': False,
+                            'network.http.use-cache': False})
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         # Cache and state are the transaction's own, removed with it: the
@@ -1087,16 +1095,34 @@ def _target(action, values):
             fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
             if fs.stdout.strip() != 'tmpfs' or any(directory.iterdir()):
                 raise _TargetError('Live recipient download requires a new empty tmpfs directory')
-            clicked = client.script("""
+            if values['kind'] == 'proton':
+                clicked = client.script("""
 const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(el=>{
  const r=el.getBoundingClientRect();const label=(el.getAttribute('aria-label')||el.textContent||'').trim();
  return r.width>0&&r.height>0&&!el.disabled&&/^Download(?: file)?$/i.test(label);
 });
 if(nodes.length!==1)return false;nodes[0].click();return true;
 """)
+            elif values['kind'] == 's3':
+                # Fetch the original image in the recipient Firefox origin;
+                # canvas serialization would not prove the uploaded bytes.
+                clicked = client.script("""
+const done=arguments[arguments.length-1];
+const images=[...document.images].filter(e=>e.complete&&e.naturalWidth>0);
+if(images.length!==1){done(false);return;}
+const url=images[0].currentSrc||images[0].src;
+fetch(url,{cache:'no-store',credentials:'omit'}).then(async r=>{
+ if(!r.ok){done(false);return;}const data=await r.arrayBuffer();
+ if(!data.byteLength||data.byteLength>32*1024*1024){done(false);return;}
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'image/png'}));
+ a.download='recipient.png';document.body.append(a);a.click();a.remove();done(true);
+}).catch(()=>done(false));
+""", asynchronous=True)
+            else:
+                raise _TargetError('Unsupported live recipient provider')
             if not clicked:
                 raise _TargetError('Recipient page has no unique enabled Download control')
-            deadline = time.monotonic()+75
+            deadline = time.monotonic()+120
             while time.monotonic()<deadline:
                 files = list(directory.iterdir())
                 complete = [p for p in files if not p.name.endswith(('.part', '.tmp'))]
@@ -1114,7 +1140,19 @@ if(nodes.length!==1)return false;nodes[0].click();return true;
                         data=stream.read(32*1024*1024+1)
                     if len(data)>32*1024*1024:
                         raise _TargetError('Recipient download exceeded the bounded in-memory limit')
-                    return {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+                    saved = Path(values['saved_path'])
+                    root = Path(values['app_root'])
+                    if saved.is_symlink() or not saved.resolve(strict=True).is_relative_to(root.resolve(strict=True)):
+                        raise _TargetError('Saved capture is outside the owned app root')
+                    with os.fdopen(os.open(saved, os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK), 'rb') as stream:
+                        info = os.fstat(stream.fileno())
+                        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or not 0<info.st_size<=32*1024*1024:
+                            raise _TargetError('Saved capture is not an owned bounded regular file')
+                        original=stream.read(32*1024*1024+1)
+                    digest=hashlib.sha256(data).hexdigest()
+                    return {'bytes':len(data),'sha256':digest,
+                            'matches':len(original)<=32*1024*1024 and data==original and
+                                      digest==hashlib.sha256(original).hexdigest()}
                 time.sleep(.5)
             raise _TargetError('Recipient download did not complete within its bounded deadline')
         if action == 'unavailable':
@@ -1122,8 +1160,16 @@ if(nodes.length!==1)return false;nodes[0].click();return true;
             # arguments, transaction metadata or a browser receipt.
             url = client.script('return location.href;')
             client.call('WebDriver:Navigate', {'url':'about:blank'})
-            client.call('WebDriver:Navigate', {'url':url})
-            deadline=time.monotonic()+45
+            # All HTTP memory/disk caches are disabled in this private profile.
+            # Start from blank so the former preview cannot prove absence.
+            try:
+                client.call('WebDriver:Navigate', {'url':url})
+            except _Timeout:
+                if client.broken:
+                    raise
+                # Page-load timeout does not cancel navigation. Observe its
+                # final rendered state over the provider-specific deadline.
+            deadline=time.monotonic()+(120 if values['kind']=='proton' else 45)
             while True:
                 result=client.script("""
 const text=(document.body?.innerText||'').trim();
@@ -1134,7 +1180,7 @@ const media=[...document.querySelectorAll('img,video,canvas')].some(e=>
  e.tagName==='VIDEO'?e.readyState>=2:false);
 const hostOK=location.hostname===new URL(arguments[1]).hostname;
 const missing=arguments[0]==='proton'?
- /link (?:has expired|has been revoked|not found|is no longer|does not exist|doesn't exist)|no longer available|cannot be accessed|could not be found/i.test(text):
+ /link (?:has expired|has been revoked|not found|is no longer|does not exist|doesn't exist)|no longer available|cannot be accessed|could not be found|file (?:not found|is unavailable)|link is unavailable/i.test(text):
  [403,404,410].includes(status)&&/NoSuchKey|AccessDenied|not found|404|403|410/i.test(text);
 return {unavailable:hostOK&&document.readyState==='complete'&&missing&&!media};
 """, [values['kind'], url])

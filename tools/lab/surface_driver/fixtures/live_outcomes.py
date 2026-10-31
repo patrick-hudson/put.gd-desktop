@@ -12,19 +12,30 @@ from .base import Fixture
 
 
 def key_set_two(text):
-    """Select the second explicitly labelled pair, retaining shared bucket settings.
+    """Select the sole bare AWS pair before other providers; settings are set 1's.
 
-    No value, fragment, fingerprint or parser exception may enter evidence.
-    The builder input has two Access key ID sections; duplicate/missing fields
-    are rejected by the bridge parser rather than guessed.
+    Labels after the provider boundary are unrelated credentials. Never report
+    input values, fragments, fingerprints or parser exceptions in evidence.
     """
     from tools.lab import provision_live_credentials as bridge
-    starts = list(re.finditer(r'(?im)^\s*Access key ID\s*:', text))
-    if len(starts) != 2:
-        raise RecipeBlocked('S3 input must contain exactly two labelled key sets')
-    first = bridge.parse_s3_credentials(text[starts[0].start():starts[1].start()])
-    second = bridge.parse_s3_credentials(text[starts[1].start():])
-    return dict(credentials=second['credentials'], settings={**first['settings'], **second['settings']})
+    if not isinstance(text, str) or '\0' in text or len(text.encode()) > bridge.MAX_CREDENTIAL_FILE:
+        raise RecipeBlocked('S3 credential input has an invalid shape')
+    boundary = re.search(r'(?im)^.*\b(?:Backblaze|Cloudflare)\b.*$', text)
+    aws = text[:boundary.start()] if boundary else text
+    pairs = list(re.finditer(r'(?m)^[ \t]*(AKIA[A-Z0-9]{16})[ \t]+([^\s]+)[ \t]*$', aws))
+    if len(pairs) != 1 or len(pairs[0][2]) != 40:
+        raise RecipeBlocked('S3 input must contain exactly one bare AWS key set 2 before other providers')
+    first_block = re.sub(r'(?im)^(\s*)AWS Region ID\s*:', r'\1Region:', aws[:pairs[0].start()])
+    if len(re.findall(r'(?im)^\s*Access key ID\s*:', first_block)) != 1:
+        raise RecipeBlocked('S3 shared settings require exactly one labelled set 1 block')
+    try:
+        first = bridge.parse_s3_credentials(first_block)
+    except Exception:
+        raise RecipeBlocked('S3 labelled set 1 settings could not be parsed') from None
+    if not first['settings'].get('bucket') or not first['settings'].get('region'):
+        raise RecipeBlocked('S3 labelled set 1 must specify bucket and region')
+    return dict(credentials=dict(accessKey=pairs[0][1], secretKey=pairs[0][2], sessionToken=''),
+                settings=first['settings'])
 
 
 def admit(ctx):
@@ -120,22 +131,12 @@ def provider(scope):
         # Only AWS S3 is authorized here. Do not infer a custom endpoint.
         if settings.get('endpoint'):
             raise RecipeBlocked('Tier 1 AWS S3 requires the standard service endpoint')
-        session = boto3.Session(region_name=settings.get('region', 'us-east-1'))
-        bootstrap = session.client('s3', **options)
-        try:
-            try:
-                region = bootstrap.get_bucket_location(Bucket=settings['bucket'])['LocationConstraint'] or 'us-east-1'
-            except bootstrap.exceptions.ClientError as error:
-                # This is the provider preflight boundary. Never pass an SDK
-                # message/response (which may contain a credential or URL) to
-                # receipts, and never substitute another key set.
-                code = error.response.get('Error', {}).get('Code')
-                if code == 'InvalidAccessKeyId':
-                    raise RecipeBlocked('S3 key set 2 rejected by AWS: InvalidAccessKeyId; no upload attempted') from None
-                raise RecipeBlocked('S3 key set 2 read-only preflight failed; no upload attempted') from None
-        finally:
-            bootstrap.close()
-        region = 'eu-west-1' if region == 'EU' else region
+        # Set 1 supplies the authorized bucket's region. GetBucketLocation is
+        # unnecessary and can require a permission the acceptance key lacks.
+        region = settings['region']
+        if not re.fullmatch(r'[a-z]{2}(?:-gov)?-[a-z]+-[1-9][0-9]?', region):
+            raise RecipeBlocked('S3 shared region is not a standard AWS region identifier')
+        session = boto3.Session(region_name=region)
         client = session.client('s3', region_name=region, **options)
         scope.defer('independent S3 client', client.close)
         guest = proton_lab.Guest(ctx.target.run)

@@ -38,9 +38,10 @@ def _cleanup(ctx, detail):
         ctx.click('revokeHistoryLink', window='history')
         previous = ctx.profile.get('windows', {})
         # Ui::confirm is a QMessageBox (native role "alert"), whereas the
-        # S3 deletion preparation is a QDialog. Resolve the exact owned title
-        # without imposing the deletion dialog's incompatible role.
-        ctx.profile['windows'] = {**previous, 'confirmAction': {'title': '^Revoke share link$'}}
+        # S3 deletion preparation is a QDialog. Require this owned alert's
+        # exact title and accessible name instead of the generic dialog role.
+        ctx.profile['windows'] = {**previous, 'confirmAction': {'title': '^Revoke share link$',
+            'accessible': {'role': 'alert', 'name': 'Revoke share link'}}}
         try:
             history._wait_window(ctx, 'confirmAction')
             ctx.frame('revoke-exact-owned-link', window='confirmAction')
@@ -121,6 +122,7 @@ def _region_upload(ctx):
             owned = True
         ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
                    and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
+        ctx.note('upload_count=1')
         digest = _saved_digest(scope, detail['local']['path'])
         data = outcomes._payload(ctx, detail['local']['path'], 'png', digest)
         Image, _, _ = image_modules()
@@ -141,10 +143,10 @@ def _region_upload(ctx):
                     ctx.keys('Ctrl+L', 'Ctrl+V', 'Return')
                 opened = open_and_verify(ctx, paste, {'kind': ctx.destination, 'name': detail['name'], 'preview': True})
                 ctx.expect(opened['matched'] and opened['frames'], 'guarded Firefox displays the copied link')
-                if ctx.destination == 'proton':
-                    downloaded = live_download_digest(ctx)
-                    ctx.expect(downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
-                               'Proton recipient download SHA-256 equals saved file')
+                downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'])
+                ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
+                           'Firefox recipient original bytes SHA-256 equals saved file in guest')
+                ctx.note('browser_hash_match_count=1')
                 ctx.note('remote_hash_match_count=1')
                 # Cleanup is inside the browser guard: its URL stays only in
                 # the private Firefox memory for the fresh negative check.
@@ -153,6 +155,8 @@ def _region_upload(ctx):
                 service.pending['remote'] = False
                 if ctx.destination == 's3':
                     verify_s3(ctx, service, detail, absent=True)
+                ctx.click('windowClose', window='history')
+                ctx.focus('outcome-browser', raise_window=False)
                 ctx.expect(live_link_unavailable(ctx, ctx.destination)['unavailable'],
                            'fresh link navigation no longer resolves after UI cleanup')
                 ctx.note('unavailable_link_count=1')
