@@ -126,6 +126,7 @@ def _region_upload(ctx):
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
     service = provider(scope)
+    outcomes._clipboard_reader(scope)
     scene, oracle = outcomes._pattern(ctx)
     if ctx.destination == 's3':
         resolved = next(p for p in ctx.call('settings.get')['document']['profiles'] if p['id'] == service.profile_id)
@@ -153,6 +154,7 @@ def _region_upload(ctx):
                     ctx.note('upload_failure_code=s3_permission_denied')
         ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
                    and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
+        outcomes._auto_copy(ctx, scope, detail)
         ctx.note('upload_count=1')
         digest = _saved_digest(scope, detail['local']['path'])
         data = outcomes._payload(ctx, detail['local']['path'], 'png', digest)

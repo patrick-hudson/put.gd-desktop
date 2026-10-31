@@ -36,8 +36,10 @@ sys.path.insert(0, str(ROOT))
 FLOWS = dict(region_upload='Region', window_desktop='Window / desktop',
              recording_upload='Recording → upload', edit_upload='Edit → upload',
              link_browser='Link → browser', history_delete='History delete',
+             auto_copy='Auto-copy', upload_clipboard='Upload clipboard',
+             copy_image='Copy image', survives_exit='Survives exit',
              s3_region_upload='Live S3', proton_region_upload='Live Proton')
-LOCAL = list(FLOWS)[:6]
+LOCAL = [name for name in FLOWS if not name.startswith(('s3_', 'proton_'))]
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
 HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
 
@@ -545,16 +547,16 @@ def publish(github, result, out, *, previous=None):
             body += '\n'.join(f'- **{FLOWS[flow]}**: '+value['assertion'] for flow,value in failed)
             body += f'\n\n[Desktop receipt]({comment["html_url"]})'
             issue = github.issue(failure_title, body, existing)
+            github.api(f'repos/{github.repo}/issues/{issue["number"]}/labels', 'POST',
+                       dict(labels=['release-blocker']))
             row['issueUrl'] = issue['html_url']
         elif existing and existing['state'] == 'open' and all(v['status'] == 'green' for v in row['cells'].values()):
             github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
                 dict(body=f'All enabled flows recovered on `{result["release"]}`. [Receipt]({comment["html_url"]}).'))
-            if previous is None:
-                github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed', state_reason='completed'))
     if previous is not None:
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
-    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ not run (infrastructure; no issue) · — disabled.\n'
+    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · — disabled.\n'
     markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
     for row in result['desktops']:
         markdown += f'| {row["host"]} | {row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n'
