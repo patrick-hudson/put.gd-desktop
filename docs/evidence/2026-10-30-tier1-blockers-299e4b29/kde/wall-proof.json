@@ -1,0 +1,10 @@
+{
+  "placement": "boat",
+  "boat": "bx_9wsqs7ha",
+  "port": 5991,
+  "remotePort": 5920,
+  "unit": "putgd-t1-f299-kde",
+  "frame": "kde-through-tunnel.png",
+  "sha256": "1f1e6afd916e65f3f8cf2952502257c752f9e3359453b8dae1205a04db542e6d",
+  "timestamp": "2026-10-31T00:24:58.338322+00:00"
+}

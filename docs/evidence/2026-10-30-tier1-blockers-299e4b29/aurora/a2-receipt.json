@@ -1,0 +1,505 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "aurora-kde-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "aurora-kde-wayland",
+    "package": "appimage",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_v37dfm25",
+      "run_id": "ef6e7128-6c00-497e-85dd-78c24e9a6bdf",
+      "lab_profile": "aurora-kde-wayland",
+      "run_directory": "/home/user/t1/work/lab-runs/af299",
+      "session_root": "/tmp/sd-69c2cf18",
+      "socket": "/tmp/sd-69c2cf18/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "aurora-lab",
+      "kernel": "7.2.11-300.fc45.x86_64",
+      "machine": "x86_64",
+      "os": {
+        "ID": "aurora",
+        "VERSION_ID": "45",
+        "VARIANT_ID": "aurora"
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "wayland",
+      "pid": 2904,
+      "start": "7247",
+      "boot": "138406ff-540d-4d4f-81f4-76f5c5009028",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:50:01Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:50:01Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:50:29Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:50:29Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:50:56Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:51:22Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:51:22Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:51:22Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:51:52Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:51:52Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:52:23Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "fixture target command failed at destinations.py:62; fixture cleanup failed: synthetic KWallet: RecipeBlocked",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/01-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T00:52:23Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 17,
+    "pngs": 12,
+    "image_audit": "known-regions",
+    "findings": []
+  }
+}
