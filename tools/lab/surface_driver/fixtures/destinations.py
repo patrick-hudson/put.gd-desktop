@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..api import RecipeBlocked
 from .base import Fixture
-from .keyring import isolated_service, KWALLET_COLLECTION
+from .keyring import isolated_service
 
 # Query/return metadata only. Fake material is generated/read solely on target.
 KEYRING = '''import base64,json,os,secrets
@@ -18,8 +18,9 @@ import gi
 gi.require_version('Gio','2.0')
 from gi.repository import Gio,GLib
 bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+SERVICE_BUS='org.freedesktop.secrets'
 def call(path,iface,method,params,reply):
- return bus.call_sync('org.freedesktop.secrets',path,iface,method,params,GLib.VariantType(reply),Gio.DBusCallFlags.NONE,20000,None).unpack()
+ return bus.call_sync(SERVICE_BUS,path,iface,method,params,GLib.VariantType(reply),Gio.DBusCallFlags.NONE,20000,None).unpack()
 service='/org/freedesktop/secrets'
 '''
 
@@ -29,39 +30,20 @@ def fake_keyring(scope):
     if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
         raise RecipeBlocked('fake credential collection is restricted to a disposable nested guest',issue=666)
     scope.initialize()
-    kwallet = False
+    bus_name='org.freedesktop.secrets'
     if ctx.profile.get('compositor',{}).get('kind')=='kwin-script':
-        kwallet = isolated_service(scope).get('provider') == 'ksecretd'
-    label = 'putgdfixture'+scope.token if kwallet else 'putgd fixture '+scope.token
-    if kwallet:
-        # Arm before pamOpen: a partially created wallet is still ours to
-        # retire. No existing collection, alias or daemon is changed.
-        scope.defer('synthetic KWallet', lambda: scope.python(KEYRING+'''
-import pwd
-p='/org/freedesktop/secrets/collection/'+LABEL
-collections=call(service,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Service','Collections')),'(v)')[0]
-if p in collections:
- assert call(service,'org.freedesktop.Secret.Service','ReadAlias',GLib.Variant('(s)',('default',)),'(o)')[0]!=p
- assert call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]==LABEL
- assert call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]=='/'
-assert LABEL not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
-salt=Path(pwd.getpwuid(os.getuid()).pw_dir).resolve(strict=True)/'.local/share/kwalletd'/(LABEL+'.salt')
-if salt.exists():
- assert not salt.is_symlink() and salt.stat().st_uid==os.getuid() and salt.stat().st_size==56
- salt.unlink()
-'''.replace('LABEL', repr(label))))
+        bus_name=isolated_service(scope)['bus_name']
+    program=KEYRING.replace("SERVICE_BUS='org.freedesktop.secrets'",'SERVICE_BUS='+repr(bus_name))
+    label='putgd fixture '+scope.token
     reference='putgd-lab-'+str(__import__('uuid').uuid4())
     path=scope.root+'/fake-input.json'
     scope.defer('fake credential input',lambda:scope.python('from pathlib import Path\nPath('+repr(path)+').unlink(missing_ok=True)'),priority=1000)
     # No default-alias mutation: QtKeychain's libsecret lookup searches the
     # unique reference in unlocked collections. Each item is explicitly owned.
-    create = KWALLET_COLLECTION if kwallet else '''
+    created=scope.json(program+'''
+session=call(service,'org.freedesktop.Secret.Service','OpenSession',GLib.Variant('(sv)',('plain',GLib.Variant('s',''))),'(vo)')[1]
 collection=call(service,'org.gnome.keyring.InternalUnsupportedGuiltRiddenInterface','CreateWithMasterPassword',
  GLib.Variant('(a{sv}(oayays))',({'org.freedesktop.Secret.Collection.Label':GLib.Variant('s',LABEL)},(session,b'',b'','text/plain'))),'(o)')[0]
-'''
-    created=scope.json((KEYRING+'''
-session=call(service,'org.freedesktop.Secret.Service','OpenSession',GLib.Variant('(sv)',('plain',GLib.Variant('s',''))),'(vo)')[1]
-'''+create+'''
 try:
  value={'accessKey':'SYNTHETIC'+secrets.token_hex(12),'secretKey':'synthetic-'+secrets.token_hex(24),'sessionToken':''}
  with open(os.open(PATH,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as f:json.dump(value,f)
@@ -75,9 +57,8 @@ except BaseException:
  call(collection,'org.freedesktop.Secret.Collection','Delete',None,'(o)')
  raise
 print(json.dumps({'collection':collection,'reference':REFERENCE}))
-''').replace('LABEL',repr(label)).replace('PATH',repr(path)).replace('REFERENCE',repr(reference)))
-    if not kwallet:
-        scope.defer('fake keyring collection',lambda:scope.python(KEYRING+'''
+'''.replace('LABEL',repr(label)).replace('PATH',repr(path)).replace('REFERENCE',repr(reference)))
+    scope.defer('fake keyring collection',lambda:scope.python(program+'''
 p=COLLECTION
 label=call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]
 assert label==LABEL

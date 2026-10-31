@@ -1,8 +1,8 @@
 """Guest-only Secret Service for synthetic KDE loopback credentials.
 
 No default KWallet, alias, real item or desktop identity is changed. An existing
-ksecretd keeps its name and serves one unique disposable blank wallet. Otherwise
-the distro GNOME daemon uses private storage and an exact process cleanup lease.
+ksecretd keeps its name and all its collections. The distro GNOME daemon uses
+private storage, a pinned unique bus connection and an exact cleanup lease.
 """
 from ..api import RecipeBlocked
 
@@ -27,17 +27,18 @@ def isolated_service(scope):
     ctx=scope.ctx
     if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
         raise RecipeBlocked('isolated Secret Service requires a disposable nested guest',issue=919)
-    owner = scope.json(OWNER)
-    if owner['owner']:
-        # Aurora already runs KWallet's Secret Service. Never replace it: a
-        # unique blank-password wallet can hold this guest's synthetic item.
-        if owner.get('provider') != 'ksecretd':
-            raise RecipeBlocked('isolated Secret Service refuses an already owned bus name; existing wallets are preserved',issue=919)
-        scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
-        return dict(owner, provider='ksecretd')
+    prior = scope.json(OWNER)
+    if prior['owner'] and prior.get('provider') != 'ksecretd':
+        raise RecipeBlocked('isolated Secret Service refuses an already owned bus name; existing wallets are preserved',issue=919)
     if ctx.shell('command -v gnome-keyring-daemon >/dev/null')['returncode']:
         raise RecipeBlocked('KDE fixture needs profiles/provision-probes.sh --keyring-overlay in the disposable overlay',issue=919)
     scope.initialize()
+    if prior['owner']:
+        def preserved():
+            if scope.json(OWNER) != prior:
+                raise RecipeBlocked('existing Secret Service owner changed; no existing wallet is modified',issue=955)
+        # After our daemon exits, before the private scope is removed.
+        scope.defer('preserved desktop Secret Service', preserved, priority=-100)
     root=scope.root+'/secret-service'
     from ..target import checked_socket
     checked_socket(root+'/control/control')
@@ -49,33 +50,49 @@ def isolated_service(scope):
                                        'XDG_CACHE_HOME':root+'/cache'},name='secret-service')
     def ready():
         owner=scope.json(OWNER)
+        if prior['owner']:
+            if owner != prior:
+                raise RecipeBlocked('desktop Secret Service owner changed; fixture refuses to proceed',issue=955)
+            # Modern ksecretd intentionally exports no pamOpen wallet API.
+            # GNOME's isolated daemon still exports its service on its unique
+            # connection when the well-known name is held. libsecret supports
+            # SECRET_SERVICE_BUS_NAME; bind only this resident to that exact,
+            # authenticated owned PID. The desktop keeps its real service/bus.
+            names=scope.json(UNIQUE_SERVICE.replace('IDENTITY',repr(identity)))
+            if len(names)>1:
+                raise RecipeBlocked('isolated Secret Service connection is ambiguous',issue=955)
+            return names[0] if names else None
         if owner['owner'] and owner['pid']!=identity['pid']:
             raise RecipeBlocked('Secret Service name was acquired by another process; no collection was created',issue=919)
-        return owner['pid']==identity['pid']
-    ctx.wait(ready,'owned isolated Secret Service',timeout=10)
-    # QtKeychain 0.15 has no QTKEYCHAIN_BACKEND override. Its unknown-version
-    # branch chooses libsecret. This hint belongs only to the private resident:
-    # XDG_CURRENT_DESKTOP=KDE and the real Wayland/KWin adapter remain intact.
-    scope.restart({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
-    return identity
+        return 'org.freedesktop.secrets' if owner['pid']==identity['pid'] else None
+    bus_name=ctx.wait(ready,'owned isolated Secret Service',timeout=10)
+    environment={'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''}
+    if prior['owner']:
+        environment['SECRET_SERVICE_BUS_NAME']=bus_name
+    scope.restart(environment)
+    return dict(identity,bus_name=bus_name)
 
 
-KWALLET_COLLECTION = '''
-import hashlib,pwd,time
-wallet=LABEL
-assert wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
-folder=Path(pwd.getpwuid(os.getuid()).pw_dir).resolve(strict=True)/'.local/share/kwalletd'
-assert folder.resolve()==folder
-folder.mkdir(mode=0o700,parents=True,exist_ok=True)
-assert folder.stat().st_uid==os.getuid()
-salt_path=folder/(wallet+'.salt')
-with open(os.open(salt_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as f:f.write(os.urandom(56))
-digest=hashlib.pbkdf2_hmac('sha512',b'',salt_path.read_bytes(),50000,dklen=56)
-call('/ksecretd','org.kde.KWallet','pamOpen',GLib.Variant('(sayi)',(wallet,digest,0)),'()')
-collection='/org/freedesktop/secrets/collection/'+wallet
-deadline=time.monotonic()+15
-while collection not in call(service,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Service','Collections')),'(v)')[0]:
- assert time.monotonic()<deadline,'synthetic KWallet did not appear'
- time.sleep(.2)
-assert not call(collection,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Locked')),'(v)')[0]
+UNIQUE_SERVICE = '''import json,os
+from pathlib import Path
+from gi.repository import Gio,GLib
+identity=IDENTITY
+p=Path('/proc')/str(identity['pid'])
+assert p.stat().st_uid==os.getuid()
+assert (p/'stat').read_text().rsplit(')',1)[1].split()[19]==identity['start']
+assert ('XDG_RUNTIME_DIR='+os.environ['XDG_RUNTIME_DIR']).encode() in (p/'environ').read_bytes().split(b'\\0')
+bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+def call(dest,path,iface,method,params,reply):
+ return bus.call_sync(dest,path,iface,method,params,GLib.VariantType(reply),Gio.DBusCallFlags.NO_AUTO_START,1000,None).unpack()[0]
+names=call('org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','ListNames',None,'(as)')
+found=[]
+for name in names:
+ if not name.startswith(':'):continue
+ try:
+  pid=call('org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','GetConnectionUnixProcessID',GLib.Variant('(s)',(name,)),'(u)')
+  if pid!=identity['pid']:continue
+  call(name,'/org/freedesktop/secrets','org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Service','Collections')),'(v)')
+  found.append(name)
+ except GLib.Error:pass
+print(json.dumps(found))
 '''

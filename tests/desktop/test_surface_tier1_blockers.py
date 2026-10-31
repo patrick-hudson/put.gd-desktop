@@ -137,11 +137,36 @@ class PlasmaProperties(unittest.TestCase):
                 exec(plasma.SCRIPT.split("\n",1)[1].rsplit('\nSD_PLASMA_A11Y',1)[0], {})
             self.assertEqual(values,dict(properties,IsEnabled=True))
 
-    def test_existing_ksecretd_is_never_replaced_or_stopped(self):
+    def keyring_scope(self, prior, current=None, names=None):
         scope=Mock();scope.ctx.placement='boat';scope.ctx.profile={'guest':'owned'}
-        scope.json.return_value=dict(owner=':1.7',pid=99,provider='ksecretd')
-        self.assertEqual(keyring.isolated_service(scope)['pid'],99)
-        scope.launch.assert_not_called();scope.stop.assert_not_called();scope.python.assert_not_called()
+        scope.root='/tmp/sd-unit/fixture';scope.ctx.shell.return_value={'returncode':0}
+        scope.launch.return_value={'pid':100,'start':'22'}
+        reads=iter([prior,current if current is not None else prior])
+        scope.json.side_effect=lambda code: next(reads) if code==keyring.OWNER else (names or [':1.100'])
+        scope.ctx.wait.side_effect=lambda ready,*a,**k:ready()
+        return scope
+
+    def test_existing_ksecretd_keeps_its_name_and_collections_while_private_client_is_pinned(self):
+        scope=self.keyring_scope(dict(owner=':1.7',pid=99,provider='ksecretd'))
+        self.assertEqual(keyring.isolated_service(scope)['bus_name'],':1.100')
+        scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':'',
+                                              'SECRET_SERVICE_BUS_NAME':':1.100'})
+        self.assertNotIn('--replace',scope.launch.call_args.args[0])
+        self.assertTrue(scope.launch.call_args.kwargs['environment']['XDG_DATA_HOME'].startswith(scope.root+'/'))
+        scope.stop.assert_not_called()
+
+    def test_owner_change_or_ambiguous_connection_refuses_private_client_restart(self):
+        prior=dict(owner=':1.7',pid=99,provider='ksecretd')
+        for scope in (self.keyring_scope(prior,dict(prior,owner=':1.8')),
+                      self.keyring_scope(prior,names=[':1.100',':1.101'])):
+            with self.assertRaises(RecipeBlocked):keyring.isolated_service(scope)
+            scope.restart.assert_not_called()
+
+    def test_unowned_service_keeps_existing_non_aurora_fixture_behaviour(self):
+        scope=self.keyring_scope(dict(owner=None,pid=None,provider=None),
+                                 dict(owner=':1.100',pid=100,provider='gnome-keyring-d'))
+        self.assertEqual(keyring.isolated_service(scope)['bus_name'],'org.freedesktop.secrets')
+        scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
 
 
 if __name__=='__main__':unittest.main()
