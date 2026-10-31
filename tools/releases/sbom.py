@@ -59,6 +59,13 @@ PROTON_BUNDLED = ('bundled-js', 'embedded-runtime')
 # range. Hash the package's actual files (including FFmpeg's compiled configure
 # string), and revoke the disposition if a formerly omitted tool is deployed.
 UNSHIPPED_TOOLS = {'ffmpeg': {'ffmpeg', 'ffprobe', 'ffplay', 'zmqsend'}, 'icu': {'genrb'}}
+# Qt's embedded HarfBuzz (#1055): the disposition covers HarfBuzz's experimental
+# WebAssembly shaper, which Qt's bundled build does not compile. Its scope hashes
+# the Qt libraries that embed HarfBuzz and is revoked by a shipped WAMR runtime or
+# by the shaper's WAMR import names (hb-wasm-api-list.hh) in those libraries.
+WASM_SHAPER_MARKERS = (b'font_glyph_to_string', b'buffer_contents_realloc', b'glyph_outline_free',
+                       b'feature_copy_contents', b'features_free', b'shape_plan_create', b'wasm_runtime_')
+WASM_RUNTIME_LIBRARY = re.compile(r'lib(?:iwasm|vmlib)\b.*')
 
 
 def sha256(path):
@@ -166,7 +173,7 @@ def npm_purl(name, version):
     return 'pkg:npm/' + quote(name, safe='/').replace('@', '%40', 1) + '@' + quote(version, safe='')
 
 
-def qt_embedded(module, entry):
+def qt_embedded(module, entry, properties=()):
     """Qt's own third-party code with a usable version (qt_attribution.json via bundled-components.json)."""
     lowered = re.sub(r'[^a-z0-9]+', '-', entry['name'].lower())
     version = entry.get('version') or ''
@@ -179,7 +186,7 @@ def qt_embedded(module, entry):
             if key == 'pcre2' and 'just-in-time' in lowered:
                 return None
             return component(key, version, generic_purl(key, version), 'bundled', cpes=cpes_for(cpe, version) if cpe else (),
-                             license=entry.get('license'), properties=[('putgd:embeddedIn', module)])
+                             license=entry.get('license'), properties=[('putgd:embeddedIn', module), *properties])
     return None
 
 
@@ -220,17 +227,21 @@ def proton_components(notices):
     return found
 
 
-def appimage_scope_properties(root, item):
-    identifier = item['id']
-    if identifier not in UNSHIPPED_TOOLS or not item.get('files'):
-        return []
+def files_digest(root, names):
     files = {}
-    for name in sorted(item['files']):
+    for name in sorted(names):
         path = root / name
         if not path.resolve().is_relative_to(root.resolve()) or not path.is_file():
             raise ValueError('Invalid disposition component file: ' + name)
         files[name] = sha256(path)
-    digest = hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return hashlib.sha256(json.dumps(files, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+
+def appimage_scope_properties(root, item):
+    identifier = item['id']
+    if identifier not in UNSHIPPED_TOOLS or not item.get('files'):
+        return []
+    digest = files_digest(root, item['files'])
     names = {path.name for path in root.rglob('*') if path.is_file()}
     absent = not names.intersection(UNSHIPPED_TOOLS[identifier])
     if identifier == 'icu':
@@ -239,6 +250,22 @@ def appimage_scope_properties(root, item):
         absent = absent and all(re.fullmatch(r'libicu(?:data|i18n|uc)\.so(?:\.[0-9]+)*', name)
                                 for name in names if name.startswith('libicu'))
     return [('putgd:filesSha256', digest), ('putgd:toolsAbsent', str(absent).lower())]
+
+
+def embedded_scope_properties(root, module, entry):
+    """Scope evidence for Qt's embedded HarfBuzz: the Qt source commit, the bytes of
+    the module's libraries that embed it, and the absence of the WebAssembly shaper."""
+    if 'harfbuzz' not in entry['name'].lower() or not entry.get('usedBy'):
+        return []
+    used = set(entry['usedBy'])
+    files = sorted(name for name in module.get('files', []) if Path(name).name in used)
+    if {Path(name).name for name in files} != used:
+        raise ValueError('Embedded HarfBuzz library missing from its Qt module: ' + ', '.join(sorted(used)))
+    digest = files_digest(root, files)
+    runtime = any(WASM_RUNTIME_LIBRARY.match(path.name) for path in root.rglob('*') if path.is_file())
+    shaper = any(marker in (root / name).read_bytes() for name in files for marker in WASM_SHAPER_MARKERS)
+    return [('putgd:commit', module['source']['commit']), ('putgd:filesSha256', digest),
+            ('putgd:toolsAbsent', str(not runtime and not shaper).lower())]
 
 
 def appimage_components(root):
@@ -262,7 +289,8 @@ def appimage_components(root):
                                license=item.get('license'), repository=(source.get('repository') or '').removesuffix('.git') or None,
                                commit=source.get('commit'), properties=appimage_scope_properties(root, item)))
         if key == 'qt':
-            found += [entry for entry in (qt_embedded(identifier, embedded) for embedded in item.get('embedded', [])) if entry]
+            found += [entry for entry in (qt_embedded(identifier, embedded, embedded_scope_properties(root, item, embedded))
+                                          for embedded in item.get('embedded', [])) if entry]
     found += aws_components(json.loads((root / 'usr/share/putgd/dependency-lock.json').read_text()))
     found += proton_components(root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt')
     return found
