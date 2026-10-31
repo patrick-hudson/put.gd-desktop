@@ -61,7 +61,10 @@ packages. Package/source remote snapshots were unchanged across the run.
 - The AppImage has **138** inventoried components, corresponding license texts,
   its combined-work GPL notice and matching AppStream expression. All installed
   files are owned by that inventory; no missing notice/provenance or wrong
-  license field was found in these exact bytes.
+  license field was found in these exact bytes. Sixty-two Ubuntu entries retain
+  `NOASSERTION` where their raw copyright cannot be safely mapped to SPDX; their
+  full copyright and common-license texts remain installed. This verifies the
+  materials and preserves the existing boundary on legal conclusions.
 - Complete AppImage source closure verifies, including codec and AppImage runtime
   sources. The curated export excludes private work/evidence/plans/credentials
   and verifies its per-file hashes and supplied identity.
