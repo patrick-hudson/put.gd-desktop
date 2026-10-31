@@ -2,8 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "description": [
     "Self-hosted Renovate (.github/workflows/renovate.yml; docs/ci.md, 'Dependency updates').",
-    "Renovate changes versions only. Its post-upgrade task, tools/maintenance/refresh_pins.py, re-derives the URLs, SHA-256s and commits that go with them.",
-    "Windows pins (the portable job's Qt, tools/ci/provision-portable-deps.sh) belong to the Windows rewrite and are not managed here."
+    "Renovate changes versions only. Its post-upgrade task, tools/maintenance/refresh_pins.py, re-derives the URLs, SHA-256s and commits that go with them."
   ],
   "extends": ["config:recommended"],
   "baseBranchPatterns": ["nightly"],
@@ -109,7 +108,7 @@
       "extractVersion": "^v(?<version>\\d+\\.\\d+\\.\\d+)$",
       "groupName": "Qt (AppImage)",
       "labels": ["dependencies", "area: packaging"],
-      "prBodyNotes": ["The AppImage bundles these official Qt binaries. Check that the online installer serves this version (the AppImage job installs it with aqt) and that the ICU in `buildInputs.icu` is still the one these binaries ship; `appimage_notices.py` fails the job when it is not. The Windows job's Qt is the Windows rewrite's and is not changed here."]
+      "prBodyNotes": ["The AppImage bundles these official Qt binaries. Check that the online installer serves this version (the AppImage job installs it with aqt) and that the ICU in `buildInputs.icu` is still the one these binaries ship; `appimage_notices.py` fails the job when it is not."]
     },
     {
       "description": "Qt's next minor or major release needs a decision, not a routine merge.",

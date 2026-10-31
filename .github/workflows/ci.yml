@@ -470,87 +470,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 tools/ci/cache_prune.py --repo "$GITHUB_REPOSITORY"
 
-  portable:
-    name: portable (${{ matrix.os }})
-    needs: changes
-    if: needs.changes.outputs.build == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2022]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          ref: ${{ inputs.release_tag || github.sha }}
-      - name: Enable long Git paths for Windows dependencies
-        if: runner.os == 'Windows'
-        shell: bash
-        run: git config --global core.longpaths true
-      - if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
-      - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
-        with:
-          version: '6.8.3'
-          cache: true
-      - name: Verify dependency cache contracts on this platform
-        shell: bash
-        run: python tests/ci/test_sdk_cache.py
-      - name: Identify exact dependency cache environment
-        id: sdk-key
-        shell: bash
-        run: python tools/ci/sdk_cache.py key --contract tools/ci/provision-portable-deps.sh
-      - name: Restore verified dependency prefix
-        id: sdk-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            build/sdk
-            build/sdk-cache.json
-          key: ${{ steps.sdk-key.outputs.key }}
-      - name: Verify restored dependency prefix
-        if: steps.sdk-cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: python tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
-      - name: Build QtKeychain and AWS SDK
-        if: steps.sdk-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          PYTHON=python PUTGD_SDK_JOBS="$(nproc 2>/dev/null || echo 2)" bash tools/ci/provision-portable-deps.sh
-          python tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
-      - name: Save verified dependency prefix
-        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            build/sdk
-            build/sdk-cache.json
-          key: ${{ steps.sdk-key.outputs.key }}
-      - name: Compile shared application
-        shell: bash
-        run: |
-          sdk_prefix="$PWD/build/sdk"
-          qt_prefix="$QT_ROOT_DIR"
-          if [ "$RUNNER_OS" = 'Windows' ]; then
-            sdk_prefix="$(cygpath -m "$sdk_prefix")"
-            qt_prefix="$(cygpath -m "$qt_prefix")"
-            export MSYS2_ARG_CONV_EXCL='-DCMAKE_PREFIX_PATH='
-          fi
-          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$sdk_prefix;$qt_prefix"
-          cmake --build --preset release --parallel "$(nproc 2>/dev/null || echo 2)"
-      - name: Preserve compiled build identity
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: build-identity-${{ matrix.os }}
-          path: |
-            build/release/build-identity/build-info.json
-            build/ci-sdk-environment.json
-            build/sdk-cache.json
-          if-no-files-found: warn
-          retention-days: 30
-
   packages:
     needs: changes
     if: needs.changes.outputs.packages == 'true'
@@ -592,7 +511,7 @@ jobs:
   ci:
     name: CI
     if: always()
-    needs: [changes, contracts, linux, portable, packages, pipewire]
+    needs: [changes, contracts, linux, packages, pipewire]
     runs-on: ubuntu-24.04
     steps:
       - name: Require every selected job
@@ -605,7 +524,6 @@ jobs:
           selected = needs['changes'].get('outputs', {})
           expected = {'changes': 'success', 'contracts': 'success',
                       'linux': 'success' if selected.get('build') == 'true' else 'skipped',
-                      'portable': 'success' if selected.get('build') == 'true' else 'skipped',
                       'packages': 'success' if selected.get('packages') == 'true' else 'skipped',
                       'pipewire': 'success' if selected.get('pipewire') == 'true' and selected.get('packages') != 'true' else 'skipped'}
           failed = False
