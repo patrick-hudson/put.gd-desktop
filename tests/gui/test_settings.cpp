@@ -939,6 +939,20 @@ private slots:
   auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["regionSelectionMode"]="live";doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
   PUTGD_TRY_COMPARE(mode->currentData().toString(),QString("live"));
  }
+ void recordingFrameRateLivesOnTheCapturePage(){
+  // #984: 30 (default) or 60 frames per second for new recordings, saved to the shared config.
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");tabs->setCurrentIndex(1);
+  auto* rate=window.findChild<QComboBox*>("recordingFrameRate");QVERIFY(rate);QVERIFY(tabs->widget(1)->isAncestorOf(rate));QVERIFY(!tabs->widget(0)->isAncestorOf(rate));
+  QCOMPARE(rate->count(),2);QCOMPARE(rate->itemText(0),QString("30 frames per second"));QCOMPARE(rate->itemText(1),QString("60 frames per second"));QCOMPARE(rate->currentData().toInt(),30);QCOMPARE(rate->accessibleName(),QString("Frame rate"));
+  auto* help=window.findChild<QToolButton*>("recordingFrameRateHelp");QVERIFY(help);QVERIFY(help->accessibleDescription().contains("can't keep up"));
+  // An untouched configuration keeps no key; choosing 60 writes it.
+  QVERIFY(!service.document()["preferences"].toObject().contains("recordingFrameRate"));
+  rate->setCurrentIndex(rate->findData(60));PUTGD_TRY_COMPARE(service.snapshot().recordingFrameRate,60);
+  QCOMPARE(service.document()["preferences"].toObject()["recordingFrameRate"].toInt(),60);
+  // A change made through the CLI/MCP path shows in the open window.
+  auto doc=service.document();auto prefs=doc["preferences"].toObject();prefs["recordingFrameRate"]=30;doc["preferences"]=prefs;QVERIFY(service.save(doc,service.revision()));
+  PUTGD_TRY_COMPARE(rate->currentData().toInt(),30);
+ }
  void captureDefaultAndExplicitExceptionPersistAcrossReopen(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.findChild<QTabWidget*>("settingsTabs")->setCurrentIndex(1);window.show();
   QVERIFY(!window.findChild<QComboBox*>("defaultCaptureOutput"));QVERIFY(!window.findChild<QComboBox*>("destinationClipboard"));auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(destination);const auto profileId=destination->currentData().toString();QVERIFY(!profileId.isEmpty());auto* local=window.findChild<QCheckBox*>("keepUploadCopies");QVERIFY(local);local->setChecked(true);PUTGD_TRY_VERIFY(service.snapshot().archive.keepUploads);QCOMPARE(service.snapshot().actions["region"].profileId,profileId);

@@ -372,6 +372,8 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         }
         if (disk && disk->available() / 3 < minimumBudgetBytes) { reply(diskSpaceError(*disk), {}); return; }
         if (auto error = host_.accept(s.op)) { reply(error, {}); return; }
+        // A request without a rate records at the one chosen in Settings (#984).
+        if (!params.contains("fps")) s.config.fps = s.op.settings.recordingFrameRate;
         // Stop before the admitted file limit, leaving room for finalization.
         s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
         s.budgetLimit = "max_file_bytes";

@@ -68,6 +68,10 @@ struct Settings {
     // preferences.regionSelectionMode (#629): live (default) keeps the desktop
     // updating under the selector; screenshot_first freezes every monitor first.
     QString regionSelectionMode = "live";
+    // preferences.recordingFrameRate (#984): 30 (default) or 60 frames per
+    // second for recordings that don't ask for a rate; the recorder may still
+    // lower it while a recording runs when the machine can't keep up.
+    int recordingFrameRate = 30;
     // preferences.appearance.theme (#60): system, dark or light.
     QString appearanceTheme = "system";
     bool notifications = true;

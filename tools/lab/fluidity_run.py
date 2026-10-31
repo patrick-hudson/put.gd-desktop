@@ -7,7 +7,7 @@ the session process like record_run.py, then:
 
   fluidity_run.py record --run DIR --build LABEL=PATH [--build ...] [--output NAME]
                          [--fps 60] [--seconds 10] [--target monitor|region] [--rect X,Y,W,H]
-                         [--rounds 1] [--real-data-home] [--kwin-entry LABEL ...]
+                         [--rounds 1] [--real-data-home] [--kwin-entry LABEL ...] [--env KEY=VALUE ...]
       Per round and build: shows the fluidity fixture (tools/lab/fluidity.py)
       full screen on --output, starts that build's resident with private
       config/data/state directories under --run (PUTGD_RECORD_DEBUG_LOG and
@@ -17,7 +17,10 @@ the session process like record_run.py, then:
       fluidity.analyze_clip and the fixture's frame ticks while the recording
       ran with fluidity.ticks_report. results.json under --run holds every
       number with build identities, encoder, acquisition, host load and the
-      recorder's debug-log frame counts.
+      recorder's debug-log frame counts and rate windows, and the machine's
+      CPU busy share while recording (/proc/stat). --env sets a variable for
+      the resident and its helper, for example LIBVA_DRIVER_NAME=none to take
+      the VA encoders away and record with software x264 (#984).
   fluidity_run.py select --run DIR --build LABEL=PATH [--build ...] [--input-socket PATH]
                          [--action region|record|edit] [--start X,Y] [--end X,Y] [--moves 300]
                          [--duration 1.0] [--rounds 3]
@@ -109,6 +112,11 @@ class Driver:
                         PUTGD_RECORD_KEEP_WORKING=str(self.run / 'working'))
         # Lab A/B switches such as PUTGD_RECORD_PIPEWIRE_TIMESTAMPS pass through to the helper.
         self.env.update({k: v for k, v in os.environ.items() if k.startswith('PUTGD_RECORD_') and k not in ('PUTGD_RECORD_KEEP_WORKING', 'PUTGD_RECORD_DEBUG_LOG')})
+        for spec in getattr(args, 'env', None) or []:
+            key, _, value = spec.partition('=')
+            if not key or not _:
+                raise RunError('--env needs KEY=VALUE')
+            self.env[key] = value
         if getattr(args, 'real_data_home', False):
             real = Path(os.environ['HOME']) / '.local/share/putgd'
             if real.exists():
@@ -297,6 +305,12 @@ class Driver:
                 continue
         return total if found else None
 
+    @staticmethod
+    def machine_ticks():
+        """(total, idle+iowait) clock ticks of the whole machine from /proc/stat."""
+        fields = [int(v) for v in Path('/proc/stat').read_text().split('\n', 1)[0].split()[1:9]]
+        return sum(fields), fields[3] + fields[4]
+
     def frame(self, name):
         """One frame of the host's loopback VNC tile as evidence (PNG under --run/frames)."""
         if not self.args.frames:
@@ -374,11 +388,15 @@ class Driver:
             tick_start = self.last_tick(ticks)
             compositor_before = self.cpu_ms('kwin_wayland|gnome-shell|cinnamon$|Xorg')
             helper_before = self.cpu_ms('putgd-record')
+            machine_before = self.machine_ticks()
             self.cli(build, 'recording.start', {'id': rid})
             time.sleep(a.seconds / 2)
             result['frame'] = self.frame('record-' + label)
             time.sleep(a.seconds / 2)
             progress = self.cli(build, 'recording.inspect', {'id': rid})
+            machine_after = self.machine_ticks()
+            if machine_after[0] > machine_before[0]:
+                result['machineBusy'] = round(1 - (machine_after[1] - machine_before[1]) / (machine_after[0] - machine_before[0]), 3)
             result['cpuMs'] = {'compositor': None if compositor_before is None else (self.cpu_ms('kwin_wayland|gnome-shell|cinnamon$|Xorg') or 0) - compositor_before,
                                'recorder': None if helper_before is None else (self.cpu_ms('putgd-record') or 0) - helper_before, 'seconds': a.seconds}
             stopped = self.cli(build, 'recording.stop', {'id': rid}, timeout=60)
@@ -404,7 +422,7 @@ class Driver:
                 except Exception as error:  # a clip the host cannot decode
                     result['clips'][name] = {'ok': False, 'error': str(error)}
         result['ticks'] = fluidity.ticks_report(str(ticks), 60, tick_start, tick_end) if ticks.is_file() else None
-        result['recorder'] = self.debug_lines(self.run / 'logs' / ('record-%s.log' % label), ('frames:', 'timestamps:', 'started with', 'pipeline:'))
+        result['recorder'] = self.debug_lines(self.run / 'logs' / ('record-%s.log' % label), ('frames:', 'timestamps:', 'started with', 'pipeline:', 'rate lowered'))
         result['recorderEnvironment'] = {k: v for k, v in os.environ.items() if k.startswith('PUTGD_RECORD_')}
         log('%s: %s' % (label, json.dumps({k: result['clips'].get('working', {}).get(k) for k in ('clipFps', 'distinctPerSecond', 'fluidFraction', 'longestStallMs', 'pairs')})))
         return result
@@ -562,6 +580,7 @@ def main(argv=None):
             p.add_argument('--real-data-home', action='store_true')
             p.add_argument('--kwin-entry', action='append', metavar='LABEL')
             p.add_argument('--static', action='store_true', help='record the idle desktop without the fixture (keepalive and duration check)')
+            p.add_argument('--env', action='append', metavar='KEY=VALUE', help='environment for the resident and its helper')
         else:
             p.add_argument('--input-socket')
             p.add_argument('--action', choices=('region', 'record', 'edit'), default='region', help='which drag-to-select to open')

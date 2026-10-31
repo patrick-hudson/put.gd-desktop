@@ -29,6 +29,7 @@ struct RecordingConfig {
     QString format = "mp4";  // mp4 | webm | gif | webp
     QString codec = "h264";  // mp4: h264 | h265; webm: vp9; gif/webp: empty
     int fps = 30;            // 1..60 capture rate; animations may export at a lower rate
+    bool adaptiveFps = true; // the helper may lower the capture rate when the machine can't keep up (#984)
     RecordingAudio audio;
     std::optional<int> maxEdge;  // explicit user downscale of the output's long edge
     qint64 budgetBytes = 0;      // set by the resident: stop before the admitted file limit
@@ -74,7 +75,7 @@ bool terminal(const QString& state);
 // Which session states accept which command; an invalid pair is recording_state.
 Error checkTransition(const QString& state, const QString& command);
 Error parseTarget(const QJsonValue&, RecordingTarget&);
-// Accepts {format, codec?, fps?, audio?: {system?, microphone?}, maxEdge?}.
+// Accepts {format, codec?, fps?, adaptiveFps?, audio?: {system?, microphone?}, maxEdge?}.
 Error parseConfig(const QJsonObject&, RecordingConfig&);
 // Applies setTrim/resetTrim/addMask/updateMask/removeMask atomically; on error
 // the edit is unchanged. Success advances the revision once.

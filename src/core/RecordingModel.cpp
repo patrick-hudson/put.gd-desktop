@@ -48,7 +48,7 @@ QString RecordingConfig::mime() const {
 }
 QString RecordingConfig::extension() const { return format; }
 QJsonObject RecordingConfig::toJson() const {
-    QJsonObject o{{"format", format}, {"codec", codec}, {"fps", fps},
+    QJsonObject o{{"format", format}, {"codec", codec}, {"fps", fps}, {"adaptiveFps", adaptiveFps},
         {"audio", QJsonObject{{"system", audio.system}, {"microphone", audio.microphone}}}, {"mime", mime()}};
     if (maxEdge) o["maxEdge"] = *maxEdge;
     if (budgetBytes > 0) o["budgetBytes"] = double(budgetBytes);
@@ -126,7 +126,7 @@ Error parseTarget(const QJsonValue& value, RecordingTarget& out) {
     return {};
 }
 Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
-    if (!knownKeys(params, {"format", "codec", "fps", "audio", "maxEdge"})) return invalid("Unknown recording configuration field");
+    if (!knownKeys(params, {"format", "codec", "fps", "adaptiveFps", "audio", "maxEdge"})) return invalid("Unknown recording configuration field");
     RecordingConfig config;
     config.format = params["format"].toString();
     if (!formats().contains(config.format)) return invalid("Format must be mp4, webm, gif or webp", "format");
@@ -139,6 +139,8 @@ Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
     qint64 fps = 30;
     if (params.contains("fps") && !integer(params["fps"], 1, 60, &fps)) return invalid("fps must be an integer from 1 to 60", "fps");
     config.fps = int(fps);
+    if (params.contains("adaptiveFps") && !params["adaptiveFps"].isBool()) return invalid("adaptiveFps must be a boolean", "adaptiveFps");
+    config.adaptiveFps = params["adaptiveFps"].toBool(true);
     if (params.contains("audio")) {
         if (!params["audio"].isObject() || !knownKeys(params["audio"].toObject(), {"system", "microphone"})) return invalid("audio takes system and microphone booleans", "audio");
         const auto audio = params["audio"].toObject();
