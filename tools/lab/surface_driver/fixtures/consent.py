@@ -3,8 +3,10 @@
 Profiles declare each desktop's consent behaviour under recording.consent:
 ``none`` (X11 capture reads the X server; no portal dialog may appear) or
 ``portal-dialog`` (the desktop's portal backend draws a dialog for every new
-ScreenCast Start until a restore token is accepted). Nothing here pre-grants
-through the permission store or replaces capture: the real pointer clicks the
+ScreenCast Start until a restore token is accepted). Native KDE/Mutter region
+and monitor capture expects no dialog; window targets still use the portal.
+Nothing here pre-grants through the permission store or replaces capture:
+the real pointer clicks the
 backend's accept button once, after the compositor witness proves the point.
 
 Ownership proof, from this fixture's own dbus-monitor filter and the compositor:
@@ -57,6 +59,17 @@ def policy(profile):
     if consent.get('kind') not in ('none', 'portal-dialog'):
         raise RecipeBlocked('profile recording.consent.kind must be none or portal-dialog', issue=ISSUE)
     return consent
+
+
+NATIVE_ACQUISITIONS = ('kde-screencast', 'mutter-screencast')
+
+
+def acquisition(capabilities, target=None):
+    """Window targets always use the portal on Wayland, even with native capture."""
+    selected = capabilities.get('acquisition', 'unknown')
+    if selected in NATIVE_ACQUISITIONS and (target or {}).get('kind') == 'window':
+        return 'portal'
+    return selected
 
 
 def records(text):
@@ -121,9 +134,10 @@ def decision(state, consent):
 
 class Watch:
     """Started before recording.prepare; observes only, never inputs."""
-    def __init__(self, scope, consent, log, baseline, offset):
+    def __init__(self, scope, consent, log, baseline, offset, acquisition=None):
         self.scope, self.ctx, self.consent = scope, scope.ctx, consent
         self.log, self.baseline, self.offset = log, baseline, offset
+        self.acquisition = acquisition
         self.clicked, self.dialog, self.refusals = False, None, []
         self.stable = None
 
@@ -147,9 +161,11 @@ def compositor_windows(ctx):
     return ctx._probe('compositor_windows', {'compositor': compositor})
 
 
-def start(scope):
+def start(scope, *, target=None, capabilities=None):
     """Attach the consent monitor (once per scope) and record a window baseline."""
     ctx = scope.ctx
+    selected = acquisition(capabilities if capabilities is not None else ctx.call('recording.capabilities'), target)
+    ctx.note('recording acquisition=' + selected)
     consent = policy(ctx.profile)
     monitor = scope.values.get('_portal_monitor')
     if monitor is None:
@@ -180,7 +196,7 @@ def start(scope):
         # A dialog the backend drew before this monitor could see its request
         # is never ours: refuse rather than guess which window belongs to whom.
         backend_idle(backend_pid(ctx, consent), windows)
-    return Watch(scope, consent, monitor['log'], baseline, len(records(text)))
+    return Watch(scope, consent, monitor['log'], baseline, len(records(text)), selected)
 
 
 def backend_idle(pid, windows):
@@ -370,6 +386,12 @@ def await_ready(scope, identity, watch, *, timeout=40):
     last = 'no ScreenCast portal request observed'
     while True:
         state = ctx.call('recording.inspect', {'id': identity})
+        portal = watch.state()
+        # Check before returning ready too: an already-answered dialog is still
+        # a violation of the native no-dialog path, never a consent success.
+        if getattr(watch, 'acquisition', None) in NATIVE_ACQUISITIONS and portal['ours']:
+            raise RecipeFailed('recording acquisition=' + watch.acquisition +
+                               ' unexpectedly requested the ScreenCast portal')
         if state.get('state') == 'ready':
             if watch.clicked:
                 answered = watch.state()['responses']
@@ -380,7 +402,7 @@ def await_ready(scope, identity, watch, *, timeout=40):
             code = (state.get('error') or {}).get('code') or state['state']
             raise RecipeFailed('recording prepare ended ' + state['state'] + ' (' + code + ')' +
                                (' after ScreenCast consent' if watch.clicked else ''))
-        kind, value = decision(watch.state(), watch.consent)
+        kind, value = decision(portal, watch.consent)
         if kind == 'blocked':
             raise RecipeBlocked('ScreenCast consent: ' + value, issue=ISSUE)
         if kind == 'answered':

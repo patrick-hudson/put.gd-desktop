@@ -144,6 +144,44 @@ class Ownership(unittest.TestCase):
             self.assertEqual(declared['kind'], 'none' if profile['session'] == 'x11' else 'portal-dialog', path.stem)
             self.assertTrue(declared['reason'])
 
+    def test_window_targets_keep_the_portal_when_native_capture_is_available(self):
+        for native in ('kde-screencast', 'mutter-screencast'):
+            caps = {'acquisition': native}
+            self.assertEqual(consent.acquisition(caps, {'kind': 'window'}), 'portal')
+            for kind in ('region', 'monitor', 'desktop'):
+                self.assertEqual(consent.acquisition(caps, {'kind': kind}), native)
+        self.assertEqual(consent.acquisition({'acquisition': 'x11'}, {'kind': 'window'}), 'x11')
+
+    def test_start_records_effective_acquisition_without_changing_portal_policy(self):
+        for kind, selected in (('region', 'kde-screencast'), ('window', 'portal')):
+            notes = []
+            ctx = SimpleNamespace(profile={'session': 'wayland', 'recording': {'consent': POLICY}},
+                                  call=lambda method: {'acquisition': 'kde-screencast'},
+                                  shell=lambda script: {'stdout': ''}, note=notes.append)
+            scope = SimpleNamespace(ctx=ctx, values={'_portal_monitor': {'log': '/private/monitor'}})
+            watch = consent.start(scope, target={'kind': kind})
+            self.assertEqual(watch.acquisition, selected)
+            self.assertEqual(watch.consent, POLICY)
+            self.assertEqual(notes, ['recording acquisition=' + selected])
+
+    def test_native_ready_needs_no_dialog_and_never_drives_one(self):
+        for acquisition in ('kde-screencast', 'mutter-screencast'):
+            with self.subTest(acquisition=acquisition):
+                scope = SimpleNamespace(ctx=SimpleNamespace(call=lambda m, p: {'state': 'ready'}))
+                watch = SimpleNamespace(clicked=False, acquisition=acquisition, consent=POLICY,
+                                        state=lambda: consent.analyse([]))
+                with patch.object(consent, 'drive', side_effect=AssertionError('native consent click')):
+                    self.assertEqual(consent.await_ready(scope, 'rec', watch)['state'], 'ready')
+                    # Even a ready session with an already-answered portal
+                    # request violates the native no-dialog contract.
+                    for state in ('preparing', 'ready'):
+                        scope.ctx.call = lambda m, p: {'state': state}
+                        for rows in ([public_start(), impl_start()],
+                                     [public_start(), impl_start(), response()]):
+                            watch.state = lambda: consent.analyse(rows)
+                            with self.assertRaisesRegex(RecipeFailed, 'unexpected.*ScreenCast portal'):
+                                consent.await_ready(scope, 'rec', watch, timeout=0)
+
 
 class ProbeQuery(unittest.TestCase):
     def test_coordinates_is_a_placement_input_not_a_row_filter(self):
