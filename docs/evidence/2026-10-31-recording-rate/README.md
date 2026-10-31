@@ -48,4 +48,3 @@ What these runs show:
 - f44 (the issue's GNOME case) was not measured: it was held by `codex-stable-ui` and loaded by another session's podman builds the whole time.
 
 Raw results: `~/putgd-lab/rr984/` on aurora-amd and m74 (`results.json`, `logs/record-*.log` with the `rate window` lines, `logs/ticks-*.log`).
-
