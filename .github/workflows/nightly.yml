@@ -202,7 +202,7 @@ jobs:
           done
           aws s3 cp build/surface-map/map.json "s3://$MAP_BUCKET/map.json" \
             --cache-control "public, max-age=300" --content-type "application/json"
-          aws cloudfront create-invalidation --distribution-id "$MAP_DISTRIBUTION_ID" --paths "/" "/index.html" "/map.json" "/404.html"
+          aws cloudfront create-invalidation --distribution-id "$MAP_DISTRIBUTION_ID" --paths "/*"
           echo "Published the surface map for \`$TAG\` to https://map.put.gd/." >> "$GITHUB_STEP_SUMMARY"
       - name: Retain the rendered map
         if: always()

@@ -20,9 +20,9 @@ A systemd user timer on one lab builder runs `pkgrepo.py run`. Each run:
    repodata is unsigned because GNOME Software's dnf5daemon on Fedora 44 can't
    load a repo with repo_gpgcheck=1 (#293). The receipt maps each GitHub RPM
    digest to the signed one;
-5. uploads packages, then indexes, then the signed metadata, invalidates what
-   changed, reads InRelease and repomd.xml back through the CDN, and only then
-   writes the update feed, so the feed never names a version apt or dnf cannot
+5. uploads packages, then indexes, then the signed metadata, waits for cached
+   metadata to expire and reads InRelease and repomd.xml back through the CDN,
+   and only then writes the update feed, so the feed never names a version apt or dnf cannot
    fetch;
 6. leaves a receipt, locally and at receipts/<tag>.json.
 
@@ -73,7 +73,7 @@ MAX_ZSYNC = 16 * 1024 * 1024
 SAFE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._+~-]{0,199}$')
 HEX64 = re.compile(r'^[0-9a-f]{64}$')
 IMMUTABLE = 'public, max-age=31536000, immutable'
-SHORT = 'public, max-age=300'
+SHORT = 'public, max-age=60, must-revalidate'
 TOP_METADATA = {'InRelease', 'Release', 'Release.gpg', 'repomd.xml', 'repomd.xml.asc'}
 MAX_JSON = 64 * 1024 * 1024
 MAX_PACKAGE = 512 * 1024 * 1024
@@ -661,7 +661,7 @@ class Publisher:
         temporary.replace(self.state_path)
 
     def upload(self, tree, phases, receipt):
-        """Upload every changed file of these phases; returns the keys that need invalidating."""
+        """Upload every changed file of these phases; returns changed mutable keys."""
         files = tree_files(tree)
         changed = []
         for relative, path in sorted(files.items(), key=lambda item: (phase(item[0]), item[0])):
@@ -669,12 +669,18 @@ class Publisher:
                 continue
             key = self.prefix + relative
             digest = sha256_file(path)
-            if self.state['objects'].get(key) == digest:
+            policy = cache_control(key)
+            policies = self.state.setdefault('cache_control', {})
+            # Migrate existing mutable objects to the short TTL even if their bytes
+            # are unchanged. Record each successful header update for safe retries.
+            if self.state['objects'].get(key) == digest and (
+                    policy == IMMUTABLE or policies.get(key) == policy):
                 continue
             with open(path, 'rb') as body:
                 self.s3.put_object(Bucket=self.config.bucket, Key=key, Body=body, ContentType=content_type(key),
                                    CacheControl=cache_control(key))
             self.state['objects'][key] = digest
+            policies[key] = policy
             self.state['pending'].pop(key, None)
             self.save()
             receipt['s3']['uploaded'].append({'key': key, 'sha256': digest})
@@ -692,29 +698,11 @@ class Publisher:
         for key in due:
             self.s3.delete_object(Bucket=self.config.bucket, Key=key)
             self.state['objects'].pop(key, None)
+            self.state.get('cache_control', {}).pop(key, None)
             self.state['pending'].pop(key)
             receipt['s3']['deleted'].append(key)
         self.save()
         return due
-
-    def invalidate(self, keys, receipt, distributions=None):
-        if not keys:
-            return
-        paths = sorted({'/' + key for key in keys})
-        for distribution in distributions or [self.config.distribution]:
-            for start in range(0, len(paths), 1000):
-                batch = paths[start:start + 1000]
-                reference = f'putgd-signer-{int(self.clock() * 1000)}-{start}'
-                answer = self.cloudfront.create_invalidation(DistributionId=distribution, InvalidationBatch={
-                    'Paths': {'Quantity': len(batch), 'Items': batch}, 'CallerReference': reference})
-                identifier = answer['Invalidation']['Id']
-                receipt['invalidations'].append({'distribution': distribution, 'id': identifier, 'paths': len(batch)})
-                deadline = self.clock() + self.config.invalidation_timeout
-                while self.cloudfront.get_invalidation(DistributionId=distribution, Id=identifier)[
-                        'Invalidation']['Status'] != 'Completed':
-                    if self.clock() > deadline:
-                        raise SignerError('Invalidation did not complete: ' + identifier)
-                    self.sleep(10)
 
     def readback(self, tree, relatives, receipt):
         """Fetch each file through the CDN until it matches the local bytes."""
@@ -901,17 +889,14 @@ class Signer:
                                           'key': 'nightly'})
 
     def publish(self, scope, workspace, receipt, readback=()):
-        """Upload, invalidate, read back, then the feed and receipt; swap the workspace in on success."""
+        """Upload, read back after cache expiry, then the feed and receipt; swap the workspace in on success."""
         s3, cloudfront = self.clients()
         publisher = Publisher(self.config, scope, workspace.channel, s3, cloudfront, http=self.http)
-        changed = publisher.upload(workspace.tree, {0, 1, 2, 3}, receipt)
-        publisher.invalidate(changed, receipt)
+        publisher.upload(workspace.tree, {0, 1, 2, 3}, receipt)
         publisher.readback(workspace.tree, readback_files(workspace) + list(readback), receipt)
-        feed_keys = publisher.upload(workspace.tree, {4}, receipt)
-        feed_distributions = [self.config.distribution] + (self.config.feed_distributions if scope == 'live' else [])
-        # The feed and the .zsync permalink are also served by app.put.gd.
-        publisher.invalidate([key for key in feed_keys if '/update/' in '/' + key or '/dl/' in '/' + key], receipt,
-                             feed_distributions)
+        # The existing readback deadline also covers the previous five-minute TTL
+        # during migration. Never advance the feed before CDN metadata matches.
+        publisher.upload(workspace.tree, {4}, receipt)
         feed = workspace.tree / 'update' / 'v1' / f'{workspace.channel}.json'
         if feed.exists():
             receipt['feed'] = {'key': SCOPES[scope] + f'update/v1/{workspace.channel}.json', 'sha256': sha256_file(feed)}
