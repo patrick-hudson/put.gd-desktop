@@ -87,6 +87,10 @@ def _setup(scope, profile_id, kind, extra=None):
                    expectedRevision=current['metadata']['observedRevision'], **(extra or {})))
     result = ctx.wait(lambda: (v if (v := ctx.call('setup.inspect', {'id': job['setupId']}))['state'] != 'running' else None),
                       'live destination setup settled', timeout=180)
+    if result['state'] != 'completed':
+        code = result.get('error', {}).get('code', '')
+        if re.fullmatch(r'[a-z][a-z0-9_]{0,79}', code):
+            ctx.note('setup_failure_code='+code)
     ctx.expect(result['state'] == 'completed', 'live setup.'+kind+' completed')
     return result.get('result', {})
 
@@ -153,7 +157,7 @@ def provider(scope):
         bridge._update_receipt(receipt, state, state='import_confirmed')
         provider_settings = json.loads((Path(__file__).resolve().parents[4]/'config/development.example.json').read_text())['profiles'][0]['settings']
         provider_settings.update(bucket=settings['bucket'], region=region, endpoint='https://s3.'+region+'.amazonaws.com',
-                                 objectPrefix=prefix, publicUrlBase=None, aclMode='public-read', addressing='auto')
+                                 objectPrefix=prefix, publicUrlBase=None, aclMode='omit', addressing='auto')
         fixture.update(client=client, bucket=settings['bucket'], region=region)
         provider_name = 's3'
     else:
@@ -166,6 +170,8 @@ def provider(scope):
     profile = dict(id=profile_id, label='Tier 1 isolated live destination', provider=provider_name,
                    settings=provider_settings, credentials=dict(mode='keychain', reference=reference))
     scope.patch({'profiles': [profile]})
+    if ctx.destination == 's3':
+        _setup(scope, profile_id, 'unlockCredentials')
     if ctx.destination == 'proton':
         account = _setup(scope, profile_id, 'inspectAccount')
         profile['settings']['accountRootUid'] = account['accountRootUid']
@@ -175,9 +181,12 @@ def provider(scope):
         fixture['folder_uid'] = folder['uid']
         scope.patch({'profiles': [profile]})
     fixture['credential_reference'] = reference
-    checked = _setup(scope, profile_id, 'testDestination')
-    ctx.expect(checked.get('testScope') == 'account-folder' if ctx.destination == 'proton' else bool(checked),
-               'live destination read-only connection check completed')
+    if ctx.destination == 'proton':
+        checked = _setup(scope, profile_id, 'testDestination')
+        ctx.expect(checked.get('testScope') == 'account-folder', 'Proton account-folder connection check completed')
+    # S3 testDestination publishes its own synthetic/multipart probes and
+    # deletes them outside History. This lane instead tests its real capture
+    # and verifies only that exact object with HEAD/GET and History deletion.
     scope.patch({'actions': {name: dict(destination='upload', profileId=profile_id, publicationMode='share', shortcut='')
                              for name in ('region', 'window', 'desktop', 'edit', 'record')},
                  'archive': {'keepUploads': True}})
@@ -211,3 +220,26 @@ def verify_s3(ctx, fixture, detail, data=None, *, absent=False):
         with fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'] as body:
             remote = body.read(len(data)+1)
         ctx.expect(hashlib.sha256(remote).digest() == hashlib.sha256(data).digest(), 'S3 GET SHA-256 equals saved file')
+
+
+def reconcile_refused_s3(ctx, fixture, op, detail):
+    """Clear pending only for one definitive Put refusal plus exact-key GET 404."""
+    items = op.get('items', [])
+    if detail.get('uploadStatus') != 'failed' or len(items) != 1:
+        return False
+    item = items[0]
+    error = item.get('error', {})
+    wire = error.get('details', {})
+    if (error.get('code') != 's3_permission_denied' or wire.get('requestStage') != 'upload_put'
+            or wire.get('httpStatus') != 403):
+        return False
+    key = item.get('objectReference', {}).get('key', '')
+    ctx.expect(bool(key) and key.startswith(fixture.prefix) and key == fixture.prefix+item.get('candidate', ''),
+               'refused Put key belongs to this exact new prefix and candidate')
+    try:
+        fixture.client.get_object(Bucket=fixture.bucket, Key=key)['Body'].close()
+    except fixture.client.exceptions.NoSuchKey:
+        fixture.pending['remote'] = False
+        ctx.note('failed_upload_absence_count=1')
+        return True
+    ctx.expect(False, 'refused Put still has a remote object; preserve its row and credential')

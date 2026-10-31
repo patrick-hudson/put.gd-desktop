@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.fixtures.base import Fixture
-from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3
+from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3, reconcile_refused_s3
 from tools.lab.surface_driver.run import discover, validate_recipes
 from tools.lab.surface_driver.recipes import outcomes_live
 
@@ -61,18 +61,35 @@ class LiveOutcomes(unittest.TestCase):
             self.assertIn('region.to-upload',r.interactions)
             self.assertIn('confirm.history-delete' if r.destinations==('s3',) else 'confirm.revoke-link',r.interactions)
 
+    def test_refused_put_cannot_clear_pending_without_owned_key_and_get_404(self):
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        class Missing(Exception):pass
+        client=Mock();client.exceptions.NoSuchKey=Missing
+        fx=Fixture(client=client,bucket='synthetic',prefix='owned/',pending={'remote':True})
+        ctx=SimpleNamespace(expect=expect,note=Mock())
+        item=dict(error={'code':'s3_permission_denied','details':{'httpStatus':403,'requestStage':'upload_put'}},
+                  candidate='capture.png',objectReference={'key':'foreign/capture.png'})
+        with self.assertRaises(RecipeFailed):reconcile_refused_s3(ctx,fx,{'items':[item]},{'uploadStatus':'failed'})
+        client.get_object.assert_not_called();self.assertTrue(fx.pending['remote'])
+        item['objectReference']['key']='owned/capture.png';client.get_object.side_effect=Missing()
+        self.assertTrue(reconcile_refused_s3(ctx,fx,{'items':[item]},{'uploadStatus':'failed'}))
+        self.assertFalse(fx.pending['remote']);ctx.note.assert_called_once_with('failed_upload_absence_count=1')
+
     def test_proton_revoke_uses_message_box_geometry_and_restores_profile(self):
         previous={'confirmAction':{'accessible':{'role':'dialog'}}}
-        ctx=SimpleNamespace(destination='proton',profile={'windows':previous},click=Mock(),frame=Mock(),note=Mock(),
+        ctx=SimpleNamespace(destination='proton',profile={'windows':previous},click=Mock(),focus=Mock(),scroll=Mock(),
+                            geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),frame=Mock(),note=Mock(),
                             wait=lambda fn,*a,**kw:fn(),call=lambda *a,**kw:{'shareStatus':'revoked','linkAvailable':False},
                             expect=lambda ok,note:self.assertTrue(ok,note))
         def observed(*args):
             spec=ctx.profile['windows']['confirmAction']
-            self.assertEqual(spec['accessible'],{'role':'alert','name':'Revoke share link'})
+            self.assertEqual(spec['accessible'],{'role':'alert'})
             self.assertEqual(spec['title'],'^Revoke share link$')
         with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window',side_effect=observed),patch.object(outcomes_live.history,'_confirm_button'):
             outcomes_live._cleanup(ctx,{'id':'owned-history'})
         self.assertIs(ctx.profile['windows'],previous)
+        ctx.click.assert_any_call('text:Revoke link…',window='history')
         ctx.note.assert_called_once_with('revocation_count=1')
 
     def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
@@ -128,17 +145,23 @@ class LiveOutcomes(unittest.TestCase):
             client=Mock()
             def receive(*a,**kw):
                 (downloads/'received.png').write_bytes(b'\x89PNG\r\n\x1a\nwrong bytes')
-                return True
+                return {'element-6066-11e4-a52e-4f735466cecf':'synthetic-control'}
             client.script.side_effect=receive
             args=dict(directory=str(state),port=1,kind='proton',saved_path=str(saved),app_root=str(app))
             with patch.object(browser,'_Marionette',return_value=client),patch.object(browser.subprocess,'run',return_value=SimpleNamespace(stdout='tmpfs\n')):
                 result=browser._target('download-digest',args)
                 self.assertFalse(result['matches'])
                 self.assertEqual(set(result),{'bytes','sha256','matches'})
+                client.call.assert_any_call('WebDriver:ElementClick',{'id':'synthetic-control'})
                 for path in (foreign,link):
-                    (downloads/'received.png').unlink()
+                    (downloads/'received.png').unlink(missing_ok=True)
                     with self.assertRaises(browser._TargetError):
                         browser._target('download-digest',dict(args,saved_path=str(path)))
+                client.script.side_effect=None
+                for digest,matched in ((hashlib.sha256(saved.read_bytes()).hexdigest(),True),('0'*64,False)):
+                    client.script.return_value={'bytes':saved.stat().st_size,'sha256':digest}
+                    result=browser._target('download-digest',dict(args,kind='s3'))
+                    self.assertEqual(result['matches'],matched)
 
 
 if __name__=='__main__':unittest.main()

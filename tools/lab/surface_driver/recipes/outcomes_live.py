@@ -10,7 +10,7 @@ import sys
 from ..api import recipe
 from ..browser import default_browser, open_and_verify, live_download_digest, live_link_unavailable
 from ..catalog import image_modules
-from ..fixtures.live_outcomes import provider, verify_s3
+from ..fixtures.live_outcomes import provider, verify_s3, reconcile_refused_s3
 from . import history, outcomes, selectors
 
 
@@ -34,14 +34,22 @@ def _owned(ctx, service, detail, oid):
 def _cleanup(ctx, detail):
     """Reuse #687's exact-row UI deletion; Proton uses its supported revoke UI."""
     outcomes._history(ctx, detail)
+    ctx.focus('history', raise_window=ctx.profile.get('session') == 'x11')
+    box = ctx.geometry('history')
+    # The remote actions live below the preview in the inspector. Scroll its
+    # right side with guarded real input; older Qt does not export its ID.
+    ctx.scroll(round(box['x']+.9*box['width']), round(box['y']+.6*box['height']), -16, head=box.get('head', 0))
+    ctx.frame('history-before-remote-cleanup', window='history')
     if ctx.destination == 'proton':
-        ctx.click('revokeHistoryLink', window='history')
+        # Qt 6.4 does not publish objectName, and the pinned S3 catalog has
+        # no Proton button. Bind the real owned button by its exact caption.
+        ctx.click('text:Revoke link…', window='history')
         previous = ctx.profile.get('windows', {})
         # Ui::confirm is a QMessageBox (native role "alert"), whereas the
         # S3 deletion preparation is a QDialog. Require this owned alert's
-        # exact title and accessible name instead of the generic dialog role.
+        # exact native title and alert role instead of the generic dialog role.
         ctx.profile['windows'] = {**previous, 'confirmAction': {'title': '^Revoke share link$',
-            'accessible': {'role': 'alert', 'name': 'Revoke share link'}}}
+            'accessible': {'role': 'alert'}}}
         try:
             history._wait_window(ctx, 'confirmAction')
             ctx.frame('revoke-exact-owned-link', window='confirmAction')
@@ -118,8 +126,14 @@ def _region_upload(ctx):
             oid = selectors._open_region(ctx, accessible=False)
             ctx.drag(rect[:2], rect[2:])
             op, detail = _published(ctx, oid, service.pending)
-            _owned(ctx, service, detail, oid)
-            owned = True
+            if detail.get('uploadStatus') == 'uploaded':
+                _owned(ctx, service, detail, oid)
+                owned = True
+            elif ctx.destination == 's3':
+                reconcile_refused_s3(ctx, service, op, detail)
+                code = detail.get('error', {}).get('code', '')
+                if code == 's3_permission_denied':
+                    ctx.note('upload_failure_code=s3_permission_denied')
         ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
                    and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
         ctx.note('upload_count=1')
@@ -140,16 +154,25 @@ def _region_upload(ctx):
                 ctx.expect(ctx.clipboard_text() == detail['receipt']['directUrl'], 'UI copied exact uploaded share link')
                 ctx.click('windowClose', window='history')
                 def paste():
-                    ctx.focus('outcome-browser', raise_window=False)
+                    ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
                     ctx.keys('Ctrl+L', 'Ctrl+V', 'Return')
-                opened = open_and_verify(ctx, paste, {'kind': ctx.destination, 'name': detail['name'], 'preview': True})
-                ctx.expect(opened['matched'] and opened['frames'], 'guarded Firefox displays the copied link')
-                downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'])
-                ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
-                           'Firefox recipient original bytes SHA-256 equals saved file in guest')
-                ctx.note('browser_hash_match_count=1')
-                if ctx.destination == 'proton':
-                    ctx.note('remote_hash_match_count=1')
+                browser_error = None
+                try:
+                    opened = open_and_verify(ctx, paste, {'kind': ctx.destination, 'name': detail['name'], 'preview': True})
+                    ctx.expect(opened['matched'] and opened['frames'], 'guarded Firefox displays the copied link')
+                    try:
+                        downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'])
+                    except RuntimeError as error:
+                        # The helper emits only our static, allowlisted errors.
+                        ctx.note(str(error))
+                        raise
+                    ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
+                               'Firefox recipient original bytes SHA-256 equals saved file in guest')
+                    ctx.note('browser_hash_match_count=1')
+                    if ctx.destination == 'proton':
+                        ctx.note('remote_hash_match_count=1')
+                except Exception as error:
+                    browser_error = error
                 # Cleanup is inside the browser guard: its URL stays only in
                 # the private Firefox memory for the fresh negative check.
                 _cleanup(ctx, detail)
@@ -158,10 +181,11 @@ def _region_upload(ctx):
                 if ctx.destination == 's3':
                     verify_s3(ctx, service, detail, absent=True)
                 ctx.click('windowClose', window='history')
-                ctx.focus('outcome-browser', raise_window=False)
                 ctx.expect(live_link_unavailable(ctx, ctx.destination)['unavailable'],
                            'fresh link navigation no longer resolves after UI cleanup')
                 ctx.note('unavailable_link_count=1')
+                if browser_error is not None:
+                    raise browser_error
             finally:
                 ctx.profile['windows'] = previous
     finally:
@@ -171,7 +195,7 @@ def _region_upload(ctx):
                 _cleanup(ctx, detail)
                 service.pending['remote'] = False
             except Exception as error:
-                ctx.review('live UI cleanup failed: '+type(error).__name__)
+                ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
                 if not failed:
                     raise
 

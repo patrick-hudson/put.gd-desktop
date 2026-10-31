@@ -306,6 +306,7 @@ def live_link_unavailable(ctx, kind):
     active = _ACTIVE[id(ctx)]
     result = _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=160)
     if result.get('unavailable'):
+        ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
         ctx.frame('browser-link-unavailable', window=None, desktop_safe=KIOSK_SAFE)
     return result
 
@@ -1055,6 +1056,19 @@ def _observe(client, expect):
     return {'pending': reason} if reason else {}
 
 
+def _live_saved_capture(values):
+    saved = Path(values['saved_path'])
+    root = Path(values['app_root'])
+    if saved.is_symlink() or not saved.resolve(strict=True).is_relative_to(root.resolve(strict=True)):
+        raise _TargetError('Saved capture is outside the owned app root')
+    with os.fdopen(os.open(saved, os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK), 'rb') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or not 0<info.st_size<=32*1024*1024:
+            raise _TargetError('Saved capture is not an owned bounded regular file')
+        original=stream.read(32*1024*1024+1)
+    return original
+
+
 def _target(action, values):
     if action in ('prepare', 'recover'):
         if action == 'prepare':
@@ -1095,29 +1109,39 @@ def _target(action, values):
             fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
             if fs.stdout.strip() != 'tmpfs' or any(directory.iterdir()):
                 raise _TargetError('Live recipient download requires a new empty tmpfs directory')
+            original = _live_saved_capture(values)
             if values['kind'] == 'proton':
-                clicked = client.script("""
+                node = client.script("""
 const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(el=>{
  const r=el.getBoundingClientRect();const label=(el.getAttribute('aria-label')||el.textContent||'').trim();
  return r.width>0&&r.height>0&&!el.disabled&&/^Download(?: file)?$/i.test(label);
 });
-if(nodes.length!==1)return false;nodes[0].click();return true;
+return nodes.length===1?nodes[0]:null;
 """)
+                element = node.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(node, dict) else None
+                clicked = bool(element)
+                if clicked:
+                    # WebDriver's trusted pointer action supplies user activation
+                    # for Proton's download/popup flow; DOM click() does not.
+                    client.call('WebDriver:ElementClick', {'id': element})
             elif values['kind'] == 's3':
                 # Fetch the original image in the recipient Firefox origin;
                 # canvas serialization would not prove the uploaded bytes.
-                clicked = client.script("""
+                received = client.script("""
 const done=arguments[arguments.length-1];
 const images=[...document.images].filter(e=>e.complete&&e.naturalWidth>0);
-if(images.length!==1){done(false);return;}
-const url=images[0].currentSrc||images[0].src;
-fetch(url,{cache:'no-store',credentials:'omit'}).then(async r=>{
- if(!r.ok){done(false);return;}const data=await r.arrayBuffer();
- if(!data.byteLength||data.byteLength>32*1024*1024){done(false);return;}
- const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'image/png'}));
- a.download='recipient.png';document.body.append(a);a.click();a.remove();done(true);
-}).catch(()=>done(false));
+if(images.length!==1){done(null);return;}
+fetch(images[0].currentSrc||images[0].src,{cache:'no-store',credentials:'omit'}).then(async r=>{
+ if(!r.ok){done(null);return;}const data=await r.arrayBuffer();
+ if(!data.byteLength||data.byteLength>32*1024*1024){done(null);return;}
+ const hash=await crypto.subtle.digest('SHA-256',data);
+ done({bytes:data.byteLength,sha256:[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('')});
+}).catch(()=>done(null));
 """, asynchronous=True)
+                if not isinstance(received, dict) or set(received)!={'bytes','sha256'}:
+                    raise _TargetError('Recipient Firefox could not hash the original S3 image')
+                return {**received, 'matches':received['bytes']==len(original) and
+                        received['sha256']==hashlib.sha256(original).hexdigest()}
             else:
                 raise _TargetError('Unsupported live recipient provider')
             if not clicked:
@@ -1140,25 +1164,28 @@ fetch(url,{cache:'no-store',credentials:'omit'}).then(async r=>{
                         data=stream.read(32*1024*1024+1)
                     if len(data)>32*1024*1024:
                         raise _TargetError('Recipient download exceeded the bounded in-memory limit')
-                    saved = Path(values['saved_path'])
-                    root = Path(values['app_root'])
-                    if saved.is_symlink() or not saved.resolve(strict=True).is_relative_to(root.resolve(strict=True)):
-                        raise _TargetError('Saved capture is outside the owned app root')
-                    with os.fdopen(os.open(saved, os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK), 'rb') as stream:
-                        info = os.fstat(stream.fileno())
-                        if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.getuid() or not 0<info.st_size<=32*1024*1024:
-                            raise _TargetError('Saved capture is not an owned bounded regular file')
-                        original=stream.read(32*1024*1024+1)
                     digest=hashlib.sha256(data).hexdigest()
                     return {'bytes':len(data),'sha256':digest,
                             'matches':len(original)<=32*1024*1024 and data==original and
                                       digest==hashlib.sha256(original).hexdigest()}
                 time.sleep(.5)
-            raise _TargetError('Recipient download did not complete within its bounded deadline')
+            diagnostic = client.script("""
+const text=document.body?.innerText||'';
+return {serviceWorkerAPI:typeof navigator.serviceWorker==='object',
+ downloading:/downloading|decrypting/i.test(text),downloadError:/download failed|unable to download|could not download/i.test(text),
+ blobPreview:[...document.images].some(e=>(e.currentSrc||e.src).startsWith('blob:')&&e.complete&&e.naturalWidth>0),
+ focused:document.hasFocus()};
+""")
+            # Fixed boolean fields only, never page text, hrefs or filenames.
+            raise _TargetError('Recipient download deadline: '+json.dumps(diagnostic, sort_keys=True))
         if action == 'unavailable':
             # URL lives only in this target process and Firefox, never in
             # arguments, transaction metadata or a browser receipt.
             url = client.script('return location.href;')
+            handle = client.call('WebDriver:GetWindowHandle')
+            client.call('WebDriver:SwitchToWindow', {'handle':handle, 'focus':True})
+            if not client.script('return document.hasFocus() && innerWidth>=screen.width && innerHeight>=screen.height;'):
+                raise _TargetError('Recipient kiosk did not regain foreground for fresh navigation')
             client.call('WebDriver:Navigate', {'url':'about:blank'})
             # All HTTP memory/disk caches are disabled in this private profile.
             # Start from blank so the former preview cannot prove absence.
