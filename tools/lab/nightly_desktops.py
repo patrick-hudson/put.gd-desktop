@@ -454,6 +454,15 @@ def baton_returned(run):
     return False
 
 
+def package_path(artifacts, tag, row, identity):
+    # CI candidates carry their original artifact names instead of release names.
+    # The worker still verifies the exact package digest before installation.
+    name = identity.get('packageFiles', {}).get(row['asset'], f'putgd-{tag[1:]}-{row["asset"]}')
+    if not isinstance(name, str) or not name or Path(name).name != name or name in ('.', '..'):
+        raise NotRun('invalid package artifact name')
+    return artifacts/'packages'/name
+
+
 def worker(config, tag, identity, artifacts, out):
     """Run a host worker with a cleanup-safe deadline and termination handler."""
     with worker_deadline() as deadline:
@@ -468,7 +477,9 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
     if command(['git', 'rev-parse', 'HEAD']).strip() != identity['driver']:
         raise NotRun('worker checkout differs from the controller source identity')
     # Live admission reads the classifier/pin from this exact app commit.
-    command(['git', 'fetch', '--no-tags', 'origin', 'tag', tag], log=out/'build-source-fetch.txt')
+    if not re.fullmatch('[0-9a-f]{40}', identity['gitCommit']):
+        raise NotRun('invalid tested source identity')
+    command(['git', 'fetch', '--no-tags', 'origin', identity['gitCommit']], log=out/'build-source-fetch.txt')
     host = config['host']
     if len(config['rows']) != 1:
         raise NotRun('configure exactly one desktop per builder')
@@ -507,7 +518,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                         '--golden', row['golden'], '--run', run, '--bootstrap-key', row['bootstrapKey'],
                         '--known-hosts', known, '--ssh-port', str(ssh_port), '--vnc-display', str(vnc_display), '--timeout', '420'],
                         log=rowout/'launch.log', timeout=600)
-                    package = artifacts/'packages'/f'putgd-{tag[1:]}-{row["asset"]}'
+                    package = package_path(artifacts, tag, row, identity)
                     if digest(package) != identity['packages'][package.name]:
                         raise RuntimeError('worker package checksum mismatch')
                     if row['package'] == 'rpm':

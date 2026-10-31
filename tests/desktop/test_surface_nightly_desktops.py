@@ -287,6 +287,17 @@ with n.controller_shutdown(workers):
                         except ProcessLookupError:
                             pass
                         os.close(child_fd)
+    def test_candidate_packages_keep_original_ci_names_and_release_names_still_work(self):
+        root = Path('/private/artifacts')
+        row = dict(asset='ubuntu26.04-x86_64.deb')
+        candidate = dict(packageFiles={row['asset']: 'putgd-26.1031.1-dev.7-ubuntu26.04-x86_64.deb'})
+        self.assertEqual(nightly.package_path(root, 'candidate-deps-20261031', row, candidate),
+                         root/'packages'/candidate['packageFiles'][row['asset']])
+        self.assertEqual(nightly.package_path(root, 'v26.1031.1-nightly', row, {}),
+                         root/'packages/putgd-26.1031.1-nightly-ubuntu26.04-x86_64.deb')
+        for name in ('../outside.deb', '/outside.deb', '', '.', '..'):
+            with self.subTest(name=name), self.assertRaises(nightly.NotRun):
+                nightly.package_path(root, 'candidate', row, dict(packageFiles={row['asset']: name}))
 
     def test_fedora_activation_still_refuses_a_covered_target(self):
         from test_surface_input_guards import context
