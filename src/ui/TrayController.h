@@ -21,8 +21,14 @@ class NativeTray;
 class TrayController final : public QObject {
  Q_OBJECT
 public:
- TrayController(OperationService&, std::function<void(const QString&)> openView,
+ // openView(view, activationToken): the token is the tray host's xdg-activation
+ // token for the click that asked for the view, or empty (#657).
+ using ViewOpener = std::function<void(const QString& view, const QString& activationToken)>;
+ TrayController(OperationService&, ViewOpener openView,
                 std::function<void()> quit, QObject* parent = nullptr);
+ TrayController(OperationService& operations, std::function<void(const QString&)> openView,
+                std::function<void()> quit, QObject* parent = nullptr)
+  : TrayController(operations, ViewOpener([open = std::move(openView)](const QString& view, const QString&) { open(view); }), std::move(quit), parent) {}
  ~TrayController() override;
  bool available() const;
  bool availabilityKnown() const;
@@ -99,7 +105,9 @@ private:
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;
- std::function<void(const QString&)> openView_;
+ ViewOpener openView_;
+ // The host's token while a native tray click is dispatched; empty otherwise.
+ QString activationToken_;
  std::function<void()> quit_;
  QSystemTrayIcon* tray_ = nullptr;
 #ifdef Q_OS_LINUX

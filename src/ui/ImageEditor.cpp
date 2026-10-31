@@ -2,6 +2,7 @@
 #include "core/ByteSize.h"
 #include "EditorWindow.h"
 #include "FileDialog.h"
+#include "WindowActivation.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
 #include "editor/EditDocument.h"
@@ -175,7 +176,21 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(!open&&params["action"].toString("inspect")!="inspect")return denied("editor_finalizing","The edit was already submitted or discarded");
    return window->viewCommand(params,code,message);
   }
-  if(name=="raise"){if(!params.isEmpty())return denied("invalid_request","raise has no parameters");window->showNormal();window->raise();window->activateWindow();return {{"raised",true}};}
+  if(name=="raise"){
+   // An optional xdg-activation token, such as a tray click's (#657).
+   const auto token=params["activationToken"].toString();
+   if(!(params.isEmpty()||(params.size()==1&&validActivationToken(token))))return denied("invalid_request","raise takes only an optional activationToken");
+   putgd::activateWindow(window.get(),token);
+   // Answer with what the desktop did (#911). Without a token from user input,
+   // GNOME and KWin may leave the window where it is, a minimised one hidden,
+   // and show "… is ready" or flag it instead.
+   deferred=true;
+   whenActivated(window.get(),1500,[done](bool active){
+    if(active){done({{"raised",true}},{},{});return;}
+    done({{"raised",false},{"reason","activation_refused"},{"message","The desktop did not bring the editor forward; it may show a \"ready\" notice or highlight its taskbar entry. Click that to show the editor."}},{},{});
+   });
+   return {};
+  }
   if(name=="apply"){
    if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
    if(params.size()!=1||!params["commands"].isArray())return denied("invalid_request","apply needs only a commands array");

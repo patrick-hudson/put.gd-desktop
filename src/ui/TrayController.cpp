@@ -1,4 +1,5 @@
 #include "TrayController.h"
+#include <QScopeGuard>
 #include <QJsonDocument>
 #include "Ui.h"
 #include "Theme.h"
@@ -154,7 +155,7 @@ QString activityText(const QJsonArray& observations) {
 }
 
 TrayController::TrayController(OperationService& operations,
-                               std::function<void(const QString&)> openView,
+                               ViewOpener openView,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
@@ -176,7 +177,10 @@ TrayController::TrayController(OperationService& operations,
   });
   connect(native_.get(), &NativeTray::menuAboutToShow,this,&TrayController::refreshMenu);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
-  connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
+  connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action, const QString& token) {
+   // Views opened for this click carry the host's token, so Wayland activates them.
+   activationToken_ = token;
+   const auto clear = qScopeGuard([guard = QPointer<TrayController>(this)] { if (guard) guard->activationToken_.clear(); });
    if (Settings::invocableActionNames().contains(action)) invokeAction(action);
    else if (action == "cancel-upload") cancelUploads();
    else if (action == "failed-uploads") acknowledgeFailures();
@@ -495,7 +499,7 @@ void TrayController::showHistory() { showView("history"); }
 void TrayController::showAbout() { showView("about"); }
 void TrayController::showView(const QString& view) {
  const auto open = openView_;
- open(view);
+ open(view, activationToken_);
 }
 void TrayController::invokeShortcut(const QString& action) {
  // This tray's own open menu holds the keyboard and mouse a selection needs,
@@ -505,7 +509,9 @@ void TrayController::invokeShortcut(const QString& action) {
 }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
  // The tray opens or raises a recording; its shortcut toggles it.
- const auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
+ auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
+ // A click's token raises the editor that is already open (#657).
+ if (action == "edit" && !activationToken_.isEmpty()) effective["activationToken"] = activationToken_;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));

@@ -1,4 +1,5 @@
 #include "NativeTray.h"
+#include "core/ActivationToken.h"
 #include "core/Settings.h"
 #include <QSet>
 #include <QKeySequence>
@@ -21,6 +22,8 @@
 #include <QDBusServiceWatcher>
 #include <QDBusVariant>
 #include <QDBusVirtualObject>
+#include <QElapsedTimer>
+#include <utility>
 #include <QTimer>
 
 // Wire structures contain only Core types. ARGB bytes are in network order.
@@ -194,7 +197,12 @@ public:
  bool available() const { return available_; }
  bool availabilityKnown() const { return availabilityKnown_; }
  QVariantMap properties(bool menu) const;
- void dispatch(const QString& action);
+ void dispatch(const QString& action, const QString& activationToken = {});
+ // The xdg-activation token a tray host hands over just before it activates the
+ // item or one of its menu entries (#657). The next click takes it, whether or
+ // not that click dispatches anything; an old one belonged to an earlier click.
+ void provideActivationToken(const QString& token);
+ QString takeActivationToken();
  void aboutToShow(){emit q_->menuAboutToShow();}
  void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
@@ -231,6 +239,8 @@ private:
  int uploads_=0;bool failed_=false;QString updateLabel_,uploadStatus_,attentionLabel_="Failed uploads";QHash<QString,QString> shortcuts_;
  QStringList outputs_;
  uint menuRevision_ = 1;
+ QString activationToken_;
+ QElapsedTimer activationTokenAge_;
  void closeNotification(uint id);
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
@@ -366,10 +376,19 @@ void NativeTrayPrivate::updateAvailability() {
   if (guard && guard->available() == value) emit guard->availabilityChanged(value);
  });
 }
-void NativeTrayPrivate::dispatch(const QString& action) {
- QTimer::singleShot(0, q_, [guard = QPointer<NativeTray>(q_), action] {
-  if (guard) emit guard->actionActivated(action);
+void NativeTrayPrivate::dispatch(const QString& action, const QString& token) {
+ QTimer::singleShot(0, q_, [guard = QPointer<NativeTray>(q_), action, token] {
+  if (guard) emit guard->actionActivated(action, token);
  });
+}
+void NativeTrayPrivate::provideActivationToken(const QString& token) {
+ activationToken_ = token; activationTokenAge_.start();
+}
+QString NativeTrayPrivate::takeActivationToken() {
+ const bool fresh = activationTokenAge_.isValid() && activationTokenAge_.elapsed() < 10000;
+ activationTokenAge_.invalidate();
+ auto token = std::exchange(activationToken_, {});
+ return fresh ? token : QString{};
 }
 void NativeTrayPrivate::queryNotificationServer() {
  if(!bus_.isConnected())return;
@@ -489,6 +508,7 @@ QString TrayExport::introspect(const QString&) const {
   <method name="SecondaryActivate"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
   <method name="ContextMenu"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
   <method name="Scroll"><arg type="i" direction="in"/><arg type="s" direction="in"/></method>
+  <method name="ProvideXdgActivationToken"><arg type="s" direction="in"/></method>
   <signal name="NewTitle"/><signal name="NewIcon"/><signal name="NewAttentionIcon"/>
   <signal name="NewOverlayIcon"/><signal name="NewMenu"/><signal name="NewToolTip"/>
   <signal name="NewStatus"><arg type="s"/></signal>
@@ -503,9 +523,9 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  auto error = [&](const char* name = "org.freedesktop.DBus.Error.InvalidArgs") {
   return bus.send(m.createErrorReply(QString::fromLatin1(name), "Invalid or unsupported tray request"));
  };
- auto dispatchId = [this](int id) {
+ auto dispatchId = [this](int id, const QString& token) {
   if (id > 0 && knownId(id) && id!=uploadStatusId && (id!=cancelUploadId||!owner_->uploadStatus().isEmpty()) && (id!=22||owner_->failed()) && *entries[id-1].action)
-   owner_->dispatch(QString::fromLatin1(entries[id-1].action));
+   owner_->dispatch(QString::fromLatin1(entries[id-1].action), token);
  };
  const QString expected = QString::fromLatin1(menu_ ? menuInterface : itemInterface);
  if (m.interface() == "org.freedesktop.DBus.Properties") {
@@ -523,7 +543,8 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  if (!m.interface().isEmpty() && m.interface() != expected) return error("org.freedesktop.DBus.Error.UnknownInterface");
  if (!menu_) {
   if ((member == "Activate" || member == "SecondaryActivate" || member == "ContextMenu") && sig == "ii") {
-   if (member == "Activate") owner_->dispatch("history");
+   const auto token = owner_->takeActivationToken();
+   if (member == "Activate") owner_->dispatch("history", token);
    if (member == "ContextMenu") {
     auto show = QDBusMessage::createSignal("/Menu", menuInterface, "ItemActivationRequested");
     show.setArguments({0, uint(0)}); bus.send(show);
@@ -531,6 +552,11 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
    return reply();
   }
   if (member == "Scroll" && sig == "is") return reply();
+  if (member == "ProvideXdgActivationToken" && sig == "s") {
+   const auto token = args.at(0).toString();
+   if (!validActivationToken(token)) return error();
+   owner_->provideActivationToken(token); return reply();
+  }
   return error("org.freedesktop.DBus.Error.UnknownMethod");
  }
  if (member == "GetLayout" && sig == "iias") {
@@ -560,7 +586,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  }
  if (member == "Event" && sig == "isvu") {
   int id = args.at(0).toInt(); if (!knownId(id)) return error();
-  if (args.at(1).toString() == "clicked") dispatchId(id);
+  if (args.at(1).toString() == "clicked") dispatchId(id, owner_->takeActivationToken());
   return reply();
  }
  if (member == "EventGroup" && sig == "a(isvu)") {
@@ -568,7 +594,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   QList<int> missing; bool found = false;
   for (const auto& e : events) {
    if (!knownId(e.id)) missing.append(e.id);
-   else { found = true; if (e.event == "clicked") dispatchId(e.id); }
+   else { found = true; if (e.event == "clicked") dispatchId(e.id, owner_->takeActivationToken()); }
   }
   if (!events.isEmpty() && !found) return error();
   return reply({QVariant::fromValue(missing)});

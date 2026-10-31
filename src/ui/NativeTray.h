@@ -35,7 +35,8 @@ signals:
  void menuAboutToShow();
  void notificationActivated(const QUrl& link);
  void notificationAction(const QString& key, const QString& value);
- void actionActivated(const QString& action);
+ // activationToken: the host's xdg-activation token for this click, or empty (#657).
+ void actionActivated(const QString& action, const QString& activationToken);
  void availabilityChanged(bool available);
  void availabilityResolved();
 private:

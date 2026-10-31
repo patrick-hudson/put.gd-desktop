@@ -862,7 +862,12 @@ def window_chrome(ctx):
             # proves minimize even while the old rectangle remains queryable.
             return state.get('minimized') or state.get('iconified')
         ctx.wait(minimized,'minimize hides live editor window')
-        ctx.call('editor.raise',{'id':op})
+        raised = ctx.call('editor.raise',{'id':op})
+        # #911: without a token from user input a compositor may keep the editor
+        # minimised (GNOME shows "… is ready"); raise now says so instead of lying.
+        if raised.get('raised') is False:
+            ctx.expect(raised.get('reason')=='activation_refused','a refused raise names its reason')
+            raise RecipeBlocked('the desktop kept the minimised editor hidden; raise reported activation_refused', issue=911)
         _mapped_window(ctx, 'editor', 'raise restores minimized editor')
         ctx.click('placeMark',window='editor')
         ctx.click('windowClose',window='editor')

@@ -361,6 +361,26 @@ class EditorRecipes(unittest.TestCase):
         editor.redact(ctx)
         self.assertEqual('cancelled',ctx.phase)
 
+    def test_refused_raise_of_minimised_editor_is_blocked_on_911(self):
+        ctx=FakeContext(); size={'width':1180}; states={}
+        original_call,original_click=ctx.call,ctx.click
+        def geometry(window):
+            ctx.events.append(('geometry',window))
+            return {'x':0,'y':0,'width':size['width'],'height':820,'states':dict(states)}
+        def click(control,window,**kwargs):
+            if control=='windowMaximize': size['width']=1920 if size['width']==1180 else 1180; return
+            if control=='windowMinimize': states['minimized']=True; return
+            return original_click(control,window,**kwargs)
+        def call(method,params=None):
+            if method=='editor.raise':
+                ctx.events.append(('call',method,params))
+                return {'raised':False,'reason':'activation_refused','message':'synthetic'}
+            return original_call(method,params)
+        ctx.geometry,ctx.click,ctx.call=geometry,click,call
+        with self.assertRaises(RecipeBlocked) as blocked: editor.window_chrome(ctx)
+        self.assertEqual(911,blocked.exception.issue)
+        self.assertEqual('cancelled',ctx.phase)
+
     def test_first_launch_gate_removed_and_foreground_verified(self):
         ctx=FakeContext(); editor.redact(ctx)
         raised=next(i for i,e in enumerate(ctx.events) if e[:2]==('call','editor.raise'))

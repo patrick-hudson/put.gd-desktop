@@ -6,6 +6,7 @@
 #include "ui/Theme.h"
 #include "ui/Ui.h"
 #include "ui/ViewState.h"
+#include "ui/WindowActivation.h"
 #include <QScopeGuard>
 #include <QTextEdit>
 #include <QScreen>
@@ -30,6 +31,7 @@
 #include <QTabWidget>
 #include <QStyledItemDelegate>
 #include <QtTest>
+#include <optional>
 #include <QTimer>
 #include <QStatusBar>
 #include <QStyleOptionToolButton>
@@ -64,6 +66,31 @@ private slots:
  // Settings tree; explicit navigation and agent commands still initialize it.
  void editSourcesStayAvailableWithoutOutput(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);window.show();QToolButton* edit=nullptr;for(auto* button:window.findChildren<QToolButton*>("captureActionButton"))if(button->property("captureAction")=="edit")edit=button;QVERIFY(edit);QVERIFY(edit->isEnabled());QVERIFY(!edit->property("captureBadge").toBool());QVERIFY(edit->menu());for(auto* action:edit->menu()->actions())QVERIFY(action->isEnabled());QSignalSpy capture(&window,&MainWindow::actionRequested),existing(&window,&MainWindow::editRequested);edit->click();QCOMPARE(capture.size(),0);edit->menu()->actions().first()->trigger();QCOMPARE(existing.size(),1);QCOMPARE(existing.first().first().toString(),QString("clipboard"));window.imageChooserFinished({FileDialog::Result::Status::Chosen,d.filePath("test.png"),{}});QCOMPARE(existing.size(),2);
+ }
+ // #657: a tray click's xdg-activation token is offered to the window's
+ // activation and never left behind for a later window or a child process.
+ void activateHandsTheTokenToTheWindowAndClearsIt(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  qputenv("XDG_ACTIVATION_TOKEN","stale-from-launch");
+  device.send("activate",{{"view","settings"},{"activationToken","kwin-1234"}});PUTGD_TRY_VERIFY(!device.last("shown").isEmpty());
+  QVERIFY(!qEnvironmentVariableIsSet("XDG_ACTIVATION_TOKEN"));
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
+  PUTGD_TRY_VERIFY(window->isVisible()&&window->isActiveWindow());
+  window->showMinimized();PUTGD_TRY_VERIFY(window->isMinimized());
+  device.send("activate",{{"view","history"},{"activationToken","bad token"}});PUTGD_TRY_COMPARE(device.last("shown")["payload"].toObject()["view"].toString(),QString("history"));
+  QVERIFY(!qEnvironmentVariableIsSet("XDG_ACTIVATION_TOKEN"));PUTGD_TRY_VERIFY(!window->isMinimized()&&window->isActiveWindow());
+ }
+ // #911: whenActivated answers with what the desktop did, not what was asked.
+ void activationReportsARefusal(){
+  QWidget accepted;accepted.resize(200,100);std::optional<bool> first;activateWindow(&accepted,"token-1");QVERIFY(!qEnvironmentVariableIsSet("XDG_ACTIVATION_TOKEN"));
+  whenActivated(&accepted,1000,[&](bool active){first=active;});PUTGD_TRY_VERIFY(first.has_value());QVERIFY(*first);
+  // Another window keeping the focus stands in for a compositor refusal.
+  QWidget refused,keeper;refused.resize(200,100);keeper.resize(200,100);std::optional<bool> second;QElapsedTimer clock;clock.start();
+  activateWindow(&refused);keeper.show();keeper.activateWindow();PUTGD_TRY_VERIFY(keeper.isActiveWindow());
+  whenActivated(&refused,300,[&](bool active){second=active;});PUTGD_TRY_VERIFY(second.has_value());QVERIFY(!*second);QVERIFY(clock.elapsed()>=300);
+  // A window destroyed while waiting never answers.
+  bool answered=false;{QWidget gone;gone.show();keeper.activateWindow();PUTGD_TRY_VERIFY(keeper.isActiveWindow());whenActivated(&gone,5000,[&](bool){answered=true;});}
+  PUTGD_VERIFY_STEADY(!answered,100);
  }
  void trayRecoveryUsesHistoryConfirmationAndFailedFilter(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl ui(device);UiApplicationController controller(fixture.session,ui,{});QStringList canceled;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject& params){if(method=="operation.cancel")canceled<<params["id"].toString();};device.send("activate",{{"view","historyCancelAll:[\"first-upload\",\"second-upload\"]"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);PUTGD_TRY_VERIFY(window->history()->historyState()["cancelAllConfirmation"].toObject()["open"].toBool());QVERIFY(canceled.isEmpty());const auto ids=window->history()->historyState()["cancelAllConfirmation"].toObject()["operationIds"].toArray();QCOMPARE(ids,QJsonArray({"first-upload","second-upload"}));window->history()->command({{"action","confirmCancelAll"}},[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(canceled.size(),2);device.send("activate",{{"view","historyFailed"}});QCOMPARE(window->history()->historyState()["query"].toObject()["uploadStatus"].toString(),QString("failed"));

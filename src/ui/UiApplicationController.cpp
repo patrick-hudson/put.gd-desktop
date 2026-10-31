@@ -5,6 +5,7 @@
 #include "MainWindow.h"
 #include "AboutWindow.h"
 #include "ViewState.h"
+#include "WindowActivation.h"
 #include <QApplication>
 #include <QJsonDocument>
 #include <QCloseEvent>
@@ -162,8 +163,8 @@ void UiApplicationController::receive(const QString& type,const QString& sequenc
   auto* window=closing_||!pendingAction_.isEmpty()?nullptr:view(name);
   if(!window){control_.send("activationFailed",{{"replyTo",sequence},{"view",name}});return;}
   openViews_.insert(window);
-  if(window->isMinimized())window->showNormal();else window->show();
-  window->raise();window->activateWindow();
+  // A tray click's xdg-activation token lets Wayland bring the window forward (#657).
+  putgd::activateWindow(window,payload["activationToken"].toString());
   control_.send("shown",{{"replyTo",sequence},{"view",name}});return;
  }
  if(type=="command"){

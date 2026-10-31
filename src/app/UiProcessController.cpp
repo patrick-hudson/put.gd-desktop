@@ -1,4 +1,5 @@
 #include "UiProcessController.h"
+#include "core/ActivationToken.h"
 #include "core/BuildInfo.h"
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -32,7 +33,7 @@ UiProcessController::~UiProcessController(){
  if(control_)control_->stop();
  if(process_){disconnect(process_,nullptr,this,nullptr);process_->kill();process_->waitForFinished(1000);}
 }
-void UiProcessController::activate(const QString& view,Reply reply){
+void UiProcessController::activate(const QString& view,Reply reply,const QString& activationToken){
  if(stopping_){if(reply)reply(unavailable("ui_stopping"));return;}
  // Internal tray recovery carries the specific error to its settings control.
  if(!view.startsWith("historyCancelAll:")&&view!="historyFailed"&&!view.startsWith("actionRecovery:")&&!QStringList{"settings","updates","history","activity","destinations","about","editFile","captureSettings"}.contains(view)){
@@ -42,8 +43,11 @@ void UiProcessController::activate(const QString& view,Reply reply){
  int queued=0;for(const auto& callbacks:pending_)queued+=callbacks.size();
  for(const auto& activation:activations_)queued+=activation.replies.size();
  if(queued>=64){if(reply)reply(unavailable("ui_busy"));return;}
- // Keep one activation per view while its acknowledgement is outstanding.
- if(phase_==Phase::Ready)for(auto it=activations_.begin();it!=activations_.end();++it)
+ // Keep one activation per view while its acknowledgement is outstanding;
+ // a new token is a new click, which still has to reach the window.
+ const bool token=validActivationToken(activationToken);
+ if(token)pendingTokens_[view]=activationToken;
+ else if(phase_==Phase::Ready)for(auto it=activations_.begin();it!=activations_.end();++it)
   if(it->view==view){it->replies.append(std::move(reply));return;}
  pending_[view].append(std::move(reply));
  if(!activationDeadline_.isActive())activationDeadline_.start();
@@ -105,7 +109,9 @@ void UiProcessController::flushActivations(){
  auto pending=std::exchange(pending_,{});
  for(auto it=pending.begin();it!=pending.end();++it){
   QPointer<UiProcessController> guard(this);
-  const auto sequence=control_->send("activate",{{"view",it.key()}});
+  QJsonObject payload{{"view",it.key()}};
+  if(const auto token=pendingTokens_.take(it.key());!token.isEmpty())payload["activationToken"]=token;
+  const auto sequence=control_->send("activate",payload);
   if(!guard||sequence.isEmpty()||phase_!=Phase::Ready){
    // These batches have not entered activations_ yet. Finish them from local
    // storage even if a failure callback destroys the supervisor.
@@ -228,7 +234,7 @@ void UiProcessController::restoreShortcuts(){
 }
 void UiProcessController::failActivations(Error error){
  auto pending=std::exchange(pending_,{});auto active=std::exchange(activations_,{});
- activationDeadline_.stop();
+ pendingTokens_.clear();activationDeadline_.stop();
  for(auto& callbacks:pending)for(auto& reply:callbacks)if(reply)reply(error);
  for(auto& activation:active)for(auto& reply:activation.replies)if(reply)reply(error);
 }

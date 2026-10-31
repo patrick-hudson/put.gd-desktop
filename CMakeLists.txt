@@ -392,7 +392,7 @@ endif()
 # The bundled IBM Plex fonts (OFL), for the interface and recording helper only.
 add_library(putgd_fonts STATIC src/ui/Fonts.cpp src/ui/fonts.qrc)
 target_link_libraries(putgd_fonts PUBLIC putgd_visual)
-add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/UiWindow.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
+add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/UiWindow.cpp src/ui/WindowActivation.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
