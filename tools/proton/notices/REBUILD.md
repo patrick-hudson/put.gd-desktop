@@ -6,7 +6,7 @@ then extract and verify every packet against the catalog. The updated transport
 has its own permanent release URLs; earlier published packets remain available.
 
 The current helper-rebuild packet supplies the patched SDK/account and approved
-GPL crypto 2.0.1 source graph plus locked dependencies for Bun 1.4.4.
+GPL crypto 2.2.0 source graph plus locked dependencies for Bun 1.4.4.
 The application source archive supplies the applicationSourceOverlay files listed
 in SOURCES.json. Verify their hashes before copying them over build-source/.
 The overlay includes package.json and package-lock.json; use the matching packet's
@@ -46,8 +46,9 @@ upstream build requirements for a native build with local JavaScriptCore.
 The native rebuild supplement and OpenPGP/Argon2 proofs retain their original
 bytes and historical scope. Its Bun 1.4.2 compiler selection and modifications
 must not be mistaken for current Bun 1.4.4 native verification. A fresh native
-modification/relink check and final desktop/resource/package acceptance remain
-open; SOURCES.json records those boundaries.
+modification/relink check is supplied by tools/proton/native_relink/ in the
+current application source. SOURCES.json binds its result to the exact current
+helper and records desktop/resource/package acceptance separately.
 
 The unchanged OpenPGP preferred source uses commit
 36198c3369ab8d4a02d70372d62f1aa8bc247dcb. Restore its supplied offline npm cache,
@@ -55,8 +56,10 @@ apply OPENPGP-REBUILD.patch, set SOURCE_DATE_EPOCH=1785456000, then use its Roll
 build. The original node library's byte identity and modified crypto roundtrip
 proofs are historical and remain unchanged. The native supplement's corrected
 Argon2 scalar/SIMD replay is authoritative over the older upstream script.
-The crypto source/provenance packet preserves the approved WebPackages 2.0.1
-GPL selection; npm 2.0.0 is only a bootstrap, with no retroactive license claim.
+The crypto source/provenance packet contains complete WebPackages 2.2.0 preferred source and its
+matching registry input, plus the historical provenance packet. The optional SDK
+search vendor WASM is retained as an unbundled build input; a compiler-metafile
+guard excludes the search engine and BoltFFI runtime from the shipping helper.
 
 Deliver the complete source transport and current application source archive
 together. Installed notices alone do not establish source publication, legal

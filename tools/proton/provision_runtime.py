@@ -8,13 +8,14 @@ import platform
 import shutil
 import subprocess
 
-from audit_redistribution import inventory
+from audit_redistribution import inventory, search_import_graph
 
 ROOT = Path(__file__).resolve().parent
 SOURCE_PATHS = ['cli/src/credentials/credentials.ts', 'cli/src/credentials/constants.ts',
                 'cli/src/credentials/secretCredentialsStore.ts', 'cli/src/credentials/parseCredentials.ts',
                 'cli/src/credentials/interface.ts', 'cli/src/config.ts', 'cli/src/clientUid.ts',
                 'cli/src/api/httpClient.ts', 'cli/src/api/driveAccountAdapter.ts', 'cli/src/api/apiRequirements.ts',
+                'cli/src/api/serverTimeHook.ts',
                 'incubating/account/js/src', 'config/js/patches/@protontech%2Fcrypto@2.0.0.patch', 'LICENSE.md']
 
 def run(args, cwd, capture=False):
@@ -34,7 +35,7 @@ def patch_once(path, before, after):
 CRYPTO_SOURCE_PATHS = ['packages/crypto/src', 'packages/crypto/package.json', 'LICENSE', 'README.md']
 REDISTRIBUTION_FILES = ['BUN-THIRD-PARTY-NOTICES.txt.gz', 'BUN-NOTICE-PROVENANCE.json.gz',
                         'BUN-LINUX-ATTRIBUTION.md', 'OPENPGP-PREBUNDLED-NOTICES.txt',
-                        'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'LICENSE.icu4c-78.3',
+                        'LICENSE.crypto-GPL-3.0', 'LICENSE.pmcrypto-MIT', 'LICENSE.srp-MIT', 'LICENSE.boltffi-MIT', 'LICENSE.jsmimeparser-MIT', 'LICENSE.MPL-2.0', 'LICENSE.icu4c-78.3',
                         'CRYPTO-PROVENANCE.md', 'SOURCES.json', 'REBUILD.md', 'OPENPGP-REBUILD.patch']
 
 def apply_crypto_source(work, source, lock):
@@ -187,6 +188,7 @@ def main():
     candidate = output / 'putgd-proton-runtime.new'
     run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts', f'--compile-executable-path={bun}',
          f'--outfile={candidate}', f'--metafile={output / "build-metafile.json"}'], work)
+    search_graph = search_import_graph(json.loads((output / 'build-metafile.json').read_text()))
     version = json.loads(run([str(candidate), '--version'], output, True))
     if version['bunVersion'] != lock['bunVersion'] or version['sdkVersion'] != 'js@' + lock['sdkVersion']:
         parser.error('Compiled runtime version check failed')
@@ -215,6 +217,7 @@ def main():
     for name in REDISTRIBUTION_FILES:
         shutil.copyfile(ROOT / 'notices' / name, redistribution / name)
     manifest = {'schemaVersion': 1, 'artifact': artifact.name, 'sha256': sha256(artifact),
+                'searchImportGraph': search_graph,
                 'sourceReference': commit, 'appVersion': version['appVersion'], 'sdkVersion': version['sdkVersion'],
                 'bunVersion': version['bunVersion'], 'bunSourceReference': lock['bunSourceReference'],
                 'bunSha256': sha256(bun), 'protocolVersion': 1,
