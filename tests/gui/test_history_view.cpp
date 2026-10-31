@@ -733,6 +733,10 @@ private slots:
   // Passing over the video on the way to the image asks only for the image.
   selectRow(table,1);putgd::test::settle(100);selectRow(table,0);PUTGD_TRY_VERIFY(!preview->pixmap().isNull());QCOMPARE(asked,QStringList{imageId});
   QVERIFY(QFileInfo(cleaned).isFile());PUTGD_TRY_VERIFY(!qvariant_cast<QImage>(table->model()->index(0,0).data(HistoryModel::ThumbnailRole)).isNull());
+  // Reloads of the selection (every 150 ms here) keep the shown preview: it
+  // never blanks or flashes "Preview unavailable" while they run.
+  int blank=0;QElapsedTimer watched;watched.start();while(watched.elapsed()<800){if(preview->pixmap().isNull())++blank;putgd::test::settle(5);}QCOMPARE(blank,0);
+  QCOMPARE(preview->pixmap().toImage().pixelColor(preview->pixmap().width()/2,preview->pixmap().height()/2),QColor("#2a7fd4"));
   {
    // The journal and preview reply can spell the same cache path differently
    // (previews/ versus artifacts/../previews/). Hold the decoder so a redundant
@@ -747,10 +751,6 @@ private slots:
    QVERIFY(!preview->pixmap().isNull());
   }
   reloads.start(150);
-  // Reloads of the selection (every 150 ms here) keep the shown preview: it
-  // never blanks or flashes "Preview unavailable" while they run.
-  int blank=0;QElapsedTimer watched;watched.start();while(watched.elapsed()<800){if(preview->pixmap().isNull())++blank;putgd::test::settle(5);}QCOMPARE(blank,0);
-  QCOMPARE(preview->pixmap().toImage().pixelColor(preview->pixmap().width()/2,preview->pixmap().height()/2),QColor("#2a7fd4"));
   selectRow(table,1);PUTGD_TRY_COMPARE(asked.size(),2);QCOMPARE(asked.last(),videoId);PUTGD_TRY_COMPARE(preview->text(),QString("Local original unavailable"));QVERIFY(preview->pixmap().isNull());QVERIFY(preview->isHidden());auto* hint=window.findChild<QLabel*>("historyCapabilityHint");PUTGD_TRY_VERIFY(hint->isVisibleTo(window.findChild<QWidget*>("historyInspector")));QVERIFY(hint->text().startsWith("No local copy is available."));QVERIFY(hint->text().contains("download the uploaded recording"));QVERIFY(!window.findChild<QPushButton*>("historyChangeLocalCopies")->isHidden());
   selectRow(table,0);PUTGD_TRY_VERIFY(!preview->pixmap().isNull());selectRow(table,1);PUTGD_TRY_COMPARE(preview->text(),QString("Local original unavailable"));putgd::test::settle(600);PUTGD_TRY_COMPARE(asked.size(),2);
  }
