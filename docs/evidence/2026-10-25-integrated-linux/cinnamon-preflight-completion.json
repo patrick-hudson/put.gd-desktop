@@ -17,12 +17,12 @@
   },
   "restart": {
     "scope": "owned disposable guest restart to verify login autostart, not a physical host reboot",
-    "beforeBootId": "d8dbf2be-99a8-4017-9d27-61083461e432",
+    "beforeBootId": "[REDACTED]",
     "guestSync": "completed",
     "method": "QMP system_reset",
     "priorRequests": "SSH systemctl required interactive auth; visible terminal/session client attempts did not change uptime; no password entered"
   },
-  "afterBootId": "3b340520-5b27-4293-9058-6c62990d7aad",
+  "afterBootId": "[REDACTED]",
   "startup": {
     "ok": true,
     "desktop": "Cinnamon",

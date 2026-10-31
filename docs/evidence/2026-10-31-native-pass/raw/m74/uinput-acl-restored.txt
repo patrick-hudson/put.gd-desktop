@@ -1,0 +1,1 @@
+exact original /dev/uinput ACL restored before input

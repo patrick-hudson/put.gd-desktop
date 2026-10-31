@@ -764,7 +764,7 @@
             "inode": 10594,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           },
           "exitCode": 0,
           "finished": true
@@ -787,7 +787,7 @@
             "inode": 10594,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -1695,7 +1695,7 @@
             "inode": 14975,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           },
           "exitCode": 0,
           "finished": true
@@ -1718,7 +1718,7 @@
             "inode": 14975,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -1994,7 +1994,7 @@
             "inode": 20559,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           },
           "exitCode": 0,
           "finished": true
@@ -2012,7 +2012,7 @@
           "inode": 20559,
           "mountDevice": 30,
           "mountInode": 1,
-          "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+          "bootId": "[REDACTED]"
         },
         "exitCode": 0,
         "finished": true,
@@ -2030,7 +2030,7 @@
             "inode": 20559,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -2421,7 +2421,7 @@
             "inode": 24255,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           },
           "exitCode": 0,
           "finished": true
@@ -2439,7 +2439,7 @@
           "inode": 24255,
           "mountDevice": 30,
           "mountInode": 1,
-          "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+          "bootId": "[REDACTED]"
         },
         "exitCode": 0,
         "finished": true,
@@ -2457,7 +2457,7 @@
             "inode": 24255,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -2632,7 +2632,7 @@
             "inode": 28501,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "1a17f79c-f79a-4d84-853f-f3a2eef4350d"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],

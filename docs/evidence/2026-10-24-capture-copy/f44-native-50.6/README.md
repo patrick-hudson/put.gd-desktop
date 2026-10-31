@@ -10,7 +10,7 @@ The external full-message annotations below are baseline diagnostics, not proof
 of that new UI requirement.
 
 The [updated physical host](host-identity-before.json) has boot ID
-`6fa33c97-6c65-46ff-abfe-f5db7d3825b8`, kernel `7.2.11-200.fc44.x86_64`,
+`[REDACTED]`, kernel `7.2.11-200.fc44.x86_64`,
 GNOME Shell/Mutter `50.6-1.fc44`, Qt `6.11.2-3.fc44`, DNF `5.4.6.0-1.fc44`.
 Its real Wayland desktop was visibly live/unlocked on the wall. No Patrick
 applications or guests were present before either scoped logout/login.

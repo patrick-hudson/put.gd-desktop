@@ -149,7 +149,7 @@
           "exe": "/usr/bin/plasmashell",
           "startTicks": 3102035
         },
-        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+        "bootId": "[REDACTED]"
       },
       "productBuild": {
         "baseVersion": "26.1024.1185",
@@ -203,7 +203,7 @@
               "exe": "/usr/bin/plasmashell",
               "startTicks": 3102035
             },
-            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+            "bootId": "[REDACTED]"
           },
           "stopped": {
             "pid": 141876,
@@ -286,7 +286,7 @@
           "exe": "/usr/bin/plasmashell",
           "startTicks": 3102035
         },
-        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+        "bootId": "[REDACTED]"
       },
       "productBuild": {
         "baseVersion": "26.1024.1185",
@@ -340,7 +340,7 @@
               "exe": "/usr/bin/plasmashell",
               "startTicks": 3102035
             },
-            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+            "bootId": "[REDACTED]"
           },
           "stopped": {
             "pid": 143011,
@@ -425,7 +425,7 @@
           "exe": "/usr/bin/cinnamon",
           "startTicks": 22110437
         },
-        "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+        "bootId": "[REDACTED]"
       },
       "productBuild": {
         "baseVersion": "26.1024.1185",
@@ -481,7 +481,7 @@
               "exe": "/usr/bin/cinnamon",
               "startTicks": 22110437
             },
-            "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+            "bootId": "[REDACTED]"
           },
           "stopped": {
             "pid": 634221,
@@ -552,7 +552,7 @@
           "exe": "/usr/bin/plasmashell",
           "startTicks": 3102035
         },
-        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+        "bootId": "[REDACTED]"
       },
       "productBuild": {
         "baseVersion": "26.1024.1185",
@@ -600,7 +600,7 @@
               "exe": "/usr/bin/plasmashell",
               "startTicks": 3102035
             },
-            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+            "bootId": "[REDACTED]"
           },
           "stopped": {
             "pid": 145822,
@@ -705,7 +705,7 @@
           "exe": "/usr/bin/cinnamon",
           "startTicks": 22110437
         },
-        "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+        "bootId": "[REDACTED]"
       },
       "productBuild": {
         "baseVersion": "26.1024.1185",
@@ -763,7 +763,7 @@
               "exe": "/usr/bin/cinnamon",
               "startTicks": 22110437
             },
-            "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f"
+            "bootId": "[REDACTED]"
           },
           "stopped": {
             "pid": 637253,
@@ -870,7 +870,7 @@
           "exe": "/usr/bin/plasmashell",
           "startTicks": 3102035
         },
-        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+        "bootId": "[REDACTED]"
       },
       "productBuild": {
         "baseVersion": "26.1024.1185",
@@ -928,7 +928,7 @@
               "exe": "/usr/bin/plasmashell",
               "startTicks": 3102035
             },
-            "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+            "bootId": "[REDACTED]"
           },
           "stopped": {
             "pid": 150830,
@@ -2987,7 +2987,7 @@
           "exe": "/usr/bin/gnome-shell",
           "startTicks": 1414103
         },
-        "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+        "bootId": "[REDACTED]"
       },
       "shellEnvironmentHadWaylandDisplay": false,
       "verifiedWaylandSocket": "/run/user/1000/wayland-0",
@@ -3017,7 +3017,7 @@
           "exe": "/usr/bin/gnome-shell",
           "startTicks": 1414103
         },
-        "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+        "bootId": "[REDACTED]"
       },
       "verifiedWaylandSocket": "/run/user/1000/wayland-0",
       "peerMatchedCurrentCompositor": true,
@@ -3055,7 +3055,7 @@
           "exe": "/usr/bin/plasmashell",
           "startTicks": 3102035
         },
-        "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+        "bootId": "[REDACTED]"
       },
       "versions": {
         "plasma-workspace": "4:6.6.6-0ubuntu0.1",

@@ -1,0 +1,611 @@
+{
+  "schemaVersion": 1,
+  "scenario": "capture",
+  "status": "complete",
+  "startedUtc": "2026-10-31T16:31:32.903974+00:00",
+  "driver": {
+    "sha256": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+    "revisionSource": "explicit-declaration",
+    "sourceFiles": {
+      "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+      "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+      "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+      "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+      "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+      "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+      "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+      "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+      "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+    }
+  },
+  "product": {
+    "path": "/tmp/np31/putgd-26.1031.3384-nightly-ubuntu24.04-x86_64.deb",
+    "sha256": "c0ec0359d3533c6cf693fb64f071f9dabb018710ad6fbf261f62f8c5111ed278",
+    "binaries": {
+      "app": {
+        "path": "/usr/bin/putgd",
+        "sha256": "9baac5d4773afb87d75ec04947e00bf6de3aac2ec42b246193b7cbfc50133941",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "capture_helper": {
+        "path": "/usr/bin/putgd-capture",
+        "sha256": "129248122fdf485e7606108779edaeece8a82a9364c2a103250b889958073609",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "cli": {
+        "path": "/usr/bin/putgd-cli",
+        "sha256": "1fcc74aa41dad694fc2a76d2758c076fe11e9610ec19a209a0b43aedb1781526",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      },
+      "helper": {
+        "path": "/usr/bin/putgd-ui",
+        "sha256": "3f712476139bc6b8e05f31a02f741796ae2be86ef8684dd5ad271fdd1e96dd58",
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "scenario": "capture",
+    "output": "/tmp/npb3/capture-empty",
+    "package": "/tmp/np31/putgd-26.1031.3384-nightly-ubuntu24.04-x86_64.deb",
+    "package_sha256": "c0ec0359d3533c6cf693fb64f071f9dabb018710ad6fbf261f62f8c5111ed278",
+    "version": "26.1031.3384-nightly",
+    "source_revision": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "desktop_session": "c89",
+    "lock_session": "np31-ddd3576a",
+    "app": "/usr/bin/putgd",
+    "cli": "/usr/bin/putgd-cli",
+    "helper": "/usr/bin/putgd-ui",
+    "capture_helper": "/usr/bin/putgd-capture",
+    "driver": null,
+    "capture_driver_manifest": null,
+    "fixture_root": null,
+    "driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+    "open_seconds": 30,
+    "vnc_port": 5900,
+    "endpoint": "http://127.0.0.1:41297",
+    "fixture_pid": 1216011,
+    "fixture_source": "/tmp/np31/frozen-src/tests/fixtures/s3_server.py",
+    "enable_accessibility": false,
+    "native_driver": "/tmp/np31/frozen-src/tools/lab/native_acceptance.py",
+    "native_driver_revision": "00ab777f2413a1fbd7670a7259dc614eced896e6",
+    "native_driver_sha256": "7026a15a0ebcb5f6e25a0feb2679a8f6ee241624e8ed8c7bdd950b790a9a6333",
+    "threshold_policy": "/tmp/np31/history-thresholds.json",
+    "settle_seconds": 300,
+    "history_pages": 200
+  },
+  "metrics": {
+    "nativeCapture": {
+      "parameters": {
+        "warmups": 5,
+        "samples": 30,
+        "mode": "live",
+        "paintOracle": "white ring at (102,151) after map-owned held selection [100,150,600,280]; tagged 4d3840c6 no-scrim overlay",
+        "probeSleepMs": 1,
+        "autoDragPauseMs": 1,
+        "region": [
+          100,
+          150,
+          600,
+          280
+        ]
+      },
+      "drawablePaint": {
+        "samples": 30,
+        "p50Ms": 122.3056330345571,
+        "p95Ms": 138.85366905014962,
+        "maxMs": 154.97261297423393
+      },
+      "rootObservedPaint": {
+        "samples": 30,
+        "p50Ms": 197.48412002809346,
+        "p95Ms": 232.43893904145807,
+        "maxMs": 234.64696400333196
+      },
+      "captureToLink": null,
+      "raw": [
+        {
+          "operationId": "1df94631-006c-4b58-8741-e88bedaf15a4",
+          "coverReadinessMsOutsideScore": 50.634378916583955,
+          "drawablePaintMs": 148.1711050728336,
+          "rootObservedPaintMs": 194.64536802843213,
+          "inputIssuedMs": 123.80107003264129,
+          "warmup": true
+        },
+        {
+          "operationId": "0db55c4b-7724-49a6-8786-7ad6ba46312d",
+          "coverReadinessMsOutsideScore": 68.18637298420072,
+          "drawablePaintMs": 133.38458200450987,
+          "rootObservedPaintMs": 178.49379393737763,
+          "inputIssuedMs": 107.65574395190924,
+          "warmup": true
+        },
+        {
+          "operationId": "a4a09597-9f78-4d1d-87c9-d060af39fcad",
+          "coverReadinessMsOutsideScore": 50.4313389537856,
+          "drawablePaintMs": 109.89646008238196,
+          "rootObservedPaintMs": 218.7676130561158,
+          "inputIssuedMs": 86.45636902656406,
+          "warmup": true
+        },
+        {
+          "operationId": "aa84d669-b923-4cbd-9e88-66fd5d0ed6bc",
+          "coverReadinessMsOutsideScore": 43.413241975940764,
+          "drawablePaintMs": 121.39087205287069,
+          "rootObservedPaintMs": 198.96956300362945,
+          "inputIssuedMs": 96.46365605294704,
+          "warmup": true
+        },
+        {
+          "operationId": "c3371386-56d3-4ae1-975c-6e91946b7c0e",
+          "coverReadinessMsOutsideScore": 48.906862968578935,
+          "drawablePaintMs": 120.08347094524652,
+          "rootObservedPaintMs": 203.96098995115608,
+          "inputIssuedMs": 95.3202199889347,
+          "warmup": true
+        },
+        {
+          "operationId": "20843b38-cb38-45ac-b094-1330f2534196",
+          "coverReadinessMsOutsideScore": 49.913163064047694,
+          "drawablePaintMs": 131.96438609156758,
+          "rootObservedPaintMs": 182.98375804442912,
+          "inputIssuedMs": 109.3813240295276,
+          "warmup": false
+        },
+        {
+          "operationId": "55cf165d-b19f-4519-a866-3cf4436b0381",
+          "coverReadinessMsOutsideScore": 69.89754305686802,
+          "drawablePaintMs": 129.352635005489,
+          "rootObservedPaintMs": 193.18188005127013,
+          "inputIssuedMs": 105.62109702732414,
+          "warmup": false
+        },
+        {
+          "operationId": "e03cb09c-64eb-4768-8fa0-050e0537c454",
+          "coverReadinessMsOutsideScore": 90.61067400034517,
+          "drawablePaintMs": 115.32069195527583,
+          "rootObservedPaintMs": 229.58549100439996,
+          "inputIssuedMs": 89.2929369583726,
+          "warmup": false
+        },
+        {
+          "operationId": "10d86f87-9848-4012-80a8-0eb9644135fa",
+          "coverReadinessMsOutsideScore": 77.56062597036362,
+          "drawablePaintMs": 121.80837092455477,
+          "rootObservedPaintMs": 198.37949599605054,
+          "inputIssuedMs": 97.08716999739408,
+          "warmup": false
+        },
+        {
+          "operationId": "9002aa78-e98d-4f35-9fdd-38b36bfb7b07",
+          "coverReadinessMsOutsideScore": 78.12514388933778,
+          "drawablePaintMs": 136.4940300118178,
+          "rootObservedPaintMs": 162.6516990363598,
+          "inputIssuedMs": 110.02963199280202,
+          "warmup": false
+        },
+        {
+          "operationId": "18853a2f-1a00-4135-91ba-f6c42225834b",
+          "coverReadinessMsOutsideScore": 77.86391605623066,
+          "drawablePaintMs": 102.15396503917873,
+          "rootObservedPaintMs": 187.04496196005493,
+          "inputIssuedMs": 78.64306401461363,
+          "warmup": false
+        },
+        {
+          "operationId": "7a02596c-a5a9-4c5a-a912-000a485dde45",
+          "coverReadinessMsOutsideScore": 48.0669530807063,
+          "drawablePaintMs": 118.71797509957105,
+          "rootObservedPaintMs": 225.49311502370983,
+          "inputIssuedMs": 94.43006303627044,
+          "warmup": false
+        },
+        {
+          "operationId": "8c23b219-7761-4e96-8586-919c79053103",
+          "coverReadinessMsOutsideScore": 78.14372691791505,
+          "drawablePaintMs": 138.85366905014962,
+          "rootObservedPaintMs": 207.29022298473865,
+          "inputIssuedMs": 119.55321906134486,
+          "warmup": false
+        },
+        {
+          "operationId": "bf98d849-4e90-4143-aa63-78fcb1a2dd69",
+          "coverReadinessMsOutsideScore": 80.14571596868336,
+          "drawablePaintMs": 121.09882000368088,
+          "rootObservedPaintMs": 179.40430995076895,
+          "inputIssuedMs": 94.65549199376255,
+          "warmup": false
+        },
+        {
+          "operationId": "6ebb5d77-a23f-4194-8900-2b425faacc42",
+          "coverReadinessMsOutsideScore": 80.04712196998298,
+          "drawablePaintMs": 102.49062604270875,
+          "rootObservedPaintMs": 183.14416403882205,
+          "inputIssuedMs": 79.4994350289926,
+          "warmup": false
+        },
+        {
+          "operationId": "e485e5d1-ecde-4320-852c-6ca245da84d1",
+          "coverReadinessMsOutsideScore": 76.03690202813596,
+          "drawablePaintMs": 122.3056330345571,
+          "rootObservedPaintMs": 232.43893904145807,
+          "inputIssuedMs": 97.75496507063508,
+          "warmup": false
+        },
+        {
+          "operationId": "1b804461-2fcf-46fa-b30d-f6e746b0a2af",
+          "coverReadinessMsOutsideScore": 43.50544302724302,
+          "drawablePaintMs": 121.31374701857567,
+          "rootObservedPaintMs": 212.92829990852624,
+          "inputIssuedMs": 97.35042392276227,
+          "warmup": false
+        },
+        {
+          "operationId": "527afa9e-5160-47f6-a4b9-d2b60fbd7739",
+          "coverReadinessMsOutsideScore": 41.02570202667266,
+          "drawablePaintMs": 154.97261297423393,
+          "rootObservedPaintMs": 182.63115698937327,
+          "inputIssuedMs": 129.12640196736902,
+          "warmup": false
+        },
+        {
+          "operationId": "f7c014ad-3225-43b6-bec3-25c770c868fb",
+          "coverReadinessMsOutsideScore": 43.29067305661738,
+          "drawablePaintMs": 133.83946695830673,
+          "rootObservedPaintMs": 195.7524720346555,
+          "inputIssuedMs": 108.41818701010197,
+          "warmup": false
+        },
+        {
+          "operationId": "d37e6130-cfdb-4f95-acb1-6c5bf17d3c78",
+          "coverReadinessMsOutsideScore": 74.16533993091434,
+          "drawablePaintMs": 124.01054508518428,
+          "rootObservedPaintMs": 210.34125110600144,
+          "inputIssuedMs": 99.51137809548527,
+          "warmup": false
+        },
+        {
+          "operationId": "ba93a696-0fc7-4e75-8a3a-7e6a72ba199d",
+          "coverReadinessMsOutsideScore": 55.08883495349437,
+          "drawablePaintMs": 129.0880370652303,
+          "rootObservedPaintMs": 203.35308799985796,
+          "inputIssuedMs": 102.15141205117106,
+          "warmup": false
+        },
+        {
+          "operationId": "ed5d73b0-2089-49b4-a5e9-c97f5b704bd4",
+          "coverReadinessMsOutsideScore": 79.92004801053554,
+          "drawablePaintMs": 137.62801000848413,
+          "rootObservedPaintMs": 204.08562605734915,
+          "inputIssuedMs": 112.03184409532696,
+          "warmup": false
+        },
+        {
+          "operationId": "e8654b2d-9a31-4a0b-bfa9-110051de262d",
+          "coverReadinessMsOutsideScore": 62.454223982058465,
+          "drawablePaintMs": 132.88768311031163,
+          "rootObservedPaintMs": 197.48412002809346,
+          "inputIssuedMs": 107.94728505425155,
+          "warmup": false
+        },
+        {
+          "operationId": "5c658c2c-4fad-46a0-aaa9-14991166de6d",
+          "coverReadinessMsOutsideScore": 102.1746729966253,
+          "drawablePaintMs": 121.7449139803648,
+          "rootObservedPaintMs": 206.75980695523322,
+          "inputIssuedMs": 95.7967609865591,
+          "warmup": false
+        },
+        {
+          "operationId": "eda3ac36-2149-419f-bab5-22d0772c13aa",
+          "coverReadinessMsOutsideScore": 45.27769796550274,
+          "drawablePaintMs": 128.98233905434608,
+          "rootObservedPaintMs": 194.5261830696836,
+          "inputIssuedMs": 104.32293300982565,
+          "warmup": false
+        },
+        {
+          "operationId": "299ee86f-25f6-4796-a63f-709f13f8a1e1",
+          "coverReadinessMsOutsideScore": 45.94123503193259,
+          "drawablePaintMs": 106.03599401656538,
+          "rootObservedPaintMs": 178.99067199323326,
+          "inputIssuedMs": 87.0881259907037,
+          "warmup": false
+        },
+        {
+          "operationId": "cff24bb7-0766-4dcf-ab20-7dace8ee6368",
+          "coverReadinessMsOutsideScore": 51.44717404618859,
+          "drawablePaintMs": 109.0848819585517,
+          "rootObservedPaintMs": 225.93954694457352,
+          "inputIssuedMs": 83.79276900086552,
+          "warmup": false
+        },
+        {
+          "operationId": "a324ccd6-aec2-464a-bf9f-927b755a5908",
+          "coverReadinessMsOutsideScore": 65.18958404194564,
+          "drawablePaintMs": 116.68033094611019,
+          "rootObservedPaintMs": 160.86412395816296,
+          "inputIssuedMs": 97.17117296531796,
+          "warmup": false
+        },
+        {
+          "operationId": "84102abc-ec36-4203-a42b-71e741a8e2b0",
+          "coverReadinessMsOutsideScore": 44.91022205911577,
+          "drawablePaintMs": 109.9663539789617,
+          "rootObservedPaintMs": 223.20896992459893,
+          "inputIssuedMs": 85.66101896576583,
+          "warmup": false
+        },
+        {
+          "operationId": "c01f1076-7764-4cfc-a9c5-4c6986ede10a",
+          "coverReadinessMsOutsideScore": 69.07887093257159,
+          "drawablePaintMs": 130.38473995402455,
+          "rootObservedPaintMs": 189.30085294414312,
+          "inputIssuedMs": 106.09054600354284,
+          "warmup": false
+        },
+        {
+          "operationId": "05680f3f-10ed-4bd2-b625-6e798fe702a5",
+          "coverReadinessMsOutsideScore": 49.110526917502284,
+          "drawablePaintMs": 138.0253859097138,
+          "rootObservedPaintMs": 186.1861179349944,
+          "inputIssuedMs": 113.1691129412502,
+          "warmup": false
+        },
+        {
+          "operationId": "2b30963c-5d13-43d4-b842-921ba4be7d02",
+          "coverReadinessMsOutsideScore": 68.79836099687964,
+          "drawablePaintMs": 102.5194600224495,
+          "rootObservedPaintMs": 211.2027369439602,
+          "inputIssuedMs": 81.7379659274593,
+          "warmup": false
+        },
+        {
+          "operationId": "ded96851-bc57-4bae-ae80-f888312d5939",
+          "coverReadinessMsOutsideScore": 81.24589594081044,
+          "drawablePaintMs": 103.32993301562965,
+          "rootObservedPaintMs": 227.16478805523366,
+          "inputIssuedMs": 84.08965601120144,
+          "warmup": false
+        },
+        {
+          "operationId": "7a808a3a-7e19-4a08-8d64-437278cc4bb7",
+          "coverReadinessMsOutsideScore": 50.88102095760405,
+          "drawablePaintMs": 131.46059308201075,
+          "rootObservedPaintMs": 234.64696400333196,
+          "inputIssuedMs": 106.92905797623098,
+          "warmup": false
+        },
+        {
+          "operationId": "24a1ca23-6c0c-4a74-8c12-ea9c4022dceb",
+          "coverReadinessMsOutsideScore": 47.25542396772653,
+          "drawablePaintMs": 138.33752006758004,
+          "rootObservedPaintMs": 193.33249202463776,
+          "inputIssuedMs": 114.04384404886514,
+          "warmup": false
+        }
+      ]
+    },
+    "sampledProcessFamily": {
+      "peakTotals": {
+        "rssBytes": 31997952,
+        "pssBytes": 17021952,
+        "privateBytes": 12304384
+      },
+      "cpuPercentOneCoreLowerBound": null,
+      "observedProcessGenerations": 1,
+      "samplingSpanSeconds": 0.0,
+      "shortLivedChildrenMayBeMissed": true
+    }
+  },
+  "gates": {
+    "overlayPaint": {
+      "status": "fail",
+      "limitMs": 150
+    },
+    "cleanup": {
+      "status": "pass"
+    }
+  },
+  "limitations": [
+    "Capture witness observes X11 drawable paint, not compositor presentation.",
+    "CLI acknowledgements do not prove painted response.",
+    "Sequential sampled process memory can miss short-lived descendants.",
+    "Family CPU is a lower bound when a child exits between samples.",
+    "Shared desktop daemons are outside the resident process family.",
+    "Host quietness and reviewed sanitized visuals require coordinator evidence."
+  ],
+  "socketPreflight": {
+    "schemaVersion": 1,
+    "passed": true,
+    "limitBytesExcludingNul": 107,
+    "paths": [
+      {
+        "path": "/tmp/npb3/capture-empty/runtime/putgd/session.sock",
+        "utf8Bytes": 50,
+        "passed": true
+      }
+    ]
+  },
+  "physical": {
+    "hostname": "mint-builder",
+    "kernel": "6.14.0-37-generic",
+    "session": {
+      "Name": "patrick",
+      "Display": ":0",
+      "Remote": "no",
+      "Desktop": "cinnamon",
+      "Leader": "625282",
+      "Type": "x11",
+      "Active": "yes"
+    },
+    "sessionId": "c89",
+    "requestedQtPlatform": "xcb",
+    "systemVersions": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11",
+      "python": "3.12.3",
+      "packages": {
+        "cinnamon": "6.6.9+zena",
+        "libc6": "2.39-0ubuntu8.9",
+        "libcairo2": "1.18.0-3build1",
+        "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+        "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+        "muffin": "6.6.3+zena"
+      }
+    },
+    "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
+    "loadAverage": [
+      "0.14",
+      "0.23",
+      "0.50"
+    ]
+  },
+  "harness": {
+    "run_capture.py": "caf58fd076ce0c46835753739055bbda2ee3c2cfd1b0ce2822290f8b2783fb94",
+    "bench_capture.cpp": "fcb274049e4279a733b74e6fb9ec80bd4aec6389babe65dcb6497cafd6df887c",
+    "bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+  },
+  "residentLaunches": [
+    {
+      "identity": {
+        "pid": 1216034,
+        "startTicks": 86220241,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 2050,
+        "inode": 10381974
+      },
+      "pidfdHeld": true
+    },
+    {
+      "identity": {
+        "pid": 1216089,
+        "startTicks": 86220356,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 2050,
+        "inode": 10381974
+      },
+      "pidfdHeld": true
+    }
+  ],
+  "residentCleanup": [
+    {
+      "gracefulRequest": true,
+      "exitCode": 0,
+      "forced": false,
+      "remaining": [],
+      "socketAbsent": true,
+      "passed": true,
+      "errors": [],
+      "inventoryComplete": true,
+      "absenceVerified": true,
+      "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+    },
+    {
+      "gracefulRequest": true,
+      "exitCode": 0,
+      "forced": false,
+      "remaining": [],
+      "socketAbsent": true,
+      "passed": true,
+      "errors": [],
+      "inventoryComplete": true,
+      "absenceVerified": true,
+      "inventoryDefinition": "observed PID/start/UID generations + resident process group + exact isolated runtime/data environment; no command lines exported"
+    }
+  ],
+  "staticCover": {
+    "sourceSha256": "aa74c9bbcc38b8f7e30c33da6fecad1cdd694288152b3c594bd265fd4ffde03b",
+    "color": "505a64",
+    "animation": false,
+    "chargedToResidentFamily": false,
+    "visibilityAttempts": [
+      {
+        "returncode": 0,
+        "precheck": {
+          "check": "precheck",
+          "fraction": 1.0,
+          "framebuffer": [
+            1920,
+            1080
+          ],
+          "minFraction": 0.98,
+          "ok": true,
+          "output": [
+            "HDMI-1"
+          ],
+          "rect": [
+            0,
+            0,
+            1920,
+            1080
+          ]
+        }
+      }
+    ]
+  },
+  "liveBuild": {
+    "baseVersion": "26.1031.3384",
+    "commitCount": 3384,
+    "dirty": false,
+    "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+    "packageVersion": "26.1031.3384~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1031.3384-nightly"
+  },
+  "supplementalObserver": {
+    "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+    "path": "/tmp/np31/b_native.py",
+    "scope": "Python XTest real hotkey and owned native overlay drawable/root paint; distinct from frozen C++ driver"
+  }
+}

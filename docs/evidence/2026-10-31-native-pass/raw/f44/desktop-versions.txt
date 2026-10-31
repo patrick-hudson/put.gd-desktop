@@ -1,0 +1,35 @@
+  Transient hostname: fedora
+     Static hostname: (unset)
+           Icon name: computer-desktop
+             Chassis: desktop 🖥️
+   Chassis Asset Tag: [REDACTED]
+          Machine ID: [REDACTED]
+             Boot ID: [REDACTED]
+    Operating System: Fedora Linux 44 (Workstation Edition)
+         CPE OS Name: cpe:/o:fedoraproject:fedora:44
+      OS Support End: Wed 2027-05-19
+OS Support Remaining: 6month 2w 2d
+              Kernel: Linux 7.2.11-200.fc44.x86_64
+        Architecture: x86-64
+     Hardware Vendor: Lenovo
+      Hardware Model: ThinkCentre M900
+        Hardware SKU: LENOVO_MT_10FL_BU_LENOVO_FM_ThinkCentre M900
+    Firmware Version: FWKTBFA
+       Firmware Date: Thu 2022-06-23
+        Firmware Age: 4y 4month 1w 1d
+    2 1000 patrick -     1063    manager -    no -
+    3 1000 patrick -     1207    user    -    no -
+30340 1000 patrick -     2261354 user    -    no -
+30666 1000 patrick seat0 3278816 user    tty2 no -
+31194 1000 patrick -     3315731 user    -    no -
+    4 1000 patrick -     1208    user    -    no -
+    5 1000 patrick -     1209    user    -    no -
+00:02.0 VGA compatible controller [0300]: Intel Corporation Skylake-S GT2 [HD Graphics 530] [8086:1912] (rev 06)
+00:16.3 Serial controller [0700]: Intel Corporation 100/C230 Series Chipset Family Keyboard and Text (KT) Redirection [8086:a13d] (rev 31)
+/sys/class/drm/card0-DP-1/status disconnected
+/sys/class/drm/card0-DP-2/status disconnected
+/sys/class/drm/card0-DP-3/status disconnected
+/sys/class/drm/card0-HDMI-A-1/status connected
+/sys/class/drm/card0-HDMI-A-2/status disconnected
+/sys/class/drm/card0-HDMI-A-3/status disconnected
+GNOME Shell 50.6

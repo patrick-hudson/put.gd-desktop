@@ -17,7 +17,7 @@
         "exe": "/usr/bin/plasmashell",
         "startTicks": 60868265
       },
-      "bootId": "06f3eec1-88ac-4081-82f6-59f510146647"
+      "bootId": "[REDACTED]"
     },
     "qtPlatform": "wayland",
     "qtScaleFactor": ".9",
@@ -289,7 +289,7 @@
         "exe": "/usr/bin/gnome-shell",
         "startTicks": 1414103
       },
-      "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8"
+      "bootId": "[REDACTED]"
     },
     "qtPlatform": "wayland",
     "qtScaleFactor": "0.7",
@@ -560,7 +560,7 @@
         "exe": "/usr/bin/plasmashell",
         "startTicks": 3102035
       },
-      "bootId": "c9926bb9-3536-46ef-95c2-2161ab5a245a"
+      "bootId": "[REDACTED]"
     },
     "qtPlatform": "wayland",
     "qtScaleFactor": "1",
@@ -831,7 +831,7 @@
         "exe": "/usr/bin/plasmashell",
         "startTicks": 1896
       },
-      "bootId": "ba8a5d10-c89d-40d6-8312-50f4b2f8ad79"
+      "bootId": "[REDACTED]"
     },
     "qtPlatform": "xcb",
     "qtScaleFactor": "1",
@@ -1110,7 +1110,7 @@
         "exe": "/usr/bin/gnome-shell",
         "startTicks": 13048
       },
-      "bootId": "0e21a099-5715-4025-8787-7342ce56b759"
+      "bootId": "[REDACTED]"
     },
     "qtPlatform": "xcb",
     "qtScaleFactor": "1",
@@ -1383,7 +1383,7 @@
         "exe": "/usr/bin/gnome-shell",
         "startTicks": 1679
       },
-      "bootId": "81fdb855-8a13-414b-99a5-4a4c706299eb"
+      "bootId": "[REDACTED]"
     },
     "qtPlatform": "wayland",
     "qtScaleFactor": ".6",

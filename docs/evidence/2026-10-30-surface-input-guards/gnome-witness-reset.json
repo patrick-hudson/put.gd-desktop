@@ -1,9 +1,9 @@
 {
   "run": "/home/user/v3",
   "runId": "68f9d2d3-bd17-40f7-86e9-33e0c3da2763",
-  "beforeBootId": "c8ddd8a4-d8bf-4841-89eb-eb5040163ec4",
+  "beforeBootId": "[REDACTED]",
   "reason": "session-manager reboot request did not reload the extension; guest sudo -n unavailable; controlled reset of this authenticated disposable overlay only",
   "at": "2026-10-30T09:28:39.451874+00:00",
   "response": {},
-  "afterBootId": "34a075f7-25be-4e4a-bae2-91188921d8de"
+  "afterBootId": "[REDACTED]"
 }

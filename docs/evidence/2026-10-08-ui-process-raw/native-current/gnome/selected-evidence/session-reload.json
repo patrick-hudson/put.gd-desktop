@@ -1,6 +1,6 @@
 {
   "utc": "2026-10-09T01:31:36.058164+00:00",
-  "bootIdBefore": "8d46b307-fd26-43eb-9261-ac53a23029d0",
+  "bootIdBefore": "[REDACTED]",
   "bootIdAfter": "45ab2603-c0c6-4d25-b61c-50b579de378d",
   "extensionInfo": "putgd@put.gd\n  Name: put.gd native capture\n  Description: Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.\n  Path: /usr/share/gnome-shell/extensions/putgd@put.gd\n  URL: https://put.gd\n  Version: 1\n  Enabled: Yes\n  State: ACTIVE\n",
   "visibleWitness": "fresh-shell.png",

@@ -16,7 +16,7 @@
           "inode": 10025,
           "mountDevice": 30,
           "mountInode": 1,
-          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          "bootId": "[REDACTED]"
         }
       },
       "recovery": {
@@ -31,7 +31,7 @@
           "inode": 10025,
           "mountDevice": 30,
           "mountInode": 1,
-          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          "bootId": "[REDACTED]"
         },
         "exitCode": 0,
         "finished": true,
@@ -49,7 +49,7 @@
             "inode": 10025,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -72,7 +72,7 @@
           "inode": 10726,
           "mountDevice": 30,
           "mountInode": 1,
-          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          "bootId": "[REDACTED]"
         }
       },
       "escaped": {
@@ -103,7 +103,7 @@
             "inode": 10726,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -132,7 +132,7 @@
             "inode": 10726,
             "mountDevice": 30,
             "mountInode": 1,
-            "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+            "bootId": "[REDACTED]"
           }
         },
         "sessionPids": [],
@@ -159,7 +159,7 @@
           "inode": 12280,
           "mountDevice": 30,
           "mountInode": 1,
-          "bootId": "c571496e-ef76-4614-a77e-26613f55938f"
+          "bootId": "[REDACTED]"
         }
       },
       "root": {

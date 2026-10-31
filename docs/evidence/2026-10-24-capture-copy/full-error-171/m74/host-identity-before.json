@@ -1,7 +1,7 @@
 {
   "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
   "host": "m74",
-  "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+  "bootId": "[REDACTED]",
   "kernel": "6.14.0-37-generic",
   "osRelease": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n",
   "packages": {
