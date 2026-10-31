@@ -198,6 +198,8 @@ def links(api, release, by_tag):
                 raise ValueError('Invalid source delivery')
             for name in manifest['assets']:
                 target(manifest['tag'], name)
+            if manifest['url'] != f'https://github.com/{api.repository}/releases/tag/{manifest["tag"]}':
+                raise ValueError('Source delivery URL differs from its tag')
         else:
             parts = manifest['delivery']['parts']
             if not parts:
@@ -205,6 +207,15 @@ def links(api, release, by_tag):
             for part in parts:
                 if 'url' not in part:
                     target(release['tag_name'], part['file'])
+                else:
+                    url = urlsplit(part['url'])
+                    prefix = f'/{api.repository}/releases/download/'
+                    tail = url.path[len(prefix):].split('/')
+                    if (url.scheme != 'https' or url.netloc != 'github.com' or url.query or url.fragment
+                            or not url.path.startswith(prefix) or len(tail) != 2
+                            or unquote(tail[1]) != part['file']):
+                        raise ValueError('Proton source URL differs from catalog file')
+                    target(unquote(tail[0]), part['file'])
         visit(manifest)
     return linked
 

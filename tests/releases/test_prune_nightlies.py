@@ -151,6 +151,46 @@ class Retention(unittest.TestCase):
                 prune.run(self.api, dry_run=False)
         self.assertFalse(self.api.mutations)
 
+    def test_invalid_proton_url_and_missing_target_asset_abort(self):
+        rel = self.releases[-1]
+        for url in ('https://elsewhere.test/part1',
+                    'https://github.com/owner/repo/releases/download/v26.1031.1-nightly/wrong-file',
+                    'https://github.com/owner/repo/releases/download/v26.1031.1-nightly/part1'):
+            rel['assets'] = []
+            self.api.manifest(rel, 'proton-source-catalog.json', {
+                'schemaVersion': 1, 'delivery': {'parts': [{'file': 'part1', 'url': url}]}})
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                self.plan()
+
+    def test_failed_installer_deletion_leaves_its_sources_untouched(self):
+        self.releases.append(release(prune.source_tag(self.releases[0]['tag_name']), 10))
+        original = self.api.json
+        def fail(path, **kwargs):
+            if kwargs.get('method'):
+                raise OSError('deletion failed')
+            return original(path, **kwargs)
+        with patch.object(prune, 'repository_tags', return_value={}), \
+                patch.object(self.api, 'json', side_effect=fail), patch('sys.stdout', new=io.StringIO()):
+            with self.assertRaises(OSError):
+                prune.run(self.api, dry_run=False, get=lambda _: json.dumps(self.site).encode())
+        self.assertFalse(self.api.mutations)
+
+    def test_concurrent_release_asset_change_aborts_before_deletion(self):
+        original = self.api.json
+        reads = []
+        def changed(path, **kwargs):
+            result = original(path, **kwargs)
+            if not kwargs.get('method'):
+                reads.append(path)
+                if len(reads) == 2:
+                    result[0][0]['assets'].append({'id': 88, 'name': 'changed'})
+            return result
+        with patch.object(prune, 'repository_tags', return_value={}), \
+                patch.object(self.api, 'json', side_effect=changed), patch('sys.stdout', new=io.StringIO()):
+            with self.assertRaisesRegex(ValueError, 'inputs changed'):
+                prune.run(self.api, dry_run=False, get=lambda _: json.dumps(self.site).encode())
+        self.assertFalse(self.api.mutations)
+
 
 class Repositories(unittest.TestCase):
     def test_apt_reads_every_putgd_stanza_including_stable_and_empty_suites(self):
