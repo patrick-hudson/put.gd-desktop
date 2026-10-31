@@ -76,7 +76,7 @@ def _video(ctx, rid, fx=.5, fy=.5):
 
 
 def _arm(ctx, rid, kind='solid'):
-    ctx.click('addMask', window='review')
+    ctx.click('text:Add mask', window='review')
     # Menu order is defined by ReviewWindow and recorded in 31d-review-add-mask-menu.
     ctx.keys('Home', *(['Down'] if kind == 'blur' else []), 'Return')
     ctx.wait(lambda: _state(ctx, rid)['armed'] == kind, 'mask tool is armed')
@@ -137,12 +137,10 @@ def _select_mask(ctx, rid, mask):
 
 
 def _choose_format(ctx, rid, fmt, codec=''):
-    # Prefer the stable name added by fix/surface-objectnames. For older builds
-    # use the combo's accessible name, which differs from its selected item.
-    controls = ctx.fixture('review-controls')['controls']
-    named = next((c for c in controls if c.get('name') == 'format'), None)
-    selector = 'format' if named else 'text:Output format'
-    ctx.click(selector, window='review')
+    # Qt 6.4 does not export objectName, and the catalog's selected item is
+    # different from the combo's live accessible name. This name is stable on
+    # both supported Qt versions and does not depend on the selected format.
+    ctx.click('text:Output format', window='review')
     caps = ctx.call('recording.capabilities')
     choices = [(f, c) for f in caps['formats'] for c in (caps['codecs'].get(f) or [''])]
     if (fmt, codec) not in choices:
@@ -290,11 +288,11 @@ def _export(ctx, rid, name='review-check'):
 @recipe('review.play', 'review.speed', needs=('recording',))
 def playback(ctx):
     rid = _open(ctx)
-    ctx.click('speed', window='review')
+    ctx.click('text:Playback speed', window='review')
     ctx.keys('Home', 'Down', 'Down', 'Return')
     ctx.wait(lambda: _state(ctx, rid)['speed'] == 2, '2x playback selected')
     at = _state(ctx, rid)['playheadUs']
-    ctx.click('play', window='review')
+    ctx.click('text:Play', window='review')
     ctx.wait(lambda: (s := _state(ctx, rid))['playing'] and s['playheadUs'] > at, 'playhead advances')
     ctx.keys('Space')
     ctx.wait(lambda: not _state(ctx, rid)['playing'], 'Space pauses playback')
@@ -317,7 +315,7 @@ def trim(ctx):
     info = _changed(ctx, rid, info['edit']['revision'])
     ctx.expect(info['edit']['trimEnd'] < info['durationUs'], 'right trim handle moves end')
     _seek(ctx, rid, .25)
-    ctx.click('text:Start here', window='review')
+    ctx.click('text:Set trim start at playhead', window='review')
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['trimStart'] > info['edit']['trimStart'], 'Start here trims')
     _seek(ctx, rid, .75)
     ctx.keys('O')
@@ -336,7 +334,7 @@ def trim(ctx):
     ctx.keys('End')
     end = _state(ctx, rid)
     ctx.expect(abs(end['playheadUs'] - end['trim']['end']) < 100_000, 'End jumps to trim end')
-    ctx.click('text:Reset', window='review')
+    ctx.click('text:Reset trim', window='review')
     ctx.wait(lambda: (s := _inspect(ctx, rid))['edit']['trimStart'] == 0 and s['edit']['trimEnd'] is None,
              'Reset restores whole clip')
     _frame(ctx, 'after')
@@ -387,7 +385,7 @@ def masks(ctx):
     previous_start = _inspect(ctx, rid)['edit']['masks'][0]['start']
     ctx.drag(_point(ctx, s, bar, 0, .5), _point(ctx, s, bar, .15, .5))
     ctx.wait(lambda: _inspect(ctx, rid)['edit']['masks'][0]['start'] > previous_start, 'mask bar handle retimes')
-    ctx.click('masks', window='review')
+    ctx.click('text:Masks', window='review')
     ctx.keys('Home', 'Return')
     ctx.expect(_state(ctx, rid)['selectedMaskId'] == mask['id'], 'mask chooser selects mask')
     _export(ctx, rid)
@@ -404,7 +402,7 @@ def masks(ctx):
 def mask_options(ctx):
     rid = _open(ctx)
     mask = _add(ctx, rid, 'blur')
-    ctx.click('maskOptions', window='review')
+    ctx.click('text:Mask options', window='review')
     ctx.wait(lambda: _state(ctx, rid)['maskOptions']['open'], 'mask options menu opens')
     _frame(ctx, 'blur-options', '31i-review-mask-options', 'maskOptionsMenu')
     ctx.click('class:QSpinBox', window='maskOptionsMenu')
@@ -497,12 +495,14 @@ def upload(ctx):
         ctx.blocked('Boat forbids S3 credentials and Proton sessions; use a configured builder destination')
     rid = _open(ctx)
     destination = ctx.fixture('destination')
-    ctx.click('uploadDestinationMenu', window='review')
+    destination_name = destination['id'] if ctx.destination == 'local' else destination['label']
+    ctx.click_accessible({'owned': True, 'window': 'Review*', 'role': 'push button',
+                          'name': destination_name + ' · *', 'visible': True, 'showing': True})
     # This menu describes the immutable destination snapshot, rather than selecting another one.
     entries = [e for e in ctx.accessible({'owned': True, 'visible': True, 'showing': True}) if e.get('popup')]
     if not entries:
         ctx.blocked('Review destination popup is not exposed by the live accessibility resolver (#672)', issue=672)
-    ctx.expect(any(destination['label'] in e.get('name', '') for e in entries), 'destination menu names configured destination')
+    ctx.expect(any(destination_name in e.get('name', '') for e in entries), 'destination menu names configured destination')
     ctx.keys('Esc')
     before = _inspect(ctx, rid)
     ctx.click('upload', window='review')
@@ -546,9 +546,9 @@ def discard(ctx):
 @recipe('review.window-close', needs=('recording',))
 def window_close(ctx):
     rid = _open(ctx)
-    ctx.click('windowMaximize', window='review')
+    ctx.click('text:Maximize', window='review')
     ctx.expect(_state(ctx, rid)['visible'], 'maximized review remains visible')
-    ctx.click('windowMaximize', window='review')
+    ctx.click('text:Restore', window='review')
     ctx.click('windowMinimize', window='review')
     ctx.call('recording.raise', {'id': rid})
     ctx.wait(lambda: _state(ctx, rid)['visible'], 'review restored after minimize')
@@ -560,18 +560,24 @@ def window_close(ctx):
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'Escape keeps recording')
 
 
-@recipe('review.advice', needs=('recording', 'review-controls'))
+@recipe('review.advice', needs=('recording', 'review-controls', 'recording-export-failure'))
 def advice(ctx):
-    rid = _open(ctx)
+    rid = _open(ctx, 'recording-export-failure')
+    ctx.click('text:Details…', window='review')
+    ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'genuine export failure opens details')
+    ctx.expect(bool(_state(ctx, rid)['adviceDialog']['text']), 'export failure advice contains actual details')
+    _frame(ctx, 'export-advice', '68-review-error-details', 'confirmAction')
+    ctx.focus('confirmAction')
+    ctx.keys('Esc')
     _choose_format(ctx, rid, 'mp4', 'h265')
-    ctx.click('formatAdvice', window='review')
+    ctx.click('text:Format tips', window='review')
     ctx.wait(lambda: _state(ctx, rid)['adviceDialog']['open'], 'Format tips opens')
     ctx.expect(bool(_state(ctx, rid)['adviceDialog']['text']), 'Format tips contains compatibility/audio advice')
     _frame(ctx, 'after', '68-review-error-details', 'confirmAction')
     ctx.focus('confirmAction')
     ctx.keys('Esc')
     ctx.expect(_inspect(ctx, rid)['state'] == 'reviewing', 'advice leaves recording in review')
-    ctx.blocked('Format tips exercised; Export failed/Recording error advice variants need fault fixtures (#672)', issue=672)
+    ctx.blocked('Export failure details and format tips exercised; terminal Recording error advice still needs a reversible capture failure fixture (#672)', issue=672)
 
 
 @recipe('review.notice', needs=('recording-budget-stop',), timeout=240)
@@ -581,7 +587,7 @@ def stop_notice(ctx):
     if info.get('stopReason') != 'budget':
         ctx.blocked('Needs a genuine byte-budget stopped motion recording, not a synthetic notice')
     ctx.expect(bool(_state(ctx, rid)['notice']) and bool(info.get('stopDetails')), 'budget notice explains actual stop')
-    ctx.click('play', window='review')
+    ctx.click('text:Play', window='review')
     ctx.keys('Space')
     _frame(ctx, 'after')
 
@@ -621,7 +627,68 @@ def _api_edits(info):
                                       'start': 1_200_000, 'end': 2_800_000}}]
 
 
-@recipe('cli.recording', needs=('recording',))
+def _capture_lifecycle(ctx, invoke):
+    """Exercise a second, fresh capture through the requested public transport.
+
+    The review fixture has already established the owned synthetic scene and
+    consent. Always cancel this transport-created identity, including on failure.
+    """
+    fixture = ctx.fixture('recording-lifecycle')
+    fixture['scene'].command('raise')
+    prepared = invoke('prepare', {'target': {'kind': 'region'}, 'format': 'mp4'})
+    rid = prepared.get('recordingId') or prepared.get('id')
+    ctx.expect(bool(rid), 'transport prepare returns a fresh recording identity')
+    try:
+        selecting = ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid})).get('selecting')
+                                     or s.get('state') in ('ready', 'failed') else None),
+                             'transport prepare opens region selection', timeout=40)
+        ctx.expect(selecting.get('selecting'), 'fresh region prepare exposes its selector')
+        invoke('select', {'id': rid, 'rect': fixture['scene']['rect']})
+        ready = ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid}))['state'] == 'ready' else None),
+                         'transport selection reaches ready', timeout=40)
+        ctx.expect(ready['target']['rect'] == fixture['scene']['rect'], 'selected capture bounds are resident')
+        for command, state in [('start', 'recording'), ('pause', 'paused')]:
+            invoke(command, {'id': rid})
+            ctx.wait(lambda: invoke('inspect', {'id': rid})['state'] == state, 'transport ' + command)
+        invoke('overlay', {'id': rid, 'visible': False})
+        invoke('overlay', {'id': rid, 'visible': True})
+        invoke('raise', {'id': rid})
+        invoke('resume', {'id': rid})
+        ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid}))['state'] == 'recording'
+                         and s['durationUs'] >= 4_000_000 else None),
+                 'transport resumed capture retains four seconds', timeout=15)
+        invoke('stop', {'id': rid})
+        stopped = ctx.wait(lambda: (s if (s := invoke('inspect', {'id': rid}))['state'] == 'reviewing' else None),
+                           'transport stop opens private review', timeout=40)
+        ctx.expect(stopped['stopReason'] == 'user' and stopped['durationUs'] >= 4_000_000,
+                   'transport stop retains a real user-stopped recording')
+        ctx.expect(not ctx.call('operation.inspect', {'id': rid}).get('items'), 'capture lifecycle uploads nothing')
+        ctx.frame('capture-lifecycle')
+    finally:
+        invoke('cancel', {'id': rid})
+    ctx.wait(lambda: ctx.call('operation.inspect', {'id': rid})['state'] == 'cancelled',
+             'transport cancel discards only its recording')
+
+
+def _cli_recording(ctx, command, params):
+    return _reply(ctx, ctx.cli('recording.' + command, json.dumps(params)))
+
+
+def _mcp_recording(ctx, command, params):
+    if command == 'prepare':
+        tool, values = 'prepare_recording', params
+    elif command == 'inspect':
+        tool, values = 'get_recording', params
+    elif command == 'select':
+        tool, values = 'select_recording_region', params
+    elif command == 'overlay':
+        tool, values = 'set_recording_overlay', params
+    else:
+        tool, values = 'control_recording', {**params, 'command': command}
+    return _reply(ctx, ctx.mcp(tool, values))
+
+
+@recipe('cli.recording', needs=('recording', 'recording-lifecycle'), timeout=300)
 def cli_recording(ctx):
     rid = _open(ctx, frame_review=False)
     initial = _inspect(ctx, rid)
@@ -639,7 +706,8 @@ def cli_recording(ctx):
     _reply(ctx, ctx.cli('recording.saveCopy', json.dumps({'id': rid, 'path': path})))
     _saved(ctx, rid, path)
     ctx.frame('after')
-    ctx.blocked('CLI review-stage entries exercised; capture prepare/start/pause/resume/stop/select/overlay need a capture fixture (#672)', issue=672)
+    _cli_recording(ctx, 'cancel', {'id': rid})
+    _capture_lifecycle(ctx, lambda command, params: _cli_recording(ctx, command, params))
 
 
 def _mcp_review(ctx):
@@ -661,10 +729,11 @@ def _mcp_review(ctx):
     return rid, _inspect(ctx, rid)
 
 
-@recipe('mcp.recording', needs=('recording', 'mcp'))
+@recipe('mcp.recording', needs=('recording', 'mcp', 'recording-lifecycle'), timeout=300)
 def mcp_recording(ctx):
-    _mcp_review(ctx)
-    ctx.blocked('MCP review/edit/preview/save exercised; prepare/control/select/overlay capture lifecycle remains unexercised (#672)', issue=672)
+    rid, _ = _mcp_review(ctx)
+    _mcp_recording(ctx, 'cancel', {'id': rid})
+    _capture_lifecycle(ctx, lambda command, params: _mcp_recording(ctx, command, params))
 
 
 @recipe('mcp.recording-review', needs=('recording', 'mcp', 'destination'), timeout=240)

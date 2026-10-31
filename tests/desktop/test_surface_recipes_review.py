@@ -121,6 +121,11 @@ class FakeContext(Context):
     def click(self, control, window, button='left', offset=None):
         self.trace.append(('click', control, window))
         self.last_click = control
+        control = {'text:Add mask':'addMask', 'text:Masks':'masks',
+                   'text:Mask options':'maskOptions', 'text:Play':'play',
+                   'text:Playback speed':'speed', 'text:Set trim start at playhead':'text:Start here',
+                   'text:Reset trim':'text:Reset', 'text:Format tips':'formatAdvice',
+                   'text:Maximize':'windowMaximize', 'text:Restore':'windowMaximize'}.get(control, control)
         if control == 'text:Output format':
             control = 'format'
         if not self.inputs_work:
@@ -202,6 +207,9 @@ class FakeContext(Context):
         self.state['timeline']['lanes'] = count + 1
         self.state['timeline']['firstLane'] = max(0, count-1)
 
+    def click_accessible(self, query, button='left'):
+        self.trace.append(('click_accessible', query, button))
+
     def click_at(self, x, y, button='left'):
         self.trace.append(('click_at', x, y))
         self.state['playheadUs'] = max(0, min(6_000_000, (x-220)/720*6_000_000))
@@ -234,7 +242,7 @@ class FakeContext(Context):
         self.trace.append(('accessible', query))
         if query.get('window') == 'review':
             return []
-        return [{'name': 'Isolated local copies', 'popup': {'role':'menu'}}]
+        return [{'name': 'Destination: local-test', 'popup': {'role':'menu'}}]
 
 
 class ReviewRecipes(unittest.TestCase):
@@ -321,11 +329,17 @@ class ReviewRecipes(unittest.TestCase):
         self.assertEqual(len(ctx.info['edit']['masks']), 5)
 
     def test_catalog_named_format_and_fallback(self):
-        for controls, selector in [([{'name': 'format'}], 'format'), ([], 'text:Output format')]:
+        for controls, selector in [([{'name': 'format'}], 'text:Output format'), ([], 'text:Output format')]:
             ctx = FakeContext()
             ctx.fixture_data['review-controls']['controls'] = controls
             review._choose_format(ctx, 'recording-id', 'mp4', 'h265')
             self.assertIn(('click', selector, 'review'), ctx.trace)
+
+    def test_playback_targets_accessible_names_instead_of_tooltips(self):
+        ctx = FakeContext()
+        review.playback(ctx)
+        self.assertIn(('click', 'text:Playback speed', 'review'), ctx.trace)
+        self.assertIn(('click', 'text:Play', 'review'), ctx.trace)
 
     def test_unavailable_codec_blocked_not_passed(self):
         ctx = FakeContext()
@@ -442,6 +456,60 @@ class ReviewRecipes(unittest.TestCase):
         self.assertLess(trim['start'], mask['mask']['start'])
         self.assertLess(mask['mask']['end'], trim['end'])
 
+    def test_fresh_transport_capture_drives_lifecycle_and_cancels(self):
+        ctx = FakeContext()
+        scene = types.SimpleNamespace(command=lambda command: None)
+        class Scene(dict):
+            command = staticmethod(scene.command)
+        ctx.fixture_data['recording-lifecycle'] = {'scene': Scene(rect=[10, 20, 640, 320])}
+        state = {'state': 'preparing', 'selecting': True, 'durationUs': 0}
+        calls = []
+        def invoke(command, params):
+            calls.append((command, copy.deepcopy(params)))
+            if command == 'prepare':
+                return {'recordingId': 'fresh-id'}
+            if command == 'select':
+                state.update(state='ready', selecting=False, target={'rect': params['rect']})
+            if command in ('start', 'resume', 'pause', 'stop'):
+                state.update(state={'start':'recording', 'resume':'recording', 'pause':'paused', 'stop':'reviewing'}[command],
+                             durationUs=4_500_000, stopReason='user')
+            if command == 'cancel':
+                ctx.operation['state'] = 'cancelled'
+            return copy.deepcopy(state)
+        review._capture_lifecycle(ctx, invoke)
+        commands = [c for c, _ in calls]
+        for command in ('prepare', 'select', 'start', 'pause', 'resume', 'overlay', 'raise', 'stop', 'cancel'):
+            self.assertIn(command, commands)
+        self.assertEqual([p['visible'] for c, p in calls if c == 'overlay'], [False, True])
+        self.assertEqual(commands[-1], 'cancel')
+        self.assertEqual(ctx.frames[-1]['label'], 'capture-lifecycle')
+
+    def test_transport_capture_failure_still_cancels_owned_id(self):
+        ctx = FakeContext()
+        class Scene(dict):
+            def command(self, command): pass
+        ctx.fixture_data['recording-lifecycle'] = {'scene': Scene(rect=[0, 0, 640, 320])}
+        calls = []
+        def invoke(command, params):
+            calls.append((command, params))
+            if command == 'prepare': return {'id': 'fresh-id'}
+            if command == 'inspect': return {'state':'preparing', 'selecting':False}
+            return {}
+        with self.assertRaisesRegex(RecipeFailed, 'region selection'):
+            review._capture_lifecycle(ctx, invoke)
+        self.assertEqual(calls[-1], ('cancel', {'id':'fresh-id'}))
+
+    def test_mcp_capture_commands_use_official_tool_shapes(self):
+        ctx = FakeContext()
+        calls = []
+        ctx.mcp = lambda tool, params: calls.append((tool, params)) or {'ok': True, 'result': {}}
+        review._mcp_recording(ctx, 'select', {'id':'fresh-id','rect':[0,0,640,320]})
+        review._mcp_recording(ctx, 'pause', {'id':'fresh-id'})
+        review._mcp_recording(ctx, 'overlay', {'id':'fresh-id','visible':False})
+        self.assertEqual(calls, [('select_recording_region', {'id':'fresh-id','rect':[0,0,640,320]}),
+                                 ('control_recording', {'id':'fresh-id','command':'pause'}),
+                                 ('set_recording_overlay', {'id':'fresh-id','visible':False})])
+
     def test_mcp_review_upload_uses_reviewed_revision_and_decodes(self):
         ctx = FakeContext()
         ctx.info['edit']['revision'] = 3
@@ -471,6 +539,8 @@ class ReviewRecipes(unittest.TestCase):
         self.assertTrue(any(t[0] == 'shell' for t in ctx.trace))
         self.assertEqual(ctx.frames[-1]['reference'], '01-history-list')
         self.assertIn(('accessible', {'owned':True,'visible':True,'showing':True}), ctx.trace)
+        self.assertIn(('click_accessible', {'owned':True,'window':'Review*','role':'push button',
+                                          'name':'local-test · *','visible':True,'showing':True}, 'left'), ctx.trace)
 
     def test_upload_does_not_accept_an_unrelated_destination_label(self):
         ctx = FakeContext()
