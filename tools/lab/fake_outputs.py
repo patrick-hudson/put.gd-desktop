@@ -11,8 +11,10 @@ monitor's own EDID by default, so the extra outputs match it.
   fake_outputs.py add CONNECTOR [CONNECTOR ...] [--edid FILE] [--card card1]
       Copies the EDID (default: the first connected connector's) under
       ~/putgd-lab/firmware/edid/, points firmware_class.path at it, sets
-      drm.edid_firmware for the connectors and forces their status on. Prints
-      each connector's status and modes afterwards.
+      drm.edid_firmware for the connectors, forces their status on and sends
+      a DRM hotplug event so the compositor picks them up (enable and place
+      them with kscreen-doctor on Plasma). Prints each connector's status and
+      modes afterwards.
   fake_outputs.py remove CONNECTOR [CONNECTOR ...] [--card card1]
       Sets the connectors back to detect and clears the overrides.
   fake_outputs.py status [--card card1]
@@ -119,15 +121,20 @@ def add(args):
         sudo_write(PATH_PARAM, '')
         print('forcing failed (%s); rolled back' % error, file=sys.stderr)
         return 1
+    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
     time.sleep(2)
     return status(args)
 
 
 def remove(args):
-    for name in args.connector:
-        sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'detect')
+    # Clear the overrides first: a re-detect while the EDID override is still
+    # in place keeps the connector connected. Then the compositor needs a
+    # hotplug event to drop the output (udevadm trigger --subsystem-match=drm).
     sudo_write(EDID_PARAM, '')
     sudo_write(PATH_PARAM, '')
+    for name in args.connector:
+        sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'detect')
+    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
     time.sleep(2)
     return status(args)
 
