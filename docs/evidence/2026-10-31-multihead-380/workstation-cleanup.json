@@ -1,0 +1,9 @@
+{
+  "wallGroupsRemoved": true,
+  "tunnels": {
+    "m74": "inactive",
+    "d69": "inactive",
+    "k72": "inactive"
+  },
+  "privateSshAgentStopped": true
+}
