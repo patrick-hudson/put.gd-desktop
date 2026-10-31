@@ -159,8 +159,22 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     const gint64 running = runningNow(pad);
     if (!buffer || running < 0) return GST_PAD_PROBE_OK;
     const gint64 headerPts = GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1;
-    if (headerPts >= 0 && headerPts == clock->headerPts) { ++clock->duplicates; return GST_PAD_PROBE_DROP; }
+    if (headerPts >= 0 && headerPts == clock->headerPts) ++clock->repeatedPts;
     if (headerPts >= 0) clock->headerPts = headerPts;
+    if (clock->lastArrival >= 0) clock->interval.add(running - clock->lastArrival);
+    clock->lastArrival = running;
+    if (clock->sampleContents) {
+        // One row in the middle of the frame tells repeated contents from new ones.
+        GstMapInfo map;
+        if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
+            quint64 hash = 1469598103934665603ULL;
+            const gsize start = std::min<gsize>(map.size / 2, map.size), count = std::min<gsize>(map.size - start, 1920 * 4);
+            for (gsize i = 0; i < count; ++i) { hash ^= map.data[start + i]; hash *= 1099511628211ULL; }
+            gst_buffer_unmap(buffer, &map);
+            if (hash == clock->contentHash) ++clock->sameContents; else ++clock->distinctContents;
+            clock->contentHash = hash;
+        }
+    }
     auto frame = pipewireFrameTime(headerPts, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
@@ -233,6 +247,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     // =arrival: raw arrival times (the default before #6), for lab A/B runs.
     frameClock_.smoothed = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
+    frameClock_.sampleContents = !qEnvironmentVariable("PUTGD_RECORD_DEBUG_LOG").isEmpty();
     clockName_.clear();
     if (!frameSource.isEmpty()) {
         // The monotonic system clock is the compositors' frame clock, so frame
@@ -481,7 +496,8 @@ void RecordingPipeline::tearDown() {
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
-    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue, %3 repeated compositor presentations dropped").arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.duplicates));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same")
+                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents));
     stopping_ = false;
 }
 }
