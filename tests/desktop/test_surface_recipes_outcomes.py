@@ -117,7 +117,7 @@ class ClipboardOracles(unittest.TestCase):
 
     def test_text_completion_uses_independent_object_hash_without_media_export(self):
         ctx = SimpleNamespace(note=Mock(), expect=ClipboardContext().expect,
-            call=Mock(side_effect=[{'state':'completed'}, {'id':'row','uploadStatus':'uploaded','local':{'status':'saved'}}]))
+            call=Mock(return_value={'id':'row','uploadStatus':'uploaded','local':{'status':'saved'}}))
         records = [{'id':'row','operationId':'operation'}]
         ctx.wait = Mock(side_effect=[{'state':'completed'}, records])
         with patch.object(outcomes, '_frame'), patch.object(outcomes, '_object', return_value='source-sha') as obj, \
