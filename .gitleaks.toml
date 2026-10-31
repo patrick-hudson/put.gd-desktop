@@ -35,3 +35,21 @@ regexes = [
   '''redact::text\(''',
   '''Quarterly Secret Plan\.png''',
 ]
+
+[[allowlists]]
+description = "Exact privacy-regression fixtures and disposable portal request handles"
+regexTarget = "secret"
+regexes = [
+  '''^(Fk4Rw8Lq2Zn7Hc5T|Zq9xK2mLpW4vR7tY)$''',
+  '''^wJalrXUtnFEMI/K7MDENG/bPxRfiCYVALIDATION1$''',
+  '''^eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJzeW50aGV0aWMifQ\.c3ludGhldGljc2lnbmF0dXJl$''',
+  '''^putgd_record_4242_[13]$''',
+]
+
+[[allowlists]]
+description = "Grype database cache identities and the input-guard evidence's literal prose"
+regexTarget = "secret"
+regexes = [
+  '''^grype-db-v6-[0-9a-f]{64}$''',
+  '''^foreground/occlusion$''',
+]
