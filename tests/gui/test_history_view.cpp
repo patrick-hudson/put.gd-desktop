@@ -618,7 +618,7 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);auto original=std::make_unique<HistoryWindow>(fixture.session);auto& window=*original;window.show();auto* table=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(table->model()->rowCount(),1);inspectRow(table,0);
   auto drain=qScopeGuard([&]{released.store(true);});
   QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{if(auto* dialog=deletionDialog())dialog->findChild<QPushButton*>("confirmActionButton")->click();});accept.start();
-  window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(entered.load());accept.stop();
+  window.findChild<QPushButton*>("deleteHistoryRemote")->click();PUTGD_TRY_VERIFY(entered->load());accept.stop();
   const auto saved=window.saveViewState();QVERIFY(!saved["deletionId"].toString().isEmpty());original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));reopened.show();PUTGD_TRY_VERIFY(!reopened.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QPushButton* cancel=nullptr;for(auto* button:reopened.findChildren<QPushButton*>())if(button->text()=="Cancel deletion")cancel=button;QVERIFY(cancel);PUTGD_TRY_VERIFY(cancel->isVisible());QVERIFY(cancel->isEnabled());QVERIFY(!readableStatus(reopened.findChild<QLabel*>("historyOutcome")->text()).isEmpty());
   cancel->click();QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);PUTGD_TRY_VERIFY(status->text().contains("Deletion action accepted"));
   released.store(true);operations.shutdown(); // Drain the delayed worker while its service/fixture still exist.
@@ -737,9 +737,9 @@ private slots:
    // The journal and preview reply can spell the same cache path differently
    // (previews/ versus artifacts/../previews/). Hold the decoder so a redundant
    // reread cannot hide a blank between the detail reply and its completion.
-   reloads.stop();std::promise<void> release;auto gate=release.get_future().share();std::atomic_bool entered=false;
-   fixture.session.background([gate,&entered](Error&){entered.store(true);gate.wait();return QJsonObject{};},&window,[](Error,QJsonObject){});
-   auto unblock=qScopeGuard([&]{release.set_value();});PUTGD_TRY_VERIFY(entered.load());
+   reloads.stop();std::promise<void> release;auto gate=release.get_future().share();auto entered=std::make_shared<std::atomic_bool>(false);
+   fixture.session.background([gate,entered](Error&){entered->store(true);gate.wait();return QJsonObject{};},&window,[](Error,QJsonObject){});
+   auto unblock=qScopeGuard([&]{release.set_value();});PUTGD_TRY_VERIFY(entered->load());
    const auto alias=QFileInfo(cleaned).path()+"/./"+QFileInfo(cleaned).fileName();
    {HistoryStore ledger(operations.databasePath());auto op=ledger.operation("synthetic-image-op");op.items[0].artifact.previewPath=alias;QVERIFY(!ledger.saveOperation(op));}
    window.refresh();auto* details=window.findChild<QPlainTextEdit*>("historyDetails");
