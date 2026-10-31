@@ -38,8 +38,6 @@ class DriverContext(Context):
                 raise LiveEvidenceRefused('live destination '+str(self.destination)+' blocked by secret-safe evidence: '
                                           +', '.join(blockers))
             self._live_admitted = True
-        else:
-            require_host_ocr()
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
         self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
@@ -57,7 +55,7 @@ class DriverContext(Context):
         self._popup = None
         self._click_count = 1
 
-        self.evidence = Evidence(self.out, require_ocr=self.destination != 'local')
+        self.evidence = Evidence(self.out, require_ocr=self.destination != 'local', local=self.destination == 'local')
         self._sensitive_regions = []
         self._sensitive_controls = []
         self._sensitive_seen = self.destination != 'local'
@@ -262,7 +260,16 @@ class DriverContext(Context):
                                       {k:parent[k] for k in ('scale','pid','coordinate_space') if k in parent})
         if self.profile.get('session')=='wayland' and not self.profile.get('at_spi',{}).get('available'):
             raise RecipeBlocked('window geometry: '+self.profile.get('at_spi',{}).get('reason','AT-SPI unavailable'))
-        result = self._probe('geometry', self._window_query(window))
+        query = self._window_query(window)
+        if window in ('region', 'recsel'):
+            query['selector'] = True
+            screens = self.profile.get('screens', [])
+            query['selector_screens'] = [[s[k] for k in ('x','y','width','height')] for s in screens]
+            if len(screens) > 1:
+                screen = next((s for s in screens if s.get('head', 0) == self._input_head), None)
+                if screen:
+                    query['point'] = [screen['x']+screen['width']/2, screen['y']+screen['height']/2]
+        result = self._probe('geometry', query)
         if window in ('region', 'recsel'):
             self._current_window = window
         return self._map_geometry(result)
@@ -276,7 +283,7 @@ class DriverContext(Context):
         owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
         self._current_window, self._popup = owner, None
         geometry = self.geometry(owner)
-        if geometry.get('override_redirect'):
+        if geometry.get('override_redirect') or owner in ('region', 'recsel'):
             # Unmanaged bars/covers never become the active window: select them
             # by a server hit-test at their centre. Keyboard input to them is
             # still refused unless the X input focus is really inside them.
@@ -509,7 +516,8 @@ class DriverContext(Context):
         witness = self._guard(point=self._global_point(*start,head))
         if require_resize:
             resize_before = self._probe('resize', {})
-        unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
+        unmanaged = (bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test') or
+                     self._current_window in ('region', 'recsel'))
         last = start
         with armed(self.review):
             try:
@@ -1043,7 +1051,7 @@ asyncio.run(main())
                 if ((SECRET_FIELD.search(row.get('name', '')) or row.get('sensitive'))
                         and row.get('class') not in ('QPushButton', 'QToolButton', 'QCheckBox', 'QRadioButton')):
                     names.add(row['name'])
-        return names
+        return {name for name in names if not re.search(r'(url|link)$', name, re.I)} if self.destination == 'local' else names
 
     EDITABLE_ROLES = ('text', 'entry', 'password text', 'terminal')
 
@@ -1122,6 +1130,10 @@ asyncio.run(main())
             editable = row.get('role') in self.EDITABLE_ROLES
             secret = (editable or row.get('objectName') in names or SECRET_FIELD.search(row.get('objectName') or '')
                       or row.get('protected') or self._leaks(row.get('name'), row.get('text'), row.get('description')))
+            if self.destination == 'local':
+                name = row.get('objectName') or ''
+                secret = (row.get('protected') or row.get('role') == 'password text' or
+                          ((name in names or SECRET_FIELD.search(name)) and not re.search(r'(url|link)$', name, re.I)))
             if not secret:
                 continue
             box = row.get('rect') or row.get('unclipped_rect')
@@ -1149,18 +1161,18 @@ asyncio.run(main())
     def _frame_regions(self, image, head, geometry=None, role=None, desktop_safe=None):
         """Masks for one capture; (regions, fallback, guard).
 
-        Before anything sensitive is seen (local runs) only declared regions
-        apply. Afterwards, and always for live destinations, only the owned
+        Local synthetic runs mask declared regions and secret fields. For
+        live destinations, only the owned
         window's own pixels may be kept: desktop-level frames are fully masked
         unless the recipe declares their content safe, non-owned windows over
         the owned window and the profile's notification areas are masked, and
         every showing secret control is masked. Any unknown fails closed.
         """
         regions = [region for selected, region in self._sensitive_regions if selected == head]
-        if not self._sensitive_seen:
+        if self.destination == 'local' or not self._sensitive_seen:
             # Nothing link-like seen yet: secret fields can hold no live value,
             # so their masks are best effort (the read can still mark the run).
-            if geometry is not None and self.profile.get('at_spi', {}).get('available'):
+            if self.profile.get('at_spi', {}).get('available') and (geometry is not None or self.destination == 'local'):
                 input_head = self._input_head
                 try:
                     regions += self._secret_regions(head, None, geometry)
@@ -1168,7 +1180,7 @@ asyncio.run(main())
                     pass
                 finally:
                     self._input_head = input_head
-            if not self._sensitive_seen:
+            if self.destination == 'local' or not self._sensitive_seen:
                 return regions, False, None
         full = [[0, 0, image.width, image.height]]
         if geometry is None and not desktop_safe:

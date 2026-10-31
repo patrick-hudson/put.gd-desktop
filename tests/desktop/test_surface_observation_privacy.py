@@ -74,7 +74,10 @@ class Observations(unittest.TestCase):
         return self.ctx.notifications()
 
     def test_mixed_editor_and_notifications_keep_earlier_frames(self):
-        frame = self.ctx.frame('before-mcp-and-notifications')
+        # This scene contains no credential controls. MemoryTarget's default
+        # probe tree otherwise includes unrelated synthetic secret fixtures.
+        with patch.object(self.ctx, '_secret_regions', return_value=[]):
+            frame = self.ctx.frame('before-mcp-and-notifications')
         self.assertEqual(self.mcp(EDITOR_VIEW), EDITOR_VIEW)
         # Legacy MCP text-only responses must be inspected recursively too.
         self.mcp({'content': [{'type': 'text', 'text': json.dumps(EDITOR_VIEW)}]})
@@ -142,14 +145,14 @@ class Observations(unittest.TestCase):
                 self.assertFalse(path.exists())
                 self.assertTrue(result['quarantine'])
 
-    def test_secret_controls_and_link_rows_still_masked(self):
+    def test_local_secret_controls_masked_without_masking_synthetic_links(self):
         self.ctx._probe = FakeDesktop([owned_window()], [
             control('credentialSecretKey', [10, 10, 40, 10], SECRET),
             control('historyLink', [10, 30, 40, 10], LINK, role='label')])
         self.ctx._observed({'role': 'password text', 'protected': True, 'text': SECRET})
         regions = self.ctx._secret_regions(0)
         self.assertIn([8, 8, 44, 14], regions)
-        self.assertIn([8, 28, 44, 14], regions)
+        self.assertNotIn([8, 28, 44, 14], regions)
         self.assertIn(SECRET, self.ctx.evidence.redactor.audit_literals)
         self.mcp({'content': [{'type': 'text', 'text': json.dumps({'sessionToken': SECRET})}]})
         self.assertNotIn(SECRET, self.ctx.evidence.redactor.text('error '+SECRET))
@@ -169,6 +172,9 @@ class Observations(unittest.TestCase):
         self.assertIn(token, self.ctx.evidence.redactor.audit_literals)
 
     def test_late_credential_marker_quarantines_bare_token_pixels(self):
+        with admitted():
+            self.ctx = DriverContext(MemoryTarget(), dict(self.env, destination='s3'), self.profile,
+                                     self.root, self.root/'live-credential')
         path = self.ctx.out/'frames/before-credential.png'
         with patch.object(redact, 'ocr_text', return_value='Image being edited '+SECRET):
             self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
@@ -248,9 +254,9 @@ class Observations(unittest.TestCase):
             self.assertIn(secret, literals)
         self.assertNotIn(HISTORY_NAME, literals)
         result = self.ctx.evidence.scan()
-        self.assertFalse(result['passed'])
-        self.assertFalse(path.exists())
-        self.assertIn('png-text-registered-secret', {f['kind'] for f in result['findings']})
+        self.assertTrue(result['passed'])
+        self.assertTrue(path.exists())
+        self.assertEqual(result['image_audit'], 'known-regions')
 
     def test_live_verified_json_keeps_opaque_registration_and_late_quarantine(self):
         with admitted():
@@ -274,28 +280,26 @@ class Observations(unittest.TestCase):
 
 
 class HostOcrPreflight(unittest.TestCase):
-    def test_local_context_refuses_missing_host_ocr_before_output_or_target_access(self):
+    def test_local_context_needs_no_ocr_or_target_access(self):
         with tempfile.TemporaryDirectory() as temporary:
             out = Path(temporary)/'new'
             env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', package='source', destination='local')
-            with patch.object(redact.shutil, 'which', return_value=None), self.assertRaises(RecipeBlocked) as error:
-                DriverContext(object(), env, {}, temporary, out)
-            self.assertIn('driver host, not only in the guest', str(error.exception))
-            self.assertIn('tesseract-ocr', str(error.exception))
+            with patch.object(redact.shutil, 'which', return_value=None):
+                ctx = DriverContext(object(), env, {}, temporary, out)
+            self.assertFalse(ctx.evidence.audit_images)
             self.assertFalse(out.exists())
 
-    def test_local_run_refuses_missing_host_ocr_before_creating_output_or_target(self):
+    def test_local_run_reaches_target_without_host_ocr(self):
         with tempfile.TemporaryDirectory() as temporary:
             out = Path(temporary)/'new'
             args = ['--desktop', 'mint-cinnamon-x11', '--host', 'boat', '--placement', 'guest',
                     '--run', 'unused', '--package', 'source', '--destination', 'local', '--recipes', 'core_demo',
-                    '--catalog', temporary, '--build', 'abcdef012345', '--out', str(out)]
-            with patch.object(redact.shutil, 'which', return_value=None), patch.object(runner, 'Target') as target, \
-                    self.assertRaises(SystemExit) as error:
-                runner.main(args)
-            self.assertIn('host OCR unavailable', str(error.exception))
-            target.assert_not_called()
-            self.assertFalse(out.exists())
+                    '--catalog', temporary, '--build', 'abcdef012345', '--out', str(out), '--coverage', str(out/'coverage.json')]
+            with patch.object(redact.shutil, 'which', return_value=None), \
+                    patch.object(runner, 'Target', side_effect=RecipeBlocked('test target boundary')) as target:
+                self.assertEqual(runner.main(args), 2)
+            target.assert_called_once()
+            self.assertTrue(out.exists())
 
     def test_missing_ocr_after_preflight_still_masks_and_fails_closed(self):
         with tempfile.TemporaryDirectory() as temporary:
