@@ -231,9 +231,19 @@ class Driver:
         self.entries = []
 
     # -- fixture ------------------------------------------------------------
+    def outputs(self):
+        return json.loads(subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'outputs'], env=self.env, capture_output=True, text=True, timeout=30).stdout)
+
+    def desktop(self):
+        """The union of every output: the uinput tablet maps its absolute range over all of them."""
+        rects = [o['rect'] for o in (self.outputs().get('outputs') or [])]
+        left = min(r[0] for r in rects)
+        top = min(r[1] for r in rects)
+        return [left, top, max(r[0] + r[2] for r in rects) - left, max(r[1] + r[3] for r in rects) - top]
+
     def chosen_output(self):
         """The session output to cover and record: --output by connector name, else the only one."""
-        outputs = json.loads(subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'outputs'], env=self.env, capture_output=True, text=True, timeout=30).stdout)
+        outputs = self.outputs()
         candidates = outputs.get('outputs') or []
         if self.args.output:
             candidates = [o for o in candidates if o.get('name') == self.args.output]
@@ -422,9 +432,10 @@ class Driver:
 
     # -- select -------------------------------------------------------------
     def drag(self, start, end, moves, duration, agent, geometry):
+        # Desktop coordinates; the tablet's range spans the whole desktop (geometry).
         width, height = geometry[2], geometry[3]
-        x0, y0 = start
-        x1, y1 = end
+        x0, y0 = start[0] - geometry[0], start[1] - geometry[1]
+        x1, y1 = end[0] - geometry[0], end[1] - geometry[1]
         if agent:
             agent.pointer(x0, y0, width, height)
             time.sleep(0.2)
@@ -453,7 +464,7 @@ class Driver:
         if agent:
             agent.key('esc')
             time.sleep(0.2)
-            agent.pointer(point[0], point[1], geometry[2], geometry[3], down=False)
+            agent.pointer(point[0] - geometry[0], point[1] - geometry[1], geometry[2], geometry[3], down=False)
         else:
             subprocess.run(['xdotool', 'key', 'Escape', 'mouseup', '1'], env=self.env, check=True)
 
@@ -461,11 +472,14 @@ class Driver:
         a = self.args
         label = '%s-%d' % (build.label, number)
         result = {'build': build.label, 'round': number, 'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
-        geometry = self.chosen_output()['rect']
+        output = self.chosen_output()['rect']
+        geometry = self.desktop()
+        result['output'] = output
+        result['desktop'] = geometry
         try:
             self.start_resident(build, label)
-            start = tuple(int(v) for v in a.start.split(',')) if a.start else (geometry[0] + geometry[2] // 5, geometry[1] + geometry[3] // 5)
-            end = tuple(int(v) for v in a.end.split(',')) if a.end else (geometry[0] + geometry[2] * 4 // 5, geometry[1] + geometry[3] * 4 // 5)
+            start = tuple(int(v) for v in a.start.split(',')) if a.start else (output[0] + output[2] // 5, output[1] + output[3] // 5)
+            end = tuple(int(v) for v in a.end.split(',')) if a.end else (output[0] + output[2] * 4 // 5, output[1] + output[3] * 4 // 5)
             self.cli(build, 'action.invoke', {'action': a.action})
             time.sleep(a.settle)
             selector = 'putgd-kde-region|putgd-capture|putgd-record|putgd$'
