@@ -43,12 +43,14 @@ acceptance on each target distribution.
 
 ## Results
 
-The final driver, source `05347d3201f9ccaa769d584d68edc6459ddf20d5`, completed
+The final driver, source `82a197819f23d9ee0040e581df013a8853dc4715`, completed
 on d69 with exit **1** for exactly the two security errors in [audit.json](audit.json).
 Every artifact/source check completed. [The regenerated-SBOM report](vulnerability-summary.md)
 agrees with the published-SBOM scan: 180 findings, 30 accepted, one blocking.
 The audit separately records three official Bun advisories affecting all five
-packages. Package/source remote snapshots were unchanged across the run.
+packages. Package/source remote snapshots were unchanged across the run. Authenticated
+release lookup scans every API page and rejects duplicate draft/tag matches;
+the final rerun includes that review fix.
 
 
 - Both checksum inventories, tag commit/tree/count/date and remote asset digests
@@ -127,7 +129,7 @@ This is new compilation evidence, distinct from the nightly's null CI receipt.
 ```sh
 python3 tools/releases/audit_assets.py --tag v26.1031.3384-nightly \
   --directory /home/patrick/work/ra383/assets \
-  --output /home/patrick/work/ra383/final2 \
+  --output /home/patrick/work/ra383/final3 \
   --reuse-downloads /home/patrick/work/ra383/a2 \
   --source-build-result /home/patrick/work/ra383/rebuild/results.json
 ```

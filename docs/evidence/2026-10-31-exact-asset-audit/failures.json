@@ -45,8 +45,22 @@
     "No source asset overwritten",
     "All failed attempts and commands retained on d69"
   ],
-  "finalCommand": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final2 --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
+  "finalCommand": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final3 --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
   "notes": [
     "Debian rpm emitted a non-blocking warning about its absent system RPM database while reading the RPM License header; the query returned the correct value and succeeded. No system RPM database was modified."
+  ],
+  "completedAudits": [
+    {
+      "output": "final2",
+      "driverCommit": "05347d3201f9ccaa769d584d68edc6459ddf20d5",
+      "exitCode": 1,
+      "meaning": "Completed; only the two security gaps blocked."
+    },
+    {
+      "output": "final3",
+      "driverCommit": "82a197819f23d9ee0040e581df013a8853dc4715",
+      "exitCode": 1,
+      "meaning": "Completed after full-pagination duplicate-tag review fix; same two security gaps only."
+    }
   ]
 }

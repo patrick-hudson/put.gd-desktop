@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "tag": "v26.1031.3384-nightly",
   "passed": false,
-  "date": "2026-10-31T15:44:37.284228+00:00",
+  "date": "2026-10-31T15:56:53.543812+00:00",
   "host": "debian",
   "os": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
-  "auditorCommit": "05347d3201f9ccaa769d584d68edc6459ddf20d5",
-  "auditorScriptSha256": "aa543fb8861e33439672cafed9585fe4c45f5bb4fe5b93e665d0611d28bf097e",
+  "auditorCommit": "82a197819f23d9ee0040e581df013a8853dc4715",
+  "auditorScriptSha256": "76224cf22ef141e8fd5aa3e7fb391a7041ba254c49d91a6da7550b03b44f56d7",
   "scope": "Exact downloaded bytes, notices, provenance, corresponding source and stable CVE policy; no legal, live-service or desktop acceptance",
   "checks": {
     "assets": {
@@ -2112,12 +2112,12 @@
       "syft": {
         "release": "v1.55.0",
         "sha256": "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d",
-        "path": "/home/patrick/work/ra383/final2/tools/syft"
+        "path": "/home/patrick/work/ra383/final3/tools/syft"
       },
       "grype": {
         "release": "v0.121.0",
         "sha256": "64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519",
-        "path": "/home/patrick/work/ra383/final2/tools/grype"
+        "path": "/home/patrick/work/ra383/final3/tools/grype"
       }
     },
     "packages": {
