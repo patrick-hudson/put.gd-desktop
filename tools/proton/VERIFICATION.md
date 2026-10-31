@@ -1,3 +1,43 @@
+# SDK 0.23.0 / Crypto 2.2.0 / Bun 1.4.4 (#1071)
+
+On d69, repeated builds of the current helper reproduce SHA-256
+`9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586`.
+All 46 Bun tests (319 assertions), eleven compiled protocol cases and the full
+1,048,337-byte stdout regression pass. The compiler-backed source collector
+independently reproduces that hash and selects 7,395 public source files.
+The SDK capability adapter contributes 2,697 bytes; its type-only search input
+contributes zero. No search engine, vendor WASM or BoltFFI runtime is embedded.
+The helper source packet retains the installed vendor WASM and its SDK provenance
+as an unbundled input; no preferred Rust-source or engine-rebuild claim is made.
+
+The helper now uses the official SDK server-time response hook, with an isolated
+real-Crypto regression test for header precedence, fallback and invalid values.
+The SDK credential parser/store interfaces used by secret_bridge are unchanged;
+no bridge API adaptation was needed. SDK 0.23.0 requires an explicit NodeType
+argument to getAvailableName; both file preflight and quota-refusal reconciliation
+now pass NodeType.File. The two argument-shape regressions fail against the old
+call sites and pass with this adaptation. Full TypeScript checking now reports
+only three upstream Crypto/WebStream declaration errors, with no helper or test
+diagnostics; full type checking is not claimed as passing.
+
+Under d69's Proton lock, one guarded live smoke passed existing-runtime and
+private-broker checks before and after, list, new isolated test folder, synthetic
+upload with exact receipt ownership, share-link creation, revoke and confirmed
+private status. The synthetic file/folder remain; no existing object was changed.
+The private receipt retains no session snapshot or capability URL. This is
+headless helper evidence, not desktop or resource acceptance.
+
+The native replay passed on d69: Bun Rust, JavaScriptCore C++ and TinyCC C
+source markers execute from both the rebuilt native Bun and its compiled helper.
+Both execute TinyCC C code; the 46 helper tests, eleven compiled protocol checks,
+full stdout drain and modified Argon/OpenPGP interoperability fixture pass.
+The production helper is unchanged. Native binary byte identity is not claimed.
+The exact subject and receipts are in native_relink/ and notices/SOURCES.json. Earlier desktop attempts used the pre-upgrade helper;
+no acceptance transfers to this SDK/Crypto build. Final desktop/resource gates
+remain independently recorded in the catalog.
+
+The records below are historical and do not establish current acceptance.
+
 # Bun 1.4.4 update (#1054)
 
 The current official Bun pin is 1.4.4. On d69 the helper reproduced SHA-256

@@ -226,7 +226,7 @@ class AdvisoryRanges(unittest.TestCase):
 
 class ProtonCiAudit(unittest.TestCase):
     def test_ci_installer_runtime_identity_and_advisories_fail_closed(self):
-        for scenario in ('fixed', 'vulnerable', 'wrong_actual_version', 'wrong_catalog'):
+        for scenario in ('fixed', 'vulnerable', 'wrong_actual_version', 'wrong_catalog', 'wrong_sdk', 'wrong_crypto'):
             with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
                 directory = root / 'artifacts'
@@ -235,16 +235,22 @@ class ProtonCiAudit(unittest.TestCase):
                 (directory / 'putgd-test.x86_64.rpm').write_bytes(b'exact CI RPM installer')
                 source = root / 'tools/proton'
                 (source / 'notices').mkdir(parents=True)
-                lock = {'bunVersion': '1.4.4', 'bunSourceReference': 'b' * 40, 'bunSha256': 'c' * 64}
+                lock = {'bunVersion': '1.4.4', 'bunSourceReference': 'b' * 40, 'bunSha256': 'c' * 64,
+                        'sdkVersion': '0.23.0', 'sourceReference': 'e' * 40,
+                        'cryptoVersion': '2.2.0', 'cryptoSourceReference': 'f' * 40}
                 (source / 'runtime-lock.json').write_text(json.dumps(lock))
                 catalog = source / 'notices/SOURCES.json'
                 catalog.write_text(json.dumps({'helperSha256': 'a' * 64}))
-                proton = {'manifest': lock, 'runtimeSha256': 'a' * 64,
+                manifest = {**lock, 'sdkVersion': 'js@0.23.0'}
+                if scenario == 'wrong_crypto':
+                    manifest['cryptoVersion'] = '2.0.1'
+                proton = {'manifest': manifest, 'runtimeSha256': 'a' * 64,
                           'sourceCatalogSha256': audit_assets.sha256(catalog),
                           'helper': 'helper'}
                 if scenario == 'wrong_catalog':
                     proton['sourceCatalogSha256'] = 'd' * 64
-                identity = {'bunVersion': '1.4.2' if scenario == 'wrong_actual_version' else '1.4.4'}
+                identity = {'bunVersion': '1.4.2' if scenario == 'wrong_actual_version' else '1.4.4',
+                            'sdkVersion': 'js@0.22.2' if scenario == 'wrong_sdk' else 'js@0.23.0'}
                 def run(*args, **kwargs):
                     return json.dumps(identity) if args[-1] == '--version' else 'test-builder'
                 findings = [{'ghsa_id': 'GHSA-test'}] if scenario == 'vulnerable' else []

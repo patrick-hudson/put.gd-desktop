@@ -1,0 +1,112 @@
+{
+  "startedUtc": "2026-10-31T20:01:50.673097+00:00",
+  "finishedUtc": "2026-10-31T20:02:03.522545+00:00",
+  "passed": true,
+  "scope": "Supplementary bounded-command replay using the retained, previously source-built Bun; no native source rebuild or live account call repeated",
+  "sourceBuiltRuntimeReused": true,
+  "result": {
+    "nativeBunSha256": "e2501fe8a1f12058166923347657d1a0732eac06d9361beff21b26f5870ef401",
+    "proofHelperSha256": "872e0637c2ca790132364509e2680d1553121518be8f894eacf014cab7e282d6",
+    "nativeCryptoProofSha256": "bf9070d61afb40028c5d13b0ec7924078eaf280d1731e20606724785d54b47d6",
+    "markers": [
+      "putgd-bun-native-proof putgd-jsc-source-proof putgd-tinycc-source-proof",
+      "1.4.4-canary.1+38afee6c8"
+    ],
+    "nativeVersion": "1.4.4",
+    "tinyccCompileAndExecute": true,
+    "compiledHelperCallsNativeSourceMarkers": true,
+    "compiledHelperTinyccCompileAndExecute": true,
+    "helperTests": 46,
+    "compiledStdioCases": 11,
+    "stdoutBytes": 1048337,
+    "crypto": {
+      "argon2Packet": true,
+      "rebuildRoundtrip": true,
+      "publishedDecryptsRebuilt": true,
+      "rebuiltDecryptsPublished": true,
+      "modifiedWasmMarker": true,
+      "markedInstantiations": 1
+    },
+    "productionHelperChanged": false,
+    "productionHelperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "applicationSourceOverlayVerified": true,
+    "accountsOrServicesUsed": false,
+    "nativeBitIdentityClaimed": false
+  },
+  "commandTimeoutSeconds": 300,
+  "runnerSourceSha256": "ef8308a58f000dcba981bf11d9c3ca471a12568338460ee5d30252fa54ad55b4",
+  "driverSourceSha256": "999c661362ff9c5cacaa40f843edfe34fd89ae98ab5f250b91a3af9336d89183",
+  "completeLogs": "/home/patrick/work/b1071/bounded-v2-proof-export",
+  "primaryExecutionReceipt": "native-proof.json",
+  "ownContainerRemoved": true,
+  "logArchive": "/home/patrick/work/b1071/bounded-v2-proof-logs.tar.gz",
+  "logArchiveSha256": "e7907dd916031fc855ead5227acb99e7079141d671bf211087a82836e8715f73",
+  "logArchiveReadbackVerified": true,
+  "files": {
+    "proof/native-proof-results.json": {
+      "bytes": 1533,
+      "sha256": "76eccee63f1f0d9b5bb9dd8689f0b853fd5cf133b88510566cb05b5f4b0b6948"
+    },
+    "logs/native-openpgp-build.log": {
+      "bytes": 116,
+      "sha256": "c037d1b2a9ad6dc40e82768bae0ca2a01b44b572377def76d8c7b78645aa0660"
+    },
+    "logs/native-revision.log": {
+      "bytes": 97,
+      "sha256": "39b4f6123b51c44eeec1c97d454357d3b677887e36e810eb0057a64488509020"
+    },
+    "logs/native-openpgp-crypto.log": {
+      "bytes": 161,
+      "sha256": "3fbacd41c18ca8624f25f9db85faa0abe969992c39649e3c773738e366102538"
+    },
+    "logs/compiled-helper-native-revision.log": {
+      "bytes": 97,
+      "sha256": "39b4f6123b51c44eeec1c97d454357d3b677887e36e810eb0057a64488509020"
+    },
+    "logs/native-helper-tests.log": {
+      "bytes": 5437,
+      "sha256": "86ade37bad08cd7a1a19e5751d51ec5379222944c99a9180f09d46016c45892d"
+    },
+    "logs/native-version.log": {
+      "bytes": 6,
+      "sha256": "d03d8b268b4171328ac2458ce8ca82d69a1fde38469d4e4faae4f8fa8d8a5e35"
+    },
+    "logs/compiled-helper-tinycc-ffi.log": {
+      "bytes": 34,
+      "sha256": "55e4aceaf3d0318065eb7ed90cca5d1eb6740851205c51baf3e2c02709a505cd"
+    },
+    "logs/native-helper-smoke.log": {
+      "bytes": 62,
+      "sha256": "df1747b927df8e40609e1f5d6ce7fe145a341739e448b7c1bb358e606ed161a5"
+    },
+    "logs/native-tinycc-ffi.log": {
+      "bytes": 34,
+      "sha256": "55e4aceaf3d0318065eb7ed90cca5d1eb6740851205c51baf3e2c02709a505cd"
+    },
+    "logs/native-helper-stdout-build.log": {
+      "bytes": 109,
+      "sha256": "3a4455e512d6f17297b414da0d291c699a952c7d143e1b4e9ba3f961214120d2"
+    },
+    "logs/native-helper-build.log": {
+      "bytes": 124,
+      "sha256": "bc98730499c95f8e63ae8d189170de6f26d3a44fc3ce61d122efe590f04368b6"
+    },
+    "logs/native-helper-stdout.log": {
+      "bytes": 1048337,
+      "sha256": "8f47efd6f560828ce2f9b3d4be68d7f943f58ff8a7233ef45d1a14d74d391cf6"
+    }
+  },
+  "timeoutCleanupScope": "SIGKILL the owned process group, including descendant helpers",
+  "binaryStdoutUsesConfiguredDeadline": true,
+  "stdoutTransport": "Regular file; the final pipe-backed replay supersedes this diagnostic for backpressure coverage.",
+  "supersededForPipeBackpressureBy": "pipe-backed-replay.json"
+}

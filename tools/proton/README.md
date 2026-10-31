@@ -20,9 +20,10 @@ approved crypto source/version, runtime versions, dependency notices and each
 redistribution file. The manifest, notices and `redistribution/` ship next to
 the runtime. See [the source catalog](notices/SOURCES.json) and
 [rebuild instructions](notices/REBUILD.md) for required accompanying source assets.
-Crypto source 2.0.1 replaces the npm 2.0.0 bootstrap under the user-approved GPL
-selection; [provenance](notices/CRYPTO-PROVENANCE.md) preserves the distinction. Supported command lines are
-`--version` and `--stdio` only.
+Crypto source 2.2.0 and the npm 2.2.0 bootstrap now match; the public source
+commit and full dependency graph are locked. Historical 2.0.0/2.0.1 provenance
+remains in [the provenance record](notices/CRYPTO-PROVENANCE.md). Supported command
+lines are `--version` and `--stdio` only.
 
 `--stdio` consumes exactly one UTF-8 JSON request (maximum 128 KiB) until EOF;
 the caller closes stdin. It emits at most one `{"event":"auth","url":...}`
@@ -164,3 +165,24 @@ completes the bounded P1 normal-use recovery campaign. The
 [P2 resource receipt](../../docs/evidence/2026-10-15-proton-p2-resources.md)
 records active uploads/cancel/retry/repeats and idle, including a rejected
 smaller-heap experiment. No runtime optimization was retained; P3–P6 stay open.
+
+Publish a versioned Proton source transport through the guarded publisher:
+
+```sh
+python3 tools/releases/publish_proton_sources.py \
+  --catalog tools/proton/notices/SOURCES.json \
+  --directory /absolute/path/to/verified/source-parts \
+  --commit FULL_SOURCE_COMMIT_SHA \
+  --notes /absolute/path/to/public-source-notes.md
+```
+
+Pin the selected source snapshot in `publication.sourceTagCommit` before
+publishing; `--commit` must match it. The publisher validates the checksum index,
+checks existing tags before mutation, verifies pinned local/uploaded bytes, resumes matching drafts and
+passes `--prerelease --latest=false` at creation and publication. It rejects an
+existing full release. Proton source releases must stay out of the stable
+installer channel; installer publication also verifies their prerelease status.
+
+On a slow upload link, `GODEBUG=http2client=0` gives the two large parts separate
+HTTP connections in gh's concurrent uploader. The publisher allows up to an
+hour for transport and verifies every remote digest before publication.

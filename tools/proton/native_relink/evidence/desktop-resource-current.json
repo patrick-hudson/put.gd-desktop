@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+  "status": "open",
+  "scope": "Current SDK 0.23.0/Crypto 2.2.0 helper desktop/resource acceptance; no acceptance transfers from historical helpers",
+  "requiredDesktops": [
+    "Cinnamon",
+    "GNOME",
+    "KDE"
+  ],
+  "criteriaReference": "docs/evidence/2026-10-15-proton-p4-p6-acceptance.md",
+  "requiredResourceEvidence": {
+    "wholeProcessFamily": true,
+    "postUseIdleWindows": 2,
+    "secondsPerIdleWindow": 300,
+    "idleRssMiBMaximum": 40,
+    "idleSwapBytes": 0,
+    "idleHelperProcesses": 0,
+    "idleCpuOneCorePercentStrictUpperBound": 0.5,
+    "sameUsedResidentForBothWindows": true
+  },
+  "nightlyTableIssue": 1003,
+  "availableNightlySource": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+  "availableNightlyCoversCurrentHelper": false,
+  "reason": "The available nightly predates #1067 and the SDK/Crypto upgrade. No current-helper Cinnamon/GNOME/KDE resource receipts are available; nightly functional cells alone do not provide the two post-use idle windows.",
+  "historicalAttempt": "desktop-resource.json",
+  "historicalAttemptDoesNotEstablishCurrentAcceptance": true,
+  "availableNightlyRelease": "v26.1031.3384-nightly",
+  "nightlyTableUpdatedUtc": "2026-10-31T17:52:34Z",
+  "nightlyTableCheckedUtc": "2026-10-31T19:02:42Z",
+  "nightlyTableUrl": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003"
+}

@@ -1,0 +1,140 @@
+{
+  "host": "d69",
+  "scope": "Historical pre-nodeType SDK API adaptation candidate. Final-helper evidence is helper-023.json; no acceptance transfers to a different helper hash.",
+  "helperSha256": "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+  "checks": [
+    {
+      "name": "existing-runtime-before",
+      "passed": true,
+      "seconds": 3.126
+    },
+    {
+      "name": "new-helper-list-before",
+      "passed": true,
+      "seconds": 3.745
+    },
+    {
+      "name": "new-isolated-test-folder",
+      "passed": true,
+      "seconds": 5.179
+    },
+    {
+      "name": "new-helper-list-test-folder",
+      "passed": true,
+      "seconds": 5.441
+    },
+    {
+      "name": "synthetic-upload",
+      "passed": true,
+      "seconds": 7.889
+    },
+    {
+      "name": "uploaded-identity",
+      "passed": true,
+      "seconds": 2.977
+    },
+    {
+      "name": "share-link-create",
+      "passed": true,
+      "seconds": 8.625
+    },
+    {
+      "name": "share-link-revoke",
+      "passed": true,
+      "seconds": 8.924
+    },
+    {
+      "name": "link-private-after-revoke",
+      "passed": true,
+      "seconds": 5.561
+    },
+    {
+      "name": "new-helper-list-after",
+      "passed": true,
+      "seconds": 5.359
+    },
+    {
+      "name": "existing-runtime-after",
+      "passed": true,
+      "seconds": 3.263
+    }
+  ],
+  "sessionMaterialRetained": false,
+  "capabilityUrlsRetained": false,
+  "testObjectsDeleted": false,
+  "socketPreflight": {
+    "path": "/run/user/1000/bus",
+    "utf8Bytes": 18
+  },
+  "brokerBefore": true,
+  "brokerAfter": true,
+  "shareRevoked": true,
+  "passed": true,
+  "privateReceipt": "/home/patrick/work/b1071/live-023.json",
+  "privateReceiptSha256": "6feb218c9f8321f67df1ee55ebc66e2dee956de40c334a638f8bc90064a1c02a",
+  "syntheticPublicationId": "ab5af642-d7e1-4e25-acc0-57b73494f165",
+  "sourcePins": {
+    "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+    "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30"
+  },
+  "versions": {
+    "sdk": "0.23.0",
+    "crypto": "2.2.0",
+    "openpgp": "6.3.1",
+    "bun": "1.4.4"
+  },
+  "search": {
+    "scope": "Compiler-visible inputs; SDK capability adapter is distinct from the Rust/WASM engine",
+    "inputs": {
+      "node_modules/@protontech/drive-sdk/src/search/sdkCapabilities.ts": 2697,
+      "node_modules/@protontech/drive-sdk/src/search/types.ts": 0
+    },
+    "rustWasmSearchEngineBundled": false,
+    "boltffiRuntimeBundled": false,
+    "wasmInput": {
+      "path": "node_modules/@protontech/drive-sdk/src/search/vendor/proton_drive_sdk_search_bg.wasm",
+      "bytes": 2313087,
+      "sha256": "7d3304725f1bc1f109ecb4c67ade21d90f37a9c870868858e3d81993d7c7411a",
+      "fullAssetBytesPresentInCompiledHelper": false,
+      "assetBasenamePresentInCompiledHelper": false
+    },
+    "publicSource": {
+      "sdkCommit": "8a44654aece1609f0f7218be51c205103945abd8",
+      "sdkTag": "js/v0.23.0",
+      "npmGitHead": "70f2fe70d6c3841b5462a34739600c47dde00cf1",
+      "npmGitHeadAvailableInPublicMirror": false,
+      "publicSdkSourcesMatchPublishedTarballExceptGeneratedVendorDirectory": true,
+      "cryptoCommit": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "cryptoSourceVersion": "2.2.0",
+      "cryptoSourcesMatchRegistry": true
+    }
+  },
+  "independentCompilerAudit": {
+    "runtimeSha256": "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+    "exactRebuild": true,
+    "sourceFiles": 7395,
+    "sourceArchiveSha256": "deb5442ff3a56806aa59148f4a72982a07aa99414610877f4f1f97663e93aaa9",
+    "classificationCounts": {
+      "installed-not-bundled": 8,
+      "bundled-js": 9,
+      "not-installed": 10,
+      "embedded-runtime": 1,
+      "build-only": 6
+    },
+    "searchImportGraph": {
+      "scope": "Compiler-visible inputs; SDK capability adapter is distinct from the Rust/WASM engine",
+      "inputs": {
+        "node_modules/@protontech/drive-sdk/src/search/sdkCapabilities.ts": 2697,
+        "node_modules/@protontech/drive-sdk/src/search/types.ts": 0
+      },
+      "rustWasmSearchEngineBundled": false,
+      "boltffiRuntimeBundled": false
+    }
+  },
+  "repeatedOfficialHelperSha256": [
+    "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+    "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+    "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149"
+  ]
+}

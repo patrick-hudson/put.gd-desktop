@@ -1,0 +1,150 @@
+{
+  "host": "d69",
+  "scope": "Guarded headless live SDK 0.23.0/Crypto 2.2.0 list/upload/share-link/revoke; not desktop acceptance",
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+  "checks": [
+    {
+      "name": "existing-runtime-before",
+      "passed": true,
+      "seconds": 4.0
+    },
+    {
+      "name": "new-helper-list-before",
+      "passed": true,
+      "seconds": 3.951
+    },
+    {
+      "name": "new-isolated-test-folder",
+      "passed": true,
+      "seconds": 2.248
+    },
+    {
+      "name": "new-helper-list-test-folder",
+      "passed": true,
+      "seconds": 5.195
+    },
+    {
+      "name": "file-name-free-before-upload",
+      "passed": true,
+      "seconds": 3.645
+    },
+    {
+      "name": "synthetic-upload",
+      "passed": true,
+      "seconds": 5.883
+    },
+    {
+      "name": "uploaded-identity",
+      "passed": true,
+      "seconds": 1.683
+    },
+    {
+      "name": "file-name-present-after-upload",
+      "passed": true,
+      "seconds": 1.714
+    },
+    {
+      "name": "share-link-create",
+      "passed": true,
+      "seconds": 4.681
+    },
+    {
+      "name": "share-link-revoke",
+      "passed": true,
+      "seconds": 4.073
+    },
+    {
+      "name": "link-private-after-revoke",
+      "passed": true,
+      "seconds": 2.485
+    },
+    {
+      "name": "new-helper-list-after",
+      "passed": true,
+      "seconds": 4.962
+    },
+    {
+      "name": "existing-runtime-after",
+      "passed": true,
+      "seconds": 2.611
+    }
+  ],
+  "sessionMaterialRetained": false,
+  "capabilityUrlsRetained": false,
+  "testObjectsDeleted": false,
+  "socketPreflight": {
+    "path": "/run/user/1000/bus",
+    "utf8Bytes": 18
+  },
+  "brokerBefore": true,
+  "brokerAfter": true,
+  "shareRevoked": true,
+  "passed": true,
+  "privateReceipt": "/home/patrick/work/b1071/live-023-api.json",
+  "privateReceiptSha256": "4778b5494ce5be7d7714b9277806a0e6a998735d20ab4d3b67ed6d47eb8f166b",
+  "syntheticPublicationId": "64116ec2-701e-4ff7-aa79-48c5b2bf4a49",
+  "sourcePins": {
+    "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+    "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30"
+  },
+  "versions": {
+    "sdk": "0.23.0",
+    "crypto": "2.2.0",
+    "openpgp": "6.3.1",
+    "bun": "1.4.4"
+  },
+  "search": {
+    "scope": "Compiler-visible inputs; SDK capability adapter is distinct from the Rust/WASM engine",
+    "inputs": {
+      "node_modules/@protontech/drive-sdk/src/search/sdkCapabilities.ts": 2697,
+      "node_modules/@protontech/drive-sdk/src/search/types.ts": 0
+    },
+    "rustWasmSearchEngineBundled": false,
+    "boltffiRuntimeBundled": false,
+    "wasmInput": {
+      "path": "node_modules/@protontech/drive-sdk/src/search/vendor/proton_drive_sdk_search_bg.wasm",
+      "bytes": 2313087,
+      "sha256": "7d3304725f1bc1f109ecb4c67ade21d90f37a9c870868858e3d81993d7c7411a",
+      "fullAssetBytesPresentInCompiledHelper": false,
+      "assetBasenamePresentInCompiledHelper": false
+    },
+    "publicSource": {
+      "sdkCommit": "8a44654aece1609f0f7218be51c205103945abd8",
+      "sdkTag": "js/v0.23.0",
+      "npmGitHead": "70f2fe70d6c3841b5462a34739600c47dde00cf1",
+      "npmGitHeadAvailableInPublicMirror": false,
+      "publicSdkSourcesMatchPublishedTarballExceptGeneratedVendorDirectory": true,
+      "cryptoCommit": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "cryptoSourceVersion": "2.2.0",
+      "cryptoSourcesMatchRegistry": true
+    },
+    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586"
+  },
+  "independentCompilerAudit": {
+    "runtimeSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "exactRebuild": true,
+    "sourceFiles": 7395,
+    "sourceArchiveSha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
+    "classificationCounts": {
+      "installed-not-bundled": 8,
+      "bundled-js": 9,
+      "not-installed": 10,
+      "embedded-runtime": 1,
+      "build-only": 6
+    },
+    "searchImportGraph": {
+      "scope": "Compiler-visible inputs; SDK capability adapter is distinct from the Rust/WASM engine",
+      "inputs": {
+        "node_modules/@protontech/drive-sdk/src/search/sdkCapabilities.ts": 2697,
+        "node_modules/@protontech/drive-sdk/src/search/types.ts": 0
+      },
+      "rustWasmSearchEngineBundled": false,
+      "boltffiRuntimeBundled": false
+    }
+  },
+  "repeatedOfficialHelperSha256": [
+    "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586"
+  ]
+}

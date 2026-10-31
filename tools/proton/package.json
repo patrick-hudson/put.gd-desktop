@@ -4,10 +4,11 @@
   "private": true,
   "dependencies": {
     "bun": "1.4.4",
-    "@protontech/drive-sdk": "0.22.2",
-    "@protontech/crypto": "2.0.0",
+    "@protontech/drive-sdk": "0.23.0",
+    "@protontech/crypto": "2.2.0",
     "ky": "1.14.3",
-    "@openpgp/web-stream-tools": "0.3.1"
+    "@openpgp/web-stream-tools": "0.3.1",
+    "openpgp": "npm:@protontech/openpgp@6.3.1"
   },
   "devDependencies": {
     "@types/bun": "1.4.4",
