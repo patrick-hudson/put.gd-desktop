@@ -1,0 +1,865 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_ave6d36b",
+      "run_id": "a1e73f6c-4fd8-4159-b725-820b281d1677",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/t1/work/lab-runs/a1",
+      "session_root": "/tmp/sd-adb377e6",
+      "socket": "/tmp/sd-adb377e6/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 29692,
+      "start": "50738",
+      "boot": "d23f9b4b-d4bc-41ee-8c7e-944777f36e96",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1248,
+      "start": 878,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "4bc1d63c-c7da-4ff7-886c-fc95ce299a34"
+      },
+      {
+        "operationId": "43ffa3f9-21a2-4386-ad3d-77843dca4533"
+      },
+      {
+        "operationId": "41792e91-9335-4831-9a33-884dcab64227"
+      },
+      {
+        "operationId": "5a98b95a-373b-4887-ad98-782771e8f9d1"
+      },
+      {
+        "operationId": "33262341-951f-48e4-9830-4cb3ff672daa"
+      },
+      {
+        "operationId": "5ad4533a-7118-47e2-940c-ae013fe800ed"
+      },
+      {
+        "operationId": "392b4c65-1778-4551-9785-f31512bb101e"
+      },
+      {
+        "operationId": "97b5c562-2101-4260-a1d5-c36ed3212a2e"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=4bc1d63c-c7da-4ff7-886c-fc95ce299a34; Capture operation 4bc1d63c-c7da-4ff7-886c-fc95ce299a34; operationId=4bc1d63c-c7da-4ff7-886c-fc95ce299a34; historyId=0cd3bf5c-def2-4f54-9ba9-5c21b59035ce; uploaded/local sha256=2c67e2181749b5d5f76f1090ae1d6b5b1fdf77c2381ee32ee1d437bec3753ffd; Retained synthetic png sha256=2c67e2181749b5d5f76f1090ae1d6b5b1fdf77c2381ee32ee1d437bec3753ffd; pixel oracle: (600, 280), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.region_upload/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:46:06Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=4bc1d63c-c7da-4ff7-886c-fc95ce299a34; Capture operation 4bc1d63c-c7da-4ff7-886c-fc95ce299a34; operationId=4bc1d63c-c7da-4ff7-886c-fc95ce299a34; historyId=0cd3bf5c-def2-4f54-9ba9-5c21b59035ce; uploaded/local sha256=2c67e2181749b5d5f76f1090ae1d6b5b1fdf77c2381ee32ee1d437bec3753ffd; Retained synthetic png sha256=2c67e2181749b5d5f76f1090ae1d6b5b1fdf77c2381ee32ee1d437bec3753ffd; pixel oracle: (600, 280), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.region_upload/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:46:06Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=43ffa3f9-21a2-4386-ad3d-77843dca4533; operationId=43ffa3f9-21a2-4386-ad3d-77843dca4533; historyId=e930541b-b5e7-4fde-9911-c6205aeddf50; uploaded/local sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; Retained synthetic png sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; pixel oracle: (1280, 800), tolerance=0; operationId=41792e91-9335-4831-9a33-884dcab64227; operationId=41792e91-9335-4831-9a33-884dcab64227; historyId=b1dfbc4b-cb8d-4e34-962a-6a703715ead0; uploaded/local sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; Retained synthetic png sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; pixel oracle: (1280, 800), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:46:54Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=43ffa3f9-21a2-4386-ad3d-77843dca4533; operationId=43ffa3f9-21a2-4386-ad3d-77843dca4533; historyId=e930541b-b5e7-4fde-9911-c6205aeddf50; uploaded/local sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; Retained synthetic png sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; pixel oracle: (1280, 800), tolerance=0; operationId=41792e91-9335-4831-9a33-884dcab64227; operationId=41792e91-9335-4831-9a33-884dcab64227; historyId=b1dfbc4b-cb8d-4e34-962a-6a703715ead0; uploaded/local sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; Retained synthetic png sha256=94b3aac09388ba31897132606e51e6ffca5014d5760baed08fa76020bc1b83b8; pixel oracle: (1280, 800), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:46:54Z"
+    },
+    {
+      "interaction": "review.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=5a98b95a-373b-4887-ad98-782771e8f9d1; Recording operation 5a98b95a-373b-4887-ad98-782771e8f9d1; Retained synthetic mp4 sha256=729ebe514655c2ffdec8cd626b3793aab4efaa24667888e873a63ae42efb39c5; frozen clip motion=0.022, durationMs=6066; operationId=33262341-951f-48e4-9830-4cb3ff672daa; Recording operation 33262341-951f-48e4-9830-4cb3ff672daa; Retained synthetic mp4 sha256=3e93aba5e8f1549f09a0506f7b206019d98bf9000d56d466f4aab683b8fe9fb2; moving clip motion=59.404, durationMs=6066; operationId=33262341-951f-48e4-9830-4cb3ff672daa; historyId=6a20375f-dc1b-4608-9d3a-af809ec75394; uploaded/local sha256=3e93aba5e8f1549f09a0506f7b206019d98bf9000d56d466f4aab683b8fe9fb2; Retained synthetic mp4 sha256=3e93aba5e8f1549f09a0506f7b206019d98bf9000d56d466f4aab683b8fe9fb2; uploaded clip motion=59.404, durationMs=6066, frozen=0.022",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.recording_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "recording-private-review",
+          "path": "frames/outcomes.recording_upload/01-recording-private-review.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.recording_upload/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.recording_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.recording_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:47:58Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; editor operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; historyId=4968d8aa-72f3-448d-a209-7095ceb3e6a3; uploaded/local sha256=512190fd0ea32ecd2e7c0f362193d19adea237ffaeff43056075ba1bb842c178; Retained synthetic png sha256=512190fd0ea32ecd2e7c0f362193d19adea237ffaeff43056075ba1bb842c178; solid redaction and annotations occupy the drawn image coordinates",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/outcomes.edit_upload/04-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.edit_upload/05-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:48:50Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; editor operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; historyId=4968d8aa-72f3-448d-a209-7095ceb3e6a3; uploaded/local sha256=512190fd0ea32ecd2e7c0f362193d19adea237ffaeff43056075ba1bb842c178; Retained synthetic png sha256=512190fd0ea32ecd2e7c0f362193d19adea237ffaeff43056075ba1bb842c178; solid redaction and annotations occupy the drawn image coordinates",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/outcomes.edit_upload/04-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.edit_upload/05-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:48:50Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; editor operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; operationId=5ad4533a-7118-47e2-940c-ae013fe800ed; historyId=4968d8aa-72f3-448d-a209-7095ceb3e6a3; uploaded/local sha256=512190fd0ea32ecd2e7c0f362193d19adea237ffaeff43056075ba1bb842c178; Retained synthetic png sha256=512190fd0ea32ecd2e7c0f362193d19adea237ffaeff43056075ba1bb842c178; solid redaction and annotations occupy the drawn image coordinates",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/outcomes.edit_upload/04-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.edit_upload/05-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:48:50Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=392b4c65-1778-4551-9785-f31512bb101e; operationId=392b4c65-1778-4551-9785-f31512bb101e; historyId=eff8a650-3d96-49ea-82eb-c499a1f1ea5c; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; {\"url_host\": \"127.0.0.1\", \"title\": \"[redacted]\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes.link_browser/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:49:42Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=392b4c65-1778-4551-9785-f31512bb101e; operationId=392b4c65-1778-4551-9785-f31512bb101e; historyId=eff8a650-3d96-49ea-82eb-c499a1f1ea5c; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; {\"url_host\": \"127.0.0.1\", \"title\": \"[redacted]\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes.link_browser/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:49:42Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=97b5c562-2101-4260-a1d5-c36ed3212a2e; operationId=97b5c562-2101-4260-a1d5-c36ed3212a2e; historyId=57556d2e-7dd2-4dcc-8335-be8c8220b88b; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=c11fec90-f931-434c-be8f-d92a845946d7",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:50:47Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a2/receipt.json",
+      "note": "operationId=97b5c562-2101-4260-a1d5-c36ed3212a2e; operationId=97b5c562-2101-4260-a1d5-c36ed3212a2e; historyId=57556d2e-7dd2-4dcc-8335-be8c8220b88b; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=c11fec90-f931-434c-be8f-d92a845946d7",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-30T23:50:47Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 36,
+    "pngs": 31,
+    "image_audit": "known-regions",
+    "findings": []
+  }
+}

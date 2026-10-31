@@ -1,0 +1,10 @@
+{
+  "placement": "boat",
+  "boat": "bx_v37dfm25",
+  "port": 5993,
+  "remotePort": 5920,
+  "unit": "putgd-t1-f299-aur",
+  "frame": "aur-a4-ready-wall.png",
+  "sha256": "d1a39d3aea1b9fa74eb5b5bfc66ae030e054494452d994214e3139d32d29f89a",
+  "timestamp": "2026-10-31T01:18:47.030206+00:00"
+}

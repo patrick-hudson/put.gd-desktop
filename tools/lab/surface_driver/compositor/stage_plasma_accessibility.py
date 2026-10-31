@@ -12,10 +12,12 @@ SCRIPT = '''python3 - <<'SD_PLASMA_A11Y'
 import dbus,json
 bus=dbus.SessionBus()
 status=dbus.Interface(bus.get_object('org.a11y.Bus','/org/a11y/bus'),'org.freedesktop.DBus.Properties')
-before={k:bool(status.Get('org.a11y.Status',k)) for k in ('IsEnabled','ScreenReaderEnabled')}
+before=dict(status.GetAll('org.a11y.Status'))
+assert 'IsEnabled' in before
 status.Set('org.a11y.Status','IsEnabled',dbus.Boolean(True))
-after={k:bool(status.Get('org.a11y.Status',k)) for k in before}
-assert after['IsEnabled'] and before['ScreenReaderEnabled']==after['ScreenReaderEnabled']
+after=dict(status.GetAll('org.a11y.Status'))
+assert after['IsEnabled'] and set(before)==set(after)
+assert all(before[k]==after[k] for k in before if k!='IsEnabled')
 print(json.dumps({'before':before,'after':after,'scope':'owned-overlay'}))
 SD_PLASMA_A11Y
 '''

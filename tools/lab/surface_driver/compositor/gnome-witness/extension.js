@@ -4,16 +4,19 @@
 // focus(raise_window=True) on Wayland: the same activation a dock click does.
 // It never moves, resizes or closes anything.
 import Gio from 'gi://Gio';
+import Atk from 'gi://Atk';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 const PATH = '/org/putgd/LabWitness';
 const XML = `<node><interface name="org.putgd.LabWitness">
 <method name="Grabs"><arg type="s" direction="out"/></method>
 <method name="Windows"><arg type="s" direction="out"/></method>
 <method name="Pick"><arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Selector"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Activate"><arg type="t" direction="in"/><arg type="b" direction="out"/></method>
 </interface></node>`;
 
@@ -36,9 +39,14 @@ function describe(window, stack) {
 function actorDescription(actor) {
     const [x, y] = actor.get_transformed_position();
     const [w, h] = actor.get_transformed_size();
+    // Actor properties are overrides. StLabel/StButton supply their default
+    // semantic role and name on the actual ATK object exported to AT-SPI.
+    const accessible = actor.get_accessible?.();
     return {type: actor.constructor?.name ?? '', name: actor.get_name?.() ?? '',
-        style: actor.style_class ?? '', accessible: actor.get_accessible_name?.() ?? '',
-        text: actor.get_text?.() ?? '', role: Number(actor.accessible_role ?? -1),
+        // Atk.Action also has get_name(index). GJS can resolve that interface
+        // method on buttons, so call the Object methods explicitly.
+        style: actor.style_class ?? '', accessible: accessible ? Atk.Object.prototype.get_name.call(accessible) ?? '' : '',
+        text: actor.get_text?.() ?? '', role: accessible ? Number(Atk.Object.prototype.get_role.call(accessible)) : -1,
         rect: [x, y, w, h].map(Math.round)};
 }
 
@@ -102,6 +110,33 @@ export default class LabWitness extends Extension {
             monitors.push({rect: rect(display.get_monitor_geometry(i)), scale: display.get_monitor_scale(i)});
         const windows = windowActors().map((actor, i) => describe(actor.meta_window, i));
         return JSON.stringify({windows, monitors});
+    }
+
+    Selector(query) {
+        // Shell selectors are actors, not MetaWindows. Bind the exact actor
+        // reference held by the production extension to its live request and
+        // authenticated bridge sender; a same-named shell actor cannot pass.
+        const extension = Main.extensionManager.lookup('putgd@put.gd')?.stateObj;
+        const selector = extension?._selector;
+        if (!extension?._enabled || Main.sessionMode.isLocked || !selector?.mapped ||
+            !selector.visible || selector._closed || !selector._grab)
+            return '{}';
+        const requests = [...extension._requests.values()].filter(r =>
+            r.selector === selector && r.stage === 'region-select' && r.action === 'region');
+        if (requests.length !== 1)
+            return '{}';
+        const call = (method, signature, args, reply) => Gio.DBus.session.call_sync(
+            'org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus', method,
+            new GLib.Variant(signature, args), new GLib.VariantType(reply), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+        const request = requests[0];
+        if (request.sender !== call('GetNameOwner', '(s)', ['org.putgd.App.Gnome50'], '(s)'))
+            return '{}';
+        const point = JSON.parse(query).point;
+        const picked = point ? global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, ...point) : null;
+        const inside = actor => actor === selector || (actor && selector.contains(actor));
+        return JSON.stringify({request_id: request.id, client_pid: call('GetConnectionUnixProcessID', '(s)', [request.sender], '(u)'),
+            name: actorDescription(selector).accessible, rect: actorDescription(selector).rect,
+            pointer: !!picked && inside(picked), keyboard: !!inside(global.stage.get_key_focus())});
     }
 
     Activate(id) {

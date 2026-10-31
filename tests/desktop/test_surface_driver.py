@@ -767,12 +767,13 @@ class InputFoundations(unittest.TestCase):
         from tools.lab.surface_driver import probe
         from types import SimpleNamespace
         node=SimpleNamespace(name='Synthetic notice',get_process_id=lambda:50,getRoleName=lambda:'label')
-        component=SimpleNamespace(getAccessibleAtPoint=lambda *a:node)
+        component=SimpleNamespace(getAccessibleAtPoint=lambda *a:node,getExtents=lambda *a:[10,10,80,40])
+        node.queryComponent=lambda:component
         window=SimpleNamespace(queryComponent=lambda:component)
         class App(list):
             def get_process_id(self):return 50
         fake=SimpleNamespace(DESKTOP_COORDS=0)
-        query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50},
+        query={'desktop_node':{'application':'gnome-shell','name':'Synthetic notice','role':'label','pid':50,'rect':[10,10,80,40]},
                'point':[40,30],'shell_application':'gnome-shell*'}
         with patch.dict(sys.modules,pyatspi=fake),patch.object(probe,'desktop_root',return_value=[App([window])]):
             self.assertTrue(probe.shell_hit(query)['ok'])
@@ -817,13 +818,18 @@ class InputFoundations(unittest.TestCase):
         calls=[]
         target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
         target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}
-        target.start()
+        with patch('tools.lab.surface_driver.appimage.prepare') as staging:
+            target.start()
+        staging.assert_called_once_with(target)
         seed=next(i for i,s in enumerate(calls) if 'SD_SEED' in s)
         launch=next(i for i,s in enumerate(calls) if 'nohup' in s)
         self.assertLess(seed,launch)
         self.assertNotIn('development-s3',calls[seed]);self.assertIn("'profiles': []",calls[seed])
         self.assertIn("'updates': {'check': False}",calls[seed])
-        calls.clear();target.start(first_launch=True)
+        calls.clear()
+        with patch('tools.lab.surface_driver.appimage.prepare') as staging:
+            target.start(first_launch=True)
+        staging.assert_called_once_with(target)
         self.assertFalse(any('SD_SEED' in s for s in calls))
 
     def test_accessibility_shape_text_filters_and_protected_text(self):
@@ -875,8 +881,9 @@ class InputFoundations(unittest.TestCase):
             if len(args)>4 and args[4] is False:notices[0]['action_events'].append({'action':'default'})
         self.ctx.target.pointer=pointer
         self.ctx.notification_action(72)
-        # One owned title lookup, hover first, then press/release on the title.
-        self.assertEqual(len(queries),1);self.assertIn('application',queries[0])
+        # Hover first, then fresh owned title reads before its press/release.
+        self.assertGreaterEqual(len(queries),2)
+        self.assertTrue(all('application' in query for query in queries))
         self.assertEqual(events[0],(50,20,200,200));self.assertEqual([e[4] for e in events[1:]],[True,False])
         self.assertTrue(all(q['desktop_node'] is node and q['point']==(50,20) for q in picks))
         notices[0]['closed']={'reason':1}
@@ -901,7 +908,8 @@ class InputFoundations(unittest.TestCase):
         self.ctx.target.pointer=pointer
         self.ctx.notification_action(72,'retry')
         self.assertEqual(events[0][:2],(60,20))
-        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110)])
+        self.assertEqual([e[:2] for e in events[1:]],[(60,110),(60,110),(60,110)])
+        self.assertEqual(len(events[1]),4)  # Enter the action before its press/release.
 
     def test_declared_notification_input_gap_blocks_before_observation(self):
         self.ctx.profile['notifications']=dict(self.ctx.profile['notifications'],actions_available=False,
@@ -951,6 +959,23 @@ signal time=100.5 sender=:1.3 -> destination=(null destination) serial=22 interf
 
 
 class TargetSafety(unittest.TestCase):
+    def test_private_runtime_preserves_discovered_session_pipewire_directory(self):
+        target = Target.__new__(Target)
+        target.root, target.bin_dir = '/tmp/sd-isolated', None
+        # This is the native-session environment supplied by session(), also
+        # used when the probe and clipboard keeper launch their SSH children.
+        for native in ('/run/user/1234', '/tmp/native session'):
+            environment = dict(os.environ, XDG_RUNTIME_DIR=native, PIPEWIRE_RUNTIME_DIR='/foreign')
+            script = target.prefix() + "python3 -c 'import json,os;print(json.dumps(dict(os.environ)))'"
+            child = subprocess.run(['sh', '-s'], input=script, env=environment,
+                                   text=True, capture_output=True, check=True)
+            actual = json.loads(child.stdout)
+            self.assertEqual(actual['PIPEWIRE_RUNTIME_DIR'], native)
+            self.assertEqual(actual['XDG_RUNTIME_DIR'], target.root + '/runtime')
+            for key, suffix in (('XDG_CONFIG_HOME', 'config'), ('XDG_DATA_HOME', 'data'),
+                                ('XDG_STATE_HOME', 'state'), ('XDG_CACHE_HOME', 'cache')):
+                self.assertEqual(actual[key], target.root + '/' + suffix)
+
     def setUp(self):
         endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
         self.endpoint_check=endpoint_check.start()

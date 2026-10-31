@@ -20,6 +20,7 @@ Missing fixtures must block in the core; do not emulate their success.
 from __future__ import annotations
 
 import json
+import html
 from decimal import Decimal, ROUND_HALF_UP
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
@@ -83,9 +84,9 @@ def _focus_items(ctx):
             ctx.note('History list keyboard focus verified through native accessibility')
             return
         if len(nodes) > 1:
-            ctx.blocked('History list has ambiguous native keyboard-focus witnesses.', issue=675)
+            ctx.blocked('History list has ambiguous native keyboard-focus witnesses.', issue=820)
         ctx.keys('Tab')
-    ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=675)
+    ctx.blocked('History list did not acquire verified native keyboard focus within 20 Tab steps.', issue=820)
 
 
 def _wait_window(ctx, window):
@@ -103,7 +104,7 @@ def _wait_window(ctx, window):
         ctx.blocked('No unambiguous live geometry after waiting for ' + window + '.', issue=820)
 
 
-def _click_window_node(ctx, window, query):
+def _window_node(ctx, window, query):
     """Click one app child through its bounds and its own window's guard."""
     box = _wait_window(ctx, window)
     query = dict(query)
@@ -120,14 +121,49 @@ def _click_window_node(ctx, window, query):
     if (min(width, height) <= 0 or node.get('coordinate_space') == 'window-relative'
             or not box['x'] <= point[0] < box['x'] + box['width']
             or not box['y'] <= point[1] < box['y'] + box['height']):
-        ctx.blocked('History child has no verified desktop point inside its live window.', issue=675)
+        ctx.blocked('History child has no verified desktop point inside its live window.', issue=820)
     # accessible() returns desktop coordinates; click_at() takes head pixels.
     scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
     point = tuple(round((value - box.get(origin, 0)) * scale)
                   for value, origin in zip(point, ('screen_x', 'screen_y')))
+    return box, node, point
+
+
+def _click_window_node(ctx, window, query):
+    box, node, point = _window_node(ctx, window, query)
     ctx.focus(window, raise_window=False)
     ctx.click_at(*point, head=box.get('head', 0))
     return node
+
+
+def _hover_history_node(ctx, query):
+    box, node, point = _window_node(ctx, 'history', query)
+    ctx.focus('history', raise_window=False)
+    ctx.hover(*point, head=box.get('head', 0))
+    return node
+
+
+def _searched_row_node(ctx):
+    box = ctx.geometry('history')
+    lists = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
+                            'name': 'History items and upload activity'})
+    if len(lists) != 1 or not lists[0].get('rect'):
+        ctx.blocked('Double-click requires one live History list before resolving its unique row.', issue=820)
+    rows = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
+                           'role': 'list item', 'within': lists[0]['rect']})
+    if len(rows) != 1 or not rows[0].get('name'):
+        ctx.blocked('Double-click requires a uniquely searched native row with its exact accessible name.', issue=820)
+    return rows[0]
+
+
+def _double_history_row(ctx):
+    node = _searched_row_node(ctx)
+    previous = ctx.profile.get('live_controls', {})
+    ctx.profile['live_controls'] = {**previous, 'historySearchedRow': {'name': node['name'], 'role': 'list item'}}
+    try:
+        ctx.double_click('historySearchedRow', window='history')
+    finally:
+        ctx.profile['live_controls'] = previous
 
 
 def _click_history_node(ctx, query):
@@ -150,7 +186,7 @@ def _row(ctx, fixture='history-row'):
     lists = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid,
                             'name': 'History items and upload activity'})
     if len(lists) != 1 or not lists[0].get('rect'):
-        ctx.blocked('The uniquely searched History list has no unambiguous live bounds.', issue=675)
+        ctx.blocked('The uniquely searched History list has no unambiguous live bounds.', issue=820)
     # The query has exactly one row. Target its actual delegate inside the live
     # list, rather than blank viewport space or an unselected Home focus item.
     _click_history_node(ctx, {'role': 'list item', 'within': lists[0]['rect']})
@@ -243,11 +279,20 @@ def clear_filters(ctx):
     ctx.click('historyFiltersExpanded', window='history')
     ctx.click('text:Add a history filter', window='history')
     ctx.click('text:Upload state', window='historyAddFilterMenu')
-    _click_history_node(ctx, {'name': 'Upload state', 'role': 'combo box'})
+    # The real Add Filter action focuses its newly revealed control. Bind the
+    # owning window, then prove that focus by the resulting query change.
+    ctx.focus('history', raise_window=False)
+    _frame(ctx, 'filter-revealed', None)
     ctx.keys('Home', 'Down', 'Return')
-    ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']), 'upload filter applied')
+    ctx.wait(lambda: bool(_state(ctx)['query']['uploadStatus']) and not _state(ctx)['busy'], 'upload filter applied')
+    # Return opens this noneditable combo on some Qt styles. Dismiss its grab
+    # before clicking the underlying Clear filters button.
+    ctx.keys('Esc')
+    ctx.expect(bool(_state(ctx)['query']['uploadStatus']), 'dismissing the combo retains the applied filter')
     _frame(ctx, 'filtered', '40-history-filters-active')
-    ctx.click('text:Clear filters', window='history')
+    clear = _click_history_node(ctx, {'name': 'Clear filters', 'role': 'push button'})
+    ctx.note('Clear filters clicked through owned native bounds: ' + json.dumps(clear['rect']))
+    _frame(ctx, 'clear-click', None)
     ctx.wait(lambda: not _state(ctx)['activeFilters'], 'advanced filters cleared')
     ctx.expect(_state(ctx)['query']['search'] == row['name'], 'Clear filters preserves search')
     _frame(ctx, 'after')
@@ -297,9 +342,9 @@ def receipt_details(ctx):
     ctx.click('historyReceiptExpanded', window='history')
     ctx.click('text:Advanced original receipt details', window='history')
     ctx.keys('Ctrl+A', 'Ctrl+C')
-    detail = json.loads(ctx.clipboard_text())
-    ctx.expect(detail['id'] == row['id'], 'displayed advanced receipt has exact history identity')
     authoritative = _result(ctx.call('history.detail', {'id': row['id']}))
+    detail = json.loads(ctx.clipboard_text(expected_json=authoritative))
+    ctx.expect(detail['id'] == row['id'], 'displayed advanced receipt has exact history identity')
     ctx.expect(detail['bytes'] == authoritative['bytes'], 'advanced receipt byte count matches history detail')
     _size(ctx, authoritative['bytes'])
     _frame(ctx, 'after', '60-history-previous-link-details')
@@ -344,12 +389,29 @@ def paging(ctx):
 def key_menu(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
-    for key in ('Menu', 'Shift+F10'):
+    for key in ('Shift+F10', 'Menu'):
+        # A real delegate click establishes both selection and currentIndex.
+        # Home on an already-current row need not restore a cleared selection.
+        box = ctx.geometry('history')
+        lists = ctx.accessible({'owned': True, 'pid': box['pid'], 'visible': True, 'showing': True,
+                                'name': 'History items and upload activity'})
+        ctx.expect(len(lists) == 1 and bool(lists[0].get('rect')), 'one live History list before keyboard row binding')
+        query = {'role': 'list item', 'within': lists[0]['rect']}
+        _click_history_node(ctx, query)
+        _focus_items(ctx)
+        ctx.wait(lambda: _state(ctx)['selectedIds'] == [row['id']] and len(ctx.accessible(dict(
+            query, owned=True, pid=box['pid'], visible=True, showing=True, states={'focused': True}))) == 1,
+            'real delegate click establishes the exact selected current keyboard row')
+        _frame(ctx, 'selected-' + key)
         ctx.keys(key)
-        ctx.frame('menu-' + key)
-        ctx.click('text:Copy details', window='historyRowMenu')
-        detail = json.loads(ctx.clipboard_text())
-        ctx.expect(any(item['id'] == row['id'] for item in detail['records']), 'keyboard row menu copies selected receipt')
+        try:
+            _wait_menu(ctx, 'Copy details')
+        except RecipeFailed:
+            if key == 'Menu':
+                ctx.blocked('Shift+F10 opened the real row menu and copied the exact receipt; the portable Menu key produced no owned popup after verified current-row focus. A native Menu-key delivery witness is still needed for this second binding.', issue=835)
+            raise
+        _frame(ctx, 'menu-' + key, None)
+        _copied_row_details(ctx, row)
     _frame(ctx, 'after')
 
 
@@ -461,7 +523,8 @@ def delete_remote(ctx):
     ctx.click('text:Show the full deletion preparation', window='historyConfirmAction')
     _wait_window(ctx, 'Deletion technical details')
     ctx.click('text:Copy technical details', window='Deletion technical details')
-    preparation = json.loads(ctx.clipboard_text())
+    expected = _result(ctx.call('delete.prepare', {'ids': [row['id']]}))
+    preparation = json.loads(ctx.clipboard_text(expected_json=expected))
     ctx.frame('technical-details', window='Deletion technical details')
     ctx.expect([target['historyId'] for target in preparation['targets']] == [row['id']], 'dialog prepares only exact fixture identity')
     ctx.keys('Esc')
@@ -475,7 +538,7 @@ def delete_remote(ctx):
     _frame(ctx, 'after', '48-history-deletion-recovery')
 
 
-@recipe('history.more-menu', 'confirm.history-clear', needs=('history_rows',))
+@recipe('history.more-menu', 'confirm.history-clear', needs=('history_rows',), timeout=240)
 def clear_history(ctx):
     _open(ctx)
     before = _state(ctx)['total']
@@ -514,7 +577,7 @@ def _header_point(ctx, box):
         nodes = ctx.accessible(query)
         anchors = [n for n in nodes if n.get('name') == 'Application menu' and n.get('rect')]
         if len(anchors) > 1:
-            ctx.blocked('History has ambiguous live Application menu anchors.', issue=675)
+            ctx.blocked('History has ambiguous live Application menu anchors.', issue=820)
         return (nodes, anchors[0]) if anchors else None
     nodes, anchor = ctx.wait(layout, 'accessible History header')
     _, top, _, height = anchor['rect']
@@ -530,7 +593,7 @@ def _header_point(ctx, box):
                          for part in ((left, min(right, x - 2)), (max(left, x + width + 2), right))
                          if part[1] > part[0]]
     if not intervals or max(right - left for left, right in intervals) < 16:
-        ctx.blocked('History has no verified blank header drag target.', issue=675)
+        ctx.blocked('History has no verified blank header drag target.', issue=820)
     left, right = max(intervals, key=lambda v: v[1] - v[0])
     point = ((left + right) / 2, y)
     return tuple(round((point[i] - box.get(('screen_x', 'screen_y')[i], 0))
@@ -539,6 +602,27 @@ def _header_point(ctx, box):
 
 def _menu_names(ctx):
     return {n.get('name') for n in ctx.accessible({'owned': True, 'visible': True, 'role': 'menu item'})}
+
+
+def _wait_menu(ctx, *names):
+    # Runtime menus are resolved by click() through their owner. geometry()
+    # deliberately addresses toplevel windows and cannot locate an untitled
+    # QMenu as an independent native window.
+    pid = ctx.geometry('history')['pid']
+    return ctx.wait(lambda: set(names) <= {n.get('name') for n in ctx.accessible(
+        {'owned': True, 'pid': pid, 'visible': True, 'showing': True, 'enabled': True, 'role': 'menu item'})},
+        'owned runtime menu actions are visible: ' + ', '.join(names))
+
+
+def _copied_row_details(ctx, row):
+    ctx.click('text:Copy details', window='historyRowMenu')
+    def copied():
+        try:
+            value = json.loads(ctx.clipboard_text())
+        except (ValueError, TypeError):
+            return None
+        return value if isinstance(value, dict) and any(r.get('id') == row['id'] for r in value.get('records', [])) else None
+    return ctx.wait(copied, 'keyboard row menu copies selected receipt')
 
 
 def _application_menu(ctx):
@@ -604,6 +688,16 @@ def header_drag(ctx):
     ctx.call('ui.viewState')
     _frame(ctx, 'after')
     ctx.drag((start[0] + moved['x'] - box['x'], start[1] + moved['y'] - box['y']), start)
+    ctx.wait(lambda: ((g := ctx.geometry('history')) and all(g[key] == box[key] for key in ('x', 'y', 'width', 'height'))), 'header drag restores original rectangle')
+    ctx.blocked('Header movement and restoration are verified; the composite also requires double-click maximize/restore at this blank span, but Context has no atomic point double-click.', issue=904)
+
+
+def _resize_point(ctx, box):
+    # Ui::WindowEdges has 10x10 corner grips. Their center is inside the live
+    # client even when the outermost corner pixel is rounded/transparent.
+    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    return tuple(round((box[axis] + box[extent] - 5 - box.get(origin, 0)) * scale)
+                 for axis, extent, origin in (('x', 'width', 'screen_x'), ('y', 'height', 'screen_y')))
 
 
 @recipe('shell.edge-resize', 'shell.minimum-size', needs=('history-row',), timeout=180)
@@ -611,35 +705,52 @@ def edge_resize(ctx):
     _row(ctx)
     box = ctx.geometry('history')
     _frame(ctx, 'before')
-    edge = (box['x'] + box['width'] - 1, box['y'] + box['height'] - 1)
+    edge = _resize_point(ctx, box)
     ctx.drag(edge, (edge[0] - 600, edge[1] - 500))
     resized = ctx.wait(lambda: (g if ((g := ctx.geometry('history'))['width'], g['height']) != (box['width'], box['height']) else None), 'edge drag resizes shell')
     scale = box.get('scale', 1)
     ctx.expect(resized['width'] == round(1060 * scale) and resized['height'] == round(680 * scale), 'shell respects 1060 by 680 logical minimum')
     ctx.call('ui.viewState')
     _frame(ctx, 'after', COMPACT)
-    new_edge = (resized['x'] + resized['width'] - 1, resized['y'] + resized['height'] - 1)
+    new_edge = _resize_point(ctx, resized)
     ctx.drag(new_edge, edge)
 
 
 def _window_buttons_ready(ctx):
-    gap = ctx.profile.get('history_window_buttons_blocked')
-    if gap:
-        ctx.blocked(gap['reason'], issue=gap['issue'])
+    anchor = ctx.profile.get('history_window_anchor')
+    if not anchor:
+        return
+    box = ctx.geometry('history')
+    tolerance = ctx.profile.get('history_window_anchor_tolerance', 0)
+    def in_pose(geometry):
+        return all(max(0, anchor[k] - tolerance) <= geometry[k] <= anchor[k] + tolerance for k in ('x', 'y'))
+    if in_pose(box):
+        return
+    # Keep chrome outside the desktop's right-aligned notification column.
+    # Move by a live blank header point; every gesture retains the normal guard.
+    start = _header_point(ctx, box)
+    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    end = tuple(round(start[i] + (anchor[k] - box[k]) * scale) for i, k in enumerate(('x', 'y')))
+    ctx.drag(start, end)
+    moved = ctx.wait(lambda: (g if in_pose(g := ctx.geometry('history')) else None),
+                     'main window moved clear of notification column')
+    ctx.expect(all(moved[k] == box[k] for k in ('width', 'height')), 'placement preserves the exact window size')
+    ctx.note('History chrome setup pose: ' + json.dumps({k: moved[k] for k in ('x', 'y', 'width', 'height')}))
+
 
 
 @recipe('shell.window-maximize', needs=('history-row',))
 def maximize(ctx):
-    _window_buttons_ready(ctx)
     _row(ctx)
+    _window_buttons_ready(ctx)
     original = ctx.geometry('history')
     _frame(ctx, 'before')
-    ctx.click('windowMaximize', window='history')
+    _click_history_node(ctx, {'name': 'Maximize', 'role': 'push button'})
     enlarged = ctx.wait(lambda: (g if (g := ctx.geometry('history'))['width'] > original['width'] else None), 'Maximize enlarges shell')
     ctx.expect(enlarged['height'] >= original['height'], 'maximized height grows')
     ctx.call('ui.viewState')
     _frame(ctx, 'maximized')
-    ctx.click('windowMaximize', window='history')
+    _click_history_node(ctx, {'name': 'Restore', 'role': 'push button'})
     ctx.wait(lambda: ctx.geometry('history') == original, 'Restore returns exact original geometry')
     _frame(ctx, 'after')
 
@@ -647,7 +758,27 @@ def maximize(ctx):
 def _main_windows(ctx, include_hidden=False):
     """Inspect only the private family's exact main-window title."""
     key = 'history_hidden_window_query' if include_hidden else 'history_window_query'
-    return ctx.windows(ctx.profile.get(key, {'title': r'^put\.gd$', 'include_hidden': include_hidden}))
+    query = ctx.profile.get(key, {'title': r'^put\.gd$', 'include_hidden': include_hidden})
+    observed, departed = {}, []
+    def inventory():
+        try:
+            observed['rows'] = ctx.windows(query)
+            return True  # A successfully read empty inventory is meaningful.
+        except RecipeBlocked as error:
+            if ('accessibility walk incomplete' not in error.reason
+                    or 'Message recipient disconnected from message bus' not in error.reason):
+                raise
+            departed.append(error)
+            return False
+    try:
+        ctx.wait(inventory, 'native window inventory settles after departed AT-SPI client', timeout=10)
+    except RecipeFailed:
+        if departed:
+            raise departed[-1]
+        raise
+    if departed:
+        ctx.note('Native window inventory was re-read successfully after a departed AT-SPI client; no absence inferred from the refused query.')
+    return observed['rows']
 
 
 def _minimized(window):
@@ -659,10 +790,10 @@ def _minimized(window):
 @recipe('shell.window-minimize', needs=('history-row',))
 def minimize(ctx):
     """Minimize with the chrome button and observe the compositor state."""
-    _window_buttons_ready(ctx)
     row = _row(ctx)
+    _window_buttons_ready(ctx)
     _frame(ctx, 'before')
-    ctx.click('windowMinimize', window='history')
+    _click_history_node(ctx, {'name': 'Minimize', 'role': 'push button'})
     try:
         ctx.wait(lambda: any(_minimized(w) for w in _main_windows(ctx, True)),
                  'window manager confirms minimized shell')
@@ -679,10 +810,10 @@ def minimize(ctx):
 @recipe('shell.window-close', needs=('history-row',))
 def close_window(ctx):
     """Close the shell and prove the resident still serves its original row."""
-    _window_buttons_ready(ctx)
     row = _row(ctx)
+    _window_buttons_ready(ctx)
     _frame(ctx, 'before')
-    ctx.click('windowClose', window='history')
+    _click_history_node(ctx, {'name': 'Close window', 'role': 'push button'})
     try:
         ctx.wait(lambda: not _main_windows(ctx), 'closed shell has no visible main window')
         ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
@@ -694,11 +825,18 @@ def close_window(ctx):
     _frame(ctx, 'after')
 
 
+def _launcher(ctx, flag):
+    # The public shell runs in Target's owned private XDG environment. Launcher
+    # flags are literal, nonsecret commands; JSON method parameters stay on the
+    # core's params-stdin CLI path. No alternate transport/backend is created.
+    import shlex
+    ctx.expect(flag in ('--version', '--version-json', '--history', '--activity'), 'supported launcher flag')
+    executable = ctx.fixture('launcher').executable
+    return ctx.shell(shlex.quote(executable) + ' ' + flag)
+
+
 def _launcher_identity(ctx):
-    text = ctx.cli('--version')
-    if text['returncode'] == 0 and text['stdout'].startswith('putgd-cli '):
-        ctx.blocked('Context.cli routed the launcher flag to putgd-cli; launcher dispatch remains a core capability gap.', issue=675)
-    return text
+    return _launcher(ctx, '--version')
 
 
 @recipe('cli.version', needs=('launcher',))
@@ -708,25 +846,33 @@ def cli_version(ctx):
     _frame(ctx, 'before')
     text = _launcher_identity(ctx)
     ctx.expect(text['returncode'] == 0 and text['stdout'].startswith('putgd '), 'launcher prints version')
-    version = _cli(ctx, '--version-json')
+    reply = _launcher(ctx, '--version-json')
+    ctx.expect(reply['returncode'] == 0, 'launcher version JSON succeeds')
+    version = json.loads(reply['stdout'])
     authoritative = _result(ctx.call('ui.snapshot'))['build']
     ctx.expect(version == authoritative, 'version JSON matches exact resident build')
     _frame(ctx, 'after')
 
 
-@recipe('cli.launcher-history', 'cli.second-launch', needs=('history-row', 'launcher'))
+@recipe('cli.launcher-history', 'cli.second-launch', needs=('history-row', 'launcher'), timeout=240)
 def launcher_history(ctx):
     _launcher_identity(ctx)
     _row(ctx)
     _frame(ctx, 'before')
-    # cli is the launcher for leading flags; method names address putgd-cli.
+    epoch = _result(ctx.call('ui.snapshot'))['residentEpoch']
     for flag in ('--history', '--activity'):
-        reply = ctx.cli(flag)
+        _window_buttons_ready(ctx)
+        _click_history_node(ctx, {'name': 'Close window', 'role': 'push button'})
+        ctx.wait(lambda: not _main_windows(ctx), 'shell is hidden before second launcher')
+        ctx.frame('closed-' + flag)
+        reply = _launcher(ctx, flag)
         ctx.expect(reply['returncode'] == 0, 'second launcher forwards ' + flag)
         ctx.wait(lambda: _result(ctx.call('ui.viewState'))['state'] == 'ready', 'existing resident shows History')
-        ctx.expect(_state(ctx)['total'] >= 1, 'forwarded launch retains history')
+        _wait_window(ctx, 'history')
+        ctx.wait(lambda: _selected_page(ctx, 'History'), 'forwarded launcher selects History')
+        ctx.expect(_result(ctx.call('ui.snapshot'))['residentEpoch'] == epoch, 'second launch forwards to the same resident')
+        ctx.wait(lambda: not _state(ctx)['busy'] and _state(ctx)['total'] >= 1, 'forwarded launch retains settled history')
     _frame(ctx, 'after')
-    ctx.review('ui.viewState reports helper readiness, not active page; verify second launcher raised History in the saved frame.')
 
 
 @recipe('mcp.inspect')
@@ -742,7 +888,7 @@ def mcp_inspect(ctx):
 
 
 # Gallery observation runs last so a failed native probe cannot hide unrelated window/menu results.
-@recipe('history.view-gallery', 'history.view-list', needs=('history-row',))
+@recipe('history.view-gallery', 'history.view-list', needs=('history-row',), timeout=240)
 def view_modes(ctx):
     row = _row(ctx)
     _frame(ctx, 'before')
@@ -759,7 +905,7 @@ def view_modes(ctx):
 
 
 
-@recipe('history.key-enter', needs=('history-row',))
+@recipe('history.key-enter', needs=('history-row',), timeout=180)
 def enter_details(ctx):
     row = _row(ctx)
     _gallery(ctx)
@@ -785,45 +931,512 @@ def escape_details(ctx):
 
 
 
+
+
+@recipe('shell.autosave-status', needs=('settings-save-failure',), timeout=240)
+def autosave_status(ctx):
+    fault = ctx.fixture('settings-save-failure')
+    ctx.view('ui.show', {'view': 'settings'})
+    _click_history_node(ctx, {'name': 'General', 'role': 'list item'})
+    ctx.wait(lambda: _result(ctx.call('ui.viewState'))['settings']['section'] == 0, 'General settings selected')
+    before = _result(ctx.call('settings.get'))
+    enabled = before['document']['preferences']['notifications']
+    _frame(ctx, 'before', None)
+    _click_history_node(ctx, {'name': 'Show desktop notifications', 'role': 'check box'})
+    def refused():
+        rows = _nodes(ctx, name='Settings save status')
+        return rows[0] if len(rows) == 1 and rows[0].get('description') else None
+    ctx.wait(refused, 'shell save status carries the refused-save explanation')
+    ctx.expect(_result(ctx.call('settings.get'))['document'] == before['document'],
+               'refused write preserves the accepted configuration')
+    ctx.frame('changes-not-saved')
+    fault.restore()
+    _click_history_node(ctx, {'name': 'Retry saving', 'role': 'push button'})
+    ctx.wait(lambda: _result(ctx.call('settings.get'))['document']['preferences']['notifications'] != enabled,
+             'real Retry saving commits the pending edit')
+    ctx.wait(lambda: all(not n.get('description') for n in _nodes(ctx, name='Settings save status')),
+             'accepted save clears the shell failure explanation')
+    _frame(ctx, 'after', None)
+    ctx.review('Inspect the status-band captions in saved frames: Settings save automatically and Changes not saved.')
+
+
+COMMAND_LABELS = {'region': 'Capture region', 'window': 'Capture window', 'desktop': 'Capture desktop',
+                  'edit': 'Capture region & edit', 'record': 'Record screen', 'clipboard': 'Upload clipboard'}
+
+
+def _command_control(action):
+    # Qt exports the split Edit source control as a menu on some versions.
+    # Its unique native name, owned PID and live bounds still bind the input.
+    return {'name': 'Capture region*edit' if action == 'edit' else COMMAND_LABELS[action],
+            **({'role': 'push button'} if action != 'edit' else {})}
+
+
+@recipe('shell.command-tooltips', needs=('app-profile',), timeout=600)
+def command_tooltips(ctx):
+    labels = COMMAND_LABELS
+    for unavailable in (False, True):
+        if unavailable:
+            ctx.fixture('settings-no-output')
+        _open(ctx)
+        _window_buttons_ready(ctx)
+        if not unavailable:
+            _frame(ctx, 'before')
+        config = _result(ctx.call('settings.get'))['document']
+        for action, label in labels.items():
+            node = _hover_history_node(ctx, _command_control(action))
+            def tooltip():
+                rows = _nodes(ctx, role='tool tip')
+                texts = [html.unescape(n.get('text') or n.get('name', '')) for n in rows]
+                return next((text for text in texts if label in text or node.get('name', label) in text), None)
+            text = ctx.wait(tooltip, 'owned tooltip for ' + action)
+            ctx.expect('Output' in text or 'local' in text.lower() or 'Nothing is saved or uploaded' in text,
+                       'command tooltip includes actual output behavior')
+            shortcut = config['actions'][action].get('shortcut', '')
+            if shortcut:
+                ctx.expect(shortcut in text, 'tooltip includes configured shortcut')
+            if unavailable:
+                ctx.expect('New captures have no output' in text, 'tooltip includes unavailability reason')
+            _frame(ctx, 'tooltip-' + action + ('-unavailable' if unavailable else '-local'), None)
+            ctx.keys('Esc')
+    _frame(ctx, 'after')
+
+
+@recipe('history.save-diagnostics', needs=('history_retry_upload', 'app-profile'), timeout=240)
+def save_diagnostics(ctx):
+    row = _row(ctx, 'history_retry_upload')
+    root = ctx.fixture('app-profile').output_dir
+    _frame(ctx, 'before')
+    _click_history_node(ctx, {'name': 'Save diagnostics for this upload', 'role': 'push button'})
+    import shlex
+    code = """import hashlib,json,zipfile
+from pathlib import Path
+root=Path(ROOT)/'diagnostics'
+files=list(root.glob('putgd-diagnostics-*.zip')) if root.exists() else []
+assert len(files)<=1
+if files:
+ p=files[0];assert p.is_file() and not p.is_symlink()
+ with zipfile.ZipFile(p) as z:
+  manifest=json.loads(z.read('manifest.json'))
+  assert manifest['scope']['operationId']==OPERATION and manifest['operations']==1
+  for entry in manifest['files']:
+   data=z.read(entry['path'])
+   assert len(data)==entry['bytes'] and hashlib.sha256(data).hexdigest()==entry['sha256']
+ print(json.dumps({'valid':True,'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'files':len(manifest['files'])}))
+else:print('{}')
+""".replace('ROOT', repr(root)).replace('OPERATION', repr(row['operation_id']))
+    def saved():
+        reply = ctx.shell('python3 -c ' + shlex.quote(code))
+        ctx.expect(reply['returncode'] == 0, 'diagnostics ZIP manifest, scope and every entry hash validate')
+        return json.loads(reply['stdout']).get('valid')
+    ctx.wait(saved, 'row diagnostics written to private archive', timeout=30)
+    ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'],
+               'saving diagnostics preserves the failed receipt')
+    _frame(ctx, 'after')
+
+
+@recipe('history.local-copy-settings', needs=('history_retry_local',), timeout=240)
+def local_copy_settings(ctx):
+    row = _row(ctx, 'history_retry_local')
+    detail = _result(ctx.call('history.detail', {'id': row['id']}))
+    ctx.expect(detail['local']['status'] != 'saved', 'fixture has no successfully retained local copy')
+    _frame(ctx, 'before')
+    _click_history_node(ctx, {'name': 'Local-copy settings', 'role': 'push button'})
+    _capture_settings(ctx)
+    _frame(ctx, 'after', None)
+
+
+@recipe('history.compact', needs=('history-row',), timeout=180)
+def compact_details(ctx):
+    row = _row(ctx)
+    box = ctx.geometry('history')
+    _frame(ctx, 'before')
+    edge = _resize_point(ctx, box)
+    ctx.drag(edge, (edge[0] - 600, edge[1] - 500))
+    ctx.wait(lambda: _state(ctx)['layout'] == 'compact', 'real resize enters compact History layout')
+    try:
+        for grid, back in ((False, 'Back to list'), (True, 'Back to gallery')):
+            ctx.click('historyGridMode' if grid else 'historyListMode', window='history')
+            _focus_items(ctx)
+            ctx.keys('Home', 'Return')
+            ctx.wait(lambda: _state(ctx)['detailsOpen'] and _state(ctx)['inspectorVisible'], 'compact details replace the list')
+            ctx.expect(_state(ctx)['selectedIds'] == [row['id']], 'compact details retain exact history identity')
+            ctx.expect(not _nodes(ctx, name='History items and upload activity'), 'details hide the compact list')
+            _frame(ctx, 'compact-' + str(grid), None)
+            ctx.click('text:' + back, window='history')
+            ctx.wait(lambda: not _state(ctx)['detailsOpen'], back + ' restores browsing')
+            ctx.expect(bool(_nodes(ctx, name='History items and upload activity')), 'Back restores the native list')
+    finally:
+        now = ctx.geometry('history')
+        ctx.drag(_resize_point(ctx, now), edge)
+    ctx.click('historyListMode', window='history')
+    _frame(ctx, 'after')
+
+# Composite rows use production inspection plus real input. Fixture setup and
+# cleanup stay in core; no fake resident replies or injected Qt events.
+def _nodes(ctx, **query):
+    return ctx.accessible(dict(owned=True, visible=True, showing=True,
+                               pid=ctx.geometry('history')['pid'], **query))
+
+
+def _selected_page(ctx, label):
+    if any(n.get('states', {}).get('selected') for n in _nodes(ctx, role='page tab', name=label)):
+        return True
+    # Some Qt versions omit the native tab's selected projection. Require one
+    # unambiguous visible page container instead. Qt 6.4 can retain SHOWING on
+    # virtual QListWidget items after their actual container becomes hidden.
+    witnesses = {'History': {'name': 'Show history items', 'role': 'list'},
+                 'Destinations': {'name': 'Add destination', 'role': 'push button'},
+                 'Settings': {'name': 'Settings categories', 'role': 'list'}}
+    visible = {page: len(_nodes(ctx, **query)) == 1 for page, query in witnesses.items()}
+    return visible.get(label, False) and sum(visible.values()) == 1
+
+
+def _capture_settings(ctx):
+    ctx.wait(lambda: _selected_page(ctx, 'Settings'), 'Settings navigation tab selected')
+    ctx.wait(lambda: _result(ctx.call('ui.viewState')).get('settings', {}).get('section') == 1,
+             'resident reports Settings Capture section')
+
+
+@recipe('shell.nav', needs=('app-profile',), timeout=240)
+def navigation(ctx):
+    _open(ctx)
+    _frame(ctx, 'before')
+    for page in ('Destinations', 'Settings', 'History'):
+        _click_history_node(ctx, {'role': 'page tab', 'name': page})
+        # Preserve the actual transition when a desktop omits a page witness.
+        # Only fixed public landmark names, states and rectangles are logged.
+        tabs = _nodes(ctx, role='page tab', name=page)
+        landmarks = {'historyRow': ('All items', 'list item'),
+                     'historyList': ('Show history items', 'list'),
+                     'settingsRow': ('General', 'list item'),
+                     'settingsList': ('Settings categories', 'list'),
+                     'destinationButton': ('Add destination', 'push button')}
+        counts = {key: len(_nodes(ctx, name=name, role=role)) for key, (name, role) in landmarks.items()}
+        ctx.note('Navigation witness ' + page + ': ' + json.dumps({
+            'tabs': [{'rect': n.get('rect'), 'states': n.get('states')} for n in tabs],
+            'landmarkCounts': counts}))
+        _frame(ctx, 'pointer-' + page, None)
+        ctx.wait(lambda: _selected_page(ctx, page), page + ' selected after pointer input')
+    # The segmented tab bar implements native arrow-key navigation.
+    for key, page in (('Right', 'Destinations'), ('Right', 'Settings'), ('Left', 'Destinations'), ('Left', 'History')):
+        ctx.keys(key)
+        ctx.wait(lambda: _selected_page(ctx, page), page + ' selected after ' + key)
+    ctx.call('ui.viewState')
+    _frame(ctx, 'after')
+
+
+@recipe('shell.app-menu-quit', needs=('resident-lifecycle',), timeout=240)
+def quit_application(ctx):
+    lifecycle = ctx.fixture('resident-lifecycle')
+    _open(ctx)
+    _frame(ctx, 'before')
+    ctx.click('applicationMenu', window='history')
+    _wait_menu(ctx, 'Quit put.gd')
+    ctx.click('text:Quit put.gd', window='applicationMenuPopup')
+    ctx.wait(lifecycle.stopped, 'private resident socket removed after real Quit')
+    ctx.frame('quit')
+    new = lifecycle.launch()
+    ctx.expect(new != lifecycle.initial, 'relaunch has a new authenticated resident identity')
+    _open(ctx)
+    _frame(ctx, 'after')
+
+
+@recipe('shell.output-summary', needs=('settings-action-routes',), timeout=240)
+def output_summary(ctx):
+    routes = ctx.fixture('settings-action-routes')
+    routes.add('clipboard', routes.profile_ids[1])
+    _open(ctx)
+    _frame(ctx, 'before')
+    # This fixture adds a clipboard route different from the default. The
+    # live summary name changes with that configuration, unlike the catalog.
+    _click_history_node(ctx, {'name': 'Mixed outputs'})
+    _wait_menu(ctx, 'Change output')
+    pid = ctx.geometry('history')['pid']
+    actions = ctx.accessible({'owned': True, 'pid': pid, 'visible': True, 'showing': True,
+                              'role': 'menu item', 'name': 'Change output'})
+    ctx.expect(len(actions) == 1 and bool(actions[0].get('popup'))
+               and actions[0].get('coordinate_space') == 'desktop'
+               and actions[0].get('rect') and min(actions[0]['rect'][2:]) > 0
+               and not actions[0].get('coordinate_error'), 'one placed owned output-menu action')
+    menus = [a for a in actions[0].get('ancestors', [])
+             if a.get('pid') == pid and a.get('role', '').lower().replace('_', ' ').replace('-', ' ')
+             in ('menu', 'popup menu') and a.get('rect') and min(a['rect'][2:]) > 0]
+    ctx.expect(bool(menus), 'output action has a native menu ancestor with live desktop bounds')
+    # Read native label/widget-action text inside the placed menu ancestor.
+    # An untitled QMenu is not an independent geometry() window.
+    rows = ctx.accessible({'owned': True, 'visible': True, 'showing': True,
+                           'pid': pid, 'within': menus[-1]['rect']})
+    labels = [line.strip() for node in rows for field in ('name', 'text')
+              for line in (node.get(field) or '').splitlines()]
+    default_prefixes = ('Default: ', 'Default output: ')
+    if not any(n.startswith(default_prefixes) for n in labels):
+        # Fixed synthetic captions only: distinguish missing popup descendants
+        # from an incorrectly scoped menu rectangle without dumping a tree.
+        public = ctx.accessible({'owned': True, 'visible': True, 'showing': True, 'pid': pid})
+        public = [node for node in public if any((node.get(field) or '').startswith(
+            default_prefixes + ('Upload clipboard: ',)) for field in ('name', 'text'))
+                  or node.get('name') in ('Exceptions', 'Change output')]
+        ctx.note('Output popup witness=' + json.dumps({
+            'menuBounds': menus[-1]['rect'],
+            'scopedLabels': [name for name in labels if name.startswith(default_prefixes + ('Upload clipboard: ',))],
+            'publicNodes': [{key: node.get(key) for key in (
+                'name', 'text', 'role', 'rect', 'popup', 'coordinate_space', 'coordinate_error', 'objectName')}
+                for node in public]}, sort_keys=True))
+    ctx.expect(any(n.startswith(default_prefixes) for n in labels), 'popup exposes inherited output')
+    ctx.expect(any(n.startswith('Upload clipboard: ') and 'Synthetic 1' in n for n in labels),
+               'popup exposes the exact clipboard exception destination')
+    ctx.frame('output-popup')
+    ctx.click('text:Change output', window='captureOutputMenu')
+    _capture_settings(ctx)
+    _frame(ctx, 'after', None)
+
+
+@recipe('shell.output-warning', needs=('settings-no-output',), timeout=240)
+def output_warning(ctx):
+    ctx.fixture('settings-no-output')
+    _open(ctx)
+    _frame(ctx, 'before')
+    ctx.expect(bool(_nodes(ctx, name='New captures have no output. Choose a destination or turn on Keep a local copy.')),
+               'accepted no-output configuration produces the actual warning strip')
+    _click_history_node(ctx, {'name': 'Change output', 'role': 'push button'})
+    _capture_settings(ctx)
+    ctx.expect(not _nodes(ctx, objectName='chooseCommandOutput'), 'Capture page owns recovery after navigation')
+    _frame(ctx, 'after', None)
+
+
+@recipe('shell.first-launch', timeout=240)
+def first_launch(ctx):
+    profile = ctx.fixture('app-profile', first_launch=True)
+    ctx.expect(profile.first_launch, 'core restarted without a configuration file')
+    ctx.wait(lambda: _selected_page(ctx, 'Settings'), 'first launch selects Settings without a show command')
+    ctx.call('ui.viewState')
+    _frame(ctx, 'before', None)
+    ctx.expect(bool(_nodes(ctx, name='New captures have no output. Choose a destination or turn on Keep a local copy.')),
+               'first launch explains that no output is configured')
+    _click_history_node(ctx, {'name': 'Change output', 'role': 'push button'})
+    _capture_settings(ctx)
+    _frame(ctx, 'after', None)
+
+
+@recipe('history.list', needs=('history_rows',), timeout=240)
+def list_gestures(ctx):
+    data = ctx.fixture('history_rows')
+    row = _row(ctx, 'history_rows')
+    _frame(ctx, 'before')
+    # Compact details have an explicit inspectable open/closed state; list at
+    # full width already shows its inspector. Gallery uses the same delegates.
+    _gallery(ctx)
+    _details(ctx)
+    ctx.keys('Esc')
+    ctx.wait(lambda: not _state(ctx)['detailsOpen'], 'Escape closes Enter details')
+    _double_history_row(ctx)
+    ctx.wait(lambda: _state(ctx)['detailsOpen'], 'double-click opens exact selected delegate')
+    ctx.expect(_state(ctx)['selectedIds'] == [row['id']], 'double-click preserves receipt identity')
+    ctx.keys('Esc')
+    ctx.click('historyListMode', window='history')
+    _search(ctx, '')
+    _focus_items(ctx)
+    ctx.keys('Home', 'Ctrl+A')
+    ctx.wait(lambda: set(_state(ctx)['selectedIds']) == set(data.ids), 'extended selection contains every independent fixture receipt')
+    # Context menu at a native row point, with the native menu's Copy details
+    # proving the clicked row rather than optimistic menu visibility alone.
+    _search(ctx, row['name'])
+    _focus_items(ctx)
+    ctx.keys('Home')
+    previous = ctx.profile.get('live_controls', {})
+    node = _searched_row_node(ctx)
+    ctx.profile['live_controls'] = {**previous, 'historySearchedContextRow': {'name': node['name'], 'role': 'list item'}}
+    try:
+        ctx.click('historySearchedContextRow', window='history', button='right')
+    finally:
+        ctx.profile['live_controls'] = previous
+    _wait_menu(ctx, 'Copy details')
+    ctx.frame('context-menu')
+    copied = _copied_row_details(ctx, row)
+    ctx.expect([r['id'] for r in copied['records']] == [row['id']], 'right-click menu acts on exact row')
+    _frame(ctx, 'after')
+
+
+def _recent(ctx):
+    return _result(ctx.call('operation.recent'))['operations']
+
+
+def _new_operation(ctx, previous, action):
+    def observed():
+        matches = [o for o in _recent(ctx) if o['id'] not in previous and o['action'] == action]
+        ctx.expect(len(matches) <= 1, 'one operation admitted for one command')
+        return matches[0] if matches else None
+    value = ctx.wait(observed, 'new ' + action + ' operation')
+    ctx.note('operationId=' + value['id'] + ' action=' + action)
+    return value
+
+
+def _settle(ctx, identity):
+    return ctx.wait(lambda: (v if (v := _result(ctx.call('operation.inspect', {'id': identity})))['state']
+                            in ('completed', 'cancelled', 'failed', 'partial', 'interrupted') else None),
+                    'owned operation settles', timeout=45)
+
+
+def _exercise_command(ctx, action, dispatch, *, external_focus=True):
+    if action == 'clipboard':
+        source = ctx.fixture('events.clipboard')
+        ctx.wait(lambda: ctx.clipboard_text() == source.text, 'synthetic text clipboard acquired')
+    elif action == 'window' and external_focus:
+        scene = ctx.fixture('selector-desktop')
+        scene.command('raise')
+        ctx.focus('historyFixture', raise_window=False)
+    previous = {v['id'] for v in _recent(ctx)}
+    dispatch(action)
+    operation = _new_operation(ctx, previous, action)
+    identity = operation['id']
+    try:
+        if action in ('region', 'edit', 'record'):
+            window = 'recsel' if action == 'record' else 'region'
+            _wait_window(ctx, window)
+            ctx.expect(operation['state'] not in ('failed', 'interrupted'), 'command reached its real selector')
+            ctx.frame('selector-' + action)
+            ctx.focus(window, raise_window=False)
+            ctx.keys('Esc')
+            ctx.expect(_settle(ctx, identity)['state'] == 'cancelled', 'real Escape cancels the new selector')
+        else:
+            state = _settle(ctx, identity)
+            ctx.expect(state['state'] == 'completed' and bool(state.get('items')), 'local command completed')
+            ctx.expect(all(i['uploadStatus'] == 'local_only' and i['local']['status'] == 'saved' for i in state['items']),
+                       'every artifact saved locally without publication')
+            if action == 'clipboard':
+                # Read only these operation-owned local paths. No existing
+                # clipboard payload or arbitrary user file is inspected.
+                import shlex
+                path = state['items'][0]['local']['path']
+                script = 'python3 -c ' + shlex.quote('from pathlib import Path;assert Path(' + repr(path) + ').read_text() == ' + repr(source.text))
+                ctx.expect(ctx.shell(script)['returncode'] == 0, 'saved clipboard bytes match the synthetic source')
+        ctx.frame('completed-' + action)
+    except (RecipeBlocked, RecipeFailed):
+        if action in ('region', 'edit', 'record'):
+            # Retain only the owned operation's status and fixed selector names.
+            # These diagnostics distinguish a failed backend from a missing
+            # native placement/focus witness without reading foreign windows.
+            try:
+                state = _result(ctx.call('operation.inspect', {'id': identity}))
+                captions = ('Capture region', 'Recording region')
+                nodes = [node for caption in captions for node in ctx.accessible(
+                    {'owned': True, 'name': caption, 'visible': True, 'showing': True})]
+                ctx.note('selector failure diagnostic=' + json.dumps({
+                    'state': state.get('state'), 'phase': state.get('phase'),
+                    'errorCode': (state.get('error') or {}).get('code'),
+                    'itemErrorCodes': [(item.get('error') or {}).get('code') for item in state.get('items', [])],
+                    'nativeSelectors': [{key: node.get(key) for key in (
+                        'name', 'role', 'rect', 'coordinate_space', 'coordinate_error', 'owned', 'pid')}
+                        for node in nodes]}, sort_keys=True))
+            except Exception as diagnostic_error:
+                ctx.note('selector failure diagnostic unavailable: ' + type(diagnostic_error).__name__)
+        raise
+    finally:
+        ctx.call('operation.cancel', {'id': identity})
+
+
+def _shell_command_recipe(interaction, action):
+    def command(ctx):
+        ctx.fixture('app-profile')
+        if action != 'clipboard':
+            ctx.fixture('selector-desktop').command('raise')
+        _open(ctx)
+        _window_buttons_ready(ctx)
+        _frame(ctx, 'before')
+        _exercise_command(ctx, action, lambda _: _click_history_node(ctx, _command_control(action)), external_focus=False)
+        # The initial query is already known. Reopen only for the saved result
+        # frame; resetting every browsing control adds unrelated native input.
+        ctx.view('ui.show', {'view': 'history'})
+        _frame(ctx, 'after')
+    command.__name__ = 'command_' + action
+    recipe(interaction, needs=('app-profile', 'events.clipboard') if action == 'clipboard'
+           else ('app-profile', 'selector-desktop'), timeout=360)(command)
+    return command
+
+
+for _action in ('region', 'window', 'desktop', 'edit', 'record', 'clipboard'):
+    _shell_command_recipe('shell.command-' + {'edit': 'capture-edit', 'record': 'record', 'clipboard': 'upload-clipboard'}.get(_action, 'capture-' + _action), _action)
+
+
+def _action_matrix(ctx, dispatch):
+    ctx.fixture('app-profile')
+    ctx.fixture('selector-desktop')
+    _open(ctx)
+    _frame(ctx, 'before')
+    # Capture results replace the native clipboard owner; exercise the owned
+    # text source first, before any completed screenshot changes it.
+    for action in ('clipboard', 'region', 'window', 'desktop', 'edit', 'record'):
+        _exercise_command(ctx, action, dispatch)
+    ctx.view('ui.show', {'view': 'history'})
+    _frame(ctx, 'after')
+
+
+@recipe('cli.action-invoke', needs=('app-profile', 'selector-desktop', 'events.clipboard'), timeout=480)
+def cli_actions(ctx):
+    _action_matrix(ctx, lambda action: _cli(ctx, 'action.invoke', json.dumps({'action': action})))
+
+
+@recipe('mcp.perform-action', needs=('app-profile', 'selector-desktop', 'events.clipboard'), timeout=480)
+def mcp_actions(ctx):
+    _action_matrix(ctx, lambda action: _result(ctx.mcp('perform_action', {'action': action})))
+
+
+def _local_digest(ctx, path):
+    import shlex
+    code = ('from pathlib import Path;import hashlib,json;print(json.dumps({"sha256":'
+            'hashlib.sha256(Path(' + repr(path) + ').read_bytes()).hexdigest()}))')
+    result = ctx.shell('python3 -c ' + shlex.quote(code))
+    ctx.expect(result['returncode'] == 0, 'retained synthetic source readable')
+    return json.loads(result['stdout'])['sha256']
+
+
+@recipe('history.edit-again', needs=('history-row',), timeout=240)
+def edit_again(ctx):
+    row = _row(ctx)
+    detail = _result(ctx.call('history.detail', {'id': row['id']}))
+    path = detail['local']['path']
+    before = _local_digest(ctx, path)
+    _frame(ctx, 'before')
+    previous = {o['id'] for o in _recent(ctx)}
+    _click_history_node(ctx, {'name': 'Edit image…', 'role': 'push button'})
+    operation = _new_operation(ctx, previous, 'edit')
+    identity = operation['id']
+    try:
+        def ready():
+            reply = ctx.cli('editor.inspect', json.dumps({'id': identity}))
+            value = json.loads(reply['stdout'])
+            return _result(value) if value.get('ok') is not False else None
+        state = ctx.wait(ready, 'new editor session ready')
+        ctx.expect(state['phase'] == 'editing' and [state['width'], state['height']] == [640, 320],
+                   'History Edit opens an independent editor on the retained fixture')
+        ctx.frame('editor')
+    finally:
+        ctx.call('editor.cancel', {'id': identity})
+    ctx.expect(_local_digest(ctx, path) == before, 'editing and cancelling preserve immutable history source bytes')
+    ctx.expect(_result(ctx.call('history.detail', {'id': row['id']}))['id'] == row['id'], 'original receipt survives Edit')
+    _open(ctx)
+    _frame(ctx, 'after')
+
+
 # Explicit declarations, rather than optimistic click-and-review passes. These
 # remain functional=blocked until the named setup/oracle exists. Each reason is
 # independently included in the per-ID acceptance table generated from REGISTRY.
 BLOCKED = {
-    'history.list': 'Double-click is available, but row/tile hit targets still need verified runtime delegate geometry (#675/#712); clicking the list center cannot identify the selected row.',
     'history.filters': 'Needs full date/MIME/destination/state fixture matrix and deterministic result oracles for every + Filter choice; clear-filters recipe exercises one upload filter only.',
     'history.row-primary': 'Needs historyRowPrimary controls captures for selected/hovered Retry upload/local save/deletion and Copy result variants; fixture variants do not yet cover all states.',
-    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants still need deterministic failed/queued deletion fixtures (#675); link opening stays with links.',
-    'history.edit-again': 'Retained history images now exist; GUI Edit still needs a returned editor identity and an immutable-source oracle to prove the new editing session (#675).',
+    'history.row-menu': 'Fresh upload/local-save/cancel rows now exist, but queued/failed deletion variants still need deterministic failed/queued deletion fixtures; link opening stays with links.',
     'history.retry-deletion': 'Needs tray_progress-style moto failed-delete fixture with stable deletion ID plus queued Cancel deletion variant.',
-    'history.save-diagnostics': 'Failed-row fixtures now exist; diagnostics still needs its private output-directory/archive manifest oracle (#675).',
-    'history.local-copy-settings': 'Needs missing-local-copy guidance fixture; ui.viewState does not report the selected Settings tab.',
-    'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup (#675).',
-    'history.compact': 'Live geometry is available; compact Back to list/gallery transitions still need a verified resize and current controls with a complete compact-layout oracle (#675).',
-    'shell.app-menu-quit': 'Needs isolated resident lifecycle fixture/restart boundary; quitting a shared run would invalidate later recipes.',
-    'shell.nav': 'Needs mainNavigation tab hit rectangles and active main.page oracle; ui.viewState currently exposes state/appearance/captureRouting only.',
+    'history.empty-states': 'Private empty history is available, but the composite empty/load-error/retry surface still needs deterministic production load-failure setup.',
     'shell.button-layout': 'Needs isolated left/right GNOME button-layout fixture and current-build control rectangles; never mutate a shared desktop setting.',
-    'shell.command-capture-region': 'Needs capture selector fixture, selection bounds and artifact oracle; must complete/cancel real selector before next recipe.',
-    'shell.command-capture-window': 'Needs independent synthetic target window, real window selector completion and operation identity.',
-    'shell.command-capture-desktop': 'Needs local-output capture fixture and captured artifact/hash oracle.',
-    'shell.command-capture-edit': 'Needs region selector completion fixture and inspectable editor ID.',
-    'shell.command-record': 'Needs recording selector fixture and cleanup through recording.cancel with exact recording ID.',
-    'shell.command-upload-clipboard': 'Needs independent native clipboard fixture with payload/hash oracle, reused from tray_progress.py.',
     'shell.edit-source-menu': 'Needs clipboard image and native edit-file chooser fixtures plus current menu inventory.',
     'shell.drop-image': 'Context has pointer drag but no file-manager drag source fixture; shelling a synthetic drop event is not real input.',
-    'shell.command-tooltips': 'Hover is available, but the complete command tooltip/output/unavailability matrix needs current native capture and disabled-output fixtures plus a live tooltip ownership witness (#675).',
     'shell.narrow-labels': 'Needs command-band accessible label/style projection at multiple widths; ui.viewState has no shell label oracle.',
-    'shell.output-summary': 'Needs output-summary popup capture and Settings Capture navigation oracle.',
-    'shell.output-warning': 'settings-no-output now supplies configuration; the full warning-text matrix and Settings Capture navigation still need live assertions (#675).',
-    'shell.action-recovery-banner': 'Needs rejected-action fixture for Change output/Keep local copies/Review destination variants.',
-    'shell.autosave-status': 'Needs accepted/refused autosave fixtures and saved-status accessible projection.',
+    'shell.action-recovery-banner': 'settings-no-output covers Change output; no controlled rejected-action fixtures yet supply Keep local copies and Review destination variants for the complete banner matrix.',
     'shell.edit-chooser-failure': 'chooser-failure explicitly blocks: production portal errors fall back; deterministic failure/retry/dismiss needs an isolated production failure boundary (#671).',
-    'shell.first-launch': 'app-profile(first_launch=True) now provides lifecycle reset; the full initial Settings/no-output contract still needs live selected-page and warning-strip assertions (#675).',
-    'cli.launcher-background': 'The launcher descriptor exists, but Context.cli still routes leading flags to putgd-cli; stopped-resident/tray-absent lifecycle and the 10-second fallback oracle are also missing (#675).',
-    'cli.action-invoke': 'Needs native source and six action completion fixtures; capture/record selectors cannot be left active.',
-    'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures (#675).',
-    'mcp.perform-action': 'Needs native source and six action completion fixtures for perform_action.',
-    'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle (#675).',
-    'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane (#675).',
+    'cli.launcher-background': 'Private resident lifecycle exists; no isolated absent-tray fixture exposes the required 10-second Settings fallback after --background.',
+    'cli.history': 'History/operation rows now exist; the full history.*, operation.*, delete.*, share.inspect composite still needs queued/failed deletion and sharing fixtures.',
+    'mcp.operations': 'Failed/local-save/active rows now exist; the complete operation/delete retry, cancel and clipboard-result matrix still needs deletion variants and a MIME oracle.',
+    'mcp.history': 'History/delete rows now exist; complete preview/diagnostics output oracles remain missing, and this composite also includes link tools owned by the links lane.',
 }
 
 

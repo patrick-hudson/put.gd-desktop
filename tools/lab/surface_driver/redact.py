@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import functools
 import collections
 import stat
 import tempfile
@@ -87,6 +88,17 @@ def public_url(value):
                  or (p.hostname == 'put.gd' and p.path in ('', '/', '/docs', '/docs/'))))
     except ValueError:
         return False
+
+
+@functools.lru_cache(maxsize=8192)
+def ordered_spellings(value):
+    """spellings(value), longest first; cached because scrubbing repeats per text part (#943)."""
+    return tuple(sorted(spellings(value), key=len, reverse=True))
+
+
+@functools.lru_cache(maxsize=8192)
+def _hex_pattern(value):
+    return re.compile(re.escape(value.encode().hex()), re.I)
 
 
 def spellings(value):
@@ -315,9 +327,10 @@ class Redactor:
             part = MARKER.sub('[redacted session/authorization]', part)
             if replace_secrets:
                 for secret in sorted(self._secrets, key=len, reverse=True):
-                    part = re.sub(re.escape(secret.encode().hex()), '[redacted]', part, flags=re.I)
-                    for spelling in sorted(spellings(secret), key=len, reverse=True):
-                        part = part.replace(spelling, '[redacted]')
+                    part = _hex_pattern(secret).sub('[redacted]', part)
+                    for spelling in ordered_spellings(secret):
+                        if spelling in part:
+                            part = part.replace(spelling, '[redacted]')
             # Decoding may expose a public documentation URL not in the secret registry.
             part = URL.sub(lambda m: '[url '+json.dumps(self.url(m[0]), sort_keys=True)+']', part)
             return part
@@ -428,7 +441,7 @@ def require_host_ocr():
     return ocr
 
 
-def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=()):
+def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=(), audit_images=True):
     """Mask/crop in memory, strip metadata, then perform the first pixel write."""
     image = image.convert('RGB')
     masks = []
@@ -446,7 +459,9 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
         masks = [[max(0, mx-x), max(0, my-y), min(x+w, mx+mw)-max(x, mx), min(y+h, my+mh)-max(y, my)]
                  for mx, my, mw, mh in masks if mx < x+w and my < y+h and mx+mw > x and my+mh > y]
     guard, text = 'fully-masked', None
-    if image.getbbox():
+    if image.getbbox() and not audit_images:
+        guard = 'local-secret-fields-only'
+    if image.getbbox() and audit_images:
         try:
             text = ocr_text(image, ocr=ocr)
         except Exception:
@@ -516,7 +531,7 @@ def detected(text, literals=(), hosts=()):
     extra = host_links(hosts)
     for value in candidates:
         kinds.update(patterns(value, extra))
-    if any(spelling in candidate for literal in literals for spelling in spellings(literal) for candidate in candidates):
+    if any(spelling in candidate for literal in literals for spelling in ordered_spellings(literal) for candidate in candidates):
         kinds.add('registered-secret')
     return sorted(kinds)
 
@@ -640,7 +655,7 @@ def ocr_self_test(ocr=None, size=11):
                for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')))
 
 
-def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None):
+def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None, audit_images=True):
     """Never include a matched value, OCR text or an unsafe filename in findings.
 
     paths limits the audit to those files (relative to directory), for bytes
@@ -655,7 +670,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
     tesseract = shutil.which('tesseract') if ocr is None else ocr
     check = lambda text: detected(text, literals, hosts)
     findings, count, pngs = [], 0, 0
-    if not tesseract and (require_ocr or literals):
+    if audit_images and not tesseract and (require_ocr or literals):
         findings.append({'kind': 'ocr-required-unavailable', 'blocked': 'tesseract must be staged in the run sandbox/guest'})
     quarantined = []
     selected = sorted(root.rglob('*')) if paths is None else sorted(root/p for p in paths if (root/p).exists())
@@ -701,9 +716,9 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
                                 report('mask-outside-frame')
                             elif any(ImageStat.Stat(image.crop((x, y, x+w, y+h)).convert('RGB')).extrema[c][1] for c in range(3)):
                                 report('unmasked-sensitive-region')
-                    if not tesseract and image.convert('RGB').getbbox():
+                    if audit_images and not tesseract and image.convert('RGB').getbbox():
                         report('png-ocr-unavailable')
-                    if tesseract and image.convert('RGB').getbbox():
+                    if audit_images and tesseract and image.convert('RGB').getbbox():
                         try:
                             text = _OCR_CACHE.get(hashlib.sha256(data).hexdigest()) or ocr_text(image, ocr=tesseract)
                         except Exception:
@@ -719,7 +734,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
             quarantined.append((index, path))
     actions = quarantine_files(root, quarantined) if quarantined else []
     return {'quarantine': actions, 'passed': not findings, 'files': count, 'pngs': pngs,
-            'image_audit': 'ocr-and-known-regions' if tesseract else 'known-regions', 'findings': findings}
+            'image_audit': 'ocr-and-known-regions' if tesseract and audit_images else 'known-regions', 'findings': findings}
 
 
 def quarantine_files(root, files):
@@ -773,7 +788,9 @@ def main(argv=None):
         value = json.loads(receipt.read_text()) if receipt.exists() else None
     except (OSError, ValueError):
         value = None
-    result = scan_run(args.run, literals=literals, require_ocr=bool(value and value.get('environment', {}).get('destination', 'local') != 'local'), quarantine=True)
+    local = bool(value and value.get('environment', {}).get('destination') == 'local')
+    result = scan_run(args.run, literals=literals, require_ocr=bool(value and not local),
+                      quarantine=True, audit_images=not local)
     if value and not value.get('secret_scan', {'passed': True}).get('passed', True):
         previous = value['secret_scan']
         result['passed'] = False

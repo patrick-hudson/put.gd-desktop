@@ -1,8 +1,8 @@
 """Destinations real-input recipes; no live provider accounts.
 
 Uses the core's owned guest loopback server and fake keyring fixture. No live
-provider accounts or credential values enter this lane. Entry/reveal stay
-blocked until the core supplies secret-safe input and capture suppression.
+provider accounts enter this lane. Synthetic credential values stay in memory
+and use the core secret-safe typing and frame-masking contracts.
 """
 from __future__ import annotations
 
@@ -29,8 +29,8 @@ def _get(ctx):
     return _result(ctx.call('settings.get'))
 
 
-def _fixture(ctx):
-    f = ctx.fixture('destinations')
+def _fixture(ctx, name='destinations'):
+    f = ctx.fixture(name)
     if not isinstance(f, dict) or f.get('private') is not True:
         ctx.blocked('Need a clean private destinations resident fixture (#666).', issue=CORE_ISSUE)
     path = PurePosixPath(f.get('config_path', ''))
@@ -76,8 +76,8 @@ def _frame(ctx, label, reference=REFERENCE):
 def _failure_frame(function):
     """Retain a referenced after-frame on refusal/failure, preserving its cause.
 
-    These recipes never enter or reveal credentials. A later credential recipe
-    must suppress capture throughout any reveal instead of using this wrapper.
+    The core masks declared secret controls before writing any frame, including
+    failures during synthetic credential entry or reveal.
     """
     @wraps(function)
     def capture(ctx):
@@ -88,18 +88,19 @@ def _failure_frame(function):
                 _frame(ctx, 'after-failure')
             except Exception:
                 pass  # The core also retains a full-screen failure witness.
-            if isinstance(error, RecipeBlocked) and error.issue is None and str(error).startswith("control:"):
-                raise RecipeBlocked(str(error) + " (#712)", issue=712) from error
             raise
     return capture
 
 
-def _open(ctx, count=1, *, saved_credentials=False):
-    f, p = _fixture(ctx)
+def _open(ctx, count=1, *, saved_credentials=False, fixture='destinations'):
+    f, p = _fixture(ctx, fixture)
     profiles = []
     for index in range(count):
         item = deepcopy(p)
-        item['id'] = 'surface-destination-' + str(index + 1)
+        # The fixture's resident cache is keyed by profile ID and reference.
+        # Keep that identity when exercising its pre-unlocked credentials.
+        if not (saved_credentials and index == 0):
+            item['id'] = 'surface-destination-' + str(index + 1)
         item['label'] = 'Surface destination ' + str(index + 1)
         if not saved_credentials:
             item['credentials'] = {'mode': 'session', 'reference': None}
@@ -113,8 +114,12 @@ def _open(ctx, count=1, *, saved_credentials=False):
                  'captureDefaults': {'destination': 'local', 'profileId': None,
                                      'publicationMode': 'default'},
                  'archive': {'keepUploads': True},
-                 'preferences': {'unlockCredentialsAtStartup': False}})
+                 'preferences': {'unlockCredentialsAtStartup': False,
+                                 'appearance': {'theme': 'dark'}}})
     ctx.view('ui.show', {'view': 'destinations'})
+    if ctx.profile.get('settings', {}).get('foreground_script'):
+        from .settings_input import prepare
+        prepare(ctx)
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'known destination fixture')
     ctx.use_catalog('destinations', REFERENCE)
     geometry = ctx.geometry('destinations')
@@ -154,29 +159,65 @@ print(json.dumps({'matches':ok and hashlib.sha256(json.dumps(doc,sort_keys=True,
     return accepted['document']
 
 
+def _wheel(ctx, clicks):
+    geometry = ctx.geometry('destinations')
+    scale = geometry.get('scale', 1)
+    ctx.scroll(round((geometry['x'] - geometry.get('screen_x', 0) + geometry['width'] - 24) * scale),
+               round((geometry['y'] - geometry.get('screen_y', 0) + geometry['height']/2) * scale),
+               clicks, head=geometry.get('head', 0))
+
+
+def _click(ctx, control, *, window='destinations'):
+    options = ctx.profile.get('settings', {})
+    fixed = control in ('destinationList', 'addS3Destination', 'destinationActions',
+                        'makeDefaultDestination', 'reloadDestinationConflict', 'text:Retry saving')
+    if window == 'destinations' and ((ctx.profile.get('session') == 'wayland' and not fixed) or
+            (options.get('foreground_script') and control in options.get('live_controls', {}))):
+        from .settings_input import click
+        return click(ctx, control)
+    for attempt in range(12 if window == 'destinations' else 1):
+        try:
+            return ctx.click(control, window=window)
+        except RecipeBlocked as error:
+            if window != 'destinations' or not any(reason in str(error) for reason in
+                    ('0 matches', 'falls outside compositor frame', 'clipped')):
+                raise
+            _wheel(ctx, 40 if attempt == 0 else -3)
+    ctx.blocked('Destination control remains outside its live viewport: ' + control, issue=856)
+
+
 def _edit(ctx, control, text):
-    ctx.click(control, window='destinations')
+    if ctx.profile.get('session') == 'wayland':
+        from .settings_input import field_click
+        field_click(ctx, control)
+    else:
+        _click(ctx, control)
     ctx.keys('Ctrl+A')
     ctx.type_text(text)
     ctx.keys('Tab')
 
 
 def _choose(ctx, control, index):
-    ctx.click(control, window='destinations')
-    ctx.keys('Home', *(['Down'] * index), 'Return', 'Tab')
+    _click(ctx, control)
+    ctx.keys('Esc', 'Alt+Down', 'Home', *(['Down'] * index), 'Return', 'Tab')
 
 
 def _selected(ctx, index):
-    ctx.click('destinationList', window='destinations')
+    _click(ctx, 'destinationList')
     ctx.keys('Home', *(['Down'] * index))
 
 
 def _accessible(ctx, control):
-    # The merged API uses exported objectName and explicit ownership, not the
-    # old lane-specific window/control pseudo query. Never read secret text.
-    rows = ctx.accessible({'owned': True, 'objectName': control})
+    query = {'owned': True, 'visible': True, 'objectName': control}
+    rows = ctx.accessible(query)
+    if not rows:
+        # Qt 6.4 omits exported IDs; use the profile's exact accessible label
+        # and role. Geometry and foreground still come from core witnesses.
+        alias = ctx.profile.get('live_controls', {}).get(control)
+        if alias:
+            rows = ctx.accessible({'owned': True, 'visible': True, **alias})
     if len(rows) != 1 or not isinstance(rows[0], dict):
-        ctx.blocked('Need one current non-secret accessible control: ' + control, issue=CORE_ISSUE)
+        ctx.blocked('Need one current non-secret accessible control: ' + control, issue=856)
     return rows[0]
 
 
@@ -186,11 +227,34 @@ def _confirmation_capture(ctx, window):
 
 
 def _confirmation_frame(ctx, window):
+    # QMenu delivery and modal creation are asynchronous. Observe the actual
+    # owned dialog before asking the evidence layer to crop it.
+    def ready():
+        try:
+            return ctx.geometry(window)
+        except RecipeBlocked:
+            return None
+    ctx.wait(ready, 'owned destination confirmation is visible: ' + window)
     reference = ctx.profile['catalog_windows'][window][0]
     ctx.frame('confirmation', window=window, reference=reference)
 
 
 def _state(ctx, control, key):
+    if control == 'destinationConflictBanner' and key == 'visible':
+        # Draft/conflict flags deliberately stay in the helper. Its public
+        # diagnostics expose the actual, nonsecret autosave footer instead.
+        return ctx.call('ui.diagnostics', {'action': 'inspect'}).get('autosave') == 'Settings changed elsewhere — reload to continue.'
+    if control == 's3BucketError' and key == 'text':
+        rows = ctx.accessible({'owned': True, 'visible': True, 'objectName': control})
+        if rows:
+            ctx.expect(len(rows) == 1, 'one owned bucket validation label')
+            row = rows[0]
+            if not row.get('visible', True):
+                return ''
+            if text := row.get('text') or row.get('name', ''):
+                return text
+        description = _accessible(ctx, 's3Bucket').get('description', '')
+        return description.rsplit('\n', 1)[1] if '\n' in description else ''
     row = _accessible(ctx, control)
     if key in ('focused', 'checked'):
         row = row.get('states', {})
@@ -204,7 +268,7 @@ def _state(ctx, control, key):
 def add_credentials(ctx):
     _open(ctx)
     ctx.wait(lambda: _state(ctx, 'addDestinationCredentials', 'visible'), 'missing credential action appears')
-    ctx.click('addDestinationCredentials', window='destinations')
+    _click(ctx, 'addDestinationCredentials', window='destinations')
     ctx.expect(_state(ctx, 'credentialAccessKey', 'focused') is True, 'Add credentials focuses access key entry')
     _saved(ctx, lambda doc: doc['profiles'][0]['credentials'] == {'mode': 'session', 'reference': None}, 'focus action preserves credential reference')
     _frame(ctx, 'after', '18-destination-credentials-compact')
@@ -214,8 +278,8 @@ def add_credentials(ctx):
 @_failure_frame
 def rename(ctx):
     _, profiles = _open(ctx)
-    ctx.click('destinationActions', window='destinations')
-    ctx.click('text:Rename destination', window='destinationActionsMenu')
+    _click(ctx, 'destinationActions', window='destinations')
+    _click(ctx, 'text:Rename destination', window='destinationActionsMenu')
     _edit(ctx, 'destinationLabel', 'Renamed surface destination')
     _saved(ctx, lambda doc: doc['profiles'][0]['label'] == 'Renamed surface destination'
            and doc['profiles'][0]['id'] == profiles[0]['id'], 'rename autosaved without changing identity')
@@ -252,12 +316,20 @@ def acl(ctx):
 @_failure_frame
 def service(ctx):
     _, profiles = _open(ctx)
-    # The selector opens endpoint editing; it does not supply an account's
-    # endpoint. No test/upload is invoked for these reserved fixture addresses.
-    for index, endpoint in ((1, 'https://surface.invalid.r2.cloudflarestorage.com'),
+    # Exercise the R2/custom editing affordance with loopback addresses only.
+    # Selecting a service never invokes its test/upload action.
+    original = urlsplit(profiles[0]['settings']['endpoint'])
+    alternate = original._replace(netloc='127.0.0.2:' + str(original.port)).geturl()
+    for index, endpoint in ((1, alternate),
                              (2, profiles[0]['settings']['endpoint'])):
         _choose(ctx, 's3Service', index)
+        if not _state(ctx, 'advancedSettings', 'checked'):
+            _click(ctx, 'advancedSettings')
+        ctx.use_catalog('destinations', '62-destination-connection-expanded')
+        if not _state(ctx, 'customEndpoint', 'checked'):
+            _click(ctx, 'customEndpoint')
         _edit(ctx, 's3Endpoint', endpoint)
+        _click(ctx, 'advancedSettings')
         _saved(ctx, lambda doc: doc['profiles'][0]['settings']['endpoint'] == endpoint, 'service endpoint saved')
     _frame(ctx, 'after')
 
@@ -266,14 +338,14 @@ def service(ctx):
 @_failure_frame
 def advanced_connection(ctx):
     _, profiles = _open(ctx)
-    ctx.click('advancedSettings', window='destinations')
+    _click(ctx, 'advancedSettings', window='destinations')
     ctx.use_catalog('destinations', '62-destination-connection-expanded')
     _edit(ctx, 's3StorageClass', 'STANDARD_IA')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['storageClass'] == 'STANDARD_IA', 'storage class saved')
-    ctx.click('s3StorageClassReset', window='destinations')
-    _edit(ctx, 's3ConnectTimeoutMs', '7')
+    _click(ctx, 's3StorageClassReset', window='destinations')
+    _edit(ctx, 's3ConnectTimeoutMsControl', '7')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['connectTimeoutMs'] == 7000, 'seconds stored as milliseconds')
-    ctx.click('s3ConnectTimeoutMsReset', window='destinations')
+    _click(ctx, 's3ConnectTimeoutMsReset', window='destinations')
     _saved(ctx, lambda doc: doc['profiles'][0]['settings']['storageClass'] == 'STANDARD'
            and doc['profiles'][0]['settings']['connectTimeoutMs'] == 5000
            and doc['profiles'][0]['settings']['endpoint'] == profiles[0]['settings']['endpoint'], 'connection defaults restored')
@@ -335,15 +407,22 @@ def add(ctx):
     _confirmation_capture(ctx, 'confirmDestinationName')
     for menu_label, provider, label in (('Amazon S3 / S3-compatible', 's3', 'Added S3'),
                                         ('Backblaze B2', 'backblaze-b2', 'Added B2')):
-        ctx.click('addS3Destination', window='destinations')
-        ctx.click('text:' + menu_label, window='destinationAddMenu')
+        _click(ctx, 'addS3Destination', window='destinations')
+        _click(ctx, 'text:' + menu_label, window='destinationAddMenu')
         _confirmation_frame(ctx, 'confirmDestinationName')
-        ctx.click('class:QLineEdit', window='confirmDestinationName')
+        _click(ctx, 'class:QLineEdit', window='confirmDestinationName')
         ctx.keys('Ctrl+A')
         ctx.type_text(label)
         ctx.keys('Return')
+        # The name dialog is gone; the X11 field helper's guarded point must
+        # target the main window rather than the last modal selected by click.
+        ctx.focus('destinations')
         # A new destination stays provisional until its required bucket is valid.
         _edit(ctx, 's3Bucket', 'surface-added-bucket')
+        if ctx.call('ui.diagnostics', {'action': 'inspect'}).get('autosave') == 'Couldn’t save changes — retry saving.':
+            # B2's blank initial bucket can refuse the first save while the
+            # name-dialog witness is captured. Follow the visible retry flow.
+            _click(ctx, 'text:Retry saving')
         _saved(ctx, lambda doc: any(p['label'] == label and p['provider'] == provider
                                    for p in doc['profiles']), provider + ' added with typed name')
         _frame(ctx, 'added-' + provider)
@@ -355,13 +434,13 @@ def add(ctx):
 def make_default(ctx):
     _, profiles = _open(ctx)
     _confirmation_capture(ctx, 'confirmDestinationDefault')
-    ctx.click('makeDefaultDestination', window='destinations')
+    _click(ctx, 'makeDefaultDestination', window='destinations')
     _confirmation_frame(ctx, 'confirmDestinationDefault')
     # Target the modal itself; foreground guards must never type through it.
-    ctx.click('text:Cancel', window='confirmDestinationDefault')
+    _click(ctx, 'text:Cancel', window='confirmDestinationDefault')
     _saved(ctx, lambda doc: doc['captureDefaults']['destination'] == 'local', 'cancel untested default preserves routing')
-    ctx.click('makeDefaultDestination', window='destinations')
-    ctx.click('confirmDiscard', window='confirmDestinationDefault')
+    _click(ctx, 'makeDefaultDestination', window='destinations')
+    _click(ctx, 'confirmDiscard', window='confirmDestinationDefault')
     _saved(ctx, lambda doc: doc['captureDefaults']['profileId'] == profiles[0]['id']
            and doc['captureDefaults']['destination'] == 'upload', 'confirmed untested default saved')
     _frame(ctx, 'after')
@@ -374,14 +453,14 @@ def remove(ctx):
     _confirmation_capture(ctx, 'confirmDestinationRemove')
     # Resolve the actual live menu item before requesting its confirmation.
     def request():
-        ctx.click('destinationActions', window='destinations')
-        ctx.click('text:Remove destination…', window='destinationActionsMenu')
+        _click(ctx, 'destinationActions', window='destinations')
+        _click(ctx, 'text:Remove destination…', window='destinationActionsMenu')
     request()
     _confirmation_frame(ctx, 'confirmDestinationRemove')
-    ctx.click('text:Cancel', window='confirmDestinationRemove')
+    _click(ctx, 'text:Cancel', window='confirmDestinationRemove')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'cancel removal retains destination')
     request()
-    ctx.click('confirmDiscard', window='confirmDestinationRemove')
+    _click(ctx, 'confirmDiscard', window='confirmDestinationRemove')
     _saved(ctx, lambda doc: doc['profiles'] == [], 'confirm removal leaves no profiles')
     ctx.expect(_state(ctx, 'destinationsEmpty', 'visible') is True, 'empty destination state visible')
     _frame(ctx, 'after')
@@ -415,43 +494,120 @@ def cli_credentials_refused(ctx):
 @_failure_frame
 def help_toggles(ctx):
     _open(ctx)
-    ctx.click('s3BucketHelp', window='destinations')
-    ctx.expect(_state(ctx, 's3BucketHelp', 'checked') is True, 'bucket explanation expanded')
+    _click(ctx, 's3AclModeHelp', window='destinations')
+    ctx.expect(_state(ctx, 's3AclModeHelp', 'checked') is True, 'bucket explanation expanded')
     _frame(ctx, 'expanded')
-    ctx.click('s3BucketHelp', window='destinations')
-    ctx.expect(_state(ctx, 's3BucketHelp', 'checked') is False, 'bucket explanation collapsed')
+    _click(ctx, 's3AclModeHelp', window='destinations')
+    ctx.expect(_state(ctx, 's3AclModeHelp', 'checked') is False, 'bucket explanation collapsed')
     _saved(ctx, lambda doc: len(doc['profiles']) == 1, 'help leaves configuration intact')
     _frame(ctx, 'after')
 
 
-@recipe('destinations.credential-fields', 'destinations.store-credentials',
-        'destinations.show-secret', needs=NEEDS, destinations=('local',))
+def _synthetic_credentials(ctx, fixture):
+    path = PurePosixPath(fixture.get('credentials_file', ''))
+    root = PurePosixPath(fixture['config_path']).parents[2]
+    if not (fixture.get('loopback') is True and path.is_absolute()
+            and path.is_relative_to(root) and path.name == 'fake-input.json'):
+        ctx.blocked('Credential entry requires the owned synthetic loopback input file.', issue=666)
+    # This output travels only in the core's memory channel. Evidence.command
+    # retains lengths/presence; the credential-shaped JSON is registered before
+    # returning. No value is interpolated into shell text, argv or notes.
+    script = """import json,os,stat,secrets
+from pathlib import Path
+p=Path(PATH)
+s=p.lstat()
+assert p.resolve()==p and stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and not s.st_mode & 0o077
+with os.fdopen(os.open(p,os.O_RDONLY|os.O_NOFOLLOW)) as f:value=json.load(f)
+assert set(value)=={'accessKey','secretKey','sessionToken'}
+assert value['accessKey'] and value['secretKey']
+value['sessionToken']=value['sessionToken'] or secrets.token_hex(16)
+print(json.dumps(value))
+""".replace('PATH', repr(str(path)))
+    reply = ctx.shell("python3 - <<'SD_SYNTHETIC_INPUT'\n" + script + '\nSD_SYNTHETIC_INPUT\n')
+    ctx.expect(reply['returncode'] == 0, 'owned synthetic input is available')
+    values = json.loads(reply['stdout'])
+    return {key: ctx.sensitive(value) for key, value in values.items()}
+
+
+def _enter_credentials(ctx):
+    fixture, profiles = _open(ctx)
+    values = _synthetic_credentials(ctx, fixture)
+    for control in ('credentialAccessKey', 'credentialSecretKey', 'credentialSessionToken'):
+        ctx.sensitive_control(control, 'destinations')
+    ctx.use_catalog('destinations', '09-stored-credential-hint')
+    for control, key in (('credentialAccessKey', 'accessKey'), ('credentialSecretKey', 'secretKey'),
+                         ('credentialSessionToken', 'sessionToken')):
+        if ctx.profile.get('session') == 'wayland':
+            from .settings_input import field_click
+            field_click(ctx, control)
+        else:
+            _click(ctx, control)
+            ctx.expect(_state(ctx, control, 'focused') is True, 'synthetic credential field has focus')
+        ctx.keys('Ctrl+A')
+        ctx.type_text(values[key])
+        ctx.keys('Tab')
+    _saved(ctx, lambda doc: doc['profiles'] == profiles, 'typing secrets preserves reference-only config')
+    _frame(ctx, 'entered-masked', '09-stored-credential-hint')
+    return profiles
+
+
+def _hint(ctx, identity):
+    return ctx.call('setup.credentialHint', {'profileId': identity,
+                    'expectedRevision': _get(ctx)['metadata']['observedRevision']})
+
+
+@recipe('destinations.credential-fields', needs=NEEDS, destinations=('local',), timeout=180)
 @_failure_frame
-def credential_lifecycle(ctx):
-    _open(ctx)
-    ctx.blocked('Fake keyring fixture is available; credential typing and reveal require '
-                'secret-safe input and frame suppression (#666, #726).', issue=666)
+def credential_fields(ctx):
+    profiles = _enter_credentials(ctx)
+    ctx.expect(not _hint(ctx, profiles[0]['id'])['available'], 'typing alone does not apply credentials')
+    _frame(ctx, 'after', '09-stored-credential-hint')
+
+
+@recipe('destinations.store-credentials', needs=NEEDS, destinations=('local',), timeout=180)
+@_failure_frame
+def store_credentials(ctx):
+    profiles = _enter_credentials(ctx)
+    ctx.expect(not _hint(ctx, profiles[0]['id'])['available'], 'session cache starts empty')
+    _click(ctx, 'storeCredentials')
+    ctx.wait(lambda: _hint(ctx, profiles[0]['id']).get('available'), 'explicit credential store fills session cache')
+    ctx.expect(_hint(ctx, profiles[0]['id']).get('tokenStored') is True, 'optional session token was applied')
+    _saved(ctx, lambda doc: doc['profiles'] == profiles, 'stored credentials leave only references on disk')
+    _frame(ctx, 'after', '09-stored-credential-hint')
+
+
+@recipe('destinations.show-secret', needs=NEEDS, destinations=('local',))
+@_failure_frame
+def show_secret(ctx):
+    _open(ctx, saved_credentials=True)
+    ctx.sensitive_control('credentialSecretKey', 'destinations')
+    ctx.use_catalog('destinations', '09-stored-credential-hint')
+    _click(ctx, 'text:Show secret access key')
+    ctx.wait(lambda: ctx.accessible({'owned': True, 'name': 'Hide secret access key',
+                                    'visible': True, 'showing': True}), 'secret reveal toggled on')
+    _frame(ctx, 'revealed-masked', '09-stored-credential-hint')
+    _click(ctx, 'text:Hide secret access key')
+    ctx.wait(lambda: ctx.accessible({'owned': True, 'name': 'Show secret access key',
+                                    'visible': True, 'showing': True}), 'secret reveal toggled off')
+    _frame(ctx, 'after', '09-stored-credential-hint')
 
 
 @recipe('destinations.unlock-credentials', needs=NEEDS, destinations=('local',))
 @_failure_frame
 def unlock_credentials(ctx):
-    _, profiles = _open(ctx, saved_credentials=True)
+    _, profiles = _open(ctx, saved_credentials=True, fixture='destinations-uncached')
     identity = profiles[0]['id']
     def available():
         return ctx.call('setup.credentialHint', {'profileId': identity,
                         'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available']
-    if available():
-        ctx.blocked('The loopback fixture pre-unlocks its keychain reference; cache identity is the '
-                    'reference, not the profile ID. Need an uncached guest fixture for explicit unlock (#666).',
-                    issue=666)
+    ctx.expect(not available(), 'uncached fixture has no resident credential cache')
     # Keychain profiles can be ready-to-test while still locked, so their
     # header Add credentials action is hidden. Scroll to the real unlock row.
     geometry = ctx.geometry('destinations')
     ctx.scroll(geometry['x'] + geometry['width'] - 32,
                geometry['y'] + geometry['height']//2, -30)
     ctx.use_catalog('destinations', '09-stored-credential-hint')
-    ctx.click('text:Unlock saved credentials', window='destinations')
+    _click(ctx, 'text:Unlock saved credentials', window='destinations')
     ctx.wait(available, 'explicit unlock loads the owned fake keyring item')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'unlock preserves credential references')
     _frame(ctx, 'after', '09-stored-credential-hint')
@@ -472,9 +628,15 @@ def test_connection(ctx):
     ctx.expect(ctx.call('setup.credentialHint', {'profileId': profiles[0]['id'],
                'expectedRevision': _get(ctx)['metadata']['observedRevision']})['available'],
                'loopback fixture supplied cached fake credentials')
-    ctx.click('testDestination', window='destinations')
-    ctx.wait(lambda: 'Connection successful.' in _state(ctx, 'destinationStatus', 'text'),
-             'loopback test upload, link and cleanup succeeded', timeout=45)
+    _click(ctx, 'testDestination', window='destinations')
+    # The status QLabel has an explicit accessible name; older Qt exposes no
+    # Text interface for its message. The rendered rail's Connected state is
+    # set only after this exact destination passes the GUI-initiated test.
+    connected = ctx.wait(lambda: ctx.accessible({'owned': True, 'role': 'list item',
+                         'name': profiles[0]['label'] + '\nConnected',
+                         'visible': True, 'showing': True}),
+                         'loopback test upload, link and cleanup succeeded', timeout=45)
+    ctx.expect(len(connected) == 1, 'one rendered destination records the successful test')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'test preserves destination settings')
     _frame(ctx, 'after')
 
@@ -488,13 +650,14 @@ def conflict(ctx):
     ctx.wait(lambda: _state(ctx, 's3BucketError', 'text'), 'invalid draft retained')
     _patch(ctx, {'preferences': {'notifications': not _get(ctx)['document']['preferences'].get('notifications', True)}})
     ctx.wait(lambda: _state(ctx, 'destinationConflictBanner', 'visible'), 'external edit raises conflict banner')
+    ctx.use_catalog('destinations', '52-destinations-conflict')
     _frame(ctx, 'conflict', '52-destinations-conflict')
-    ctx.click('reloadDestinationConflict', window='destinations')
+    _click(ctx, 'reloadDestinationConflict', window='destinations')
     _confirmation_frame(ctx, 'confirmDestinationReload')
-    ctx.click('text:Cancel', window='confirmDestinationReload')
+    _click(ctx, 'text:Cancel', window='confirmDestinationReload')
     ctx.expect(_state(ctx, 'destinationConflictBanner', 'visible') is True, 'cancel reload keeps local draft')
-    ctx.click('reloadDestinationConflict', window='destinations')
-    ctx.click('confirmDiscard', window='confirmDestinationReload')
+    _click(ctx, 'reloadDestinationConflict', window='destinations')
+    _click(ctx, 'confirmDiscard', window='confirmDestinationReload')
     ctx.wait(lambda: not _state(ctx, 'destinationConflictBanner', 'visible'), 'confirmed reload clears conflict')
     _saved(ctx, lambda doc: doc['profiles'] == profiles, 'reload discards invalid draft and preserves accepted settings')
     _frame(ctx, 'after')

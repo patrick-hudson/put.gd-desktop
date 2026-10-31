@@ -320,7 +320,11 @@ class Target:
 
     def prefix(self):
         root = shlex.quote(self.root)
-        return 'umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n' + ('export PATH='+shlex.quote(self.bin_dir)+':"$PATH"\n' if self.bin_dir else '') + ''.join('export '+key+'='+root+'/'+suffix+'\n' for key,suffix in (
+        # session() (and the probe/clipboard native-session bootstrap) supplies
+        # the real desktop runtime here. Preserve its PipeWire endpoint before
+        # isolating the resident's session socket and other runtime files.
+        return ('umask 077\nexport QT_LINUX_ACCESSIBILITY_ALWAYS_ON=1\n'
+                'export PIPEWIRE_RUNTIME_DIR="${XDG_RUNTIME_DIR:?native session runtime required}"\n') + ('export PATH='+shlex.quote(self.bin_dir)+':"$PATH"\n' if self.bin_dir else '') + ''.join('export '+key+'='+root+'/'+suffix+'\n' for key,suffix in (
             ('XDG_CONFIG_HOME','config'),('XDG_DATA_HOME','data'),('XDG_STATE_HOME','state'),
             ('XDG_CACHE_HOME','cache'),('XDG_RUNTIME_DIR','runtime')))
 
@@ -385,6 +389,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             if response['returncode'] == 0:
                 envelope = json.loads(response['stdout'])
                 if envelope.get('ok'):
+                    from .appimage import prepare
+                    prepare(self)
                     return envelope['result']
             if time.monotonic() > deadline:
                 raise RecipeBlocked('isolated resident did not answer capabilities; private app.log retained')
@@ -745,6 +751,11 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 self.restore_clipboard()
             except RecipeBlocked:
                 errors.append('previous clipboard restoration unavailable; private session retained')
+        try:
+            from .appimage import prepare
+            prepare(self, cleanup=True)
+        except RecipeBlocked:
+            errors.append('exact mirrored KWin entry cleanup refused; private session retained')
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.

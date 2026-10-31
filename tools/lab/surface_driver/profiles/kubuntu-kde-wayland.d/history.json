@@ -1,0 +1,94 @@
+{
+  "catalog_windows": {
+    "history": [
+      "01-history-list"
+    ]
+  },
+  "window_titles": {
+    "historyExpandedPreview": "Preview \u2014",
+    "historyCancelAllConfirmation": "Cancel all uploads",
+    "confirmAction": "^(Delete from destination|Clear history records|Clear temporary files)$"
+  },
+  "windows": {
+    "historyAddFilterMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historySelectionMore": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyInspectorMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyManagementMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "applicationMenuPopup": {
+      "owner": "history",
+      "popup": true
+    },
+    "windowContextMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "captureHelp": {
+      "title": "^Help$",
+      "accessible": {
+        "owned": true,
+        "name": "Help"
+      }
+    },
+    "historyConfirmAction": {
+      "title": "^(Delete from destination|Clear history records|Clear temporary files)$"
+    },
+    "historySaveDialog": {
+      "title": "^Save original file as$"
+    },
+    "captureOutputMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyFixture": {
+      "title": "^putgd synthetic fixture$",
+      "accessible": {
+        "owned": true,
+        "name": "putgd synthetic fixture"
+      }
+    }
+  },
+  "history_window_query": {
+    "name": "put.gd",
+    "role": "frame",
+    "visible": true
+  },
+  "history_hidden_window_query": {
+    "name": "put.gd",
+    "role": "frame"
+  },
+  "control_names": {
+    "historyCategories": [
+      "Show history items"
+    ],
+    "historyList": [
+      "History items and upload activity"
+    ],
+    "historyReceiptExpanded": [
+      "Show advanced receipt details"
+    ],
+    "historyDetails": [
+      "Advanced original receipt details"
+    ],
+    "historyChoiceuploadStatus": [
+      "Upload state"
+    ],
+    "historyManagementExpanded": [
+      "Manage history"
+    ],
+    "historyAddFilter": [
+      "Add a history filter"
+    ]
+  }
+}

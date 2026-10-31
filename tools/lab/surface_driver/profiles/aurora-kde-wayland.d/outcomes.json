@@ -1,0 +1,17 @@
+{
+  "browser": {
+    "command": ["flatpak", "run", "org.mozilla.firefox"],
+    "profile_root": "~/.var/app/org.mozilla.firefox/.mozilla/firefox"
+  },
+  "focus": {
+    "backend": "compositor-witness",
+    "raise_before_input": false,
+    "reason": "Use the existing read-only KWin stacking, active-window and clientGeometry witness on the Aurora guest",
+    "desktop_hit_test": "kwin-shell-at-spi"
+  },
+  "compositor": {
+    "kind": "kwin-script",
+    "shell_application": "",
+    "stage": "none: existing one-shot read-only KWin script per observation"
+  }
+}

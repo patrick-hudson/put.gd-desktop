@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import secrets
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -26,7 +27,7 @@ class FakeContext(Context):
         self.document = {'profiles': [], 'preferences': {}}
         self.revision = 1
         self.events = []
-        self.focus = None
+        self.focused_control = None
         self.selection = 0
         self.pending = ''
         self.index = 0
@@ -36,9 +37,15 @@ class FakeContext(Context):
         self.corrupt_disk = False
         self.private_root = True
         self.conflict = False
+        self.refused_save = False
         self.available = False
         self.tested = False
-        self.f = {'private': True, 'config_path': str(self.root / 'putgd/config.json'),
+        self.stored = False
+        self.revealed = False
+        private_input = self.root / 'fake-input.json'
+        private_input.write_text(json.dumps({key: secrets.token_hex(12) for key in ('accessKey', 'secretKey', 'sessionToken')}))
+        private_input.chmod(0o600)
+        self.f = {'private': True, 'loopback': True, 'credentials_file': str(private_input), 'config_path': str(self.root / 'putgd/config.json'),
                   'profile': {'id': 'fixture', 'label': 'Fixture', 'provider': 's3',
                               'credentials': {'mode': 'keychain', 'reference': 'owned-fake-reference'},
                               'settings': {'bucket': 'surface-moto', 'region': 'us-east-1',
@@ -48,10 +55,13 @@ class FakeContext(Context):
 
     def fixture(self, name):
         self.assert_event('fixture', name)
-        if name != 'destinations':
+        if name not in ('destinations', 'destinations-uncached'):
             raise RecipeBlocked('missing fixture')
-        self.available = True  # Real loopback fixture pre-unlocks this reference.
+        self.available = name != 'destinations-uncached'
         return deepcopy(self.f)
+
+    def focus(self, window, **kwargs):
+        self.assert_event('focus', window)
 
     def assert_event(self, *values):
         self.events.append(values)
@@ -76,8 +86,15 @@ class FakeContext(Context):
             if self.invalid:
                 self.conflict = True
             return {'result': {}}
+        if method == 'ui.viewState':
+            return {'settings': {'section': 1, 'captureRouting': {}}}
+        if method == 'ui.diagnostics':
+            assert params == {'action': 'inspect'}
+            return {'autosave': ('Settings changed elsewhere — reload to continue.' if self.conflict
+                                 else 'Couldn’t save changes — retry saving.' if self.refused_save else '')}
         if method == 'setup.credentialHint':
-            return {'available': self.available}
+            mode = self.document['profiles'][0]['credentials']['mode']
+            return {'available': self.available if mode == 'keychain' else self.stored, 'tokenStored': self.stored}
         raise AssertionError('undeclared resident method: ' + method)
 
     def view(self, method, params=None):
@@ -109,10 +126,17 @@ class FakeContext(Context):
     def use_catalog(self, window, reference):
         self.assert_event('use_catalog', window, reference)
 
+    def sensitive(self, value):
+        from tools.lab.surface_driver.redact import Sensitive
+        return Sensitive(value)
+
+    def sensitive_control(self, control, window):
+        self.assert_event('sensitive_control', control, window)
+
     def geometry(self, window):
         return {'x': 0, 'y': 0, 'width': 1320, 'height': 880, 'scale': 1}
 
-    def scroll(self, x, y, clicks):
+    def scroll(self, x, y, clicks, **kwargs):
         self.assert_event('scroll', x, y, clicks)
 
     def note(self, text):
@@ -120,19 +144,21 @@ class FakeContext(Context):
 
     def click(self, control, window, **kwargs):
         self.assert_event('click', control, window)
-        self.focus = control
+        self.focused_control = control
         self.pending = ''
         if control == 'text:Rename destination':
-            self.focus = 'destinationLabel'
+            self.focused_control = 'destinationLabel'
         if control == 'text:Remove destination…':
             self.dialog = 'remove'
         if control in ('text:Amazon S3 / S3-compatible', 'text:Backblaze B2'):
             self.dialog = 'add-b2' if control.endswith('Backblaze B2') else 'add-s3'
-            self.focus = 'nameDialog'
+            self.focused_control = 'nameDialog'
         if control == 'text:Cancel':
             self.dialog = None
+        if control == 'text:Retry saving':
+            self.refused_save = False
         if control == 'class:QLineEdit':
-            self.focus = 'nameDialog'
+            self.focused_control = 'nameDialog'
         if control == 'confirmDiscard':
             if self.dialog == 'default':
                 self.document['captureDefaults'] = {
@@ -148,13 +174,19 @@ class FakeContext(Context):
             self.dialog = None
         if control == 'text:Unlock saved credentials':
             self.available = True
+        if control == 'storeCredentials':
+            self.stored = True
+        if control == 'text:Show secret access key':
+            self.revealed = True
+        if control == 'text:Hide secret access key':
+            self.revealed = False
         if control == 'testDestination':
             self.tested = True
         if control == 'makeDefaultDestination':
             self.dialog = 'default'
         if control == 'reloadDestinationConflict':
             self.dialog = 'reload'
-        if control == 's3BucketHelp':
+        if control == 's3AclModeHelp':
             self.checked = not self.checked
         if control.endswith('Reset'):
             key, value = {'s3StorageClassReset': ('storageClass', 'STANDARD'),
@@ -170,13 +202,13 @@ class FakeContext(Context):
         for key in sequence:
             if key == 'Home':
                 self.index = 0
-                if self.focus == 'destinationList':
+                if self.focused_control == 'destinationList':
                     self.selection = 0
             elif key == 'Down':
                 self.index += 1
-                if self.focus == 'destinationList':
+                if self.focused_control == 'destinationList':
                     self.selection += 1
-            elif key in ('Alt+Up', 'Alt+Down'):
+            elif key in ('Alt+Up', 'Alt+Down') and self.focused_control == 'destinationList':
                 new = self.selection + (-1 if key == 'Alt+Up' else 1)
                 p = self.document['profiles'].pop(self.selection)
                 self.document['profiles'].insert(new, p)
@@ -184,15 +216,15 @@ class FakeContext(Context):
             elif key == 'Escape':
                 self.dialog = None
             elif key == 'Return':
-                if self.focus == 'destinationActions':
+                if self.focused_control == 'destinationActions':
                     if self.index == 0:
-                        self.focus = 'destinationLabel'
+                        self.focused_control = 'destinationLabel'
                     elif self.index == 2:
                         self.dialog = 'remove'
-                elif self.focus == 'addS3Destination':
+                elif self.focused_control == 'addS3Destination':
                     self.dialog = 'add-b2' if self.index == 2 else 'add-s3'
-                    self.focus = 'nameDialog'
-                elif self.focus == 'nameDialog':
+                    self.focused_control = 'nameDialog'
+                elif self.focused_control == 'nameDialog':
                     p = deepcopy(self.f['profile'])
                     p.update(label=self.pending, id=self.pending.lower().replace(' ', '-'),
                              provider='backblaze-b2' if self.dialog == 'add-b2' else 's3')
@@ -206,29 +238,37 @@ class FakeContext(Context):
         if not self.document['profiles']:
             return
         p = self.document['profiles'][self.selection]
-        if self.focus == 'destinationLabel':
+        if self.focused_control == 'destinationLabel':
             p['label'] = self.pending
-        if self.focus == 'credentialMode':
+        if self.focused_control == 'credentialMode':
             p['credentials'] = {'mode': 'session' if self.index else 'keychain',
                                 'reference': None if self.index else 'putgd/' + p['id']}
-        if self.focus == 's3AclMode':
+        if self.focused_control == 's3AclMode':
             p['settings']['aclMode'] = 'public-read' if self.index else 'omit'
         controls = {'s3Bucket': 'bucket', 's3RegionChoices': 'region', 's3Endpoint': 'endpoint',
                     's3ObjectPrefix': 'objectPrefix', 's3PublicUrlBase': 'publicUrlBase',
-                    's3StorageClass': 'storageClass', 's3ConnectTimeoutMs': 'connectTimeoutMs'}
-        if self.focus in controls:
-            self.invalid = self.focus == 's3Bucket' and ' ' in self.pending
+                    's3StorageClass': 'storageClass', 's3ConnectTimeoutMsControl': 'connectTimeoutMs'}
+        if self.focused_control in controls:
+            self.invalid = self.focused_control == 's3Bucket' and ' ' in self.pending
             if not self.invalid:
-                value = int(self.pending)*1000 if self.focus == 's3ConnectTimeoutMs' else self.pending
-                p['settings'][controls[self.focus]] = value
+                value = int(self.pending)*1000 if self.focused_control == 's3ConnectTimeoutMsControl' else self.pending
+                p['settings'][controls[self.focused_control]] = value
 
     def accessible(self, query):
         self.assert_event('accessible', query)
         self.expect(query.get('owned') is True, 'accessible reads are owned')
         if query.get('role') == 'list item':
+            if 'name' in query:
+                expected = self.document['profiles'][0]['label'] + '\nConnected'
+                return [{'name': expected}] if self.tested and query['name'] == expected else []
             return [{'bounds': {'x': 10, 'y': i*60, 'width': 200, 'height': 60}}
                     for i in range(len(self.document['profiles']))]
+        if 'name' in query:
+            desired = 'Hide secret access key' if self.revealed else 'Show secret access key'
+            return [{'name': desired, 'visible': True}] if query['name'] == desired else []
         control = query['objectName']
+        if control in ('customEndpoint', 'advancedSettings'):
+            return [{'states': {'checked': True}}]
         if control == 'destinationLabel':
             return [{'text': self.document['profiles'][self.selection]['label']}]
         if control == 's3BucketError':
@@ -237,11 +277,11 @@ class FakeContext(Context):
             return [{'visible': self.conflict}]
         if control == 'addDestinationCredentials':
             return [{'visible': True}]
-        if control == 'credentialAccessKey':
-            return [{'states': {'focused': self.focus == 'addDestinationCredentials'}}]
+        if control in ('credentialAccessKey', 'credentialSecretKey', 'credentialSessionToken'):
+            return [{'states': {'focused': self.focused_control == control or (control == 'credentialAccessKey' and self.focused_control == 'addDestinationCredentials')}}]
         if control == 'destinationsEmpty':
             return [{'visible': not self.document['profiles']}]
-        if control == 's3BucketHelp':
+        if control == 's3AclModeHelp':
             return [{'states': {'checked': self.checked}}]
         if control == 'destinationStatus':
             return [{'text': 'Connection successful.' if self.tested else ''}]
@@ -275,7 +315,7 @@ class DestinationsContracts(unittest.TestCase):
         self.assertEqual(len(actual), len(set(actual)))
 
     def test_all_recipes_input_assertions_and_referenced_frames(self):
-        blocked = {'credential_lifecycle', 'unlock_credentials'}
+        blocked = set()
         for r in self.recipes():
             with self.subTest(recipe=r.name):
                 ctx = self.context()
@@ -355,21 +395,98 @@ class DestinationsContracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'bucket autosaved'):
             lane.s3_fields(ctx)
 
-    def test_credential_entry_and_reveal_block_without_reading_fake_material(self):
+    def test_synthetic_entry_uses_sensitive_wrappers_and_masks_before_typing(self):
         ctx = self.context()
-        with self.assertRaises(RecipeBlocked) as caught:
-            lane.credential_lifecycle(ctx)
-        self.assertEqual(caught.exception.issue, 666)
-        self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
-        self.assertFalse(any(e[0] == 'shell' and 'fake-input' in e[1] for e in ctx.events))
+        lane.credential_fields(ctx)
+        typed = [e[1] for e in ctx.events if e[0] == 'type_text']
+        self.assertEqual(len(typed), 3)
+        self.assertTrue(all(str(value) == '[redacted]' for value in typed))
+        first_type = next(i for i,e in enumerate(ctx.events) if e[0] == 'type_text')
+        self.assertEqual(len([e for e in ctx.events[:first_type] if e[0] == 'sensitive_control']), 3)
 
-    def test_preunlocked_reference_cannot_count_as_explicit_gui_unlock(self):
+    def test_explicit_unlock_uses_uncached_fixture_and_real_button(self):
         ctx = self.context()
-        with self.assertRaises(RecipeBlocked) as caught:
-            lane.unlock_credentials(ctx)
-        self.assertEqual(caught.exception.issue, 666)
-        self.assertIn('pre-unlocks', str(caught.exception))
-        self.assertFalse(any(e[:2] == ('click', 'text:Unlock saved credentials') for e in ctx.events))
+        lane.unlock_credentials(ctx)
+        self.assertIn(('fixture', 'destinations-uncached'), ctx.events)
+        self.assertIn(('click', 'text:Unlock saved credentials', 'destinations'), ctx.events)
+        self.assertTrue(ctx.available)
+
+    def test_saved_credential_recipe_keeps_the_fixture_cache_identity(self):
+        ctx = self.context()
+        _, profiles = lane._open(ctx, saved_credentials=True)
+        self.assertEqual(profiles[0]['id'], ctx.f['profile']['id'])
+        self.assertEqual(profiles[0]['credentials'], ctx.f['profile']['credentials'])
+
+    def test_native_edit_withholds_text_when_focus_cannot_be_verified(self):
+        from unittest.mock import patch
+        ctx = self.context()
+        ctx.profile['session'] = 'wayland'
+        with patch('tools.lab.surface_driver.recipes.settings_input.field_click',
+                   side_effect=RecipeBlocked('focus not verified', issue=856)):
+            with self.assertRaises(RecipeBlocked):
+                lane._edit(ctx, 's3Bucket', 'surface-valid-bucket')
+        self.assertFalse(any(e[0] in ('type_text', 'keys') for e in ctx.events))
+
+    def test_service_endpoint_edits_remain_on_loopback(self):
+        from urllib.parse import urlsplit
+        import ipaddress
+        ctx = self.context()
+        lane.service(ctx)
+        endpoints = [e[1] for e in ctx.events if e[0] == 'type_text']
+        self.assertEqual(len(endpoints), 2)
+        self.assertTrue(all(ipaddress.ip_address(urlsplit(value).hostname).is_loopback
+                            for value in endpoints))
+
+    def test_bucket_error_can_use_the_visible_label_name(self):
+        ctx = self.context()
+        ctx.accessible = lambda query: [{'text': '', 'name': 'Enter only the bucket name',
+                                         'visible': True}]
+        self.assertEqual(lane._state(ctx, 's3BucketError', 'text'), 'Enter only the bucket name')
+        ctx.accessible = lambda query: [{'text': '', 'name': 'Enter only the bucket name',
+                                         'visible': False}]
+        self.assertEqual(lane._state(ctx, 's3BucketError', 'text'), '')
+
+    def test_connection_requires_a_new_rendered_connected_state(self):
+        ctx = self.context()
+        click = ctx.click
+        ctx.click = lambda control, window, **kw: (None if control == 'testDestination'
+                                                   else click(control, window, **kw))
+        with self.assertRaises(RecipeFailed):
+            lane.test_connection(ctx)
+
+    def test_native_secret_entry_withholds_input_until_focus_is_verified(self):
+        from unittest.mock import patch
+        ctx = self.context()
+        ctx.profile['session'] = 'wayland'
+        with patch('tools.lab.surface_driver.recipes.settings_input.field_click',
+                   side_effect=RecipeBlocked('focus not verified', issue=856)):
+            with self.assertRaises(RecipeBlocked):
+                lane.credential_fields(ctx)
+        self.assertEqual(len([e for e in ctx.events if e[0] == 'sensitive_control']), 3)
+        self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
+
+    def test_native_add_uses_the_core_guard_for_the_fixed_rail(self):
+        from unittest.mock import patch
+        ctx = self.context()
+        ctx.profile['session'] = 'wayland'
+        with patch('tools.lab.surface_driver.recipes.settings_input.click',
+                   side_effect=AssertionError('fixed rail must not scroll the form')):
+            lane._click(ctx, 'addS3Destination')
+        self.assertIn(('click', 'addS3Destination', 'destinations'), ctx.events)
+
+    def test_add_retries_a_refused_save_through_the_visible_action(self):
+        ctx = self.context()
+        ctx.refused_save = True
+        lane.add(ctx)
+        self.assertIn(('click', 'text:Retry saving', 'destinations'), ctx.events)
+        self.assertFalse(ctx.refused_save)
+
+    def test_credential_input_refuses_a_non_owned_path_before_reading(self):
+        ctx = self.context()
+        ctx.f['credentials_file'] = '/tmp/foreign-input.json'
+        with self.assertRaises(RecipeBlocked):
+            lane.credential_fields(ctx)
+        self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
 
     def test_lane_runs_with_local_destination(self):
         self.assertTrue(all(r.destinations == ('local',) for r in self.recipes()))
@@ -384,7 +501,7 @@ class DestinationsContracts(unittest.TestCase):
         ctx.click = missing_menu
         with self.assertRaises(RecipeBlocked) as caught:
             lane.rename(ctx)
-        self.assertEqual(caught.exception.issue, 712)
+        self.assertIn('live menu item', str(caught.exception))
         self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
 
     def test_missing_confirmation_inventory_blocks_before_dialog_input(self):

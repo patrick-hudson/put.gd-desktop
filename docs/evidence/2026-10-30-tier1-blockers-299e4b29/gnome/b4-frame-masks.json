@@ -1,0 +1,50 @@
+{
+  "frames": {
+    "frames/outcomes.link_browser/00-before.png": {
+      "sha256": "dbf3a451d9f771b2ca9aefbc9f945b6e2ab372f9e6c6fd68854282daa0c8d32d",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    },
+    "frames/outcomes.link_browser/01-publication-result.png": {
+      "sha256": "96b9addc5e266363ca9a9db002979570ba2f164b55ab442767f4289762205de6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.link_browser/02-browser-content.png": {
+      "sha256": "8028e4555cbb6586a83be9edd9b30f596bf862b112bbf94df39dfdf3be9486d6",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/outcomes.link_browser/03-after.png": {
+      "sha256": "ce75d3f1e5983de4d954b6427b610b739793faec5949ccd3c8bfc0323531acbd",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [],
+      "fallback": false,
+      "guard": "local-secret-fields-only",
+      "visible_pixels": true
+    }
+  }
+}

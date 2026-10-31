@@ -11,16 +11,28 @@ from __future__ import annotations
 
 import re
 import shlex
+import base64
+import hashlib
+import json
 from contextlib import contextmanager
 from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
+from tools.lab.surface_driver.fixtures import consent
+from tools.lab.surface_driver.fixtures.base import Scope
 
 # Fixture setup/cleanup belongs to the core; profile fragments hold only desktop differences.
 NEEDS = ("selector-desktop",)
 REGION = "44-region-keyboard"
 RECSEL = "45-record-region-keyboard"
 BAR = "33-record-ready-bar"
+
+
+
+def _frame(ctx, label, **options):
+    if ctx.destination == "local" and ctx.placement in ("boat", "guest") and ctx.profile.get("guest"):
+        options["desktop_safe"] = "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    return ctx.frame(label, **options)
 
 
 def _result(value):
@@ -51,6 +63,23 @@ def _screen(ctx):
 def _half(screen):
     x, y, w, h = screen
     return [x + w / 4, y + h / 4, w / 2, h / 2]
+
+
+@contextmanager
+def _portal_scope(ctx):
+    """Reuse core's request ownership and one-click consent, never guess a point."""
+    if ctx.profile.get("session") != "wayland":
+        yield
+        return
+    scope = Scope(ctx)
+    previous = getattr(ctx, "_selectors_consent", None)
+    ctx._selectors_consent = (scope, {})
+    try:
+        yield
+    finally:
+        ctx._selectors_consent = previous
+        errors = scope.close()
+        ctx.expect(not errors, "selector consent monitor cleanup: " + str(errors))
 
 
 @contextmanager
@@ -86,7 +115,8 @@ def _local(ctx, mode="live"):
             ctx.blocked("selector-desktop requires its core-owned pattern command callback (#664)", issue=664)
         command("raise")
         ctx.note("Core-owned moving pattern raised before selection")
-        yield
+        with _portal_scope(ctx):
+            yield
     finally:
         # Restore only owned fields against a freshly read revision.
         now = _call(ctx, "settings.get")
@@ -101,7 +131,7 @@ def _description(ctx, recording=False):
     nodes = ctx.accessible({"name": name})
     descriptions = [n.get("description", "") for n in nodes if n.get("description")]
     if not descriptions:
-        ctx.blocked("Live selector accessibility description unavailable; no resident selection inspect (#701)", issue=701)
+        ctx.blocked("Live selector accessibility description unavailable; no resident selection inspect (#942)", issue=942)
     return descriptions[0]
 
 
@@ -125,6 +155,29 @@ def _expect_rect(ctx, wanted, recording=False):
     ctx.note("Inspected selector rectangle " + str(wanted))
 
 
+def _focus_selector(ctx, role):
+    # The helper advertises its accessible before the native window is mapped.
+    # Retry only an absent window; ambiguous geometry and input refusals remain
+    # immediate blockers. focus(..., False) observes and never raises a cover.
+    missing = None
+    def mapped():
+        nonlocal missing
+        try:
+            ctx.focus(role, raise_window=False)
+            return True
+        except RecipeBlocked as error:
+            if "live window match is missing or ambiguous (0 matches)" not in str(error):
+                raise
+            missing = error
+            return False
+    try:
+        ctx.wait(mapped, role + " selector mapped", timeout=10)
+    except RecipeFailed:
+        if missing is not None:
+            raise missing
+        raise
+
+
 def _open_region(ctx, edit=False, accessible=True):
     # action.invoke durably acknowledges before interactive acquisition finishes.
     # Surface setup therefore does not depend on the shell window's layout.
@@ -139,16 +192,16 @@ def _open_region(ctx, edit=False, accessible=True):
             ctx.wait(lambda: _op(ctx, oid)["state"] == "acquiring", "capture selector acquiring")
         # view(action.invoke) has no shell-window role. Select the actual overlay
         # through the public focus contract before guarded keyboard/pointer input.
-        ctx.focus("region", raise_window=False)
+        _focus_selector(ctx, "region")
     except (RecipeBlocked, RecipeFailed) as error:
-        ctx.frame("selector-readback-unavailable")
+        _frame(ctx, "selector-readback-unavailable")
         observed = _op(ctx, oid)
         if observed["state"] == "failed":
             ctx.expect(False, "capture failed before selector input: " + observed.get("error", {}).get("code", "unknown"))
         if observed["state"] in ("accepted", "acquiring"):
             # Cleanup only; a blocked input is never represented as a cancel pass.
             _call(ctx, "operation.cancel", {"id": oid})
-            ctx.blocked("Capture selector has no live AT-SPI node or authorized geometry in this session (#701): " + str(error), issue=701)
+            ctx.blocked("Capture selector has no live AT-SPI node or authorized geometry in this session (#942): " + str(error), issue=942)
         raise
     return oid
 
@@ -160,6 +213,48 @@ def _op(ctx, oid):
 def _png_dimensions(ctx, path, width, height):
     probe = ctx.shell("python3 -c 'import struct,sys; print(*struct.unpack(\"!II\",open(sys.argv[1],\"rb\").read(24)[16:24]))' " + shlex.quote(path))
     ctx.expect(probe.get("returncode") == 0 and probe.get("stdout", "").strip() == f"{int(width)} {int(height)}", "capture dimensions match chosen output")
+    _retain(ctx, path, "png")
+
+
+def _retain(ctx, path, kind):
+    """Export only signature-checked synthetic outputs from this private run."""
+    if ctx.placement not in ("boat", "guest") or getattr(ctx.target, "physical", None):
+        ctx.blocked("Original functional payload export requires a disposable guest; native collection is undeclared (#717)", issue=717)
+    program = '''import base64,hashlib,json,os,stat
+from pathlib import Path
+p=Path(PATH);root=Path(ROOT).resolve(strict=True)
+assert p.resolve(strict=True).is_relative_to(root)
+fd=os.open(p,os.O_RDONLY|os.O_NOFOLLOW)
+with os.fdopen(fd,'rb') as f:
+ s=os.fstat(f.fileno());assert stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and 0<s.st_size<=32*1024*1024
+ data=f.read(32*1024*1024+1);assert len(data)==s.st_size
+assert data.startswith(bytes([137,80,78,71,13,10,26,10])) if KIND=='png' else data[4:8]==b'ftyp'
+print(json.dumps({'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}))
+'''.replace('PATH', repr(path)).replace('ROOT', repr(ctx.target.root)).replace('KIND', repr(kind))
+    reply = ctx.shell("python3 - <<'SD_RETAIN'\n" + program + 'SD_RETAIN\n')
+    ctx.expect(reply.get("returncode") == 0, "synthetic functional artifact readback succeeded")
+    value = json.loads(reply["stdout"])
+    # Payload bytes are not command evidence. Keep them memory-only on the
+    # authenticated target transport; the evidence redactor sees size/hash only.
+    transfer = program[:program.index('print(json.dumps(')] + 'print(base64.b64encode(data).decode())\n'
+    payload = ctx.target.execute("python3 - <<'SD_RETAIN_BYTES'\n" + transfer + 'SD_RETAIN_BYTES\n', timeout=30)
+    ctx.expect(payload.get("returncode") == 0, "synthetic artifact payload transport succeeded")
+    data = base64.b64decode(payload["stdout"].strip(), validate=True)
+    digest = hashlib.sha256(data).hexdigest()
+    ctx.expect(len(data) == value["bytes"] and digest == value["sha256"], "functional artifact transport hash matches")
+    # Original PNG/MP4 payloads belong in a private functional archive, outside
+    # the core's text/visible-frame audit. Their hashes remain in the receipt.
+    directory = ctx.out.with_name(ctx.out.name + "-functional")
+    directory.mkdir(mode=0o700, exist_ok=True)
+    output = directory / (digest + "." + kind)
+    ctx.expect(not output.is_symlink(), "functional artifact destination is a regular owned file")
+    if not output.exists():
+        with output.open("xb") as stream:
+            stream.write(data)
+        output.chmod(0o600)
+    ctx.expect(hashlib.sha256(output.read_bytes()).hexdigest() == digest, "retained functional artifact hash matches")
+    output.with_suffix(output.suffix + ".json").write_text(json.dumps({"source": path, "bytes": len(data), "sha256": digest, "kind": kind}) + "\n")
+    ctx.note("Retained synthetic " + kind + " sha256=" + digest)
 
 
 def _cancel_region(ctx, oid, key="Esc"):
@@ -180,22 +275,31 @@ def _open_record(ctx, entire=False, rect=None):
     target = {"kind": "region"}
     if entire or rect is not None:
         target["rect"] = _screen(ctx) if entire else rect
+    portal = getattr(ctx, "_selectors_consent", None)
+    if portal:
+        # consent.start writes its monitor program before launching it. Unlike
+        # the manager's app-profile scope, this per-local scope is still fresh.
+        portal[0].initialize()
+    ctx.note('recording acquisition=' + consent.acquisition(caps, target))
+    watch = consent.start(portal[0], target=target, capabilities=caps) if portal else None
     opened = _result(ctx.view("recording.prepare", {"target": target, "format": "mp4", "codec": "h264", "fps": 15, "audio": {"system": False}}))
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]
+    if portal:
+        portal[1][rid] = watch
     ctx.note("Recording operation " + rid)
     if "rect" in target:
         _state(ctx, rid, "ready")
     else:
         ctx.wait(lambda: _inspect(ctx, rid).get("selecting"), "recording selector opened")
         try:
-            ctx.focus("recsel", raise_window=False)
+            _focus_selector(ctx, "recsel")
         except (RecipeBlocked, RecipeFailed) as error:
-            ctx.frame("recording-selector-readback-unavailable")
+            _frame(ctx, "recording-selector-readback-unavailable")
             observed = _inspect(ctx, rid)
             _cancel_record(ctx, rid)
             ctx.expect(observed["state"] != "failed", "recording failed before selector input")
-            ctx.blocked("Recording selector input/readback unavailable (#701/#705): " + str(error), issue=701)
+            ctx.blocked("Recording selector input/readback unavailable (#942): " + str(error), issue=942)
     return rid
 
 
@@ -204,6 +308,9 @@ def _inspect(ctx, rid):
 
 
 def _state(ctx, rid, wanted):
+    portal = getattr(ctx, "_selectors_consent", None)
+    if wanted == "ready" and portal and rid in portal[1]:
+        return consent.await_ready(portal[0], rid, portal[1][rid], timeout=45)
     if wanted == "cancelled":
         # Cancel retires the active recording session. Its durable operation is
         # the inspectable result, not recording.inspect (which is now unavailable).
@@ -222,7 +329,7 @@ def _choose(ctx, rid, rect=None):
         ctx.drag((int(x), int(y)), (int(x + w), int(y + h)))
     ready = _state(ctx, rid, "ready")
     ctx.note("Observed recording target " + str(ready["target"]))
-    ctx.frame("chosen-recording-area")
+    _frame(ctx, "chosen-recording-area")
     ctx.expect(ready["target"]["rect"] == rect, "chosen recording bounds match real input")
     ctx.expect(not ready["selecting"], "selector closes before ready bar")
     ctx.note("Inspected recording target " + str(rect))
@@ -265,6 +372,7 @@ def _motion(ctx, rid):
     ctx.expect(result.get("returncode") == 0 and found is not None, "clip motion analyzer succeeded")
     score = float(found.group(1))
     ctx.note("recording " + rid + " motion=" + str(score))
+    _retain(ctx, path, "mp4")
     ctx.expect(score > 1.0, "clip contains moving pattern, not a frozen desktop")
 
 
@@ -276,12 +384,12 @@ def _bar_input(ctx):
         if re.fullmatch(r"input target 'bar(?:-[a-z-]+)?' is obscured by .+", str(error)):
             # The core foreground guard refuses the gesture. Preserve the live
             # surface and independent cursor/focus readback before API cleanup.
-            ctx.frame("bar-input-refused")
+            _frame(ctx, "bar-input-refused")
             if ctx.profile.get("session") == "x11":
                 witness = ctx.shell("xdotool getmouselocation --shell; xprop -root _NET_ACTIVE_WINDOW")
                 if witness.get("returncode") == 0:
                     ctx.note("X11 cursor/focus witness: " + witness.get("stdout", "").strip())
-            ctx.blocked("Recording bar foreground authorization unavailable (#705): " + str(error), issue=705)
+            ctx.blocked("Recording bar foreground authorization unavailable (#664): " + str(error), issue=664)
         raise
 
 
@@ -318,11 +426,11 @@ def region_keyboard(ctx):
     with _local(ctx):
         oid = _open_region(ctx)
         try:
-            ctx.frame("before", reference="46-region-entire-display")
+            _frame(ctx, "before", reference="46-region-entire-display")
             ctx.keys("Right")
             rect = _half(_screen(ctx))
             _expect_rect(ctx, rect)
-            ctx.frame("centred", reference=REGION)
+            _frame(ctx, "centred", reference=REGION)
             for prefix, step in (("", 1), ("Ctrl+", 10)):
                 for key, dx, dy in (("Right", step, 0), ("Down", 0, step), ("Left", -step, 0), ("Up", 0, -step)):
                     ctx.keys(prefix + key)
@@ -333,7 +441,7 @@ def region_keyboard(ctx):
                     ctx.keys(prefix + key)
                     rect[2] += dw; rect[3] += dh
                     _expect_rect(ctx, rect)
-            ctx.frame("after", reference=REGION)
+            _frame(ctx, "after", reference=REGION)
         finally:
             _cancel_region(ctx, oid)
 
@@ -343,39 +451,51 @@ def region_cancel(ctx):
     with _local(ctx):
         for gesture in ("Esc", "right"):
             oid = _open_region(ctx, accessible=False)
-            ctx.frame("before-" + gesture, reference="46-region-entire-display")
+            _frame(ctx, "before-" + gesture, reference="46-region-entire-display")
             _cancel_region(ctx, oid, gesture)
-            ctx.frame("after-" + gesture)
+            _frame(ctx, "after-" + gesture)
 
 
-@recipe("region.drag", "region.to-local", "region.key-enter", needs=NEEDS)
+def _capture(ctx, gesture):
+    oid = _open_region(ctx, accessible=False)
+    try:
+        _frame(ctx, "before-" + gesture, reference="46-region-entire-display")
+        if gesture == "drag":
+            x, y, w, h = map(int, _half(_screen(ctx)))
+            ctx.drag((x, y), (x + w, y + h))
+        else:
+            ctx.keys("Return")
+            _, _, w, h = _screen(ctx)
+        op = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] == "completed" else None), "local capture completed")
+        ctx.expect(bool(op["items"]), "capture produced an item")
+        for item in op["items"]:
+            ctx.expect(item["local"]["status"] == "saved", "capture saved locally")
+            ctx.expect(item["uploadStatus"] != "uploaded", "local route did not publish")
+            _png_dimensions(ctx, item["local"]["path"], w, h)
+        _frame(ctx, "after-" + gesture)
+    finally:
+        if _op(ctx, oid)["state"] in ("accepted", "acquiring"):
+            _call(ctx, "operation.cancel", {"id": oid})
+
+
+@recipe("region.to-local", "region.key-enter", needs=NEEDS)
+def region_enter(ctx):
+    with _local(ctx):
+        _capture(ctx, "Return")
+
+
+@recipe("region.drag", needs=NEEDS)
 def region_capture(ctx):
     with _local(ctx):
-        for gesture in ("drag", "Return"):
-            oid = _open_region(ctx, accessible=False)
-            ctx.frame("before-" + gesture, reference="46-region-entire-display")
-            if gesture == "drag":
-                x, y, w, h = map(int, _half(_screen(ctx)))
-                ctx.drag((x, y), (x + w, y + h))
-            else:
-                ctx.keys("Return")
-                _, _, w, h = _screen(ctx)
-            op = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] == "completed" else None), "local capture completed")
-            ctx.expect(bool(op["items"]), "capture produced an item")
-            for item in op["items"]:
-                ctx.expect(item["local"]["status"] == "saved", "capture saved locally")
-                ctx.expect(item["uploadStatus"] != "uploaded", "local route did not publish")
-                # Decode only our synthetic capture, on the guest, to check accepted bounds.
-                _png_dimensions(ctx, item["local"]["path"], w, h)
-            ctx.frame("after-" + gesture)
+        _capture(ctx, "drag")
         # A click (zero-size drag) must cancel rather than capture a pixel.
         oid = _open_region(ctx, accessible=False)
         x, y, _, _ = map(int, _half(_screen(ctx)))
-        ctx.frame("before-tiny", reference="46-region-entire-display")
+        _frame(ctx, "before-tiny", reference="46-region-entire-display")
         ctx.click_at(x, y)
         ctx.wait(lambda: _op(ctx, oid)["state"] in ("cancelled", "failed"), "zero-size region cancelled")
         ctx.expect(not _op(ctx, oid)["items"], "zero-size region creates no image")
-        ctx.frame("after-tiny")
+        _frame(ctx, "after-tiny")
 
 
 @recipe("region.to-editor", "region.outcome-line", needs=NEEDS)
@@ -384,13 +504,13 @@ def region_editor(ctx):
         oid = _open_region(ctx, edit=True)
         try:
             ctx.expect("Opens the image editor" in _description(ctx), "edit outcome is announced")
-            ctx.frame("before", reference="46-region-entire-display")
+            _frame(ctx, "before", reference="46-region-entire-display")
             x, y, w, h = map(int, _half(_screen(ctx)))
             ctx.drag((x, y), (x + w, y + h))
             ctx.wait(lambda: _op(ctx, oid)["state"] == "editing", "capture enters editor")
             info = _call(ctx, "editor.inspect", {"id": oid})
             ctx.expect(bool(info), "editor inspects captured image")
-            ctx.frame("after", window="editor", reference="20-editor-redact")
+            _frame(ctx, "after", window="editor", reference="20-editor-redact")
         finally:
             _call(ctx, "editor.cancel", {"id": oid})
 
@@ -402,11 +522,11 @@ def region_modes(ctx):
             oid = _open_region(ctx)
             try:
                 ctx.note("source capabilities: " + str(_call(ctx, "capabilities").get("source")))
-                ctx.frame(mode + "-before", reference="46-region-entire-display")
+                _frame(ctx, mode + "-before", reference="46-region-entire-display")
                 ctx.shell("sleep 2.2")
                 ctx.keys("Right")
                 _expect_rect(ctx, _half(_screen(ctx)))
-                ctx.frame(mode + "-after", reference=REGION)
+                _frame(ctx, mode + "-after", reference=REGION)
                 ctx.review("Compare moving-pattern frames: desktop updates only in live mode; hint fades after 1.7+0.3 s; size pill follows selection; no monitor scrim. Resident inspect does not expose rendered pixels or backend identity.")
             finally:
                 _cancel_region(ctx, oid)
@@ -423,7 +543,7 @@ def _heads(ctx, recording):
     if len(screens) != 2:
         ctx.blocked("Tab across heads requires exactly two independently sized guest heads (#664)", issue=664)
     if not recording and screens[0][2:] == screens[1][2:]:
-        ctx.blocked("Screenshot Tab readback needs unequal head sizes to identify the completed output without AT-SPI (#701)", issue=701)
+        ctx.blocked("Screenshot Tab readback needs unequal head sizes to identify the completed output without AT-SPI (#942)", issue=942)
     if any(s.get("scale", 1) != 1 for s in ctx.profile.get("screens", [])):
         ctx.blocked("Completed-output Tab probe currently requires unit-scale fixture heads")
     with _local(ctx):
@@ -436,9 +556,9 @@ def _heads(ctx, recording):
             try:
                 ctx.scroll(int(x + w / 2), int(y + h / 2), 0, head=0)  # guarded pointer on head 0
                 ref = "47-record-entire-display" if recording else "46-region-entire-display"
-                ctx.frame("before-" + str(number), reference=ref)
+                _frame(ctx, "before-" + str(number), reference=ref)
                 ctx.keys(*keys)
-                ctx.frame("switched-" + str(number), reference=ref)
+                _frame(ctx, "switched-" + str(number), reference=ref)
                 ctx.keys("Return")
                 if recording:
                     ready = _state(ctx, oid, "ready")
@@ -451,18 +571,36 @@ def _heads(ctx, recording):
                         _png_dimensions(ctx, item["local"]["path"], wanted[2], wanted[3])
                 accepted = True
                 ctx.note("Tab sequence " + str(keys) + " chose output " + str(wanted))
-                ctx.frame("after-" + str(number))
+                _frame(ctx, "after-" + str(number))
             finally:
                 if recording:
                     _cancel_record(ctx, oid)
                 elif not accepted and _op(ctx, oid)["state"] in ("accepted", "acquiring"):
                     _cancel_region(ctx, oid)
-        ctx.review("Completed output proves Tab/Shift+Tab monitor choice. Selected-rectangle transfer/clamping and both covers still require live readback/full two-head visual review (#664/#701).")
+        ctx.review("Completed output proves Tab/Shift+Tab monitor choice. Selected-rectangle transfer/clamping and both covers still require live readback/full two-head visual review (#664/#942).")
 
 
-@recipe("region.to-upload", destinations=("local", "s3", "b2", "proton"))
+@recipe("region.to-upload", needs=NEEDS, destinations=("local",))
 def region_upload(ctx):
-    ctx.blocked("Selectors campaign authorizes local synthetic output only; isolated provider upload belongs to the live lane. No S3 or Proton on boat.")
+    with _local(ctx):
+        service = ctx.fixture("loopback-s3")
+        ctx.expect(service.get("isolated") and service.get("loopback") and service.get("address") == "127.0.0.1",
+                   "capture upload uses the isolated guest loopback service")
+        current = _call(ctx, "settings.get")
+        _call(ctx, "settings.patch", {"expectedRevision": current["metadata"]["acceptedRevision"],
+                                     "patch": {"actions": {"region": {"destination": "upload", "profileId": service["profile_id"]}}}})
+        oid = _open_region(ctx, accessible=False)
+        try:
+            _frame(ctx, "before-upload", reference="46-region-entire-display")
+            ctx.keys("Return")
+            result = ctx.wait(lambda: (o if (o := _op(ctx, oid))["state"] in ("completed", "failed", "partial") else None),
+                              "synthetic region upload completed", timeout=40)
+            ctx.expect(result["state"] == "completed" and bool(result["items"]), "capture upload completes")
+            ctx.expect(all(item["uploadStatus"] == "uploaded" for item in result["items"]), "every captured item was uploaded")
+            _frame(ctx, "after-upload")
+        finally:
+            if _op(ctx, oid)["state"] in ("accepted", "acquiring"):
+                _call(ctx, "operation.cancel", {"id": oid})
 
 
 @recipe("recsel.drag", "recsel.key-enter", "recsel.to-bar", needs=NEEDS)
@@ -471,23 +609,23 @@ def recording_selection(ctx):
         for gesture in ("drag", "Return", "entire"):
             rid = _open_record(ctx)
             try:
-                ctx.frame("before-" + gesture, reference="47-record-entire-display")
+                _frame(ctx, "before-" + gesture, reference="47-record-entire-display")
                 if gesture == "entire":
                     ctx.keys("Return")
                     ready = _state(ctx, rid, "ready")
                     ctx.expect(ready["target"]["rect"] == _screen(ctx), "Return with no selection chooses full active output")
                 else:
                     _choose(ctx, rid, _half(_screen(ctx)) if gesture == "drag" else None)
-                ctx.frame("after-" + gesture, window="bar", reference=BAR)
+                _frame(ctx, "after-" + gesture, window="bar", reference=BAR)
             finally:
                 _cancel_record(ctx, rid)
         rid = _open_record(ctx)
         try:
-            ctx.frame("before-tiny", reference="47-record-entire-display")
+            _frame(ctx, "before-tiny", reference="47-record-entire-display")
             x, y, _, _ = map(int, _half(_screen(ctx)))
             ctx.drag((x, y), (x + 3, y + 3))
             _state(ctx, rid, "cancelled")
-            ctx.frame("after-tiny")
+            _frame(ctx, "after-tiny")
         finally:
             _cancel_record(ctx, rid)
 
@@ -498,14 +636,14 @@ def recording_cancel(ctx):
         for gesture in ("Esc", "right"):
             rid = _open_record(ctx)
             try:
-                ctx.frame("before-" + gesture, reference="47-record-entire-display")
+                _frame(ctx, "before-" + gesture, reference="47-record-entire-display")
                 if gesture == "right":
                     x, y, w, h = _screen(ctx)
                     ctx.click_at(int(x + w / 2), int(y + h / 2), button="right")
                 else:
                     ctx.keys("Esc")
                 _state(ctx, rid, "cancelled")
-                ctx.frame("after-" + gesture)
+                _frame(ctx, "after-" + gesture)
             finally:
                 _cancel_record(ctx, rid)
 
@@ -515,7 +653,7 @@ def recording_keyboard(ctx):
     with _local(ctx):
         rid = _open_record(ctx)
         try:
-            ctx.frame("before", reference="47-record-entire-display")
+            _frame(ctx, "before", reference="47-record-entire-display")
             ctx.keys("Right")
             rect = _half(_screen(ctx))
             _expect_rect(ctx, rect, True)
@@ -524,7 +662,7 @@ def recording_keyboard(ctx):
                     ctx.keys(prefix + key)
                     rect[axis] += delta
                     _expect_rect(ctx, rect, True)
-            ctx.frame("after", reference=RECSEL)
+            _frame(ctx, "after", reference=RECSEL)
         finally:
             _cancel_record(ctx, rid)
 
@@ -536,15 +674,35 @@ def recording_output(ctx):
         doc = _call(ctx, "settings.get")["document"]
         rid = _open_record(ctx)
         try:
-            ctx.frame("before", reference="47-record-entire-display")
+            _frame(ctx, "before", reference="47-record-entire-display")
             record_route = doc["actions"]["record"]
             ctx.expect(doc["actions"]["region"]["destination"] == record_route.get("destination", "local") == "local", "recording route matches region local output")
             _choose(ctx, rid, _half(_screen(ctx)))
             ctx.expect(not _op(ctx, rid)["destination"].get("providerId"), "local recording has no provider destination")
-            ctx.frame("after", window="bar", reference=BAR)
+            _frame(ctx, "after", window="bar", reference=BAR)
             ctx.review("Local route inspected (shortcut-only entries inherit region); upload inheritance and an explicit recording exception need the live lane's isolated provider fixture.")
         finally:
             _cancel_record(ctx, rid)
+
+
+FORMAT_LABELS = {
+    ("mp4", "h264"): "Compatible video — MP4 (H.264) · Recommended",
+    ("mp4", "h265"): "Smaller video — MP4 (H.265)",
+    ("webm", "vp9"): "Browser video — WebM (VP9)",
+    ("gif", ""): "Animated GIF",
+    ("webp", ""): "Animated WebP — silent",
+}
+
+
+def _format(ctx, fmt, codec):
+    # The combo popup has its own input focus, outside the unmanaged bar.
+    # Resolve the drawn item in the bar's exact private helper PID, then use
+    # the core's fresh compositor/server hit-test and real pointer input.
+    pid = ctx.geometry("bar")["pid"]
+    _bar_click(ctx, "format", window="bar-ready")
+    query = {"owned": True, "pid": pid, "role": "list item", "name": FORMAT_LABELS[(fmt, codec)]}
+    ctx.wait(lambda: ctx.accessible(dict(query, visible=True, showing=True)), "recording format popup item")
+    ctx.click_accessible(query)
 
 
 @recipe("bar.format", "bar.system-audio", needs=NEEDS)
@@ -552,25 +710,22 @@ def bar_options(ctx):
     with _local(ctx):
         rid = _ready(ctx)
         try:
-            ctx.frame("before", window="bar", reference=BAR)
+            _frame(ctx, "before", window="bar", reference=BAR)
             caps = _call(ctx, "recording.capabilities")
             if not caps.get("audio", {}).get("system"):
                 ctx.blocked("System audio unavailable on this desktop")
             _bar_click(ctx, "text:System audio", window="bar-ready")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "system audio enabled")
-            # Format order is the catalog's real combo order, not a translated label.
-            for index, (fmt, codec) in enumerate((("mp4", "h264"), ("mp4", "h265"), ("webm", "vp9"), ("gif", ""), ("webp", ""))):
+            for fmt, codec in FORMAT_LABELS:
                 if fmt not in caps["formats"] or (codec and codec not in caps.get("codecs", {}).get(fmt, [])):
                     ctx.blocked("Required recording format unavailable: " + fmt + "/" + codec)
-                _bar_click(ctx, "format", window="bar-ready")
-                ctx.keys("Home", *(["Down"] * index), "Return")
+                _format(ctx, fmt, codec)
                 info = ctx.wait(lambda: (s if (s := _inspect(ctx, rid))["config"]["format"] == fmt and s["config"]["codec"] == codec else None), "format " + fmt + "/" + codec)
                 ctx.expect(info["config"]["audio"]["system"] == (fmt not in ("gif", "webp")), "animation formats are silent")
-                ctx.frame("format-" + fmt + "-" + codec, window="bar", reference="33a-record-gif-requested-audio" if fmt == "gif" else BAR)
-            _bar_click(ctx, "format", window="bar-ready")
-            ctx.keys("Home", "Return")
+                _frame(ctx, "format-" + fmt + "-" + codec, window="bar", reference="33a-record-gif-requested-audio" if fmt == "gif" else BAR)
+            _format(ctx, "mp4", "h264")
             ctx.wait(lambda: _inspect(ctx, rid)["config"]["audio"]["system"], "video restores audio intent")
-            ctx.frame("after", window="bar", reference="33b-record-restored-audio")
+            _frame(ctx, "after", window="bar", reference="33b-record-restored-audio")
         finally:
             _cancel_record(ctx, rid)
 
@@ -580,74 +735,95 @@ def bar_recording(ctx):
     with _local(ctx):
         rid = _ready(ctx)
         try:
-            ctx.frame("before", window="bar", reference=BAR)
+            _frame(ctx, "before", window="bar", reference=BAR)
             _start(ctx, rid)
-            ctx.frame("recording", window="bar", reference="34-record-recording-bar")
-            ctx.frame("recording-bounds")
+            _frame(ctx, "recording", window="bar", reference="34-record-recording-bar")
+            _frame(ctx, "recording-bounds")
             _bar_click(ctx, "text:Pause", window="bar-recording")
             _state(ctx, rid, "paused")
-            ctx.frame("paused", window="bar", reference="35-record-paused-bar")
+            _frame(ctx, "paused", window="bar", reference="35-record-paused-bar")
             _bar_click(ctx, "text:Resume", window="bar-paused")
             _state(ctx, rid, "recording")
             _stop(ctx, rid)
-            ctx.frame("after", window="review", reference="30-review")
+            _frame(ctx, "after", window="review", reference="30-review")
             ctx.review("Inspect proves phases and chosen target; check recorded bounds ring/dim strips, state dot/text/time/target, backend placement and absence of capture occlusion in the saved desktop frames.")
         finally:
             _cancel_record(ctx, rid)
 
 
-@recipe("bar.cancel", "bar.key-esc", "bar.discard-question", needs=NEEDS, timeout=240)
+@recipe("bar.cancel", "bar.discard-question", needs=NEEDS, timeout=240)
 def bar_discard(ctx):
     with _local(ctx):
-        for gesture in ("cancel", "Esc"):
-            rid = _ready(ctx)
-            try:
-                ctx.frame("before-ready-" + gesture, window="bar", reference=BAR)
-                if gesture == "cancel":
-                    _bar_click(ctx, "cancel", window="bar-ready")
-                else:
-                    # Give the ready bar keyboard focus through a real control.
-                    _bar_click(ctx, "format", window="bar-ready")
-                    ctx.keys("Esc", "Esc")
-                _state(ctx, rid, "cancelled")
-                ctx.frame("after-ready-" + gesture)
-            finally:
-                _cancel_record(ctx, rid)
+        rid = _ready(ctx)
+        try:
+            _frame(ctx, "before-ready-cancel", window="bar", reference=BAR)
+            _bar_click(ctx, "cancel", window="bar-ready")
+            _state(ctx, rid, "cancelled")
+            _frame(ctx, "after-ready-cancel")
+        finally:
+            _cancel_record(ctx, rid)
         rid = _ready(ctx)
         try:
             _start(ctx, rid)
-            ctx.frame("before", window="bar", reference="34-record-recording-bar")
-            ctx.keys("Esc")
+            for phase in ("recording", "paused"):
+                if phase == "paused":
+                    _bar_click(ctx, "text:Pause", window="bar-recording")
+                    _state(ctx, rid, "paused")
+                _bar_click(ctx, "cancel", window="bar-" + phase)
+                _frame(ctx, "question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
+                ctx.expect(_visible(ctx, "Discard this recording?"), "inline discard question visible")
+                _bar_click(ctx, "keepRecording", window="bar-question-" + phase)
+                ctx.expect(not _visible(ctx, "Discard this recording?"), "Keep button closes the question")
+                ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep button preserves phase")
+            _bar_click(ctx, "cancel", window="bar-paused")
+            _bar_click(ctx, "discardRecording", window="bar-question-paused")
+            _state(ctx, rid, "cancelled")
+            _frame(ctx, "after")
+        finally:
+            _cancel_record(ctx, rid)
+
+
+@recipe("bar.key-esc", needs=NEEDS, timeout=240)
+def bar_escape(ctx):
+    with _local(ctx):
+        rid = _ready(ctx)
+        try:
+            _frame(ctx, "before-ready", window="bar", reference=BAR)
+            _format(ctx, "mp4", "h264")
+            with _bar_input(ctx):
+                ctx.keys("Esc")
+            _state(ctx, rid, "cancelled")
+            _frame(ctx, "after-ready")
+        finally:
+            _cancel_record(ctx, rid)
+        rid = _ready(ctx)
+        try:
+            _start(ctx, rid)
+            with _bar_input(ctx):
+                ctx.keys("Esc")
             ctx.expect(_inspect(ctx, rid)["state"] == "recording", "Esc while recording does nothing")
             for phase in ("recording", "paused"):
                 if phase == "paused":
                     _bar_click(ctx, "text:Pause", window="bar-recording")
                     _state(ctx, rid, "paused")
                 _bar_click(ctx, "cancel", window="bar-" + phase)
-                ctx.frame("question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
-                ctx.expect(_visible(ctx, "Discard this recording?"), "inline discard question visible")
-                ctx.keys("Esc")
+                _frame(ctx, "question-" + phase, window="bar", reference="36-record-discard-confirm" if phase == "recording" else "42-record-paused-discard-confirm")
+                with _bar_input(ctx):
+                    ctx.keys("Esc")
                 ctx.expect(not _visible(ctx, "Discard this recording?"), "Esc answers Keep")
-                ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep preserves phase")
-                _bar_click(ctx, "cancel", window="bar-" + phase)
-                _bar_click(ctx, "keepRecording", window="bar-question-" + phase)
-                ctx.expect(_inspect(ctx, rid)["state"] == phase, "Keep button preserves phase")
-            _bar_click(ctx, "cancel", window="bar-paused")
-            _bar_click(ctx, "discardRecording", window="bar-question-paused")
-            _state(ctx, rid, "cancelled")
-            ctx.frame("after")
+                ctx.expect(_inspect(ctx, rid)["state"] == phase, "Esc preserves phase")
         finally:
             _cancel_record(ctx, rid)
 
 
-@recipe("bar.drag", "bar.placement", needs=NEEDS)
+@recipe("bar.drag", "bar.placement")
 def bar_drag(ctx):
     if ctx.profile.get("selectors", {}).get("bar_drag") is False:
-        ctx.blocked("Compositor places this recording bar; X11 dragging is unavailable")
+        ctx.blocked("Compositor places this recording bar; X11 dragging is unavailable (#664)", issue=664)
     with _local(ctx):
         rid = _ready(ctx)
         try:
-            ctx.frame("before", window="bar", reference=BAR)
+            _frame(ctx, "before", window="bar", reference=BAR)
             before = ctx.geometry("bar")
             with _bar_input(ctx):
                 ctx.focus("bar", raise_window=False)
@@ -659,16 +835,16 @@ def bar_drag(ctx):
             ctx.expect(after["x"] != before["x"] or after["y"] != before["y"], "bar moved under pointer drag")
             x, y, w, h = _inspect(ctx, rid)["target"]["rect"]
             ctx.expect(after["x"] + after["width"] <= x or after["x"] >= x + w or after["y"] + after["height"] <= y or after["y"] >= y + h, "bar stays outside captured pixels")
-            ctx.frame("after", window="bar", reference=BAR)
+            _frame(ctx, "after", window="bar", reference=BAR)
             inside = (int(x + w / 2), int(y + h / 2))
             screen = _env(ctx)["screens"][after.get("head", 0)]
             sx, sy, sw, sh = screen
             if not (sx <= inside[0] < sx + sw and sy <= inside[1] < sy + sh):
-                ctx.blocked("Capture exclusion target is on another head; public drag() accepts one head per gesture (#714)", issue=714)
+                ctx.blocked("Capture exclusion target is on another head; public drag() accepts one head per gesture (#664)", issue=664)
             _bar_drag(ctx, _bar_point(after, (int(after["x"] + after["width"] / 2), int(after["y"] + 2))), _bar_point(after, inside))
             rejected = ctx.geometry("bar")
             ctx.expect(rejected["x"] + rejected["width"] <= x or rejected["x"] >= x + w or rejected["y"] + rejected["height"] <= y or rejected["y"] >= y + h, "dragging an outside bar cannot overlap the capture")
-            ctx.frame("rejected-inside", window="bar", reference=BAR)
+            _frame(ctx, "rejected-inside", window="bar", reference=BAR)
             ctx.review("Outside placement and drag exclusion are inspected here; above/other-screen/compositor placements need their own fixture geometry (#664).")
         finally:
             _cancel_record(ctx, rid)
@@ -677,33 +853,24 @@ def bar_drag(ctx):
 @recipe("bar.handle", needs=NEEDS, timeout=240)
 def bar_handle(ctx):
     if len(_env(ctx)["screens"]) != 1:
-        ctx.blocked("Handle requires a single-head full-screen target; other head may fit the full bar")
+        ctx.blocked("Handle requires a single-head full-screen target; another head may fit the full bar (#664)", issue=664)
     with _local(ctx):
         rid = _ready(ctx, entire=True)
         try:
-            ctx.frame("before", window="bar", reference=BAR)
+            _frame(ctx, "before", window="bar", reference=BAR)
             ctx.expect(_inspect(ctx, rid)["overlayPlacement"] == "handle", "full-screen target requires handle")
             full = ctx.geometry("bar")
             _start(ctx, rid)
             handle = ctx.geometry("bar")
             ctx.expect(handle["width"] < full["width"], "recording collapses the ready bar")
-            ctx.frame("handle", window="bar")
+            _frame(ctx, "handle", window="bar")
             _stop(ctx, rid)
-            ctx.frame("after", window="review", reference="30-review")
+            _frame(ctx, "after", window="review", reference="30-review")
             ctx.review("Handle Stop and width collapse are exercised. Resume on a paused handle still needs a fixture with a known paused session; the handle has no Pause control (#664).")
         finally:
             _cancel_record(ctx, rid)
 
 
-@recipe("bar.hidden-overlay", needs=NEEDS, timeout=240)
+@recipe("bar.hidden-overlay")
 def bar_hidden(ctx):
-    # No user gesture exists for this API capability. Do not substitute a CLI
-    # state transition for real-input evidence.
-    with _local(ctx):
-        rid = _ready(ctx, entire=True)
-        try:
-            ctx.frame("before", window="bar", reference=BAR)
-            ctx.frame("after")
-            ctx.blocked("Hidden overlay is API-only (recording.overlay); no public key or control exists to exercise it with real input. API-lane lifecycle/occlusion coverage is required.")
-        finally:
-            _cancel_record(ctx, rid)
+    ctx.blocked("Hidden overlay is API-only (recording.overlay); no public key or control exists for real-input coverage (#664). API-lane lifecycle/occlusion coverage is required.", issue=664)

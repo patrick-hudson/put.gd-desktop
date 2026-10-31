@@ -38,8 +38,6 @@ class DriverContext(Context):
                 raise LiveEvidenceRefused('live destination '+str(self.destination)+' blocked by secret-safe evidence: '
                                           +', '.join(blockers))
             self._live_admitted = True
-        else:
-            require_host_ocr()
         self.catalog, self.out = Catalog(catalog,profile), Path(out)
         self.profile = dict(profile, guest=environment.get('guest'))
         self._fixtures = {}
@@ -57,7 +55,7 @@ class DriverContext(Context):
         self._popup = None
         self._click_count = 1
 
-        self.evidence = Evidence(self.out, require_ocr=self.destination != 'local')
+        self.evidence = Evidence(self.out, require_ocr=self.destination != 'local', local=self.destination == 'local')
         self._sensitive_regions = []
         self._sensitive_controls = []
         self._sensitive_seen = self.destination != 'local'
@@ -69,6 +67,7 @@ class DriverContext(Context):
             self._input_poisoned = True  # An earlier recipe's release never completed.
         self.recipe = recipe
         self._current_window, self._popup, self._input_head = None, None, 0
+        self._recording_bar_before = None
         self.frames, self.notes, self.reviews = [], [], []
         self._noted_ids=set()
         self._notifications_since = time.time()
@@ -80,6 +79,12 @@ class DriverContext(Context):
 
     def call(self, method, params=None):
         self._check_time()
+        if method == 'recording.prepare' and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
+            # Layer-shell has no caption. Its bar may only be associated with
+            # an owned helper surface absent immediately before this prepare.
+            self._recording_bar_before = None
+            self._recording_bar_before = [w['id'] for w in self._probe(
+                'compositor_windows', {'compositor': self.profile['compositor']})['windows']]
         deadline=min(self._deadline,time.monotonic()+15)
         while True:
             response=self.cli(method,json.dumps(params or {}))
@@ -150,6 +155,9 @@ class DriverContext(Context):
         if compositor and self.profile.get('session') == 'wayland' and name in ('accessible','geometry','control','foreground','windows','resize'):
             # Wayland AT-SPI extents are window-relative: the compositor witness
             # places them on the desktop and answers focus/hit-tests.
+            before = getattr(self, '_recording_bar_before', None)
+            if compositor.get('kind') == 'kwin-script' and before is not None:
+                compositor = dict(compositor, recording_bar_before=before)
             query = dict(query, compositor=compositor)
         source = Path(__file__).with_name('probe.py').read_text()
         persistent = getattr(self.target, 'probe', None)
@@ -252,7 +260,16 @@ class DriverContext(Context):
                                       {k:parent[k] for k in ('scale','pid','coordinate_space') if k in parent})
         if self.profile.get('session')=='wayland' and not self.profile.get('at_spi',{}).get('available'):
             raise RecipeBlocked('window geometry: '+self.profile.get('at_spi',{}).get('reason','AT-SPI unavailable'))
-        result = self._probe('geometry', self._window_query(window))
+        query = self._window_query(window)
+        if window in ('region', 'recsel'):
+            query['selector'] = True
+            screens = self.profile.get('screens', [])
+            query['selector_screens'] = [[s[k] for k in ('x','y','width','height')] for s in screens]
+            if len(screens) > 1:
+                screen = next((s for s in screens if s.get('head', 0) == self._input_head), None)
+                if screen:
+                    query['point'] = [screen['x']+screen['width']/2, screen['y']+screen['height']/2]
+        result = self._probe('geometry', query)
         if window in ('region', 'recsel'):
             self._current_window = window
         return self._map_geometry(result)
@@ -266,7 +283,7 @@ class DriverContext(Context):
         owner = self.profile.get('windows',{}).get(window,{}).get('owner',window)
         self._current_window, self._popup = owner, None
         geometry = self.geometry(owner)
-        if geometry.get('override_redirect'):
+        if geometry.get('override_redirect') or owner in ('region', 'recsel'):
             # Unmanaged bars/covers never become the active window: select them
             # by a server hit-test at their centre. Keyboard input to them is
             # still refused unless the X input focus is really inside them.
@@ -349,6 +366,11 @@ class DriverContext(Context):
             # X11 shells draw banners/panels in their stage, invisible to the X hit-test.
             query['shell_cover'] = self.profile.get('notifications',{}).get('accessible',{}).get('application') or None
         witness = self._probe('foreground', query)
+        if role.startswith('bar') and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
+            self.note('KWin recording bar input=' + json.dumps({
+                'pid': geometry.get('pid'), 'window_id': geometry.get('window_id'),
+                'rect': [geometry.get(k) for k in ('x', 'y', 'width', 'height')], 'point': point,
+                'before_prepare': getattr(self, '_recording_bar_before', None), 'foreground': witness}))
         if not witness.get('ok'):
             raise RecipeFailed('input target '+repr(role)+' is obscured by '+repr(witness.get('obscuring_window', 'unknown window'))+
                                ' (window '+str(witness.get('obscuring_window_id') or witness.get('active'))+')')
@@ -494,11 +516,17 @@ class DriverContext(Context):
         witness = self._guard(point=self._global_point(*start,head))
         if require_resize:
             resize_before = self._probe('resize', {})
-        unmanaged = bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test')
+        unmanaged = (bool(witness and witness.get('backend') == 'x11-unmanaged-hit-test') or
+                     self._current_window in ('region', 'recsel'))
         last = start
         with armed(self.review):
             try:
                 self._press(*start,w,h,button,head)
+                # QMP acknowledges queued input before Qt/X11 consumes it.
+                # On Cinnamon/Qt 6.4 an immediate motion can become the press
+                # position. Let the editor receive the press at the start point.
+                if self.profile.get('session') == 'x11' and self._current_window == 'editor':
+                    time.sleep(.1)
                 # Managed header/resize grabs can leave the client. Unmanaged
                 # selector covers/bars need pointer witnesses, not keyboard focus:
                 # WA_ShowWithoutActivating deliberately leaves that elsewhere.
@@ -849,11 +877,30 @@ asyncio.run(main())
         if len(titles) != 1:
             raise RecipeBlocked('notification is not uniquely drawn in the desktop accessibility tree')
         title = titles[0]
-        # St buttons arm only after the pointer has entered them: hover the
-        # drawn title at once, let the shell process the enter (0.05 s was
-        # too short on Cinnamon), then click without another tree walk.
+        # Enter the banner promptly so it stays drawn and can expand.
         self._accessible_pointer(None, None, node=title)
         time.sleep(.25)
+        def stable_target(resolve):
+            # Hover can expand/move a banner and its buttons. A matching name
+            # at the old point is insufficient: require fresh, stable bounds
+            # before the independent compositor hit-test and native click.
+            previous, until = None, time.monotonic() + 2
+            while time.monotonic() < until:
+                node = resolve()
+                signature = tuple(node.get(k) for k in ('pid', 'application', 'name', 'role')) + tuple(node['rect']) if node else None
+                if signature is not None and signature == previous:
+                    return node
+                previous = signature
+                time.sleep(.1)
+            raise RecipeBlocked('notification control did not acquire stable live bounds; input withheld', issue=918)
+        initial = title
+        def live_title():
+            nodes = drawn()
+            if (len(nodes) == 1 and nodes[0]['pid'] == initial['pid']
+                    and nodes[0].get('application') == initial.get('application')):
+                return nodes[0]
+            return None
+        title = stable_target(live_title)
         if action == 'default':
             target = title
         else:
@@ -872,13 +919,20 @@ asyncio.run(main())
                         return inside[0]
                 return None
             # GNOME Shell reveals a banner's buttons only once it expands on hover.
-            target, until = button(), time.monotonic()+2
-            while target is None and time.monotonic() < until:
-                time.sleep(.15)
-                target = button()
-            if target is None:
-                raise RecipeBlocked('notification button is not uniquely inside the drawn notification')
-        previous = len(notice.get('action_events',[]))
+            target = stable_target(button)
+            # Cinnamon's St.Button emits clicked only while its own hover
+            # state is set. Moving from the title in the press packet can
+            # deliver press/release before it processes the enter event.
+            self._accessible_pointer(None, None, node=target)
+            time.sleep(.25)
+            target = stable_target(button)
+        # Do not click a replacement/closed generation, or count an action
+        # another client already invoked before our native input.
+        current = [n for n in self.notifications() if n['id'] == identity and not n.get('closed')
+                   and all(n.get(k) == notice.get(k) for k in ('at', 'sender', 'server'))]
+        if len(current) != 1:
+            raise RecipeBlocked('notification generation changed before input; click withheld', issue=918)
+        previous = len(current[0].get('action_events',[]))
         self._accessible_pointer(None, 'left', node=target)
         def invoked():
             return any(e['action']==action for n in self.notifications()
@@ -889,14 +943,32 @@ asyncio.run(main())
     def tray(self):
         return self._probe('tray', {})
 
-    def clipboard_text(self):
+    def clipboard_text(self, *, expected_json=None):
         command = 'wl-paste --no-newline --type text' if self.profile['session']=='wayland' else 'xclip -selection clipboard -out'
         result = self.shell(command)
         if result['returncode']:
             raise RecipeBlocked('clipboard text unavailable (requires wl-clipboard or xclip and a text owner)')
-        self.evidence.redactor.remember(result['stdout'], opaque=True)
+        value, verified = result['stdout'], False
+        if expected_json is not None:
+            def unique_object(pairs):
+                item = dict(pairs)
+                if len(item) != len(pairs):
+                    raise ValueError('duplicate JSON field')
+                return item
+            try:
+                decoded = json.loads(value, object_pairs_hook=unique_object)
+                canonical = lambda v: json.dumps(v, sort_keys=True, allow_nan=False)
+                verified = isinstance(expected_json, dict) and canonical(decoded) == canonical(expected_json)
+            except (TypeError, ValueError):
+                pass
+        # Only an exact local production observation avoids propagating opaque
+        # status to public names, hashes and UI copy (e.g. delete.cacheNotice).
+        # remember still scans every field for links, credentials and markers.
+        self.evidence.redactor.remember(value, opaque=self.destination != 'local' or not verified)
         self._sensitive_seen = True
-        return result['stdout']
+        if expected_json is not None and not verified:
+            raise RecipeFailed('clipboard JSON differs from the production observation')
+        return value
 
     def fixture(self, name, **options):
         if not hasattr(self, '_fixture_manager'):
@@ -984,7 +1056,7 @@ asyncio.run(main())
                 if ((SECRET_FIELD.search(row.get('name', '')) or row.get('sensitive'))
                         and row.get('class') not in ('QPushButton', 'QToolButton', 'QCheckBox', 'QRadioButton')):
                     names.add(row['name'])
-        return names
+        return {name for name in names if not re.search(r'(url|link)$', name, re.I)} if self.destination == 'local' else names
 
     EDITABLE_ROLES = ('text', 'entry', 'password text', 'terminal')
 
@@ -1063,6 +1135,10 @@ asyncio.run(main())
             editable = row.get('role') in self.EDITABLE_ROLES
             secret = (editable or row.get('objectName') in names or SECRET_FIELD.search(row.get('objectName') or '')
                       or row.get('protected') or self._leaks(row.get('name'), row.get('text'), row.get('description')))
+            if self.destination == 'local':
+                name = row.get('objectName') or ''
+                secret = (row.get('protected') or row.get('role') == 'password text' or
+                          ((name in names or SECRET_FIELD.search(name)) and not re.search(r'(url|link)$', name, re.I)))
             if not secret:
                 continue
             box = row.get('rect') or row.get('unclipped_rect')
@@ -1090,18 +1166,18 @@ asyncio.run(main())
     def _frame_regions(self, image, head, geometry=None, role=None, desktop_safe=None):
         """Masks for one capture; (regions, fallback, guard).
 
-        Before anything sensitive is seen (local runs) only declared regions
-        apply. Afterwards, and always for live destinations, only the owned
+        Local synthetic runs mask declared regions and secret fields. For
+        live destinations, only the owned
         window's own pixels may be kept: desktop-level frames are fully masked
         unless the recipe declares their content safe, non-owned windows over
         the owned window and the profile's notification areas are masked, and
         every showing secret control is masked. Any unknown fails closed.
         """
         regions = [region for selected, region in self._sensitive_regions if selected == head]
-        if not self._sensitive_seen:
+        if self.destination == 'local' or not self._sensitive_seen:
             # Nothing link-like seen yet: secret fields can hold no live value,
             # so their masks are best effort (the read can still mark the run).
-            if geometry is not None and self.profile.get('at_spi', {}).get('available'):
+            if self.profile.get('at_spi', {}).get('available') and (geometry is not None or self.destination == 'local'):
                 input_head = self._input_head
                 try:
                     regions += self._secret_regions(head, None, geometry)
@@ -1109,7 +1185,7 @@ asyncio.run(main())
                     pass
                 finally:
                     self._input_head = input_head
-            if not self._sensitive_seen:
+            if self.destination == 'local' or not self._sensitive_seen:
                 return regions, False, None
         full = [[0, 0, image.width, image.height]]
         if geometry is None and not desktop_safe:

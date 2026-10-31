@@ -1,0 +1,6 @@
+{
+  "browser": {
+    "command": ["snap", "run", "firefox"],
+    "profile_root": "~/snap/firefox/common"
+  }
+}

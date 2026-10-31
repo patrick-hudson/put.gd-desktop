@@ -193,6 +193,8 @@ except (ProcessLookupError,FileNotFoundError):pass
             except ValueError:
                 return False
         self.ctx.wait(ready, 'private fixture resident ready', timeout=25)
+        from ..appimage import prepare
+        prepare(target)
 
     @entry
     def close(self):

@@ -46,6 +46,17 @@
     },
     "historySaveDialog": {
       "title": "^Save original file as$"
+    },
+    "captureOutputMenu": {
+      "owner": "history",
+      "popup": true
+    },
+    "historyFixture": {
+      "title": "^putgd synthetic fixture$",
+      "accessible": {
+        "owned": true,
+        "name": "putgd synthetic fixture"
+      }
     }
   },
   "history_window_query": {

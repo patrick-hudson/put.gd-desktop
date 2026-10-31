@@ -506,6 +506,14 @@ def gnome_witness(method, *args):
         raise RuntimeError('compositor witness (gnome-shell) %s failed: %s' % (method, error.get_dbus_name())) from None
 
 
+def gnome_selector(point=None):
+    selector = json.loads(str(gnome_witness('Selector', json.dumps({'point': point}))))
+    if (selector.get('name') != 'Capture region' or not selector.get('request_id') or
+            not owned(selector.get('client_pid')) or not selector.get('rect') or min(selector['rect'][2:]) <= 0):
+        return None
+    return selector
+
+
 def compositor_windows(compositor):
     """The compositor's own window list: frame/buffer rects, pid, focus, stacking."""
     kind = (compositor or {}).get('kind')
@@ -568,6 +576,7 @@ for (let i = 0; i < list.length; i++) {
                   frame: rect(w.frameGeometry), content: rect(w.clientGeometry), focus: w.active,
                   minimized: w.minimized, hidden: !!w.hidden, popup: !!w.popupWindow, dock: !!w.dock,
                   desktop: !!w.desktopWindow, normal: !!w.normalWindow, notification: !!(w.notification || w.criticalNotification),
+                  surface_class: w.toString().split("(")[0],
                   stack: i, transient_for: w.transientFor ? w.transientFor.internalId.toString() : null});
 }
 callDBus(RECEIVER, RECEIVER_PATH, "org.putgd.LabWitness", "Report", JSON.stringify({windows: windows}));
@@ -686,9 +695,16 @@ class WaylandPlacement:
         x, y, width, height = rect
         deadline = time.monotonic() + self.MAP_SETTLE
         while True:
-            found = [w for w in self.windows() if w['pid'] == pid and w['title'] == title and
+            # Qt's frameless selector sets an accessible name, but no caption.
+            # This exception is only for the installed put.gd helper's exact,
+            # undecorated cover size; ordinary anonymous windows stay refused.
+            anonymous_selector = title in ('Capture region', 'Recording region') and owned(pid) and selector_process(pid)
+            found = [w for w in self.windows() if w['pid'] == pid and
+                     (w['title'] == title or (anonymous_selector and not w['title'] and w['frame'][2:] == [width, height])) and
                      w.get('type') not in POPUP_WINDOW_TYPES and
                      0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
+            if not found:
+                found = self.recording_bar(pid, title, rect)
             # Qt reports a new (modal) window as showing before Mutter maps it:
             # the compositor lists it with an empty frame. Re-observe, bounded.
             unmapped = not found and any(w['pid'] == pid and w['title'] == title and not (w['frame'][2] and w['frame'][3])
@@ -717,6 +733,25 @@ class WaylandPlacement:
             raise RuntimeError('implausible decoration split for %r: frame %s vs content %dx%d' % (title, frame, width, height))
         return {'dx': frame[0] + side - x, 'dy': frame[1] + top - y, 'window_id': found[0]['id'], 'frame': frame}
 
+    def recording_bar(self, pid, title, rect):
+        """Narrow captionless KWin layer-shell association; never a title wildcard.
+
+        Layer-shell carries no xdg_toplevel title. Require the actual KWin
+        surface class, exact undecorated client size, owned recording helper
+        PID and a compositor identity new since recording.prepare. Ambiguous
+        surfaces still fail in _toplevel; foreground still picks the exact ID.
+        """
+        before = self.compositor.get('recording_bar_before')
+        if (self.compositor.get('kind') != 'kwin-script' or before is None
+                or title != 'put.gd recording controls' or not owned(pid)
+                or 'putgd-record' not in executable(pid)):
+            return []
+        return [w for w in self.windows() if w['pid'] == pid and w['id'] not in before
+                and not w['title'] and w.get('surface_class') == 'KWin::LayerShellV1Window'
+                and w.get('wm_class') == 'putgd-record'
+                and w.get('normal') and not w.get('popup')
+                and w.get('content') == w['frame'] and w['frame'][2:] == list(rect[2:])]
+
     def popup(self, pid, rect):
         key = ('popup', pid, tuple(rect))
         if key not in self._cache:
@@ -731,7 +766,9 @@ class WaylandPlacement:
 
     def same_process(self, pid):
         """What the compositor does show for this (owned) process, so a refusal is diagnosable."""
-        shown = ['%r %s type %s' % (w['title'], w['frame'], w.get('type')) for w in self.windows() if w['pid'] == pid][:4]
+        shown = ['%r %s type %s' % (w['title'], w['frame'], w.get('type'))
+                 + (' (%s)' % w['surface_class'] if w.get('surface_class') else '')
+                 for w in self.windows() if w['pid'] == pid][:16]
         return '; compositor has for pid %s: %s' % (pid, ', '.join(shown) if shown else 'no windows')
 
     def inside(self, rect, frame):
@@ -1071,7 +1108,27 @@ def control_geometry(query):
         raise RuntimeError('owned live control has no desktop placement: ' + unplaced[0]['coordinate_error'])
     if len(selected) != 1:
         raise RuntimeError('owned live control is missing, hidden, disabled or ambiguous (' + str(len(selected)) + ' matches)')
-    return selected[0]
+    row = selected[0]
+    # Qt can mark a partly clipped child SHOWING and export its full bounds.
+    # Check the final resolved node, after any recipe scrolling/layout changes;
+    # a safe centre alone does not prove the whole control is visible (#915).
+    x, y, width, height = row['rect']
+    ancestors = row.get('ancestors', [])
+    # A native popup is a separate surface: its logical owner (or parent
+    # menu) does not clip it. Its own descendants still must fit inside it.
+    if row.get('popup'):
+        for index in range(len(ancestors) - 1, -1, -1):
+            if normalize_role(ancestors[index].get('role', '')) in POPUP_ROLES:
+                ancestors = ancestors[index:]
+                break
+    for ancestor in ancestors:
+        rect = ancestor.get('rect')
+        if normalize_role(ancestor.get('role', '')) in ('desktop frame', 'application') or not rect or min(rect[2:]) <= 0:
+            continue
+        left, top, w, h = rect
+        if not (left <= x and top <= y and x + width <= left + w and y + height <= top + h):
+            raise RuntimeError('owned live control is clipped by ancestor ' + repr(ancestor.get('role')) + ' at ' + str(rect))
+    return row
 
 
 def run(*args):
@@ -1115,10 +1172,16 @@ def x11_windows(query):
     options = ['--onlyvisible'] if not query.get('include_hidden') else []
     search = subprocess.run(['xdotool', 'search', *options, '--name', query.get('title', '.*')],
                             text=True, capture_output=True)
+    ids = search.stdout.split()
+    if query.get('selector_screens'):
+        # Native XCB covers have a PID but no WM_NAME, so xdotool's name
+        # search omits them. Enumerate root children only for selector queries.
+        children = run('xwininfo', '-root', '-children')
+        ids += [str(int(w, 16)) for w in re.findall(r'^\s+(0x[0-9a-fA-F]+)\s', children, re.M)]
     found = []
     active_ids = re.findall(r'0x[0-9a-fA-F]+', run('xprop','-root','_NET_ACTIVE_WINDOW'))
     active = str(int(active_ids[-1],16)) if active_ids else None
-    for wid in search.stdout.split():
+    for wid in dict.fromkeys(ids):
         try:
             try:
                 pid = int(run('xdotool', 'getwindowpid', wid))
@@ -1150,12 +1213,37 @@ def x11_windows(query):
 
 
 def geometry(query):
+    if (query.get('selector') and query.get('accessible', {}).get('name') == 'Capture region' and
+            (query.get('compositor') or {}).get('kind') == 'gnome-lab-witness'):
+        selector = gnome_selector()
+        if selector:
+            return dict(zip(('x','y','width','height'), selector['rect'])) | {
+                'pid': selector['client_pid'], 'window_id': selector['request_id'], 'gnome_selector': True,
+                'name': selector['name'], 'scale': 1, 'coordinate_space': 'logical'}
+        raise RuntimeError('live window match is missing or ambiguous (0 matches)')
     if query.get('backend') == 'x11' or os.environ.get('XDG_SESSION_TYPE') == 'x11':
+        if query.get('selector'):
+            # Independently measured output covers, not catalog rectangles or
+            # the accessible selection's changing extents.
+            monitors = re.findall(r'\s(\d+)/\d+x(\d+)/\d+([+-]\d+)([+-]\d+)', run('xrandr', '--listactivemonitors'))
+            query = dict(query, selector_screens=[[int(x),int(y),int(w),int(h)] for w,h,x,y in monitors])
+            if not query['selector_screens']:
+                raise RuntimeError('native selector output geometry is unavailable')
         found = x11_windows(query)
         if query.get('accessible'):
             nodes = accessible({'owned':True, 'visible':True, **query['accessible']})
-            found = [w for w in found if any(n['pid']==w['pid'] and n.get('rect') and
-                      n['rect']==[w[k] for k in ('x','y','width','height')] for n in nodes)]
+            def bound(w, n):
+                if n['pid'] != w['pid']:
+                    return False
+                box = [w[k] for k in ('x','y','width','height')]
+                if (query.get('accessible', {}).get('name') == 'Capture region' and
+                        query.get('selector_screens') and w.get('override_redirect') and
+                        native_capture_process(w['pid'])):
+                    # NativeRegionAccessible.rect() is the selection (initially
+                    # the output union), not any individual cover window.
+                    return box in query['selector_screens'] and n.get('name') == 'Capture region'
+                return n.get('rect') == box
+            found = [w for w in found if any(bound(w, n) for n in nodes)]
         # Native selector overlays can have one visible window per head. The
         # focused head (or explicitly selected head) disambiguates, never order.
         if query.get('point'):
@@ -1505,7 +1593,54 @@ def native_capture_process(pid):
         return False
 
 
+def selector_process(pid):
+    import shutil
+    import hashlib
+    from pathlib import Path
+    for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
+        try:
+            expected = shutil.which(name)
+            if expected and os.path.samefile('/proc/'+str(pid)+'/exe', expected):
+                return True
+        except OSError:
+            pass
+        # The mounted AppImage and the lab's hash-verified extracted copy
+        # have different inodes. Match executable bytes, never just a name.
+        bundled = Path.home()/'putgd-lab/appimage/squashfs-root/usr/bin'/name
+        try:
+            if bundled.is_file() and not bundled.is_symlink():
+                with bundled.open('rb') as expected, open('/proc/'+str(pid)+'/exe', 'rb') as actual:
+                    if hashlib.file_digest(expected, 'sha256').digest() == hashlib.file_digest(actual, 'sha256').digest():
+                        return True
+        except OSError:
+            pass
+    return False
+
+
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')
+
+
+def shell_applications(application):
+    """Select the compositor by its bus-owner executable before reading AT-SPI.
+
+    The registry can retain foreign clients with unsupported or stale Name
+    properties. They cannot establish anything about the shell's stage (#898).
+    A failed daemon ownership query or a failed matching shell still refuses.
+    """
+    for app in desktop_root():
+        if app is None:
+            continue
+        try:
+            pid = app.get_process_id()
+        except NotImplementedError as error:
+            # The bus daemon definitively reports a disconnected client. All
+            # other failures, including timeouts, leave ownership unverified.
+            cause = error.__cause__
+            if getattr(cause, 'get_dbus_name', lambda: '')() == 'org.freedesktop.DBus.Error.NameHasNoOwner':
+                continue
+            raise
+        if any(fnmatch.fnmatchcase(name, application) for name in executable(pid)):
+            yield app
 
 
 def shell_cover(point, application):
@@ -1519,12 +1654,14 @@ def shell_cover(point, application):
     import pyatspi
     bound_calls()
     x, y = int(point[0]), int(point[1])
-    for app in desktop_root():
+    observed = False
+    for app in shell_applications(application):
         try:
             if not app or not fnmatch.fnmatchcase(app.name or '', application):
                 continue
             for window in app:
                 stage = list(window.queryComponent().getExtents(pyatspi.DESKTOP_COORDS))
+                observed = True
                 node, chain = window.queryComponent().getAccessibleAtPoint(x, y, pyatspi.DESKTOP_COORDS), []
                 for _ in range(40):
                     if node is None or not node.getState().contains(pyatspi.STATE_SHOWING):
@@ -1544,6 +1681,8 @@ def shell_cover(point, application):
                     return cover
         except (NotImplementedError, AttributeError) as error:
             raise RuntimeError('shell cover observation unavailable: '+type(error).__name__) from error
+    if not observed:
+        raise RuntimeError('shell cover observation unavailable: compositor stage was not observed')
     return None
 
 
@@ -1593,6 +1732,10 @@ def shell_hit(query):
     if not fnmatch.fnmatchcase(expected.get('application',''), query['shell_application']):
         raise RuntimeError('desktop hit-test requires the profile compositor application')
     point = query['point']
+    rect = expected.get('rect')
+    if (not rect or len(rect) != 4 or min(rect[2:]) <= 0 or
+            not (rect[0] <= point[0] < rect[0] + rect[2] and rect[1] <= point[1] < rect[1] + rect[3])):
+        return {'ok': False, 'backend': 'shell-at-spi-pick', 'obscuring_window': 'expected shell control has no containing bounds'}
     roots = [app for app in desktop_root() if app and app.get_process_id()==expected['pid']]
     for app in roots:
         for window in app:
@@ -1601,7 +1744,9 @@ def shell_hit(query):
                 for _ in range(50):
                     if node is None:
                         break
-                    if node.get_process_id()==expected['pid'] and (node.name or '')==expected['name'] and normalize_role(node.getRoleName())==normalize_role(expected['role']):
+                    if (node.get_process_id()==expected['pid'] and (node.name or '')==expected['name']
+                            and normalize_role(node.getRoleName())==normalize_role(expected['role'])
+                            and list(node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)) == list(rect)):
                         return {'ok':True,'backend':'shell-at-spi-pick','obscuring_window':None}
                     child = node.queryComponent().getAccessibleAtPoint(int(point[0]),int(point[1]),pyatspi.DESKTOP_COORDS)
                     if child == node:
@@ -1804,6 +1949,14 @@ def witness_foreground(query):
     chrome or another client at the point refuses input and is named.
     """
     compositor, target, point = query['compositor'], query['geometry'], query.get('point')
+    if target.get('gnome_selector'):
+        selector = gnome_selector(point)
+        same = (selector and selector['request_id'] == target.get('window_id') and
+                selector['client_pid'] == target.get('pid') and
+                selector['rect'] == [target[k] for k in ('x','y','width','height')])
+        ok = same and selector['pointer' if point is not None else 'keyboard']
+        return {'ok': bool(ok), 'backend': 'gnome-owned-selector-pick',
+                'obscuring_window': None if ok else 'put.gd selector request changed or its actor is covered'}
     wid = target.get('window_id')
     if wid is None:
         raise RuntimeError('Wayland target has no compositor window identity')

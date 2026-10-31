@@ -6,7 +6,7 @@ let code=fs.readFileSync(path,'utf8').replace(/^import .*;\n/gm,'').replace('exp
 const callbacks=new Map();
 let unexported=false;
 const native={display:{connect:(signal,cb)=>(callbacks.set(signal,cb),signal),disconnect:id=>callbacks.delete(id)}};
-const fake={global:native,GLib:{uuid_string_random:()=> 'epoch',get_monotonic_time:()=>1000},
+const fake={global:native,Atk:{Object:{prototype:{get_name(){return this.objectName;},get_role(){return this.objectRole;}}}},GLib:{uuid_string_random:()=> 'epoch',get_monotonic_time:()=>1000},
  Gio:{DBusExportedObject:{wrapJSObject:()=>({export(){},unexport(){unexported=true}})},DBus:{session:{}}},
  Meta:{GrabOp:{MOVING:1,RESIZING_SE:24577}},Extension:class {}};
 vm.createContext(fake);vm.runInContext(code+'\nthis.Witness=LabWitness;',fake);
@@ -21,4 +21,40 @@ assert.equal(snapshot.events[0].phase,'begin');assert.equal(snapshot.events[1].p
 for(let i=0;i<300;i++)callbacks.get('grab-op-begin')(native.display,window,1);
 snapshot=JSON.parse(w.Grabs());assert.equal(snapshot.events.length,256);assert.equal(snapshot.serial,302);
 w.disable();assert.equal(callbacks.size,0);assert.equal(unexported,true);
+// StLabel's accessible object supplies its role/name even when the actor's
+// override properties still contain their defaults. Match the exported ATK
+// object, as the live AT-SPI banner does (#926).
+const labelActor = {
+    get_transformed_position: () => [830, 30], get_transformed_size: () => [200, 20],
+    get_accessible_name: () => null, accessible_role: 0,
+    get_text: () => 'Upload complete',
+    get_accessible: () => ({objectName: 'Upload complete', objectRole: 28,
+        get_name: () => {throw new TypeError('Atk.Action.get_name needs an index');}}),
+};
+fake.labelActor = labelActor;
+const description = vm.runInContext('actorDescription(labelActor)', fake);
+assert.equal(description.role, 28);
+assert.equal(description.accessible, 'Upload complete');
 console.log('GNOME witness signal lifecycle passed');
+
+// A selector belongs to the extension's exact request/actor, never its name.
+const child={}, foreign={};
+let picked=child, owner=':1.50';
+const selector={mapped:true,visible:true,_closed:false,_grab:{},
+    contains:actor=>actor===child,
+    get_transformed_position:()=>[0,0],get_transformed_size:()=>[1280,800],
+    get_accessible:()=>({objectName:'Capture region',objectRole:1})};
+const request={id:'request-1',sender:owner,selector,stage:'region-select',action:'region'};
+const extension={_enabled:true,_selector:selector,_requests:new Map([[request.id,request]])};
+fake.Main={sessionMode:{isLocked:false},extensionManager:{lookup:()=>({stateObj:extension})}};
+fake.GLib.Variant=class{};fake.GLib.VariantType=class{};
+fake.Gio.DBusCallFlags={NONE:0};fake.Clutter={PickMode:{REACTIVE:1}};
+fake.Gio.DBus.session.call_sync=(_bus,_path,_iface,method)=>({deep_unpack:()=>[method==='GetNameOwner'?owner:50]});
+fake.global.stage={get_actor_at_pos:()=>picked,get_key_focus:()=>child};
+let result=JSON.parse(w.Selector('{"point":[40,50]}'));
+assert.equal(result.client_pid,50);assert.equal(result.pointer,true);assert.equal(result.keyboard,true);
+picked=foreign;assert.equal(JSON.parse(w.Selector('{"point":[40,50]}')).pointer,false);
+request.selector=foreign;assert.deepEqual(JSON.parse(w.Selector('{}')),{});
+request.selector=selector;owner=':1.99';assert.deepEqual(JSON.parse(w.Selector('{}')),{});
+owner=request.sender;fake.Main.sessionMode.isLocked=true;assert.deepEqual(JSON.parse(w.Selector('{}')),{});
+console.log('GNOME owned selector reference, sender and occlusion refusals passed');

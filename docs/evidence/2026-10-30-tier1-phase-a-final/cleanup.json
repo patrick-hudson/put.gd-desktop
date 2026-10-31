@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sandboxes": [
+    "bx_s8jxdf93",
+    "bx_7a9zcrmx",
+    "bx_unbdwyhb",
+    "bx_5m42qrbk",
+    "bx_ng72wuxu",
+    "bx_wtrrs85y"
+  ],
+  "allOwnedSandboxesAbsent": true,
+  "allSixOverlaysRetired": true,
+  "wallEntriesRemoved": true,
+  "tunnelsStopped": true,
+  "agentStopped": true,
+  "namedSnapshotsPreserved": true
+}

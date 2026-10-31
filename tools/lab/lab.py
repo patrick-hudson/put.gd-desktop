@@ -2141,6 +2141,10 @@ APPIMAGE_SHIMS = {
                  'export LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"\n'
                  'export QT_PLUGIN_PATH="$root/usr/plugins:$root/usr/lib/qt6/plugins${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
                  'exec "$root/usr/bin/putgd-cli" "$@"\n',
+    'putgd-record': '#!/bin/sh\nroot="$HOME/putgd-lab/appimage/squashfs-root"\n'
+                 'export LD_LIBRARY_PATH="$root/usr/lib:$root/usr/lib/putgd${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"\n'
+                 'export QT_PLUGIN_PATH="$root/usr/plugins:$root/usr/lib/qt6/plugins${{QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}}"\n'
+                 'exec "$root/usr/bin/putgd-record" "$@"\n',
 }
 
 

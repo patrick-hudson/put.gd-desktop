@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_kz4vqmha",
+      "run_id": "7ecf6b5f-0fc2-4d51-aad4-e2baa839ffb4",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/user/t1/work/lab-runs/ae1",
+      "session_root": "/tmp/sd-8fd13135",
+      "socket": "/tmp/sd-8fd13135/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "kwin_entry_staging": [],
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 3512,
+      "start": "126589",
+      "boot": "6d52c726-062a-4483-8a60-ee192c240171",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1253,
+      "start": 992,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "editor.upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/d1/receipt.json",
+      "note": "operationId=42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249; editor operationId=42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249; before-press {\"screen\": [299, 128], \"shapes\": [], \"view\": {\"busy\": false, \"cancelLabel\": \"Cancel\", \"canvasSize\": [659, 456], \"cropPending\": false, \"destination\": {\"above\": false, \"sharingMode\": \"Shared link\", \"text\": \"Synthetic loopback S3 \\u00b7 Shared link\"}, \"discardConfirmation\": {\"open\": false, \"text\": null}, \"editingText\": false, \"fitted\": true, \"geometry\": null, \"geometryDetails\": {\"open\": false, \"visible\": false}, \"keyboardHelp\": {\"open\": false, \"text\": \"[ / ]: Cycle marks\\nArrows: Move\\nShift+arrows: Resize\\nCtrl+arrows: Move 10 px\\nCtrl+Shift+arrows: Resize 10 px\\nTab: Focus properties\\nDelete: Remove mark\\nEscape: Deselect\\nInsert: Place mark\\nCtrl+Z: Undo\\nCtrl+Shift+Z: Redo\"}, \"lastCopiedPath\": null, \"lastSave\": {\"status\": null}, \"lastShowInFolder\": null, \"message\": null, \"preparationFailure\": null, \"propertiesWidth\": 240, \"saveDetailsOpen\": false, \"saveFeedbackVisible\": false, \"savingCopy\": false, \"scheme\": \"light\", \"selectedShapeId\": null, \"selection\": \"No marks. Insert places a redaction in the middle. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.\", \"style\": {\"color\": \"#dc2626\", \"font\": \"IBM Plex Sans\", \"fontPixels\": 28, \"strength\": 12, \"width\": 4}, \"textOutsideImage\": false, \"tool\": \"redact\", \"visibleRect\": [0, 0, 640, 320], \"zoomPercent\": 98}}; official MCP get_editor answered while real press was held",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/outcomes.edit_upload/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.edit_upload/03-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:12:07Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/d1/receipt.json",
+      "note": "operationId=42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249; editor operationId=42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249; before-press {\"screen\": [299, 128], \"shapes\": [], \"view\": {\"busy\": false, \"cancelLabel\": \"Cancel\", \"canvasSize\": [659, 456], \"cropPending\": false, \"destination\": {\"above\": false, \"sharingMode\": \"Shared link\", \"text\": \"Synthetic loopback S3 \\u00b7 Shared link\"}, \"discardConfirmation\": {\"open\": false, \"text\": null}, \"editingText\": false, \"fitted\": true, \"geometry\": null, \"geometryDetails\": {\"open\": false, \"visible\": false}, \"keyboardHelp\": {\"open\": false, \"text\": \"[ / ]: Cycle marks\\nArrows: Move\\nShift+arrows: Resize\\nCtrl+arrows: Move 10 px\\nCtrl+Shift+arrows: Resize 10 px\\nTab: Focus properties\\nDelete: Remove mark\\nEscape: Deselect\\nInsert: Place mark\\nCtrl+Z: Undo\\nCtrl+Shift+Z: Redo\"}, \"lastCopiedPath\": null, \"lastSave\": {\"status\": null}, \"lastShowInFolder\": null, \"message\": null, \"preparationFailure\": null, \"propertiesWidth\": 240, \"saveDetailsOpen\": false, \"saveFeedbackVisible\": false, \"savingCopy\": false, \"scheme\": \"light\", \"selectedShapeId\": null, \"selection\": \"No marks. Insert places a redaction in the middle. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.\", \"style\": {\"color\": \"#dc2626\", \"font\": \"IBM Plex Sans\", \"fontPixels\": 28, \"strength\": 12, \"width\": 4}, \"textOutsideImage\": false, \"tool\": \"redact\", \"visibleRect\": [0, 0, 640, 320], \"zoomPercent\": 98}}; official MCP get_editor answered while real press was held",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/outcomes.edit_upload/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.edit_upload/03-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:12:07Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/d1/receipt.json",
+      "note": "operationId=42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249; editor operationId=42a9fc48-0b18-4fc6-ace8-ebeeb5a2b249; before-press {\"screen\": [299, 128], \"shapes\": [], \"view\": {\"busy\": false, \"cancelLabel\": \"Cancel\", \"canvasSize\": [659, 456], \"cropPending\": false, \"destination\": {\"above\": false, \"sharingMode\": \"Shared link\", \"text\": \"Synthetic loopback S3 \\u00b7 Shared link\"}, \"discardConfirmation\": {\"open\": false, \"text\": null}, \"editingText\": false, \"fitted\": true, \"geometry\": null, \"geometryDetails\": {\"open\": false, \"visible\": false}, \"keyboardHelp\": {\"open\": false, \"text\": \"[ / ]: Cycle marks\\nArrows: Move\\nShift+arrows: Resize\\nCtrl+arrows: Move 10 px\\nCtrl+Shift+arrows: Resize 10 px\\nTab: Focus properties\\nDelete: Remove mark\\nEscape: Deselect\\nInsert: Place mark\\nCtrl+Z: Undo\\nCtrl+Shift+Z: Redo\"}, \"lastCopiedPath\": null, \"lastSave\": {\"status\": null}, \"lastShowInFolder\": null, \"message\": null, \"preparationFailure\": null, \"propertiesWidth\": 240, \"saveDetailsOpen\": false, \"saveFeedbackVisible\": false, \"savingCopy\": false, \"scheme\": \"light\", \"selectedShapeId\": null, \"selection\": \"No marks. Insert places a redaction in the middle. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.\", \"style\": {\"color\": \"#dc2626\", \"font\": \"IBM Plex Sans\", \"fontPixels\": 28, \"strength\": 12, \"width\": 4}, \"textOutsideImage\": false, \"tool\": \"redact\", \"visibleRect\": [0, 0, 640, 320], \"zoomPercent\": 98}}; official MCP get_editor answered while real press was held",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "cinnamon-x11",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failure-before-cleanup",
+          "path": "frames/outcomes.edit_upload/02-failure-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.edit_upload/03-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:12:07Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 10,
+    "pngs": 5,
+    "image_audit": "known-regions",
+    "findings": []
+  }
+}

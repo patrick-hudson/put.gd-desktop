@@ -1,0 +1,25 @@
+{
+  "placement": "boat",
+  "url": "http://127.0.0.1:8765/",
+  "observer": "CUA live wall AX state plus saved forwarded RFB visuals",
+  "tiles": {
+    "aurora": {
+      "port": 5993,
+      "sandbox": "bx_k35grtk3",
+      "runId": "e37ae677-180c-4f1d-bc4c-8aa1dc4bc114",
+      "connected": true,
+      "savedVisuals": [
+        "aurora-boot2.png",
+        "aurora-ready.png"
+      ]
+    },
+    "cinnamon": {
+      "port": 5994,
+      "sandbox": "bx_kz4vqmha",
+      "connected": true,
+      "savedVisuals": [
+        "cinnamon-ready.png"
+      ]
+    }
+  }
+}

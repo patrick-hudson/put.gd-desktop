@@ -21,7 +21,7 @@ from tools.lab.surface_driver.run import run_recipes, main
 from tools.lab.surface_driver.target import Target
 from tools.lab.surface_driver import redact
 sys.path.insert(0, str(ROOT/'tests/desktop'))
-from surface_live_fixture import EVIDENCE, FakeDesktop, control, owned_window
+from surface_live_fixture import EVIDENCE, FakeDesktop, admitted, control, owned_window
 try:
     from PIL import Image, PngImagePlugin
 except ImportError:
@@ -70,6 +70,13 @@ class Secrets(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def live(self):
+        # These full-layer assertions belong to live destinations. Local
+        # synthetic frames now have their own secret-field-only coverage.
+        with admitted():
+            self.ctx = DriverContext(self.ctx.target, dict(self.env, destination='s3'), self.ctx.profile,
+                                     self.catalog, self.out)
 
     def assert_safe(self, directory):
         for path in Path(directory).rglob('*'):
@@ -249,6 +256,7 @@ class Secrets(unittest.TestCase):
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_masks_before_first_write_and_strips_png_metadata(self):
+        self.live()
         image = Image.new('RGB', (120, 80), 'white')
         image.info['secret'] = LINK
         original = Image.Image.save
@@ -280,6 +288,7 @@ class Secrets(unittest.TestCase):
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_live_catalog_geometry_masks_link_with_hidpi_and_head_origin(self):
+        self.live()
         inventory = {'width': 100, 'height': 50, 'controls': [{'name': 'historyLink', 'class': 'QLineEdit', 'rect': [5, 5, 20, 5]}]}
         (self.catalog/'history.controls.json').write_text(json.dumps(inventory))
         self.ctx.catalog = Catalog(self.catalog, {})
@@ -295,6 +304,7 @@ class Secrets(unittest.TestCase):
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_missing_geometry_fails_closed_and_dimensions_do_not_save_raw_frame(self):
+        self.live()
         self.ctx.profile.pop('evidence')
         self.ctx.sensitive(LINK)
         self.assertEqual(self.ctx._dimensions(), (120, 80))
@@ -306,6 +316,7 @@ class Secrets(unittest.TestCase):
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_desktop_frames_need_a_declaration_and_known_geometry(self):
+        self.live()
         self.ctx.sensitive(LINK)
         frame = self.ctx.frame('undeclared')
         self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])

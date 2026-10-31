@@ -360,6 +360,7 @@ class DispatchFixes(unittest.TestCase):
                 entry = next((home / '.local/share/applications').glob('putgdsurface*.desktop')).read_text()
                 self.assertIn('"--profile" "%s" "--kiosk" "--marionette" %%u' % directory, entry)
                 prefs = (directory / 'user.js').read_text()
+                self.assertIn('user_pref("accessibility.force_disabled", -1);', prefs)
                 self.assertIn('user_pref("browser.link.open_newwindow.override.external", 3);', prefs)
                 self.assertIn('user_pref("datareporting.policy.firstRunURL", "");', prefs)
                 transaction = json.loads((directory / 'transaction.json').read_text())
