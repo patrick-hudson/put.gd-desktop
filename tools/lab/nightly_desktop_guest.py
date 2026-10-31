@@ -76,6 +76,58 @@ NIGHTLY_RAM
 '''
 
 
+def prepare_live_keyring(run, out):
+    """Use the local fixture's unique GNOME connection alongside Atomic KWallet.
+
+    The daemon and its blank collection live on the disposable guest's tmpfs.
+    Its unique bus name is shared by the bridge and every private app resident.
+    KWallet keeps its original owner, collections and default alias.
+    """
+    from tools.lab.surface_driver.fixtures.keyring import OWNER, UNIQUE_SERVICE
+    lab.verify_owned_guest(run)
+    prior = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+OWNER+'\nPY\n'))
+    if prior['provider'] != 'ksecretd':
+        return
+    root = '/dev/shm/nd-keys'
+    from tools.lab.surface_driver.target import checked_socket
+    checked_socket(root+'/control/control')
+    script = '''import json,os,subprocess
+from pathlib import Path
+root=Path(ROOT);root.mkdir(mode=0o700)
+for name in ('config','data','cache','control'):(root/name).mkdir(mode=0o700)
+with (root/'daemon.log').open('xb') as log:
+ p=subprocess.Popen(['gnome-keyring-daemon','--foreground','--components=secrets',
+                     '--control-directory='+str(root/'control')],
+  env=dict(os.environ,XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),
+           XDG_CACHE_HOME=str(root/'cache')),stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rsplit(')',1)[1].split()[19])))
+'''.replace('ROOT', repr(root))
+    identity = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+script+'\nPY\n'))
+    probe = UNIQUE_SERVICE.replace('IDENTITY', repr(identity))
+    import time
+    deadline = time.monotonic()+10
+    while True:
+        names = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+probe+'\nPY\n'))
+        if len(names) == 1:
+            break
+        if len(names) > 1 or time.monotonic() >= deadline:
+            raise RuntimeError('isolated live Secret Service connection unavailable or ambiguous')
+        time.sleep(.2)
+    # Establish the collection before importing either real credential.
+    lab.put(run, str(Path(__file__).with_name('lab_keyring.py')), root+'/lab_keyring.py')
+    info = lab.state(run)
+    info['secret_service'] = names[0]
+    prefix = lab.guest_secret_prefix(info)
+    created = json.loads(lab.guest_session(run, prefix+'python3 '+root+'/lab_keyring.py'))
+    status = json.loads(lab.guest_session(run, prefix+'python3 '+root+'/lab_keyring.py --status'))
+    after = json.loads(lab.guest_session(run, "python3 - <<'PY'\n"+OWNER+'\nPY\n'))
+    if after != prior or status.get('locked') is not False or status.get('default') != created['collection']:
+        raise RuntimeError('isolated live keyring readiness or preserved KWallet owner failed')
+    lab.write_json(run/'state.json', info)
+    (out/'live-keyring.json').write_text(json.dumps(dict(identity, busName=names[0],
+        root=root, collection=status, desktopServicePreserved=after == prior), indent=2))
+
+
 def prepare(run, row, out):
     lab.verify_owned_guest(run)
     package = row['package']

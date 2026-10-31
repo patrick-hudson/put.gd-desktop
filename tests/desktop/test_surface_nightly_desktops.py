@@ -37,6 +37,54 @@ class FakeGitHub:
 
 
 class NightlyTests(unittest.TestCase):
+    def test_filtered_run_preserves_other_desktops_and_exact_build(self):
+        builders = {host: dict(rows=[dict(name='Aurora' if host == 'aurora-amd' else host,
+                                         desktop=host+'-profile')]) for host in nightly.HOSTS}
+        self.assertEqual(list(nightly.selected_builders(builders, ['Aurora'])), ['aurora-amd'])
+        self.assertEqual(list(nightly.selected_builders(builders, ['aurora-amd-profile'])), ['aurora-amd'])
+        with self.assertRaises(RuntimeError):
+            nightly.selected_builders(builders, ['typo'])
+        previous = dict(release='tag', build=BUILD, desktops=[dict(host=h, cells={'old': h}) for h in builders])
+        result = dict(release='tag', build=BUILD, desktops=[dict(host='aurora-amd', cells={'new': True})])
+        merged = nightly.merge_desktops(previous, result)
+        self.assertIs(merged[0], previous['desktops'][0])
+        self.assertIs(merged[3], result['desktops'][0])
+        with self.assertRaises(RuntimeError):
+            nightly.merge_desktops(previous, dict(result, build='b'*40))
+
+    def test_guest_service_selection_is_explicit_and_never_changes_host_default(self):
+        from tools.lab import lab, lab_keyring
+        self.assertEqual(lab.guest_secret_prefix({}), '')
+        prefix = lab.guest_secret_prefix({'secret_service': ':1.123'})
+        self.assertIn('SECRET_SERVICE_BUS_NAME=:1.123', prefix)
+        self.assertIn('QTKEYCHAIN_BACKEND=libsecret', prefix)
+        for name in ('org.freedesktop.secrets', ':1.2\nexec bad', 123):
+            with self.assertRaises(lab.LabError):
+                lab.guest_secret_prefix({'secret_service': name})
+        from types import SimpleNamespace
+        calls = []
+        def run(argv, **kwargs):
+            calls.append(argv)
+            return SimpleNamespace(returncode=0, stdout='o "/"' if 'ReadAlias' in argv else '')
+        with patch.dict('os.environ', {'SECRET_SERVICE_BUS_NAME': ':1.123'}):
+            lab_keyring.secret_service(run)
+        self.assertTrue(all(':1.123' in call for call in calls))
+
+    def test_filtered_publication_keeps_existing_receipt_links_and_does_not_close(self):
+        failure=dict(number=2,title='nightly: Aurora failing',state='open')
+        github=FakeGitHub(failure)
+        prior_row=dict(desktop='Mint',host='m74',evidence='/old',cells={
+            'region_upload':dict(nightly.cell('green'),receiptUrl='https://example.test/old')})
+        row=dict(desktop='Aurora',host='aurora-amd',evidence='/new',cells={'region_upload':nightly.cell('green')})
+        previous=dict(release='tag',build=BUILD,desktops=[prior_row,dict(row)])
+        result=dict(release='tag',build=BUILD,date='today',desktops=[row])
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github,result,Path(tmp),previous=previous)
+            self.assertIn('https://example.test/old',(Path(tmp)/'results.md').read_text())
+        self.assertEqual(len(result['desktops']),2)
+        self.assertEqual(sum(w[0]=='POST' and w[1].endswith('/1/comments') for w in github.writes),1)
+        self.assertFalse(any(w[0]=='PATCH' for w in github.writes))
+
     def receipt(self, root, *, functional='passed', review=True, cleanup=None, note='pixel oracle mismatch'):
         value = dict(environment=dict(build=BUILD, observed_build=dict(gitCommit=BUILD,dirty=False),
                 coverage_export=dict(published=True,scanned_before_copy=True,copy_scan_passed=True),

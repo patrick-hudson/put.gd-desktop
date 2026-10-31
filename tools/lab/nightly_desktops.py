@@ -322,7 +322,7 @@ def baton_returned(run):
 
 def worker(config, tag, identity, artifacts, out):
     from tools.lab import lab
-    from tools.lab.nightly_desktop_guest import prepare
+    from tools.lab.nightly_desktop_guest import prepare, prepare_live_keyring
     out.mkdir(mode=0o700, parents=True)
     if command(['git', 'rev-parse', 'HEAD']).strip() != identity['driver']:
         raise NotRun('worker checkout differs from the controller source identity')
@@ -380,10 +380,12 @@ def worker(config, tag, identity, artifacts, out):
                     record.update(runId=lab.state(run)['id'], goldenSha256=lab.state(run)['golden_sha256'],
                                   packageSha256=digest(package))
                     record['setupSeconds'] = round(time.monotonic()-setup_started, 3)
-                    env = dict(os.environ, PUTGD_TIER1_SESSION=session)
+                    env = dict(os.environ, PUTGD_TIER1_SESSION=session, HOME=str(Path.home().resolve()))
                     for flow in cells:
                         flow_started = time.monotonic()
                         destination = 's3' if flow.startswith('s3_') else 'proton' if flow.startswith('proton_') else 'local'
+                        if destination == 's3' and row['desktop'] == 'aurora-kde-wayland':
+                            prepare_live_keyring(run, rowout)
                         recipe = ('outcomes.' if destination == 'local' else 'outcomes_live.')+flow
                         for attempt in (1, 2):
                             if lease_errors:
@@ -406,7 +408,11 @@ def worker(config, tag, identity, artifacts, out):
                                 check = [*proton_command, 'check', '--session', session,
                                          '--owner', 'nightly-desktops']
                                 command(check, log=rowout/(name+'-check-before.json'), env=env)
-                                args = [*proton_command, 'lend', str(run),
+                                # The host adapter selects the native check app. Lending
+                                # must use this exact driver's guest/bridge implementation,
+                                # not the adapter's older installed copies. Canonical HOME
+                                # above preserves Atomic's /var/home lab profile identity.
+                                args = [sys.executable, str(ROOT/'tools/lab/proton_lab.py'), 'lend', str(run),
                                         '--session', session, '--owner', 'nightly-desktops',
                                         '--purpose', 'automatic nightly outcome', '--']+args
                             # The driver exits nonzero for functional reds. Collect its
@@ -506,7 +512,7 @@ def eligible_desktops(result):
                    for value in row['cells'].values()) for row in result['desktops'])
 
 
-def publish(github, result, out):
+def publish(github, result, out, *, previous=None):
     issues = github.issues()
     title = 'Nightly desktop results'
     pinned = next((i for i in issues if i['title'] == title), None)
@@ -542,7 +548,10 @@ def publish(github, result, out):
         elif existing and existing['state'] == 'open' and all(v['status'] == 'green' for v in row['cells'].values()):
             github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
                 dict(body=f'All enabled flows recovered on `{result["release"]}`. [Receipt]({comment["html_url"]}).'))
-            github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed', state_reason='completed'))
+            if previous is None:
+                github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed', state_reason='completed'))
+    if previous is not None:
+        result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
     markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ not run (infrastructure; no issue) · — disabled.\n'
     markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
@@ -564,6 +573,29 @@ def not_run_rows(host, builder, reason, out):
                  cells={flow:cell(assertion=reason) for flow in LOCAL+
                         (['s3_region_upload','proton_region_upload'] if row.get('live') else [])})
             for row in builder['rows']]
+
+
+def selected_builders(builders, desktops):
+    if not desktops:
+        return builders
+    selected = {}
+    for name in desktops:
+        matches = {host: builder for host, builder in builders.items() if
+                   name.casefold() in {host.casefold(), *(r['name'].casefold() for r in builder['rows']),
+                                       *(r['desktop'].casefold() for r in builder['rows'])}}
+        if len(matches) != 1:
+            raise RuntimeError('desktop filter must identify exactly one configured builder: '+name)
+        selected.update(matches)
+    return {host: builder for host, builder in builders.items() if host in selected}
+
+
+def merge_desktops(previous, result):
+    if (previous['release'], previous['build']) != (result['release'], result['build']):
+        raise RuntimeError('filtered publication requires the same release and exact build')
+    replacements = {r['host']: r for r in result['desktops']}
+    if not replacements.keys() <= {r['host'] for r in previous['desktops']}:
+        raise RuntimeError('filtered publication cannot introduce an unknown desktop')
+    return [replacements.get(r['host'], r) for r in previous['desktops']]
 
 
 def run_host(host, builder, tag, artifacts, archive, out):
@@ -651,30 +683,41 @@ def controller(args, config):
             return
         if set(config['builders']) != set(HOSTS) or any(len(b['rows']) != 1 for b in config['builders'].values()):
             raise RuntimeError('configure exactly one desktop on each of the five builders')
+        builders = selected_builders(config['builders'], args.desktops)
+        previous = None
+        if args.desktops:
+            marker = json.loads((state/'last-run.json').read_text())
+            previous = json.loads(Path(marker['results']).read_text())
+            if previous['release'] != tag:
+                raise RuntimeError('filtered run requires the currently published table release')
         out = state/(tag+'-'+uuid.uuid4().hex[:8])
         out.mkdir(mode=0o700)
         artifacts = out/'artifacts'
         artifacts.mkdir(mode=0o700)
         result = dict(release=tag,build='unverified',date=dt.datetime.now(dt.timezone.utc).isoformat(),desktops=[])
         try:
-            rows = [row for b in config['builders'].values() for row in b['rows']]
+            rows = [row for b in builders.values() for row in b['rows']]
             identity = release_assets(github, tag, artifacts/'packages', rows)
             identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb','.rpm','.AppImage')}
             identity['driver'] = command(['git','rev-parse','HEAD']).strip()
             identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
             save(artifacts/'identity.json', identity)
             result['build'] = identity['gitCommit']
+            if previous is not None:
+                merge_desktops(previous, result)  # Fail before launching any guest on identity mismatch.
         except Exception as error:
             reason = str(error) if type(error) is RuntimeError else 'release preparation failed: '+type(error).__name__
-            result['desktops'] = [row for host,builder in config['builders'].items()
+            if previous is not None:
+                raise  # Preserve the published table if release preparation was not verified.
+            result['desktops'] = [row for host,builder in builders.items()
                                   for row in not_run_rows(host,builder,reason,out)]
         else:
-            run_hosts(config['builders'],tag,artifacts,out,result)
+            run_hosts(builders,tag,artifacts,out,result)
         result['eligibleDesktops'] = eligible_desktops(result)
-        publish(github,result,out)
+        publish(github,result,out,previous=previous)
         save(state/'last-run.json',dict(results=str(out/'results.json'),eligibleDesktops=result['eligibleDesktops']))
         # Grey is not a tested release. A later daily check may try it again.
-        if result['eligibleDesktops'] >= 3:
+        if not args.desktops and result['eligibleDesktops'] >= 3:
             save(done,dict(schemaVersion=2,eligibleDesktops=result['eligibleDesktops'],
                            issueUrl=result['issueUrl'],results=str(out/'results.json')))
         print(result['issueUrl'])
@@ -684,11 +727,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tag', nargs='?')
     parser.add_argument('--now', action='store_true', help='manual trigger, including rechecking the same release')
+    parser.add_argument('--desktops', nargs='+', help='recheck only these desktop names, profile names or builder IDs; preserve other rows')
     parser.add_argument('--config', type=Path, default=Path.home()/'.config/putgd-nightly/config.json')
     parser.add_argument('--worker', choices=HOSTS, help=argparse.SUPPRESS)
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
+    if args.desktops and (not args.now or args.worker):
+        parser.error('--desktops requires --now on the controller')
     config = json.loads(private_file(args.config).read_text())
     expected = args.worker or 'd69'
     if socket.gethostname() not in config['builders'][expected]['hostnames']:
