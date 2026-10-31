@@ -548,10 +548,25 @@ leaked at the capture queue`.
 The stamping probe copies each PipeWire frame out on the source thread, so the
 compositor's stream buffers (KWin offers 2–4) return at once instead of
 waiting in the capture queue and the converter; a compositor skips a frame
-whenever none is free (#6). On Plasma 6.7 about 47 distinct frames per second
-is what a 60 Hz output yields even so: KWin's screencast records on a
-software vsync source at the negotiated max_framerate, a timer that beats
-against the real repaints. The nightly before PR #981 got 31.
+whenever none is free (#6). KWin 6.7's screencast throttle runs only when
+the negotiated `max_framerate` is non-zero, with an integer-millisecond
+interval stamped after its synchronous readback, which stretched every
+interval to about 20 ms (48 records per second, 31 distinct frames in the
+clip before PR #981). KWin offers `maxFramerate` as a range whose minimum is
+0/1, so the source is followed by `video/x-raw,max-framerate=0/1`; a
+compositor whose range starts above zero refuses the link and the pipeline
+retries without the filter. KWin then delivers about 66 records per second
+holding 60 distinct contents. A frame identical to the previous kept one
+(the same presentation recorded again after a cursor move or a second
+render) is dropped before the copy, and the rest take cadence-locked stamps:
+each new frame takes the slot one period after the previous stamp as long as
+it arrived within 0.7 of a period of that slot, an earlier extra is dropped
+and a later one resynchronises to its arrival (`lockedFrameTime`). Stamps
+follow arrivals on average, so the audio offset #86 measured stays, and sit
+on the grid between resyncs; raw arrivals under the same jitter cost five
+frames a second in `videorate`. `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=arrival`
+restores raw arrival stamps for lab A/B runs. On aurora-amd (Plasma 6.7.5)
+a 60 fps monitor recording holds 59.6–59.9 distinct frames per second.
 
 ### Wayland selection, bounds and bar
 

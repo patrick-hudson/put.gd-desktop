@@ -40,18 +40,23 @@ consecutive clip frames whose source frame advanced by exactly one.
 
 | Desktop | Acquisition, encoder | nightly distinct/s, fluid, longest stall | branch distinct/s, fluid, longest stall |
 | --- | --- | --- | --- |
-| aurora-amd, Plasma 6.7.5 Wayland, Radeon 740M | kde-screencast, `vah264enc` | 30.7 / 31.1, 0.30, 33 ms (2+ frame skips) | 47.0 / 46.5, 0.56, 17 ms (no skip over one frame) |
+| aurora-amd, Plasma 6.7.5 Wayland, Radeon 740M | kde-screencast, `vah264enc` | 30.7 / 31.1 (17 in one round), 0.30, 33–233 ms (2+ frame skips) | first pass 47.0 / 46.5, 0.56, 17 ms; with the unthrottled stream and the cadence lock 59.6 / 59.9 / 59.9, 0.99–0.997, 17 ms (1–4 repeats, 1–2 skips in 10 s) |
 | m74, Cinnamon 6.6 X11, HD 530 | ximagesrc, `vah264lpenc` | 59.3, 0.99, 17 ms | 58.6 / 59.4, 0.98, 17–33 ms |
 | f44, GNOME 50 Wayland, HD 530 | mutter-screencast, bundled `x264enc` | 31.0 / 30.1, 0.48, 17–33 ms (desktop at 31 fps while recording, 60 idle) | 29.7 / 30.8, 0.48, 33–50 ms (same; 15% less CPU) |
 | workstation, Cinnamon 6.6 X11, UHD 630 + T2000, 3 monitors, eDP-1 | ximagesrc, bundled `vah264lpenc` | 46.6 of a desktop running at 20 fps; clip 4.4 s for 9 s | 6.6 of a desktop running at 5 fps; clip 7.4 s for 10 s; at 30 fps: 27.7, desktop at its idle 30 fps |
 
 KDE: the compositor delivered 314 source frames to the nightly and 483 to the
-branch in 10 s. The remaining gap to 60 is KWin 6.7 itself: its screencast
-records on a software vsync source at the negotiated max_framerate (a 60 Hz
-timer) that beats against the real repaints, so about 47 distinct frames per
-second is the ceiling for a 60 Hz output. Requesting more stream buffers is
-not available to a client (KWin offers 2–4), so the branch copies each frame
-out on the source thread and returns the buffer at once.
+first-pass branch in 10 s. KWin 6.7.5 throttles only when the negotiated
+`max_framerate` is non-zero, with an integer-millisecond interval stamped
+after its synchronous readback (about 20 ms per record), and offers 0/1 as the
+minimum: asking for `max-framerate=0/1` turns the throttle off and KWin then
+delivers ~66 records per second with 60 distinct contents. The remaining
+loss (55 of 60 with raw arrival stamps) was ±8 ms arrival jitter in
+`videorate`'s slot choice; identical frames are dropped at the source and
+new frames take cadence-locked stamps. Mean-age smoothing (53–54) and the
+compositor's header times (51–53) were measured and rejected. KWin offers
+2–4 stream buffers, so the branch copies each frame out on the source thread
+and returns the buffer at once.
 
 Workstation: the Cinnamon compositor paces windows at about 30 fps on eDP-1
 and 21 fps on DP-3 while idle (fixture frame clock), so no selector or

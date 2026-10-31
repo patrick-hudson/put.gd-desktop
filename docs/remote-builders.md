@@ -303,6 +303,11 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   running resident, `--kwin-entry` for a build tree's screencast entry and
   `--real-data-home` for AppImages; `select` drags through the uinput agent
   (`--input-socket`) or xdotool and must release the button it pressed (#6).
+- `fake_outputs.py add DP-1 DP-3` forces spare DRM connectors on with the
+  booted monitor's EDID (runtime `drm.edid_firmware` plus a writable firmware
+  path, no reboot), so a builder with one monitor gets a three-output desktop
+  for selector and recording checks; `remove` restores them. Run it under the
+  desktop's lock and remove the outputs before releasing it.
 - `record_run.py` runs a whole check on the host: cover, precheck, each build's
   resident with private config/data/cache/state, `putgd-cli` recordings
   (monitor, region or window; any format; optional pause), `--motion`,
