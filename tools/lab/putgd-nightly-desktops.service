@@ -1,0 +1,15 @@
+[Unit]
+Description=Published nightly desktop outcomes
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/nd
+ExecStart=/usr/bin/python3 %h/nd/tools/lab/nightly_desktops.py
+Nice=10
+UMask=0077
+TimeoutStartSec=8h
+# Do not interrupt a Proton carry-back during an ordinary service stop.
+TimeoutStopSec=10min
+KillMode=mixed
