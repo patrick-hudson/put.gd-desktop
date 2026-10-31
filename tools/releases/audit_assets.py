@@ -66,18 +66,18 @@ def checksums(directory, expected):
 def remote_snapshot(repository, tag, directory, expected):
     # Release-by-tag omits drafts. The authenticated list includes them; bind
     # the selected ID before reading assets so the stable prepublication gate works.
-    page = 1
+    page, matches = 1, []
     while True:
         releases = json.loads(run('gh', 'api', f'repos/{repository}/releases?per_page=100&page={page}'))
-        matches = [item for item in releases if item['tag_name'] == tag]
-        if len(matches) > 1:
-            raise ValueError('Ambiguous release tag')
-        if matches:
-            metadata = json.loads(run('gh', 'api', f'repos/{repository}/releases/{matches[0]["id"]}'))
-            break
+        matches += [item for item in releases if item['tag_name'] == tag]
         if len(releases) < 100:
-            raise ValueError('Release tag not found in authenticated inventory')
+            break
         page += 1
+    if not matches:
+        raise ValueError('Release tag not found in authenticated inventory')
+    if len(matches) > 1:
+        raise ValueError('Ambiguous release tag')
+    metadata = json.loads(run('gh', 'api', f'repos/{repository}/releases/{matches[0]["id"]}'))
     assets = metadata['assets']
     if metadata['tag_name'] != tag or {a['name'] for a in assets} != set(expected) or len(assets) != len(expected):
         raise ValueError('Remote release asset inventory differs from downloads')

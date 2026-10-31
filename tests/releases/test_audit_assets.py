@@ -56,6 +56,15 @@ class DownloadChecks(unittest.TestCase):
         self.assertIn('releases?per_page=100', api.call_args_list[0].args[-1])
         self.assertEqual(api.call_args_list[1].args[-1], 'repos/owner/repo/releases/123')
 
+    def test_duplicate_draft_on_later_page_is_rejected(self):
+        first = [{'id': 1, 'tag_name': 'v26.1031.3384'}] + [
+            {'id': n + 2, 'tag_name': 'unrelated-' + str(n)} for n in range(99)]
+        second = [{'id': 200, 'tag_name': 'v26.1031.3384'}]
+        with patch.object(audit_assets, 'run', side_effect=[json.dumps(first), json.dumps(second)]) as api:
+            with self.assertRaisesRegex(ValueError, 'Ambiguous release tag'):
+                audit_assets.remote_snapshot('owner/repo', 'v26.1031.3384', self.root, {'package.deb'})
+        self.assertEqual(api.call_count, 2)
+
     def test_rebuild_must_reproduce_both_runtime_copies(self):
         catalog = {'helperSha256': self.digest}
         audit_assets.verify_rebuilt_proton({'rebuiltProton': {'sha256': self.digest, 'bundledSha256': self.digest}}, catalog)
