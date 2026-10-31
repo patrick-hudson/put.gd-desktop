@@ -1,0 +1,466 @@
+[
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.play",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.speed",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.timeline",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.trim-in",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.trim-out",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.trim-reset",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.key-timeline",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.add-mask",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.frame",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.masks",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.mask-in-out",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.mask-delete",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.mask-place",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.mask-disarm",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.key-frame-nudge",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.mask-options",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.wheel-lanes",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.format",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.save-copy",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.status-actions",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.destination-menu",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.upload",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "confirm.review-discard",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.discard",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.window-close",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.advice",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "mint-cinnamon-x11",
+    "interaction": "review.notice",
+    "rawFunctional": "blocked",
+    "functional": "blocked",
+    "issue": 672,
+    "reason": "Review control/dialog resolution refused input (#672)."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.play",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.speed",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.timeline",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.trim-in",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.trim-out",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.trim-reset",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.key-timeline",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.add-mask",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.frame",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.masks",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.mask-in-out",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.mask-delete",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.mask-place",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.mask-disarm",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.key-frame-nudge",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.mask-options",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.wheel-lanes",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.format",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.save-copy",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.status-actions",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.destination-menu",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.upload",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "confirm.review-discard",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.discard",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.window-close",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.advice",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.notice",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "review.preview-error",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "cli.recording",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "mcp.recording",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  },
+  {
+    "desktop": "ubuntu-gnome-wayland",
+    "interaction": "mcp.recording-review",
+    "rawFunctional": "failed",
+    "functional": "blocked",
+    "issue": 791,
+    "reason": "Shared recording fixture waits for ready while the real GNOME ScreenCast consent dialog awaits input (#791); review inputs and exports were not reached."
+  }
+]

@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "kind": "surface-review-round-2-development",
+  "recipeCommit": "b6b3749ac9797d70920a08226522d6692dc82597",
+  "acceptance": false,
+  "guests": {
+    "mint-cinnamon-x11": {
+      "guest": "cinnamon-x11",
+      "raw": {
+        "blocked": 29,
+        "passed": 2
+      },
+      "classified": {
+        "passed": 2,
+        "failed": 0,
+        "blocked": 29
+      },
+      "receipt": "docs/evidence/2026-10-30-recording-review-r2/cinnamon/c2/receipt.json",
+      "receiptSha256": "aa75c756ad62bafa925f391fb702514977e01de66ba2218a07aa4edaba85472d",
+      "environment": {
+        "desktop": "mint-cinnamon-x11",
+        "host": "boat",
+        "placement": "boat",
+        "guest": "cinnamon-x11",
+        "package": "deb",
+        "destination": "local",
+        "build": "b19a915b70ea",
+        "placement_details": {
+          "boat_sandbox_id": "bx_c75g6w46",
+          "run_id": "2321f202-6803-48d6-bebe-90817ec29595",
+          "lab_profile": "cinnamon-x11",
+          "run_directory": "/home/user/work/put.gd/src/work/lab-runs/rr2c2",
+          "session_root": "/tmp/sd-e961a1eb",
+          "socket": "/tmp/sd-e961a1eb/runtime/putgd/session.sock",
+          "input_backend": "qmp",
+          "frame_backend": "qmp"
+        },
+        "target": {
+          "hostname": "putgd-lab",
+          "kernel": "6.14.0-37-generic",
+          "machine": "x86_64",
+          "os": {
+            "ID": "linuxmint",
+            "VERSION_ID": "22.3",
+            "VARIANT_ID": null
+          },
+          "session_type": "x11",
+          "desktop": "X-Cinnamon",
+          "qt_platform": "xcb"
+        },
+        "observed_build": {
+          "baseVersion": "26.1030.2413",
+          "commitCount": 2413,
+          "dirty": false,
+          "gitCommit": "b19a915b70ea2edef69a01be0bafd97cb0cbfa7d",
+          "gitTree": "26428493e6e6deb47fb0ec1b7bec5eddef6a5ea0",
+          "packageVersion": "26.1030.2413~dev+gb19a915b70ea",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "26.1030.2413-dev+gb19a915b70ea"
+        }
+      }
+    },
+    "ubuntu-gnome-wayland": {
+      "guest": "gnome-wayland",
+      "raw": {
+        "failed": 31
+      },
+      "classified": {
+        "passed": 0,
+        "failed": 0,
+        "blocked": 31
+      },
+      "receipt": "docs/evidence/2026-10-30-recording-review-r2/gnome/g2/receipt.json",
+      "receiptSha256": "9255f1c76e145cb4d07be0acf62bae5f6febcfe81ee6a82f45c2aae0109cc559",
+      "environment": {
+        "desktop": "ubuntu-gnome-wayland",
+        "host": "boat",
+        "placement": "boat",
+        "guest": "gnome-wayland",
+        "package": "deb",
+        "destination": "local",
+        "build": "a18d79e762df",
+        "placement_details": {
+          "boat_sandbox_id": "bx_erv42c5d",
+          "run_id": "8b08a7e3-0aa2-4258-90b0-9f0e2f7e21c0",
+          "lab_profile": "gnome-wayland",
+          "run_directory": "/home/user/work/put.gd/src/work/lab-runs/rr2g2",
+          "session_root": "/tmp/sd-5ea83985",
+          "socket": "/tmp/sd-5ea83985/runtime/putgd/session.sock",
+          "input_backend": "qmp",
+          "frame_backend": "qmp"
+        },
+        "target": {
+          "hostname": "putgd-ubuntu-lab",
+          "kernel": "7.0.0-38-generic",
+          "machine": "x86_64",
+          "os": {
+            "ID": "ubuntu",
+            "VERSION_ID": "26.04",
+            "VARIANT_ID": null
+          },
+          "session_type": "wayland",
+          "desktop": "ubuntu:GNOME",
+          "qt_platform": "wayland"
+        },
+        "observed_build": {
+          "baseVersion": "26.1029.2302",
+          "commitCount": 2302,
+          "dirty": false,
+          "gitCommit": "a18d79e762dfa4780522e25d6e3f63df1b3a2258",
+          "gitTree": "579a24085c0c869d1fa8fc3c58fca623d60d8e2d",
+          "packageVersion": "26.1029.2302~dev+ga18d79e762df",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "26.1029.2302-dev+ga18d79e762df"
+        }
+      }
+    }
+  },
+  "classification": "Raw receipts are unchanged. Known setup/core failures receive blocked verdicts only in derived coverage."
+}

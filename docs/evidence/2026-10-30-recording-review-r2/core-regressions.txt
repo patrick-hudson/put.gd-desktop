@@ -1,0 +1,9 @@
+................................................................ [ 45%]
+............................................................................                                         [100%]
+=============================== warnings summary ===============================
+tests/desktop/test_surface_fixtures.py::Fixtures::test_image_known_pixels_and_cleanup_on_failure
+  /home/patrick/.t3/worktrees/put.gd/t3-07e6839a/tests/desktop/test_surface_fixtures.py:452: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+    self.assertEqual(len(set(image.getdata())),4)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+140 passed, 1 warning, 468 subtests passed in 18.80s
