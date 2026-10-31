@@ -107,6 +107,8 @@ class Driver:
         self.env.update(XDG_CONFIG_HOME=str(self.run / 'config'), XDG_DATA_HOME=str(self.run / 'data'),
                         XDG_CACHE_HOME=str(self.run / 'cache'), XDG_STATE_HOME=str(self.run / 'state'),
                         PUTGD_RECORD_KEEP_WORKING=str(self.run / 'working'))
+        # Lab A/B switches such as PUTGD_RECORD_PIPEWIRE_TIMESTAMPS pass through to the helper.
+        self.env.update({k: v for k, v in os.environ.items() if k.startswith('PUTGD_RECORD_') and k not in ('PUTGD_RECORD_KEEP_WORKING', 'PUTGD_RECORD_DEBUG_LOG')})
         if getattr(args, 'real_data_home', False):
             real = Path(os.environ['HOME']) / '.local/share/putgd'
             if real.exists():
@@ -392,6 +394,7 @@ class Driver:
                     result['clips'][name] = {'ok': False, 'error': str(error)}
         result['ticks'] = fluidity.ticks_report(str(ticks), 60, tick_start, tick_end) if ticks.is_file() else None
         result['recorder'] = self.debug_lines(self.run / 'logs' / ('record-%s.log' % label), ('frames:', 'timestamps:', 'started with', 'pipeline:'))
+        result['recorderEnvironment'] = {k: v for k, v in os.environ.items() if k.startswith('PUTGD_RECORD_')}
         log('%s: %s' % (label, json.dumps({k: result['clips'].get('working', {}).get(k) for k in ('clipFps', 'distinctPerSecond', 'fluidFraction', 'longestStallMs', 'pairs')})))
         return result
 

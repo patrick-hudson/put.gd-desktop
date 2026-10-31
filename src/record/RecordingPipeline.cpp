@@ -158,7 +158,10 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     const gint64 running = runningNow(pad);
     if (!buffer || running < 0) return GST_PAD_PROBE_OK;
-    auto frame = pipewireFrameTime(GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1, monotonicNow(), running, clock->previous);
+    const gint64 headerPts = GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1;
+    if (headerPts >= 0 && headerPts == clock->headerPts) { ++clock->duplicates; return GST_PAD_PROBE_DROP; }
+    if (headerPts >= 0) clock->headerPts = headerPts;
+    auto frame = pipewireFrameTime(headerPts, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
     // Arrival is the anchor: KWin's header time is the output's previous
@@ -478,7 +481,7 @@ void RecordingPipeline::tearDown() {
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
-    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue").arg(video_.passed.load()).arg(dropped_.load()));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue, %3 repeated compositor presentations dropped").arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.duplicates));
     stopping_ = false;
 }
 }
