@@ -303,6 +303,7 @@ for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CUR
 done
 export QT_QPA_PLATFORM={shlex.quote(profile['qt_platform'])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
+{lab.guest_secret_prefix(info)}\
 exec {shlex.quote(program)} <<'{nonce}'
 '''.encode('ascii') + body + nonce.encode('ascii') + b'\n'
     return _reply(exchange(arguments, script, timeout=BROKER_TIMEOUT), provider, request)

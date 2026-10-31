@@ -25,15 +25,16 @@ def secret_service(run=subprocess.run):
     def call(*arguments):
         result = run(['busctl', '--user', *arguments], capture_output=True, text=True, timeout=20)
         return result.stdout.strip() if result.returncode == 0 else None
-    owner = call('status', 'org.freedesktop.secrets')
+    destination = os.environ.get('SECRET_SERVICE_BUS_NAME', 'org.freedesktop.secrets')
+    owner = call('status', destination)
     provider = next((line.split('=', 1)[1] for line in (owner or '').splitlines() if line.startswith('Comm=')), None)
-    alias = call('call', 'org.freedesktop.secrets', '/org/freedesktop/secrets', 'org.freedesktop.Secret.Service',
+    alias = call('call', destination, '/org/freedesktop/secrets', 'org.freedesktop.Secret.Service',
                  'ReadAlias', 's', 'default')
     path = alias.split('"')[1] if alias and '"' in alias else '/'
     if path == '/':
         return {'provider': provider, 'default': None, 'locked': None}
-    label = call('get-property', 'org.freedesktop.secrets', path, 'org.freedesktop.Secret.Collection', 'Label')
-    locked = call('get-property', 'org.freedesktop.secrets', path, 'org.freedesktop.Secret.Collection', 'Locked')
+    label = call('get-property', destination, path, 'org.freedesktop.Secret.Collection', 'Label')
+    locked = call('get-property', destination, path, 'org.freedesktop.Secret.Collection', 'Locked')
     return {'provider': provider, 'default': path, 'label': label.split('"')[1] if label and '"' in label else None,
             'locked': None if locked is None else locked.endswith('true')}
 
@@ -51,7 +52,7 @@ def lab_keyring():
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 
     def call(path, interface, method, parameters, reply):
-        return bus.call_sync('org.freedesktop.secrets', path, interface, method, parameters,
+        return bus.call_sync(os.environ.get('SECRET_SERVICE_BUS_NAME', 'org.freedesktop.secrets'), path, interface, method, parameters,
                              GLib.VariantType(reply), Gio.DBusCallFlags.NONE, 20000, None).unpack()
 
     service = '/org/freedesktop/secrets'
