@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "tag": "v26.1031.3384-nightly",
   "passed": false,
-  "date": "2026-10-31T16:08:39.092013+00:00",
+  "date": "2026-10-31T16:23:34.906811+00:00",
   "host": "debian",
   "os": "PRETTY_NAME=\"Debian GNU/Linux 13 (trixie)\"\nNAME=\"Debian GNU/Linux\"\nVERSION_ID=\"13\"\nVERSION=\"13 (trixie)\"\nVERSION_CODENAME=trixie\nDEBIAN_VERSION_FULL=13.7\nID=debian\nHOME_URL=\"https://www.debian.org/\"\nSUPPORT_URL=\"https://www.debian.org/support\"\nBUG_REPORT_URL=\"https://bugs.debian.org/\"\n",
-  "auditorCommit": "d013f832e8873ff00f83d6c1f4e33baa2d35ddd6",
-  "auditorScriptSha256": "88db46a72d8bd4783fd792d43397c0ee288f725bc722a200fb86991c47218dc3",
+  "auditorCommit": "ba19305546680dd024dd02e7b5034baf3642309b",
+  "auditorScriptSha256": "32bcf32014761cf580b7a5914b06155250fba5bd03af77546eef63a8b96d11bc",
   "scope": "Exact downloaded bytes, notices, provenance, corresponding source and stable CVE policy; no legal, live-service or desktop acceptance",
   "checks": {
     "assets": {
@@ -573,6 +573,32 @@
         }
       ]
     },
+    "sourceRebuildParameters": {
+      "schemaVersion": 1,
+      "archive": {
+        "bytes": 4701707,
+        "file": "putgd-26.1031.3384-nightly-source.tar.gz",
+        "sha256": "220c21f7e084eb5f4c09593afd70830b9a612a31ec9f4c6496217a1c01a6dbd5"
+      },
+      "identity": {
+        "baseVersion": "26.1031.3384",
+        "commitCount": 3384,
+        "dirty": false,
+        "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+        "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+        "packageVersion": "26.1031.3384~nightly",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "26.1031.3384-nightly"
+      },
+      "sdkPrefix": "/home/patrick/work/put.gd/build/sdk",
+      "sdkSource": "/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+      "bundleProton": true,
+      "protonSource": null,
+      "protonCryptoSource": null,
+      "protonOffline": false,
+      "scope": "Actual source-export production compilation; no desktop or memory acceptance"
+    },
     "sourceExport": {
       "files": 437,
       "identity": {
@@ -648,7 +674,12 @@
           "putgd-kde-region",
           "putgd-record"
         ],
-        "wallSeconds": 806.1179383548442
+        "wallSeconds": 806.1179383548442,
+        "archive": {
+          "bytes": 4701707,
+          "file": "putgd-26.1031.3384-nightly-source.tar.gz",
+          "sha256": "220c21f7e084eb5f4c09593afd70830b9a612a31ec9f4c6496217a1c01a6dbd5"
+        }
       }
     },
     "completeSource": {
@@ -2113,12 +2144,12 @@
       "syft": {
         "release": "v1.55.0",
         "sha256": "bb65249542db5fedeeb4d3f9b018b75e7264dbfbbb10486f044581a92f90490d",
-        "path": "/home/patrick/work/ra383/final4/tools/syft"
+        "path": "/home/patrick/work/ra383/final5/tools/syft"
       },
       "grype": {
         "release": "v0.121.0",
         "sha256": "64e07133d3486115de647a66581461dccf5c732748a0a3119077395565f15519",
-        "path": "/home/patrick/work/ra383/final4/tools/grype"
+        "path": "/home/patrick/work/ra383/final5/tools/grype"
       }
     },
     "packages": {

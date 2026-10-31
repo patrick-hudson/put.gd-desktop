@@ -1,8 +1,8 @@
 {
   "archive": "raw-evidence.tar.gz",
-  "privateArchiveName": "raw-evidence-v3.tar.gz",
-  "bytes": 580570,
-  "sha256": "14e8de2cfd3eee7b3f2c4022a2cb60073b23f13930ad4317ffe3bb3d58bc3a7d",
+  "privateArchiveName": "raw-evidence-v4.tar.gz",
+  "bytes": 713505,
+  "sha256": "3221f61016e71e62ee0373abdf29be2585001a9c5de335091093ca7001a168fa",
   "verified": true,
   "restore": "tar -xzf raw-evidence.tar.gz -C NEW_PRIVATE_DIRECTORY; verify member hashes below",
   "members": [
@@ -248,6 +248,71 @@
     },
     {
       "path": "final4.log",
+      "bytes": 865,
+      "sha256": "cd502fa08e2598fffdf5843c4afd3617766c932863aa56a85292395e47a7979e"
+    },
+    {
+      "path": "final5/audit.json",
+      "bytes": 560229,
+      "sha256": "6af398bfdd8008f370297e02c4632183c20d5e04ed476ecd0a9f0864fef2797d"
+    },
+    {
+      "path": "final5/grype/putgd-26.1031.3384-nightly-appimage.grype.json",
+      "bytes": 474192,
+      "sha256": "75863faddb5dd74c72bf7a6d74cae4937012ef91ce5ece05b51f08fcc92af86f"
+    },
+    {
+      "path": "final5/grype/putgd-26.1031.3384-nightly-debian13.grype.json",
+      "bytes": 5723,
+      "sha256": "5db681687cd712759b857ce1ea83720636352fa7861de625a97a87a2f2b4b9f9"
+    },
+    {
+      "path": "final5/grype/putgd-26.1031.3384-nightly-fedora44.grype.json",
+      "bytes": 5723,
+      "sha256": "60285217df135f7ba3c582f6c3051e18f793a29b88bc03a47c029bb1812919e2"
+    },
+    {
+      "path": "final5/grype/putgd-26.1031.3384-nightly-ubuntu24.04.grype.json",
+      "bytes": 5735,
+      "sha256": "832d95d3e688497c912b0d5320fe9bc90a5f792d1d868ec6171347633e85d14a"
+    },
+    {
+      "path": "final5/grype/putgd-26.1031.3384-nightly-ubuntu26.04.grype.json",
+      "bytes": 5735,
+      "sha256": "0897bdb7daf440283acaecfd1879fedc1e93ca1ab5df9b593a35913752e4362b"
+    },
+    {
+      "path": "final5/sboms/putgd-26.1031.3384-nightly-appimage.cdx.json",
+      "bytes": 97586,
+      "sha256": "f966945a344005f4b8221ca41b9b705cbe51fac3e604feafdc65961d540b7e8d"
+    },
+    {
+      "path": "final5/sboms/putgd-26.1031.3384-nightly-debian13.cdx.json",
+      "bytes": 17109,
+      "sha256": "8fae79f48b0ed0d83fede3388142d9354a40609ae861c983c6a5058bf15553e3"
+    },
+    {
+      "path": "final5/sboms/putgd-26.1031.3384-nightly-fedora44.cdx.json",
+      "bytes": 17109,
+      "sha256": "f4714b08499c79b5ac225847bb81a608ec52b54b68bb9cc2fffe66bdbf5b9612"
+    },
+    {
+      "path": "final5/sboms/putgd-26.1031.3384-nightly-ubuntu24.04.cdx.json",
+      "bytes": 17118,
+      "sha256": "6d9dd54d2d93fc880f80544a11cc3c39f0e50b0332edd7143578b46c49f601d2"
+    },
+    {
+      "path": "final5/sboms/putgd-26.1031.3384-nightly-ubuntu26.04.cdx.json",
+      "bytes": 17118,
+      "sha256": "326a533cc7674145b08cad3de82f90c00779164366ea294e11e1063c0c5d02b9"
+    },
+    {
+      "path": "final5/sboms/sbom-receipts.json",
+      "bytes": 2349,
+      "sha256": "f9546d45f0154a6a9a1818ae9a66274c895cfb32af4453d8622a18574579e868"
+    },
+    {
+      "path": "final5.log",
       "bytes": 865,
       "sha256": "cd502fa08e2598fffdf5843c4afd3617766c932863aa56a85292395e47a7979e"
     },

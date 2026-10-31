@@ -45,7 +45,7 @@
     "No source asset overwritten",
     "All failed attempts and commands retained on d69"
   ],
-  "finalCommand": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final4 --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
+  "finalCommand": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final5 --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
   "notes": [
     "Debian rpm emitted a non-blocking warning about its absent system RPM database while reading the RPM License header; the query returned the correct value and succeeded. No system RPM database was modified."
   ],
@@ -67,6 +67,12 @@
       "driverCommit": "d013f832e8873ff00f83d6c1f4e33baa2d35ddd6",
       "exitCode": 1,
       "meaning": "Completed with independent Git source verification and curated/delivered catalog binding; same two security gaps only."
+    },
+    {
+      "output": "final5",
+      "driverCommit": "ba19305546680dd024dd02e7b5034baf3642309b",
+      "exitCode": 1,
+      "meaning": "Completed after tar header/mode checks and exact rebuild archive binding; same two security gaps only."
     }
   ]
 }

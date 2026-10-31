@@ -43,7 +43,7 @@ acceptance on each target distribution.
 
 ## Results
 
-The final driver, source `d013f832e8873ff00f83d6c1f4e33baa2d35ddd6`, completed
+The final driver, source `ba19305546680dd024dd02e7b5034baf3642309b`, completed
 on d69 with exit **1** for exactly the two security errors in [audit.json](audit.json).
 Every artifact/source check completed. [The regenerated-SBOM report](vulnerability-summary.md)
 agrees with the published-SBOM scan: 180 findings, 30 accepted, one blocking.
@@ -52,7 +52,7 @@ packages. Package/source remote snapshots were unchanged across the run. Authent
 release lookup scans every API page and rejects duplicate draft/tag matches;
 the final rerun includes that review fix, requires the independent producer
 member list, verifies production source hashes/modes against the tagged Git blobs,
-and binds the delivered Proton catalog to `tools/proton/notices/SOURCES.json`
+checks actual tar file/directory modes and root ownership, and binds the delivered Proton catalog to `tools/proton/notices/SOURCES.json`
 inside the curated archive. Tests reject a substituted archive even when its
 embedded metadata and producer receipt are rewritten together.
 
@@ -129,11 +129,16 @@ AWS SDK. All eight rebuilt program identities match supplied commit/tree/count;
 both rebuilt helper copies reproduce the exact published runtime SHA-256. See
 [results](source-rebuild-results.json) and [parameters](source-rebuild-parameters.json).
 This is new compilation evidence, distinct from the nightly's null CI receipt.
+The original older-tool results and parameters are retained unchanged. The driver
+binds those results to the exact archive through the recorded companion
+`parameters.json` (see `sourceRebuildParameters` in `audit.json`). New rebuild
+results carry the archive identity directly; stable collection rejects a missing
+or mismatched archive binding.
 
 ```sh
 python3 tools/releases/audit_assets.py --tag v26.1031.3384-nightly \
   --directory /home/patrick/work/ra383/assets \
-  --output /home/patrick/work/ra383/final4 \
+  --output /home/patrick/work/ra383/final5 \
   --reuse-downloads /home/patrick/work/ra383/a2 \
   --source-build-result /home/patrick/work/ra383/rebuild/results.json
 ```
