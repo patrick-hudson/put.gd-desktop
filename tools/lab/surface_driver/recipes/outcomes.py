@@ -345,8 +345,11 @@ try:
 except OSError:pass
 print(json.dumps(result))
 '''.replace('DIRECTORY', repr(browser.state['directory'])))
-                        rows=ctx.windows({'pid':proof['pid'],'owned':False})
-                        proof.update(accessibleWindows=len(rows),ownedAccessibleWindows=sum(bool(r.get('owned')) for r in rows))
+                        query={'pid':proof['pid']}
+                        if ctx.profile.get('session')=='x11':query['owned']=False
+                        rows=[r for r in ctx._probe('windows',query) if r.get('pid')==proof['pid']]
+                        proof.update(accessibleWindows=len(rows),ownedAccessibleWindows=
+                                     sum(bool(r['owned']) for r in rows) if all('owned' in r for r in rows) else None)
                         ctx.note('private Firefox observation: '+json.dumps(proof,sort_keys=True))
                     except Exception as error:
                         ctx.note('private Firefox metadata unavailable: '+type(error).__name__)
