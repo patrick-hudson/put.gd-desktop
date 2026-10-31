@@ -111,7 +111,7 @@ class NightlyTests(unittest.TestCase):
             clock=[0.0]
             def sleep(seconds):clock[0]+=seconds
             config=dict(host='m74',rows=[dict(live=True)])
-            with patch('tools.lab.desktop_lock.Desktop') as lock,patch.object(nightly,'preflight',side_effect=nightly.NotRun('RAM short')):
+            with patch.object(nightly.Path,'home',return_value=Path(tmp)),patch('tools.lab.desktop_lock.Desktop') as lock,patch.object(nightly,'preflight',side_effect=nightly.NotRun('RAM short')):
                 lock.return_value.status.return_value=dict(state='free')
                 with self.assertRaisesRegex(nightly.NotRun,'1200s'):
                     nightly.await_host(config,Path(tmp),clock=lambda:clock[0],sleep=sleep)
@@ -122,7 +122,7 @@ class NightlyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             clock=[0.0]
             def sleep(seconds):clock[0]+=seconds
-            with patch('tools.lab.desktop_lock.Desktop') as lock,patch.object(nightly,'preflight',side_effect=[nightly.NotRun('load high'),dict(ready=True)]):
+            with patch.object(nightly.Path,'home',return_value=Path(tmp)),patch('tools.lab.desktop_lock.Desktop') as lock,patch.object(nightly,'preflight',side_effect=[nightly.NotRun('load high'),dict(ready=True)]):
                 lock.return_value.status.return_value=dict(state='free')
                 waited=nightly.await_host(dict(host='d69',rows=[{}]),Path(tmp),clock=lambda:clock[0],sleep=sleep)
                 self.assertEqual(waited,30)

@@ -227,6 +227,8 @@ def preflight(config):
     from tools.lab import lab
     row = config['rows'][0]
     if not Path(row['golden']).is_file():
+        if Path(row['golden']+'.partial').is_file():
+            raise NotRun('golden copy awaiting checksum verification')
         raise NotRun('golden missing')
     if not os.access('/dev/kvm', os.R_OK | os.W_OK):
         raise NotRun('builder KVM unavailable')
@@ -310,6 +312,8 @@ def worker(config, tag, identity, artifacts, out):
     from tools.lab import lab
     from tools.lab.nightly_desktop_guest import prepare
     out.mkdir(mode=0o700, parents=True)
+    if command(['git', 'rev-parse', 'HEAD']).strip() != identity['driver']:
+        raise NotRun('worker checkout differs from the controller source identity')
     # Live admission reads the classifier/pin from this exact app commit.
     command(['git', 'fetch', '--no-tags', 'origin', 'tag', tag], log=out/'build-source-fetch.txt')
     host = config['host']
