@@ -14,7 +14,7 @@ import shlex
 import time
 from urllib.parse import urlsplit
 
-from ..api import recipe
+from ..api import RecipeBlocked, recipe
 from ..browser import default_browser, open_and_verify
 from ..catalog import image_modules
 from ..fixtures.base import Scope
@@ -318,7 +318,7 @@ def _history(ctx, detail):
 def link_browser(ctx):
     with _lane(ctx) as (scope, service):
         detail, _ = _complete(scope, service, ctx.fixture('upload').operation_id)
-        with default_browser(ctx, 'firefox'):
+        with default_browser(ctx, 'firefox') as browser:
             previous = ctx.profile.get('windows', {})
             ctx.profile['windows'] = {**previous, 'outcome-browser': {'title': '.*Firefox.*'}}
             scope.defer('browser input role', lambda: ctx.profile.__setitem__('windows', previous))
@@ -329,7 +329,28 @@ def link_browser(ctx):
             def paste():
                 # The helper proves the private blank kiosk's foreground first;
                 # bind keyboard input through the normal owned-window guard.
-                ctx.focus('outcome-browser', raise_window=False)
+                try:
+                    ctx.focus('outcome-browser', raise_window=False)
+                except RecipeBlocked:
+                    # Local-only metadata diagnosis. Never emit argv, profile
+                    # bytes, environment values, page text or a share URL.
+                    try:
+                        proof=scope.json('''import json,os
+from pathlib import Path
+s=json.loads((Path(DIRECTORY)/'transaction.json').read_text());p=Path('/proc')/str(s['pid'])
+result={'pid':s['pid'],'processPresent':p.exists(),'environmentReadable':False,'runtimeMatches':False}
+try:
+ env=(p/'environ').read_bytes().split(b'\\0');result['environmentReadable']=True
+ result['runtimeMatches']=('XDG_RUNTIME_DIR='+os.environ['XDG_RUNTIME_DIR']).encode() in env
+except OSError:pass
+print(json.dumps(result))
+'''.replace('DIRECTORY', repr(browser.state['directory'])))
+                        rows=ctx.windows({'pid':proof['pid'],'owned':False})
+                        proof.update(accessibleWindows=len(rows),ownedAccessibleWindows=sum(bool(r.get('owned')) for r in rows))
+                        ctx.note('private Firefox observation: '+json.dumps(proof,sort_keys=True))
+                    except Exception as error:
+                        ctx.note('private Firefox metadata unavailable: '+type(error).__name__)
+                    raise
                 ctx.keys('Ctrl+L', 'Ctrl+V', 'Return')
             result = open_and_verify(ctx, paste,
                                      {'kind': 's3', 'name': detail['name'], 'preview': True, 'url_host': '127.0.0.1'})
