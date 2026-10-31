@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "action": "check",
+  "result": {
+    "at": "2026-10-31T06:11:23Z",
+    "by": "tier1-phase-b",
+    "app": "26.1023.1058-nightly",
+    "testScope": "account-folder",
+    "folderName": "putgd-lab-d69-check-2026-10-23T213912Z",
+    "passed": true,
+    "state": "ok"
+  }
+}

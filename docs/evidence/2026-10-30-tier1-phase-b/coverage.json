@@ -8,14 +8,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Rerun stopped at pattern-guard retry limit after masking autostart and terminating exact delayed Update Manager PID. Earlier PutObject was also denied; its exact key was confirmed absent.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked; Exact retained upload cleanup subsequently passed: followup-2/cinnamon/s3-delete2/receipt.json; History deletion, origin GET 404, fresh public HTTP 403; bridge entry and RAM root removed. Public-serving failure remains #992.",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -26,8 +26,40 @@
           "tolerance": null
         },
         {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -36,8 +68,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:17:41Z",
-      "issue": 975
+      "at": "2026-10-31T06:28:15Z",
+      "issue": 992
     },
     {
       "interaction": "region.drag",
@@ -45,14 +77,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Rerun stopped at pattern-guard retry limit after masking autostart and terminating exact delayed Update Manager PID. Earlier PutObject was also denied; its exact key was confirmed absent.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked; Exact retained upload cleanup subsequently passed: followup-2/cinnamon/s3-delete2/receipt.json; History deletion, origin GET 404, fresh public HTTP 403; bridge entry and RAM root removed. Public-serving failure remains #992.",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -63,8 +95,40 @@
           "tolerance": null
         },
         {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -73,8 +137,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:17:41Z",
-      "issue": 975
+      "at": "2026-10-31T06:28:15Z",
+      "issue": 992
     },
     {
       "interaction": "history.copy-link",
@@ -82,14 +146,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Rerun stopped at pattern-guard retry limit after masking autostart and terminating exact delayed Update Manager PID. Earlier PutObject was also denied; its exact key was confirmed absent.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked; Exact retained upload cleanup subsequently passed: followup-2/cinnamon/s3-delete2/receipt.json; History deletion, origin GET 404, fresh public HTTP 403; bridge entry and RAM root removed. Public-serving failure remains #992.",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -100,8 +164,40 @@
           "tolerance": null
         },
         {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -110,8 +206,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:17:41Z",
-      "issue": 975
+      "at": "2026-10-31T06:28:15Z",
+      "issue": 992
     },
     {
       "interaction": "history.open-link",
@@ -119,14 +215,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Rerun stopped at pattern-guard retry limit after masking autostart and terminating exact delayed Update Manager PID. Earlier PutObject was also denied; its exact key was confirmed absent.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked; Exact retained upload cleanup subsequently passed: followup-2/cinnamon/s3-delete2/receipt.json; History deletion, origin GET 404, fresh public HTTP 403; bridge entry and RAM root removed. Public-serving failure remains #992.",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -137,8 +233,40 @@
           "tolerance": null
         },
         {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -147,8 +275,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:17:41Z",
-      "issue": 975
+      "at": "2026-10-31T06:28:15Z",
+      "issue": 992
     },
     {
       "interaction": "history.delete-remote",
@@ -156,14 +284,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Rerun stopped at pattern-guard retry limit after masking autostart and terminating exact delayed Update Manager PID. Earlier PutObject was also denied; its exact key was confirmed absent.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked; Exact retained upload cleanup subsequently passed: followup-2/cinnamon/s3-delete2/receipt.json; History deletion, origin GET 404, fresh public HTTP 403; bridge entry and RAM root removed. Public-serving failure remains #992.",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -174,8 +302,40 @@
           "tolerance": null
         },
         {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -184,8 +344,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:17:41Z",
-      "issue": 975
+      "at": "2026-10-31T06:28:15Z",
+      "issue": 992
     },
     {
       "interaction": "confirm.history-delete",
@@ -193,14 +353,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; known fullscreen pattern covers the chosen monitor without foreign UI; Rerun stopped at pattern-guard retry limit after masking autostart and terminating exact delayed Update Manager PID. Earlier PutObject was also denied; its exact key was confirmed absent.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked; Exact retained upload cleanup subsequently passed: followup-2/cinnamon/s3-delete2/receipt.json; History deletion, origin GET 404, fresh public HTTP 403; bridge entry and RAM root removed. Public-serving failure remains #992.",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -211,8 +371,40 @@
           "tolerance": null
         },
         {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/01-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -221,8 +413,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:17:41Z",
-      "issue": 975
+      "at": "2026-10-31T06:28:15Z",
+      "issue": 992
     },
     {
       "interaction": "region.to-upload",
@@ -230,14 +422,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; Capture operation af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; historyId=487a04a6-a747-4431-be14-c71e681a0e76; upload_count=1; Retained synthetic png sha256=5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Recipient download failed. Exact retained upload subsequently revoked through History in qt64/receipt.json; no recipient hash or unavailable-link proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: RecipeBlocked; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -264,8 +456,40 @@
           "tolerance": null
         },
         {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -274,7 +498,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T04:52:44Z",
+      "at": "2026-10-31T06:24:25Z",
       "issue": 978
     },
     {
@@ -283,14 +507,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; Capture operation af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; historyId=487a04a6-a747-4431-be14-c71e681a0e76; upload_count=1; Retained synthetic png sha256=5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Recipient download failed. Exact retained upload subsequently revoked through History in qt64/receipt.json; no recipient hash or unavailable-link proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: RecipeBlocked; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -317,8 +541,40 @@
           "tolerance": null
         },
         {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -327,7 +583,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T04:52:44Z",
+      "at": "2026-10-31T06:24:25Z",
       "issue": 978
     },
     {
@@ -336,14 +592,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; Capture operation af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; historyId=487a04a6-a747-4431-be14-c71e681a0e76; upload_count=1; Retained synthetic png sha256=5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Recipient download failed. Exact retained upload subsequently revoked through History in qt64/receipt.json; no recipient hash or unavailable-link proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: RecipeBlocked; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -370,8 +626,40 @@
           "tolerance": null
         },
         {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -380,7 +668,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T04:52:44Z",
+      "at": "2026-10-31T06:24:25Z",
       "issue": 978
     },
     {
@@ -389,14 +677,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; Capture operation af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; historyId=487a04a6-a747-4431-be14-c71e681a0e76; upload_count=1; Retained synthetic png sha256=5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Recipient download failed. Exact retained upload subsequently revoked through History in qt64/receipt.json; no recipient hash or unavailable-link proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: RecipeBlocked; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -423,8 +711,40 @@
           "tolerance": null
         },
         {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -433,7 +753,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T04:52:44Z",
+      "at": "2026-10-31T06:24:25Z",
       "issue": 978
     },
     {
@@ -442,14 +762,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; Capture operation af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; historyId=487a04a6-a747-4431-be14-c71e681a0e76; upload_count=1; Retained synthetic png sha256=5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Recipient download failed. Exact retained upload subsequently revoked through History in qt64/receipt.json; no recipient hash or unavailable-link proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: RecipeBlocked; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -476,8 +796,40 @@
           "tolerance": null
         },
         {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -486,7 +838,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T04:52:44Z",
+      "at": "2026-10-31T06:24:25Z",
       "issue": 978
     },
     {
@@ -495,14 +847,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; Capture operation af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; shareOperationId=fbe53966-8b0a-4add-a473-fb75b5adc3e7; operationId=af7adfaa-b98c-49a3-8c88-3a77ab6fbcda; historyId=487a04a6-a747-4431-be14-c71e681a0e76; upload_count=1; Retained synthetic png sha256=5f5658469bcd089a54c62dd10c88659f0d180ba55fc19980a29a256af873cab1; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-30-23-49-42.png\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Recipient download failed. Exact retained upload subsequently revoked through History in qt64/receipt.json; no recipient hash or unavailable-link proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "cinnamon-x11",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: RecipeBlocked; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -529,8 +881,40 @@
           "tolerance": null
         },
         {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -539,23 +923,23 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T04:52:44Z",
+      "at": "2026-10-31T06:24:25Z",
       "issue": 978
     },
     {
       "interaction": "region.to-upload",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; Capture operation 86d4efc5-9351-40c4-995f-77765361a8e6; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; historyId=b91302bb-47cd-4432-a8aa-c487bb6e6612; upload_count=1; Retained synthetic png sha256=b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -574,8 +958,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -584,23 +1008,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:39Z",
-      "issue": 988
+      "at": "2026-10-31T06:14:05Z",
+      "issue": 992
     },
     {
       "interaction": "region.drag",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; Capture operation 86d4efc5-9351-40c4-995f-77765361a8e6; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; historyId=b91302bb-47cd-4432-a8aa-c487bb6e6612; upload_count=1; Retained synthetic png sha256=b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -619,8 +1043,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -629,23 +1093,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:39Z",
-      "issue": 988
+      "at": "2026-10-31T06:14:05Z",
+      "issue": 992
     },
     {
       "interaction": "history.copy-link",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; Capture operation 86d4efc5-9351-40c4-995f-77765361a8e6; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; historyId=b91302bb-47cd-4432-a8aa-c487bb6e6612; upload_count=1; Retained synthetic png sha256=b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -664,8 +1128,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -674,23 +1178,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:39Z",
-      "issue": 988
+      "at": "2026-10-31T06:14:05Z",
+      "issue": 992
     },
     {
       "interaction": "history.open-link",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; Capture operation 86d4efc5-9351-40c4-995f-77765361a8e6; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; historyId=b91302bb-47cd-4432-a8aa-c487bb6e6612; upload_count=1; Retained synthetic png sha256=b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -709,8 +1213,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -719,23 +1263,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:39Z",
-      "issue": 988
+      "at": "2026-10-31T06:14:05Z",
+      "issue": 992
     },
     {
       "interaction": "history.delete-remote",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; Capture operation 86d4efc5-9351-40c4-995f-77765361a8e6; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; historyId=b91302bb-47cd-4432-a8aa-c487bb6e6612; upload_count=1; Retained synthetic png sha256=b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -754,8 +1298,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -764,23 +1348,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:39Z",
-      "issue": 988
+      "at": "2026-10-31T06:14:05Z",
+      "issue": 992
     },
     {
       "interaction": "confirm.history-delete",
       "desktop": "ubuntu-gnome-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; Capture operation 86d4efc5-9351-40c4-995f-77765361a8e6; operationId=86d4efc5-9351-40c4-995f-77765361a8e6; historyId=b91302bb-47cd-4432-a8aa-c487bb6e6612; upload_count=1; Retained synthetic png sha256=b88949e534d8491106b7db30f782cf3bbda1e72f6be74bf9581a8d5f975b1e09; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -799,8 +1383,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -809,8 +1433,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:39Z",
-      "issue": 988
+      "at": "2026-10-31T06:14:05Z",
+      "issue": 992
     },
     {
       "interaction": "region.to-upload",
@@ -818,8 +1442,8 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; Capture operation 3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; shareOperationId=9ffcecb5-e0cb-4583-80d9-9f66b78d7550; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; historyId=bf9f24f8-5fdc-4f1d-9df9-2e0575efe2f4; upload_count=1; Retained synthetic png sha256=db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-33-27.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=39ad2fa5-074b-448a-b74c-d7880c6ed32d; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; Capture operation b68a4982-397b-4259-a2e3-aad0e95d58ff; shareOperationId=229b1fc3-32e4-41c3-a7fb-a7e633f3f793; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; historyId=361a2fc0-76c3-4f11-82fc-851aa5cbdef8; upload_count=1; Retained synthetic png sha256=8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-48.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=0cc16235-c827-4ac7-8aa8-fe9cb46cfc54; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
@@ -894,7 +1518,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:36:51Z",
+      "at": "2026-10-31T06:11:16Z",
       "issue": 978
     },
     {
@@ -903,8 +1527,8 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; Capture operation 3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; shareOperationId=9ffcecb5-e0cb-4583-80d9-9f66b78d7550; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; historyId=bf9f24f8-5fdc-4f1d-9df9-2e0575efe2f4; upload_count=1; Retained synthetic png sha256=db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-33-27.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=39ad2fa5-074b-448a-b74c-d7880c6ed32d; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; Capture operation b68a4982-397b-4259-a2e3-aad0e95d58ff; shareOperationId=229b1fc3-32e4-41c3-a7fb-a7e633f3f793; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; historyId=361a2fc0-76c3-4f11-82fc-851aa5cbdef8; upload_count=1; Retained synthetic png sha256=8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-48.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=0cc16235-c827-4ac7-8aa8-fe9cb46cfc54; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
@@ -979,7 +1603,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:36:51Z",
+      "at": "2026-10-31T06:11:16Z",
       "issue": 978
     },
     {
@@ -988,8 +1612,8 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; Capture operation 3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; shareOperationId=9ffcecb5-e0cb-4583-80d9-9f66b78d7550; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; historyId=bf9f24f8-5fdc-4f1d-9df9-2e0575efe2f4; upload_count=1; Retained synthetic png sha256=db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-33-27.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=39ad2fa5-074b-448a-b74c-d7880c6ed32d; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; Capture operation b68a4982-397b-4259-a2e3-aad0e95d58ff; shareOperationId=229b1fc3-32e4-41c3-a7fb-a7e633f3f793; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; historyId=361a2fc0-76c3-4f11-82fc-851aa5cbdef8; upload_count=1; Retained synthetic png sha256=8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-48.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=0cc16235-c827-4ac7-8aa8-fe9cb46cfc54; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
@@ -1064,7 +1688,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:36:51Z",
+      "at": "2026-10-31T06:11:16Z",
       "issue": 978
     },
     {
@@ -1073,8 +1697,8 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; Capture operation 3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; shareOperationId=9ffcecb5-e0cb-4583-80d9-9f66b78d7550; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; historyId=bf9f24f8-5fdc-4f1d-9df9-2e0575efe2f4; upload_count=1; Retained synthetic png sha256=db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-33-27.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=39ad2fa5-074b-448a-b74c-d7880c6ed32d; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; Capture operation b68a4982-397b-4259-a2e3-aad0e95d58ff; shareOperationId=229b1fc3-32e4-41c3-a7fb-a7e633f3f793; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; historyId=361a2fc0-76c3-4f11-82fc-851aa5cbdef8; upload_count=1; Retained synthetic png sha256=8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-48.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=0cc16235-c827-4ac7-8aa8-fe9cb46cfc54; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
@@ -1149,7 +1773,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:36:51Z",
+      "at": "2026-10-31T06:11:16Z",
       "issue": 978
     },
     {
@@ -1158,8 +1782,8 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; Capture operation 3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; shareOperationId=9ffcecb5-e0cb-4583-80d9-9f66b78d7550; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; historyId=bf9f24f8-5fdc-4f1d-9df9-2e0575efe2f4; upload_count=1; Retained synthetic png sha256=db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-33-27.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=39ad2fa5-074b-448a-b74c-d7880c6ed32d; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; Capture operation b68a4982-397b-4259-a2e3-aad0e95d58ff; shareOperationId=229b1fc3-32e4-41c3-a7fb-a7e633f3f793; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; historyId=361a2fc0-76c3-4f11-82fc-851aa5cbdef8; upload_count=1; Retained synthetic png sha256=8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-48.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=0cc16235-c827-4ac7-8aa8-fe9cb46cfc54; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
@@ -1234,7 +1858,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:36:51Z",
+      "at": "2026-10-31T06:11:16Z",
       "issue": 978
     },
     {
@@ -1243,8 +1867,8 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; Capture operation 3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; shareOperationId=9ffcecb5-e0cb-4583-80d9-9f66b78d7550; operationId=3200f8c2-107a-4f1c-9cda-bbd3c9bab7e6; historyId=bf9f24f8-5fdc-4f1d-9df9-2e0575efe2f4; upload_count=1; Retained synthetic png sha256=db5031b3c1959ba465a07d519793b2b4455a32d412770535f668ccf0ed950659; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-00-33-27.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=39ad2fa5-074b-448a-b74c-d7880c6ed32d; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; Capture operation b68a4982-397b-4259-a2e3-aad0e95d58ff; shareOperationId=229b1fc3-32e4-41c3-a7fb-a7e633f3f793; operationId=b68a4982-397b-4259-a2e3-aad0e95d58ff; historyId=361a2fc0-76c3-4f11-82fc-851aa5cbdef8; upload_count=1; Retained synthetic png sha256=8e86d367c0898e8a66e080c9815ad1300e744f9aeecf0a45df38a5926200a5e3; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-48.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=0cc16235-c827-4ac7-8aa8-fe9cb46cfc54; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "d69",
       "placement": "guest",
       "guest": "gnome-wayland",
@@ -1319,23 +1943,23 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:36:51Z",
+      "at": "2026-10-31T06:11:16Z",
       "issue": 978
     },
     {
       "interaction": "region.to-upload",
       "desktop": "kubuntu-kde-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; Capture operation 9cfb1349-302e-4263-9dff-e88eee1f74ae; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; historyId=37d9ce2f-f05f-42ee-837f-f64c52abf223; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1354,8 +1978,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1364,23 +2028,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:44Z",
-      "issue": 988
+      "at": "2026-10-31T06:13:50Z",
+      "issue": 992
     },
     {
       "interaction": "region.drag",
       "desktop": "kubuntu-kde-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; Capture operation 9cfb1349-302e-4263-9dff-e88eee1f74ae; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; historyId=37d9ce2f-f05f-42ee-837f-f64c52abf223; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1399,8 +2063,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1409,23 +2113,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:44Z",
-      "issue": 988
+      "at": "2026-10-31T06:13:50Z",
+      "issue": 992
     },
     {
       "interaction": "history.copy-link",
       "desktop": "kubuntu-kde-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; Capture operation 9cfb1349-302e-4263-9dff-e88eee1f74ae; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; historyId=37d9ce2f-f05f-42ee-837f-f64c52abf223; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1444,8 +2148,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1454,23 +2198,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:44Z",
-      "issue": 988
+      "at": "2026-10-31T06:13:50Z",
+      "issue": 992
     },
     {
       "interaction": "history.open-link",
       "desktop": "kubuntu-kde-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; Capture operation 9cfb1349-302e-4263-9dff-e88eee1f74ae; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; historyId=37d9ce2f-f05f-42ee-837f-f64c52abf223; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1489,8 +2233,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1499,23 +2283,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:44Z",
-      "issue": 988
+      "at": "2026-10-31T06:13:50Z",
+      "issue": 992
     },
     {
       "interaction": "history.delete-remote",
       "desktop": "kubuntu-kde-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; Capture operation 9cfb1349-302e-4263-9dff-e88eee1f74ae; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; historyId=37d9ce2f-f05f-42ee-837f-f64c52abf223; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1534,8 +2318,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1544,23 +2368,23 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:44Z",
-      "issue": 988
+      "at": "2026-10-31T06:13:50Z",
+      "issue": 992
     },
     {
       "interaction": "confirm.history-delete",
       "desktop": "kubuntu-kde-wayland",
       "package": "deb",
-      "functional": "blocked",
+      "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
-      "note": "Valid key set 2; AWS refused actual PutObject with HTTP 403, including ACL omit. Exact planned key independently confirmed absent. Original failed receipt retained; authorization prerequisite blocks S3 acceptance.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; Capture operation 9cfb1349-302e-4263-9dff-e88eee1f74ae; operationId=9cfb1349-302e-4263-9dff-e88eee1f74ae; historyId=37d9ce2f-f05f-42ee-837f-f64c52abf223; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": true, \"media\": false, \"missing\": false, \"status\": 403, \"unavailable\": false}; cloudfront_after_delete_status=403; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "s3",
       "review": true,
-      "review_reason": "desktop-drawn frames need visual judgement",
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1579,8 +2403,48 @@
           "tolerance": null
         },
         {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-cloudfront-status-403",
+          "path": "frames/outcomes_live.s3_region_upload/06-browser-cloudfront-status-403.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
           "label": "after",
-          "path": "frames/outcomes_live.s3_region_upload/02-after.png",
+          "path": "frames/outcomes_live.s3_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1589,8 +2453,8 @@
       ],
       "recipe": "outcomes_live.s3_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:26:44Z",
-      "issue": 988
+      "at": "2026-10-31T06:13:50Z",
+      "issue": 992
     },
     {
       "interaction": "region.to-upload",
@@ -1598,14 +2462,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3404b03e-994f-42c7-a569-25a60d147b47; Capture operation 3404b03e-994f-42c7-a569-25a60d147b47; shareOperationId=3462221a-4bc0-4b57-a573-aac4bc2fe46b; operationId=3404b03e-994f-42c7-a569-25a60d147b47; historyId=368a768f-e70b-4c87-9937-d7e58b5ba7dd; upload_count=1; Retained synthetic png sha256=536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; foreground: RuntimeError: this compositor witness cannot raise windows; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Original attempt hit unsupported witness raise; exact retained upload resumed in post/receipt.json. Recipient download failed; History revocation completed. No remote hash or unavailable proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; Capture operation 92f44ef2-fff6-4b2c-afc7-702c59860742; shareOperationId=90aed771-a573-42bb-ac56-c43d6637f010; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; historyId=9da61be3-aef3-4cd0-9c2e-4ced6dbf4765; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-28.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=bc6a0501-43f3-4f0e-9ea2-08f71bb718be; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: foreground: RuntimeError: this compositor witness cannot raise windows; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1624,8 +2488,40 @@
           "tolerance": null
         },
         {
-          "label": "browser-failure-safe-desktop",
-          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1633,7 +2529,7 @@
         },
         {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1642,7 +2538,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:16:10Z",
+      "at": "2026-10-31T06:11:02Z",
       "issue": 978
     },
     {
@@ -1651,14 +2547,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3404b03e-994f-42c7-a569-25a60d147b47; Capture operation 3404b03e-994f-42c7-a569-25a60d147b47; shareOperationId=3462221a-4bc0-4b57-a573-aac4bc2fe46b; operationId=3404b03e-994f-42c7-a569-25a60d147b47; historyId=368a768f-e70b-4c87-9937-d7e58b5ba7dd; upload_count=1; Retained synthetic png sha256=536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; foreground: RuntimeError: this compositor witness cannot raise windows; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Original attempt hit unsupported witness raise; exact retained upload resumed in post/receipt.json. Recipient download failed; History revocation completed. No remote hash or unavailable proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; Capture operation 92f44ef2-fff6-4b2c-afc7-702c59860742; shareOperationId=90aed771-a573-42bb-ac56-c43d6637f010; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; historyId=9da61be3-aef3-4cd0-9c2e-4ced6dbf4765; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-28.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=bc6a0501-43f3-4f0e-9ea2-08f71bb718be; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: foreground: RuntimeError: this compositor witness cannot raise windows; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1677,8 +2573,40 @@
           "tolerance": null
         },
         {
-          "label": "browser-failure-safe-desktop",
-          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1686,7 +2614,7 @@
         },
         {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1695,7 +2623,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:16:10Z",
+      "at": "2026-10-31T06:11:02Z",
       "issue": 978
     },
     {
@@ -1704,14 +2632,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3404b03e-994f-42c7-a569-25a60d147b47; Capture operation 3404b03e-994f-42c7-a569-25a60d147b47; shareOperationId=3462221a-4bc0-4b57-a573-aac4bc2fe46b; operationId=3404b03e-994f-42c7-a569-25a60d147b47; historyId=368a768f-e70b-4c87-9937-d7e58b5ba7dd; upload_count=1; Retained synthetic png sha256=536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; foreground: RuntimeError: this compositor witness cannot raise windows; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Original attempt hit unsupported witness raise; exact retained upload resumed in post/receipt.json. Recipient download failed; History revocation completed. No remote hash or unavailable proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; Capture operation 92f44ef2-fff6-4b2c-afc7-702c59860742; shareOperationId=90aed771-a573-42bb-ac56-c43d6637f010; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; historyId=9da61be3-aef3-4cd0-9c2e-4ced6dbf4765; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-28.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=bc6a0501-43f3-4f0e-9ea2-08f71bb718be; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: foreground: RuntimeError: this compositor witness cannot raise windows; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1730,8 +2658,40 @@
           "tolerance": null
         },
         {
-          "label": "browser-failure-safe-desktop",
-          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1739,7 +2699,7 @@
         },
         {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1748,7 +2708,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:16:10Z",
+      "at": "2026-10-31T06:11:02Z",
       "issue": 978
     },
     {
@@ -1757,14 +2717,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3404b03e-994f-42c7-a569-25a60d147b47; Capture operation 3404b03e-994f-42c7-a569-25a60d147b47; shareOperationId=3462221a-4bc0-4b57-a573-aac4bc2fe46b; operationId=3404b03e-994f-42c7-a569-25a60d147b47; historyId=368a768f-e70b-4c87-9937-d7e58b5ba7dd; upload_count=1; Retained synthetic png sha256=536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; foreground: RuntimeError: this compositor witness cannot raise windows; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Original attempt hit unsupported witness raise; exact retained upload resumed in post/receipt.json. Recipient download failed; History revocation completed. No remote hash or unavailable proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; Capture operation 92f44ef2-fff6-4b2c-afc7-702c59860742; shareOperationId=90aed771-a573-42bb-ac56-c43d6637f010; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; historyId=9da61be3-aef3-4cd0-9c2e-4ced6dbf4765; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-28.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=bc6a0501-43f3-4f0e-9ea2-08f71bb718be; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: foreground: RuntimeError: this compositor witness cannot raise windows; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1783,8 +2743,40 @@
           "tolerance": null
         },
         {
-          "label": "browser-failure-safe-desktop",
-          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1792,7 +2784,7 @@
         },
         {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1801,7 +2793,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:16:10Z",
+      "at": "2026-10-31T06:11:02Z",
       "issue": 978
     },
     {
@@ -1810,14 +2802,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3404b03e-994f-42c7-a569-25a60d147b47; Capture operation 3404b03e-994f-42c7-a569-25a60d147b47; shareOperationId=3462221a-4bc0-4b57-a573-aac4bc2fe46b; operationId=3404b03e-994f-42c7-a569-25a60d147b47; historyId=368a768f-e70b-4c87-9937-d7e58b5ba7dd; upload_count=1; Retained synthetic png sha256=536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; foreground: RuntimeError: this compositor witness cannot raise windows; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Original attempt hit unsupported witness raise; exact retained upload resumed in post/receipt.json. Recipient download failed; History revocation completed. No remote hash or unavailable proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; Capture operation 92f44ef2-fff6-4b2c-afc7-702c59860742; shareOperationId=90aed771-a573-42bb-ac56-c43d6637f010; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; historyId=9da61be3-aef3-4cd0-9c2e-4ced6dbf4765; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-28.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=bc6a0501-43f3-4f0e-9ea2-08f71bb718be; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: foreground: RuntimeError: this compositor witness cannot raise windows; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1836,8 +2828,40 @@
           "tolerance": null
         },
         {
-          "label": "browser-failure-safe-desktop",
-          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1845,7 +2869,7 @@
         },
         {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1854,7 +2878,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:16:10Z",
+      "at": "2026-10-31T06:11:02Z",
       "issue": 978
     },
     {
@@ -1863,14 +2887,14 @@
       "package": "deb",
       "functional": "failed",
       "visual": "frames",
-      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
-      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=3404b03e-994f-42c7-a569-25a60d147b47; Capture operation 3404b03e-994f-42c7-a569-25a60d147b47; shareOperationId=3462221a-4bc0-4b57-a573-aac4bc2fe46b; operationId=3404b03e-994f-42c7-a569-25a60d147b47; historyId=368a768f-e70b-4c87-9937-d7e58b5ba7dd; upload_count=1; Retained synthetic png sha256=536d9b7fb071c2fed5a043a8471df195e6608055d4704e2299353741a999bb70; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; foreground: RuntimeError: this compositor witness cannot raise windows; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; owned directory: RecipeBlocked; Original attempt hit unsupported witness raise; exact retained upload resumed in post/receipt.json. Recipient download failed; History revocation completed. No remote hash or unavailable proof claimed.",
+      "receipt": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; Capture operation 92f44ef2-fff6-4b2c-afc7-702c59860742; shareOperationId=90aed771-a573-42bb-ac56-c43d6637f010; operationId=92f44ef2-fff6-4b2c-afc7-702c59860742; historyId=9da61be3-aef3-4cd0-9c2e-4ced6dbf4765; upload_count=1; Retained synthetic png sha256=bf27d05374d1490da03d953f49f515361094424f675d8a483787822dfb2fd768; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-07-28.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; shareOperationId=bc6a0501-43f3-4f0e-9ea2-08f71bb718be; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
       "host": "f44",
       "placement": "guest",
       "guest": "kde-wayland",
       "destination": "proton",
       "review": true,
-      "review_reason": "live UI cleanup failed: foreground: RuntimeError: this compositor witness cannot raise windows; desktop-drawn frames need visual judgement",
+      "review_reason": "desktop-drawn frames need visual judgement",
       "frames": [
         {
           "label": "before",
@@ -1889,8 +2913,40 @@
           "tolerance": null
         },
         {
-          "label": "browser-failure-safe-desktop",
-          "path": "frames/outcomes_live.proton_region_upload/02-browser-failure-safe-desktop.png",
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1898,7 +2954,7 @@
         },
         {
           "label": "after",
-          "path": "frames/outcomes_live.proton_region_upload/03-after.png",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
           "window": null,
           "reference": null,
           "distance": null,
@@ -1907,7 +2963,7 @@
       ],
       "recipe": "outcomes_live.proton_region_upload",
       "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
-      "at": "2026-10-31T05:16:10Z",
+      "at": "2026-10-31T06:11:02Z",
       "issue": 978
     }
   ]

@@ -1,0 +1,594 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "d69",
+    "placement": "guest",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "proton",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "run_id": "947b32ae-3b1f-4707-93c4-a51a546ce3f1",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/patrick/t1b/work/lab-runs/r3c",
+      "session_root": "/dev/shm/tcpa",
+      "socket": "/dev/shm/tcpa/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "kwin_entry_staging": [],
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 13913,
+      "start": "24421",
+      "boot": "64339c17-31d8-498f-8b37-78d6b171eb21",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1339,
+      "start": 1139,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "4cd2b7a7-57c6-46fb-bb31-a000230ab005"
+      },
+      {
+        "shareOperationId": "74ec29f5-f0cc-44db-ada7-236c476fd256"
+      },
+      {
+        "shareOperationId": "7d31b2d7-0973-4a03-9ee6-df450cf5ce89"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:24:25Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:24:25Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:24:25Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:24:25Z"
+    },
+    {
+      "interaction": "history.proton-sharing",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:24:25Z"
+    },
+    {
+      "interaction": "confirm.revoke-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-protona/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; Capture operation 4cd2b7a7-57c6-46fb-bb31-a000230ab005; shareOperationId=74ec29f5-f0cc-44db-ada7-236c476fd256; operationId=4cd2b7a7-57c6-46fb-bb31-a000230ab005; historyId=ebedde20-d1aa-4e30-89a9-c730e052c06b; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; {\"url_host\": \"drive.proton.me\", \"title\": \"Screen-Capture-2026-10-31-01-20-54.png\", \"matched\": true}; Target browser helper: Recipient download deadline: {\"blobPreview\": true, \"downloadError\": false, \"downloading\": false, \"focused\": true, \"serviceWorkerAPI\": true}; recipient_positive_failure=driver error: RuntimeError; shareOperationId=7d31b2d7-0973-4a03-9ee6-df450cf5ce89; revocation_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": false, \"missing\": true, \"status\": 200, \"unavailable\": true}; unavailable_link_count=1; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; driver error: RuntimeError",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "proton",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.proton_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.proton_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.proton_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "revoke-exact-owned-link",
+          "path": "frames/outcomes_live.proton_region_upload/04-revoke-exact-owned-link.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.proton_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-link-unavailable",
+          "path": "frames/outcomes_live.proton_region_upload/06-browser-link-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.proton_region_upload/07-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.proton_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:24:25Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 13,
+    "pngs": 8,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

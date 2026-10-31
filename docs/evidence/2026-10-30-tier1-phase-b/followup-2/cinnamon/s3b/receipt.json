@@ -1,0 +1,495 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "mint-cinnamon-x11",
+    "host": "d69",
+    "placement": "guest",
+    "guest": "cinnamon-x11",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "run_id": "947b32ae-3b1f-4707-93c4-a51a546ce3f1",
+      "lab_profile": "cinnamon-x11",
+      "run_directory": "/home/patrick/t1b/work/lab-runs/r3c",
+      "session_root": "/dev/shm/tcsb",
+      "socket": "/dev/shm/tcsb/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-lab",
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "linuxmint",
+        "VERSION_ID": "22.3",
+        "VARIANT_ID": null
+      },
+      "session_type": "x11",
+      "desktop": "X-Cinnamon",
+      "qt_platform": "xcb"
+    },
+    "kwin_entry_staging": [],
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "xcb",
+      "pid": 26066,
+      "start": "58047",
+      "boot": "64339c17-31d8-498f-8b37-78d6b171eb21",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "cinnamon",
+      "pid": 1339,
+      "start": 1139,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "b7700a7c-cc2a-46ec-a488-313e31cd4e5e"
+      }
+    ],
+    "private_cleanup": "not-owned-or-retained",
+    "cleanup_errors": [
+      "private session root cleanup refused"
+    ],
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:28:15Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:28:15Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:28:15Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:28:15Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:28:15Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3b/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; Capture operation b7700a7c-cc2a-46ec-a488-313e31cd4e5e; operationId=b7700a7c-cc2a-46ec-a488-313e31cd4e5e; historyId=d8f499b2-647e-4bc4-bd94-0304a16affbd; upload_count=1; Retained synthetic png sha256=17c4d5d4d0c8fde0770d01528dff0b1a8c522d399e1d5996d1f0b6c15ee0feca; remote_hash_match_count=1; desktop frame browser-failure-fully-masked masked by live evidence policy; recipient_positive_failure=timeout: default Firefox loaded the expected page content; last Firefox answer: Recipient readiness: {\"blank\": false, \"certificateError\": false, \"complete\": true, \"content\": false, \"focused\": true, \"fullscreen\": true, \"hostOK\": true, \"media\": false, \"named\": true, \"networkError\": false, \"status\": 403}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "live UI cleanup failed: control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-failure-fully-masked",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-failure-fully-masked.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/04-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:28:15Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 12,
+    "pngs": 6,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}
