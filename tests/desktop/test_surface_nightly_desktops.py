@@ -70,6 +70,37 @@ class NightlyTests(unittest.TestCase):
                 nightly.release_assets(GitHub(), 'v26.1031.3384-nightly', Path(tmp)/'packages',
                                        [dict(asset='ubuntu26.04-x86_64.deb')])
 
+    def test_failure_issue_is_updated_then_closed_by_passing_cell(self):
+        pinned = dict(number=1, title='Nightly desktop results', node_id='PIN', html_url='https://example.test/1')
+        failure = dict(number=2, title='nightly: Cinnamon Region failing', state='open')
+        class GitHub:
+            repo = 'owner/repo'
+            writes = []
+            def issues(self): return [pinned, failure]
+            def issue(self, title, body, existing=None):
+                self.writes.append(('issue', title, existing))
+                return dict(existing or pinned, html_url='https://example.test/issue')
+            def api(self, path, method='GET', body=None):
+                self.writes.append((method, path, body))
+                if method == 'GET': return dict(node_id='REPO')
+                return dict(html_url='https://example.test/receipt')
+            def gh(self, *args):
+                return json.dumps(dict(data=dict(node=dict(pinnedIssues=dict(nodes=[dict(issue=dict(id='PIN'))])))))
+        github = GitHub()
+        result = dict(release='v26.1031.3384-nightly', build='a'*40, date='2026-10-31',
+            desktops=[dict(desktop='Cinnamon', host='d69', evidence='/owned/run',
+                           cells=dict(region_upload=dict(green=False, assertion='pixel mismatch')))])
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github, result, Path(tmp))
+            updates = [w for w in github.writes if w[0] == 'issue' and w[1] == failure['title']]
+            self.assertEqual(len(updates), 1)
+            self.assertIs(updates[0][2], failure)
+            github.writes.clear()
+            result['desktops'][0]['cells']['region_upload']['green'] = True
+            nightly.publish(github, result, Path(tmp))
+            self.assertTrue(any(w[0] == 'PATCH' and w[1].endswith('/2')
+                                and w[2]['state'] == 'closed' for w in github.writes))
+
 
 if __name__ == '__main__':
     unittest.main()

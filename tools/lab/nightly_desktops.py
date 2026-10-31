@@ -72,7 +72,8 @@ def command(argv, *, log=None, timeout=900, env=None):
         result = subprocess.run([str(a) for a in argv], cwd=ROOT, env=env,
                                 capture_output=True, timeout=timeout)
     if result.returncode:
-        raise RuntimeError('command failed; private log retained')
+        step = Path(log).name if log else Path(str(argv[0])).name
+        raise RuntimeError(f'{step} failed (exit {result.returncode}); private log retained')
     return result.stdout.decode() if not log else None
 
 
@@ -228,7 +229,7 @@ def retire(run, out, rows):
     # Collect only terminal audited run directories. Rehash the archive before
     # writing the existing guarded cleanup manifest; never remove failed evidence.
     from tools.lab.surface_driver.collect import collect
-    attempts = [p.parent for p in out.glob('*/terminal.json')]
+    attempts = [p.parent for p in out.glob('*/receipt.json')]
     archive = out/'attachments.tgz'
     if attempts:
         collect(attempts, archive)
@@ -348,9 +349,18 @@ def worker(config, tag, identity, artifacts, out):
                     # remote publication. Preserve that running guest for recover.
                     proton = Path.home()/'putgd-lab/locks/proton.lock'
                     outstanding = proton.exists() and 'lent copy outstanding' in proton.read_text()
-                    retained = any('cleanup' in c.get('assertion', '') for c in cells.values())
+                    retained = False
+                    for receipt_path in rowout.glob('*/receipt.json'):
+                        evidence = json.loads(receipt_path.read_text())
+                        environment = evidence.get('environment', {})
+                        retained |= bool(environment.get('cleanup_errors'))
+                        retained |= 'retained' in str(environment.get('private_cleanup', ''))
                     if (run/'state.json').exists() and not outstanding and not retained:
-                        lab.reset(run)
+                        try:
+                            if (run/'disk.qcow2').exists():
+                                retire(run, rowout, cells)
+                        finally:
+                            lab.reset(run)
         except Exception as error:
             # Only our fixed messages are public. Harness/SSH exception payloads stay private.
             reason = str(error) if type(error) is RuntimeError else 'controller '+type(error).__name__+'; private evidence retained'
