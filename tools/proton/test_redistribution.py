@@ -59,6 +59,19 @@ class RedistributionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'native relink proof'):
             audit.remaining_evidence(catalog, 'a' * 64)
 
+    def test_desktop_acceptance_cannot_transfer_to_another_helper_or_source(self):
+        pins = {'sdk': '1' * 40, 'crypto': '2' * 40, 'bun': '3' * 40}
+        subject = {'status': 'passed', 'helperSha256': 'a' * 64, 'sourcePins': pins}
+        catalog = {'helperSha256': 'a' * 64, 'published': True, 'openGates': [],
+                   'sourcePins': pins, 'proof': {'finalPackageAcceptanceVerified': True},
+                   'desktopResourceAcceptance': subject}
+        self.assertEqual(audit.remaining_evidence(catalog, 'a' * 64), [])
+        invalid = [{'status': 'open'}, {'helperSha256': 'b' * 64}, {'sourcePins': {}}]
+        invalid.extend({'sourcePins': {**pins, name: '0' * 40}} for name in pins)
+        for changed in invalid:
+            with self.subTest(changed=changed), self.assertRaisesRegex(ValueError, 'desktop/resource acceptance'):
+                audit.remaining_evidence({**catalog, 'desktopResourceAcceptance': {**subject, **changed}}, 'a' * 64)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

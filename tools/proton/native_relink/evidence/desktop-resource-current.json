@@ -1,32 +1,819 @@
 {
   "schemaVersion": 1,
+  "status": "passed",
+  "issue": 1071,
   "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
-  "status": "open",
-  "scope": "Current SDK 0.23.0/Crypto 2.2.0 helper desktop/resource acceptance; no acceptance transfers from historical helpers",
-  "requiredDesktops": [
-    "Cinnamon",
-    "GNOME",
-    "KDE"
-  ],
+  "sourcePins": {
+    "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+    "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+    "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+    "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+    "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+    "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+  },
+  "scope": "Current helper guest functional/resource acceptance requested after #1080; sampled whole product family and two independent >=300-second post-use windows on each same used resident. No transfer from historical helpers.",
+  "producerPr": "https://github.com/patrick-hudson/put.gd-desktop/pull/1080",
+  "producerHead": "52068c5b20b46bbe9e751cdfaa8d1bff1b751de6",
+  "producerMerge": "c9be647807ba9c4bb482873298698e9b18c6219e",
+  "ciRun": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/41238056156",
+  "testedEmbeddedCatalogSha256": "8d4d54b2db415f29eb1f5d733b697b79535115b792b7c87bba6472bb7235ede3",
+  "embeddedCatalogRetainsBuildTimePendingFlags": true,
   "criteriaReference": "docs/evidence/2026-10-15-proton-p4-p6-acceptance.md",
   "requiredResourceEvidence": {
     "wholeProcessFamily": true,
     "postUseIdleWindows": 2,
     "secondsPerIdleWindow": 300,
     "idleRssMiBMaximum": 40,
+    "idleCpuOneCorePercentStrictUpperBound": 0.5,
     "idleSwapBytes": 0,
     "idleHelperProcesses": 0,
-    "idleCpuOneCorePercentStrictUpperBound": 0.5,
     "sameUsedResidentForBothWindows": true
   },
-  "nightlyTableIssue": 1003,
-  "availableNightlySource": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
-  "availableNightlyCoversCurrentHelper": false,
-  "reason": "The available nightly predates #1067 and the SDK/Crypto upgrade. No current-helper Cinnamon/GNOME/KDE resource receipts are available; nightly functional cells alone do not provide the two post-use idle windows.",
+  "desktops": [
+    {
+      "desktop": "Cinnamon",
+      "host": "m74",
+      "scope": "Disposable KVM guest, 2 vCPU / 6144 MiB, installed prebuilt CI DEB; no guest compilation",
+      "run": {
+        "id": "e3a7a626-04f9-4ef8-a21d-91b19162ebf9",
+        "profile": "cinnamon-x11",
+        "guest_user": "lab",
+        "ssh_port": 22487,
+        "vnc_display": 97,
+        "acceleration": "kvm",
+        "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-1e7496436875/image.qcow2",
+        "golden_sha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+        "pid": 1315628
+      },
+      "environment": {
+        "kernel": "6.14.0-37-generic",
+        "machine": "x86_64",
+        "python": "3.12.3",
+        "desktop": "X-Cinnamon",
+        "session": "x11",
+        "packages": [
+          "cinnamon 6.6.4+zena",
+          "gnome-shell ",
+          "libc6 2.39-0ubuntu8.6",
+          "libqt6core6 ",
+          "libqt6core6t64 6.4.2+dfsg-21.1build5",
+          "libqt6widgets6 ",
+          "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+          "muffin 6.6.1+zena"
+        ],
+        "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+        "logicalCpus": 2,
+        "virtualization": "kvm"
+      },
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1031.3521-dev+g59c0fba1e4c9",
+        "baseVersion": "26.1031.3521",
+        "packageVersion": "26.1031.3521~dev+g59c0fba1e4c9",
+        "gitCommit": "59c0fba1e4c9a8131a4b07ff120bf8d688ff2e4d",
+        "gitTree": "c3e7a336ffc82ee9e30609b25f5f0d8211da7f8e",
+        "commitCount": 3521,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "package": {
+        "sha256": "a02a5fde2535d3d5071bf60ae05e35c8197c67305c5274936f0d0ec0f76fbd48",
+        "filename": "package.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd-kde-region": "03c0182a76d453b4e48bd80ee10e11c5010216233599611881a6fab06df5fb77",
+          "/usr/bin/putgd-b2-worker": "bfc7864b98d7e960db71369c8e7a963d7e028805c4fe8b2418605fa2f1034a47",
+          "/usr/bin/putgd-ui": "975dd0af1bb7e58b09bdfbf34a2a27b0ce96904ee7e9cf4bf3d28d08880dd1e8",
+          "/usr/bin/putgd-record": "5f39e8d99147144ec36a9c01daa0502b8bc8589a30ea880dbbf4062d7fc79b03",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "d97396ca57c038098de2a58fa4298a08540ebcbb24a8b62f2659c75c19ad30c8",
+          "/usr/bin/putgd": "dbe16b41e33000da93811ae0970c7b44768403a979e4a8096b278692b69f5584",
+          "/usr/bin/putgd-capture": "f0359f01f37f6b3e65a70b15b3c014cbefb6549031abe673ed94e8e4284de6c2",
+          "/usr/bin/putgd-s3-worker": "dc21b94c836ab3f3f853faccad9eb17242cf8fe8226044ebf73fbeb3a40115a4"
+        },
+        "installEvidence": "/home/patrick/p1080/work/lab-runs/c/install-e67645973c424661a48a6623157eeae3",
+        "timedOut": false
+      },
+      "resident": {
+        "pid": 8550,
+        "startTicks": 62427,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 64771,
+        "inode": 1196328
+      },
+      "functional": {
+        "passed": true,
+        "operationId": "6b9de349-461f-4236-a160-6af7640dc2af",
+        "historyId": "b631059d-077d-495b-abfc-2598767d7312",
+        "folderName": "putgd-lab-cinnamon-x11-20261031T210641Z",
+        "actions": [
+          "account/folder check",
+          "synthetic editor upload",
+          "share link",
+          "inspect shared",
+          "revoke link"
+        ],
+        "allConfirmedLinksRevoked": true
+      },
+      "activeSampledPeakMiB": {
+        "rssBytes": 170.7734375,
+        "pssBytes": 148.404296875,
+        "privateBytes": 146.97265625
+      },
+      "observedActiveHelpers": {
+        "/usr/libexec/putgd/proton/putgd-proton-runtime": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+        "/usr/bin/putgd-ui": "975dd0af1bb7e58b09bdfbf34a2a27b0ce96904ee7e9cf4bf3d28d08880dd1e8",
+        "/usr/bin/gsettings": "e4b3c0f05909ee95c251d587fd690e94c149e7c898f93ab65d2f18b9a9fc0263"
+      },
+      "idleWindows": [
+        {
+          "window": 1,
+          "seconds": 301.0002147360001,
+          "rssPeakMiB": 31.3984375,
+          "cpuPercentOneCore": 0.0033222567660859494,
+          "gates": {
+            "observerPassed": true,
+            "rssAtMost40MiB": true,
+            "cpuBelowHalfPercentOneCore": true,
+            "zeroSwap": true,
+            "noHelpersOrEscapes": true,
+            "durationAtLeast300Seconds": true
+          },
+          "sampleCount": 61,
+          "maximumSampleGapSeconds": 5.060377544000062,
+          "startedUtc": "2026-10-31T21:08:12.934263+00:00"
+        },
+        {
+          "window": 2,
+          "seconds": 301.00013843199986,
+          "rssPeakMiB": 31.3984375,
+          "cpuPercentOneCore": 0.0033222576082831733,
+          "gates": {
+            "observerPassed": true,
+            "rssAtMost40MiB": true,
+            "cpuBelowHalfPercentOneCore": true,
+            "zeroSwap": true,
+            "noHelpersOrEscapes": true,
+            "durationAtLeast300Seconds": true
+          },
+          "sampleCount": 61,
+          "maximumSampleGapSeconds": 5.056872237999869,
+          "startedUtc": "2026-10-31T21:13:18.474060+00:00"
+        }
+      ],
+      "sameUsedResidentForBothWindows": true,
+      "continuousObserver": {
+        "passed": true,
+        "resident": {
+          "pid": 8550,
+          "startTicks": 62427,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 64771,
+          "inode": 1196328
+        },
+        "samples": 2709,
+        "windows": {
+          "idle-1": {
+            "samples": 1215,
+            "maxRssBytes": 32923648,
+            "maxSwapBytes": 0,
+            "maxProcessCount": 1,
+            "maxEscaped": 0,
+            "anyProductHelper": false
+          },
+          "idle-2": {
+            "samples": 1209,
+            "maxRssBytes": 32923648,
+            "maxSwapBytes": 0,
+            "maxProcessCount": 1,
+            "maxEscaped": 0,
+            "anyProductHelper": false
+          }
+        },
+        "elapsedSeconds": 709.2389802819999
+      },
+      "clockTicksPerSecond": 100,
+      "baton": {
+        "host": "m74",
+        "session": "p1080-m74",
+        "startedUtc": "2026-10-31T21:06:10.534265+00:00",
+        "finishedUtc": "2026-10-31T21:18:36.947088+00:00",
+        "before": {
+          "at": "2026-10-31T21:06:10Z",
+          "by": "proton-p6",
+          "app": "26.1023.1058-nightly",
+          "testScope": "account-folder",
+          "folderName": "putgd-lab-m74-check-2026-10-23T212531Z",
+          "passed": true,
+          "state": "ok"
+        },
+        "after": {
+          "at": "2026-10-31T21:18:25Z",
+          "by": "proton-p6",
+          "app": "26.1023.1058-nightly",
+          "testScope": "account-folder",
+          "folderName": "putgd-lab-m74-check-2026-10-23T212531Z",
+          "passed": true,
+          "state": "ok"
+        },
+        "passed": true,
+        "carryBackConfirmed": true,
+        "guestReferenceCleaned": true,
+        "testExit": 0,
+        "receipts": "/home/patrick/putgd-lab/proton/receipts/2026-10-31T21-06-22Z-c",
+        "lockReleased": true
+      },
+      "visual": {
+        "path": "tools/proton/native_relink/evidence/p6/cinnamon.png",
+        "sha256": "2de1726d46a76829fcd6a1964689104d40fa449e65d0cd4edb9181725b2a9e1b",
+        "originalPpmSha256": "0b24854b62d2de70fd7c52a8a5b399b2ac4e3070a2c196f007de14ad0c4ae030"
+      },
+      "privateEvidence": {
+        "host": "m74",
+        "path": "/home/patrick/p1080/evidence/c.tar.gz",
+        "sha256": "513f7836be95d566bc156c358b93fada12ee024b8c978d51e26cdba9d9b03c82",
+        "bytes": 3173704,
+        "verifiedMembers": 47,
+        "completionManifestSha256": "6ae36fdbb7468a8bf67a09d6ed5d7f43f0740f4f7b2c6649a9055ff588d63ed0"
+      },
+      "retirement": {
+        "schemaVersion": 1,
+        "status": "completed",
+        "run": "/home/patrick/p1080/work/lab-runs/c",
+        "disk": "/home/patrick/p1080/work/lab-runs/c/disk.qcow2",
+        "diskIdentity": {
+          "device": 2050,
+          "inode": 13804967,
+          "size": 1222049792,
+          "mtimeNs": 1793481566734488002,
+          "ctimeNs": 1793481566734488002,
+          "allocatedBytes": 1222000640
+        },
+        "base": "/home/patrick/work/put.gd/work/lab-images/transfer-1e7496436875/image.qcow2",
+        "stateSha256": "da2ab7adf0ac6b4c50963665da50399e603ab189853e103b3d7c37c132ac9305",
+        "evidence": {
+          "manifest": "/home/patrick/p1080/evidence/c/manifest.json",
+          "sha256": "6ae36fdbb7468a8bf67a09d6ed5d7f43f0740f4f7b2c6649a9055ff588d63ed0",
+          "runId": "e3a7a626-04f9-4ef8-a21d-91b19162ebf9",
+          "mode": "explicit"
+        },
+        "preparedUtc": "2026-10-31T21:19:55.499129+00:00",
+        "completedUtc": "2026-10-31T21:19:55.930399+00:00"
+      }
+    },
+    {
+      "desktop": "GNOME",
+      "host": "d69",
+      "scope": "Disposable KVM guest, 2 vCPU / 6144 MiB, installed prebuilt CI DEB; no guest compilation",
+      "run": {
+        "id": "698ee3af-155d-46ef-b34b-1366e9ca8ba0",
+        "profile": "gnome-wayland",
+        "guest_user": "lab",
+        "ssh_port": 22488,
+        "vnc_display": 98,
+        "acceleration": "kvm",
+        "golden": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+        "golden_sha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+        "pid": 177831
+      },
+      "environment": {
+        "kernel": "7.0.0-38-generic",
+        "machine": "x86_64",
+        "python": "3.14.4",
+        "desktop": "ubuntu:GNOME",
+        "session": "wayland",
+        "packages": [
+          "cinnamon ",
+          "gnome-shell 50.1-0ubuntu1.2",
+          "libc6 2.43-2ubuntu2.4",
+          "libqt6core6 ",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "libqt6widgets6 6.10.2+dfsg-7",
+          "libqt6widgets6t64 "
+        ],
+        "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+        "logicalCpus": 2,
+        "virtualization": "kvm"
+      },
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1031.3521-dev+g59c0fba1e4c9",
+        "baseVersion": "26.1031.3521",
+        "packageVersion": "26.1031.3521~dev+g59c0fba1e4c9",
+        "gitCommit": "59c0fba1e4c9a8131a4b07ff120bf8d688ff2e4d",
+        "gitTree": "c3e7a336ffc82ee9e30609b25f5f0d8211da7f8e",
+        "commitCount": 3521,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "package": {
+        "sha256": "8f6384c9985c62d9c5c1c78f72ca6a8a25460b84e87bf38c0339a7543bc1856c",
+        "filename": "package.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd-ui": "121a8ea5467b99ab48f4ff5cf4b95c723eed1d61f4fac48baca760aad4412370",
+          "/usr/bin/putgd-s3-worker": "23268b5e66752cf741daf17381e5984d0fbfcf6e76119aec7e73912b991f1cbe",
+          "/usr/bin/putgd-record": "a01e1880bffb6f750643a12daa3047ff9a2fd29d1e962f78a3967cd3fe45b8ae",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-kde-region": "0b9662b28b7eb5aebbe1187613b720898f44147e2ded946094ce1ec5f3b25592",
+          "/usr/bin/putgd-cli": "a2e71237ae696ca9a8ba437df0c8ee2acebaf4027794c9d75c91e22df1c94145",
+          "/usr/bin/putgd-capture": "f74d01ee56b0ed2ecbb66c232c4480ad5ce552a8489b41004c823fd84d2c4d27",
+          "/usr/bin/putgd-b2-worker": "b53debe3dae17ada1369e91ddde12b28d6709a37d61c2fa355aa4feabe8ff2f1",
+          "/usr/bin/putgd": "087cf217d9576138d74c597f9eaafeac289551367442868860b7ad948ed57730"
+        },
+        "installEvidence": "/home/patrick/p1080/work/lab-runs/g/install-f0851b48833a498eaf1f4b06113a3a51",
+        "timedOut": false
+      },
+      "resident": {
+        "pid": 32881,
+        "startTicks": 166211,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 64770,
+        "inode": 1076429
+      },
+      "functional": {
+        "passed": true,
+        "operationId": "d00aaf11-5af2-4079-9d7a-e8b6d5a0ce84",
+        "historyId": "8bc0d791-7ca5-44f9-bf9d-f45b3bfb3f00",
+        "folderName": "putgd-lab-gnome-wayland-20261031T210641Z",
+        "actions": [
+          "account/folder check",
+          "synthetic editor upload",
+          "share link",
+          "inspect shared",
+          "revoke link"
+        ],
+        "allConfirmedLinksRevoked": true
+      },
+      "activeSampledPeakMiB": {
+        "rssBytes": 203.17578125,
+        "pssBytes": 127.1484375,
+        "privateBytes": 102.296875
+      },
+      "observedActiveHelpers": {
+        "/usr/libexec/putgd/proton/putgd-proton-runtime": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+        "/usr/bin/putgd-ui": "121a8ea5467b99ab48f4ff5cf4b95c723eed1d61f4fac48baca760aad4412370",
+        "/usr/bin/gsettings": "75bfcd45a5f5556954ea75881c657dc7d799f6a444aa4ff6bc3065e258f6ff0c"
+      },
+      "idleWindows": [
+        {
+          "window": 1,
+          "seconds": 301.0001443260003,
+          "rssPeakMiB": 33.4453125,
+          "cpuPercentOneCore": 0.00664451508645752,
+          "gates": {
+            "observerPassed": true,
+            "rssAtMost40MiB": true,
+            "cpuBelowHalfPercentOneCore": true,
+            "zeroSwap": true,
+            "noHelpersOrEscapes": true,
+            "durationAtLeast300Seconds": true
+          },
+          "sampleCount": 61,
+          "maximumSampleGapSeconds": 5.064350633000004,
+          "startedUtc": "2026-10-31T21:08:08.227367+00:00"
+        },
+        {
+          "window": 2,
+          "seconds": 301.0001410509999,
+          "rssPeakMiB": 33.4453125,
+          "cpuPercentOneCore": 0.009966772738128701,
+          "gates": {
+            "observerPassed": true,
+            "rssAtMost40MiB": true,
+            "cpuBelowHalfPercentOneCore": true,
+            "zeroSwap": true,
+            "noHelpersOrEscapes": true,
+            "durationAtLeast300Seconds": true
+          },
+          "sampleCount": 61,
+          "maximumSampleGapSeconds": 5.042555799999718,
+          "startedUtc": "2026-10-31T21:13:13.531903+00:00"
+        }
+      ],
+      "sameUsedResidentForBothWindows": true,
+      "continuousObserver": {
+        "passed": true,
+        "resident": {
+          "pid": 32881,
+          "startTicks": 166211,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 64770,
+          "inode": 1076429
+        },
+        "samples": 2899,
+        "windows": {
+          "idle-1": {
+            "samples": 1312,
+            "maxRssBytes": 35069952,
+            "maxSwapBytes": 0,
+            "maxProcessCount": 1,
+            "maxEscaped": 0,
+            "anyProductHelper": false
+          },
+          "idle-2": {
+            "samples": 1313,
+            "maxRssBytes": 35069952,
+            "maxSwapBytes": 0,
+            "maxProcessCount": 1,
+            "maxEscaped": 0,
+            "anyProductHelper": false
+          }
+        },
+        "elapsedSeconds": 702.103661522
+      },
+      "clockTicksPerSecond": 100,
+      "baton": {
+        "host": "d69",
+        "session": "p1080-d69",
+        "startedUtc": "2026-10-31T21:06:10.217498+00:00",
+        "finishedUtc": "2026-10-31T21:18:34.683805+00:00",
+        "before": {
+          "at": "2026-10-31T21:06:10Z",
+          "by": "proton-p6",
+          "app": "26.1023.1058-nightly",
+          "testScope": "account-folder",
+          "folderName": "putgd-lab-d69-check-2026-10-23T213912Z",
+          "passed": true,
+          "state": "ok"
+        },
+        "after": {
+          "at": "2026-10-31T21:18:20Z",
+          "by": "proton-p6",
+          "app": "26.1023.1058-nightly",
+          "testScope": "account-folder",
+          "folderName": "putgd-lab-d69-check-2026-10-23T213912Z",
+          "passed": true,
+          "state": "ok"
+        },
+        "passed": true,
+        "carryBackConfirmed": true,
+        "guestReferenceCleaned": true,
+        "testExit": 0,
+        "receipts": "/home/patrick/putgd-lab/proton/receipts/2026-10-31T21-06-24Z-g",
+        "lockReleased": true
+      },
+      "visual": {
+        "path": "tools/proton/native_relink/evidence/p6/gnome.png",
+        "sha256": "33c4048f8c9300aa68a69efe170a64713c4d5a25934437662af8021191fec5da",
+        "originalPpmSha256": "e9f206aa570d7773f717716da28fc6f4498a672dbd582adcfa316b39193fedf8"
+      },
+      "privateEvidence": {
+        "host": "d69",
+        "path": "/home/patrick/p1080/evidence/g.tar.gz",
+        "sha256": "09ea08d8060decb6f3b16e9f9ca5dd586cb81388bb754e5d234c7a3bb5489a2c",
+        "bytes": 7645306,
+        "verifiedMembers": 62,
+        "completionManifestSha256": "582c31d3401dba8714e2e3a19c9e47c9eff0e72f9c7ccc3b3d0f596f2e73f504"
+      },
+      "retirement": {
+        "schemaVersion": 1,
+        "status": "completed",
+        "run": "/home/patrick/p1080/work/lab-runs/g",
+        "disk": "/home/patrick/p1080/work/lab-runs/g/disk.qcow2",
+        "diskIdentity": {
+          "device": 2050,
+          "inode": 5388822,
+          "size": 1538719744,
+          "mtimeNs": 1793481566282111759,
+          "ctimeNs": 1793481566282111759,
+          "allocatedBytes": 1538666496
+        },
+        "base": "/home/patrick/work/put.gd/work/lab-images/transfer-0d2922e34f4b/image.qcow2",
+        "stateSha256": "2ade09b204a43a718e9b4ada506eeafa46b1721de7bc55633a3125babbe53d92",
+        "evidence": {
+          "manifest": "/home/patrick/p1080/evidence/g/manifest.json",
+          "sha256": "582c31d3401dba8714e2e3a19c9e47c9eff0e72f9c7ccc3b3d0f596f2e73f504",
+          "runId": "698ee3af-155d-46ef-b34b-1366e9ca8ba0",
+          "mode": "explicit"
+        },
+        "preparedUtc": "2026-10-31T21:19:56.124764+00:00",
+        "completedUtc": "2026-10-31T21:19:56.704757+00:00"
+      }
+    },
+    {
+      "desktop": "KDE",
+      "host": "k72",
+      "scope": "Disposable KVM guest, 2 vCPU / 6144 MiB, installed prebuilt CI DEB; no guest compilation",
+      "run": {
+        "id": "7ce81c11-ce2b-41bc-90cc-65f46a8442fe",
+        "profile": "kde-wayland",
+        "guest_user": "lab",
+        "ssh_port": 22489,
+        "vnc_display": 99,
+        "acceleration": "kvm",
+        "golden": "/home/patrick/p1080/work/lab-images/kde-ro/image.qcow2",
+        "golden_sha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+        "pid": 3841404
+      },
+      "environment": {
+        "kernel": "7.0.0-38-generic",
+        "machine": "x86_64",
+        "python": "3.14.4",
+        "desktop": "KDE",
+        "session": "wayland",
+        "packages": [
+          "cinnamon ",
+          "gnome-shell ",
+          "kwin-wayland 4:6.6.6-0ubuntu0.1",
+          "libc6 2.43-2ubuntu2.4",
+          "libqt6core6 ",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "libqt6widgets6 6.10.2+dfsg-7",
+          "libqt6widgets6t64 "
+        ],
+        "cpu": "Intel(R) Core(TM) i5-6500T CPU @ 2.50GHz",
+        "logicalCpus": 2,
+        "virtualization": "kvm"
+      },
+      "build": {
+        "schemaVersion": 1,
+        "version": "26.1031.3521-dev+g59c0fba1e4c9",
+        "baseVersion": "26.1031.3521",
+        "packageVersion": "26.1031.3521~dev+g59c0fba1e4c9",
+        "gitCommit": "59c0fba1e4c9a8131a4b07ff120bf8d688ff2e4d",
+        "gitTree": "c3e7a336ffc82ee9e30609b25f5f0d8211da7f8e",
+        "commitCount": 3521,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "package": {
+        "sha256": "8f6384c9985c62d9c5c1c78f72ca6a8a25460b84e87bf38c0339a7543bc1856c",
+        "filename": "package.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd-ui": "121a8ea5467b99ab48f4ff5cf4b95c723eed1d61f4fac48baca760aad4412370",
+          "/usr/bin/putgd-s3-worker": "23268b5e66752cf741daf17381e5984d0fbfcf6e76119aec7e73912b991f1cbe",
+          "/usr/bin/putgd-record": "a01e1880bffb6f750643a12daa3047ff9a2fd29d1e962f78a3967cd3fe45b8ae",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-kde-region": "0b9662b28b7eb5aebbe1187613b720898f44147e2ded946094ce1ec5f3b25592",
+          "/usr/bin/putgd-cli": "a2e71237ae696ca9a8ba437df0c8ee2acebaf4027794c9d75c91e22df1c94145",
+          "/usr/bin/putgd-capture": "f74d01ee56b0ed2ecbb66c232c4480ad5ce552a8489b41004c823fd84d2c4d27",
+          "/usr/bin/putgd-b2-worker": "b53debe3dae17ada1369e91ddde12b28d6709a37d61c2fa355aa4feabe8ff2f1",
+          "/usr/bin/putgd": "087cf217d9576138d74c597f9eaafeac289551367442868860b7ad948ed57730"
+        },
+        "installEvidence": "/home/patrick/p1080/work/lab-runs/k/install-e21448e9662946b9a9f8d67368708f46",
+        "timedOut": false
+      },
+      "resident": {
+        "pid": 21038,
+        "startTicks": 96542,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "device": 64769,
+        "inode": 1313954
+      },
+      "functional": {
+        "passed": true,
+        "operationId": "8ad500e3-5ec6-47bd-8755-512fdc6c0cc6",
+        "historyId": "9a1d475b-2c8c-41e7-9154-8477c9ca43ac",
+        "folderName": "putgd-lab-kde-wayland-20261031T210657Z",
+        "actions": [
+          "account/folder check",
+          "synthetic editor upload",
+          "share link",
+          "inspect shared",
+          "revoke link"
+        ],
+        "allConfirmedLinksRevoked": true
+      },
+      "activeSampledPeakMiB": {
+        "rssBytes": 276.68359375,
+        "pssBytes": 140.12109375,
+        "privateBytes": 137.79296875
+      },
+      "observedActiveHelpers": {
+        "/usr/libexec/putgd/proton/putgd-proton-runtime": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+        "/usr/bin/putgd-ui": "121a8ea5467b99ab48f4ff5cf4b95c723eed1d61f4fac48baca760aad4412370"
+      },
+      "idleWindows": [
+        {
+          "window": 1,
+          "seconds": 301.000172841,
+          "rssPeakMiB": 33.69140625,
+          "cpuPercentOneCore": 0.009966771685492409,
+          "gates": {
+            "observerPassed": true,
+            "rssAtMost40MiB": true,
+            "cpuBelowHalfPercentOneCore": true,
+            "zeroSwap": true,
+            "noHelpersOrEscapes": true,
+            "durationAtLeast300Seconds": true
+          },
+          "sampleCount": 61,
+          "maximumSampleGapSeconds": 5.059092422000049,
+          "startedUtc": "2026-10-31T21:08:32.462622+00:00"
+        },
+        {
+          "window": 2,
+          "seconds": 301.00018371400006,
+          "rssPeakMiB": 33.69140625,
+          "cpuPercentOneCore": 0.009966771325463695,
+          "gates": {
+            "observerPassed": true,
+            "rssAtMost40MiB": true,
+            "cpuBelowHalfPercentOneCore": true,
+            "zeroSwap": true,
+            "noHelpersOrEscapes": true,
+            "durationAtLeast300Seconds": true
+          },
+          "sampleCount": 61,
+          "maximumSampleGapSeconds": 5.060047094000083,
+          "startedUtc": "2026-10-31T21:13:37.986188+00:00"
+        }
+      ],
+      "sameUsedResidentForBothWindows": true,
+      "continuousObserver": {
+        "passed": true,
+        "resident": {
+          "pid": 21038,
+          "startTicks": 96542,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 64769,
+          "inode": 1313954
+        },
+        "samples": 2688,
+        "windows": {
+          "idle-1": {
+            "samples": 1198,
+            "maxRssBytes": 35328000,
+            "maxSwapBytes": 0,
+            "maxProcessCount": 1,
+            "maxEscaped": 0,
+            "anyProductHelper": false
+          },
+          "idle-2": {
+            "samples": 1200,
+            "maxRssBytes": 35328000,
+            "maxSwapBytes": 0,
+            "maxProcessCount": 1,
+            "maxEscaped": 0,
+            "anyProductHelper": false
+          }
+        },
+        "elapsedSeconds": 712.5349044299999
+      },
+      "clockTicksPerSecond": 100,
+      "baton": {
+        "host": "k72",
+        "session": "p1080-k72",
+        "startedUtc": "2026-10-31T21:06:25.860673+00:00",
+        "finishedUtc": "2026-10-31T21:20:03.226067+00:00",
+        "before": {
+          "at": "2026-10-31T21:06:25Z",
+          "by": "proton-p6",
+          "app": "26.1023.1058-nightly",
+          "testScope": "account-folder",
+          "folderName": "putgd-lab-k72-check-2026-10-23T213914Z",
+          "passed": true,
+          "state": "ok"
+        },
+        "after": {
+          "at": "2026-10-31T21:19:52Z",
+          "by": "proton-p6",
+          "app": "26.1023.1058-nightly",
+          "testScope": "account-folder",
+          "folderName": "putgd-lab-k72-check-2026-10-23T213914Z",
+          "passed": true,
+          "state": "ok"
+        },
+        "passed": true,
+        "carryBackConfirmed": true,
+        "guestReferenceCleaned": true,
+        "testExit": 0,
+        "recoveredAfterCollectionFailure": true,
+        "receipts": "/home/patrick/putgd-lab/proton/receipts/2026-10-31T21-06-38Z-k",
+        "lockReleased": true
+      },
+      "visual": {
+        "path": "tools/proton/native_relink/evidence/p6/kde.png",
+        "sha256": "a7d4f4e62170c656204c6fd60afa2bb2789229691cf75d30bfad9dffa27fc553",
+        "originalPpmSha256": "72648da71825e5c71ed44131686e2b70804c6bca7da514e94a199bf6ebcc1aa0"
+      },
+      "privateEvidence": {
+        "host": "k72",
+        "path": "/home/patrick/p1080/evidence/k.tar.gz",
+        "sha256": "f56461cf2fb862c1479fa02719440d43720f38dc678d1df3928277464eba780d",
+        "bytes": 1599582,
+        "verifiedMembers": 55,
+        "completionManifestSha256": "e165425c542ae72b4b9dcd015256ffd873f34770c04ed5399fd5d44f39214100"
+      },
+      "retirement": {
+        "schemaVersion": 1,
+        "status": "completed",
+        "run": "/home/patrick/p1080/work/lab-runs/k",
+        "disk": "/home/patrick/p1080/work/lab-runs/k/disk.qcow2",
+        "diskIdentity": {
+          "device": 2050,
+          "inode": 2670852,
+          "size": 1372389376,
+          "mtimeNs": 1793481629705718003,
+          "ctimeNs": 1793481629705718003,
+          "allocatedBytes": 1372336128
+        },
+        "base": "/home/patrick/p1080/work/lab-images/kde-ro/image.qcow2",
+        "stateSha256": "7ed3a96997e4ee991c6b5bc59b0ace20947460848f5ab611e0dfc3a7b75267cf",
+        "evidence": {
+          "manifest": "/home/patrick/p1080/evidence/k/manifest.json",
+          "sha256": "e165425c542ae72b4b9dcd015256ffd873f34770c04ed5399fd5d44f39214100",
+          "runId": "7ce81c11-ce2b-41bc-90cc-65f46a8442fe",
+          "mode": "explicit"
+        },
+        "preparedUtc": "2026-10-31T21:20:39.204210+00:00",
+        "completedUtc": "2026-10-31T21:20:39.521996+00:00"
+      },
+      "goldenSource": {
+        "host": "d69",
+        "path": "/home/patrick/work/put.gd/work/lab-images/transfer-541c1316ab6b/image.qcow2",
+        "sha256BeforeAndAfter": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+        "temporaryReadOnlyNfsMountRemovedAfterRetirement": true
+      }
+    }
+  ],
+  "numericEvidence": {
+    "scope": "Allowlisted numeric observations and reproduction controls; complete private work archives remain on the builders.",
+    "path": "tools/proton/native_relink/evidence/p6/measurements.tar.gz",
+    "sha256": "3593022c58f95b9f5ee7cba20f31bd8e82bb919755999dc11b0b726c4f04927f",
+    "bytes": 285138,
+    "members": {
+      "cinnamon/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "cinnamon/close-action.log": "f508124d9c9dfda0a1a6722fec4685e3377408f81f99fd01c27b9158c790771b",
+      "cinnamon/close_ui.py": "66ef57c3c5a2268b7e3ba9050ba05505b09804a0aefb01b611a9af14930d90e3",
+      "cinnamon/continuous-samples.jsonl": "a67aca408378ba330af18f125e6345f9f54bd4b3c2f6b62c3fdf7ede2a25117f",
+      "cinnamon/continuous-watch.json": "a2dfcccebc728c87a876641e0f3d2888a8709f71eb6454b4adbc421164906085",
+      "cinnamon/functional.json": "b5de3cb87dc1a3a0d026007953934da4b1f1b661d053445009d80883b085744f",
+      "cinnamon/guest_watch-corrected.py": "c1bb6e20eaa7ed791ac2e5c6a275c8701289ee6e3abc9419addac2817308d777",
+      "cinnamon/idle-1-results.json": "bd20fce73cf3999e3d05dd3794ff39e62f8725386200628af3b928730d3a7338",
+      "cinnamon/idle-1-samples.jsonl": "60f8d31ffd24f49e5783e550d07fe4fca5d73d9b03cfc7287987a310562fb4f3",
+      "cinnamon/idle-2-results.json": "5676645d4633d629d07128f77c65fc3a2e30472f1076a80b3c5b0a78cc52c5e8",
+      "cinnamon/idle-2-samples.jsonl": "37d1b77ebe30a10ee3ae5933e2123f823a9ad019d19d7244bf8cc591c22e782d",
+      "cinnamon/p6_guest_workload-p6r2.py": "d22a756c9fa38378d80b2208f3c6be3d7b76443538a1ddc3cba46c8a2d7189b1",
+      "cinnamon/proton-smoke.json": "a97b75910a44650f356cccefd5664178bdefd3af4565d057068d9211f201b068",
+      "cinnamon/result.json": "9508abc9fa8d9b8ce1994b1ad76ef3fe76fa7f3ff373cf2c8ad473c2924bdd63",
+      "gnome/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "gnome/close-action.log": "bb8c1faa323d8ad69e0468a0fae7e95f24adc06a6cb2d5833d2197b8f7eb7792",
+      "gnome/close_ui.py": "66ef57c3c5a2268b7e3ba9050ba05505b09804a0aefb01b611a9af14930d90e3",
+      "gnome/continuous-samples.jsonl": "b64ac2fc43a330a68153a4c31617b1fde3fa5fa46ce33004eeee534f4bdb3fc8",
+      "gnome/continuous-watch.json": "25328223c1bde588be15dc6ca30d1e148c1e04295ca98391b81d0b99d6b9ce61",
+      "gnome/functional.json": "6c46990fc1f1f051ec3b2fd622d92bb676a627022d6a04472d5e012a217235e4",
+      "gnome/guest_watch-corrected.py": "c1bb6e20eaa7ed791ac2e5c6a275c8701289ee6e3abc9419addac2817308d777",
+      "gnome/idle-1-results.json": "e403f675f7389eb62ce7db94cd8a9f438986ba581bc4171446de6d58a3598ab5",
+      "gnome/idle-1-samples.jsonl": "6e35de8a9bce4bd528907865cf27d6ab578e367116e1722c243b2c9ce142eac7",
+      "gnome/idle-2-results.json": "44c76d195e2e8c0121d41ca33de7432efee6814512e4f32d8d7c1fa5d1b02f8b",
+      "gnome/idle-2-samples.jsonl": "1dd4cd418625fd625b8bec370af5336adcac113a3f7edb83d6cede3543292aa6",
+      "gnome/p6_guest_workload-p6r2.py": "d22a756c9fa38378d80b2208f3c6be3d7b76443538a1ddc3cba46c8a2d7189b1",
+      "gnome/proton-smoke.json": "50ad56809f861d1204ef3945316a4bc47238d9ccc28b1ecf6a0035fe7b6095eb",
+      "gnome/result.json": "4a277185cb31bd6834d6406fac656aa3f66c6c61b32027a3030e26703dd952b1",
+      "kde/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "kde/close-action.log": "93814592a299057bfe2563e7039b88335015c970dfff16b9a985332f0618b8b2",
+      "kde/close_ui.py": "66ef57c3c5a2268b7e3ba9050ba05505b09804a0aefb01b611a9af14930d90e3",
+      "kde/continuous-samples.jsonl": "b6bba65926f557eabc3ec1f0ba4cf6704c2133d956eb254e198616afdfba6db7",
+      "kde/continuous-watch.json": "b8576fb6d8f96a07403b9476a26e45dd083b8e9ccab42671aabbe1a3514aa43e",
+      "kde/functional.json": "dbac49a96836b63efeb211f77186933c44328ab17cc59f3bdf35a6c9df8b72ff",
+      "kde/guest_watch-corrected.py": "c1bb6e20eaa7ed791ac2e5c6a275c8701289ee6e3abc9419addac2817308d777",
+      "kde/idle-1-results.json": "055f0f0b5e116c292cc30dc4369220274d27f7651dfffef9888b4c56040b8a3a",
+      "kde/idle-1-samples.jsonl": "e56a322bfda44bf60e885ac4357885620f961145e8139c91ca6fc724bb41a8da",
+      "kde/idle-2-results.json": "def8d5688acbd285022dc5bb54f80515afd7d0fde8e0b1ca2f418e5902257c69",
+      "kde/idle-2-samples.jsonl": "a4986d94b4a33d7b55b3b343605867643f7b325a3c085e4c026726c94b858214",
+      "kde/p6_guest_workload-p6r2.py": "d22a756c9fa38378d80b2208f3c6be3d7b76443538a1ddc3cba46c8a2d7189b1",
+      "kde/proton-smoke.json": "a79a888215aa122c1b3f175fd3dc4f87ee765be47d9e6ed74ae927f3c1fc797f",
+      "kde/result.json": "e143b1118ca4e7a569d1158dd951fda3f341887cc2dd44a9d795b7c73a1e1818"
+    }
+  },
+  "installerAudit": {
+    "path": "tools/proton/native_relink/evidence/ci-final-head-installers.json",
+    "sha256": "c6b93da8acb3bf84eb5fc0ae14192018a0367256864bb545986cc6c3497b8a11",
+    "allFivePassed": true
+  },
+  "preservedFailures": [
+    "Earlier GNOME control attempts failed after their confirmed links were revoked; each baton was returned.",
+    "An accidentally generated attempt-3 controller failed before functional operations.",
+    "Initial auxiliary /proc scan refused an unreadable non-product keyring process; corrected scanner still refuses unreadable putgd processes.",
+    "AT-SPI close can disconnect before replying when the UI exits normally. Corrected driver bounds the action, then independently requires normal UI exit and the original resident before sampling.",
+    "KDE final collection initially failed through secret_bridge; receipt-based recover returned the baton, removed the guest reference and a subsequent builder check passed without repeating the completed measurements.",
+    "KDE interrupted first resource attempt was terminated on coordinator instruction; session was carried back and checked before restarting.",
+    "A premature KDE restart was refused by the existing Proton lease; the later launch followed its release."
+  ],
+  "limitations": [
+    "These are guest acceptance observations, not physical hardware performance, cold-idle or full application feature/release acceptance.",
+    "Sequential sampled process observations can miss a helper born and exited between samples; a separate 0.2-second whole-family/global owned-product scan supplements the unchanged 5-second frozen observer.",
+    "Active RSS/PSS/private peaks are sampled diagnostics with no arbitrary rejection ceiling; shared desktop services outside the product family are outside this metric.",
+    "Synthetic folders/files are retained; this campaign revokes its confirmed links and deletes no Proton files."
+  ],
   "historicalAttempt": "desktop-resource.json",
-  "historicalAttemptDoesNotEstablishCurrentAcceptance": true,
-  "availableNightlyRelease": "v26.1031.3384-nightly",
-  "nightlyTableUpdatedUtc": "2026-10-31T17:52:34Z",
-  "nightlyTableCheckedUtc": "2026-10-31T19:02:42Z",
-  "nightlyTableUrl": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003"
+  "historicalProofTransferred": false,
+  "recordedUtc": "2026-10-31T21:22:10.434475+00:00",
+  "cleanup": {
+    "allOwnedOverlaysRetired": true,
+    "allBatonsReturnedAndGuestReferencesCleaned": true,
+    "allBuilderPostChecksPassed": true,
+    "allOwnedProtonLeasesReleased": true,
+    "ownedDesktopLeaseReleased": true,
+    "ownedDisplayWallTilesAndTunnelsRemoved": true,
+    "temporaryKdeNfsMountAndExportRemoved": true,
+    "goldenSourcesPreserved": true
+  }
 }
