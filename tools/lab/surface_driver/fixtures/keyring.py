@@ -69,31 +69,8 @@ def isolated_service(scope):
     environment={'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''}
     if prior['owner']:
         environment['SECRET_SERVICE_BUS_NAME']=bus_name
-    if getattr(ctx,'package',None)=='appimage':
-        scope.restart(environment,before=lambda:_appimage_entries(scope))
-        # AppRun has now registered its mount. KWin reads the native session's
-        # service cache, while the app keeps its private cache and settings.
-        ctx.target.session('unset XDG_CACHE_HOME\nkbuildsycoca6 --noincremental >/dev/null\n')
-    else:
-        scope.restart(environment)
+    scope.restart(environment)
     return dict(identity,bus_name=bus_name) if prior['owner'] else identity
-
-
-def _appimage_entries(scope):
-    # The resident's private data root differs from guest_session's default.
-    # Reuse the lab's existing session-visible applications link before AppRun
-    # registers the current mount's exact executable with KWin. No capture or
-    # recording runtime/permission policy is replaced here.
-    from tools.lab import lab
-    target=scope.ctx.target
-    profile=lab.load_profile(target.info['profile'])
-    if lab.install_format(profile)!='appimage':
-        raise RecipeBlocked('AppImage entry staging requires its authenticated lab profile',issue=955)
-    body=target.prefix()+lab.appimage_entries_prefix(profile)+'''
-test -L "$XDG_DATA_HOME/applications"
-test "$(readlink -f "$XDG_DATA_HOME/applications")" = "$(readlink -f "$session_applications")"
-'''
-    target.session(body)
 
 
 UNIQUE_SERVICE = '''import json,os

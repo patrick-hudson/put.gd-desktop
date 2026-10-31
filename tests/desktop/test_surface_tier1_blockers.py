@@ -168,13 +168,6 @@ class PlasmaProperties(unittest.TestCase):
         self.assertEqual(keyring.isolated_service(scope),{'pid':100,'start':'22'})
         scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
 
-    def test_appimage_entry_staging_refuses_a_mismatched_profile_before_mutation(self):
-        from tools.lab import lab
-        scope=Mock();scope.ctx.target.info={'profile':'kde-wayland'}
-        with patch.object(lab,'load_profile',return_value={'install':'deb'}):
-            with self.assertRaisesRegex(RecipeBlocked,'authenticated lab profile'):
-                keyring._appimage_entries(scope)
-        scope.ctx.target.session.assert_not_called()
 
 
 if __name__=='__main__':unittest.main()
