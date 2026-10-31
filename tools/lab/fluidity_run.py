@@ -111,7 +111,18 @@ class Driver:
             if real.exists():
                 raise RunError('%s exists; --real-data-home would mix with it' % real)
             del self.env['XDG_DATA_HOME']
+        if args.runtime_dir:
+            # A private runtime directory keeps this resident's session socket apart
+            # from a resident the desktop's user is running (workstation checks);
+            # the X11 recorder needs no PipeWire socket. Keep the path short.
+            runtime = Path(args.runtime_dir).resolve()
+            runtime.mkdir(parents=True, exist_ok=True)
+            os.chmod(runtime, 0o700)
+            if len(str(runtime / 'putgd' / 'session.sock').encode()) > 100:
+                raise RunError('--runtime-dir too long for a session socket path')
+            self.env['XDG_RUNTIME_DIR'] = str(runtime)
         self.socket = Path(self.env['XDG_RUNTIME_DIR']) / 'putgd' / 'session.sock'
+
         self.resident = None
         self.fixture = None
         self.fixture_info = None
@@ -514,6 +525,7 @@ def main(argv=None):
         p.add_argument('--build', action='append', required=True, metavar='LABEL=PATH')
         p.add_argument('--output')
         p.add_argument('--rounds', type=int, default=1)
+        p.add_argument('--runtime-dir', help='private XDG_RUNTIME_DIR for the resident (short path)')
         p.add_argument('--frames', action='store_true', help='keep one VNC tile frame per round as evidence')
         p.add_argument('--vnc-port', type=int, default=5900)
         if name == 'record':
