@@ -303,6 +303,12 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
   running resident, `--kwin-entry` for a build tree's screencast entry and
   `--real-data-home` for AppImages; `select` drags through the uinput agent
   (`--input-socket`) or xdotool and must release the button it pressed (#6).
+  `record --env KEY=VALUE` is repeatable and sets the resident/helper environment:
+  for example `--env LIBVA_DRIVER_NAME=none` forces software x264, and
+  `--env PUTGD_RECORD_ADAPTIVE_RATE=off` disables adaptive rate for A/B runs.
+  Keep secrets out of these arguments. Each recording result in `results.json`
+  includes `machineBusy`, the machine-wide CPU busy share (0–1) sampled from
+  `/proc/stat` across that recording, alongside the recorder rate-window logs.
 - `fake_outputs.py add DP-1 DP-3` forces spare DRM connectors on with the
   booted monitor's EDID (runtime `drm.edid_firmware` plus a writable firmware
   path, no reboot), so a builder with one monitor gets a three-output desktop
