@@ -64,8 +64,10 @@ KWALLET_COLLECTION = '''
 import hashlib,pwd,time
 wallet=LABEL
 assert wallet not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
-folder=Path(pwd.getpwuid(os.getuid()).pw_dir)/'.local/share/kwalletd'
-assert folder.resolve()==folder and folder.is_dir()
+folder=Path(pwd.getpwuid(os.getuid()).pw_dir).resolve(strict=True)/'.local/share/kwalletd'
+assert folder.resolve()==folder
+folder.mkdir(mode=0o700,parents=True,exist_ok=True)
+assert folder.stat().st_uid==os.getuid()
 salt_path=folder/(wallet+'.salt')
 with open(os.open(salt_path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'wb') as f:f.write(os.urandom(56))
 digest=hashlib.pbkdf2_hmac('sha512',b'',salt_path.read_bytes(),50000,dklen=56)

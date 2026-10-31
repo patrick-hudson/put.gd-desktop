@@ -1036,7 +1036,7 @@ asyncio.run(main())
                 if ((SECRET_FIELD.search(row.get('name', '')) or row.get('sensitive'))
                         and row.get('class') not in ('QPushButton', 'QToolButton', 'QCheckBox', 'QRadioButton')):
                     names.add(row['name'])
-        return names
+        return {name for name in names if not re.search(r'(url|link)$', name, re.I)} if self.destination == 'local' else names
 
     EDITABLE_ROLES = ('text', 'entry', 'password text', 'terminal')
 

@@ -82,6 +82,14 @@ class SelectorMapping(unittest.TestCase):
 class LocalFrames(Base):
     destination='local'
 
+    def test_local_required_fields_exclude_fake_links_without_dropping_credentials(self):
+        ctx=self.context()
+        ctx.catalog.inventories={'destinations':{'controls':[
+            {'name':'publicUrl','class':'QLineEdit'}, {'name':'credentialSecretKey','class':'QLineEdit'}]}}
+        self.assertEqual(ctx._secret_names(),{'credentialSecretKey'})
+        ctx.destination='s3'
+        self.assertEqual(ctx._secret_names(),{'publicUrl','credentialSecretKey'})
+
     def test_observed_loopback_link_does_not_mask_browser_content(self):
         ctx=self.context();ctx.sensitive('http://127.0.0.1:1234/synthetic.png')
         ctx._secret_regions=Mock(return_value=[[1,2,3,4]])

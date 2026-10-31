@@ -45,7 +45,7 @@ if p in collections:
  assert call(p,'org.freedesktop.DBus.Properties','Get',GLib.Variant('(ss)',('org.freedesktop.Secret.Collection','Label')),'(v)')[0]==LABEL
  assert call(p,'org.freedesktop.Secret.Collection','Delete',None,'(o)')[0]=='/'
 assert LABEL not in call('/ksecretd','org.kde.KWallet','wallets',None,'(as)')[0]
-salt=Path(pwd.getpwuid(os.getuid()).pw_dir)/'.local/share/kwalletd'/(LABEL+'.salt')
+salt=Path(pwd.getpwuid(os.getuid()).pw_dir).resolve(strict=True)/'.local/share/kwalletd'/(LABEL+'.salt')
 if salt.exists():
  assert not salt.is_symlink() and salt.stat().st_uid==os.getuid() and salt.stat().st_size==56
  salt.unlink()
