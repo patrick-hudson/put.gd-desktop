@@ -147,9 +147,9 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
  if(!ready_)error=helperError_.code.isEmpty()?Error{"helper_unavailable","Enable putgd@put.gd before sharing",{}}:helperError_;
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
- // An extension loaded before an upgrade ignores regionMode and would select
- // live while reporting success; ask for the re-login instead (#629).
- else if(action=="region"&&regionScreenshotFirst_&&outdated()){error=recordingShellError();if(hotkey)release(id);}
+ // Both region modes require the packaged appearance protocol; an older
+ // loaded extension silently ignores its tokens. Ask for re-login before preparing.
+ else if(action=="region"&&outdated()){error=recordingShellError();if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
  return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot);};
@@ -205,7 +205,7 @@ void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
  connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_)reply({{},{"cancelled","GNOME acquisition cancelled",{}}});else reply(std::move(*result));});worker->start();
 }
 // Recording protocol 1 adds SelectArea, ShowRecordingFrame and HideRecordingFrame.
-bool GnomeAdapter::selectsRegions()const{return ready_&&helper_["recordingVersion"].toInt()>=1;}
+bool GnomeAdapter::selectsRegions()const{return ready_&&!outdated()&&helper_["recordingVersion"].toInt()>=1;}
 // An extension older than the packaged one is still the one loaded at login (#131).
 bool GnomeAdapter::outdated()const{return ready_&&helper_["extensionVersion"].toInt()<gnome::extensionVersion;}
 Error GnomeAdapter::recordingShellError()const{

@@ -443,7 +443,7 @@ print('PASS each recoverable failure episode receives a fresh bounded retry budg
 // graphical acceptance and proves nothing about the Mutter stream's pixels.
 const pendingSelectors = [];
 globalThis.RegionSelectorFixture = class {
-    selectAsync() {return new Promise(resolve => {this.resolve = resolve; pendingSelectors.push(this);});}
+    selectAsync() {return new Promise((resolve, reject) => {this.resolve = resolve; this.reject = reject; pendingSelectors.push(this);});}
     cancel() {this.resolve(null);}
 };
 {
@@ -461,6 +461,18 @@ globalThis.RegionSelectorFixture = class {
     assert.equal((await cancelled).error.code, 'cancelled');
     assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
     print('PASS recording selection answers the rectangle and Release cancels it');
+    const failedId = id();
+    const failed = bridge(extension, 'SelectAreaAsync', [JSON.stringify({id: failedId, appearance: {}})]); await flush();
+    const failedSelector = pendingSelectors.pop();
+    failedSelector.reject(Object.assign(new Error('Synthetic revoked grab'), {bridgeCode: 'cancelled'}));
+    assert.equal((await failed).error.code, 'cancelled');
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    const recoveredId = id();
+    const recovered = bridge(extension, 'SelectAreaAsync', [JSON.stringify({id: recoveredId, appearance: {}})]); await flush();
+    pendingSelectors.pop().resolve({x: 40, y: 50, width: 640, height: 360});
+    assert.deepEqual(await recovered, {version: 1, requestId: recoveredId, rect: [40, 50, 640, 360]});
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    print('PASS failed JSON selection releases its decoded request and allows immediate recovery');
 }
 const work = [[0, 32, 1920, 1048]];
 assert.deepEqual(globalThis.barPlacement([100, 100, 640, 360], [400, 40], work), {rect: [100, 470, 400, 40], outside: true});

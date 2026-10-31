@@ -1309,17 +1309,23 @@ export default class PutgdExtension extends Extension {
             const options = selection.startsWith('{') ? JSON.parse(selection) : {id: selection};
             const id = options.id;
             const request = this._new(id, sender);
-            request.action = 'select';
-            request.stage = 'region-select';
-            const selector = new RegionSelector(true, null, '', null, options.appearance ?? {});
-            this._selector = request.selector = selector;
-            const selected = await selector.selectAsync();
-            request.selector = null;
-            this._selector = null;
-            this._alive(request);
-            check(selected, 'cancelled', 'GNOME region selection cancelled');
-            this._finish(id);
-            return {version: 1, requestId: id, rect: rectangle(selected)};
+            try {
+                request.action = 'select';
+                request.stage = 'region-select';
+                const selector = new RegionSelector(true, null, '', null, options.appearance ?? {});
+                this._selector = request.selector = selector;
+                const selected = await selector.selectAsync();
+                request.selector = null;
+                this._selector = null;
+                this._alive(request);
+                check(selected, 'cancelled', 'GNOME region selection cancelled');
+                this._finish(id);
+                return {version: 1, requestId: id, rect: rectangle(selected)};
+            } finally {
+                // _run receives the JSON envelope, not this decoded request ID.
+                // Release a revoked grab or failed selector immediately as well.
+                this._drop(id);
+            }
         });
     }
 
