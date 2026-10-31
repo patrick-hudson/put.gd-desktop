@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import subprocess
 from pathlib import Path
 import tempfile
@@ -22,7 +23,8 @@ class SnapshotContracts(unittest.TestCase):
         records = sorted((ROOT / 'tools/lab/boat/manifests').glob('*.json'))
         self.assertEqual({path.stem for path in records}, {
             'putgd-build-base-v2', 'putgd-build-base-v3', 'putgd-lab-cinnamon-v2',
-            'putgd-lab-cinnamon-v3', 'putgd-lab-ubuntu-gnome-v3', 'putgd-lab-ubuntu-gnome-v4'})
+            'putgd-lab-cinnamon-v3', 'putgd-lab-ubuntu-gnome-v3', 'putgd-lab-ubuntu-gnome-v4',
+            'putgd-lab-kubuntu-kde-v1'})
         for path in records:
             data = json.loads(path.read_text())
             with self.subTest(snapshot=data['snapshotName']):
@@ -74,6 +76,84 @@ class SnapshotContracts(unittest.TestCase):
             text = (root / '.config/autostart/mintupdate.desktop').read_text()
             self.assertIn('Hidden=true', text)
             self.assertIn('X-GNOME-Autostart-enabled=false', text)
+
+    def test_kde_first_snapshot_uses_native_target_and_guest_profile(self):
+        name = 'putgd-lab-kubuntu-kde-v1'
+        self.assertEqual(snapshots.snapshot_name(name), name)
+        self.assertEqual(snapshots.package_metadata(name)['packageTarget'], 'ubuntu26.04')
+        with self.assertRaises(ValueError):
+            snapshots.package_metadata(name, 'ubuntu24.04')
+        args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
+            '--source', '/image', '--source-sha256', 'b' * 64, '--bootstrap-key', '/public',
+            '--known-hosts', '/pins', '--evidence', '/evidence', '--profile', 'kde-wayland',
+            '--run-name', 'k1', '--install', '--name', name,
+            '--destination', '/home/user/work/lab-images/kde/image.qcow2'])
+        self.assertEqual(args.profile, 'kde-wayland')
+
+    def test_kde_policy_preserves_other_wallet_settings_and_verifies_read_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'proc').mkdir()
+            (root / '.config').mkdir()
+            (root / '.config/kwalletrc').write_text('[Other]\nKeep=this\n')
+            (root / 'system.desktop').write_text('[Desktop Entry]\nExec=DiscoverNotifier\n')
+            for install in (True, False):
+                script = snapshots.kde_policy_script(install)
+                if not install:
+                    self.assertNotIn('write_text', script)
+                    self.assertNotIn('os.kill', script)
+                    self.assertNotIn(".open('w')", script)
+                body = script.split('\n', 1)[1].rsplit('POLICY', 1)[0]
+                body = body.replace("Path('/proc')", 'Path(' + repr(str(root / 'proc')) + ')')
+                body = body.replace("Path('/etc/xdg/autostart/org.kde.discover.notifier.desktop')",
+                                    'Path(' + repr(str(root / 'system.desktop')) + ')')
+                with patch.object(Path, 'home', return_value=root), contextlib.redirect_stdout(io.StringIO()), \
+                     patch('subprocess.check_output', return_value='false\n'):
+                    exec(compile(body, '<kde-policy>', 'exec'), {})
+            self.assertIn('Keep = this', (root / '.config/kwalletrc').read_text())
+            self.assertIn('Hidden=true', (root / '.config/autostart/system.desktop').read_text())
+            self.assertIn('UseUnattendedUpdates = false', (root / '.config/PlasmaDiscoverUpdates').read_text())
+
+    def test_kde_update_policy_checks_effective_values_and_masked_inactive_units(self):
+        script = snapshots.kde_update_policy_script()
+        self.assertNotIn('sudo', script)
+        self.assertNotIn('apt-get', script)
+        self.assertNotIn('write_text', script)
+        for mutation in ("'stop'", "'mask'", "'disable'"):
+            self.assertNotIn(mutation, script)
+        install = snapshots.kde_update_policy_script(True)
+        self.assertIn('Dir::Etc::sourcelist=/dev/null', install)
+        self.assertIn('APT::Update::Pre-Invoke::=', install)
+        self.assertIn('reset-failed', install)
+        self.assertNotIn('sudoers', install)
+        with tempfile.TemporaryDirectory() as temporary:
+            config = Path(temporary) / 'policy'
+            config.write_text('APT::Periodic::Enable "0";\n')
+            config.chmod(0o644)
+            body = script.split("python3 - <<'UPDATES'\n", 1)[1].rsplit('UPDATES', 1)[0]
+            body = body.replace("Path('/etc/apt/apt.conf.d/zz-putgd-lab-no-auto-upgrades')", repr(config))
+            body = body.replace('p='+repr(config), 'p=Path('+repr(str(config))+')')
+            original_stat = Path.stat
+            def owned_stat(path, *args, **kwargs):
+                value = original_stat(path, *args, **kwargs)
+                if path == config:
+                    fields = list(value); fields[4] = 0
+                    return os.stat_result(fields)
+                return value
+            for state, value, active, passes in (('masked', '0', 'inactive', True),
+                    ('enabled', '0', 'inactive', False), ('masked', '1', 'inactive', False),
+                    ('masked', '0', 'failed', False)):
+                def observed(args, **kwargs):
+                    if args[0] == 'systemctl':
+                        return 'LoadState='+state+'\nActiveState='+active+'\nUnitFileState='+state+'\n'
+                    return "value='"+value+"'\n"
+                with patch.object(Path, 'stat', owned_stat), patch('subprocess.check_output', side_effect=observed), \
+                     contextlib.redirect_stdout(io.StringIO()):
+                    if passes:
+                        exec(compile(body, '<update-policy-check>', 'exec'), {})
+                    else:
+                        with self.assertRaises((RuntimeError, AssertionError)):
+                            exec(compile(body, '<update-policy-check>', 'exec'), {})
 
     def test_guest_verification_can_use_exact_controller_and_negative_cleanup(self):
         args = snapshots.parser().parse_args(['guest', '--checkout', '/source', '--commit', SHA,
