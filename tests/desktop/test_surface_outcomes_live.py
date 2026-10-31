@@ -1,9 +1,13 @@
 """Synthetic safety/oracle checks; these do not establish desktop acceptance."""
 import io
+import contextlib
+import hashlib
+import json
 from pathlib import Path
 import sys
 from types import SimpleNamespace
 import unittest
+import tempfile
 from unittest.mock import Mock, patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
@@ -80,6 +84,22 @@ class LiveOutcomes(unittest.TestCase):
         detail['receipt']['objectReference']['key']='owned/object'
         outcomes_live._owned(ctx,service,detail,'owned-operation')
         with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'different-operation')
+
+    def test_saved_hash_cannot_read_a_foreign_file_or_symlink(self):
+        def execute(code):
+            output=io.StringIO()
+            with contextlib.redirect_stdout(output):exec(code,{})
+            return json.loads(output.getvalue())
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td)/'owned';root.mkdir()
+            data=b'\x89PNG\r\n\x1a\nsynthetic test bytes'
+            payload=root/'capture.png';payload.write_bytes(data)
+            foreign=Path(td)/'foreign.png';foreign.write_bytes(data)
+            link=root/'link.png';link.symlink_to(payload)
+            scope=SimpleNamespace(json=execute,ctx=SimpleNamespace(target=SimpleNamespace(root=str(root))))
+            self.assertEqual(outcomes_live._saved_digest(scope,str(payload)),hashlib.sha256(data).hexdigest())
+            for path in (foreign,link):
+                with self.assertRaises(AssertionError):outcomes_live._saved_digest(scope,str(path))
 
 
 if __name__=='__main__':unittest.main()

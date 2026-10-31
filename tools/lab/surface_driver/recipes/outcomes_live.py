@@ -87,6 +87,22 @@ def _published(ctx, oid, pending):
     return op, detail
 
 
+def _saved_digest(scope, path):
+    # Constrain the read before hashing: a bad local receipt must never cause
+    # a credential/user file outside this fresh profile to be fingerprinted.
+    return scope.json('''import hashlib,json,os,stat
+from pathlib import Path
+p=Path(PATH);root=Path(ROOT)
+assert p.resolve(strict=True).is_relative_to(root.resolve(strict=True)) and not p.is_symlink()
+with os.fdopen(os.open(p,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK),'rb') as stream:
+ info=os.fstat(stream.fileno());assert stat.S_ISREG(info.st_mode) and info.st_uid==os.getuid()
+ assert 0<info.st_size<=32*1024*1024
+ data=stream.read(32*1024*1024+1)
+assert data.startswith(b'\\x89PNG\\r\\n\\x1a\\n') and len(data)<=32*1024*1024
+print(json.dumps(hashlib.sha256(data).hexdigest()))
+'''.replace('PATH', repr(path)).replace('ROOT', repr(scope.ctx.target.root)))
+
+
 def _region_upload(ctx):
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
@@ -105,8 +121,7 @@ def _region_upload(ctx):
             owned = True
         ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
                    and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
-        digest = scope.json('import hashlib,json\nfrom pathlib import Path\nprint(json.dumps(hashlib.sha256(Path('
-                            +repr(detail['local']['path'])+').read_bytes()).hexdigest()))')
+        digest = _saved_digest(scope, detail['local']['path'])
         data = outcomes._payload(ctx, detail['local']['path'], 'png', digest)
         Image, _, _ = image_modules()
         ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
