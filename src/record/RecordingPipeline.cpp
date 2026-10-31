@@ -11,6 +11,7 @@
 #include <initializer_list>
 #include <gst/base/gstbasesrc.h>
 #include <ctime>
+#include <cstring>
 
 namespace putgd::record {
 namespace {
@@ -163,23 +164,23 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     if (headerPts >= 0) clock->headerPts = headerPts;
     if (clock->lastArrival >= 0) clock->interval.add(running - clock->lastArrival);
     clock->lastArrival = running;
-    // Sixteen rows spread over the frame tell repeated contents from new ones
-    // (about 120 KB read per frame); the same content again adds nothing a
-    // repeat at the encoder would not, and dropping it frees its slot.
-    {
-        GstMapInfo map;
+    // The same content again adds nothing a repeat at the encoder would not,
+    // and dropping it keeps its slot for the next new frame. The comparison is
+    // exact (a small change anywhere counts) and usually stops at the first
+    // differing bytes; an identical frame costs one pass over the copy.
+    if (clock->lastKept) {
+        GstMapInfo map, kept;
+        bool same = false;
         if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
-            quint64 hash = 1469598103934665603ULL;
-            const gsize step = std::max<gsize>(1, map.size / 16), span = std::min<gsize>(map.size, 7680);
-            for (gsize start = 0; start < map.size; start += step)
-                for (gsize i = start, end = std::min(map.size, start + span); i < end; ++i) { hash ^= map.data[i]; hash *= 1099511628211ULL; }
+            if (gst_buffer_map(clock->lastKept, &kept, GST_MAP_READ)) {
+                same = map.size == kept.size && std::memcmp(map.data, kept.data, map.size) == 0;
+                gst_buffer_unmap(clock->lastKept, &kept);
+            }
             gst_buffer_unmap(buffer, &map);
-            const bool same = hash == clock->contentHash && clock->distinctContents > 0;
-            clock->contentHash = hash;
-            if (same) { ++clock->sameContents; return GST_PAD_PROBE_DROP; }
-            ++clock->distinctContents;
         }
+        if (same) { ++clock->sameContents; return GST_PAD_PROBE_DROP; }
     }
+    ++clock->distinctContents;
     auto frame = pipewireFrameTime(headerPts, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
@@ -209,6 +210,7 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
         buffer = gst_buffer_make_writable(buffer);
         if (!buffer) { GST_PAD_PROBE_INFO_DATA(info) = nullptr; return GST_PAD_PROBE_DROP; }
     }
+    gst_buffer_replace(&clock->lastKept, buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
     return GST_PAD_PROBE_OK;
@@ -256,6 +258,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.passed = 0; audio_.lateness = {}; audio_.clock.reset();
     timeline_.reset();
     timeline_.setFrameRate(options.fps);
+    gst_buffer_replace(&frameClock_.lastKept, nullptr);
     frameClock_ = {};
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     // =arrival: raw arrival times (the default before #6), for lab A/B runs.
@@ -505,6 +508,7 @@ void RecordingPipeline::tearDown() {
     drains_.clear();
     gst_object_unref(pipeline_);
     pipeline_ = nullptr;
+    gst_buffer_replace(&frameClock_.lastKept, nullptr);
     // Lateness: running time at the encoder minus the buffer's time; age: how
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
