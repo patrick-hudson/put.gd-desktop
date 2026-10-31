@@ -18,12 +18,14 @@
 #include <QFile>
 #include <QCryptographicHash>
 #include <QtEndian>
+#include <QScopeGuard>
 #include <QtGui/qguiapplication_platform.h>
 #include "platform/x11/NativeRegionOverlay.h"
 #include <QJsonArray>
 #include <QUuid>
 #include <memory>
 #include <optional>
+#include <thread>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -105,6 +107,10 @@ int main(int argc,char** argv){
  qunsetenv("QT_QPA_PLATFORMTHEME");
  qunsetenv("QT_STYLE_OVERRIDE");
  QApplication app(argc,argv);app.setQuitOnLastWindowClosed(false);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-capture");QCoreApplication::setApplicationVersion(putgd::buildVersion());
+ // Load the pill font while this process connects to X and waits for
+ // bootstrap and preview; the outline never waits for it (#1063).
+ std::thread fonts=putgd::NativeRegionOverlay::preloadFonts();
+ const auto joinFonts=qScopeGuard([&]{fonts.join();});
  putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;putgd::CaptureControl control(pipes);
  putgd::X11NativeSnapshot native;putgd::X11Capture resolver;putgd::X11SourceAdapter source(nullptr,true);
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();QString nonce,generation,path,device,inode;QJsonObject frozen;putgd::ResourceLimits limits;

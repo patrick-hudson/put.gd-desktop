@@ -1,6 +1,7 @@
 #include "NativeRegionOverlay.h"
 #include "ui/RegionSelection.h"
 #include <QAccessibleObject>
+#include <QFontMetricsF>
 #include <QGuiApplication>
 #include <QScreen>
 #include <QSocketNotifier>
@@ -10,11 +11,18 @@
 #include <QtGui/qguiapplication_platform.h>
 #include <X11/keysym.h>
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <unistd.h>
 namespace putgd {
+namespace {
+// Pill fonts in this process: 0 load on first use, 1 loading on a worker, 2 loaded.
+std::atomic_int pillFonts{0};
+// Overlays that drew frames without pills meanwhile; GUI thread only.
+QList<QPointer<NativeRegionOverlay>> fontWaiters;
+}
 class NativeRegionAccessible final:public QAccessibleObject {
 public:
  explicit NativeRegionAccessible(NativeRegionOverlay* overlay):QAccessibleObject(overlay){}
@@ -224,6 +232,13 @@ QPointF NativeRegionOverlay::logicalPoint(QPoint native)const {
 }
 
 void NativeRegionOverlay::events(){
+ // A press and the motions already queued behind it draw one outline at the
+ // latest pointer, not the press point now and the drag a frame later (#1063).
+ QPointer<NativeRegionOverlay> guard(this);
+ draining_=true;drain();if(!guard)return;draining_=false;
+ if(pending_)schedulePresent();
+}
+void NativeRegionOverlay::drain(){
  QPointer<NativeRegionOverlay> guard(this);
  while(connection_&&!finished_){
   auto* raw=xcb_poll_for_event(connection_);if(!raw)break;
@@ -278,7 +293,23 @@ void NativeRegionOverlay::showFrozen(){
  }
  xcb_flush(connection_);
 }
+std::thread NativeRegionOverlay::preloadFonts(){
+ pillFonts=1;
+ return std::thread([]{
+  // Qt shares the font database under its own lock; engines stay per thread.
+  QFontMetricsF(nativeRegionFont()).horizontalAdvance(regionHint());
+  pillFonts=2;
+  QMetaObject::invokeMethod(qApp,[]{for(const auto& overlay:std::exchange(fontWaiters,{}))if(overlay)overlay->fontsLoaded();},Qt::QueuedConnection);
+ });
+}
+void NativeRegionOverlay::fontsLoaded(){
+ if(finished_||!initialized_||!connection_)return;
+ if(pointerGrabbed_){schedulePresent();return;}
+ for(auto& surface:surfaces_){prepareBadges(surface);draw(surface,false);}
+ xcb_flush(connection_);
+}
 void NativeRegionOverlay::prepareBadges(Surface& surface){
+ if(pillFonts.load()==1){surface.hint={};surface.size={};if(!fontWaiters.contains(this))fontWaiters.append(this);return;}
  const QRect bounds(QPoint{},surface.frame.logicalRect.size().toSize());
  const QFontMetrics metrics(nativeRegionFont());
  const auto local=selection_.translated(-surface.frame.logicalRect.topLeft());
@@ -363,6 +394,10 @@ int NativeRegionOverlay::frameIntervalMs()const{
 void NativeRegionOverlay::schedulePresent(){
  if(finished_||!connection_||!pointerGrabbed_)return;
  if(!pending_){pending_=true;pendingSince_.start();}
+ if(draining_)return;
+ // Pacing spaces outline frames. A press, or a hint frame, shows no outline,
+ // so the drag's first outline is never held a frame interval behind it.
+ if(!selection_.isEmpty()&&!outlined()){presentTimer_.stop();present();return;}
  if(presentTimer_.isActive())return;
  const int interval=frameIntervalMs();
  const qint64 since=presentClock_.isValid()?presentClock_.elapsed():interval;
@@ -375,6 +410,9 @@ void NativeRegionOverlay::present(){
  describe();
  for(auto& surface:surfaces_){prepareBadges(surface);draw(surface,false);}
  xcb_flush(connection_);
+ // The flush can read events that arrived meanwhile into xcb's queue, where
+ // no socket notification announces them. Read them on the next turn.
+ QTimer::singleShot(0,this,[this]{events();});
  presentClock_.start();
  const double took=work.nsecsElapsed()/1e6;
  ++stats_.presents;stats_.presentSumMs+=took;stats_.presentMaxMs=std::max(stats_.presentMaxMs,took);
