@@ -1,11 +1,13 @@
 // Production widget input/painting without a Wayland compositor or layer role.
 // This does not establish native KWin focus, dismissal or capture correctness.
 #include "platform/kde/KdeRegionOverlay.h"
+#include "platform/kde/KdeRegionProtocol.h"
 #include "ui/RegionSelection.h"
 #include <QtTest>
 #include <QApplication>
 #include <QDir>
 #include <QScreen>
+#include <QWindow>
 namespace putgd {
 class KdeRegionOverlayTest final:public QObject {
  Q_OBJECT
@@ -119,7 +121,11 @@ private slots:
   QList<CaptureFrame> frames;for(auto* screen:screens)frames.append(CaptureFrame{screen->name(),screen->geometry(),screen->geometry(),1,0,{}});
   const auto open=[&](KdeRegionOverlay& overlay){
    QList<QWidget*> surfaces;overlay.frames_=frames;
-   for(int i=0;i<frames.size();++i){if(!overlay.addSurface(frames[i],screens[i]))return QList<QWidget*>{};surfaces.append(overlay.surfaces_.last());}
+   for(int i=0;i<frames.size();++i){
+    if(!overlay.addSurface(frames[i],screens[i]))return QList<QWidget*>{};
+    for(auto* w:QApplication::topLevelWidgets())if(w->isVisible()&&w->objectName()=="putgd-kde-region-overlay"&&!surfaces.contains(w)&&w->geometry()==frames[i].logicalRect.toAlignedRect())surfaces.append(w);
+    if(surfaces.size()!=i+1)return QList<QWidget*>{};
+   }
    return surfaces;
   };
   const auto encoded=[&](const QRectF& selection){Error error;const auto rectangle=kdeRegionRectangle(kdeRegionRectangle(selection),frames,error);return error?QRectF():rectangle;};
