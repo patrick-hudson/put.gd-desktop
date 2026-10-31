@@ -19,9 +19,10 @@ the session process like record_run.py, then:
       number with build identities, encoder, acquisition, host load and the
       recorder's debug-log frame counts.
   fluidity_run.py select --run DIR --build LABEL=PATH [--build ...] [--input-socket PATH]
-                         [--start X,Y] [--end X,Y] [--moves 300] [--duration 1.0] [--rounds 3]
+                         [--action region|record|edit] [--start X,Y] [--end X,Y] [--moves 300]
+                         [--duration 1.0] [--rounds 3]
       Per round and build: starts the resident as above, invokes the region
-      action, drags from --start to --end with --moves pointer events over
+      (or record, or edit) action, drags from --start to --end with --moves pointer events over
       --duration seconds through the lab's uinput agent (host_input.py serve,
       QMP-compatible socket; on X11 without an agent, xdotool), then cancels
       with Escape. The selector's PUTGD_REGION_DEBUG_LOG summary line (moves,
@@ -462,7 +463,7 @@ class Driver:
             self.start_resident(build, label)
             start = tuple(int(v) for v in a.start.split(',')) if a.start else (geometry[0] + geometry[2] // 5, geometry[1] + geometry[3] // 5)
             end = tuple(int(v) for v in a.end.split(',')) if a.end else (geometry[0] + geometry[2] * 4 // 5, geometry[1] + geometry[3] * 4 // 5)
-            self.cli(build, 'action.invoke', {'action': 'region'})
+            self.cli(build, 'action.invoke', {'action': a.action})
             time.sleep(a.settle)
             selector = 'putgd-kde-region|putgd-capture|putgd$'
             compositor = 'kwin_wayland|gnome-shell|cinnamon$|Xorg'
@@ -544,6 +545,7 @@ def main(argv=None):
             p.add_argument('--kwin-entry', action='append', metavar='LABEL')
         else:
             p.add_argument('--input-socket')
+            p.add_argument('--action', choices=('region', 'record', 'edit'), default='region', help='which drag-to-select to open')
             p.add_argument('--start')
             p.add_argument('--end')
             p.add_argument('--moves', type=int, default=300)
