@@ -6,6 +6,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import io
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
@@ -75,6 +76,16 @@ class SourceChecks(unittest.TestCase):
 
 
 class AdvisoryRanges(unittest.TestCase):
+    def test_official_bun_advisory_catches_scanner_miss_and_fixed_boundary(self):
+        advisory = {'ghsa_id': 'GHSA-test', 'severity': 'high', 'withdrawn_at': None,
+                    'vulnerabilities': [{'package': {'name': 'bun'},
+                        'vulnerable_version_range': '>=1.0.21, <1.4.4', 'patched_versions': '1.4.4'}]}
+        with patch.object(audit_assets, 'run', return_value=json.dumps([advisory]) + '\n[]'):
+            findings = audit_assets.bun_advisories({'1.4.2': ['appimage', 'debian13'], '1.4.4': ['fixed']})
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0]['packages'], ['appimage', 'debian13'])
+        self.assertEqual(findings[0]['fixedIn'], '1.4.4')
+
     def test_fixed_boundary_and_union(self):
         self.assertTrue(audit_assets.version_in_range('1.4.2', '>=1.0.21, <1.4.4'))
         self.assertFalse(audit_assets.version_in_range('1.4.4', '>=1.0.21, <1.4.4'))

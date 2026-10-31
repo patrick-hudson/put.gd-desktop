@@ -154,8 +154,14 @@ def version_in_range(version, expression):
 def bun_advisories(versions):
     # Compiled Bun includes its runtime and trust store. The official advisories
     # can precede Grype's database; a scanner miss is not an acceptance.
-    pages = json.loads(run('gh', 'api', '--paginate', '--slurp',
-                          'repos/oven-sh/bun/security-advisories?per_page=100'))
+    # Distro gh 2.46 supports --paginate but not --slurp. Decode each page
+    # directly so the audit uses the standard system package on d69 too.
+    raw = run('gh', 'api', '--paginate', 'repos/oven-sh/bun/security-advisories?per_page=100')
+    pages = []
+    while raw.strip():
+        page, end = json.JSONDecoder().raw_decode(raw.lstrip())
+        pages.append(page)
+        raw = raw.lstrip()[end:]
     findings = []
     for advisory in (item for page in pages for item in page):
         if advisory.get('withdrawn_at'):
