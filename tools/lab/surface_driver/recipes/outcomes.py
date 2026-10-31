@@ -370,7 +370,7 @@ def _clipboard_handlers(scope):
     return scope.json('''import ctypes,ctypes.util,json,os
 from pathlib import Path
 import dbus
-names={'klipper','plasmashell','gnome-shell','cinnamon','copyq','clipit','parcellite','xfce4-clipman','diodon','gpaste-daemon'}
+names={'klipper','plasmashell','gnome-shell','cinnamon','csd-clipboard','gsd-clipboard','copyq','clipit','parcellite','xfce4-clipman','diodon','gpaste-daemon'}
 processes=[]
 for p in Path('/proc').iterdir():
  try:
@@ -428,7 +428,10 @@ def survives_exit(ctx):
         elif any(p['name'] == 'gnome-shell' for p in handlers['processes']):
             handler = 'GNOME Shell / Mutter clipboard handling'
         else:
-            handler = 'X11 clipboard manager window '+str(handlers['x11ManagerWindow'])
+            handler = 'X11 CLIPBOARD_MANAGER window '+str(handlers['x11ManagerWindow'])
+            managers = [p['name'] for p in handlers['processes'] if p['name'] in
+                        ('csd-clipboard', 'gsd-clipboard', 'copyq', 'clipit', 'parcellite', 'xfce4-clipman', 'diodon', 'gpaste-daemon')]
+            handler += '; detected managers='+','.join(managers)
         ctx.note('survives_exit_exact_link_count=1; persistence_handler='+handler)
 
 
