@@ -99,7 +99,7 @@ sudo -n systemctl stop uupd.service
 sudo -n systemctl disable --now uupd.timer
 sudo -n systemctl mask uupd.timer
 missing=''
-for package in python3-pyqt6 gstreamer1-plugins-good-gtk gnome-keyring; do
+for package in python3-pyqt6 python3-pyatspi python3-dbus python3-pillow python3-gobject tesseract xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring; do
  if ! rpm -q "$package" >/dev/null; then missing="$missing $package"; fi
 done
 if [ -n "$missing" ]; then sudo -n rpm-ostree install $missing; echo NIGHTLY_REBOOT_REQUIRED; fi
@@ -112,6 +112,20 @@ if [ -n "$missing" ]; then sudo -n rpm-ostree install $missing; echo NIGHTLY_REB
         if lab.ssh(run, 'rpm -q '+components).strip() != before:
             raise RuntimeError('Atomic overlay changed a desktop component; no acceptance run allowed')
         lab.ssh(run, "python3 -c 'import pyatspi,dbus;from PyQt6.QtGui import QGuiApplication'\ncommand -v tesseract\n")
+    # Record individual missing probe names, never Python tracebacks or inputs.
+    probes = lab.guest_session(run, '''python3 - <<'PROBES'
+import importlib,json,shutil
+modules={}
+for name in ('pyatspi','dbus','PyQt6.QtGui'):
+ try:importlib.import_module(name);modules[name]=True
+ except Exception:modules[name]=False
+print(json.dumps(dict(modules=modules,tools={name:bool(shutil.which(name)) for name in ('tesseract','xdotool','xprop','xwininfo','xrandr','xclip','wl-copy','wl-paste')})))
+PROBES
+''')
+    (out/'guest-probes.json').write_text(probes)
+    missing = [name for group in json.loads(probes).values() for name,present in group.items() if not present]
+    if missing:
+        raise RuntimeError('guest probe dependencies unavailable: '+', '.join(missing))
     if 'gnome' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_gnome_witness import stage
         from tools.lab.guest_reboot import reboot
