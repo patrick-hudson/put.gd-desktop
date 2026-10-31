@@ -688,6 +688,7 @@ def parser():
     p.add_argument('--host-profile',type=Path,help='physical.py pinned host JSON')
     p.add_argument('--lock-session',help='held physical desktop lock session id')
     p.add_argument('--bin-dir',help='target directory holding source/AppImage executables')
+    p.add_argument('--session-root',help='new private target XDG root (live campaigns use guest tmpfs)')
     p.add_argument('--boat-id',help='required boat sandbox identity for placement=boat')
     p.add_argument('--package',required=True,choices=PACKAGES)
     p.add_argument('--destination',required=True,choices=DESTINATIONS)
@@ -737,7 +738,7 @@ def main(argv=None):
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
-        target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,
+        target=Target(run=run,host_profile=args.host_profile,bin_dir=args.bin_dir,session_root=args.session_root,
                       app_executable='putgd-launcher' if args.package=='appimage' else 'putgd', placement=args.placement)
         # Only the boat native-head proof invokes this CLI. Owned guests do
         # not acquire a new host-tool dependency merely by naming their boat id.

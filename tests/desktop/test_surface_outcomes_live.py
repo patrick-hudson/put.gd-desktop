@@ -1,0 +1,85 @@
+"""Synthetic safety/oracle checks; these do not establish desktop acceptance."""
+import io
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+import unittest
+from unittest.mock import Mock, patch
+
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
+from tools.lab.surface_driver.fixtures.base import Fixture
+from tools.lab.surface_driver.fixtures.live_outcomes import key_set_two, admit, verify_s3
+from tools.lab.surface_driver.run import discover, validate_recipes
+from tools.lab.surface_driver.recipes import outcomes_live
+
+
+class LiveOutcomes(unittest.TestCase):
+    def test_key_two_only_and_explicit_shared_bucket(self):
+        parsed=key_set_two('Access key ID: first-synthetic\nSecret access key: first-secret\nBucket: synthetic-bucket\n'
+                           'Access key ID: second-synthetic\nSecret access key: second-secret\n')
+        self.assertEqual(parsed['credentials']['accessKey'],'second-synthetic')
+        self.assertEqual(parsed['credentials']['secretKey'],'second-secret')
+        self.assertEqual(parsed['settings'],{'bucket':'synthetic-bucket'})
+        for text in ('Access key ID: only-one\nSecret access key: example', 'unlabelled text'):
+            with self.assertRaises(RecipeBlocked):key_set_two(text)
+
+    def test_live_rejects_boat_native_wrong_desktop_before_secret_read(self):
+        for placement,host,desktop in [('boat','boat','mint-cinnamon-x11'),('native','f44','kubuntu-kde-wayland'),
+                                        ('guest','d69','kubuntu-kde-wayland')]:
+            ctx=SimpleNamespace(destination='s3',placement=placement,host=host,desktop=desktop,
+                                target=SimpleNamespace(physical=None),profile={'guest':'unit'},_live_admitted=True)
+            with self.assertRaises(RecipeBlocked):admit(ctx)
+
+    def test_s3_oracle_rejects_foreign_key_without_network_and_closes_mismatch(self):
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        ctx=SimpleNamespace(expect=expect)
+        client=Mock();fx=Fixture(client=client,bucket='synthetic',prefix='owned/',region='us-east-1')
+        detail={'receipt':{'objectReference':{'key':'foreign/object'},'destination':{'settings':{'bucket':'synthetic'}},
+                           'directUrl':'https://synthetic.s3.us-east-1.amazonaws.com/owned/object'}}
+        with self.assertRaises(RecipeFailed):verify_s3(ctx,fx,detail,b'expected')
+        client.get_object.assert_not_called();client.head_object.assert_not_called()
+        detail['receipt']['objectReference']['key']='owned/object'
+        client.head_object.return_value={'ContentLength':8}
+        body=io.BytesIO(b'tampered');client.get_object.return_value={'Body':body}
+        with self.assertRaises(RecipeFailed):verify_s3(ctx,fx,detail,b'expected')
+        self.assertTrue(body.closed)
+
+    def test_destinations_claim_only_supported_cleanup_interactions(self):
+        recipes=discover('outcomes_live');validate_recipes(recipes)
+        self.assertEqual(len(recipes),2)
+        for r in recipes:
+            self.assertEqual(len(r.destinations),1)
+            self.assertIn('region.to-upload',r.interactions)
+            self.assertIn('confirm.history-delete' if r.destinations==('s3',) else 'confirm.revoke-link',r.interactions)
+
+    def test_proton_revoke_uses_message_box_geometry_and_restores_profile(self):
+        previous={'confirmAction':{'accessible':{'role':'dialog'}}}
+        ctx=SimpleNamespace(destination='proton',profile={'windows':previous},click=Mock(),frame=Mock(),note=Mock(),
+                            wait=lambda fn,*a,**kw:fn(),call=lambda *a,**kw:{'shareStatus':'revoked','linkAvailable':False},
+                            expect=lambda ok,note:self.assertTrue(ok,note))
+        def observed(*args):
+            spec=ctx.profile['windows']['confirmAction']
+            self.assertNotIn('accessible',spec)  # Alert message must not be rejected as a non-dialog.
+            self.assertEqual(spec['title'],'^Revoke share link$')
+        with patch.object(outcomes_live.outcomes,'_history'),patch.object(outcomes_live.history,'_wait_window',side_effect=observed),patch.object(outcomes_live.history,'_confirm_button'):
+            outcomes_live._cleanup(ctx,{'id':'owned-history'})
+        self.assertIs(ctx.profile['windows'],previous)
+        ctx.note.assert_called_once_with('revocation_count=1')
+
+    def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
+        def expect(ok,note):
+            if not ok:raise RecipeFailed(note)
+        ctx=SimpleNamespace(destination='s3',expect=expect)
+        service=Fixture(profile_id='owned-profile',credential_reference='owned-reference',prefix='owned/')
+        detail={'operationId':'owned-operation','receipt':{'destination':{'profileId':'owned-profile',
+          'providerId':'s3','credentials':{'reference':'owned-reference'},'settings':{'objectPrefix':'owned/'}},
+          'objectReference':{'key':'foreign/object'}}}
+        with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'owned-operation')
+        detail['receipt']['objectReference']['key']='owned/object'
+        outcomes_live._owned(ctx,service,detail,'owned-operation')
+        with self.assertRaises(RecipeFailed):outcomes_live._owned(ctx,service,detail,'different-operation')
+
+
+if __name__=='__main__':unittest.main()

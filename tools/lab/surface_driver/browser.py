@@ -294,6 +294,18 @@ def open_and_verify(ctx, trigger, expect):
 KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
+def live_download_digest(ctx):
+    """Recipient download, bounded and hashed in the guest's RAM filesystem."""
+    active = _ACTIVE[id(ctx)]
+    return _remote(ctx, 'download-digest', active['state'], timeout=120)
+
+
+def live_link_unavailable(ctx, kind):
+    """Reload the existing URL without returning it or trusting a cached preview."""
+    active = _ACTIVE[id(ctx)]
+    return _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=120)
+
+
 def _failure_frame(ctx, state, timeouts, frames):
     """Save a full-desktop failure frame only over a proven blank kiosk.
 
@@ -817,6 +829,12 @@ def _prepare(options):
                        'browser.link.open_newwindow': 3, 'browser.link.open_newwindow.override.external': 3,
                        'browser.sessionstore.resume_from_crash': False,
                        'signon.rememberSignons': False, 'browser.privatebrowsing.autostart': True}
+        downloads = directory/'downloads'
+        downloads.mkdir(mode=0o700)
+        preferences.update({'browser.download.folderList': 2, 'browser.download.dir': str(downloads),
+                            'browser.download.useDownloadDir': True, 'browser.download.always_ask_before_handling_new_types': False,
+                            'browser.helperApps.neverAsk.saveToDisk': 'image/png,application/octet-stream,application/zip',
+                            'browser.cache.disk.enable': False})
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         # Cache and state are the transaction's own, removed with it: the
@@ -1054,6 +1072,67 @@ def _target(action, values):
                 _write_transaction(transaction)
                 return {'matched': False, 'foreign': len(foreign)}
             return result  # falsy until ctx.wait's deadline
+        if action == 'download-digest':
+            directory = Path(transaction['directory'])/'downloads'
+            # The live fixture insists on a runtime profile. Verify the actual
+            # mount as well before letting Firefox write any recipient bytes.
+            fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
+            if fs.stdout.strip() != 'tmpfs' or any(directory.iterdir()):
+                raise _TargetError('Live recipient download requires a new empty tmpfs directory')
+            clicked = client.script("""
+const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(el=>{
+ const r=el.getBoundingClientRect();const label=(el.getAttribute('aria-label')||el.textContent||'').trim();
+ return r.width>0&&r.height>0&&!el.disabled&&/^Download(?: file)?$/i.test(label);
+});
+if(nodes.length!==1)return false;nodes[0].click();return true;
+""")
+            if not clicked:
+                raise _TargetError('Recipient page has no unique enabled Download control')
+            deadline = time.monotonic()+75
+            while time.monotonic()<deadline:
+                files = list(directory.iterdir())
+                complete = [p for p in files if not p.name.endswith(('.part', '.tmp'))]
+                if len(complete)==1 and len(files)==1:
+                    path = complete[0]
+                    info = path.lstat()
+                    if (not stat.S_ISREG(info.st_mode) or path.is_symlink() or info.st_uid!=os.getuid()
+                            or not 0<info.st_size<=32*1024*1024):
+                        raise _TargetError('Recipient download is not an owned bounded regular file')
+                    with os.fdopen(os.open(path, os.O_RDONLY|os.O_NOFOLLOW), 'rb') as stream:
+                        current=os.fstat(stream.fileno())
+                        if (not stat.S_ISREG(current.st_mode) or current.st_uid!=os.getuid()
+                                or current.st_ino!=info.st_ino or current.st_dev!=info.st_dev):
+                            raise _TargetError('Recipient download changed identity before reading')
+                        data=stream.read(32*1024*1024+1)
+                    if len(data)>32*1024*1024:
+                        raise _TargetError('Recipient download exceeded the bounded in-memory limit')
+                    return {'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+                time.sleep(.5)
+            raise _TargetError('Recipient download did not complete within its bounded deadline')
+        if action == 'unavailable':
+            # URL lives only in this target process and Firefox, never in
+            # arguments, transaction metadata or a browser receipt.
+            url = client.script('return location.href;')
+            client.call('WebDriver:Navigate', {'url':'about:blank'})
+            client.call('WebDriver:Navigate', {'url':url})
+            deadline=time.monotonic()+45
+            while True:
+                result=client.script("""
+const text=(document.body?.innerText||'').trim();
+const status=performance.getEntriesByType('navigation')[0]?.responseStatus||0;
+const media=[...document.querySelectorAll('img,video,canvas')].some(e=>
+ e.tagName==='IMG'?e.complete&&e.naturalWidth>0&&
+  (arguments[0]!=='proton'||(e.currentSrc||e.src).startsWith('blob:')):
+ e.tagName==='VIDEO'?e.readyState>=2:false);
+const hostOK=location.hostname===new URL(arguments[1]).hostname;
+const missing=arguments[0]==='proton'?
+ /link (?:has expired|has been revoked|not found|is no longer|does not exist|doesn't exist)|no longer available|cannot be accessed|could not be found/i.test(text):
+ [403,404,410].includes(status)&&/NoSuchKey|AccessDenied|not found|404|403|410/i.test(text);
+return {unavailable:hostOK&&document.readyState==='complete'&&missing&&!media};
+""", [values['kind'], url])
+                if result['unavailable'] or time.monotonic()>=deadline:
+                    return result
+                time.sleep(.5)
         raise ValueError('Unknown browser helper action')
     finally:
         if client is not None:
