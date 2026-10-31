@@ -237,7 +237,7 @@ int main(int argc,char* argv[]) {
  putgd::Appearance appearance(nullptr,putgd::Appearance::Role::Resolver);
  {
   auto* backend=recordingBackend.get();
-  const auto follow=[&appearance,&settings,&operations,backend]{appearance.setPreference(settings.snapshot().appearanceTheme);backend->setAppearance(putgd::Theme::name(appearance.scheme()));operations.setEditorAppearance(putgd::Theme::name(appearance.scheme()));};
+  const auto follow=[&appearance,&settings,&operations,&source,backend]{appearance.setPreference(settings.snapshot().appearanceTheme);putgd::Theme::setScheme(appearance.scheme());source->setCaptureAppearance(appearance.state());backend->setAppearance(putgd::Theme::name(appearance.scheme()));operations.setEditorAppearance(putgd::Theme::name(appearance.scheme()));};
   follow();
   QObject::connect(&settings,&putgd::SettingsService::accepted,&appearance,follow);
   QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,follow);

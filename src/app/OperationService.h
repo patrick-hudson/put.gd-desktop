@@ -29,6 +29,7 @@ public:
  // The resident supervisor sets the one live UI helper before it can show a
  // window, and clears it on exit. Native adapters exclude it at invocation.
  virtual void setUiProcess(qint64) {}
+ void setCaptureAppearance(const QJsonObject& appearance) { captureAppearance_=appearance; }
  void setCaptureOutcome(const QString& outcome) { captureOutcome_=outcome; }
  // Region screenshots only (#629): freeze every monitor before selection and
  // cut the result from those frames. Recording selection always stays live.
@@ -73,6 +74,7 @@ public:
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
 protected:
  // Non-secret presentation context; adapters copy it when freezing each request.
+ QJsonObject captureAppearance_;
  QString captureOutcome_;
  bool regionScreenshotFirst_=false;
 };

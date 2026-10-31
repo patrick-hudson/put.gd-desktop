@@ -104,7 +104,7 @@ void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64
     // and normal exit. Pixel transfer remains in this resident connection.
     if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
     guard->captureScreens(frozen,revision,selection,limits,std::move(cb));
-   },outcome);return;
+   },outcome,{},captureAppearance_);return;
   }
   auto* selector=new KdeRegionOverlay(frozen,this,false,outcome);overlay_=selector;auto reply=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));const auto generation=generation_;
   connect(selector,&KdeRegionOverlay::selected,this,[this,selector,frozen,revision,limits,reply,generation](QRectF selection){
@@ -138,7 +138,7 @@ void KdeSourceAdapter::selectFrozen(QList<CaptureFrame> frozen,quint64 revision,
    if(!guard->unchanged(layout,revision)){(*reply)({{},{"display_changed","Display layout changed during region selection",{}}});return;}
    guard->compose(std::move(*pixels),layout,revision,selection,limits,std::move(*reply));
   };
-  if(guard->core_){guard->region_.start(layout,std::move(selected),outcome,*pixels);return;}
+  if(guard->core_){guard->region_.start(layout,std::move(selected),outcome,*pixels,guard->captureAppearance_);return;}
   auto* selector=new KdeRegionOverlay(*pixels,guard,false,outcome,true);guard->overlay_=selector;
   connect(selector,&KdeRegionOverlay::selected,guard,[guard,selector,selected](QRectF selection){
    guard->overlay_=nullptr;connect(selector,&QObject::destroyed,guard,[selected,selection]{selected(selection,{});});selector->deleteLater();

@@ -2,6 +2,7 @@
 #include "KdeRegionProtocol.h"
 #include "platform/x11/CaptureControl.h"
 #include "ui/StdioDevice.h"
+#include "ui/Theme.h"
 #include "core/BuildInfo.h"
 #include <QApplication>
 #include <QJsonDocument>
@@ -112,10 +113,12 @@ int main(int argc,char** argv) {
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(settled||teardownPending) return;
   if(type=="bootstrap") {
-   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen")) || payload["build"].toObject()!=build ||
+   if(bootstrapped || payload.size()!=4+int(payload.contains("outcome"))+int(payload.contains("frozen"))+int(payload.contains("appearance")) || payload["build"].toObject()!=build ||
       (payload.contains("frozen")&&(!payload["frozen"].isObject()||payload["frozen"].toObject().size()!=2||!payload["frozen"]["fd"].isDouble()||!payload["frozen"]["frames"].isArray())) ||
       !payload["nonce"].isString() || QUuid(payload["nonce"].toString()).isNull() ||
       !payload["generation"].isString() || !payload["layout"].isArray() || (payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))) { close(4); return; }
+   if(payload.contains("appearance")&&(!payload["appearance"].isObject()||(!payload["appearance"].toObject().isEmpty()&&payload["appearance"]["scheme"]!="light"&&payload["appearance"]["scheme"]!="dark"))){close(4);return;}
+   putgd::Theme::setScheme(payload["appearance"]["scheme"]=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    bool numeric=false; const auto g=payload["generation"].toString(); const auto number=g.toULongLong(&numeric);
    if(!numeric || !number || QString::number(number)!=g) { close(4); return; }
    outcome=payload["outcome"].toString();nonce=payload["nonce"].toString(); generation=g; bootstrapped=true;
