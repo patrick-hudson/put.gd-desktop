@@ -22,6 +22,7 @@
 #include <QVBoxLayout>
 #include <QContextMenuEvent>
 #include <QAbstractSpinBox>
+#include <QSpinBox>
 #include <QStyleOptionSpinBox>
 #include <QComboBox>
 #include <QCheckBox>
