@@ -132,6 +132,12 @@ class Driver:
             label, _, path = spec.partition('=')
             if not path:
                 raise RunError('--build needs LABEL=PATH')
+            if Path(path).is_file() and Path(path).suffix != '.AppImage':
+                # record_run.Build recognises AppImages by their suffix; alias other spellings.
+                alias = self.run / ('%s.AppImage' % label)
+                if not alias.exists():
+                    alias.symlink_to(Path(path).resolve())
+                path = str(alias)
             build = record_run.Build(label, path, self.run)
             if build.identity['kind'] == 'appimage':
                 # Run the extracted image: its helper then has a stable path a
