@@ -1,8 +1,9 @@
 // Lab-only compositor witness for the put.gd surface driver (disposable guests).
 // It reports Mutter's own window geometry, focus and stacking, and the stage
-// hit-test at a point. Its one action, Activate, is the driver's explicit
+// hit-test at a point. Activate is the driver's explicit
 // focus(raise_window=True) on Wayland: the same activation a dock click does.
-// It never moves, resizes or closes anything.
+// HideOverview dismisses the login overview during disposable guest setup.
+// It never moves, resizes or closes a window.
 import Gio from 'gi://Gio';
 import Atk from 'gi://Atk';
 import GLib from 'gi://GLib';
@@ -15,6 +16,8 @@ const PATH = '/org/putgd/LabWitness';
 const XML = `<node><interface name="org.putgd.LabWitness">
 <method name="Grabs"><arg type="s" direction="out"/></method>
 <method name="Windows"><arg type="s" direction="out"/></method>
+<method name="Desktop"><arg type="s" direction="out"/></method>
+<method name="HideOverview"><arg type="b" direction="out"/></method>
 <method name="Pick"><arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Selector"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Activate"><arg type="t" direction="in"/><arg type="b" direction="out"/></method>
@@ -110,6 +113,20 @@ export default class LabWitness extends Extension {
             monitors.push({rect: rect(display.get_monitor_geometry(i)), scale: display.get_monitor_scale(i)});
         const windows = windowActors().map((actor, i) => describe(actor.meta_window, i));
         return JSON.stringify({windows, monitors});
+    }
+
+    Desktop() {
+        return JSON.stringify({overviewVisible: Main.overview.visible,
+            overviewAnimating: Boolean(Main.overview.animationInProgress),
+            locked: Main.sessionMode.isLocked, witnessVersion: this.metadata.version,
+            nativeHelperEnabled: Boolean(Main.extensionManager.lookup('putgd@put.gd')?.stateObj?._enabled)});
+    }
+
+    HideOverview() {
+        if (Main.sessionMode.isLocked)
+            return false;
+        Main.overview.hide();
+        return true;
     }
 
     Selector(query) {
