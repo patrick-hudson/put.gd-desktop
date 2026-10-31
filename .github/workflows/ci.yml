@@ -175,6 +175,8 @@ jobs:
       - name: Provision pinned Proton helper
         timeout-minutes: 15
         run: python3 tools/proton/provision_runtime.py
+      - name: Reproduce the exact compiled Proton helper
+        run: python3 tools/proton/audit_redistribution.py --runtime build/dependencies/proton-runtime --output build/proton-rebuild-audit
       - name: Restore compiler cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -287,6 +289,8 @@ jobs:
             build/dev/Testing/Temporary/LastTest.log
             build/dev/Testing/Temporary/LastTestsFailed.log
             build/dev/build-identity/build-info.json
+            build/proton-rebuild-audit/inventory.json
+            build/proton-rebuild-audit/compile.txt
             build/ci-sdk-environment.json
             build/sdk-cache.json
           if-no-files-found: warn

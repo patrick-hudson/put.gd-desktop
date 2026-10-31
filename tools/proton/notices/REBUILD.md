@@ -1,43 +1,20 @@
 # Proton helper corresponding-source delivery
 
-The helper uses the official JS SDK and an explicit GPL crypto source snapshot.
-The 2.0.0 npm crypto archive is a build bootstrap only. The selected runtime source
-is WebPackages 956a713c0823b365cc512018974eb4fcba47c9dd, version 2.0.1. Its source,
-GPL grant, predecessor notices and source hashes accompany delivery.
+SOURCES.json pins the six accompanying packets and their two-part transport.
+Verify both part hashes, concatenate in numeric order, verify the combined hash,
+then extract and verify every packet against the catalog. The updated transport
+has its own permanent release URLs; earlier published packets remain available.
 
-SOURCES.json identifies accompanying source artifacts by exact hash. The six
-original packets travel inside `putgd-proton-corresponding-source.tar.gz`, split
-into `.part1` and `.part2` to respect the hosting service's per-file limit. Verify
-the part hashes, concatenate in numeric order, then verify the combined hash before
-extracting and verifying each original packet. The catalog's `delivery` section
-records every size, hash and public source URL. Binary releases deliver both
-parts and the current catalog beside their installers; retain availability. The installed
-notices/catalog alone do not establish that source has been delivered.
+The current helper-rebuild packet supplies the patched SDK/account and approved
+GPL crypto 2.0.1 source graph plus locked dependencies for Bun 1.4.4.
+The application source archive supplies the applicationSourceOverlay files listed
+in SOURCES.json. Verify their hashes before copying them over build-source/.
+The overlay includes package.json and package-lock.json; use the matching packet's
+dependencies. The older Bun 1.4.2 dependency tree is not the current rebuild input.
 
-The six sealed packets retain their original bytes. The current application source
-archive supplies the required `applicationSourceOverlay` listed in SOURCES.json.
-Copy its `tools/proton/runtime.ts`, `runtime.test.ts`, `protocol.ts`,
-`protocol.test.ts` and `account.ts` over the matching files in the extracted
-`build-source/` directory. Verify each overlay
-file against the catalog's SHA-256 before compiling. The catalog pins a repository
-commit as another source of those same files. The overlay returns the connected
-account email from existing SDK metadata (issue #40) and reports Proton error
-200003, a file over the plan's size limit, as `destination_file_too_large_for_plan`
-rather than `quota_exceeded` (issue #147), settling it and quota refusals as
-failed when the file's name is still free afterwards (issue #201). It reports a
-refused keychain session write as `keychain_unavailable` (issue #252) and returns
-the confirmed link expiry from share create and inspect (issue #253); SDK, crypto,
-Bun and dependency inputs remain unchanged. The #40 helper reproduced exactly from the original source packet
-plus its two files. The #147 helper was rebuilt by `provision_runtime.py` from the
-pinned sources plus these three files, on a host that reproduced the #40 helper's
-hash exactly from its own files. The #201 helper was rebuilt the same way, on
-a host that reproduced the #147 helper's hash exactly from unchanged sources.
-The #252/#253 helper was rebuilt the same way, on a host that reproduced the
-#201 helper's hash exactly from unchanged sources.
-The application source archive and original source packets must travel together.
-
-The helper source archive contains build-source, patched public SDK/account
-inputs and the fixed dependency graph. Use an existing compatible Bun executable (set proton_bun to its absolute path):
+Obtain the official Linux x64 Bun 1.4.4 release archive identified in
+tools/proton/runtime-lock.json. Verify its SHA-256, extract the executable and
+verify bunSha256. Set proton_bun to that executable's absolute path:
 
 ```sh
 cd build-source
@@ -46,69 +23,41 @@ cd build-source
 "$proton_bun" test protocol.test.ts runtime.test.ts crypto-cache.test.ts progress.test.ts
 ```
 
-Keep the `.new` output basename shown above: Bun embeds that name in the compiled
-executable. Rename it only after comparing its hash to SOURCES.json.
+Retain the .new output basename: Bun embeds it. Compare its SHA-256 with
+helperSha256 in SOURCES.json before renaming. A provision from the current
+application source runs the same compile operation, compiled stdio checks and
+large-output regression. CI independently reproduces the helper hash with
+audit_redistribution.py. No Proton account is needed for these checks.
 
-The compile-executable-path argument selects a recipient-modified/relinked Bun;
-no runtime download or vendor signing key is required for source reconstruction.
-To install a changed artifact, update manifest.sha256 and build put.gd from its
-source with the updated manifest. CMake binds the resulting executable hash.
-The whole Qt application rebuild remains separate package acceptance work.
+A recipient-modified Bun may also be selected with compile-executable-path.
+To install a modified helper, update manifest.sha256 and rebuild put.gd from
+source with that manifest; CMake binds its hash. A modified artifact is not
+expected to match the official production helper hash.
 
-OpenPGP preferred source at 36198c3369ab8d4a02d70372d62f1aa8bc247dcb includes its
-package-lock and Rollup config. Restore its supplied npm cache and run npm ci
---offline --ignore-scripts with Node 22/npm already installed. Apply the supplied
-OPENPGP-REBUILD.patch and set SOURCE_DATE_EPOCH=1785456000 for the July 31 banner,
-then run npm run build -- --config-build-only=node. The selected node library
-reproduced byte-for-byte. A modified preferred-source library also passed a
-compiled encryption/decryption roundtrip and helper checks. Copy its node outputs
-into build-source/node_modules/openpgp/dist/node before rebuilding the helper.
-The date-banner patch does not change algorithms.
+The Bun 1.4.4 packet preserves its complete Bun source, exact WebKit Git source
+objects, current native recipes/patches, Cargo/npm source inputs, ICU 78.3 source,
+Rust nightly 2026-09-15 identity metadata and preferred standard-library source.
+Its manifests bind every input. Run assemble_offline.py --destination NEW_DIR
+with Python 3.12+ and Git to verify/extract sources, apply native patches and
+prepare offline Cargo/npm inputs. Keep the packet in place because the prepared
+tree links to its verified archives. Consult the included REBUILD.md and Bun's
+upstream build requirements for a native build with local JavaScriptCore.
 
-The full Bun source packet contains Bun, complete pinned WebKit Git objects,
-TinyCC/native/Cargo/npm inputs, exact ICU source, patches and offline reconstruction.
-Use the accompanying putgd-proton-native-rebuild-supplement.tar.gz for the corrected
-native recipe. It supersedes the original packet's preflight and toolchain route;
-the original sealed sources remain unchanged. Its README.md gives the disposable
-image build, numeric-UID staging, once-only source modifications, offline native
-build and executable proof commands. No host compiler installation is needed.
+The native rebuild supplement and OpenPGP/Argon2 proofs retain their original
+bytes and historical scope. Its Bun 1.4.2 compiler selection and modifications
+must not be mistaken for current Bun 1.4.4 native verification. A fresh native
+modification/relink check and final desktop/resource/package acceptance remain
+open; SOURCES.json records those boundaries.
 
-The tested native route uses LLVM 21.1.8, Rust nightly 2026-07-20 including rust-src,
-local JavaScriptCore and system ICU 74.2 under upstream's release-local profile.
-Rustc and Cargo have separate exact source commits; the supplement pins both,
-the compiler component archives and the standard-library source lock. It supplies
-Rust's preferred standard-library source and its 30 offline vendored packages.
-The installed Bun notice aggregate includes their original legal texts as a
-labelled build/platform source superset.
+The unchanged OpenPGP preferred source uses commit
+36198c3369ab8d4a02d70372d62f1aa8bc247dcb. Restore its supplied offline npm cache,
+apply OPENPGP-REBUILD.patch, set SOURCE_DATE_EPOCH=1785456000, then use its Rollup
+build. The original node library's byte identity and modified crypto roundtrip
+proofs are historical and remain unchanged. The native supplement's corrected
+Argon2 scalar/SIMD replay is authoritative over the older upstream script.
+The crypto source/provenance packet preserves the approved WebPackages 2.0.1
+GPL selection; npm 2.0.0 is only a bootstrap, with no retroactive license claim.
 
-Modified Bun Rust, JavaScriptCore C++ and TinyCC C are compiled and linked. The
-resulting runtime calls all three source markers; it compiles and executes a
-synthetic C function with TinyCC. A helper rebuilt using the explicit native
-compile-executable-path passes the existing helper/stdio/stdout checks. The same
-compiled helper exposes the three markers and executes the TinyCC fixture in
-BUN_BE_BUN mode, establishing which runtime was embedded. Marked executables are
-proof artifacts only. The production helper still uses the official Bun binary.
-This verifies source modification/relinking, not native byte identity or package
-acceptance. Supporting distro package versions and actual toolchain identities
-are retained with the proof; the image recipe is not a hermetic distro snapshot.
-
-The OpenPGP packet supplies full Argon2 C/WASM preferred source and prebundled
-inputs/notices. The supplement's argon-replay-correction/ builds scalar and SIMD
-variants in digest-pinned Emscripten 3.1.45, clears dist/ first, invokes the
-upstream script with bash -e and requires both outputs. Use this corrected route:
-the old upstream shell command can retain stale scalar bytes after a failure.
-Both original and marker-modified C builds pass the existing vectors. Preferred
-OpenPGP source rebuilt with the modified WASM passes an actual Argon2 S2K crypto
-roundtrip and bidirectional interoperability, including a fixture compiled with
-the rebuilt native Bun. The instantiated WASM must expose the C source marker.
-The original published WASM compiler is unknown and the bytes differ; no original
-WASM byte-identity claim is made. The supplement includes the full source/replay
-instructions and portable fixtures; generated fixture libraries do not replace
-preferred source in the original packet.
-
-The build-controls packet contains put.gd's Proton helper sources, locks,
-provisioner, audit/tests, original MIT license and CMake integration. SOURCES.json
-is delivered separately to avoid an archive/catalog self-hash cycle. These are
-component materials; the full put.gd application source/rebuild handoff is P4.
-The helper-source archive already contains the selected patched source graph;
-rebuilding it does not require contacting a Proton account or any data service.
+Deliver the complete source transport and current application source archive
+together. Installed notices alone do not establish source publication, legal
+approval, live-service acceptance or desktop acceptance.

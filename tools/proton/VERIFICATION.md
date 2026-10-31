@@ -1,3 +1,14 @@
+# Bun 1.4.4 update (#1054)
+
+The current official Bun pin is 1.4.4. On d69 the helper reproduced SHA-256
+4683e9fb28673df66a590660f2932f5b202fd61b1c229f49c61b8e8754113be4.
+All 45 Bun tests, compiled protocol/large-stdout checks and a guarded live
+read-only account/folder smoke passed, with existing-runtime checks before
+and after under the Proton lock. These are helper checks. Desktop/resource
+and current native Bun modification/relink acceptance remain separate gates.
+
+The records below describe earlier builds and keep their historical scope.
+
 # Bundled helper verification — 2026-10-13
 
 Implemented the production one-request SDK helper and its explicit provisioning

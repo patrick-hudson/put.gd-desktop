@@ -1,6 +1,6 @@
 # Proton runtime redistribution materials
 
-The selected helper uses official SDK 0.22.2, Bun 1.4.2 and the explicit GPL
+The selected helper uses official SDK 0.22.2, Bun 1.4.4 and the explicit GPL
 WebPackages crypto source 2.0.1 at `956a713c0823b365cc512018974eb4fcba47c9dd`.
 The user approved this source change on 2026-10-15. Historical npm crypto 2.0.0
 ISC notice provenance remains unresolved; it is used only as a dependency

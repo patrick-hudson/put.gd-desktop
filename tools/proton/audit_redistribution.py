@@ -147,12 +147,15 @@ def main():
             parser.error('redistribution materials do not match runtime manifest')
     output.mkdir(mode=0o700, parents=True)
     bun = work / 'node_modules/@oven/bun-linux-x64/bin/bun'
+    lock = json.loads((ROOT / 'runtime-lock.json').read_text())
+    if digest(bun) != lock['bunSha256'] or manifest['bunSha256'] != lock['bunSha256']:
+        parser.error('Bun executable does not match the pinned official checksum')
     with tempfile.TemporaryDirectory(prefix='pg-p3-') as temporary:
         temporary = Path(temporary)
         candidate = temporary / 'putgd-proton-runtime.new'
         meta = temporary / 'metafile.json'
         result = subprocess.run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify',
-                                 './runtime.ts', '--outfile=' + str(candidate), '--metafile=' + str(meta)],
+                                 '--compile-executable-path=' + str(bun), './runtime.ts', '--outfile=' + str(candidate), '--metafile=' + str(meta)],
                                 cwd=work, capture_output=True, text=True, check=True)
         (output / 'compile.txt').write_text(result.stdout + result.stderr)
         if digest(candidate) != manifest['sha256']:

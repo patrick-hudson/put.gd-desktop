@@ -137,6 +137,8 @@ def main():
     shutil.copyfile(ROOT / 'package-lock.json', work / 'package-lock.json')
     run(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund', *(['--offline'] if args.offline else [])], work)
     bun = work / 'node_modules/@oven/bun-linux-x64/bin/bun'
+    if sha256(bun) != lock['bunSha256']:
+        parser.error('Pinned official Bun executable checksum failed')
     if run([str(bun), '--version'], work, True).strip() != lock['bunVersion']:
         parser.error('Pinned Bun version check failed')
     upstream = work / 'upstream'
@@ -183,7 +185,7 @@ def main():
     (work / 'tsconfig.json').write_text(json.dumps(config, indent=2) + '\n')
     run([str(bun), 'test', './protocol.test.ts', './runtime.test.ts', './crypto-cache.test.ts', './progress.test.ts'], work)
     candidate = output / 'putgd-proton-runtime.new'
-    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts',
+    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts', f'--compile-executable-path={bun}',
          f'--outfile={candidate}', f'--metafile={output / "build-metafile.json"}'], work)
     version = json.loads(run([str(candidate), '--version'], output, True))
     if version['bunVersion'] != lock['bunVersion'] or version['sdkVersion'] != 'js@' + lock['sdkVersion']:
@@ -197,7 +199,7 @@ def main():
         parser.error('Compiled one-request protocol smoke failed')
     run(['python3', str(ROOT / 'smoke_test.py'), '--runtime', str(candidate)], output)
     stdout_fixture = output / 'stdout-fixture-test'
-    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './stdout_fixture.ts',
+    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './stdout_fixture.ts', f'--compile-executable-path={bun}',
          f'--outfile={stdout_fixture}'], work)
     captured = subprocess.run([str(stdout_fixture)], capture_output=True, check=True, timeout=10)
     expected_stdout = b'{"synthetic":"' + b'x' * (1024 * 1024 - 256) + b'"}\n'
@@ -214,7 +216,8 @@ def main():
         shutil.copyfile(ROOT / 'notices' / name, redistribution / name)
     manifest = {'schemaVersion': 1, 'artifact': artifact.name, 'sha256': sha256(artifact),
                 'sourceReference': commit, 'appVersion': version['appVersion'], 'sdkVersion': version['sdkVersion'],
-                'bunVersion': version['bunVersion'], 'protocolVersion': 1,
+                'bunVersion': version['bunVersion'], 'bunSourceReference': lock['bunSourceReference'],
+                'bunSha256': sha256(bun), 'protocolVersion': 1,
                 'cryptoVersion': lock['cryptoVersion'], 'cryptoSourceReference': lock['cryptoSourceReference'],
                 'sourceOverrides': source_overrides,
                 'redistributionFilesSha256': {name: sha256(redistribution / name) for name in REDISTRIBUTION_FILES},
