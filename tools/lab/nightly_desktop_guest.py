@@ -11,8 +11,6 @@ from tools.lab import lab
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '
              'xdotool xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring')
-RPM_TOOLS = ('python3-qt6 python3-pyatspi python3-dbus python3-pillow tesseract '
-             'xdotool xclip wl-clipboard gtk3 gnome-keyring gstreamer1-plugins-good-gtk')
 
 QUIET = r'''python3 - <<'NIGHTLY_QUIET'
 from pathlib import Path
@@ -92,7 +90,27 @@ def prepare(run, row, out):
         # dependencies instead of allowing dnf to upgrade a desktop stack.
         lab.ssh(run, "python3 -c 'import pyatspi,dbus;from PyQt6.QtGui import QGuiApplication'\ncommand -v tesseract\n")
     else:
-        # Aurora's prepared system overlay has the probe and keyring packages.
+        # Reuse Phase A's Atomic overlay layering; the immutable source stays
+        # read-only. rpm-ostree install layers tools onto the pinned base.
+        components = 'kwin plasma-workspace qt6-qtbase qt6-qtwayland xdg-desktop-portal xdg-desktop-portal-kde'
+        before = lab.ssh(run, 'rpm -q '+components).strip()
+        script = '''set -eu
+sudo -n systemctl stop uupd.service
+sudo -n systemctl disable --now uupd.timer
+sudo -n systemctl mask uupd.timer
+missing=''
+for package in python3-pyqt6 gstreamer1-plugins-good-gtk gnome-keyring; do
+ if ! rpm -q "$package" >/dev/null; then missing="$missing $package"; fi
+done
+if [ -n "$missing" ]; then sudo -n rpm-ostree install $missing; echo NIGHTLY_REBOOT_REQUIRED; fi
+'''
+        preparation = lab.guest_session(run, script, timeout=1200)
+        (out/'atomic-overlay.txt').write_text(preparation)
+        if 'NIGHTLY_REBOOT_REQUIRED' in preparation:
+            from tools.lab.guest_reboot import reboot
+            (out/'atomic-reboot.json').write_text(json.dumps(reboot(run), indent=2))
+        if lab.ssh(run, 'rpm -q '+components).strip() != before:
+            raise RuntimeError('Atomic overlay changed a desktop component; no acceptance run allowed')
         lab.ssh(run, "python3 -c 'import pyatspi,dbus;from PyQt6.QtGui import QGuiApplication'\ncommand -v tesseract\n")
     if 'gnome' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_gnome_witness import stage
