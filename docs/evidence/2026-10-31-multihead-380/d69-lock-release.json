@@ -1,0 +1,33 @@
+{
+  "lock": {
+    "owner": "multihead-380",
+    "session": "m380-aca13938",
+    "host": "d69",
+    "purpose": "#380 disposable GNOME multi-head VM; no physical desktop input; work/m380 evidence",
+    "acquired": "2026-10-31T14:56:47Z",
+    "expires": "2026-10-31T15:57:41Z",
+    "heartbeat": "2026-10-31T15:12:41Z"
+  },
+  "check": {
+    "left": [],
+    "notMine": [],
+    "preexisting": [
+      {
+        "kind": "process",
+        "id": "2008860",
+        "key": "process:2008860:40475026",
+        "detail": "gpg-agent --homedir /home/patrick/.local/share/putgd-signer/gnupg --use-standard-socket --daemon"
+      }
+    ],
+    "unmatchedNotMine": []
+  },
+  "notes": [
+    "1 process(es) outside the desktop session (no DISPLAY or WAYLAND_DISPLAY; shared SSH work): 978298"
+  ],
+  "receipt": "/home/patrick/putgd-lab/locks/history/2026-10-31T15-18-34Z-release.json",
+  "ok": true,
+  "host": "d69",
+  "action": "release",
+  "resource": "desktop",
+  "now": "2026-10-31T15:18:34Z"
+}

@@ -1,0 +1,3104 @@
+{
+  "schemaVersion": 1,
+  "issue": 380,
+  "resultsRunCompleted": true,
+  "releaseAcceptance": "blocked",
+  "publishedNightly": "v26.1031.3384-nightly",
+  "releaseCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+  "officialDriverSource": "caf52592ddc38897e43e7b0e66468483ca5d662b",
+  "compiled": false,
+  "harnessSourceChanged": false,
+  "catalog": {
+    "runId": 41176518810,
+    "name": "ui-catalog",
+    "manifestSha256": "d18c5358efa9f3039211402268163e5ba0de7f6450657eed8d39df21071e61c3"
+  },
+  "appBugs": [
+    1048,
+    1049
+  ],
+  "labFollowups": [
+    1050,
+    1051
+  ],
+  "hosts": {
+    "m74": {
+      "builderIp": "192.168.68.74",
+      "runId": "3ebef383-23cd-4fd7-b546-b408406fa3c8",
+      "session": {
+        "hostname": "putgd-lab",
+        "kernel": "6.14.0-37-generic",
+        "machine": "x86_64",
+        "os": {
+          "ID": "linuxmint",
+          "VERSION_ID": "22.3",
+          "VARIANT_ID": null
+        },
+        "session_type": "x11",
+        "desktop": "X-Cinnamon",
+        "qt_platform": "xcb"
+      },
+      "resident": {
+        "pid": 4339,
+        "startTicks": 14293,
+        "sha256": "9baac5d4773afb87d75ec04947e00bf6de3aac2ec42b246193b7cbfc50133941"
+      },
+      "installed": {
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "versions": {
+          "putgd": "26.1031.3384~nightly",
+          "cinnamon": "6.6.4+zena",
+          "muffin": "6.6.1+zena",
+          "gnome-shell": "",
+          "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+          "xdg-desktop-portal": "1.20.0+ds-2ubuntu1",
+          "xdg-desktop-portal-gnome": ""
+        },
+        "nativeSession": "x11",
+        "qtPlatform": "xcb",
+        "os": "NAME=\"Linux Mint\"\nVERSION=\"22.3 (Zena)\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\nPRETTY_NAME=\"Linux Mint 22.3\"\nVERSION_ID=\"22.3\"\nHOME_URL=\"https://www.linuxmint.com/\"\nSUPPORT_URL=\"https://forums.linuxmint.com/\"\nBUG_REPORT_URL=\"http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/\"\nPRIVACY_POLICY_URL=\"https://www.linuxmint.com/\"\nVERSION_CODENAME=zena\nUBUNTU_CODENAME=noble\n"
+      },
+      "packageSha256": "c0ec0359d3533c6cf693fb64f071f9dabb018710ad6fbf261f62f8c5111ed278",
+      "clipboardRemovalProof": true,
+      "cleanup": {
+        "main": []
+      }
+    },
+    "d69": {
+      "builderIp": "192.168.68.69",
+      "runId": "cfbfcfa7-65d5-4665-a9eb-4a82c93ef3db",
+      "session": {
+        "hostname": "putgd-ubuntu-lab",
+        "kernel": "7.0.0-38-generic",
+        "machine": "x86_64",
+        "os": {
+          "ID": "ubuntu",
+          "VERSION_ID": "26.04",
+          "VARIANT_ID": null
+        },
+        "session_type": "wayland",
+        "desktop": "ubuntu:GNOME",
+        "qt_platform": "wayland"
+      },
+      "resident": {
+        "pid": 3900,
+        "startTicks": 4936,
+        "sha256": "78b0b4ae80629f98b365c5c080691b3c77d4c8aace5ac24e11bf5f2c02a7f3fd"
+      },
+      "installed": {
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "versions": {
+          "putgd": "26.1031.3384~nightly",
+          "cinnamon": "",
+          "gnome-shell": "50.1-0ubuntu1.2",
+          "mutter-common": "50.1-0ubuntu2.2",
+          "libqt6core6t64": "6.10.2+dfsg-7",
+          "xdg-desktop-portal": "1.21.1+ds-1ubuntu3.1",
+          "xdg-desktop-portal-gnome": "50.0-0ubuntu1"
+        },
+        "nativeSession": "wayland",
+        "qtPlatform": "wayland",
+        "os": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n"
+      },
+      "packageSha256": "533252f08be2583afd9eaf1f379f623e3f764cead733f1fcc5a5c32905b25b9b",
+      "clipboardRemovalProof": true,
+      "cleanup": {
+        "main": [],
+        "retry": []
+      }
+    },
+    "k72": {
+      "builderIp": "192.168.68.72",
+      "runId": "a891b51d-be5a-4bc6-bb4b-a7154fda88dd",
+      "session": {
+        "hostname": "putgd-kde-lab",
+        "kernel": "7.0.0-38-generic",
+        "machine": "x86_64",
+        "os": {
+          "ID": "ubuntu",
+          "VERSION_ID": "26.04",
+          "VARIANT_ID": null
+        },
+        "session_type": "wayland",
+        "desktop": "KDE",
+        "qt_platform": "wayland"
+      },
+      "resident": {
+        "pid": 6504,
+        "startTicks": 15053,
+        "sha256": "78b0b4ae80629f98b365c5c080691b3c77d4c8aace5ac24e11bf5f2c02a7f3fd"
+      },
+      "installed": {
+        "build": {
+          "schemaVersion": 1,
+          "version": "26.1031.3384-nightly",
+          "baseVersion": "26.1031.3384",
+          "packageVersion": "26.1031.3384~nightly",
+          "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+          "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+          "commitCount": 3384,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "versions": {
+          "putgd": "26.1031.3384~nightly",
+          "cinnamon": "",
+          "gnome-shell": "",
+          "plasma-workspace": "4:6.6.6-0ubuntu0.1",
+          "kwin-wayland": "4:6.6.6-0ubuntu0.1",
+          "libqt6core6t64": "6.10.2+dfsg-7",
+          "xdg-desktop-portal": "1.21.1+ds-1ubuntu3.1",
+          "xdg-desktop-portal-gnome": "",
+          "xdg-desktop-portal-kde": "6.6.6-0ubuntu0.1"
+        },
+        "nativeSession": "wayland",
+        "qtPlatform": "wayland",
+        "os": "PRETTY_NAME=\"Ubuntu 26.04.1 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"26.04\"\nVERSION=\"26.04.1 LTS (Resolute Raccoon)\"\nVERSION_CODENAME=resolute\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=resolute\nLOGO=ubuntu-logo\n"
+      },
+      "packageSha256": "533252f08be2583afd9eaf1f379f623e3f764cead733f1fcc5a5c32905b25b9b",
+      "clipboardRemovalProof": true,
+      "cleanup": {
+        "main": [],
+        "retry": [],
+        "scale": []
+      }
+    }
+  },
+  "matrix": [
+    {
+      "host": "m74",
+      "layout": "side",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "432b0e37-af79-4c1f-ac72-2b36a7323d3a",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "553b7150171899a7e05a1f466e0d6cbc3aac2354de9a03fe2f42ead6e36c9215",
+        "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "side",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "passed",
+      "operationId": "a558e0cd-cc50-457a-bce4-0a106198be7c",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          40
+        ],
+        "expectedSize": [
+          1280,
+          40
+        ],
+        "actualSha256": "70cdaea847eea2ad05d7ddb16f239a7e21ad6ddb2b27968b5e7eb2809302b44d",
+        "expectedSha256": "6aa857893232c497753d0ab8a7956bd1fc0c350976198d54dfc430c44855fe12",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "side",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "812566c5-a372-43e5-bd61-7a7061064783",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "744deaf158ffb02f50082ca0a3ebda1c668aabe54755c2c6841c88ea48337dfb",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "side",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "812b14f9-294c-46df-847f-93649df0eb4d",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "bcaa17ad380f079cf338528f25274df3aeea50516f02f1594196134aa11da618",
+        "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "bcaa17ad380f079cf338528f25274df3aeea50516f02f1594196134aa11da618",
+      "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278"
+    },
+    {
+      "host": "m74",
+      "layout": "side",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "812b14f9-294c-46df-847f-93649df0eb4d",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "bcaa17ad380f079cf338528f25274df3aeea50516f02f1594196134aa11da618",
+        "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          1280,
+          0,
+          2560,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "bcaa17ad380f079cf338528f25274df3aeea50516f02f1594196134aa11da618",
+      "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278"
+    },
+    {
+      "host": "m74",
+      "layout": "mixed",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "blocked",
+      "reason": "Current Muffin X11 profile reports global-scale-required=true; per-output mixed scale is unqualified"
+    },
+    {
+      "host": "m74",
+      "layout": "mixed",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "blocked",
+      "reason": "Current Muffin X11 profile reports global-scale-required=true; per-output mixed scale is unqualified"
+    },
+    {
+      "host": "m74",
+      "layout": "mixed",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "blocked",
+      "reason": "Current Muffin X11 profile reports global-scale-required=true; per-output mixed scale is unqualified"
+    },
+    {
+      "host": "m74",
+      "layout": "mixed",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "blocked",
+      "reason": "Current Muffin X11 profile reports global-scale-required=true; per-output mixed scale is unqualified"
+    },
+    {
+      "host": "m74",
+      "layout": "mixed",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "blocked",
+      "reason": "Current Muffin X11 profile reports global-scale-required=true; per-output mixed scale is unqualified"
+    },
+    {
+      "host": "m74",
+      "layout": "negative",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "53c93a2b-554a-4d9e-83f6-bd5930c3db86",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "553b7150171899a7e05a1f466e0d6cbc3aac2354de9a03fe2f42ead6e36c9215",
+        "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "negative",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "passed",
+      "operationId": "00f77b92-184c-49fb-a9b9-a51cd4002d57",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          40
+        ],
+        "expectedSize": [
+          1280,
+          40
+        ],
+        "actualSha256": "0de425e8b4f8ec7a00bc824a8b2f4ad223f08496f4cf97c53326fb9a52ca61bd",
+        "expectedSha256": "dc9031d52a43eb3de17ab91897e5ebfa88613e30268d54b31b5172552708b0bb",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "negative",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "5b0c4cdf-055a-4932-8b55-9f37c0d8f435",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "744deaf158ffb02f50082ca0a3ebda1c668aabe54755c2c6841c88ea48337dfb",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "negative",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "e928fd08-ec87-46ef-9131-12826b37ee00",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "ec2bd953f1e2be9e83e5bf5f4aecc95ce746ca2242a78ad9e8a4156c6e506303",
+        "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          1280,
+          0,
+          2560,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "ec2bd953f1e2be9e83e5bf5f4aecc95ce746ca2242a78ad9e8a4156c6e506303",
+      "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd"
+    },
+    {
+      "host": "m74",
+      "layout": "negative",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "e928fd08-ec87-46ef-9131-12826b37ee00",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "ec2bd953f1e2be9e83e5bf5f4aecc95ce746ca2242a78ad9e8a4156c6e506303",
+        "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "ec2bd953f1e2be9e83e5bf5f4aecc95ce746ca2242a78ad9e8a4156c6e506303",
+      "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd"
+    },
+    {
+      "host": "m74",
+      "layout": "gap",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "352173bf-8dee-4e29-af6d-03e1eb907286",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "553b7150171899a7e05a1f466e0d6cbc3aac2354de9a03fe2f42ead6e36c9215",
+        "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "gap",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "passed",
+      "operationId": "0fe4456d-9906-4c6e-ab6b-1188faf2bbd3",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1408,
+          40
+        ],
+        "expectedSize": [
+          1408,
+          40
+        ],
+        "actualSha256": "522f193e4e6390c960d6a9bf924d27d16797eadc461140ff8438b0113eb531c0",
+        "expectedSha256": "db31eb6f03c2e0aea3573d508c275181213ec1139e055c6ed3e38f763546f00b",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "gap",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "4e3c346b-d0c6-4c67-b045-b4ed4a3ba8a0",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "744deaf158ffb02f50082ca0a3ebda1c668aabe54755c2c6841c88ea48337dfb",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "gap",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c0e933f5-1bd4-44d1-a21f-a9b8cc3f58ee",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2688,
+          800
+        ],
+        "expectedSize": [
+          2688,
+          800
+        ],
+        "actualSha256": "54e424f99a1bbbf4e38c54900880c07b4c487e9587eb0acb5cfcbae3ed614115",
+        "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "54e424f99a1bbbf4e38c54900880c07b4c487e9587eb0acb5cfcbae3ed614115",
+      "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914"
+    },
+    {
+      "host": "m74",
+      "layout": "gap",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c0e933f5-1bd4-44d1-a21f-a9b8cc3f58ee",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2688,
+          800
+        ],
+        "expectedSize": [
+          2688,
+          800
+        ],
+        "actualSha256": "54e424f99a1bbbf4e38c54900880c07b4c487e9587eb0acb5cfcbae3ed614115",
+        "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1408,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          1408,
+          0,
+          2688,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "54e424f99a1bbbf4e38c54900880c07b4c487e9587eb0acb5cfcbae3ed614115",
+      "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914"
+    },
+    {
+      "host": "m74",
+      "layout": "portrait",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "m74",
+      "layout": "portrait",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "m74",
+      "layout": "portrait",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "m74",
+      "layout": "portrait",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "m74",
+      "layout": "portrait",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "m74",
+      "layout": "removal",
+      "flow": "remaining-primary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-0",
+      "status": "passed",
+      "operationId": "ef02b37d-fbbd-42a7-9a7a-1518b3f77015",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "a4aa484e25f9fdf5b06e86e4b00316dc43fe90e97b92810d42c87686441527f8",
+        "expectedSha256": "18e79f2bea327ee54a198aa69a2b5f7cbd7139716094590dbd938bae95e0d0f2",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "removal",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "not-applicable",
+      "reason": "Second head is disabled; capture on remaining primary is the required post-removal check"
+    },
+    {
+      "host": "m74",
+      "layout": "removal",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-0",
+      "status": "passed",
+      "operationId": "9ee8babb-8055-4024-bcd3-58708af69fea",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "a84f5f1f7f08509883eec8b0a84762f65c83e928016a410df738e745f65b7027",
+        "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "m74",
+      "layout": "removal",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "6fdc4992-66ba-4a48-b1db-9f8bd449cc5c",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "a84f5f1f7f08509883eec8b0a84762f65c83e928016a410df738e745f65b7027",
+        "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "a84f5f1f7f08509883eec8b0a84762f65c83e928016a410df738e745f65b7027",
+      "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64"
+    },
+    {
+      "host": "m74",
+      "layout": "removal",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "not-applicable",
+      "reason": "Second head is disabled; capture on remaining primary is the required post-removal check"
+    },
+    {
+      "host": "d69",
+      "layout": "side",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "d69",
+      "layout": "side",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "d69",
+      "layout": "side",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "d69",
+      "layout": "side",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "d69",
+      "layout": "side",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "blocked",
+      "reason": "Independent per-head wall frame gate failed; app cases blocked"
+    },
+    {
+      "host": "d69",
+      "layout": "mixed",
+      "flow": "secondary-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "53d44fd5-ce76-4d94-a2e0-4d71cfa26e5f",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          240,
+          180
+        ],
+        "expectedSize": [
+          240,
+          180
+        ],
+        "actualSha256": "c4f39b676a0be49904e13544048e3b5b43cfba6ac258e75dcff26b0227ee7648",
+        "expectedSha256": "00f9b495d2aafc0cfb66beef9db50c509b224a662a93e025413b2ae266b79861",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "mixed",
+      "flow": "spanning-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "span",
+      "status": "passed",
+      "operationId": "eb26a8a2-502b-44c2-90b5-e6cc427f2d6b",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "actualSize": [
+          1920,
+          60
+        ],
+        "expectedSize": [
+          1920,
+          60
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "5ce40550b232fb5f05f5e8b892b1e775b32391a5c434272826fa6285274d4133",
+        "actualSha256": "d6e7cba326b00ff8d4cfaa4765eaee178a68f9d9180f9741fdb14d306b75e197"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "mixed",
+      "flow": "window",
+      "sourceWorksheet": "retry",
+      "sourceCase": "window-1",
+      "status": "failed",
+      "operationId": "60f135e8-5733-42e2-ad33-2adc021ae8f5",
+      "oracle": {
+        "status": "failed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          1600
+        ],
+        "expectedSize": [
+          1920,
+          1200
+        ],
+        "actualSha256": "81b6adae3a15915e5cdb6da85ca47fb2a83fbb5cf9e87cacc4f9dcda68eb0184",
+        "expectedSha256": "8c480577b696569f9629534b9525f3e0b638a6067e42f65e76f24411f2e4b03a"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "issue": 1049
+    },
+    {
+      "host": "d69",
+      "layout": "mixed",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "2d07415e-8f48-4a9a-ad9f-96aef9eee2a8",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "actualSize": [
+          3840,
+          1200
+        ],
+        "expectedSize": [
+          3840,
+          1200
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7",
+        "actualSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.5,
+        "cropBox": [
+          0,
+          0,
+          1920,
+          1200
+        ],
+        "size": [
+          1920,
+          1200
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12",
+      "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7"
+    },
+    {
+      "host": "d69",
+      "layout": "mixed",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "2d07415e-8f48-4a9a-ad9f-96aef9eee2a8",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "actualSize": [
+          3840,
+          1200
+        ],
+        "expectedSize": [
+          3840,
+          1200
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7",
+        "actualSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.5,
+        "compositeDensity": 1.5,
+        "cropBox": [
+          1920,
+          0,
+          3840,
+          1200
+        ],
+        "size": [
+          1920,
+          1200
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12",
+      "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7"
+    },
+    {
+      "host": "d69",
+      "layout": "negative",
+      "flow": "secondary-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "e03567a5-8194-464d-8830-21e43288d4d0",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "080e9bfcd488d09248eff683f66672a8fc0e83343576c239fa1dafb6197757ae",
+        "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "negative",
+      "flow": "spanning-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "span",
+      "status": "passed",
+      "operationId": "c216456e-7eea-4d5e-8661-181ab4910af9",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          40
+        ],
+        "expectedSize": [
+          1280,
+          40
+        ],
+        "actualSha256": "ee047314c619bd6746471c2a9e9a71bcde50d2f180afeb25262253b5cb0931bd",
+        "expectedSha256": "dc9031d52a43eb3de17ab91897e5ebfa88613e30268d54b31b5172552708b0bb",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "negative",
+      "flow": "window",
+      "sourceWorksheet": "retry",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "a280b06b-a92d-46e8-9da3-a74a9dd9219e",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "e2b2cf759e1283489b9f44ee4acdb1214ac0b9b84b3ba49356e090ab2126f3b9",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "negative",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c9edc7c9-7cef-468f-8549-534c0b42409b",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+        "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          1280,
+          0,
+          2560,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+      "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd"
+    },
+    {
+      "host": "d69",
+      "layout": "negative",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c9edc7c9-7cef-468f-8549-534c0b42409b",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+        "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+      "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd"
+    },
+    {
+      "host": "d69",
+      "layout": "gap",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "not-applicable",
+      "reason": "Mutter rejects disconnected monitor layouts (gaps); not an app failure"
+    },
+    {
+      "host": "d69",
+      "layout": "gap",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "not-applicable",
+      "reason": "Mutter rejects disconnected monitor layouts (gaps); not an app failure"
+    },
+    {
+      "host": "d69",
+      "layout": "gap",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "not-applicable",
+      "reason": "Mutter rejects disconnected monitor layouts (gaps); not an app failure"
+    },
+    {
+      "host": "d69",
+      "layout": "gap",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "not-applicable",
+      "reason": "Mutter rejects disconnected monitor layouts (gaps); not an app failure"
+    },
+    {
+      "host": "d69",
+      "layout": "gap",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "not-applicable",
+      "reason": "Mutter rejects disconnected monitor layouts (gaps); not an app failure"
+    },
+    {
+      "host": "d69",
+      "layout": "portrait",
+      "flow": "secondary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "4466cac1-657b-452a-9256-6b51380f7ca5",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+        "actualSha256": "d9a37b8d889e33f921c13825b8cc68252b0447f4adc950914fb09ecae72ad3a4"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "portrait",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "passed",
+      "operationId": "3d26ac97-24b1-4ad9-9a1b-c6f12dce77fd",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1040,
+          240
+        ],
+        "expectedSize": [
+          1040,
+          240
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "00d031285ce22d4d2aafedff99caa5c0b5d0499b175719a90fd0f08a931ec774",
+        "actualSha256": "dc7235308d0355955939b717cb6d7454c19ec5b6104fe2d319e5d9670f6f570e"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "portrait",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "025ff92b-a685-46ab-94a6-f720198803df",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          800,
+          1280
+        ],
+        "expectedSize": [
+          800,
+          1280
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "5ceaa39b2050522f0eca31d3d7114728c391b7e7d77b77d00f9caae9731bd87c",
+        "actualSha256": "137b2a06911f4cb9e764657079dd909d94300e9807e5e8b1014b250b17485bd5"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "portrait",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "b6a6b543-bad0-4327-a46e-e66131d56693",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2080,
+          1280
+        ],
+        "expectedSize": [
+          2080,
+          1280
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654",
+        "actualSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b",
+      "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654"
+    },
+    {
+      "host": "d69",
+      "layout": "portrait",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "b6a6b543-bad0-4327-a46e-e66131d56693",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2080,
+          1280
+        ],
+        "expectedSize": [
+          2080,
+          1280
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654",
+        "actualSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1280,
+          0,
+          800,
+          1280
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          1280,
+          0,
+          2080,
+          1280
+        ],
+        "size": [
+          800,
+          1280
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b",
+      "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654"
+    },
+    {
+      "host": "d69",
+      "layout": "removal",
+      "flow": "remaining-primary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-0",
+      "status": "passed",
+      "operationId": "088cee74-d1c6-4bba-bc97-8a54254a6589",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "0b87c7f40ab22c0dbee9dbaf55dbad00ed06664fb14620370a0e4955e08c596a",
+        "expectedSha256": "18e79f2bea327ee54a198aa69a2b5f7cbd7139716094590dbd938bae95e0d0f2",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "removal",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "not-applicable",
+      "reason": "Second head is disabled; capture on remaining primary is the required post-removal check"
+    },
+    {
+      "host": "d69",
+      "layout": "removal",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-0",
+      "status": "passed",
+      "operationId": "706d43a6-d3b3-4787-b32a-b75bed7506c1",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "05c7eb30fb4eb95765b85367f32b62a69613a9709bc9b53228d45365b8ea9119",
+        "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "d69",
+      "layout": "removal",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "f008b7b0-1e7e-48f5-a088-928e7d86b08b",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "52d1272602d7c2fc9b5b3cd3e414af7092485d9371749fab49082477e509a836",
+        "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "52d1272602d7c2fc9b5b3cd3e414af7092485d9371749fab49082477e509a836",
+      "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64"
+    },
+    {
+      "host": "d69",
+      "layout": "removal",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "not-applicable",
+      "reason": "Second head is disabled; capture on remaining primary is the required post-removal check"
+    },
+    {
+      "host": "k72",
+      "layout": "side",
+      "flow": "secondary-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "inside-1",
+      "status": "failed",
+      "operationId": "91c338c2-3855-4e8a-a95c-00f27e016eca",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Operation did not settle: 91c338c2-3855-4e8a-a95c-00f27e016eca",
+      "pastePixelsEqual": null,
+      "operationState": "acquiring",
+      "operationError": "",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "side",
+      "flow": "spanning-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "span",
+      "status": "failed",
+      "operationId": "91c3cd64-294d-4412-a140-40be11f813ba",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Capture did not complete with one artifact",
+      "pastePixelsEqual": null,
+      "operationState": "failed",
+      "operationError": "capture_geometry",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "side",
+      "flow": "window",
+      "sourceWorksheet": "retry",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "e395d317-8fc7-45c6-a6eb-8aed493f086f",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "1f1ac61a25c6fba065761ea8c3174a6b65f57087123a160c53541f8925e7dd34",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "side",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "b57b2d21-4adc-4fec-8be7-e3a47b094490",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "cbe08855c758fdb5f8e5704cb51228fc28f1de59afb7304fdaa32119ee835238",
+        "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "cbe08855c758fdb5f8e5704cb51228fc28f1de59afb7304fdaa32119ee835238",
+      "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278"
+    },
+    {
+      "host": "k72",
+      "layout": "side",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "b57b2d21-4adc-4fec-8be7-e3a47b094490",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "cbe08855c758fdb5f8e5704cb51228fc28f1de59afb7304fdaa32119ee835238",
+        "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          1280,
+          0,
+          2560,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "cbe08855c758fdb5f8e5704cb51228fc28f1de59afb7304fdaa32119ee835238",
+      "expectedSha256": "910ba9bfbdb816a1426c7d7378918cebed8c5844e0d4a110240ad3547936f278"
+    },
+    {
+      "host": "k72",
+      "layout": "mixed",
+      "flow": "secondary-region",
+      "sourceWorksheet": "scale",
+      "sourceCase": "inside-1",
+      "status": "failed",
+      "operationId": "e329b425-f3c1-4aec-84fb-969e1818f11d",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Operation did not settle: e329b425-f3c1-4aec-84fb-969e1818f11d",
+      "pastePixelsEqual": null,
+      "operationState": "acquiring",
+      "operationError": "",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "mixed",
+      "flow": "spanning-region",
+      "sourceWorksheet": "scale",
+      "sourceCase": "span",
+      "status": "failed",
+      "operationId": "68800828-188d-4512-b5b1-a0c03816c0af",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Capture did not complete with one artifact",
+      "pastePixelsEqual": null,
+      "operationState": "failed",
+      "operationError": "capture_geometry",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "mixed",
+      "flow": "window",
+      "sourceWorksheet": "scale",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "d7e75baa-2601-46e8-8b45-21e505c8ae43",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1920,
+          1200
+        ],
+        "expectedSize": [
+          1920,
+          1200
+        ],
+        "actualSha256": "bd0b686a3c58fa196615b51eccdb91f16340ff1f37df55b48b24df371be5f686",
+        "expectedSha256": "8c480577b696569f9629534b9525f3e0b638a6067e42f65e76f24411f2e4b03a",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "mixed",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "scale",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "2bc8d31b-5d69-481f-856e-46a1aab2e1b3",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "actualSize": [
+          3840,
+          1200
+        ],
+        "expectedSize": [
+          3840,
+          1200
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7",
+        "actualSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1.5,
+        "cropBox": [
+          0,
+          0,
+          1920,
+          1200
+        ],
+        "size": [
+          1920,
+          1200
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12",
+      "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7"
+    },
+    {
+      "host": "k72",
+      "layout": "mixed",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "scale",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "2bc8d31b-5d69-481f-856e-46a1aab2e1b3",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "actualSize": [
+          3840,
+          1200
+        ],
+        "expectedSize": [
+          3840,
+          1200
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7",
+        "actualSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.5,
+        "compositeDensity": 1.5,
+        "cropBox": [
+          1920,
+          0,
+          3840,
+          1200
+        ],
+        "size": [
+          1920,
+          1200
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12",
+      "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7"
+    },
+    {
+      "host": "k72",
+      "layout": "negative",
+      "flow": "secondary-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "inside-1",
+      "status": "passed",
+      "operationId": "7c35484d-34a7-452f-8317-eddf73af01bd",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "e634d7c2e5bd9055e1cc8778eedc134ab79e027c3aa50fd1c7ba8fbe68dec53b",
+        "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "negative",
+      "flow": "spanning-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "span",
+      "status": "failed",
+      "operationId": "ea35e514-d303-4dd4-bdf5-9e057ed9bcb8",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Operation did not settle: ea35e514-d303-4dd4-bdf5-9e057ed9bcb8",
+      "pastePixelsEqual": null,
+      "operationState": "acquiring",
+      "operationError": "",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "negative",
+      "flow": "window",
+      "sourceWorksheet": "retry",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "e0e53974-bac1-4eed-a2c1-2e3cad2c91ff",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "1f1ac61a25c6fba065761ea8c3174a6b65f57087123a160c53541f8925e7dd34",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "negative",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c4f35e9b-7039-4394-80d2-e1bbdbb4404d",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+        "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          1280,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          1280,
+          0,
+          2560,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+      "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd"
+    },
+    {
+      "host": "k72",
+      "layout": "negative",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c4f35e9b-7039-4394-80d2-e1bbdbb4404d",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2560,
+          800
+        ],
+        "expectedSize": [
+          2560,
+          800
+        ],
+        "actualSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+        "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "bab79ebf3a5c119f38994f22c86ac67430d0021a63a9f81894964010ce7c930d",
+      "expectedSha256": "51dab23730fedca5a3cc76e1566098cabeda3612a3da6d80666d0cc6a08fa3bd"
+    },
+    {
+      "host": "k72",
+      "layout": "gap",
+      "flow": "secondary-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "inside-1",
+      "status": "failed",
+      "operationId": "a89ee50e-59c4-4e4a-881d-5e5f527b3d7e",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Operation did not settle: a89ee50e-59c4-4e4a-881d-5e5f527b3d7e",
+      "pastePixelsEqual": null,
+      "operationState": "acquiring",
+      "operationError": "",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "gap",
+      "flow": "spanning-region",
+      "sourceWorksheet": "retry",
+      "sourceCase": "span",
+      "status": "failed",
+      "operationId": "505cc85f-a7fc-4105-87de-0aec7e661e93",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Capture did not complete with one artifact",
+      "pastePixelsEqual": null,
+      "operationState": "failed",
+      "operationError": "capture_geometry",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "gap",
+      "flow": "window",
+      "sourceWorksheet": "retry",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "75af3863-98c4-46f5-a64a-385cd7a6b5b5",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "1f1ac61a25c6fba065761ea8c3174a6b65f57087123a160c53541f8925e7dd34",
+        "expectedSha256": "4f64cd5f501b973bcd11acd113c1e20ef8a383c5fa17719469beb0ac337653c5",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "gap",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c2e268e4-4c60-4bdc-ac25-6919170d583f",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2688,
+          800
+        ],
+        "expectedSize": [
+          2688,
+          800
+        ],
+        "actualSha256": "29eeba710ac0ca0fde511f38878e6d806b50d4dd4903bbfd2d8cb3d0b8766532",
+        "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "29eeba710ac0ca0fde511f38878e6d806b50d4dd4903bbfd2d8cb3d0b8766532",
+      "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914"
+    },
+    {
+      "host": "k72",
+      "layout": "gap",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "retry",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "c2e268e4-4c60-4bdc-ac25-6919170d583f",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2688,
+          800
+        ],
+        "expectedSize": [
+          2688,
+          800
+        ],
+        "actualSha256": "29eeba710ac0ca0fde511f38878e6d806b50d4dd4903bbfd2d8cb3d0b8766532",
+        "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1408,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          1408,
+          0,
+          2688,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "29eeba710ac0ca0fde511f38878e6d806b50d4dd4903bbfd2d8cb3d0b8766532",
+      "expectedSha256": "cbb474d99de84298f50154e9e8cc0bcb3e51878444cf4c4ebd33c674d42e7914"
+    },
+    {
+      "host": "k72",
+      "layout": "portrait",
+      "flow": "secondary-region",
+      "sourceWorksheet": "scale",
+      "sourceCase": "inside-1",
+      "status": "failed",
+      "operationId": "563e0c93-f28c-49e2-9776-1c09ced1b615",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Operation did not settle: 563e0c93-f28c-49e2-9776-1c09ced1b615",
+      "pastePixelsEqual": null,
+      "operationState": "acquiring",
+      "operationError": "",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "portrait",
+      "flow": "spanning-region",
+      "sourceWorksheet": "scale",
+      "sourceCase": "span",
+      "status": "failed",
+      "operationId": "3165b818-00a2-4f70-827f-e5d3e3d74694",
+      "oracle": {
+        "status": "not-captured"
+      },
+      "driverError": "Capture did not complete with one artifact",
+      "pastePixelsEqual": null,
+      "operationState": "failed",
+      "operationError": "capture_geometry",
+      "issue": 1048
+    },
+    {
+      "host": "k72",
+      "layout": "portrait",
+      "flow": "window",
+      "sourceWorksheet": "scale",
+      "sourceCase": "window-1",
+      "status": "passed",
+      "operationId": "4a7c00fa-013d-4462-bd07-83549d2544cf",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          800,
+          1280
+        ],
+        "expectedSize": [
+          800,
+          1280
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "5ceaa39b2050522f0eca31d3d7114728c391b7e7d77b77d00f9caae9731bd87c",
+        "actualSha256": "7d6047c795bc0536925c8a113caee9325f18b8cf5da54499a78a7a9e42c903b6"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "portrait",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "scale",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "7a211ce6-1bd4-40e7-93b2-476f29e8a8b3",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2080,
+          1280
+        ],
+        "expectedSize": [
+          2080,
+          1280
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654",
+        "actualSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b",
+      "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654"
+    },
+    {
+      "host": "k72",
+      "layout": "portrait",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "scale",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "7a211ce6-1bd4-40e7-93b2-476f29e8a8b3",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          2080,
+          1280
+        ],
+        "expectedSize": [
+          2080,
+          1280
+        ],
+        "differentPixels": 0,
+        "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654",
+        "actualSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b"
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 1,
+        "logicalRect": [
+          1280,
+          0,
+          800,
+          1280
+        ],
+        "nativeDensity": 1,
+        "compositeDensity": 1,
+        "cropBox": [
+          1280,
+          0,
+          2080,
+          1280
+        ],
+        "size": [
+          800,
+          1280
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b",
+      "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654"
+    },
+    {
+      "host": "k72",
+      "layout": "removal",
+      "flow": "remaining-primary-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "inside-0",
+      "status": "passed",
+      "operationId": "5734441e-be58-4c6b-8d1f-e8d6aabdd7f7",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          160,
+          120
+        ],
+        "expectedSize": [
+          160,
+          120
+        ],
+        "actualSha256": "15f35ea9e98e5770b6c5d72a588e33a7950f9601961aaadbf7ef0b4dec14959c",
+        "expectedSha256": "18e79f2bea327ee54a198aa69a2b5f7cbd7139716094590dbd938bae95e0d0f2",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "removal",
+      "flow": "spanning-region",
+      "sourceWorksheet": "main",
+      "sourceCase": "span",
+      "status": "not-applicable",
+      "reason": "Second head is disabled; capture on remaining primary is the required post-removal check"
+    },
+    {
+      "host": "k72",
+      "layout": "removal",
+      "flow": "window",
+      "sourceWorksheet": "main",
+      "sourceCase": "window-0",
+      "status": "passed",
+      "operationId": "8b2d0506-8e25-4a0e-b126-6be547ac368b",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "b8c0fd410790627f2b253aa489990e45a695bd53158a6b5a2fc37efdd6f6a7fe",
+        "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": ""
+    },
+    {
+      "host": "k72",
+      "layout": "removal",
+      "flow": "desktop-primary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "passed",
+      "operationId": "f3ad0efc-9f46-44b2-b8a7-91784059498a",
+      "oracle": {
+        "status": "passed",
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0,
+        "actualSize": [
+          1280,
+          800
+        ],
+        "expectedSize": [
+          1280,
+          800
+        ],
+        "actualSha256": "b8c0fd410790627f2b253aa489990e45a695bd53158a6b5a2fc37efdd6f6a7fe",
+        "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64",
+        "differenceBounds": null,
+        "differentPixels": 0
+      },
+      "driverError": null,
+      "pastePixelsEqual": true,
+      "operationState": "completed",
+      "operationError": "",
+      "headCrop": {
+        "head": 0,
+        "logicalRect": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "nativeDensity": 1.0,
+        "compositeDensity": 1.0,
+        "cropBox": [
+          0,
+          0,
+          1280,
+          800
+        ],
+        "size": [
+          1280,
+          800
+        ],
+        "status": "passed",
+        "differentPixels": 0,
+        "oracle": "recipes/outcomes.py:pixels_equal",
+        "tolerance": 0
+      },
+      "artifactSha256": "b8c0fd410790627f2b253aa489990e45a695bd53158a6b5a2fc37efdd6f6a7fe",
+      "expectedSha256": "4819d57bdf9fa5ba79f0931f3970d39f431959c4f3f3151a2a55f268e3e56e64"
+    },
+    {
+      "host": "k72",
+      "layout": "removal",
+      "flow": "desktop-secondary",
+      "sourceWorksheet": "main",
+      "sourceCase": "desktop",
+      "status": "not-applicable",
+      "reason": "Second head is disabled; capture on remaining primary is the required post-removal check"
+    }
+  ],
+  "referenceCorrections": {
+    "d69": {
+      "mixed": {
+        "kind": "offline-reference-correction",
+        "reason": "Geometry.cpp explicitly disables SmoothPixmapTransform; original worksheet incorrectly used bilinear on the primary head",
+        "resampler": "nearest-neighbour",
+        "tolerance": 0,
+        "flows": {
+          "span": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "actualSize": [
+              1920,
+              60
+            ],
+            "expectedSize": [
+              1920,
+              60
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "5ce40550b232fb5f05f5e8b892b1e775b32391a5c434272826fa6285274d4133",
+            "actualSha256": "d6e7cba326b00ff8d4cfaa4765eaee178a68f9d9180f9741fdb14d306b75e197"
+          },
+          "desktop": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "actualSize": [
+              3840,
+              1200
+            ],
+            "expectedSize": [
+              3840,
+              1200
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7",
+            "actualSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12"
+          }
+        }
+      },
+      "portrait": {
+        "kind": "offline-reference-correction",
+        "reason": "QMP/VNC raw scanout remained landscape for native transform=1 portrait; preserve original failed comparisons",
+        "nativeTransform": 1,
+        "qualifiedReference": "reference-1-rotate270.png",
+        "qualificationOracle": "multi_output.pixel_oracle (no app artifact used)",
+        "qualification": {
+          "ok": true,
+          "pixels": 1024000,
+          "mismatches": 0,
+          "transparentGapPixels": 0,
+          "firstMismatches": [],
+          "size": [
+            800,
+            1280
+          ]
+        },
+        "selectedTransform": "rotate270",
+        "flows": {
+          "inside-1": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "tolerance": 0,
+            "actualSize": [
+              160,
+              120
+            ],
+            "expectedSize": [
+              160,
+              120
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "f812b51e41adffe3a85e70cf5793ec6199f7a9bfc9bdc4109d4d549c254c97f9",
+            "actualSha256": "d9a37b8d889e33f921c13825b8cc68252b0447f4adc950914fb09ecae72ad3a4"
+          },
+          "span": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "tolerance": 0,
+            "actualSize": [
+              1040,
+              240
+            ],
+            "expectedSize": [
+              1040,
+              240
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "00d031285ce22d4d2aafedff99caa5c0b5d0499b175719a90fd0f08a931ec774",
+            "actualSha256": "dc7235308d0355955939b717cb6d7454c19ec5b6104fe2d319e5d9670f6f570e"
+          },
+          "window-1": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "tolerance": 0,
+            "actualSize": [
+              800,
+              1280
+            ],
+            "expectedSize": [
+              800,
+              1280
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "5ceaa39b2050522f0eca31d3d7114728c391b7e7d77b77d00f9caae9731bd87c",
+            "actualSha256": "137b2a06911f4cb9e764657079dd909d94300e9807e5e8b1014b250b17485bd5"
+          },
+          "desktop": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "tolerance": 0,
+            "actualSize": [
+              2080,
+              1280
+            ],
+            "expectedSize": [
+              2080,
+              1280
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654",
+            "actualSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b"
+          }
+        }
+      }
+    },
+    "k72": {
+      "mixed": {
+        "kind": "offline-reference-correction",
+        "reason": "Geometry.cpp explicitly disables SmoothPixmapTransform; original worksheet incorrectly used bilinear on the primary head",
+        "resampler": "nearest-neighbour",
+        "tolerance": 0,
+        "flows": {
+          "span": {
+            "status": "not-captured"
+          },
+          "desktop": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "actualSize": [
+              3840,
+              1200
+            ],
+            "expectedSize": [
+              3840,
+              1200
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "16d49bd82c99eb62ad12d96dc51a0c1f60227161f673e3950fc1092a7eff8ea7",
+            "actualSha256": "113442b5491fb844ac02b9fe8af0e10e21ec9946f19a9d6957640d70c26baa12"
+          }
+        }
+      },
+      "portrait": {
+        "kind": "offline-reference-correction",
+        "reason": "QMP/VNC raw scanout remained landscape for native transform=1 portrait; preserve original failed comparisons",
+        "nativeTransform": 1,
+        "kscreenRotation": 2,
+        "qualifiedReference": "reference-1-rotate270.png",
+        "qualificationOracle": "multi_output.pixel_oracle (no app artifact used)",
+        "qualification": {
+          "ok": true,
+          "pixels": 1024000,
+          "mismatches": 0,
+          "transparentGapPixels": 0,
+          "firstMismatches": [],
+          "size": [
+            800,
+            1280
+          ]
+        },
+        "selectedTransform": "rotate270",
+        "flows": {
+          "inside-1": {
+            "status": "not-captured"
+          },
+          "span": {
+            "status": "not-captured"
+          },
+          "window-1": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "tolerance": 0,
+            "actualSize": [
+              800,
+              1280
+            ],
+            "expectedSize": [
+              800,
+              1280
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "5ceaa39b2050522f0eca31d3d7114728c391b7e7d77b77d00f9caae9731bd87c",
+            "actualSha256": "7d6047c795bc0536925c8a113caee9325f18b8cf5da54499a78a7a9e42c903b6"
+          },
+          "desktop": {
+            "status": "passed",
+            "oracle": "recipes/outcomes.py:pixels_equal",
+            "tolerance": 0,
+            "actualSize": [
+              2080,
+              1280
+            ],
+            "expectedSize": [
+              2080,
+              1280
+            ],
+            "differentPixels": 0,
+            "expectedSha256": "abfb706196414f6a22b617baf861e9e51bcaea937778305b356bb44c9b269654",
+            "actualSha256": "1752f8f64d3aefc1b832d32d16a718f88692906b3afb446f34762676c5381a4b"
+          }
+        }
+      }
+    }
+  },
+  "notes": [
+    "P denotes exact saved PNG pixels, not a release-asset acceptance or full Tier 1 upload-suite pass.",
+    "Desktop action emits one virtual-desktop PNG. Each participating head was independently cropped and compared with outcomes.pixels_equal.",
+    "Per-output native scale and portrait rotation were verified; early KScreen commands that printed mode-not-found despite exit 0 were excluded.",
+    "Original orientation/bilinear comparison failures remain in the archives. Corrected references use independently qualified scanout orientation and documented nearest-neighbour composition, with tolerance 0.",
+    "No app bug, issue, tag or release was fixed/closed/published."
+  ]
+}
