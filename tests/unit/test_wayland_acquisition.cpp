@@ -88,7 +88,7 @@ private slots:
         // The latency anchor stays the arrival's: the mean age is kept, not removed.
         QVERIFY(stamps.last() > 11 * 16'667 * 1000 + 8 * ms && stamps.last() < 11 * 16'667 * 1000 + 16 * ms);
         // Without a compositor time the arrival is used, and times never go back.
-        QCOMPARE(smoothedFrameTime(100 * ms, -1, smoothing, previous), 100 * ms);
+        QCOMPARE(smoothedFrameTime(previous + 100 * ms, -1, smoothing, previous), previous + 100 * ms);
         QCOMPARE(smoothedFrameTime(50 * ms, -1, smoothing, 100 * ms), 100 * ms + 1);
         QCOMPARE(pipewireUnthrottledCaps(), QString(" ! video/x-raw,max-framerate=0/1"));
     }
