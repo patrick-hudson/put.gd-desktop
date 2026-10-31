@@ -818,13 +818,18 @@ class InputFoundations(unittest.TestCase):
         calls=[]
         target.execute=lambda script,**kw:calls.append(script) or {'returncode':0}
         target.cli=lambda *a:{'returncode':0,'stdout':'{"ok":true,"result":{}}'}
-        target.start()
+        with patch('tools.lab.surface_driver.appimage.prepare') as staging:
+            target.start()
+        staging.assert_called_once_with(target)
         seed=next(i for i,s in enumerate(calls) if 'SD_SEED' in s)
         launch=next(i for i,s in enumerate(calls) if 'nohup' in s)
         self.assertLess(seed,launch)
         self.assertNotIn('development-s3',calls[seed]);self.assertIn("'profiles': []",calls[seed])
         self.assertIn("'updates': {'check': False}",calls[seed])
-        calls.clear();target.start(first_launch=True)
+        calls.clear()
+        with patch('tools.lab.surface_driver.appimage.prepare') as staging:
+            target.start(first_launch=True)
+        staging.assert_called_once_with(target)
         self.assertFalse(any('SD_SEED' in s for s in calls))
 
     def test_accessibility_shape_text_filters_and_protected_text(self):

@@ -3,10 +3,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver.appimage import sync_entries
 
 
@@ -67,3 +69,7 @@ class MirroredEntries(unittest.TestCase):
         self.manifest.write_text(json.dumps(data))
         with self.assertRaises(AssertionError):
             self.cleanup()
+
+
+if __name__ == '__main__':
+    unittest.main()
