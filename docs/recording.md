@@ -143,8 +143,8 @@ GIF/WebP (`invalid_request`); `audio.microphone` is reserved and refused
 ### Frame rate
 
 Settings → Capture → **Screen recording → Frame rate** chooses 30 (default)
-or 60 frames per second for new recordings. The default 30 is omitted from the
-configuration file. CLI `settings.patch` and MCP `patch_configuration` set
+or 60 frames per second for new recordings. An untouched configuration keeps
+no key and uses 30; an existing explicit key is preserved when saved. CLI `settings.patch` and MCP `patch_configuration` set
 `preferences.recordingFrameRate`; an explicit `recording.prepare` `fps` overrides it.
 
 ![Settings → Capture → Screen recording → Frame rate, with the new control annotated](https://github.com/patrick-hudson/put.gd-desktop/blob/fd139d3349b0dddb6a24bb889b2f0b1a55ceba78/docs/evidence/2026-10-31-recording-rate/settings-frame-rate-annotated.png?raw=true)
