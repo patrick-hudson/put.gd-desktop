@@ -280,6 +280,11 @@ def upload_clipboard(ctx):
     from ..fixtures.clipboard import owner
     from ..fixtures.uploads import clipboard_files, track
     with _lane(ctx) as (scope, service):
+        # A successful publication's Cinnamon banner covers the next toolbar
+        # click. Notification behaviour has its own recipes; keep this private
+        # multi-import fixture's real input unobstructed.
+        scope.patch({'preferences': {'notifications': False}})
+        ctx.note('private clipboard fixture: notifications disabled before publication')
         source = ctx.fixture('image')
         Image, _, _ = image_modules()
         original = Image.new('RGB', (source.width, source.height))
@@ -334,6 +339,7 @@ def upload_clipboard(ctx):
 def copy_image(ctx):
     from ..fixtures.clipboard import owner
     with _lane(ctx) as (scope, service):
+        scope.patch({'preferences': {'notifications': False}})
         _clipboard_reader(scope)
         detail, data = _complete(scope, service, ctx.fixture('upload').operation_id)
         # Replace any earlier image with a text-only source so stale pixels
