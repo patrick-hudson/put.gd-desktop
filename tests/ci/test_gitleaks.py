@@ -1,5 +1,6 @@
 """Secret-scan regressions; binary controls also run with the pinned CI scanner."""
 import importlib.util
+import copy
 import json
 import os
 from pathlib import Path
@@ -53,6 +54,30 @@ class Sanitization(unittest.TestCase):
         for report in (None, [], 'PRIVATE_SENTINEL', {}, {'version': '2.0.0', 'runs': []},
                        {'version': 'PRIVATE_SENTINEL', 'runs': []}):
             with self.subTest(report=report), self.assertRaises(ValueError):
+                sanitizer.sanitize(report)
+
+    def test_malformed_collections_and_retained_fields_are_rejected(self):
+        for value in (None, {}, '', 1, [None], ['PRIVATE_SENTINEL']):
+            for path in (('runs',), ('runs', 0, 'results'), ('runs', 0, 'results', 0, 'locations')):
+                report = copy.deepcopy(raw_report())
+                target = report
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = value
+                with self.subTest(path=path, value=value), self.assertRaises(ValueError):
+                    sanitizer.sanitize(report)
+        for path, value in ((('ruleId',), {}), (('partialFingerprints',), []),
+                            (('partialFingerprints', 'commitSha'), {}),
+                            (('locations', 0, 'physicalLocation', 'region', 'startLine'), 'PRIVATE_SENTINEL'),
+                            (('locations', 0, 'physicalLocation', 'region', 'startColumn'), False),
+                            (('locations', 0, 'physicalLocation', 'region', 'endLine'), 0),
+                            (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), {})):
+            report = raw_report()
+            target = report['runs'][0]['results'][0]
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = value
+            with self.subTest(path=path, value=value), self.assertRaises(ValueError):
                 sanitizer.sanitize(report)
 
     def test_failed_scan_is_sanitized_before_always_upload_and_status_is_preserved(self):
