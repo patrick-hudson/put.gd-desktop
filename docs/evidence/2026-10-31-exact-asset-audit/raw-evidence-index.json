@@ -1,0 +1,124 @@
+{
+  "archive": "raw-evidence.tar.gz",
+  "bytes": 244355,
+  "sha256": "f113f590008b1affe700a27b714637dc4b584c2e94bc3e9c1ad5de2fe217c368",
+  "verified": true,
+  "restore": "tar -xzf raw-evidence.tar.gz -C NEW_PRIVATE_DIRECTORY; verify member hashes below",
+  "members": [
+    {
+      "path": "a1/audit.json",
+      "bytes": 4446,
+      "sha256": "b0efef89786b3cf25002fff1f7b41d1274dbf9f1054151709d80ea90210a8048"
+    },
+    {
+      "path": "a1.log",
+      "bytes": 74,
+      "sha256": "b967627d3fd9adbbea6c9347c4cb12f3e9530bc2c0f7f08255e923a79ebc7c82"
+    },
+    {
+      "path": "a2/audit.json",
+      "bytes": 200962,
+      "sha256": "608ecb69e0e224e955861ace7da68427c314d9bb3cbeb75417e4892f994cecc2"
+    },
+    {
+      "path": "a2.log",
+      "bytes": 187,
+      "sha256": "d5a61bfd064a44286ebcd37d15eea192a6c5db24b20bed738a4abf6c81ed7efd"
+    },
+    {
+      "path": "a3/audit.json",
+      "bytes": 22921,
+      "sha256": "538aeeb21e73165239051222eaf53b2310b2fc89e345f87ac2c9797ac751f4dd"
+    },
+    {
+      "path": "a3.log",
+      "bytes": 108,
+      "sha256": "43b59272eb91b54743f474f870897948b20141119f1f50291a9725992152ba66"
+    },
+    {
+      "path": "a4/audit.json",
+      "bytes": 554296,
+      "sha256": "5d5cbe1af77c8dcf0eec8722c2839d73a2762f8aab0aef3a709bd8acc2346487"
+    },
+    {
+      "path": "a4.log",
+      "bytes": 1844,
+      "sha256": "277297fb2c539bc2e2efc824e4ac71204a8723e56c74f20f3d1bc02ee1cfee46"
+    },
+    {
+      "path": "final/audit.json",
+      "bytes": 556399,
+      "sha256": "672df12e73b5395c6a010f15db371804905e74521602fc411d52e9e1d0669448"
+    },
+    {
+      "path": "final.log",
+      "bytes": 709,
+      "sha256": "9bd9ae0c57a0c1909154c8e43ae3decc3caa6a116e289af1f69a0fc6e9a33d63"
+    },
+    {
+      "path": "final2/grype/putgd-26.1031.3384-nightly-appimage.grype.json",
+      "bytes": 474191,
+      "sha256": "525cb81f7d6809129b3f87f014349180d9d0163a7678e7e774dbc0f61e553921"
+    },
+    {
+      "path": "final2/grype/putgd-26.1031.3384-nightly-debian13.grype.json",
+      "bytes": 5723,
+      "sha256": "e90bd0252e831c6012ac9d3d55a16e2e2797b16453265f250a0360e95f43ef2a"
+    },
+    {
+      "path": "final2/grype/putgd-26.1031.3384-nightly-fedora44.grype.json",
+      "bytes": 5723,
+      "sha256": "442b07cb04ab4f4425dd286306682e2f0c7a9a1ab552aec241d99bebd739ecce"
+    },
+    {
+      "path": "final2/grype/putgd-26.1031.3384-nightly-ubuntu24.04.grype.json",
+      "bytes": 5735,
+      "sha256": "87dde9e120b2869db4bfa4150e876d221fd048d59afd749c6377c0c00194cb50"
+    },
+    {
+      "path": "final2/grype/putgd-26.1031.3384-nightly-ubuntu26.04.grype.json",
+      "bytes": 5735,
+      "sha256": "e0badd5b002dae632e26bb45a84074d59943003b28fdc66f8f23165e9d52cba3"
+    },
+    {
+      "path": "final2/sboms/putgd-26.1031.3384-nightly-appimage.cdx.json",
+      "bytes": 97586,
+      "sha256": "f966945a344005f4b8221ca41b9b705cbe51fac3e604feafdc65961d540b7e8d"
+    },
+    {
+      "path": "final2/sboms/putgd-26.1031.3384-nightly-debian13.cdx.json",
+      "bytes": 17109,
+      "sha256": "8fae79f48b0ed0d83fede3388142d9354a40609ae861c983c6a5058bf15553e3"
+    },
+    {
+      "path": "final2/sboms/putgd-26.1031.3384-nightly-fedora44.cdx.json",
+      "bytes": 17109,
+      "sha256": "f4714b08499c79b5ac225847bb81a608ec52b54b68bb9cc2fffe66bdbf5b9612"
+    },
+    {
+      "path": "final2/sboms/putgd-26.1031.3384-nightly-ubuntu24.04.cdx.json",
+      "bytes": 17118,
+      "sha256": "6d9dd54d2d93fc880f80544a11cc3c39f0e50b0332edd7143578b46c49f601d2"
+    },
+    {
+      "path": "final2/sboms/putgd-26.1031.3384-nightly-ubuntu26.04.cdx.json",
+      "bytes": 17118,
+      "sha256": "326a533cc7674145b08cad3de82f90c00779164366ea294e11e1063c0c5d02b9"
+    },
+    {
+      "path": "final2/sboms/sbom-receipts.json",
+      "bytes": 2349,
+      "sha256": "f9546d45f0154a6a9a1818ae9a66274c895cfb32af4453d8622a18574579e868"
+    },
+    {
+      "path": "final2.log",
+      "bytes": 865,
+      "sha256": "cd502fa08e2598fffdf5843c4afd3617766c932863aa56a85292395e47a7979e"
+    },
+    {
+      "path": "rebuild/build.log",
+      "bytes": 100653,
+      "sha256": "5ddc35ff9001b26367f3e554c8206986351f8cdc33ae6f905613e7d2f9bab9bd"
+    }
+  ]
+}

@@ -116,8 +116,9 @@ The stable draft workflow runs this audit automatically on the uploaded draft's
 downloads and retains an `exact-asset-audit-TAG` artifact. Stable collection also
 requires its exact-source production rebuild receipt; nightly collection may omit
 that expensive rebuild. For a nightly rehearsal, run
-`tools/releases/check_source_build.py` against the downloaded source receipt and
-pass its `results.json` with `--source-build-result`. Distinguish that new rebuild
+`tools/releases/check_source_build.py` against `AUDIT_OUTPUT/sources/source-archive.json` (extracted by the driver
+from `release-builds.json`) and pass its `results.json` with
+`--source-build-result`. Distinguish that new rebuild
 from CI receipts. The driver does not perform the manual Proton upstream/migration
 review, live-service compatibility or desktop acceptance. Any unexplained High or
 Critical finding with a fix blocks the stable cut; issue filing records the gap

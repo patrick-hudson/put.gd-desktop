@@ -43,6 +43,14 @@ acceptance on each target distribution.
 
 ## Results
 
+The final driver, source `05347d3201f9ccaa769d584d68edc6459ddf20d5`, completed
+on d69 with exit **1** for exactly the two security errors in [audit.json](audit.json).
+Every artifact/source check completed. [The regenerated-SBOM report](vulnerability-summary.md)
+agrees with the published-SBOM scan: 180 findings, 30 accepted, one blocking.
+The audit separately records three official Bun advisories affecting all five
+packages. Package/source remote snapshots were unchanged across the run.
+
+
 - Both checksum inventories, tag commit/tree/count/date and remote asset digests
   match. The release's source-delivery manifest binds the four linked downloads.
 - All four native inventories, root ownership/modes and RPM `%license` placement
@@ -59,9 +67,10 @@ acceptance on each target distribution.
   and verifies its per-file hashes and supplied identity.
 - All five helpers match the source catalog/runtime/notices hashes. Both Proton
   parts concatenate to the catalog hash; all six inner packets verify. The
-  direct `@openpgp/web-stream-tools` notice is present. Original Ubuntu 24.04 CI
-  used npm **9.2.0** / Node **18.19.1** (read from its job log); the new d69 rebuild
-  uses npm **9.2.0**. This revalidates #369 rather than reopening its implementation.
+  direct `@openpgp/web-stream-tools` notice is present. The original CI jobs used npm **9.2.0** in Ubuntu/Debian/AppImage and
+  **10.9.8** in Fedora 44; [observed packages/log references](npm-ci-observations.json)
+  retain each job identity. Ubuntu 24.04 reported Node **18.19.1**; the new d69
+  rebuild uses npm **9.2.0**. This revalidates #369 rather than reopening its implementation.
 - Published and regenerated SBOM declarations are compared to actual package
   metadata and FFmpeg/ICU library/absent-tool fingerprints. The current policy
   accepts **30** findings until **2027-01-21**. Removing dispositions, changing
@@ -105,12 +114,17 @@ separate release gates; no new legal or service compatibility approval is implie
 The code PR also fixes a real provenance omission: tagged package builds skipped
 the source-export rebuild, so this nightly has a null `sourceBuild` CI receipt.
 Stable package builds now perform it, and stable collection rejects its absence.
-A separate fresh rebuild of this downloaded source is retained independently of CI.
+A separate fresh rebuild of this downloaded source **passed** on d69 in
+806.12 seconds using the normal Release preset, distro Qt and the pinned official
+AWS SDK. All eight rebuilt program identities match supplied commit/tree/count;
+both rebuilt helper copies reproduce the exact published runtime SHA-256. See
+[results](source-rebuild-results.json) and [parameters](source-rebuild-parameters.json).
+This is new compilation evidence, distinct from the nightly's null CI receipt.
 
 ```sh
 python3 tools/releases/audit_assets.py --tag v26.1031.3384-nightly \
   --directory /home/patrick/work/ra383/assets \
-  --output /home/patrick/work/ra383/final \
+  --output /home/patrick/work/ra383/final2 \
   --reuse-downloads /home/patrick/work/ra383/a2 \
   --source-build-result /home/patrick/work/ra383/rebuild/results.json
 ```
@@ -118,11 +132,21 @@ python3 tools/releases/audit_assets.py --tag v26.1031.3384-nightly \
 The initial attempts are preserved on d69 and summarized in `failures.json`:
 a missing nightly rebuild receipt; the native CPack filename versus collector
 filename; inclusion of `source-info.json` in the outer receipt but not its own
-inner hash list; and Debian's standard gh 2.46 lacking `--slurp`. The corrected
-driver uses canonical published filenames, compares the proper source member
-sets and decodes paginated JSON directly. Checksum/path/source and advisory-range
-failure tests cover these boundaries. No policy was weakened and no missing
+inner hash list; Debian's standard gh 2.46 lacking `--slurp`; and whitespace
+in upstream advisory ranges. The corrected driver uses canonical published filenames, compares the proper source member
+sets, decodes paginated JSON directly and normalizes comparator whitespace.
+Checksum/source-export, draft-snapshot, helper-binding and advisory-range tests
+cover these boundaries; collector tests enforce the stable rebuild requirement. No policy was weakened and no missing
 receipt was fabricated.
+
+[Raw evidence](raw-evidence.tar.gz) contains all five regenerated SBOMs, all five
+raw Grype JSON results, the rebuild log and each failed attempt's receipt/log.
+The [restore index](raw-evidence-index.json) records archive and per-member hashes;
+those hashes were verified on d69 and again after export to the workstation.
+[Evidence checksums](EVIDENCE-SHA256SUMS) cover the sanitized packet. The complete
+inventory/license/source data is in [audit.json](audit.json) and
+[bundled-components.json](bundled-components.json). The scanner database receipt
+is [database.json](database.json). No raw payload or credential is included.
 
 Raw downloads, full rebuild tree/logs, database archive and every attempt remain
 private on d69. Exported receipts, summaries, raw findings and source identity

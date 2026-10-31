@@ -6,25 +6,36 @@
       "output": "a1",
       "result": "failed",
       "reason": "Nightly sourceBuild receipt is null; initial checker assumed a receipt existed.",
-      "correction": "Continue artifact/CVE checks while recording the missing receipt; run the independent source rebuild and bind its result."
+      "correction": "Continue artifact/CVE checks while recording the missing receipt; run the independent source rebuild and bind its result.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a1"
     },
     {
       "output": "a2",
       "result": "failed",
       "reason": "Native receipt uses original CPack filename, while collector publishes a canonical filename.",
-      "correction": "Resolve downloaded native package by release version, distro label and format; continue to verify the receipt SHA-256."
+      "correction": "Resolve downloaded native package by release version, distro label and format; continue to verify the receipt SHA-256.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a2"
     },
     {
       "output": "a3",
       "result": "failed",
       "reason": "Outer source receipt includes source-info.json; its own inner member hash list necessarily excludes itself.",
-      "correction": "Compare all other members and verify the complete source-info.json through the outer archive digest."
+      "correction": "Compare all other members and verify the complete source-info.json through the outer archive digest.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a3 --reuse-downloads /home/patrick/work/ra383/a2"
     },
     {
       "output": "a4",
       "result": "failed after all package audits",
       "reason": "Standard Debian gh 2.46 lacks --slurp.",
-      "correction": "Decode paginated JSON pages directly; retain system gh. Add pagination and advisory fixed-boundary tests."
+      "correction": "Decode paginated JSON pages directly; retain system gh. Add pagination and advisory fixed-boundary tests.",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/a4 --reuse-downloads /home/patrick/work/ra383/a2"
+    },
+    {
+      "output": "final",
+      "command": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
+      "result": "failed after source rebuild binding and all package audits",
+      "reason": "Official Bun advisory comparator ranges contain whitespace between operators and versions.",
+      "correction": "Normalize comparator whitespace; use the exact upstream ranges in tests. Re-run with the passing rebuild receipt in new output final2."
     }
   ],
   "unchangedBoundaries": [
@@ -33,5 +44,9 @@
     "No alternate toolchain",
     "No source asset overwritten",
     "All failed attempts and commands retained on d69"
+  ],
+  "finalCommand": "python3 /home/patrick/work/ra383/src/tools/releases/audit_assets.py --tag v26.1031.3384-nightly --directory /home/patrick/work/ra383/assets --output /home/patrick/work/ra383/final2 --reuse-downloads /home/patrick/work/ra383/a2 --source-build-result /home/patrick/work/ra383/rebuild/results.json",
+  "notes": [
+    "Debian rpm emitted a non-blocking warning about its absent system RPM database while reading the RPM License header; the query returned the correct value and succeeded. No system RPM database was modified."
   ]
 }

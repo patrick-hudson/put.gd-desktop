@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "archive": {
+    "bytes": 4701707,
+    "file": "putgd-26.1031.3384-nightly-source.tar.gz",
+    "sha256": "220c21f7e084eb5f4c09593afd70830b9a612a31ec9f4c6496217a1c01a6dbd5"
+  },
+  "identity": {
+    "baseVersion": "26.1031.3384",
+    "commitCount": 3384,
+    "dirty": false,
+    "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+    "packageVersion": "26.1031.3384~nightly",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1031.3384-nightly"
+  },
+  "sdkPrefix": "/home/patrick/work/put.gd/build/sdk",
+  "sdkSource": "/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+  "bundleProton": true,
+  "protonSource": null,
+  "protonCryptoSource": null,
+  "protonOffline": false,
+  "scope": "Actual source-export production compilation; no desktop or memory acceptance"
+}
