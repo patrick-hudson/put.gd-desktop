@@ -296,10 +296,13 @@ def upload_clipboard(ctx):
         text = 'putgd Tier 1 clipboard: exact UTF-8 \u2713\nsecond line\n'
         text_path = scope.root + '/source.txt'
         scope.write(text_path, text.encode('utf-8'))
+        file_data = b'putgd Tier 1 URI-list file: byte preservation\x00\x01\xff\n'
+        file_path = scope.root + '/source-file.bin'
+        scope.write(file_path, file_data)
         failures = []
         for kind, mime, path, expected in (
                 ('image', 'image/png', source.path, image_digest),
-                ('file', 'text/uri-list', text_path, hashlib.sha256(text.encode('utf-8')).hexdigest()),
+                ('file', 'text/uri-list', file_path, hashlib.sha256(file_data).hexdigest()),
                 ('text', 'text/plain', text_path, hashlib.sha256(text.encode('utf-8')).hexdigest())):
             try:
                 if kind == 'file':
