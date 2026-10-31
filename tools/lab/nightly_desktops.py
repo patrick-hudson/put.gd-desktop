@@ -680,6 +680,9 @@ def main():
         parser.error('controller/worker must run on its configured builder')
     if args.worker:
         os.chdir(ROOT)
+        tools_bin = config['builders'][args.worker].get('toolsBin')
+        if tools_bin:
+            os.environ['PATH'] = tools_bin+os.pathsep+os.environ.get('PATH', '/usr/bin:/bin')
         worker(dict(config['builders'][args.worker], host=args.worker), args.tag,
                json.loads((args.artifacts/'identity.json').read_text()), args.artifacts, args.output)
     else:
