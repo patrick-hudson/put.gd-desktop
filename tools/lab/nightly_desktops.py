@@ -163,6 +163,7 @@ def verdict(out, recipe):
         if env.get('cleanup_errors'):
             assertion = 'private target cleanup failed'
         return dict(green=bool(passed), assertion=assertion[-1800:], terminal=terminal,
+                    observations=list(dict.fromkeys((r.get('note') or '')[-1800:] for r in rows)),
                     receiptSha256=digest(Path(out)/'receipt.json'), receipt=str(Path(out)/'receipt.json'))
     except (OSError, ValueError, KeyError, RuntimeError, TypeError):
         return dict(green=False, assertion='terminal audited receipt missing or invalid', receipt=str(Path(out)/'receipt.json'))
@@ -267,7 +268,8 @@ def worker(config, tag, identity, artifacts, out):
         cells = {flow: dict(green=False, assertion='desktop setup did not complete')
                  for flow in LOCAL + (['s3_region_upload', 'proton_region_upload'] if row.get('live') else [])}
         record = dict(desktop=row['name'], host=host, profile=row['profile'], cells=cells,
-                      release=tag, build=identity['gitCommit'], evidence=str(rowout))
+                      release=tag, build=identity['gitCommit'], driver=identity['driver'],
+                      session=session, evidence=str(rowout))
         run = ROOT/'work/lab-runs'/('n'+uuid.uuid4().hex[:8])
         try:
             with lease(host, session, rowout) as lease_errors:
@@ -297,6 +299,8 @@ def worker(config, tag, identity, artifacts, out):
                             log=rowout/'install.log', timeout=1600)
                     profiles = prepare(run, row, rowout)
                     save(rowout/'identity.json', dict(lab.state(run), driver=identity['driver']))
+                    record.update(runId=lab.state(run)['id'], goldenSha256=lab.state(run)['golden_sha256'],
+                                  packageSha256=digest(package))
                     env = dict(os.environ, PUTGD_TIER1_SESSION=session)
                     for flow in cells:
                         destination = 's3' if flow.startswith('s3_') else 'proton' if flow.startswith('proton_') else 'local'
@@ -403,6 +407,8 @@ def publish(github, result, out):
             receipt = dict(desktop=row['desktop'], host=row['host'], release=result['release'],
                 build=result['build'], flow=flow, green=cell['green'], assertion=cell.get('assertion'),
                 attempts=cell.get('attempts', []), evidence=row['evidence'],
+                identity={k:row.get(k) for k in ('profile','driver','session','runId','goldenSha256','packageSha256')},
+                attachments=row['evidence']+'/attachments.tgz',
                 controllerFailure=row.get('controllerFailure'))
             body = f'{result["release"]} · {row["desktop"]} · {FLOWS[flow]}\n\n```json\n'+json.dumps(receipt, indent=2, ensure_ascii=False)+'\n```'
             comment = github.api(f'repos/{github.repo}/issues/{pinned["number"]}/comments', 'POST', dict(body=body))
@@ -452,10 +458,22 @@ def controller(args, config):
         rows = [row for b in config['builders'].values() for row in b['rows']]
         artifacts = out/'artifacts'
         artifacts.mkdir(mode=0o700)
-        identity = release_assets(github, tag, artifacts/'packages', rows)
-        identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb', '.rpm', '.AppImage')}
-        identity['driver'] = command(['git', 'rev-parse', 'HEAD']).strip()
-        identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
+        try:
+            identity = release_assets(github, tag, artifacts/'packages', rows)
+            identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb', '.rpm', '.AppImage')}
+            identity['driver'] = command(['git', 'rev-parse', 'HEAD']).strip()
+            identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
+        except Exception as error:
+            reason = str(error) if type(error) is RuntimeError else 'release preparation failed: '+type(error).__name__
+            result = dict(release=tag, build='unverified', date=dt.datetime.now(dt.timezone.utc).isoformat(),
+                desktops=[dict(desktop=row['name'], host=host, evidence=str(out),
+                    cells={f:dict(green=False, assertion=reason)
+                           for f in LOCAL+(['s3_region_upload','proton_region_upload'] if row.get('live') else [])})
+                    for host,builder in config['builders'].items() for row in builder['rows']])
+            publish(github, result, out)
+            save(done, dict(issueUrl=result['issueUrl'], results=str(out/'results.json')))
+            print(result['issueUrl'])
+            return
         save(artifacts/'identity.json', identity)
         result = dict(release=tag, build=identity['gitCommit'], date=dt.datetime.now(dt.timezone.utc).isoformat(), desktops=[])
         # Each host runs one guest at a time. No detached remote jobs.
