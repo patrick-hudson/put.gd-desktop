@@ -1,0 +1,446 @@
+{
+  "frames": {
+    "frames/outcomes.link_browser/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes.link_browser/01-publication-result.png": {
+      "sha256": "cc9c65acfffadd1a3fd12eed86cd18fff18c30528cfd9d367c0b41dedb950a3a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.link_browser/02-browser-content.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ],
+        [
+          0,
+          752,
+          1280,
+          48
+        ]
+      ],
+      "fallback": false,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/outcomes.link_browser/03-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes.history_delete/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/outcomes.history_delete/01-publication-result.png": {
+      "sha256": "cc9c65acfffadd1a3fd12eed86cd18fff18c30528cfd9d367c0b41dedb950a3a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/02-owned-history-row.png": {
+      "sha256": "172e8b975acffc271659dbc96be2b598e597a811959d773e5467349a3f85b6c1",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          528,
+          352,
+          173
+        ],
+        [
+          1022,
+          556,
+          244,
+          61
+        ],
+        [
+          922,
+          441,
+          227,
+          28
+        ],
+        [
+          914,
+          372,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/03-exact-deletion-confirmation.png": {
+      "sha256": "0678ebea2c622331492afa2807f50f28d9acac1a401babad0a2d869e7e896ff3",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          340,
+          96,
+          580,
+          458
+        ],
+        [
+          451,
+          371,
+          437,
+          38
+        ],
+        [
+          451,
+          348,
+          437,
+          23
+        ],
+        [
+          372,
+          325,
+          516,
+          23
+        ],
+        [
+          372,
+          204,
+          516,
+          42
+        ],
+        [
+          372,
+          150,
+          516,
+          46
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          528,
+          352,
+          173
+        ],
+        [
+          1022,
+          556,
+          244,
+          61
+        ],
+        [
+          922,
+          441,
+          227,
+          28
+        ],
+        [
+          914,
+          372,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/04-outcome-failed-before-cleanup.png": {
+      "sha256": "0678ebea2c622331492afa2807f50f28d9acac1a401babad0a2d869e7e896ff3",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          340,
+          96,
+          580,
+          458
+        ],
+        [
+          451,
+          371,
+          437,
+          38
+        ],
+        [
+          451,
+          348,
+          437,
+          23
+        ],
+        [
+          372,
+          325,
+          516,
+          23
+        ],
+        [
+          372,
+          204,
+          516,
+          42
+        ],
+        [
+          372,
+          150,
+          516,
+          46
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          528,
+          352,
+          173
+        ],
+        [
+          1022,
+          556,
+          244,
+          61
+        ],
+        [
+          922,
+          441,
+          227,
+          28
+        ],
+        [
+          914,
+          372,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
+    },
+    "frames/outcomes.history_delete/05-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

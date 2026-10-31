@@ -1,0 +1,469 @@
+{
+  "phase": "A",
+  "placement": "boat",
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "appTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+  "recipeHead": "cc94832a9320d0a1a7c244ef135281793ca3b9df",
+  "coreBase": "95964e91683c6a22fb2e9558c36049aff4908131",
+  "catalogRun": 41111404666,
+  "catalogManifestSha256": "19ff2d892a4728ce0589c9ac4fd2528cae8eb308988368178309c9364374d1c5",
+  "codeHead": "9554ad4c566098962b4064ac907f41977004e2e8",
+  "phaseBStarted": false,
+  "nativeReleaseAcceptance": false,
+  "desktops": {
+    "Cinnamon": {
+      "region_upload": {
+        "status": "blocked",
+        "receipt": "cin-export-a1/cin-a1/receipt.json",
+        "runId": "65dc54a9-c3cb-43c3-8809-0c46bc84c778",
+        "sandbox": "bx_sqcpxkxn",
+        "session": "x11",
+        "note": "desktop frame before masked by live evidence policy; operationId=96eb2427-36e6-4ecb-b1e1-8f7116be4d3b; Capture operation 96eb2427-36e6-4ecb-b1e1-8f7116be4d3b; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+        "frames": [
+          "cin-export-a1/cin-a1/frames/outcomes.region_upload/00-before.png",
+          "cin-export-a1/cin-a1/frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "cin-export-a1/cin-a1/frames/outcomes.region_upload/02-selector-readback-unavailable.png",
+          "cin-export-a1/cin-a1/frames/outcomes.region_upload/03-after.png"
+        ],
+        "issue": 942
+      },
+      "window_desktop": {
+        "status": "passed",
+        "receipt": "cin-export-a2/cin-a2/receipt.json",
+        "runId": "b45f2b6c-76ce-4563-8004-9b087568bc05",
+        "sandbox": "bx_sqcpxkxn",
+        "session": "x11",
+        "note": "desktop frame before masked by live evidence policy; operationId=2dedb984-478a-4937-9d87-e873d3178efb; operationId=2dedb984-478a-4937-9d87-e873d3178efb; historyId=22477e7b-f115-427f-9df4-5aaaf9c8240d; uploaded/local sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; Retained synthetic png sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; pixel oracle: (1280, 800), tolerance=0; operationId=fb33f398-b1cb-4ef8-a728-6dfea3d6f45e; operationId=fb33f398-b1cb-4ef8-a728-6dfea3d6f45e; historyId=2ea266ae-254f-423f-bd9d-043aefdea4ba; uploaded/local sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; Retained synthetic png sha256=98912845be197c1d911733e6136b453bb23fce26f8a573ccbb5b7496fa7c11fb; pixel oracle: (1280, 800), tolerance=0; desktop frame after masked by live evidence policy",
+        "frames": [
+          "cin-export-a2/cin-a2/frames/outcomes.window_desktop/00-before.png",
+          "cin-export-a2/cin-a2/frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "cin-export-a2/cin-a2/frames/outcomes.window_desktop/02-publication-result.png",
+          "cin-export-a2/cin-a2/frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "cin-export-a2/cin-a2/frames/outcomes.window_desktop/04-publication-result.png",
+          "cin-export-a2/cin-a2/frames/outcomes.window_desktop/05-after.png"
+        ]
+      },
+      "recording_upload": {
+        "status": "passed",
+        "receipt": "cin-export-a2/cin-a2/receipt.json",
+        "runId": "b45f2b6c-76ce-4563-8004-9b087568bc05",
+        "sandbox": "bx_sqcpxkxn",
+        "session": "x11",
+        "note": "desktop frame before masked by live evidence policy; operationId=e6cc4e77-9bee-4121-97ab-bff73bde98bc; Recording operation e6cc4e77-9bee-4121-97ab-bff73bde98bc; Observed recording target {'kind': 'region', 'rect': [320, 240, 640, 320]}; Inspected recording target [320, 240, 640, 320]; Retained synthetic mp4 sha256=20ea6774df4413e10a7ed63113f2bf879aec1edb9d2ab545286aacc09a842438; frozen clip motion=0.018, durationMs=6133; operationId=1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; Recording operation 1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; Observed recording target {'kind': 'region', 'rect': [320, 240, 640, 320]}; Inspected recording target [320, 240, 640, 320]; Retained synthetic mp4 sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; moving clip motion=60.322, durationMs=6200; operationId=1e5b3f07-1835-4f76-b7a8-eb1b6a23c4c9; historyId=82190f6d-5593-40bf-bc4d-59bc6e54f7ca; uploaded/local sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; Retained synthetic mp4 sha256=bbe708a118e4784c402012adb3dd2936c4f0c3a3efd34be417ec27222910b82f; uploaded clip motion=60.322, durationMs=6200, frozen=0.018; desktop frame after masked by live evidence policy",
+        "frames": [
+          "cin-export-a2/cin-a2/frames/outcomes.recording_upload/00-before.png",
+          "cin-export-a2/cin-a2/frames/outcomes.recording_upload/01-chosen-recording-area.png",
+          "cin-export-a2/cin-a2/frames/outcomes.recording_upload/02-chosen-recording-area.png",
+          "cin-export-a2/cin-a2/frames/outcomes.recording_upload/03-recording-private-review.png",
+          "cin-export-a2/cin-a2/frames/outcomes.recording_upload/04-publication-result.png",
+          "cin-export-a2/cin-a2/frames/outcomes.recording_upload/05-after.png"
+        ]
+      },
+      "edit_upload": {
+        "status": "passed",
+        "receipt": "cin-export-a1/cin-a1/receipt.json",
+        "runId": "65dc54a9-c3cb-43c3-8809-0c46bc84c778",
+        "sandbox": "bx_sqcpxkxn",
+        "session": "x11",
+        "note": "desktop frame before masked by live evidence policy; operationId=16490d3e-8fa1-4960-9659-fa9c9959df29; editor operationId=16490d3e-8fa1-4960-9659-fa9c9959df29; operationId=16490d3e-8fa1-4960-9659-fa9c9959df29; historyId=e146d6fa-fa6f-4436-824b-93fe8405f445; uploaded/local sha256=1073ffd040ca8061dc142a7f8e91348272a864b9a859cf78d05beadd494994da; Retained synthetic png sha256=1073ffd040ca8061dc142a7f8e91348272a864b9a859cf78d05beadd494994da; desktop frame after masked by live evidence policy",
+        "frames": [
+          "cin-export-a1/cin-a1/frames/outcomes.edit_upload/00-before.png",
+          "cin-export-a1/cin-a1/frames/outcomes.edit_upload/01-before.png",
+          "cin-export-a1/cin-a1/frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "cin-export-a1/cin-a1/frames/outcomes.edit_upload/03-publication-result.png",
+          "cin-export-a1/cin-a1/frames/outcomes.edit_upload/04-after.png"
+        ]
+      },
+      "link_browser": {
+        "status": "blocked",
+        "receipt": "cinf-export-a1/cinf-corrected/receipt.json",
+        "runId": "0c24c5fc-e29d-4492-b619-d875dc92b9f5",
+        "sandbox": "bx_stxfcnha",
+        "session": "x11",
+        "note": "desktop frame before masked by live evidence policy; operationId=9d5dc251-d927-484e-a359-2d27c66720f3; operationId=9d5dc251-d927-484e-a359-2d27c66720f3; historyId=e6ea886f-6391-4b6f-8f83-5ade9d523b86; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; {\"url_host\": \"127.0.0.1\", \"title\": \"[redacted]\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+        "frames": [
+          "cinf-export-a1/cinf-corrected/frames/outcomes.link_browser/00-before.png",
+          "cinf-export-a1/cinf-corrected/frames/outcomes.link_browser/01-publication-result.png",
+          "cinf-export-a1/cinf-corrected/frames/outcomes.link_browser/02-browser-content.png",
+          "cinf-export-a1/cinf-corrected/frames/outcomes.link_browser/03-after.png"
+        ],
+        "issue": 952,
+        "reason": "Navigation/content matched; required retained content frame has visible_pixels=false. Raw functional receipt predates the final visible-frame guard."
+      },
+      "history_delete": {
+        "status": "passed",
+        "receipt": "cinf-export-a1/cinf-delete/receipt.json",
+        "runId": "0c24c5fc-e29d-4492-b619-d875dc92b9f5",
+        "sandbox": "bx_stxfcnha",
+        "session": "x11",
+        "note": "desktop frame before masked by live evidence policy; operationId=4a8866f8-946e-4cbc-8586-784861b3d738; operationId=4a8866f8-946e-4cbc-8586-784861b3d738; historyId=c83eeb1a-33c8-4d8b-a9fc-ae6d02f01522; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=5ecd330b-fcff-485b-a2b7-4cefcbb88ca9; desktop frame after masked by live evidence policy",
+        "frames": [
+          "cinf-export-a1/cinf-delete/frames/outcomes.history_delete/00-before.png",
+          "cinf-export-a1/cinf-delete/frames/outcomes.history_delete/01-publication-result.png",
+          "cinf-export-a1/cinf-delete/frames/outcomes.history_delete/02-owned-history-row.png",
+          "cinf-export-a1/cinf-delete/frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "cinf-export-a1/cinf-delete/frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "cinf-export-a1/cinf-delete/frames/outcomes.history_delete/05-after.png"
+        ]
+      }
+    },
+    "GNOME": {
+      "region_upload": {
+        "status": "blocked",
+        "receipt": "gno-export-a1/gno-a1/receipt.json",
+        "runId": "14964d36-3c0f-4a13-9078-06d0889ee19c",
+        "sandbox": "bx_kxvb6jg8",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=94e61043-7ddf-4cb3-aa37-86ce6a22ac3c; Capture operation 94e61043-7ddf-4cb3-aa37-86ce6a22ac3c; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+        "frames": [
+          "gno-export-a1/gno-a1/frames/outcomes.region_upload/00-before.png",
+          "gno-export-a1/gno-a1/frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "gno-export-a1/gno-a1/frames/outcomes.region_upload/02-selector-readback-unavailable.png",
+          "gno-export-a1/gno-a1/frames/outcomes.region_upload/03-after.png"
+        ],
+        "issue": 942
+      },
+      "window_desktop": {
+        "status": "passed",
+        "receipt": "gno-export-a1/gno-a1/receipt.json",
+        "runId": "14964d36-3c0f-4a13-9078-06d0889ee19c",
+        "sandbox": "bx_kxvb6jg8",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=817d64c3-fb08-41db-b10e-6af88f7e2d59; operationId=817d64c3-fb08-41db-b10e-6af88f7e2d59; historyId=a3030535-3739-424c-b3bf-eeb309c93d17; uploaded/local sha256=d66c3a03e8695fe5a39d304e66041671a0070d001117b53974b7b0cfdb9326f8; Retained synthetic png sha256=d66c3a03e8695fe5a39d304e66041671a0070d001117b53974b7b0cfdb9326f8; pixel oracle: (1280, 800), tolerance=0; operationId=73277c62-a961-443d-894c-30069d4fa9f8; operationId=73277c62-a961-443d-894c-30069d4fa9f8; historyId=db49dc70-9212-4397-a728-215ca0606323; uploaded/local sha256=1d75f506af09b5fa95c0ec46ddf10b4e9bb876c52e3056567b6bc2f350fee320; Retained synthetic png sha256=1d75f506af09b5fa95c0ec46ddf10b4e9bb876c52e3056567b6bc2f350fee320; pixel oracle: (1280, 800), tolerance=0; desktop frame after masked by live evidence policy",
+        "frames": [
+          "gno-export-a1/gno-a1/frames/outcomes.window_desktop/00-before.png",
+          "gno-export-a1/gno-a1/frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "gno-export-a1/gno-a1/frames/outcomes.window_desktop/02-publication-result.png",
+          "gno-export-a1/gno-a1/frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "gno-export-a1/gno-a1/frames/outcomes.window_desktop/04-publication-result.png",
+          "gno-export-a1/gno-a1/frames/outcomes.window_desktop/05-after.png"
+        ]
+      },
+      "recording_upload": {
+        "status": "passed",
+        "receipt": "gno-export-a3/gno-a3/receipt.json",
+        "runId": "177b75ab-dc33-45e3-8ef0-e6881cf11828",
+        "sandbox": "bx_kxvb6jg8",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=b6171017-2275-4874-a7d8-872f6d254441; Recording operation b6171017-2275-4874-a7d8-872f6d254441; screencast consent not yet driven: waiting for the consent dialog to settle; desktop frame screencast-consent-before masked by live evidence policy; screencast consent: clicked 'Share' in xdg-desktop-portal-gnome for this resident's request (app id 'putgd-record'); desktop frame screencast-consent-after masked by live evidence policy; Retained synthetic mp4 sha256=6dc2d74115fc3f78ea231d1cd0f0c7ad7905bf6a16c97abb359d88fac6a22569; frozen clip motion=0.017, durationMs=7400; operationId=97184d60-373f-48b9-a62a-5ca3e8e92e28; Recording operation 97184d60-373f-48b9-a62a-5ca3e8e92e28; Retained synthetic mp4 sha256=48eb6af3a1d100b8d5fcc4847c0d7c05939f9306ab5affbba96e39a26fe64751; moving clip motion=64.18, durationMs=6866; operationId=97184d60-373f-48b9-a62a-5ca3e8e92e28; historyId=35f4bdc9-d34b-4e2f-9806-cbfcaf1e304d; uploaded/local sha256=48eb6af3a1d100b8d5fcc4847c0d7c05939f9306ab5affbba96e39a26fe64751; Retained synthetic mp4 sha256=48eb6af3a1d100b8d5fcc4847c0d7c05939f9306ab5affbba96e39a26fe64751; uploaded clip motion=64.18, durationMs=6866, frozen=0.017; desktop frame after masked by live evidence policy",
+        "frames": [
+          "gno-export-a3/gno-a3/frames/outcomes.recording_upload/00-before.png",
+          "gno-export-a3/gno-a3/frames/outcomes.recording_upload/01-screencast-consent-before.png",
+          "gno-export-a3/gno-a3/frames/outcomes.recording_upload/02-screencast-consent-after.png",
+          "gno-export-a3/gno-a3/frames/outcomes.recording_upload/03-recording-private-review.png",
+          "gno-export-a3/gno-a3/frames/outcomes.recording_upload/04-publication-result.png",
+          "gno-export-a3/gno-a3/frames/outcomes.recording_upload/05-after.png"
+        ]
+      },
+      "edit_upload": {
+        "status": "passed",
+        "receipt": "gno-export-a1/gno-a1/receipt.json",
+        "runId": "14964d36-3c0f-4a13-9078-06d0889ee19c",
+        "sandbox": "bx_kxvb6jg8",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=f6cdd72c-1049-41ec-8cf3-db6bb7d2c108; editor operationId=f6cdd72c-1049-41ec-8cf3-db6bb7d2c108; operationId=f6cdd72c-1049-41ec-8cf3-db6bb7d2c108; historyId=e2ee1ee7-ea57-4ce5-b3e3-e2a6ba9bb818; uploaded/local sha256=8257c07e8a0fcd33bb0ebc38025f4d8bc915916b61e4d903498da10f790c3a46; Retained synthetic png sha256=8257c07e8a0fcd33bb0ebc38025f4d8bc915916b61e4d903498da10f790c3a46; desktop frame after masked by live evidence policy",
+        "frames": [
+          "gno-export-a1/gno-a1/frames/outcomes.edit_upload/00-before.png",
+          "gno-export-a1/gno-a1/frames/outcomes.edit_upload/01-before.png",
+          "gno-export-a1/gno-a1/frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "gno-export-a1/gno-a1/frames/outcomes.edit_upload/03-publication-result.png",
+          "gno-export-a1/gno-a1/frames/outcomes.edit_upload/04-after.png"
+        ]
+      },
+      "link_browser": {
+        "status": "blocked",
+        "receipt": "gno-export-a1/gno-a1/receipt.json",
+        "runId": "14964d36-3c0f-4a13-9078-06d0889ee19c",
+        "sandbox": "bx_kxvb6jg8",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=e1a2b5a6-7515-40be-becd-f4786a59c05d; operationId=e1a2b5a6-7515-40be-becd-f4786a59c05d; historyId=e97d2ed8-52e9-4bb8-aff9-3b94972c74ae; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+        "frames": [
+          "gno-export-a1/gno-a1/frames/outcomes.link_browser/00-before.png",
+          "gno-export-a1/gno-a1/frames/outcomes.link_browser/01-publication-result.png",
+          "gno-export-a1/gno-a1/frames/outcomes.link_browser/02-browser-failure-safe-desktop.png",
+          "gno-export-a1/gno-a1/frames/outcomes.link_browser/03-after.png"
+        ],
+        "issue": 951
+      },
+      "history_delete": {
+        "status": "passed",
+        "receipt": "gno-export-a2/gno-a2/receipt.json",
+        "runId": "e22a61b5-af98-468e-8a17-d3061a0b0885",
+        "sandbox": "bx_kxvb6jg8",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=451a1e35-9112-452e-bb79-4dba721dc281; operationId=451a1e35-9112-452e-bb79-4dba721dc281; historyId=10f6e8cd-b72d-40cc-b46b-11dce3f7b9d8; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=9bab2786-590c-44fb-b04e-fa51c97f1ba2; desktop frame after masked by live evidence policy",
+        "frames": [
+          "gno-export-a2/gno-a2/frames/outcomes.history_delete/00-before.png",
+          "gno-export-a2/gno-a2/frames/outcomes.history_delete/01-publication-result.png",
+          "gno-export-a2/gno-a2/frames/outcomes.history_delete/02-owned-history-row.png",
+          "gno-export-a2/gno-a2/frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "gno-export-a2/gno-a2/frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "gno-export-a2/gno-a2/frames/outcomes.history_delete/05-after.png"
+        ]
+      }
+    },
+    "KDE": {
+      "region_upload": {
+        "status": "blocked",
+        "receipt": "kde-export-a1/kde-a1/receipt.json",
+        "runId": "59c768f9-262e-4e59-be78-a77f3a3cb1eb",
+        "sandbox": "bx_zqavuhdv",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=9c2d3480-5eb7-4a5f-ad60-679313e206f4; Capture operation 9c2d3480-5eb7-4a5f-ad60-679313e206f4; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): geometry: RuntimeError: Wayland window cannot be placed on the desktop: Capture region: compositor window for 'Capture region' (pid 8393, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 8393: '' [0, 0, 1280, 800] type 0",
+        "frames": [
+          "kde-export-a1/kde-a1/frames/outcomes.region_upload/00-before.png",
+          "kde-export-a1/kde-a1/frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "kde-export-a1/kde-a1/frames/outcomes.region_upload/02-selector-readback-unavailable.png",
+          "kde-export-a1/kde-a1/frames/outcomes.region_upload/03-after.png"
+        ],
+        "issue": 942
+      },
+      "window_desktop": {
+        "status": "passed",
+        "receipt": "kde-export-a1/kde-a1/receipt.json",
+        "runId": "59c768f9-262e-4e59-be78-a77f3a3cb1eb",
+        "sandbox": "bx_zqavuhdv",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=0c1178c1-139e-4a70-900c-02ee8f9c258b; operationId=0c1178c1-139e-4a70-900c-02ee8f9c258b; historyId=b3b83c91-d6bc-4ee9-9fed-676fef7a9256; uploaded/local sha256=61da34ac38548ecb4f952d2b0922de872c9bf2e1105e8dcc706aee8239845e97; Retained synthetic png sha256=61da34ac38548ecb4f952d2b0922de872c9bf2e1105e8dcc706aee8239845e97; pixel oracle: (1280, 800), tolerance=0; operationId=8e203fd4-3972-41a4-8df3-a5f1ddc03d43; operationId=8e203fd4-3972-41a4-8df3-a5f1ddc03d43; historyId=fb78a30e-5172-4414-b7dc-15b4efc93beb; uploaded/local sha256=61da34ac38548ecb4f952d2b0922de872c9bf2e1105e8dcc706aee8239845e97; Retained synthetic png sha256=61da34ac38548ecb4f952d2b0922de872c9bf2e1105e8dcc706aee8239845e97; pixel oracle: (1280, 800), tolerance=0; desktop frame after masked by live evidence policy",
+        "frames": [
+          "kde-export-a1/kde-a1/frames/outcomes.window_desktop/00-before.png",
+          "kde-export-a1/kde-a1/frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "kde-export-a1/kde-a1/frames/outcomes.window_desktop/02-publication-result.png",
+          "kde-export-a1/kde-a1/frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "kde-export-a1/kde-a1/frames/outcomes.window_desktop/04-publication-result.png",
+          "kde-export-a1/kde-a1/frames/outcomes.window_desktop/05-after.png"
+        ]
+      },
+      "recording_upload": {
+        "status": "blocked",
+        "receipt": "kde-export-a2/kde-a2/receipt.json",
+        "runId": "d32e813a-15d4-40ec-a467-b8792a313c76",
+        "sandbox": "bx_zqavuhdv",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=dc6d3422-b9fd-42ab-b17e-c91d4d426a22; Recording operation dc6d3422-b9fd-42ab-b17e-c91d4d426a22; screencast consent not yet driven: ScreenCast consent accept button 'Share' is not uniquely drawn in the backend dialog (0); desktop frame after masked by live evidence policy; ScreenCast consent/ready not reached in 45s: ScreenCast consent accept button 'Share' is not uniquely drawn in the backend dialog (0)",
+        "frames": [
+          "kde-export-a2/kde-a2/frames/outcomes.recording_upload/00-before.png",
+          "kde-export-a2/kde-a2/frames/outcomes.recording_upload/01-after.png"
+        ],
+        "issue": 822
+      },
+      "edit_upload": {
+        "status": "passed",
+        "receipt": "kde-export-a1/kde-a1/receipt.json",
+        "runId": "59c768f9-262e-4e59-be78-a77f3a3cb1eb",
+        "sandbox": "bx_zqavuhdv",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=a5a21d9b-17b8-42d3-ac5e-8858ec656efb; editor operationId=a5a21d9b-17b8-42d3-ac5e-8858ec656efb; operationId=a5a21d9b-17b8-42d3-ac5e-8858ec656efb; historyId=7ccd4b62-7658-40e7-b200-aee584104356; uploaded/local sha256=902b8f82ea9a2035525070af73ebd5b954707b0d33b1630a3fac60ed4c551cc1; Retained synthetic png sha256=902b8f82ea9a2035525070af73ebd5b954707b0d33b1630a3fac60ed4c551cc1; desktop frame after masked by live evidence policy",
+        "frames": [
+          "kde-export-a1/kde-a1/frames/outcomes.edit_upload/00-before.png",
+          "kde-export-a1/kde-a1/frames/outcomes.edit_upload/01-before.png",
+          "kde-export-a1/kde-a1/frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "kde-export-a1/kde-a1/frames/outcomes.edit_upload/03-publication-result.png",
+          "kde-export-a1/kde-a1/frames/outcomes.edit_upload/04-after.png"
+        ]
+      },
+      "link_browser": {
+        "status": "blocked",
+        "receipt": "kde-export-a1/kde-a1/receipt.json",
+        "runId": "59c768f9-262e-4e59-be78-a77f3a3cb1eb",
+        "sandbox": "bx_zqavuhdv",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=3d4b431e-aca4-465b-956c-3962a47a8e70; operationId=3d4b431e-aca4-465b-956c-3962a47a8e70; historyId=ea662fe9-74cd-41fa-8f73-23e9e4837c42; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy; geometry: RuntimeError: live window match is missing or ambiguous (0 matches)",
+        "frames": [
+          "kde-export-a1/kde-a1/frames/outcomes.link_browser/00-before.png",
+          "kde-export-a1/kde-a1/frames/outcomes.link_browser/01-publication-result.png",
+          "kde-export-a1/kde-a1/frames/outcomes.link_browser/02-browser-failure-safe-desktop.png",
+          "kde-export-a1/kde-a1/frames/outcomes.link_browser/03-after.png"
+        ],
+        "issue": 951
+      },
+      "history_delete": {
+        "status": "passed",
+        "receipt": "kde-export-a1/kde-a1/receipt.json",
+        "runId": "59c768f9-262e-4e59-be78-a77f3a3cb1eb",
+        "sandbox": "bx_zqavuhdv",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; operationId=0e870d84-b201-471f-9b26-9df433b49cd2; operationId=0e870d84-b201-471f-9b26-9df433b49cd2; historyId=66792c73-0ef2-4e29-a3f2-fca2857ef8d8; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=3b16f268-72d9-42a8-a1a1-a80409590f51; desktop frame after masked by live evidence policy",
+        "frames": [
+          "kde-export-a1/kde-a1/frames/outcomes.history_delete/00-before.png",
+          "kde-export-a1/kde-a1/frames/outcomes.history_delete/01-publication-result.png",
+          "kde-export-a1/kde-a1/frames/outcomes.history_delete/02-owned-history-row.png",
+          "kde-export-a1/kde-a1/frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "kde-export-a1/kde-a1/frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "kde-export-a1/kde-a1/frames/outcomes.history_delete/05-after.png"
+        ]
+      }
+    },
+    "Aurora": {
+      "region_upload": {
+        "status": "blocked",
+        "receipt": "aur-export-a1/aur-a2/receipt.json",
+        "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+        "sandbox": "bx_aksv3wsh",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; isolated Secret Service refuses an already owned bus name; existing wallets are preserved",
+        "frames": [
+          "aur-export-a1/aur-a2/frames/outcomes.region_upload/00-before.png",
+          "aur-export-a1/aur-a2/frames/outcomes.region_upload/01-after.png"
+        ],
+        "issue": 955
+      },
+      "window_desktop": {
+        "status": "blocked",
+        "receipt": "aur-export-a1/aur-a2/receipt.json",
+        "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+        "sandbox": "bx_aksv3wsh",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; isolated Secret Service refuses an already owned bus name; existing wallets are preserved",
+        "frames": [
+          "aur-export-a1/aur-a2/frames/outcomes.window_desktop/00-before.png",
+          "aur-export-a1/aur-a2/frames/outcomes.window_desktop/01-after.png"
+        ],
+        "issue": 955
+      },
+      "recording_upload": {
+        "status": "blocked",
+        "receipt": "aur-export-a1/aur-a2/receipt.json",
+        "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+        "sandbox": "bx_aksv3wsh",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; isolated Secret Service refuses an already owned bus name; existing wallets are preserved",
+        "frames": [
+          "aur-export-a1/aur-a2/frames/outcomes.recording_upload/00-before.png",
+          "aur-export-a1/aur-a2/frames/outcomes.recording_upload/01-after.png"
+        ],
+        "issue": 955
+      },
+      "edit_upload": {
+        "status": "blocked",
+        "receipt": "aur-export-a1/aur-a2/receipt.json",
+        "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+        "sandbox": "bx_aksv3wsh",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; isolated Secret Service refuses an already owned bus name; existing wallets are preserved",
+        "frames": [
+          "aur-export-a1/aur-a2/frames/outcomes.edit_upload/00-before.png",
+          "aur-export-a1/aur-a2/frames/outcomes.edit_upload/01-after.png"
+        ],
+        "issue": 955
+      },
+      "link_browser": {
+        "status": "blocked",
+        "receipt": "aur-export-a1/aur-a2/receipt.json",
+        "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+        "sandbox": "bx_aksv3wsh",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; isolated Secret Service refuses an already owned bus name; existing wallets are preserved",
+        "frames": [
+          "aur-export-a1/aur-a2/frames/outcomes.link_browser/00-before.png",
+          "aur-export-a1/aur-a2/frames/outcomes.link_browser/01-after.png"
+        ],
+        "issue": 955
+      },
+      "history_delete": {
+        "status": "blocked",
+        "receipt": "aur-export-a1/aur-a2/receipt.json",
+        "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+        "sandbox": "bx_aksv3wsh",
+        "session": "wayland",
+        "note": "desktop frame before masked by live evidence policy; desktop frame after masked by live evidence policy; isolated Secret Service refuses an already owned bus name; existing wallets are preserved",
+        "frames": [
+          "aur-export-a1/aur-a2/frames/outcomes.history_delete/00-before.png",
+          "aur-export-a1/aur-a2/frames/outcomes.history_delete/01-after.png"
+        ],
+        "issue": 955
+      }
+    }
+  },
+  "exports": [
+    {
+      "archive": "aur-export-a1.tgz",
+      "sha256": "0a0bd6269fcb90afc5f782d749b18278786e3ed2c5fd56f25cb7cdefe6f01504",
+      "files": 69,
+      "runId": "7a1ba021-2146-4554-ab69-62c3353093c0",
+      "base": "/home/user/work/put.gd/src/work/lab-images/keyseed-t1a/image.qcow2",
+      "recipeSources": {
+        "source-outcomes.py": "a203187c2ca5453ceeeb08ab65269c96c1df3e6bdddd6c7cd8e2f71c191f4053"
+      }
+    },
+    {
+      "archive": "cin-export-a1.tgz",
+      "sha256": "1ed7c6aee48d28ac4eff1ddb7d5c0bd9d6745acf1af285a1737a3b292f95cf08",
+      "files": 53,
+      "runId": "65dc54a9-c3cb-43c3-8809-0c46bc84c778",
+      "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+      "recipeSources": {
+        "source-a1.py": "13446833917812c5bd0701e49d12829405d6ebca182edee3fe0d1cddc097b896"
+      }
+    },
+    {
+      "archive": "cin-export-a2.tgz",
+      "sha256": "91d4acaf09c1e5e7148ab6d5c114d4df8e1c1d2bda6f1df10b8c75d6211c9c78",
+      "files": 58,
+      "runId": "b45f2b6c-76ce-4563-8004-9b087568bc05",
+      "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+      "recipeSources": {
+        "source-a2.py": "e2424b60dc59318bf454116c41842e0b9d800c714174fdd4ac7a56dcbd1d9001"
+      }
+    },
+    {
+      "archive": "cinf-export-a1.tgz",
+      "sha256": "95a0cb1c6ac601fa1fbe1f90a96259e7126e3758be5ec5c6e1fe3d76a4a2df65",
+      "files": 63,
+      "runId": "0c24c5fc-e29d-4492-b619-d875dc92b9f5",
+      "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v3-session/image.qcow2",
+      "recipeSources": {}
+    },
+    {
+      "archive": "gno-export-a1.tgz",
+      "sha256": "dbdf0c5831d98b7afb1e59c1f1acb70ccc57b827ce7e758b69507480807322c3",
+      "files": 60,
+      "runId": "14964d36-3c0f-4a13-9078-06d0889ee19c",
+      "base": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+      "recipeSources": {
+        "source-a1.py": "c72cba3d599b5d189dad2dfed94df01aabab98b30672b6567253a095d9d30560"
+      }
+    },
+    {
+      "archive": "gno-export-a2.tgz",
+      "sha256": "9cf2172ef8d68e80e56fe4d10f3682e6899bedb09736066ec9cfc64f037e5d87",
+      "files": 40,
+      "runId": "e22a61b5-af98-468e-8a17-d3061a0b0885",
+      "base": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+      "recipeSources": {
+        "source-a2.py": "c370bd111574ec3bbc9e6ad5dade068110084cefbf243632a857bc748c4e3ec8"
+      }
+    },
+    {
+      "archive": "gno-export-a3.tgz",
+      "sha256": "e43e977ad171cccef48bc75f7518ace85ea0becd026472def18e4877694106dc",
+      "files": 43,
+      "runId": "177b75ab-dc33-45e3-8ef0-e6881cf11828",
+      "base": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+      "recipeSources": {
+        "source-a3.py": "7e9cf40e1c7e17b1320fed4bfdd8e8dc96fa865fa36871dd62efec4772fe8a7d"
+      }
+    },
+    {
+      "archive": "kde-export-a1.tgz",
+      "sha256": "04ed63250efe24565df7a1a29f3d4a57f084c5850cdf954c508aeeaaf582dd02",
+      "files": 61,
+      "runId": "59c768f9-262e-4e59-be78-a77f3a3cb1eb",
+      "base": "/home/user/work/put.gd/work/lab-images/kde-wayland-probes-v1-no-updates/image.qcow2",
+      "recipeSources": {
+        "source-a1.py": "c370bd111574ec3bbc9e6ad5dade068110084cefbf243632a857bc748c4e3ec8"
+      }
+    },
+    {
+      "archive": "kde-export-a2.tgz",
+      "sha256": "193444b1af946e050373d22b9ceefec448126aa5a5e01e3dbc763315fdb48b26",
+      "files": 34,
+      "runId": "d32e813a-15d4-40ec-a467-b8792a313c76",
+      "base": "/home/user/work/put.gd/work/lab-images/kde-wayland-probes-v1-no-updates/image.qcow2",
+      "recipeSources": {
+        "source-a2.py": "7e9cf40e1c7e17b1320fed4bfdd8e8dc96fa865fa36871dd62efec4772fe8a7d"
+      }
+    }
+  ]
+}
