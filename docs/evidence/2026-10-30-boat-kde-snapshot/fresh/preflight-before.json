@@ -1,0 +1,293 @@
+{
+  "afterVisualInvocation": {
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "afterVisuals": {
+    "configurationHome": "/home/lab/.config",
+    "desktop": "KDE",
+    "inhibitor": {
+      "mode": "block",
+      "pid": 1035,
+      "uid": 1000,
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest"
+    },
+    "ok": true,
+    "policy": [
+      {
+        "file": "kscreenlockerrc",
+        "groups": [
+          "Daemon"
+        ],
+        "key": "Autolock",
+        "value": "false"
+      },
+      {
+        "file": "kscreenlockerrc",
+        "groups": [
+          "Daemon"
+        ],
+        "key": "LockOnResume",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "AC",
+          "Display"
+        ],
+        "key": "DimDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "AC",
+          "Display"
+        ],
+        "key": "TurnOffDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "AC",
+          "SuspendAndShutdown"
+        ],
+        "key": "AutoSuspendAction",
+        "value": "0"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "Battery",
+          "Display"
+        ],
+        "key": "DimDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "Battery",
+          "Display"
+        ],
+        "key": "TurnOffDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "Battery",
+          "SuspendAndShutdown"
+        ],
+        "key": "AutoSuspendAction",
+        "value": "0"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "LowBattery",
+          "Display"
+        ],
+        "key": "DimDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "LowBattery",
+          "Display"
+        ],
+        "key": "TurnOffDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "LowBattery",
+          "SuspendAndShutdown"
+        ],
+        "key": "AutoSuspendAction",
+        "value": "0"
+      }
+    ],
+    "session": {
+      "Active": "yes",
+      "LockedHint": "no",
+      "Seat": "seat0",
+      "State": "active",
+      "Type": "wayland",
+      "User": "1000",
+      "id": "1"
+    },
+    "x11": null
+  },
+  "apply": false,
+  "helperSha256": "1e074f7c34708af97a18a9949499942ec583804d510729619de0d966683959e6",
+  "ok": true,
+  "outputs": {
+    "errors": [],
+    "ok": true,
+    "outputs": [
+      {
+        "enabled": true,
+        "height": 800,
+        "name": "Virtual-1",
+        "primary": true,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      }
+    ]
+  },
+  "policy": {
+    "configurationHome": "/home/lab/.config",
+    "desktop": "KDE",
+    "inhibitor": {
+      "mode": "block",
+      "pid": 1035,
+      "uid": 1000,
+      "what": "sleep:idle",
+      "who": "putgd-lab-guest"
+    },
+    "ok": true,
+    "policy": [
+      {
+        "file": "kscreenlockerrc",
+        "groups": [
+          "Daemon"
+        ],
+        "key": "Autolock",
+        "value": "false"
+      },
+      {
+        "file": "kscreenlockerrc",
+        "groups": [
+          "Daemon"
+        ],
+        "key": "LockOnResume",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "AC",
+          "Display"
+        ],
+        "key": "DimDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "AC",
+          "Display"
+        ],
+        "key": "TurnOffDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "AC",
+          "SuspendAndShutdown"
+        ],
+        "key": "AutoSuspendAction",
+        "value": "0"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "Battery",
+          "Display"
+        ],
+        "key": "DimDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "Battery",
+          "Display"
+        ],
+        "key": "TurnOffDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "Battery",
+          "SuspendAndShutdown"
+        ],
+        "key": "AutoSuspendAction",
+        "value": "0"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "LowBattery",
+          "Display"
+        ],
+        "key": "DimDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "LowBattery",
+          "Display"
+        ],
+        "key": "TurnOffDisplayWhenIdle",
+        "value": "false"
+      },
+      {
+        "file": "powerdevilrc",
+        "groups": [
+          "LowBattery",
+          "SuspendAndShutdown"
+        ],
+        "key": "AutoSuspendAction",
+        "value": "0"
+      }
+    ],
+    "session": {
+      "Active": "yes",
+      "LockedHint": "no",
+      "Seat": "seat0",
+      "State": "active",
+      "Type": "wayland",
+      "User": "1000",
+      "id": "1"
+    },
+    "x11": null
+  },
+  "policyInvocation": {
+    "exitCode": 0,
+    "stderr": ""
+  },
+  "runId": "40af54e3-3230-44cd-9a76-3a5c645cd2c1",
+  "schemaVersion": 1,
+  "stage": "core-demo-before",
+  "timestampUtc": "2026-10-30T13:33:31.658707+00:00",
+  "visualAttempts": [
+    {
+      "head": 0,
+      "height": 800,
+      "path": "/home/user/kde-driver/work/lab-runs/kw2/guest-preflight-5c55116c05bb49218c31d97b37d7bc00-attempt0-head0.ppm",
+      "sha256": "0ebd349d17f54921050d67339214be8ddd540803fc485ecab724662c0598abab",
+      "visible": true,
+      "width": 1280
+    }
+  ],
+  "visuals": [
+    {
+      "head": 0,
+      "height": 800,
+      "path": "/home/user/kde-driver/work/lab-runs/kw2/guest-preflight-5c55116c05bb49218c31d97b37d7bc00-attempt0-head0.ppm",
+      "sha256": "0ebd349d17f54921050d67339214be8ddd540803fc485ecab724662c0598abab",
+      "width": 1280
+    }
+  ]
+}

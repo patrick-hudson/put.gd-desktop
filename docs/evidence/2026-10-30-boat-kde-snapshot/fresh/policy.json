@@ -1,0 +1,22 @@
+{
+  "discover": {
+    "automaticUpdatesConfig": "/home/lab/.config/PlasmaDiscoverUpdates",
+    "autostartOverride": "/home/lab/.config/autostart/org.kde.discover.notifier.desktop",
+    "enabled": false,
+    "hidden": true,
+    "priorRunningPids": [],
+    "remainingPids": [],
+    "useUnattendedUpdates": false
+  },
+  "kwallet": {
+    "config": "/home/lab/.config/kwalletrc",
+    "enabled": false,
+    "firstUse": false
+  },
+  "sessions": {
+    "wayland": [
+      "plasma.desktop"
+    ],
+    "x11": []
+  }
+}

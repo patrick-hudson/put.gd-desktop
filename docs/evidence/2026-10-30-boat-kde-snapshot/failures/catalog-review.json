@@ -1,0 +1,8 @@
+{
+  "placement": "boat",
+  "sandbox": "bx_3gf9zr9k",
+  "reason": "test-only Noble catalog helper exited 127 before core_demo; reproduced missing FFmpeg 6 SONAMEs in the corrected run; use matching-source host-rendered synthetic catalog without changing guest libraries",
+  "initialTmpLog": "did not survive diagnostic reboot; host exception, native frames, and reproduced diagnostic retained",
+  "correctedRun": "/home/user/kde-driver/work/lab-runs/kw2",
+  "correctedFunctionalPassed": 4
+}

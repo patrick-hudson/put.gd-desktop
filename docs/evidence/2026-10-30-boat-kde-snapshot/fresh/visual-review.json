@@ -1,0 +1,7 @@
+{
+  "placement": "boat",
+  "scope": "manual review of native Redact frame and its synthetic catalog reference",
+  "functional": "passed; visible Redact selection and guidance panel",
+  "visualComparison": "flag retained; fixtures and window sizes differ, not an exact-baseline pass",
+  "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/889"
+}

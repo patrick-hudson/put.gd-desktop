@@ -1,0 +1,8 @@
+{
+  "kind": "synthetic offscreen reference and controls; not desktop proof",
+  "manifestSha256": "221f6b0e6bb975ec5a2df508e58c670d1ef9f054cb7965822ca35ee59c327c67",
+  "placement": "boat",
+  "qt": "host distro Qt 6.4.2",
+  "sourceCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "theme": "light"
+}

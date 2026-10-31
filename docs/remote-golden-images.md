@@ -109,7 +109,8 @@ show it gives the same results, and the matrix must then be updated.
 
 ### Probe-equipped Boat copies
 
-Use `putgd-lab-cinnamon-v3` and `putgd-lab-ubuntu-gnome-v4` for new development.
+Use `putgd-lab-cinnamon-v3`, `putgd-lab-ubuntu-gnome-v4` and
+`putgd-lab-kubuntu-kde-v1` for new development.
 The old names and the intermediate Cinnamon v2 / GNOME v3 remain intact but
 are superseded. All disks below are standalone qcow2 Boat derivatives under
 `/home/user/work/put.gd/work/lab-images/`; the physical-builder/S3 source
@@ -123,6 +124,7 @@ hashes and provisioning packages. The repository manifests in
 | `putgd-lab-cinnamon-v3` | `cinnamon-x11-probes-v3-session` | `23b3e37571bdc7b452fdc30d53e70386423d75cb377e59653eed8a652c8bfab7` | `ubuntu24.04` |
 | `putgd-lab-ubuntu-gnome-v3` (superseded) | `gnome-wayland-probes-v2` | `349698ea91542e77a73801299aea300ff221ab11f07c4b5daf246fc72815c656` | `ubuntu26.04` |
 | `putgd-lab-ubuntu-gnome-v4` | `gnome-wayland-probes-v4` | `8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4` | `ubuntu26.04` |
+| `putgd-lab-kubuntu-kde-v1` | `kde-wayland-probes-v1-no-updates` | `78a96764e919ec740b61c5abd9615a7500730efd3c8d4c4233fa5c6697554070` | `ubuntu26.04` |
 
 Append `/image.qcow2` to each folder. Cinnamon's original source is
 `4a21566d…5693da`; its retained compressed intermediate is
@@ -138,6 +140,20 @@ v3 adds a per-user XDG override disabling Mint Update autostart. Both
 recommended lab snapshots contain matching audited DEBs and the merged #787
 lab controller. GNOME's host is Ubuntu 24.04; its Qt 6.10 guest requires the
 Ubuntu 26.04 target container package, not a host-built Noble DEB.
+
+KDE v1 is Plasma Wayland only: its source has no installed X11 session
+([#883](https://github.com/patrick-hudson/put.gd-desktop/issues/883)). Snapshot
+ID: `06aeb588-fae4-4b84-bfc6-b13ab955c361`. Its original input is the inventory's
+`kde-provisioned-20261016` (`49fcacff…565a81c`), downloaded from S3 with a
+900-second presign through a mode-0600 curl config, with both compressed and
+raw checksums verified. The retained preliminary standalone image
+`kde-wayland-probes-v1/image.qcow2` is
+`f046a194e71d3e7f18bdfb264c2f1648b9c217b1a0c55ec79773b4dcc122fd64`.
+The final image adds disabled apt/unattended/Discover automatic updates, plus
+lab-user Discover/KWallet and Plasma idle policy. The KWin witness is loaded
+per observation, not installed in the golden. See the
+[KDE campaign](evidence/2026-10-30-boat-kde-snapshot/README.md) and repository
+manifest for the exact source chain, pins, package and fresh-fork evidence.
 
 The final GNOME preparation also relocated its unused legacy outside-root
 copy into `gnome-legacy-source-563730cc/` only after a hash, complete backing

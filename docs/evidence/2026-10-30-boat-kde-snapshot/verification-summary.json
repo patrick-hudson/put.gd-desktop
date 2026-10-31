@@ -1,0 +1,41 @@
+{
+  "placement": "boat",
+  "snapshot": "putgd-lab-kubuntu-kde-v1",
+  "snapshotId": "06aeb588-fae4-4b84-bfc6-b13ab955c361",
+  "sandbox": "bx_3gf9zr9k",
+  "driverCommit": "dd24a3e30c7b7a11e46d7f805373383b08902115",
+  "applicationCommit": "6ad9f957e6544f30c5e45c08af2306db77a9ff64",
+  "nativeSession": "wayland",
+  "recipes": 3,
+  "interactions": {
+    "passed": 4
+  },
+  "visualReviewFlags": 1,
+  "visualReviewIssue": "https://github.com/patrick-hudson/put.gd-desktop/issues/889",
+  "x11": {
+    "available": false,
+    "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/883"
+  },
+  "hostCtest": {
+    "summary": {
+      "tests": 114,
+      "failedFirst": [],
+      "failed": [],
+      "retried": [],
+      "passedOnRetry": [],
+      "blocking": [],
+      "unexplainedCtestFailure": false,
+      "ok": true
+    },
+    "retries": 0,
+    "realSeconds": 160.35,
+    "ledgerSha256": "7d384293144f4dcf6e7297711300da765746b00ec8ab57e145f6c33b24f47970",
+    "junitSha256": "9cd31689f5a663d407c9b5c5c9fc119422f1263db339f3dba57abae562f3fff2"
+  },
+  "systemPackagesUnchanged": true,
+  "automaticUpdatesVerifiedBeforeAndAfter": true,
+  "heldOverlayRefused": true,
+  "guardedCleanup": "completed",
+  "goldenUnchanged": true,
+  "runId": "40af54e3-3230-44cd-9a76-3a5c645cd2c1"
+}
