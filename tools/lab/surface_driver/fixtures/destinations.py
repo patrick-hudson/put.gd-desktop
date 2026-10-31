@@ -32,7 +32,7 @@ def fake_keyring(scope):
     scope.initialize()
     bus_name='org.freedesktop.secrets'
     if ctx.profile.get('compositor',{}).get('kind')=='kwin-script':
-        bus_name=isolated_service(scope)['bus_name']
+        bus_name=isolated_service(scope).get('bus_name',bus_name)
     program=KEYRING.replace("SERVICE_BUS='org.freedesktop.secrets'",'SERVICE_BUS='+repr(bus_name))
     label='putgd fixture '+scope.token
     reference='putgd-lab-'+str(__import__('uuid').uuid4())

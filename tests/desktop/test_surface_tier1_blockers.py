@@ -165,7 +165,7 @@ class PlasmaProperties(unittest.TestCase):
     def test_unowned_service_keeps_existing_non_aurora_fixture_behaviour(self):
         scope=self.keyring_scope(dict(owner=None,pid=None,provider=None),
                                  dict(owner=':1.100',pid=100,provider='gnome-keyring-d'))
-        self.assertEqual(keyring.isolated_service(scope)['bus_name'],'org.freedesktop.secrets')
+        self.assertEqual(keyring.isolated_service(scope),{'pid':100,'start':'22'})
         scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
 
 

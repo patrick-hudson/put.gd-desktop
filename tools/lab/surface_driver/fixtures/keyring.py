@@ -70,7 +70,7 @@ def isolated_service(scope):
     if prior['owner']:
         environment['SECRET_SERVICE_BUS_NAME']=bus_name
     scope.restart(environment)
-    return dict(identity,bus_name=bus_name)
+    return dict(identity,bus_name=bus_name) if prior['owner'] else identity
 
 
 UNIQUE_SERVICE = '''import json,os
