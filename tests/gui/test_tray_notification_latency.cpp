@@ -72,11 +72,12 @@ private slots:
    QSKIP("Requires its dedicated private-bus/Xvfb invocation");
   QVERIFY(QCoreApplication::instance()->inherits("QApplication"));
   QVERIFY(bus.isConnected());
+  // Registered before the move, so the signal relays Qt adds as children move with them.
   watcher = new WatcherPeer; notifications = new NotificationPeer;
-  peers.start(); watcher->moveToThread(&peers); notifications->moveToThread(&peers);
   QVERIFY(bus.registerObject("/StatusNotifierWatcher", watcher, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllProperties | QDBusConnection::ExportAllSignals));
-  QVERIFY(bus.registerService("org.kde.StatusNotifierWatcher"));
   QVERIFY(bus.registerObject("/org/freedesktop/Notifications", notifications, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals));
+  watcher->moveToThread(&peers); notifications->moveToThread(&peers); peers.start();
+  QVERIFY(bus.registerService("org.kde.StatusNotifierWatcher"));
   QVERIFY(bus.registerService("org.freedesktop.Notifications"));
  }
  void cleanupTestCase() {
