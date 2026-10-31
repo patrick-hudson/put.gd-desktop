@@ -204,7 +204,8 @@ def changes_section(tag, producer):
                                  released=changelog.released_tags) + '\n'
     except (subprocess.CalledProcessError, OSError, ValueError) as error:
         print(f'Warning: could not list the changes in {tag}: {error}', file=sys.stderr, flush=True)
-        return '## Changes\n\nThe changes could not be listed from this checkout; see the commit history.\n\n'
+        return ("## What's changed\n\nThe changes could not be listed from this checkout; see the commit history.\n\n"
+                '## Downloads and sources\n\n')
 
 
 def installer_notes(directory, release, producer):

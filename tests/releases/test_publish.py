@@ -491,6 +491,12 @@ class NightlyPublicationTest(unittest.TestCase):
         notes = (self.directory / 'release-notes.md').read_text()
         self.assertIn('/releases/tag/sources-' + self.tag, notes)
         self.assertIn('CI artifacts', notes)
+        changes, delivery = notes.split('## Downloads and sources\n', 1)
+        self.assertIn("## What's changed", changes)
+        self.assertIn('Synthetic change', changes)
+        self.assertNotIn('Downloads:', changes)
+        self.assertIn('Downloads:', delivery)
+        self.assertIn('CI artifacts', delivery)
         self.assertNotIn('combined ZIP', notes)
 
     def test_missing_linked_sources_block_installer_publication(self):
@@ -563,7 +569,7 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertEqual((tag, repository, server), (self.tag, 'fixture/putgd', 'https://github.com'))
         # Only published releases start the changes (#373): the reader is passed, not called here.
         self.assertIs(released, publish.changelog.released_tags)
-        return f'## Changes since fixture-previous\n\n- Synthetic change in {tag}\n'
+        return f"## What's changed\n\n- Synthetic change in {tag}\n\n## Downloads and sources\n\n"
 
     def test_cli_publishes_all_twenty_one_verified_assets_as_nightly_prerelease(self):
         self.invoke()
@@ -590,8 +596,9 @@ class NightlyPublicationTest(unittest.TestCase):
         for text in ('Nightly 26.1022.42:', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
             self.assertIn(text, notes)
         # The changes follow the one-line summary, before the coverage and asset notes.
-        self.assertLess(notes.index('Nightly 26.1022.42:'), notes.index('## Changes since fixture-previous'))
-        self.assertLess(notes.index('Synthetic change in ' + self.tag), notes.index('Automated coverage'))
+        self.assertLess(notes.index('Nightly 26.1022.42:'), notes.index("## What's changed"))
+        self.assertLess(notes.index('Synthetic change in ' + self.tag), notes.index('## Downloads and sources'))
+        self.assertLess(notes.index('## Downloads and sources'), notes.index('Automated coverage'))
 
 
     def test_missing_or_invalid_run_identity_blocks_before_mutation(self):
@@ -761,7 +768,11 @@ class NightlyPublicationTest(unittest.TestCase):
                 notes = (self.directory / 'release-notes.md').read_text()
                 self.assertIn('actions/runs/77', notes)
                 self.assertIn('release candidate' if channel == 'candidate' else 'x86_64 release', notes)
-                self.assertLess(notes.index('Synthetic change in ' + tag), notes.index('DEB/RPM use distro Qt'))
+                changes, delivery = notes.split('## Downloads and sources\n', 1)
+                self.assertIn("## What's changed", changes)
+                self.assertIn('Synthetic change in ' + tag, changes)
+                self.assertNotIn('DEB/RPM use distro Qt', changes)
+                self.assertIn('DEB/RPM use distro Qt', delivery)
 
     def test_nightly_cannot_use_acceptance_mode_to_bypass_producer_verification(self):
         argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),
