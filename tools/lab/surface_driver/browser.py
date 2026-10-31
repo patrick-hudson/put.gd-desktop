@@ -804,7 +804,11 @@ def _prepare(options):
             state['port'] = probe.getsockname()[1]
         # External links open as a new tab of the kiosk window, and no
         # first-run or privacy-notice tab competes with the dispatched page.
-        preferences = {'marionette.port': state['port'], 'browser.shell.checkDefaultBrowser': False,
+        # The disposable profile must publish its real input target even when
+        # the desktop's automatic accessibility setting is off. This changes
+        # neither the desktop setting nor the runtime/PID ownership checks.
+        preferences = {'marionette.port': state['port'], 'accessibility.force_disabled': -1,
+                       'browser.shell.checkDefaultBrowser': False,
                        'browser.startup.homepage_override.mstone': 'ignore',
                        'browser.startup.page': 0, 'browser.aboutwelcome.enabled': False,
                        'browser.newtabpage.enabled': False, 'datareporting.policy.dataSubmissionEnabled': False,

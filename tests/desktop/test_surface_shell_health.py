@@ -88,6 +88,9 @@ class RawAccessibility(unittest.TestCase):
         self.bus=FakeBus()
         probe._A11Y.clear()
         self.patches=[patch.dict(sys.modules,pyatspi=STATES),patch.object(probe,'a11y_bus',return_value=self.bus),
+                      # The concurrent name scan opens its own connection;
+                      # keep this raw-walk unit test off the real session bus.
+                      patch.object(probe,'application_names',return_value=None),
                       patch.object(probe,'role_name',side_effect=lambda role,fallback:fallback()),
                       patch.object(probe,'executable',side_effect=lambda pid:['cinnamon'] if pid==40 else ['other-client']),
                       patch.object(probe,'owned',side_effect=lambda pid:pid==7),

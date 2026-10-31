@@ -1231,6 +1231,7 @@ class LabContracts(unittest.TestCase):
             self.assertIn('--version-json', script)
             self.assertIn('putgd-lab/bin/putgd-launcher', script)
             self.assertIn('putgd-lab/bin/putgd-cli', script)
+            self.assertIn('putgd-lab/bin/putgd-record', script)
             receipt = json.loads((run / 'package.json').read_text())
             self.assertEqual(receipt['installedBinarySha256'], {'/usr/bin/putgd': inner, '/usr/bin/putgd-cli': 'b' * 64})
             self.assertEqual(receipt['installedPath'], '/var/home/lab/' + image.name)

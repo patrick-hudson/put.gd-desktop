@@ -238,11 +238,12 @@ class Adv(unittest.TestCase):
         self.assertFalse(self.ctx._sensitive_seen)
 
     @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_unknown_link_pixels_masked_before_first_disk_write(self):
+    def test_live_unknown_link_pixels_masked_before_first_disk_write(self):
         img = Image.new('RGB', (600,200), 'white')
         path = self.out/'frames'/'unknown.png'
+        evidence = Evidence(self.out, require_ocr=True)
         with patch('tools.lab.surface_driver.redact.ocr_text', return_value=PUTGD):
-            meta=self.ctx.evidence.frame(img, path, [])
+            meta=evidence.frame(img, path, [])
         self.assertIsNone(Image.open(path).getbbox())
         self.assertEqual(meta['guard'], 'ocr-sensitive-text-fully-masked')
 
