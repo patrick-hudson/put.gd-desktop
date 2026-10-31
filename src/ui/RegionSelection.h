@@ -264,7 +264,9 @@ public:
     void stop(){timer_.stop();}
     // Hide at once (tests, and selectors that close).
     void expire(){expired_=true;timer_.stop();}
-    qreal opacity()const{return expired_?0:clock_.isValid()?regionHintOpacity(clock_.elapsed()):1;}
+    // Synthetic captures choose a fade phase independently of renderer speed.
+    static void setElapsedForTesting(qint64 elapsed=-1){testElapsedMs_=elapsed;}
+    qreal opacity()const{return expired_?0:testElapsedMs_>=0?regionHintOpacity(testElapsedMs_):clock_.isValid()?regionHintOpacity(clock_.elapsed()):1;}
     bool visible()const{return opacity()>0;}
 private:
     std::function<void()> repaint_;
@@ -272,5 +274,6 @@ private:
     QTimer timer_;
     qreal last_=1;
     bool expired_=false;
+    inline static qint64 testElapsedMs_=-1;
 };
 }

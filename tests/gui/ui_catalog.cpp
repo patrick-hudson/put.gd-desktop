@@ -688,6 +688,10 @@ int main(int argc,char** argv){
   crowded.drive({{"action","selectMask"},{"maskId","lane-0"}});crowded.drive({{"action","nextMaskLanes"}});
   if(!shot(crowded,"48a-review-next-mask-lanes")||!inspected(crowded,"48a-review-next-mask-lanes"))return 2;
   crowded.hide();qunsetenv("PUTGD_RECORD_REVIEW_DELAY_MS");
+  // These states show the start-up hint. Its real-time fade must not decide a
+  // reference capture's pixels after earlier frames took longer under load.
+  RegionHintFade::setElapsedForTesting(0);
+  auto resetHint=qScopeGuard([]{RegionHintFade::setElapsedForTesting();});
   const auto screen=QGuiApplication::primaryScreen()->geometry();
   CaptureFrame selectionFrame{"fixture",screen,screen,1,0,{}};
   RegionOverlay screenshot({selectionFrame},nullptr,"Uploads right away to Team Drive · Shared link");screenshot.start();
