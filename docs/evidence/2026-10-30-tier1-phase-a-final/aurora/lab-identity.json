@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "id": "1e02440e-3609-4c2d-a34d-cb9a53c5a2c6",
+  "profile": "aurora-kde-wayland",
+  "pid": 45284,
+  "golden": "/home/user/t1/work/lab-images/keyseed-fa1/image.qcow2",
+  "golden_sha256": "2d60e7bca86cf40780c96d44f2cd9abccc178734129b5c8281813c53d7ddb445",
+  "overlay": "/home/user/t1/work/lab-runs/fa1/disk.qcow2",
+  "qemu": null,
+  "createdAt": null,
+  "acceleration": "kvm",
+  "vnc_display": 20,
+  "ssh_port": 22220,
+  "guest_user": "lab",
+  "firmware": {
+    "type": "uefi",
+    "code": "/usr/share/OVMF/OVMF_CODE_4M.fd",
+    "vars_template": "/usr/share/OVMF/OVMF_VARS_4M.fd",
+    "format": "raw",
+    "vars": "/home/user/t1/work/lab-runs/fa1/vars.fd",
+    "code_sha256": "ad23261d43116abc3747d59a7837fbf578c9586a8993f4eeba064cd07eccb083",
+    "vars_template_sha256": "5d2ac383371b408398accee7ec27c8c09ea5b74a0de0ceea6513388b15be5d1e"
+  },
+  "heads": null,
+  "head_layout": null
+}

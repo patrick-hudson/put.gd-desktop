@@ -1,0 +1,2 @@
+ 02:59:38 up 24 min,  3 users,  load average: 0.70, 3.32, 3.90
+{"availableGiB": 44.81438446044922, "inodes": 8696902}

@@ -1,0 +1,4 @@
+GNOME Shell 50.1
+gnome-shell	50.1-0ubuntu1.2
+libqt6core6t64:amd64	6.10.2+dfsg-7
+mutter

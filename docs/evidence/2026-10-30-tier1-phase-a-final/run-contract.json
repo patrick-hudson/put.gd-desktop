@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "campaign": "2026-10-30-tier1-phase-a-final",
+  "placement": "boat",
+  "driverCommit": "6e6c0e2347ea15b0aa6ea8371493ccb344051e3b",
+  "release": "v26.1030.3203-nightly",
+  "destination": "local (synthetic loopback-s3 fixture)",
+  "recipes": "outcomes",
+  "maximumConcurrentSandboxes": 2,
+  "maximumRecipeRunsPerDesktop": 1,
+  "retryPolicy": "One additional run only for plausible transient sandbox failure",
+  "compile": false,
+  "sourceChanges": false
+}
