@@ -195,8 +195,16 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
             + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
         description += convert();
-    } else if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1").arg(options.window).arg(options.fps) + captureQueue() + convert();
-    else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps) + captureQueue() + convert();
+    } else {
+        // ximagesrc skips frame numbers when a grab runs late, leaving gaps in
+        // the timestamps. The va encoders (vah264lpenc, vah264enc) stamp their
+        // output contiguously regardless, which shortened a recording by every
+        // skipped frame (a 10 s capture played in 7 s on a three-monitor X11
+        // desktop). videorate fills the gaps with repeats, as on Wayland.
+        const QString rate = QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
+        if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1").arg(options.window).arg(options.fps) + captureQueue() + rate + convert();
+        else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps) + captureQueue() + rate + convert();
+    }
     // The pause probes sit on the encoders' sink pads (raw frames and samples):
     // dropping encoded buffers would leave P-frames whose references are gone,
     // which strict decoders (OpenH264 on Fedora) refuse while FFmpeg's conceals.
