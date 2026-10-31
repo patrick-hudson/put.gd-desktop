@@ -120,7 +120,10 @@ class default_browser:
         ctx = self.ctx
         if id(ctx) in _ACTIVE:
             raise RuntimeError('Nested default_browser transactions are unsupported')
-        options = ctx.profile.get('browser', {})
+        options = dict(ctx.profile.get('browser', {}))
+        if (getattr(ctx, '_live_admitted', False) and ctx.placement == 'guest'
+                and ctx.destination == 'proton'):
+            options['live_downloads'] = True
         self.timeouts = _timeouts(options)
         self.guard = armed(ctx.review, label='the Firefox restore')
         self.guard.__enter__()
@@ -305,9 +308,10 @@ def live_link_unavailable(ctx, kind):
     """Reload the existing URL without returning it or trusting a cached preview."""
     active = _ACTIVE[id(ctx)]
     result = _remote(ctx, 'unavailable', dict(active['state'], kind=kind), timeout=160)
-    if result.get('unavailable'):
-        ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
-        ctx.frame('browser-link-unavailable', window=None, desktop_safe=KIOSK_SAFE)
+    ctx.note('recipient_unavailable_observation='+json.dumps(result, sort_keys=True))
+    ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
+    ctx.frame('browser-link-unavailable' if result.get('unavailable') else 'browser-link-unavailable-failed',
+              window=None, desktop_safe=KIOSK_SAFE)
     return result
 
 
@@ -844,6 +848,14 @@ def _prepare(options):
                             'browser.helperApps.neverAsk.saveToDisk': 'image/png,application/octet-stream,application/zip',
                             'browser.cache.disk.enable': False, 'browser.cache.memory.enable': False,
                             'network.http.use-cache': False})
+        if values.get('live_downloads'):
+            fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
+            if fs.stdout.strip() != 'tmpfs':
+                raise _TargetError('Live download popup policy requires the admitted tmpfs profile')
+            # A public recipient's streamed download can open a helper after
+            # asynchronous decryption, beyond Firefox's transient activation.
+            # Keep this permission inside the disposable guest RAM profile.
+            preferences['dom.disable_open_during_load'] = False
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         # Cache and state are the transaction's own, removed with it: the
@@ -1207,9 +1219,10 @@ const media=[...document.querySelectorAll('img,video,canvas')].some(e=>
  e.tagName==='VIDEO'?e.readyState>=2:false);
 const hostOK=location.hostname===new URL(arguments[1]).hostname;
 const missing=arguments[0]==='proton'?
- /link (?:has expired|has been revoked|not found|is no longer|does not exist|doesn't exist)|no longer available|cannot be accessed|could not be found|file (?:not found|is unavailable)|link is unavailable/i.test(text):
- [403,404,410].includes(status)&&/NoSuchKey|AccessDenied|not found|404|403|410/i.test(text);
-return {unavailable:hostOK&&document.readyState==='complete'&&missing&&!media};
+ /not found|unavailable|has expired|has been revoked|has been deleted|has been disabled|no longer (?:available|exists)|cannot be accessed|could not be found|does not exist|doesn't exist/i.test(text):
+ ([403,404,410].includes(status)||status===0)&&/NoSuchKey|AccessDenied|not found|404|403|410/i.test(text);
+return {unavailable:hostOK&&document.readyState==='complete'&&missing&&!media,
+        missing,media,hostOK,complete:document.readyState==='complete',httpUnavailable:[403,404,410].includes(status)};
 """, [values['kind'], url])
                 if result['unavailable'] or time.monotonic()>=deadline:
                     return result
