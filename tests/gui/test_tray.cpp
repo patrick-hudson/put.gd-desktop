@@ -71,6 +71,18 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ void diagnosticsNamesTheWorkThatActuallyRan(){
+  for(const auto& action:QStringList{"region","window","desktop","edit"}){
+   QJsonObject failed{{"action",action},{"state","failed"},{"items",QJsonArray{}}};
+   QCOMPARE(TrayController::diagnosticsActionText(failed),QString("Save diagnostics for this capture"));
+   failed["items"]=QJsonArray{QJsonObject{{"uploadStatus","local_only"}}};
+   QCOMPARE(TrayController::diagnosticsActionText(failed),QString("Save diagnostics for this capture"));
+   failed["items"]=QJsonArray{QJsonObject{{"uploadStatus","failed"}}};
+   QCOMPARE(TrayController::diagnosticsActionText(failed),QString("Save diagnostics for this upload"));
+  }
+  QCOMPARE(TrayController::diagnosticsActionText({{"action","record"}}),QString("Save diagnostics for this recording"));
+  QCOMPARE(TrayController::diagnosticsActionText({{"action","clipboard"}}),QString("Save diagnostics for this operation"));
+ }
  void catalogMessageLabelsPreserveTheirActualFocusPolicy(){
   for(const auto& name:{"qt_msgbox_label","qt_msgbox_informativelabel"}){
    QLabel label("Confirmation text");label.setObjectName(name);label.setFocusPolicy(Qt::NoFocus);
