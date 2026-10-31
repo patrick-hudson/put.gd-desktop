@@ -16,7 +16,21 @@ Downloads and release notes: **[app.put.gd](https://app.put.gd/)**.
 
 ### Install
 
-Downloads are currently **nightly previews**, for Linux x86_64.
+Install the package for your Linux x86_64 distribution:
+
+```sh
+curl -fsSL https://app.put.gd/install | sh
+```
+
+For a per-user AppImage install without sudo:
+
+```sh
+curl -fsSL https://app.put.gd/install | sh -s -- --appimage
+```
+
+The installer verifies SHA-256 before installing. Native packages use sudo only for `apt install` or `dnf install`; AppImage installs to `~/.local/bin/putgd.AppImage`. It defaults to stable, falling back to nightly until the first stable release. Add `--dry-run`, `--channel nightly` or `--help` after `sh -s --` as needed. [Read the installer](packaging/install.sh).
+
+Manual downloads are currently **nightly previews**, for Linux x86_64:
 
 - **DEB:** [Ubuntu 24.04 / Mint 22](https://app.put.gd/dl/nightly/ubuntu24.04), [Ubuntu / Kubuntu 26.04](https://app.put.gd/dl/nightly/ubuntu26.04) or [Debian 13](https://app.put.gd/dl/nightly/debian13). Install with `sudo apt install ./putgd-*.deb`.
 - **RPM:** [Fedora 44](https://app.put.gd/dl/nightly/fedora44). Install with `sudo dnf install ./putgd-*.rpm`.
