@@ -280,7 +280,8 @@ def _open_record(ctx, entire=False, rect=None):
         # consent.start writes its monitor program before launching it. Unlike
         # the manager's app-profile scope, this per-local scope is still fresh.
         portal[0].initialize()
-    watch = consent.start(portal[0]) if portal else None
+    ctx.note('recording acquisition=' + consent.acquisition(caps, target))
+    watch = consent.start(portal[0], target=target, capabilities=caps) if portal else None
     opened = _result(ctx.view("recording.prepare", {"target": target, "format": "mp4", "codec": "h264", "fps": 15, "audio": {"system": False}}))
     ctx.expect(bool(opened.get("recordingId")), "recording prepare returns an operation identity")
     rid = opened["recordingId"]

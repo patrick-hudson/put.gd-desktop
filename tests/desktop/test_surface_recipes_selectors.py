@@ -450,7 +450,9 @@ class SelectorRecipes(unittest.TestCase):
             def close(self):
                 events.append("cleanup")
                 return []
-        def start(scope):
+        def start(scope, *, target, capabilities):
+            self.assertEqual(target, {'kind': 'region', 'rect': [320, 200, 640, 400]})
+            self.assertIn('formats', capabilities)
             self.assertTrue(scope.initialized, "the monitor must not create a directory before Scope.initialize")
             events.append("monitor-before-prepare")
             return object()
