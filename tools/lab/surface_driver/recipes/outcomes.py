@@ -6,6 +6,7 @@ The frozen player's independent VNC frame is the capture oracle, taken before
 invoking capture. Pixel tolerance is zero (these runs require scale 1).
 """
 from contextlib import contextmanager
+import base64
 import hashlib
 import io
 import json
@@ -14,7 +15,7 @@ import shlex
 import time
 from urllib.parse import urlsplit
 
-from ..api import RecipeBlocked, recipe
+from ..api import RecipeBlocked, RecipeFailed, recipe
 from ..browser import default_browser, open_and_verify
 from ..catalog import image_modules
 from ..fixtures.base import Scope
@@ -84,8 +85,9 @@ def _lane(ctx):
     scope.initialize()
     scope.patch({'actions': {name: {'destination': 'upload', 'profileId': service.profile_id,
                                    'shortcut': {'window': 'Ctrl+Shift+2', 'desktop': 'Ctrl+Shift+3'}.get(name, '')}
-                             for name in ('region', 'window', 'desktop', 'edit', 'record')},
-                 'archive': {'keepUploads': True}})
+                             for name in ('region', 'window', 'desktop', 'clipboard', 'edit', 'record')},
+                 'archive': {'keepUploads': True},
+                 'preferences': {'uploadClipboardBehavior': 'each_link'}})
     try:
         yield scope, service
     except BaseException:
@@ -96,6 +98,35 @@ def _lane(ctx):
         raise
     finally:
         ctx.expect(not scope.close(), 'outcome scope cleanup succeeded')
+
+
+def _clipboard_reader(scope):
+    from ..fixtures.clipboard import tool
+    wayland = scope.ctx.profile['session'] == 'wayland'
+    executable = tool(scope, 'wl-paste' if wayland else 'xclip')
+    return [executable, '--no-newline', '--type'] if wayland else [executable, '-selection', 'clipboard', '-out', '-target']
+
+
+def _clipboard_bytes(scope, mime):
+    # Binary data stays in memory until the synthetic image is retained. Neither
+    # failed readers' stderr nor clipboard text enters evidence/command output.
+    result = scope.json('''import base64,json,subprocess
+try:
+ reply=subprocess.run(READ,capture_output=True,timeout=3)
+ assert len(reply.stdout)<=32*1024*1024
+ print(json.dumps({'available':reply.returncode==0,'data':base64.b64encode(reply.stdout).decode() if reply.returncode==0 else ''}))
+except subprocess.TimeoutExpired:print(json.dumps({'timeout':True}))
+'''.replace('READ', repr(_clipboard_reader(scope) + [mime])))
+    if result.get('timeout'):
+        raise RecipeBlocked('independent desktop clipboard reader timed out')
+    return base64.b64decode(result['data']) if result['available'] else None
+
+
+def _auto_copy(ctx, scope, detail):
+    wanted = detail['receipt']['directUrl'].encode('utf-8')
+    ctx.wait(lambda: _clipboard_bytes(scope, 'text/plain') == wanted,
+             'auto-copy desktop clipboard equals exact uploaded URL without a copy click')
+    ctx.note('auto_copy_exact_link_count=1; independent desktop clipboard reader; no copy click')
 
 
 def _payload(ctx, path, kind, digest):
@@ -196,6 +227,7 @@ def _pattern(ctx):
 
 
 def _capture(ctx, scope, service, kind):
+    _clipboard_reader(scope)  # Missing tools are infrastructure, before capture.
     scene, oracle = _pattern(ctx)
     with selectors._portal_scope(ctx):
         if kind == 'region':
@@ -219,6 +251,8 @@ def _capture(ctx, scope, service, kind):
             oid = fresh[0]['id']
             expected = oracle
         detail, data = _complete(scope, service, oid)
+        if kind == 'region':
+            _auto_copy(ctx, scope, detail)
     Image, _, _ = image_modules()
     actual = Image.open(io.BytesIO(data))
     ctx.expect(pixels_equal(actual, expected), kind + ' pixels equal independent frozen pattern (tolerance=0)')
@@ -230,6 +264,131 @@ def _capture(ctx, scope, service, kind):
 def region_upload(ctx):
     with _lane(ctx) as (scope, service):
         _capture(ctx, scope, service, 'region')
+
+
+@recipe('region.to-upload', desktop_drawn=True, timeout=300)
+def auto_copy(ctx):
+    with _lane(ctx) as (scope, service):
+        _capture(ctx, scope, service, 'region')
+
+
+@recipe('shell.command-upload-clipboard', desktop_drawn=True, timeout=420)
+def upload_clipboard(ctx):
+    from ..fixtures.clipboard import owner
+    from ..fixtures.uploads import clipboard_files, track
+    with _lane(ctx) as (scope, service):
+        source = ctx.fixture('image')
+        image_digest = history._local_digest(ctx, source.path)
+        text = 'putgd Tier 1 clipboard: exact UTF-8 \u2713\nsecond line\n'
+        text_path = scope.root + '/source.txt'
+        scope.write(text_path, text.encode('utf-8'))
+        failures = []
+        for kind, mime, path, expected in (
+                ('image', 'image/png', source.path, image_digest),
+                ('file', 'text/uri-list', text_path, hashlib.sha256(text.encode('utf-8')).hexdigest()),
+                ('text', 'text/plain', text_path, hashlib.sha256(text.encode('utf-8')).hexdigest())):
+            try:
+                if kind == 'file':
+                    clipboard_files(scope, [path])
+                else:
+                    owner(scope, path, mime, name=kind+'-clipboard')
+                ctx.view('ui.show', {'view': 'history'})
+                before = {o['id'] for o in ctx.call('operation.recent')['operations']}
+                _frame(ctx, 'clipboard-'+kind+'-before-upload')
+                history._click_history_node(ctx, history._command_control('clipboard'))
+                oid = history._new_operation(ctx, before, 'clipboard')['id']
+                track(scope, 'operation.cancel', oid)
+                detail, data = _complete(scope, service, oid, 'png' if kind == 'image' else 'txt')
+                _auto_copy(ctx, scope, detail)
+                ctx.expect(hashlib.sha256(data).hexdigest() == expected,
+                           'uploaded clipboard '+kind+' SHA-256 equals independent source bytes')
+                ctx.note('upload_clipboard_'+kind+'_hash_match_count=1')
+            except RecipeFailed as error:
+                failures.append(str(error))
+                ctx.note(kind+' clipboard oracle failed: '+str(error))
+        ctx.expect(not failures, '; '.join(failures))
+
+
+@recipe('history.inspector-more', desktop_drawn=True, timeout=300)
+def copy_image(ctx):
+    from ..fixtures.clipboard import owner
+    with _lane(ctx) as (scope, service):
+        _clipboard_reader(scope)
+        detail, data = _complete(scope, service, ctx.fixture('upload').operation_id)
+        # Replace any earlier image with a text-only source so stale pixels
+        # cannot satisfy the oracle if History's copy action is broken.
+        sentinel = scope.root + '/text-only'
+        scope.write(sentinel, b'putgd synthetic text-only clipboard')
+        owner(scope, sentinel, 'text/plain', name='copy-image-sentinel')
+        _history(ctx, detail)
+        ctx.click('historyInspectorMore', window='history')
+        history._wait_menu(ctx, 'Copy image')
+        history._click_history_node(ctx, {'name': 'Copy image', 'role': 'menu item'})
+        copied = ctx.wait(lambda: _clipboard_bytes(scope, 'image/png'), 'History Copy image offers desktop image/png')
+        Image, _, _ = image_modules()
+        try:
+            actual, expected = Image.open(io.BytesIO(copied)), Image.open(io.BytesIO(data))
+            ctx.expect(pixels_equal(actual, expected), 'desktop image/png pixels equal retained original (tolerance=0)')
+        except (OSError, ValueError) as error:
+            raise RecipeFailed('desktop image/png is not a decodable PNG') from error
+        ctx.note('copy_image_exact_pixels_count=1; independent desktop image/png reader')
+        _frame(ctx, 'copy-image-exact-pixels')
+
+
+def _clipboard_handlers(scope):
+    # Query only metadata: known process names, bus owner and ICCCM manager.
+    return scope.json('''import ctypes,ctypes.util,json,os
+from pathlib import Path
+import dbus
+names={'klipper','plasmashell','gnome-shell','cinnamon','copyq','clipit','parcellite','xfce4-clipman','diodon','gpaste-daemon'}
+processes=[]
+for p in Path('/proc').iterdir():
+ try:
+  if p.name.isdigit() and p.stat().st_uid==os.getuid():
+   name=(p/'comm').read_text().strip()
+   if name in names:processes.append({'name':name,'pid':int(p.name)})
+ except OSError:pass
+bus=dbus.SessionBus()
+klipper=str(bus.get_name_owner('org.kde.klipper')) if bus.name_has_owner('org.kde.klipper') else None
+manager=None
+if __X11__:
+ lib=ctypes.CDLL(ctypes.util.find_library('X11'))
+ lib.XOpenDisplay.argtypes=[ctypes.c_char_p];lib.XOpenDisplay.restype=ctypes.c_void_p
+ lib.XInternAtom.argtypes=[ctypes.c_void_p,ctypes.c_char_p,ctypes.c_int];lib.XInternAtom.restype=ctypes.c_ulong
+ lib.XGetSelectionOwner.argtypes=[ctypes.c_void_p,ctypes.c_ulong];lib.XGetSelectionOwner.restype=ctypes.c_ulong
+ lib.XCloseDisplay.argtypes=[ctypes.c_void_p]
+ display=lib.XOpenDisplay(None);assert display
+ try:manager=int(lib.XGetSelectionOwner(display,lib.XInternAtom(display,b'CLIPBOARD_MANAGER',False)))
+ finally:lib.XCloseDisplay(display)
+print(json.dumps({'processes':processes,'klipperBusOwner':klipper,'x11ManagerWindow':manager}))
+'''.replace('__X11__', repr(scope.ctx.profile['session'] == 'x11')))
+
+
+@recipe('tray.menu-quit', 'cli.launcher-background', desktop_drawn=True, timeout=360)
+def survives_exit(ctx):
+    from ..fixtures.resident import lifecycle
+    with _lane(ctx) as (scope, service):
+        resident = lifecycle(ctx._fixture_manager.scope)
+        handlers = _clipboard_handlers(scope)
+        ctx.note('clipboard_handlers='+json.dumps(handlers, sort_keys=True))
+        detail = _capture(ctx, scope, service, 'region')
+        wanted = detail['receipt']['directUrl'].encode('utf-8')
+        resident.quit()  # Production CLI Quit, never terminate/kill the owner.
+        ctx.wait(resident.stopped, 'private resident quit and released socket', timeout=30)
+        started = time.monotonic()
+        ctx.wait(lambda: time.monotonic()-started >= 2, 'two seconds after Quit', timeout=4)
+        after = _clipboard_bytes(scope, 'text/plain')
+        expected_loss = (ctx.profile['session'] == 'x11' and handlers['x11ManagerWindow'] == 0
+                         and after in (None, b''))
+        ctx.expect(after == wanted or expected_loss, 'clipboard retains exact auto-copied URL two seconds after Quit')
+        _frame(ctx, 'clipboard-after-quit')
+        resident.launch()
+        ctx.expect(_clipboard_bytes(scope, 'text/plain') == after, 'restart does not clobber desktop clipboard')
+        _frame(ctx, 'clipboard-after-restart')
+        if expected_loss:
+            ctx.blocked('Expected X11 clipboard loss without CLIPBOARD_MANAGER; docs/desktops/cinnamon.md: '
+                        'resident must continue running to serve clipboard results. Restart preserved empty clipboard.')
+        ctx.note('survives_exit_exact_link_count=1; clipboard retained by desktop handlers recorded above')
 
 
 @recipe('shell.command-capture-window', 'shell.command-capture-desktop', desktop_drawn=True, timeout=360)

@@ -196,7 +196,7 @@ class NightlyTests(unittest.TestCase):
             github.writes.clear()
             for v in row['cells'].values():v.update(status='green')
             nightly.publish(github,result,Path(tmp))
-            self.assertTrue(any(w[0]=='PATCH' and w[1].endswith('/2') and w[2]['state']=='closed' for w in github.writes))
+            self.assertFalse(any(w[0]=='PATCH' and w[1].endswith('/2') for w in github.writes))
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()

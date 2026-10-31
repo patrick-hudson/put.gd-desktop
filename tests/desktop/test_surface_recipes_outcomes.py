@@ -76,9 +76,9 @@ class Outcomes(unittest.TestCase):
             image.paste(mark, (box[0] + shift, box[1]))
             self.assertFalse(edited_pixels(image, original()))
 
-    def test_six_recipes_reference_existing_interactions(self):
+    def test_ten_recipes_reference_existing_interactions(self):
         recipes = discover('outcomes')
-        self.assertEqual(len(recipes), 6)
+        self.assertEqual(len(recipes), 10)
         validate_recipes(recipes)
         self.assertTrue(all(r.destinations == ('local',) for r in recipes))
 
