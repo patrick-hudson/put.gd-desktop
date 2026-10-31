@@ -102,6 +102,28 @@ class SourceChecks(unittest.TestCase):
                 with self.subTest(path=path), self.assertRaises(ValueError):
                     audit_assets.source_export(artifact, receipt)
 
+    def test_source_requires_independent_member_receipt(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            artifact, receipt = self.make_archive(Path(temporary), 'src/main.cpp')
+            receipt.pop('members')
+            with self.assertRaisesRegex(ValueError, 'Source export identity mismatch'):
+                audit_assets.source_export(artifact, receipt)
+            receipt['members'] = []
+            with self.assertRaisesRegex(ValueError, 'Source export identity mismatch'):
+                audit_assets.source_export(artifact, receipt)
+
+    def test_delivered_catalog_must_equal_the_curated_source_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            artifact, receipt = self.make_archive(root, 'tools/proton/notices/SOURCES.json', b'{"source":"original"}')
+            export = audit_assets.source_export(artifact, receipt)
+            catalog = root / 'proton-source-catalog.json'
+            catalog.write_bytes(b'{"source":"original"}')
+            audit_assets.verify_source_catalog(export, catalog)
+            catalog.write_bytes(b'{"source":"substituted"}')
+            with self.assertRaisesRegex(ValueError, 'differs from curated source'):
+                audit_assets.verify_source_catalog(export, catalog)
+
 
 class AdvisoryRanges(unittest.TestCase):
     def test_official_bun_advisory_catches_scanner_miss_and_fixed_boundary(self):

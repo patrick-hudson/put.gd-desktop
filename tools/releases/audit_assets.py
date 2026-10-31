@@ -105,9 +105,12 @@ def release_identity(root, tag, identity):
 def source_export(path, receipt):
     """Verify every curated source member and reject non-production paths."""
     prefix = receipt['archiveRoot'] + '/'
+    catalog_sha = None
     with tarfile.open(path) as archive:
         info = json.load(archive.extractfile(prefix + 'source-info.json'))
-        if info['identity'] != receipt['identity'] or info['files'] != [item for item in receipt.get('members', info['files']) if item['path'] != 'source-info.json']:
+        members = receipt.get('members')
+        if (not isinstance(members, list) or not members or info['identity'] != receipt['identity']
+                or info['files'] != [item for item in members if item['path'] != 'source-info.json']):
             raise ValueError('Source export identity mismatch')
         expected = {prefix + item['path']: item for item in info['files']}
         seen = set()
@@ -126,9 +129,17 @@ def source_export(path, receipt):
                     or member.size != item['bytes']
                     or hashlib.file_digest(archive.extractfile(member), 'sha256').hexdigest() != item['sha256']):
                 raise ValueError('Source export file mismatch: ' + member.name)
+            if item['path'] == 'tools/proton/notices/SOURCES.json':
+                catalog_sha = item['sha256']
         if seen != set(expected) | {prefix + 'source-info.json'}:
             raise ValueError('Missing source export member')
-    return {'files': len(expected), 'identity': info['identity'], 'sha256': sha256(path)}
+    return {'files': len(expected), 'identity': info['identity'], 'sha256': sha256(path),
+            'protonSourceCatalogSha256': catalog_sha}
+
+
+def verify_source_catalog(export, catalog_path):
+    if export.get('protonSourceCatalogSha256') != sha256(catalog_path):
+        raise ValueError('Delivered Proton catalog differs from curated source declarations')
 
 
 def download_part(item, repository, directory):
@@ -261,6 +272,7 @@ def audit(args):
         appimage_complete_sources.verify(sources, receipts['appimageCompleteSource'], receipts['appimage'])
         checks['completeSource'] = receipts['appimageCompleteSource']
         catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
+        verify_source_catalog(checks['sourceExport'], directory / proton_sources.CATALOG_NAME)
         verify_rebuilt_proton(built, catalog)
         print('Verifying Proton source transport and packets', flush=True)
         parts = output / 'proton-sources'
