@@ -1,0 +1,37 @@
+{
+  "host": "d69 / debian",
+  "privateRoot": "/home/patrick/work/ra383",
+  "attempts": [
+    {
+      "output": "a1",
+      "result": "failed",
+      "reason": "Nightly sourceBuild receipt is null; initial checker assumed a receipt existed.",
+      "correction": "Continue artifact/CVE checks while recording the missing receipt; run the independent source rebuild and bind its result."
+    },
+    {
+      "output": "a2",
+      "result": "failed",
+      "reason": "Native receipt uses original CPack filename, while collector publishes a canonical filename.",
+      "correction": "Resolve downloaded native package by release version, distro label and format; continue to verify the receipt SHA-256."
+    },
+    {
+      "output": "a3",
+      "result": "failed",
+      "reason": "Outer source receipt includes source-info.json; its own inner member hash list necessarily excludes itself.",
+      "correction": "Compare all other members and verify the complete source-info.json through the outer archive digest."
+    },
+    {
+      "output": "a4",
+      "result": "failed after all package audits",
+      "reason": "Standard Debian gh 2.46 lacks --slurp.",
+      "correction": "Decode paginated JSON pages directly; retain system gh. Add pagination and advisory fixed-boundary tests."
+    }
+  ],
+  "unchangedBoundaries": [
+    "No CVE policy relaxation or new disposition",
+    "No fabricated rebuild receipt",
+    "No alternate toolchain",
+    "No source asset overwritten",
+    "All failed attempts and commands retained on d69"
+  ]
+}
