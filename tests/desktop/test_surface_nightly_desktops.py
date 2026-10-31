@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import sys
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab import nightly_desktops as nightly
 from tools.lab.surface_driver.collect import mark_terminal
 
