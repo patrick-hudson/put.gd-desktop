@@ -848,7 +848,7 @@ def _prepare(options):
                             'browser.helperApps.neverAsk.saveToDisk': 'image/png,application/octet-stream,application/zip',
                             'browser.cache.disk.enable': False, 'browser.cache.memory.enable': False,
                             'network.http.use-cache': False})
-        if values.get('live_downloads'):
+        if options.get('live_downloads'):
             fs = subprocess.run(['stat', '-f', '-c', '%T', str(directory)], capture_output=True, text=True, check=True)
             if fs.stdout.strip() != 'tmpfs':
                 raise _TargetError('Live download popup policy requires the admitted tmpfs profile')
@@ -1123,13 +1123,23 @@ def _target(action, values):
                 raise _TargetError('Live recipient download requires a new empty tmpfs directory')
             original = _live_saved_capture(values)
             if values['kind'] == 'proton':
-                node = client.script("""
+                deadline = time.monotonic()+30
+                while True:
+                    node = client.script("""
+// Filename readiness can precede decryption. This lane uploads PNGs: wait
+// for their decrypted preview before activating the recipient download.
+const preview=[...document.images].some(e=>(e.currentSrc||e.src).startsWith('blob:')&&e.complete&&e.naturalWidth>0);
+if(!preview)return null;
 const nodes=[...document.querySelectorAll('button,a,[role=button]')].filter(el=>{
  const r=el.getBoundingClientRect();const label=(el.getAttribute('aria-label')||el.textContent||'').trim();
- return r.width>0&&r.height>0&&!el.disabled&&/^Download(?: file)?$/i.test(label);
+ return r.width>0&&r.height>0&&!el.disabled&&el.getAttribute('aria-disabled')!=='true'&&
+  getComputedStyle(el).pointerEvents!=='none'&&/^Download(?: file)?$/i.test(label);
 });
 return nodes.length===1?nodes[0]:null;
 """)
+                    if node or time.monotonic()>=deadline:
+                        break
+                    time.sleep(.25)
                 element = node.get('element-6066-11e4-a52e-4f735466cecf') if isinstance(node, dict) else None
                 clicked = bool(element)
                 if clicked:
