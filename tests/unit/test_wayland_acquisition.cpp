@@ -1,5 +1,6 @@
 #include "record/WaylandAcquisition.h"
 #include <QtTest>
+#include <cstdlib>
 using namespace putgd::record;
 
 // The compositor-native Wayland paths (KWin screencast, Mutter screen cast)
@@ -65,6 +66,31 @@ private slots:
         QCOMPARE(pipewireFrameTime(mono - kMaxFrameAgeNs, mono, running, -1).running, running - kMaxFrameAgeNs);
         // Early in the pipeline's life a time before running time zero clamps to zero.
         QCOMPARE(pipewireFrameTime(mono - 30 * ms, mono, 10 * ms, -1).running, qint64(0));
+    }
+    void smoothsArrivalJitterAroundTheMeanAge() {
+        // #6: arrivals jitter by up to a frame around the compositor's grid; the
+        // smoothed time sits on that grid shifted by the running mean latency.
+        const qint64 ms = 1'000'000;
+        FrameSmoothing smoothing;
+        qint64 previous = -1;
+        QList<qint64> stamps;
+        // Frames presented every 16.667 ms, arriving 12 ms later on average with +-6 ms jitter.
+        const qint64 jitter[] = {0, 6, -6, 3, -3, 5, -5, 1, -1, 0, 4, -4};
+        for (int i = 0; i < 12; ++i) {
+            const qint64 presented = i * 16'667 * 1000;
+            const qint64 age = 12 * ms + jitter[i] * ms;
+            const qint64 arrival = presented + age;
+            previous = smoothedFrameTime(arrival, age, smoothing, previous);
+            stamps.append(previous);
+        }
+        // After the first frames the gaps hold the grid within the mean's slow drift.
+        for (int i = 4; i < 12; ++i) QVERIFY2(std::abs((stamps[i] - stamps[i - 1]) - 16'667 * 1000) < 2 * ms, qPrintable(QString::number((stamps[i] - stamps[i - 1]) / 1000)));
+        // The latency anchor stays the arrival's: the mean age is kept, not removed.
+        QVERIFY(stamps.last() > 11 * 16'667 * 1000 + 8 * ms && stamps.last() < 11 * 16'667 * 1000 + 16 * ms);
+        // Without a compositor time the arrival is used, and times never go back.
+        QCOMPARE(smoothedFrameTime(100 * ms, -1, smoothing, previous), 100 * ms);
+        QCOMPARE(smoothedFrameTime(50 * ms, -1, smoothing, 100 * ms), 100 * ms + 1);
+        QCOMPARE(pipewireUnthrottledCaps(), QString(" ! video/x-raw,max-framerate=0/1"));
     }
     void keepsFrameTimesIncreasing() {
         const qint64 ms = 1'000'000, mono = 5'000'000 * ms, running = 2'000 * ms;

@@ -1,6 +1,7 @@
 #pragma once
 #include "PauseTimeline.h"
 #include "RecordingStorage.h"
+#include "WaylandAcquisition.h"
 #include <QElapsedTimer>
 #include "core/Error.h"
 #include <QJsonObject>
@@ -76,10 +77,11 @@ private:
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
     struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> passed{0}; Spread lateness; AudioClockGuard clock; };
-    struct FrameClock { gint64 previous = -1, arrival = 0; bool compositorTimes = false; Spread age; };
+    struct FrameClock { gint64 previous = -1, arrival = 0; bool compositorTimes = false, smoothed = true; Spread age; FrameSmoothing smoothing; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
-    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, QString& failure);
+    // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).
+    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure);
     void poll();
     void tearDown();
     RecordingStorage storage() const;

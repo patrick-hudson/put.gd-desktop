@@ -26,4 +26,15 @@ FrameTime pipewireFrameTime(qint64 framePts, qint64 monotonicNow, qint64 running
     if (previous >= 0 && result.running <= previous) result.running = previous + 1;
     return result;
 }
+qint64 smoothedFrameTime(qint64 arrivalRunning, qint64 ageNs, FrameSmoothing& smoothing, qint64 previous) {
+    qint64 running = arrivalRunning;
+    if (ageNs >= 0) {
+        if (smoothing.meanAgeNs < 0) smoothing.meanAgeNs = ageNs;
+        else smoothing.meanAgeNs += (ageNs - smoothing.meanAgeNs) / kFrameSmoothingDivisor;
+        running = arrivalRunning - (ageNs - smoothing.meanAgeNs);
+    }
+    running = std::max<qint64>(0, running);
+    if (previous >= 0 && running <= previous) running = previous + 1;
+    return running;
+}
 }

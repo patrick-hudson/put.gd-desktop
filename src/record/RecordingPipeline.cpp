@@ -8,6 +8,7 @@
 #include <QStorageInfo>
 #include <QThread>
 #include <algorithm>
+#include <initializer_list>
 #include <gst/base/gstbasesrc.h>
 #include <ctime>
 
@@ -160,10 +161,15 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     auto frame = pipewireFrameTime(GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
-    // Arrival is the default: KWin's header time is the output's previous
+    // Arrival is the anchor: KWin's header time is the output's previous
     // presentation, ~40 ms before the frame arrives, and recordings stamped with
     // it played the sound late (+35..+48 ms) where arrival times matched X11.
-    if (!clock->compositorTimes) frame = pipewireFrameTime(-1, 0, running, clock->previous);
+    // The smoothed default keeps that anchor and removes the arrival jitter.
+    if (!clock->compositorTimes) {
+        const qint64 age = frame.ageNs;
+        frame = pipewireFrameTime(-1, 0, running, clock->previous);
+        if (clock->smoothed) frame.running = smoothedFrameTime(running, age, clock->smoothing, clock->previous);
+    }
     clock->previous = frame.running;
     // The compositor owns a handful of stream buffers (KWin offers 2-4) and
     // skips a frame whenever none is free. Copy the frame out here, on the
@@ -178,7 +184,7 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     return GST_PAD_PROBE_OK;
 }
 
-bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, QString& failure) {
+bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure) {
     const QSize encoded = options.crop.isValid() ? options.crop.size() : options.rect.size();
     const int kbps = bitrateKbps(encoded, options.fps);
     QString description;
@@ -192,7 +198,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // monitor (crop values are stream-relative) before the colour
         // conversion, so only the recorded pixels are converted.
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
-            + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
+            + (unthrottled ? pipewireUnthrottledCaps() : QString()) + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
         description += convert();
     } else {
@@ -222,6 +228,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     timeline_.setFrameRate(options.fps);
     frameClock_ = {};
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
+    // =arrival: raw arrival times (the default before #6), for lab A/B runs.
+    frameClock_.smoothed = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
     clockName_.clear();
     if (!frameSource.isEmpty()) {
         // The monotonic system clock is the compositors' frame clock, so frame
@@ -296,7 +304,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     gst_object_unref(bus);
     if (failed) { debugLog("start failed: " + failure); gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); QFile::remove(options.output); return false; }
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
-    debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder) + " on " + clockName_);
+    debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
     pipeline_ = pipeline;
     return true;
 }
@@ -315,9 +323,13 @@ Error RecordingPipeline::start(const Options& options) {
     QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
     if (options.audio && audioEncoder.isEmpty()) return {"recording_unsupported", "No AAC encoder is available for system audio", {}};
     for (const auto& encoder : options.encoders) {
-        QString failure;
-        if (launch(options, encoder, audioEncoder, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return {}; }
-        failures.append(failure);
+        // A PipeWire stream first asks for max_framerate 0/1; a compositor
+        // that refuses it (its range starts above zero) gets the plain request.
+        for (const bool unthrottled : options.pipewireNode ? std::initializer_list<bool>{true, false} : std::initializer_list<bool>{false}) {
+            QString failure;
+            if (launch(options, encoder, audioEncoder, unthrottled, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return {}; }
+            failures.append(failure);
+        }
     }
     return {"recording_start_failed", "No H.264 encoder could start the capture", {{"attempts", QJsonArray::fromStringList(failures)}}};
 }
