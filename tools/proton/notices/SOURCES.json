@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "materialsReady": true,
   "distributionReady": false,
-  "published": false,
+  "published": true,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
   "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
   "sourcePins": {
@@ -96,7 +96,10 @@
   },
   "publication": {
     "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.23.0-crypto2.2.0-bun1.4.4",
-    "scope": "SDK 0.23.0/Crypto 2.2.0/OpenPGP 6.3.1/Bun 1.4.4 corresponding-source delivery. Native and desktop/resource acceptance are independently recorded by the current application catalog."
+    "scope": "SDK 0.23.0/Crypto 2.2.0/OpenPGP 6.3.1/Bun 1.4.4 corresponding-source delivery. Native and desktop/resource acceptance are independently recorded by the current application catalog.",
+    "verificationReceipt": "tools/proton/native_relink/evidence/source-publication.json",
+    "verificationReceiptSha256": "36b511c201416ccab3bce138b199b456ea1c8291536ceea621da1772dcbc91c0",
+    "sourceTagCommit": "7b0b7badc78e273d2b59f3258f5f97aa371866ec"
   },
   "applicationSourceOverlay": {
     "required": true,
