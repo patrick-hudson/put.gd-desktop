@@ -1,0 +1,28 @@
+{
+  "initialDriverCommit": "692df12c845451729cabeb41f33281936cce30e4",
+  "initial": {
+    "cases": 90,
+    "passed": 84,
+    "skipped": 6,
+    "log": "initial-driver-tests.log"
+  },
+  "finalDriverCommit": "4906883475816701ba5a697d96c997273eeda884",
+  "final": {
+    "cases": 19,
+    "passed": 18,
+    "skipped": 1,
+    "log": "final-focused-tests.log"
+  },
+  "qtDecoderCoveredBy": "followup-3/tests and actual guest Proton original-byte/preview comparisons",
+  "skipReasons": [
+    "One real Qt decoder case skipped on the builder without PyQt6; actual guest decoder comparisons remain the desktop proof.",
+    "Five Git pin/classifier provenance cases skipped in the builder source export because that isolated checkout is not clean; all five passed separately in the clean owned worktree."
+  ],
+  "provenance": {
+    "cases": 5,
+    "passed": 5,
+    "skipped": 0,
+    "log": "provenance-tests.log",
+    "placement": "owned-worktree-light-unit-only"
+  }
+}

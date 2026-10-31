@@ -1,10 +1,8 @@
 {
   "quarantine": [],
   "passed": true,
-  "files": 782,
-  "pngs": 249,
+  "files": 934,
+  "pngs": 299,
   "image_audit": "ocr-and-known-regions",
-  "findings": [],
-  "postwriteTextAuditPassed": true,
-  "postwriteTextFiles": 3
+  "findings": []
 }

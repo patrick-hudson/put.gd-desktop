@@ -1,47 +1,51 @@
 {
   "schemaVersion": 2,
-  "scope": "coordinator-follow-up-3-gnome-only",
-  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "scope": "coordinator-follow-up-4-combined-pass",
   "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
   "catalogCiRun": 41111404666,
-  "executedDriverCommit": "8c125ebc80a5beffc70fd090bf651e8534a2997b",
-  "finalDriverCommit": "f0d9e03dc10944ab9a34aef19cab8357b899b6b2",
   "placement": "guest",
-  "completedUploads": 2,
-  "verifiedRemoteHashes": 2,
-  "verifiedBrowserHashes": 1,
-  "uiRevocations": 1,
-  "uiDeletions": 1,
+  "completedUploads": 5,
+  "verifiedRemoteHashes": 5,
+  "verifiedBrowserHashes": 2,
+  "verifiedGuestPublicHashes": 1,
+  "uiRevocations": 2,
+  "uiDeletions": 3,
   "independentUnavailableLinks": 2,
-  "s3OriginAbsenceProofs": 1,
-  "s3MissingHead404": 1,
-  "batonsLent": 1,
-  "batonsReturned": 1,
-  "overlaysRetired": 1,
-  "protonProof": "P",
-  "pPreviewExceptionUsed": false,
-  "expansionRun": false,
-  "expansionBlockedBy": "S3 public CloudFront GET 403 on GNOME",
+  "s3OriginAbsenceProofs": 3,
+  "s3MissingHead404": 3,
+  "batonsLent": 2,
+  "batonsReturned": 2,
+  "overlaysRetired": 3,
+  "reusedGnomeProton": true,
+  "reusedCounts": {
+    "completedUploads": 1,
+    "verifiedRemoteHashes": 1,
+    "verifiedBrowserHashes": 1,
+    "uiRevocations": 1,
+    "independentUnavailableLinks": 1
+  },
+  "rows": {
+    "gnome": {
+      "s3": "failed"
+    },
+    "kde": {
+      "s3": "failed",
+      "proton": "passed"
+    },
+    "cinnamon": {
+      "s3": "passed",
+      "proton": "passed"
+    }
+  },
   "locksReleased": true,
-  "coverageSha256": "df63be4322fc3fd292515b273f8f806ddc1e5b04d93727804fccdc733cefedf0",
+  "coverageSha256": "d924e4129d76fefaf060ceae200cb5fb23580b5386953fb0d1f451fb31f1bf16",
   "issues": [
     978,
-    992
+    992,
+    996
   ],
   "previousCumulative": {
-    "verifiedBrowserHashes": 0,
-    "uiRevocations": 10,
-    "batonsReturned": 21,
-    "overlaysRetired": 9,
-    "batonsLent": 21,
-    "s3OriginAbsenceProofs": 5,
-    "completedUploads": 15,
-    "uiDeletions": 5,
-    "verifiedRemoteHashes": 5,
-    "s3MissingHead404": 6,
-    "independentUnavailableLinks": 8
-  },
-  "cumulative": {
     "independentUnavailableLinks": 10,
     "s3MissingHead404": 7,
     "verifiedRemoteHashes": 7,
@@ -53,5 +57,48 @@
     "uiDeletions": 6,
     "completedUploads": 17,
     "batonsReturned": 22
+  },
+  "cumulative": {
+    "verifiedRemoteHashes": 12,
+    "batonsLent": 24,
+    "overlaysRetired": 13,
+    "s3MissingHead404": 10,
+    "verifiedGuestPublicHashes": 1,
+    "uiRevocations": 13,
+    "completedUploads": 22,
+    "verifiedBrowserHashes": 3,
+    "uiDeletions": 9,
+    "independentUnavailableLinks": 12,
+    "s3OriginAbsenceProofs": 9,
+    "batonsReturned": 24
+  },
+  "matrixResults": {
+    "gnome": {
+      "s3": "F",
+      "proton": "P",
+      "protonReused": true
+    },
+    "kde": {
+      "s3": "F",
+      "proton": "P"
+    },
+    "cinnamon": {
+      "s3": "P",
+      "proton": "P"
+    }
+  },
+  "cloudfrontAfterDeletion": {
+    "gnome": {
+      "status": 200,
+      "informational": true
+    },
+    "kde": {
+      "status": 200,
+      "informational": true
+    },
+    "cinnamon": {
+      "status": 200,
+      "informational": true
+    }
   }
 }
