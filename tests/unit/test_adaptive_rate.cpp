@@ -108,6 +108,14 @@ private slots:
         QCOMPARE(rate.judge(w), QStringLiteral("cpu"));
         QCOMPARE(windowsUntilLowered(rate, w), AdaptiveRate::warmupWindows + AdaptiveRate::badWindows);
         QCOMPARE(rate.reason(), QStringLiteral("cpu"));
+        QCOMPARE(rate.current(), 30);
+        // A busy machine alone never takes a recording below the 30 fps default:
+        // the load may be another program's (a build) while the recorder keeps up.
+        QCOMPARE(windowsUntilLowered(rate, w, 60), 0);
+        QCOMPARE(rate.current(), 30);
+        AdaptiveRate thirty(30, true, false);
+        QVERIFY(thirty.judge(w).isEmpty());
+        QCOMPARE(windowsUntilLowered(thirty, w, 60), 0);
         // Someone else's load with an idle recorder is not the recording's to fix.
         w.recorderCores = 0.2;
         QVERIFY(AdaptiveRate(60, true, false).judge(w).isEmpty());

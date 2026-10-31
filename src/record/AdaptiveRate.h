@@ -11,7 +11,10 @@ namespace putgd::record {
 //   - encoder: the capture queue leaked frames because conversion or encoding
 //     fell behind;
 //   - capture: a fixed-rate source (ximagesrc) grabbed fewer frames than asked;
-//   - cpu: the whole machine was busy while the recorder used half a core or more.
+//   - cpu: the whole machine was busy while the recorder used half a core or
+//     more. That is indirect (another program may be the load), so it lowers
+//     a rate only down to cpuFloorFps, the default; the direct signals above
+//     go on to the floor.
 // Lateness at the encoder is no signal: videorate sends a static screen's
 // repeats when the next frame arrives, up to a second late. A rate is lowered
 // after `badWindows` such windows in a row, never in the first
@@ -27,6 +30,7 @@ public:
         double recorderCores = -1;   // the recorder's own CPU in cores, -1 unknown
     };
     static constexpr int floorFps = 15;
+    static constexpr int cpuFloorFps = 30;
     static constexpr int warmupWindows = 2;
     static constexpr int badWindows = 3;
     static constexpr double leakedShare = 0.05;

@@ -20,7 +20,7 @@ QString AdaptiveRate::judge(const Window& window) const {
     // ximagesrc keeps grabbing at the configured rate; the gate behind it keeps
     // the current one, so the grabs are measured against the configured rate.
     if (fixedRateSource_ && double(window.sourceFrames) < captureShare * configured_ * seconds) return QStringLiteral("capture");
-    if (window.systemBusy >= busyShare && window.recorderCores >= recorderCoresBusy) return QStringLiteral("cpu");
+    if (current_ > cpuFloorFps && window.systemBusy >= busyShare && window.recorderCores >= recorderCoresBusy) return QStringLiteral("cpu");
     return {};
 }
 
