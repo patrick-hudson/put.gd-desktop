@@ -53,7 +53,10 @@ QString encoderDescription(const QString& name, int kbps, int fps, const QSize& 
 // Capture and encoding run in their own threads. The capture queue leaks its
 // oldest frame when the stages behind it fall behind, so the source (and, for a
 // PipeWire stream, the compositor waiting for its buffers back) never blocks on
-// the encoder; videorate behind it restores the constant frame rate. Encoded
+// the encoder; videorate after the colour conversion restores the constant
+// frame rate by repeating converted frames, so a source slower than the clip
+// (a compositor that sends only changes, or the adaptive rate) converts only
+// the frames it delivered (#984). Encoded
 // output is queued before the muxer, which also waits on the audio branch.
 QString captureQueue() { return QStringLiteral(" ! queue name=cq leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0"); }
 QString encodeQueue() { return QStringLiteral(" ! queue name=eq max-size-buffers=3 max-size-bytes=0 max-size-time=0"); }
@@ -159,6 +162,12 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     const gint64 running = runningNow(pad);
     if (!buffer || running < 0) return GST_PAD_PROBE_OK;
+    // The adaptive rate lowers the lock's period; its tolerance stays the
+    // configured frame's, so frames at the old pace fall early and are dropped.
+    if (clock->gate) {
+        clock->gate->delivered.fetch_add(1);
+        if (const gint64 period = clock->gate->periodNs.load(); period > 0) clock->lock.periodNs = period;
+    }
     const gint64 headerPts = GST_BUFFER_PTS_IS_VALID(buffer) ? gint64(GST_BUFFER_PTS(buffer)) : -1;
     if (headerPts >= 0 && headerPts == clock->headerPts) ++clock->repeatedPts;
     if (headerPts >= 0) clock->headerPts = headerPts;
@@ -203,6 +212,7 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     }
     clock->previous = frame.running;
     clock->lastPassed = running;
+    if (clock->gate) clock->gate->kept.fetch_add(1);
     clock->lastWasRepeat = same;
     // The compositor owns a handful of stream buffers (KWin offers 2-4) and
     // skips a frame whenever none is free. Copy the frame out here, on the
@@ -222,6 +232,20 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     return GST_PAD_PROBE_OK;
 }
 
+GstPadProbeReturn RecordingPipeline::gateFrame(GstPad*, GstPadProbeInfo* info, gpointer user) {
+    auto* gate = static_cast<RateGate*>(user);
+    GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    if (!buffer || !GST_BUFFER_PTS_IS_VALID(buffer)) return GST_PAD_PROBE_OK;
+    gate->delivered.fetch_add(1);
+    // At a lowered rate a frame is kept once a period has passed since the
+    // last kept one, less half a configured frame for the grab's jitter.
+    const gint64 pts = gint64(GST_BUFFER_PTS(buffer));
+    if (gate->lastKept >= 0 && pts >= gate->lastKept && pts - gate->lastKept < gate->periodNs.load() - gate->toleranceNs) return GST_PAD_PROBE_DROP;
+    gate->lastKept = pts;
+    gate->kept.fetch_add(1);
+    return GST_PAD_PROBE_OK;
+}
+
 bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure) {
     const QSize encoded = options.crop.isValid() ? options.crop.size() : options.rect.size();
     const int kbps = bitrateKbps(encoded, options.fps);
@@ -231,15 +255,15 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     // each frame's header time instead of stamping its arrival.
     const QString frameSource = options.pipewireNode && qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "legacy" ? frameClockSource() : QString();
     if (options.pipewireNode) {
-        // The stream arrives at the compositor's pace; videorate holds the
-        // configured frame rate, and a region is cropped out of the shared
-        // monitor (crop values are stream-relative) before the colour
-        // conversion, so only the recorded pixels are converted.
+        // The stream arrives at the compositor's pace; videorate after the
+        // conversion holds the configured frame rate, and a region is cropped
+        // out of the shared monitor (crop values are stream-relative) before
+        // the colour conversion, so only the recorded pixels are converted.
         // Lab A/B: PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS replaces the request
         // (for example a rate above the output's to exercise the fallback).
         const QString labCaps = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS");
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
-            + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
+            + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue();
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
         description += convert();
     } else {
@@ -248,14 +272,14 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // output contiguously regardless, which shortened a recording by every
         // skipped frame (a 10 s capture played in 7 s on a three-monitor X11
         // desktop). videorate fills the gaps with repeats, as on Wayland.
-        const QString rate = QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
-        if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1").arg(options.window).arg(options.fps) + captureQueue() + rate + convert();
-        else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps) + captureQueue() + rate + convert();
+        if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1").arg(options.window).arg(options.fps) + captureQueue() + convert();
+        else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps) + captureQueue() + convert();
     }
     // The pause probes sit on the encoders' sink pads (raw frames and samples):
     // dropping encoded buffers would leave P-frames whose references are gone,
     // which strict decoders (OpenH264 on Fedora) refuse while FFmpeg's conceals.
-    description += QStringLiteral(" ! video/x-raw,format=%1").arg(encoderFormat(encoder)) + encodeQueue() + QStringLiteral(" ! %1 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%2")
+    // videorate after the conversion holds the configured rate for both sources.
+    description += QStringLiteral(" ! videorate ! video/x-raw,format=%1,framerate=%2/1").arg(encoderFormat(encoder)).arg(options.fps) + encodeQueue() + QStringLiteral(" ! %1 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%2")
         .arg(encoderDescription(encoder, kbps, options.fps, encoded), shellQuote(options.output));
     if (options.audio && !audioEncoder.isEmpty())
         description += QStringLiteral(" pulsesrc name=asrc device=%1 ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2 ! %2 name=aenc ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.")
@@ -273,6 +297,12 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     // =arrival: raw arrival times (the default before #6), for lab A/B runs.
     frameClock_.locked = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
     frameClock_.lock = frameLock(options.fps);
+    frameClock_.gate = &gate_;
+    gate_.periodNs = GST_SECOND / options.fps; gate_.delivered = 0; gate_.kept = 0; gate_.lastKept = -1; gate_.toleranceNs = GST_SECOND / options.fps / 2;
+    // Lab A/B: PUTGD_RECORD_ADAPTIVE_RATE=off keeps the configured rate whatever the load.
+    rate_ = AdaptiveRate(options.fps, options.adaptive && qEnvironmentVariable("PUTGD_RECORD_ADAPTIVE_RATE") != "off", !options.pipewireNode);
+    rateClock_.invalidate();
+    rateChange_ = {};
     clockName_.clear();
     if (!frameSource.isEmpty()) {
         // The monotonic system clock is the compositors' frame clock, so frame
@@ -286,6 +316,10 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         if (pad) gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::stampFrame, &frameClock_, nullptr);
         if (pad) gst_object_unref(pad);
         if (source) gst_object_unref(source);
+    } else if (GstElement* source = gst_bin_get_by_name(GST_BIN(pipeline), "src")) {
+        // ximagesrc (and the legacy PipeWire lab mode): the rate gate drops frames before the capture queue.
+        if (GstPad* pad = gst_element_get_static_pad(source, "src")) { gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &RecordingPipeline::gateFrame, &gate_, nullptr); gst_object_unref(pad); }
+        gst_object_unref(source);
     }
     debugLog("pipeline: " + description);
     auto attach = [&](const char* element, Rebase& rebase) {
@@ -410,8 +444,16 @@ RecordingStorage RecordingPipeline::storage() const {
 qint64 RecordingPipeline::framesEncoded() const { return video_.passed.load(); }
 qint64 RecordingPipeline::framesDropped() const { return dropped_.load(); }
 QJsonObject RecordingPipeline::status() const {
-    return {{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_},
+    QJsonObject status{{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_},
             {"framesEncoded", double(framesEncoded())}, {"framesDropped", double(framesDropped())}};
+    // What the source delivered (a compositor sends what changed, at most its
+    // own pace, #983), the frames kept for the clip before videorate's repeats,
+    // the rate kept now and, after the adaptive rate lowered it, when and why.
+    status["framesDelivered"] = double(gate_.delivered.load());
+    status["framesCaptured"] = double(gate_.kept.load());
+    status["frameRate"] = rate_.current();
+    if (!rateChange_.isEmpty()) status["frameRateReduced"] = rateChange_;
+    return status;
 }
 void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
     if (!pipeline_) { done({"recording_state", "Nothing is recording", {}}, 0); return; }
@@ -512,6 +554,7 @@ void RecordingPipeline::poll() {
     }
     gst_object_unref(bus);
     if (budgetSignalled_ || stopping_) return;
+    observeRate();
     const bool byteLimit = budget_ > 0 && fileBytes() >= budget_;
     // Refresh at a byte stop too: simultaneous pressure must name the disk,
     // rather than choosing a stale sample just inside the periodic interval.
@@ -527,6 +570,31 @@ void RecordingPipeline::poll() {
         }
     }
     if (byteLimit) { budgetSignalled_ = true; emit budgetReached({}); }
+}
+void RecordingPipeline::observeRate() {
+    if (!rate_.enabled()) return;
+    if (timeline_.paused()) { rateClock_.invalidate(); return; }
+    auto mark = [this] { rateMarks_ = {gate_.delivered.load(), dropped_.load(), cpuProbe_ ? cpuProbe_() : readCpu()}; rateClock_.start(); };
+    if (!rateClock_.isValid()) { mark(); return; }
+    if (rateClock_.elapsed() < 1000) return;
+    const gint64 elapsed = rateClock_.nsecsElapsed();
+    const auto before = rateMarks_;
+    mark();
+    AdaptiveRate::Window window;
+    window.durationNs = elapsed;
+    window.sourceFrames = rateMarks_.delivered - before.delivered;
+    window.leaked = rateMarks_.leaked - before.leaked;
+    cpuShares(before.cpu, rateMarks_.cpu, elapsed, window.systemBusy, window.recorderCores);
+    const int from = rate_.current();
+    const QString against = rate_.judge(window);
+    const bool lowered = rate_.observe(window);
+    debugLog(QStringLiteral("rate window: %1 fps, %2 delivered and %3 leaked in %4 ms, machine %5% busy, recorder %6 cores%7")
+                 .arg(from).arg(window.sourceFrames).arg(window.leaked).arg(elapsed / 1000000).arg(window.systemBusy * 100, 0, 'f', 0).arg(window.recorderCores, 0, 'f', 2)
+                 .arg(against.isEmpty() ? QString() : ", against: " + against));
+    if (!lowered) return;
+    gate_.periodNs.store(GST_SECOND / rate_.current());
+    rateChange_ = {{"from", from}, {"to", rate_.current()}, {"reason", rate_.reason()}, {"atUs", double(retainedUs())}};
+    debugLog(QStringLiteral("rate lowered from %1 to %2 fps (%3)").arg(from).arg(rate_.current()).arg(rate_.reason()));
 }
 bool RecordingPipeline::relaunchThrottled() {
     tearDown();

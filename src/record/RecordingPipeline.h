@@ -1,4 +1,5 @@
 #pragma once
+#include "AdaptiveRate.h"
 #include "PauseTimeline.h"
 #include "RecordingStorage.h"
 #include "WaylandAcquisition.h"
@@ -19,7 +20,7 @@
 namespace putgd::record {
 // One live GStreamer capture: ximagesrc (root rectangle or window) or
 // pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → leaky
-// capture queue → [videorate, videocrop] → videoconvert → queue → H.264
+// capture queue → [videocrop] → videoconvert → videorate → queue → H.264
 // (first encoder that negotiates) [+ pulsesrc monitor → AAC] → Matroska
 // working clip. Capture, conversion and encoding run in separate threads;
 // the capture queue leaks its oldest frame rather than block the source. Pause drops buffers and rebases timestamps at the encoder
@@ -38,6 +39,7 @@ public:
         quint32 pipewireNode = 0;
         QRect crop;                  // optional stream-relative crop for region recording
         int fps = 30;
+        bool adaptive = true;        // lower the rate when the machine cannot keep up (AdaptiveRate)
         bool audio = false;
         QString audioDevice;         // PulseAudio/PipeWire source name (sink monitor)
         QString output;              // working clip path (.mkv)
@@ -66,17 +68,28 @@ public:
     // to leak because conversion or encoding fell behind the frame rate.
     qint64 framesEncoded() const;
     qint64 framesDropped() const;
+    // The rate frames are kept at now: the configured one until the adaptive
+    // rate lowers it. The clip keeps the configured rate (videorate repeats).
+    int frameRate() const { return rate_.current(); }
     QJsonObject status() const;
 signals:
     void failed(putgd::Error);
     void budgetReached(QJsonObject details);
 private:
     friend class RecordingStorageContract;
+    friend class RecordingPipelineThroughput;
+    // In-process CPU sample seam for the adaptive-rate contract; /proc otherwise.
+    std::function<CpuSample()> cpuProbe_;
     // In-process storage fault seam; never exposed through helper commands or environment.
     std::function<RecordingStorage()> storageProbe_;
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
     struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> passed{0}; Spread lateness; AudioClockGuard clock; };
+    // The rate gate before the capture queue: frames the source delivered,
+    // frames kept, and the period kept frames are spaced by (the configured
+    // frame's until the adaptive rate lowers it). ximagesrc's frames pass
+    // through gateFrame; a PipeWire stream's cadence lock takes the period.
+    struct RateGate { std::atomic<gint64> periodNs{0}, delivered{0}, kept{0}; gint64 lastKept = -1, toleranceNs = 0; };
     // Lab statistics: repeated compositor times (KWin stamps the output's last
     // presentation, so frames rendered between two presentations share one),
     // distinct frame contents (one sampled row hashed) and arrival intervals.
@@ -90,9 +103,12 @@ private:
     // advancing through videorate.
     // A passed repeat must not cost a changed frame its slot: a change arriving
     // early after a repeat takes the next slot instead of being dropped.
-    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
+    struct FrameClock { RateGate* gate = nullptr; gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
+    static GstPadProbeReturn gateFrame(GstPad*, GstPadProbeInfo*, gpointer);
+    // One adaptive-rate window a second while recording (not paused or stopping).
+    void observeRate();
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).
     bool launch(const Options&, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure);
     void poll();
@@ -108,6 +124,11 @@ private:
     std::vector<std::thread> drains_;
     quint64 stops_ = 0;
     FrameClock frameClock_;
+    RateGate gate_;
+    AdaptiveRate rate_;
+    QElapsedTimer rateClock_;
+    struct RateMarks { gint64 delivered = 0, leaked = 0; CpuSample cpu; } rateMarks_;
+    QJsonObject rateChange_;
     std::atomic<gint64> dropped_{0};
     QString clockName_;
     gint64 frameDurationNs_ = 0;

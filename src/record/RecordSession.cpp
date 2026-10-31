@@ -527,6 +527,7 @@ void RecordSession::begin(Reply reply) {
     options.window = resolved_.window;
     if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
     options.fps = config_.fps;
+    options.adaptive = config_.adaptiveFps;
     options.audio = config_.audio.system && !config_.silent();
     options.audioDevice = "@DEFAULT_MONITOR@";
     options.output = workingClip_;

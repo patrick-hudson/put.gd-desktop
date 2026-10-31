@@ -221,6 +221,17 @@ private slots:
 #endif
   LocalServer second(settings,ops,history);QCOMPARE(second.listen(d.filePath("runtime")).error.code,QString("session_running"));
  }
+ void recordingFrameRateTogglesThroughTheCli() {
+  // #984: Settings, session settings.patch, putgd-cli and MCP share one key.
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());
+  QCOMPARE(settings.snapshot().recordingFrameRate,30);
+  QProcess client;const auto patch=[&](const QString& rate){client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"settings.patch",QString("{\"patch\":{\"preferences\":{\"recordingFrameRate\":%1}},\"expectedRevision\":\"%2\"}").arg(rate,settings.revision())});};
+  const auto reply=[&]{return QJsonDocument::fromJson(client.readAllStandardOutput()).object();};
+  patch("60");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QVERIFY(reply()["ok"].toBool());QCOMPARE(settings.snapshot().recordingFrameRate,60);
+  patch("45");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(reply()["error"].toObject()["code"].toString(),QString("config_invalid"));QCOMPARE(settings.snapshot().recordingFrameRate,60);
+  patch("30");PUTGD_TRY_COMPARE(client.state(),QProcess::NotRunning);QVERIFY(reply()["ok"].toBool());QCOMPARE(settings.snapshot().recordingFrameRate,30);
+  QCOMPARE(source.reads,0);
+ }
  void regionSelectionModeTogglesThroughTheCli() {
   // #629: Settings, session settings.patch, putgd-cli and MCP share one key.
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));PUTGD_TRY_VERIFY(ops.ready());

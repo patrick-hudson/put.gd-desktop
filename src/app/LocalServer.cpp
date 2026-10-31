@@ -148,7 +148,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // Screen recording: one session, backend-neutral; the service validates semantics.
  if(method=="recording.capabilities") {if(!p.isEmpty())reply(invalid(),{});else operations_.recordingCommand("capabilities",{},reply);return;}
  if(method=="recording.prepare") {
-  if(!fields(p,{"target","format"},{"codec","fps","audio","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())){reply(invalid(),{});return;}
+  if(!fields(p,{"target","format"},{"codec","fps","adaptiveFps","audio","maxEdge"})||!p["target"].isObject()||!string(p,"format",8)||(p.contains("codec")&&!string(p,"codec",8))||(p.contains("audio")&&!p["audio"].isObject())||(p.contains("adaptiveFps")&&!p["adaptiveFps"].isBool())){reply(invalid(),{});return;}
   operations_.recordingCommand("prepare",p,reply);return;
  }
  if(QStringList{"recording.start","recording.pause","recording.resume","recording.stop","recording.cancel","recording.inspect","recording.raise"}.contains(method)) {

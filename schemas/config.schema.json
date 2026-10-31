@@ -906,6 +906,14 @@
           "default": "live",
           "description": "How region capture shows the screen while you drag. live keeps the desktop updating (an open menu must close first); screenshot_first captures every monitor before the selector opens and cuts the region from that frozen frame, so open menus are included. Recording region selection is always live. Omitted means live."
         },
+        "recordingFrameRate": {
+          "enum": [
+            30,
+            60
+          ],
+          "default": 30,
+          "description": "Frames per second for screen recordings that don't ask for a rate. 60 is smoother and takes about twice the conversion and encoding work; while a recording runs, put.gd lowers the rate (60 to 30, 30 to 15) when the computer can't keep up. Omitted means 30."
+        },
         "unlockCredentialsAtStartup": {
           "type": "boolean",
           "default": true,

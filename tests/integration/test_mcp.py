@@ -367,6 +367,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'recording.prepare', {'target': {'kind': 'monitor', 'identity': 'DP-3'}, 'format': 'gif', 'maxEdge': 640}),
                     ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'webm', 'codec': 'vp9'},
                      'recording.prepare', {'target': {'kind': 'desktop'}, 'format': 'webm', 'codec': 'vp9'}),
+                    # #984: 60 fps without the adaptive back-off (lab A/B).
+                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'fps': 60, 'adaptive_fps': False},
+                     'recording.prepare', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'fps': 60, 'adaptiveFps': False}),
                     ('control_recording', {'id': 'synthetic-operation', 'command': 'start'}, 'recording.start', {'id': 'synthetic-operation'}),
                     ('control_recording', {'id': 'synthetic-operation', 'command': 'pause'}, 'recording.pause', {'id': 'synthetic-operation'}),
                     ('control_recording', {'id': 'synthetic-operation', 'command': 'resume'}, 'recording.resume', {'id': 'synthetic-operation'}),
@@ -448,6 +451,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                                    ('prepare_recording', {'target': {'kind': 'region', 'rect': [1, 2, 3]}, 'format': 'mp4'}),
                                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mkv'}),
                                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'fps': 0}),
+                                   ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'adaptive_fps': 'no'}),
                                    ('control_recording', {'id': 'synthetic-operation', 'command': 'explode'}),
                                    ('select_recording_region', {'id': 'synthetic-operation', 'rect': [1, 2, 0, 4]}),
                                    ('select_recording_region', {'id': 'synthetic-operation', 'rect': [1, 2, 3]}),

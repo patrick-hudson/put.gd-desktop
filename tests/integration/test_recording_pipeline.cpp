@@ -10,6 +10,7 @@
 #include <gst/gst.h>
 #include <algorithm>
 #include <cstdlib>
+#include <unistd.h>
 #include <vector>
 
 namespace putgd::record {
@@ -111,6 +112,59 @@ private slots:
         QVERIFY2(double(clip.frames) / (double(clip.durationNs) / GST_SECOND) >= 50, qPrintable(summary));
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
         QVERIFY2(dropped <= encoded / 10, qPrintable(summary));
+        QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
+    }
+    // #984: a machine that stays busy while the recorder takes a core and more
+    // lowers the rate from 60 to 30 after the warm-up and three windows. The
+    // gate keeps every other grab, videorate repeats them, and the clip keeps
+    // 60 frames a second on the grid for the whole recording.
+    void aBusyMachineLowersTheRateAndTheClipKeepsItsGrid() {
+        QStringList encoders;
+        for (const char* name : {"x264enc", "openh264enc"}) if (GstElementFactory* factory = gst_element_factory_find(name)) { encoders << name; gst_object_unref(factory); }
+        if (encoders.isEmpty()) QSKIP("No CPU H.264 encoder is installed");
+        QTemporaryDir dir;
+        RecordingPipeline pipeline;
+        // Each window: the machine 98% busy, this process two cores.
+        const long ticks = sysconf(_SC_CLK_TCK);
+        CpuSample busy{0, 0, 0};
+        pipeline.cpuProbe_ = [&busy, ticks] { busy.totalTicks += 100; busy.idleTicks += 2; busy.processTicks += 2 * ticks; return busy; };
+        RecordingPipeline::Options options;
+        options.rect = QRect(0, 0, 640, 480);
+        options.fps = 60;
+        options.output = dir.filePath("working.mkv");
+        options.encoders = encoders;
+        QSignalSpy failed(&pipeline, &RecordingPipeline::failed);
+        QVERIFY2(!pipeline.start(options), "start");
+        QCOMPARE(pipeline.frameRate(), 60);
+        QCOMPARE(pipeline.status()["frameRate"].toInt(), 60);
+        QVERIFY(!pipeline.status().contains("frameRateReduced"));
+        // A first mark, two warm-up windows and three busy ones: about six seconds.
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(pipeline.frameRate() == 30, 12000);
+        QCOMPARE(failed.size(), 0);
+        const auto reduced = pipeline.status()["frameRateReduced"].toObject();
+        QCOMPARE(reduced["from"].toInt(), 60);
+        QCOMPARE(reduced["to"].toInt(), 30);
+        // The busy machine is the cue here; a loaded runner may leak frames first.
+        QVERIFY2(QStringList({"cpu", "encoder", "capture"}).contains(reduced["reason"].toString()), qPrintable(reduced["reason"].toString()));
+        QVERIFY(reduced["atUs"].toDouble() > 3e6);
+        const auto before = pipeline.status();
+        PUTGD_COMPARE_STEADY(failed.size(), 0, 3000);
+        const auto after = pipeline.status();
+        const double delivered = after["framesDelivered"].toDouble() - before["framesDelivered"].toDouble();
+        const double captured = after["framesCaptured"].toDouble() - before["framesCaptured"].toDouble();
+        bool stopped = false; Error stopError; qint64 retained = 0;
+        pipeline.stop([&](Error error, qint64 durationUs) { stopped = true; stopError = error; retained = durationUs; });
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(stopped, RecordingPipeline::stopDrainMs + 2000);
+        QVERIFY2(!stopError, qPrintable(stopError.message));
+        const Clip clip = inspect(options.output, 60);
+        const QString summary = QStringLiteral("after the step: delivered %1, captured %2 in 3 s; clip frames %3, duration %4 ms, irregular %5, retained %6 ms")
+            .arg(delivered).arg(captured).arg(clip.frames).arg(clip.durationNs / 1000000).arg(clip.irregular).arg(retained / 1000);
+        qInfo("%s", qPrintable(summary));
+        // The source still grabs at 60; the gate keeps half of it.
+        QVERIFY2(delivered >= 150, qPrintable(summary));
+        QVERIFY2(captured >= delivered * 0.4 && captured <= delivered * 0.6, qPrintable(summary));
+        QVERIFY2(double(clip.frames) / (double(clip.durationNs) / GST_SECOND) >= 50, qPrintable(summary));
+        QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
         QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
     }
 };

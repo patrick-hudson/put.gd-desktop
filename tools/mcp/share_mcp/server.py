@@ -331,13 +331,15 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=effect)
     async def prepare_recording(target: Json, format: str, codec: str | None = None, fps: int | None = None,
-                                system_audio: bool = False, max_edge: int | None = None) -> Json:
-        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]}, format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60, system_audio (MP4/WebM only; the computer's playback, never a microphone) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready. Refused with disk_space_insufficient (details freeBytes, reserveBytes, requiredBytes, shortfallBytes) when the disk can't hold a recording that lasts; nothing is accepted then."""
+                                system_audio: bool = False, max_edge: int | None = None, adaptive_fps: bool | None = None) -> Json:
+        """Create one recording session in the ready state: target {kind: monitor|desktop|region|window, identity?, rect?: [x,y,w,h]}, format mp4|webm|gif|webp, optional codec (mp4: h264|h265, webm: vp9), fps 1-60 (omitted: preferences.recordingFrameRate, 30 by default), adaptive_fps (default true: the recorder lowers the rate, 60 to 30 to 15, when the machine can't keep up; get_recording progress then shows frameRate and frameRateReduced {from, to, reason, atUs}), system_audio (MP4/WebM only; the computer's playback, never a microphone) and max_edge to downscale the output. Shows the ready bounds/controls and may ask the user for OS consent; nothing is captured until control_recording start. Returns recordingId = operationId; poll get_recording until state is ready. Refused with disk_space_insufficient (details freeBytes, reserveBytes, requiredBytes, shortfallBytes) when the disk can't hold a recording that lasts; nothing is accepted then."""
         if not safe_recording_target(target) or format not in RECORDING_FORMATS:
             return invalid()
         if codec is not None and codec not in RECORDING_CODECS:
             return invalid()
         if fps is not None and (type(fps) is not int or not 1 <= fps <= 60):
+            return invalid()
+        if adaptive_fps is not None and type(adaptive_fps) is not bool:
             return invalid()
         if type(system_audio) is not bool or (max_edge is not None and (type(max_edge) is not int or not 16 <= max_edge <= 8192)):
             return invalid()
@@ -346,6 +348,8 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['codec'] = codec
         if fps is not None:
             params['fps'] = fps
+        if adaptive_fps is not None:
+            params['adaptiveFps'] = adaptive_fps
         if system_audio:
             params['audio'] = {'system': True}
         if max_edge is not None:
