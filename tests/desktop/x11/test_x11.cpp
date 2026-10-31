@@ -232,18 +232,24 @@ private slots:
    QTest::mousePress(w,Qt::LeftButton,Qt::NoModifier,QPoint(10,20));QTest::mouseMove(w,QPoint(60,70));
    const auto dragging=rendered();QCOMPARE(dragging.pixelColor(30,40).alpha(),0);QCOMPARE(dragging.pixelColor(200,200).alpha(),0);QCOMPARE(dragging.pixelColor(900,900).alpha(),0);QCOMPARE(dragging.pixelColor(10,20),QColor(Qt::black));QCOMPARE(dragging.pixelColor(11,21),QColor(Qt::white));
    // Observe actual queued paints and backing pixels: render() would repaint
-   // the full widget and hide stale strokes or incomplete damage. Full damage
-   // is intentional: the compositor may sample a newer, larger outline.
+   // the full widget and hide stale strokes or incomplete damage. Damage is
+   // partial (#6): the old and the new outline strips, never the interior or
+   // the whole monitor, so a drag costs a few strips per pointer event.
    putgd::test::settle(20);RegionPaintProbe paints;w->installEventFilter(&paints);
    auto* connection=xcb_connect(nullptr,nullptr);
    auto backing=[&]{QImage image;auto* reply=xcb_get_image_reply(connection,xcb_get_image(connection,XCB_IMAGE_FORMAT_Z_PIXMAP,w->winId(),0,0,w->width(),w->height(),~0u),nullptr);
     if(reply&&reply->depth==32&&xcb_get_image_data_length(reply)>=w->width()*w->height()*4){image=QImage(xcb_get_image_data(reply),w->width(),w->height(),w->width()*4,QImage::Format_ARGB32).copy();}free(reply);return image;};
+   // The window's initial paint after show may still be pending: let one
+   // paint of the unchanged selection consume it before measuring damage.
+   QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);paints.painted={};paints.count=0;
+   auto regionText=[&]{QStringList parts;for(const QRect& r:paints.painted)parts<<QStringLiteral("%1,%2 %3x%4").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height());return QStringLiteral("%1 paints: %2").arg(paints.count).arg(parts.join("; ")).toUtf8();};
    QTest::mouseMove(w,QPoint(90,90));PUTGD_TRY_VERIFY(paints.count>0);
-   QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
+   // QRegion::contains(QRect) only tests overlap: subtract to prove the surface was not fully repainted.
+   QVERIFY2(!QRegion(w->rect()).subtracted(paints.painted).isEmpty(),regionText());QVERIFY2(!paints.painted.contains(QPoint(30,40)),regionText());QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
    // The paint reaches the X server after Qt flushes it; wait for the frame there.
    QImage grown;PUTGD_TRY_VERIFY(!(grown=backing()).isNull()&&grown.pixelColor(59,40).alpha()==0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::black));QCOMPARE(grown.pixelColor(88,40),QColor(Qt::white));
    paints.painted={};paints.count=0;QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);
-   QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
+   QVERIFY2(!QRegion(w->rect()).subtracted(paints.painted).isEmpty(),regionText());QVERIFY2(!paints.painted.contains(QPoint(30,40)),regionText());QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
    // No scrim (#629): the old edge is cleared, and outside stays transparent.
    QImage shrunk;PUTGD_TRY_VERIFY(!(shrunk=backing()).isNull()&&shrunk.pixelColor(89,40).alpha()==0);QCOMPARE(shrunk.pixelColor(200,200).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
    w->removeEventFilter(&paints);xcb_disconnect(connection);

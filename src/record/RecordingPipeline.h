@@ -1,6 +1,7 @@
 #pragma once
 #include "PauseTimeline.h"
 #include "RecordingStorage.h"
+#include "WaylandAcquisition.h"
 #include <QElapsedTimer>
 #include "core/Error.h"
 #include <QJsonObject>
@@ -17,9 +18,11 @@
 
 namespace putgd::record {
 // One live GStreamer capture: ximagesrc (root rectangle or window) or
-// pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → H.264
+// pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → leaky
+// capture queue → [videorate, videocrop] → videoconvert → queue → H.264
 // (first encoder that negotiates) [+ pulsesrc monitor → AAC] → Matroska
-// working clip. Pause drops buffers and rebases timestamps at the encoder
+// working clip. Capture, conversion and encoding run in separate threads;
+// the capture queue leaks its oldest frame rather than block the source. Pause drops buffers and rebases timestamps at the encoder
 // inputs by one paused interval shared by both tracks (#130), so the clip
 // timeline excludes paused time; the retained duration is the last rebased
 // video timestamp plus one frame. A PipeWire stream runs
@@ -59,6 +62,10 @@ public:
     qint64 fileBytes() const;
     QString encoder() const { return encoder_; }
     QString audioEncoder() const { return audioEncoder_; }
+    // Frames that reached the video encoder, and frames the capture queue had
+    // to leak because conversion or encoding fell behind the frame rate.
+    qint64 framesEncoded() const;
+    qint64 framesDropped() const;
     QJsonObject status() const;
 signals:
     void failed(putgd::Error);
@@ -69,11 +76,25 @@ private:
     std::function<RecordingStorage()> storageProbe_;
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
-    struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; Spread lateness; AudioClockGuard clock; };
-    struct FrameClock { gint64 previous = -1, arrival = 0; bool compositorTimes = false; Spread age; };
+    struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> passed{0}; Spread lateness; AudioClockGuard clock; };
+    // Lab statistics: repeated compositor times (KWin stamps the output's last
+    // presentation, so frames rendered between two presentations share one),
+    // distinct frame contents (one sampled row hashed) and arrival intervals.
+    // A frame identical to the previous kept one (KWin records the same
+    // presentation again after a cursor move or a second render) is dropped
+    // before it is copied; the rest take cadence-locked stamps. lastKept holds
+    // the previous kept copy for the comparison and is released at teardown.
+    // An identical frame still passes once no frame has passed for a period:
+    // pipewiresrc resends the last frame of a static screen (keepalive-time),
+    // and those resends keep the clip's timeline and the retained duration
+    // advancing through videorate.
+    // A passed repeat must not cost a changed frame its slot: a change arriving
+    // early after a repeat takes the next slot instead of being dropped.
+    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
-    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, QString& failure);
+    // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).
+    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, bool unthrottled, QString& failure);
     void poll();
     void tearDown();
     RecordingStorage storage() const;
@@ -87,9 +108,17 @@ private:
     std::vector<std::thread> drains_;
     quint64 stops_ = 0;
     FrameClock frameClock_;
+    std::atomic<gint64> dropped_{0};
     QString clockName_;
     gint64 frameDurationNs_ = 0;
     QString encoder_, audioEncoder_, output_;
+    // The options of the running capture and whether its PipeWire stream was
+    // negotiated unthrottled: a compositor that refuses that request after the
+    // pipeline reached PLAYING fails the stream later, and the capture is then
+    // relaunched with the plain request as long as no frame has been encoded.
+    Options options_;
+    bool unthrottled_ = false;
+    bool relaunchThrottled();
     qint64 budget_ = 0;
     QElapsedTimer storageClock_;
     QJsonObject diskStop_;

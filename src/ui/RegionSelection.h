@@ -6,6 +6,7 @@
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QPainter>
+#include <QRegion>
 #include <QPalette>
 #include <QScreen>
 #include <QWidget>
@@ -14,6 +15,8 @@
 #include <functional>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QDateTime>
+#include <QFile>
 
 namespace putgd {
 // Native capture helpers keep the desktop family and its text enlargement.
@@ -204,6 +207,25 @@ inline void paintRegionPill(QPainter& painter,const QRect& box,const QString& te
     painter.drawText(box,Qt::AlignCenter,text);
     painter.restore();
 }
+// The pixels paintSelectionOutline writes for a selection in surface-local
+// coordinates (its 3 px rings) with one pixel of margin for fractional edges.
+// Selectors repaint only this and the pills: a full-surface repaint on every
+// pointer event is what made dragging lag behind the pointer (#6).
+inline QRegion selectionOutlineArea(const QRectF& local){
+    if(local.isEmpty())return {};
+    const QRect outer=local.toAlignedRect().adjusted(-1,-1,1,1);
+    const QRect inner=outer.adjusted(5,5,-5,-5);
+    return inner.isEmpty()?QRegion(outer):QRegion(outer).subtracted(QRegion(inner));
+}
+// Everything one selector state paints on a surface: the outline, the hint
+// pill while it shows and the size label when this display carries it. The
+// union of the previous and next state is the damage one update needs.
+inline QRegion regionChromeArea(const QRect& bounds,const QFontMetrics& metrics,const QRectF& local,const QString& size,bool hint,bool label){
+    QRegion area=selectionOutlineArea(local).intersected(bounds);
+    if(hint){const auto box=regionHintBox(bounds,metrics,regionHint(),local);if(!box.isEmpty())area+=box.adjusted(-1,-1,1,1);}
+    if(label){const auto box=regionSizeBox(bounds,metrics,size,local);if(!box.isEmpty())area+=box.adjusted(-1,-1,1,1);}
+    return area;
+}
 // Hint, then size label, in one surface's local coordinates. The hint shows
 // only on the active display; the label only on the display chosen above.
 inline void paintRegionChrome(QPainter& painter,const QRect& bounds,const QRectF& selection,const QString& size,bool hint,qreal hintOpacity,bool label){
@@ -211,6 +233,26 @@ inline void paintRegionChrome(QPainter& painter,const QRect& bounds,const QRectF
     if(hint)paintRegionPill(painter,regionHintBox(bounds,metrics,regionHint(),selection),regionHint(),hintOpacity);
     if(label)paintRegionPill(painter,regionSizeBox(bounds,metrics,size,selection),size);
 }
+// Lab diagnostics: PUTGD_REGION_DEBUG_LOG=<file> appends one summary line per
+// selection (pointer motions, paints or presents, timing). Unset, nothing is
+// written; the counters themselves cost a few increments per event.
+inline void regionDebugLog(const QString& line){
+    static const QString path=qEnvironmentVariable("PUTGD_REGION_DEBUG_LOG");
+    if(path.isEmpty())return;
+    QFile file(path);
+    if(!file.open(QIODevice::Append|QIODevice::Text))return;
+    file.write((QDateTime::currentDateTime().toString(Qt::ISODateWithMs)+QLatin1Char(' ')+line+QLatin1Char('\n')).toUtf8());
+}
+// Qt selectors: pointer moves while dragging, paint events and their cost.
+struct RegionPaintStats {
+    qint64 moves=0,paints=0;
+    double paintSumMs=0,paintMaxMs=0;
+    void painted(double ms){++paints;paintSumMs+=ms;paintMaxMs=std::max(paintMaxMs,ms);}
+    QString summary(const QString& selector)const{
+        return QStringLiteral("%1: %2 moves, %3 paints, paint %4/%5 ms (avg/max)").arg(selector).arg(moves).arg(paints)
+            .arg(paints?paintSumMs/paints:0,0,'f',2).arg(paintMaxMs,0,'f',2);
+    }
+};
 // Drives the start-up hint's fade; repaint runs whenever its opacity changes.
 class RegionHintFade {
 public:

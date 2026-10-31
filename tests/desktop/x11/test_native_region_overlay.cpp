@@ -194,6 +194,41 @@ private slots:
   QVERIFY2(dark,"The outline needs opaque dark pixels to remain visible over white content");
   QVERIFY2(light,"The outline needs opaque light pixels to remain visible over dark content");
  }
+ void burstOfMotionsCoalescesIntoPacedPresents(){
+  // #6: a pointer reporting at 500-1000 Hz must not queue one monitor-sized
+  // redraw per event. Motions are coalesced into at most one present per
+  // display refresh, each present damaging only the strips that changed, and
+  // the outline still lands exactly where the last motion left it.
+  motion({100,400});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  motion({40,40});button(1,true);const auto releaseButton=qScopeGuard([&]{button(1,false);});motion({60,60});PUTGD_TRY_VERIFY(white({44,41}));
+  const auto before=overlay.stats();QVERIFY(before.presents>=1);QVERIFY(before.frameIntervalMs>=4&&before.frameIntervalMs<=33);
+  QElapsedTimer clock;clock.start();
+  const int burst=400;
+  for(int i=0;i<burst;++i){motion({200+i*2,150+i});if(i%50==49)QCoreApplication::processEvents();}
+  const qint64 burstMs=std::max<qint64>(1,clock.elapsed());
+  // The last motion, root (998,549), is logical (819,274.5) on the scaled right
+  // display: the left surface's bottom edge ends at y=275 (white row 273), the
+  // right surface's right edge at native x=998 (white columns 994-995, pen 2)
+  // and its bottom at native y=549 (white rows 545-546).
+  PUTGD_TRY_VERIFY(white({300,273}));PUTGD_TRY_VERIFY(white({994,300}));PUTGD_TRY_VERIFY(white({800,545}));
+  const auto after=overlay.stats();
+  QVERIFY2(after.motions-before.motions==burst,qPrintable(QString::number(after.motions-before.motions)));
+  // Presents are bounded by elapsed time at the refresh rate, plus one for the
+  // first motion of the burst and one for the final catch-up frame.
+  const qint64 presents=after.presents-before.presents;
+  const qint64 allowed=burstMs/after.frameIntervalMs+3;
+  QVERIFY2(presents>=1&&presents<=allowed,qPrintable(QStringLiteral("%1 presents for %2 motions in %3 ms at %4 ms frames").arg(presents).arg(burst).arg(burstMs).arg(after.frameIntervalMs)));
+  QVERIFY(presents<burst/4);
+  QVERIFY(after.fullRedraws==before.fullRedraws);
+  // Partial damage: the interior stays transparent, the first outline's right
+  // and bottom edges (x=57..59, y=57..59) are gone, and the shared left and
+  // top edges still show.
+  const auto interior=pixels({500,300});QVERIFY(interior.size()==4&&quint8(interior[3])==0);
+  const auto oldRight=pixels({58,50});QVERIFY(oldRight.size()==4&&quint8(oldRight[3])==0);
+  const auto oldBottom=pixels({50,58});QVERIFY(oldBottom.size()==4&&quint8(oldBottom[3])==0);
+  QVERIFY(white({41,200}));QVERIFY(white({300,41}));
+  button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
  void movingOutlineClearsPreviousPixels(){
   NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);motion({40,40});button(1,true);motion({1200,600});
   auto whiteCount=[&]{const auto bytes=pixels({1196,300},8);int count=0;for(int i=0;i+3<bytes.size();i+=4)if(quint8(bytes[i])==255&&quint8(bytes[i+1])==255&&quint8(bytes[i+2])==255&&quint8(bytes[i+3])==255)++count;return count;};
