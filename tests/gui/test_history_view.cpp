@@ -58,6 +58,7 @@
 #include <QTextLayout>
 #include <QScrollBar>
 #include <cmath>
+#include <future>
 #include <QSignalBlocker>
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -731,6 +732,20 @@ private slots:
   // Passing over the video on the way to the image asks only for the image.
   selectRow(table,1);putgd::test::settle(100);selectRow(table,0);PUTGD_TRY_VERIFY(!preview->pixmap().isNull());QCOMPARE(asked,QStringList{imageId});
   QVERIFY(QFileInfo(cleaned).isFile());PUTGD_TRY_VERIFY(!qvariant_cast<QImage>(table->model()->index(0,0).data(HistoryModel::ThumbnailRole)).isNull());
+  {
+   // The journal and preview reply can spell the same cache path differently
+   // (previews/ versus artifacts/../previews/). Hold the decoder so a redundant
+   // reread cannot hide a blank between the detail reply and its completion.
+   reloads.stop();std::promise<void> release;auto gate=release.get_future().share();std::atomic_bool entered=false;
+   fixture.session.background([gate,&entered](Error&){entered.store(true);gate.wait();return QJsonObject{};},&window,[](Error,QJsonObject){});
+   auto unblock=qScopeGuard([&]{release.set_value();});PUTGD_TRY_VERIFY(entered.load());
+   const auto alias=QFileInfo(cleaned).path()+"/./"+QFileInfo(cleaned).fileName();
+   {HistoryStore ledger(operations.databasePath());auto op=ledger.operation("synthetic-image-op");op.items[0].artifact.previewPath=alias;QVERIFY(!ledger.saveOperation(op));}
+   window.refresh();auto* details=window.findChild<QPlainTextEdit*>("historyDetails");
+   PUTGD_TRY_COMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object()["previewPath"].toString(),alias);
+   QVERIFY(!preview->pixmap().isNull());
+  }
+  reloads.start(150);
   // Reloads of the selection (every 150 ms here) keep the shown preview: it
   // never blanks or flashes "Preview unavailable" while they run.
   int blank=0;QElapsedTimer watched;watched.start();while(watched.elapsed()<800){if(preview->pixmap().isNull())++blank;putgd::test::settle(5);}QCOMPARE(blank,0);
@@ -820,16 +835,41 @@ private slots:
    PUTGD_TRY_VERIFY(readableStatus(window.findChild<QLabel*>("historyOutcome")->text()).contains("Shared link"));
    QVERIFY(!readableStatus(window.findChild<QLabel*>("historyOutcome")->text()).contains("Copy it again"));
   }
+ void failedUploadSavesDiagnosticsForThatOperation_data(){
+  QTest::addColumn<bool>("keepLocalCopy");
+  QTest::newRow("without-local-copy")<<false;
+  QTest::newRow("with-local-copy")<<true;
+ }
  void failedUploadSavesDiagnosticsForThatOperation(){
+  QFETCH(bool,keepLocalCopy);
   // #122: a failed row offers Save diagnostics for this upload, for that one operation.
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->failUpload=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
-  auto config=configuration(d.path());QTemporaryDir out;auto preferences=config["preferences"].toObject();preferences["diagnostics"]=QJsonObject{{"debugLogging",false},{"packageFolder",out.path()}};config["preferences"]=preferences;QVERIFY(settings.save(config,{}));
+  auto config=configuration(d.path());auto archive=config["archive"].toObject();archive["keepUploads"]=keepLocalCopy;config["archive"]=archive;QTemporaryDir out;auto preferences=config["preferences"].toObject();preferences["diagnostics"]=QJsonObject{{"debugLogging",false},{"packageFolder",out.path()}};config["preferences"]=preferences;QVERIFY(settings.save(config,{}));
   Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
   DiagnosticsBundles bundles(operations,d.filePath("state"));fixture.server.setDiagnosticsBundles(&bundles);QJsonArray notified;fixture.server.setDiagnosticsNotifications([&](const QJsonObject& saved){notified.append(saved);},[](const QString&){return Error{};});
   HistoryWindow window(fixture.session);window.show();auto* list=window.findChild<QListView*>("historyList");
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});PUTGD_TRY_COMPARE(provider->uploads.load(),1);PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   PUTGD_TRY_COMPARE(list->model()->rowCount(),1);PUTGD_TRY_VERIFY(list->model()->data(list->model()->index(0,0),HistoryModel::FailedRole).toBool());inspectRow(list,0);
-  auto* save=window.findChild<QPushButton*>("saveHistoryDiagnostics");QVERIFY(save);PUTGD_TRY_VERIFY(save->isVisible());QVERIFY(save->text()=="Save diagnostics…"||save->text().isEmpty());QCOMPARE(save->accessibleName(),QString("Save diagnostics for this upload"));QCOMPARE(save->property("visualRole").toString(),QString("quiet"));QVERIFY(!save->icon().isNull());auto* actions=window.findChild<QWidget*>("historyInspectorActions");QCOMPARE(save->parentWidget(),actions);QVERIFY(save->property("uiFlush").toBool());QVERIFY(window.findChild<QWidget*>("historyLinkRule")->isHidden());auto* retry=window.findChild<QPushButton*>("retryOperation");QCOMPARE(retry->height(),Ui::scaled(Ui::Metric::control));QCOMPARE(retry->width(),retry->parentWidget()->contentsRect().width()-retry->parentWidget()->layout()->contentsMargins().left()-retry->parentWidget()->layout()->contentsMargins().right());auto* rule=window.findChild<QWidget*>("historyActionsRule");PUTGD_TRY_COMPARE(rule->mapTo(&window,QPoint()).y()-actions->mapTo(&window,QPoint(0,actions->height())).y(),Ui::space(Ui::Space::m));
+  // The detail reply can reveal Local-copy settings after diagnostics becomes visible.
+  // Measure the footer after that reply, including the extra action when bytes weren't kept.
+  PUTGD_TRY_VERIFY(!window.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());
+  auto* save=window.findChild<QPushButton*>("saveHistoryDiagnostics");QVERIFY(save);
+  PUTGD_TRY_VERIFY(save->isVisible());
+  QVERIFY(save->text()=="Save diagnostics…"||save->text().isEmpty());
+  QCOMPARE(save->accessibleName(),QString("Save diagnostics for this upload"));
+  QCOMPARE(save->property("visualRole").toString(),QString("quiet"));QVERIFY(!save->icon().isNull());
+  auto* actions=window.findChild<QWidget*>("historyInspectorActions");
+  QCOMPARE(save->parentWidget(),actions);QVERIFY(save->property("uiFlush").toBool());
+  QVERIFY(window.findChild<QWidget*>("historyLinkRule")->isHidden());
+  auto* retry=window.findChild<QPushButton*>("retryOperation");
+  QCOMPARE(retry->height(),Ui::scaled(Ui::Metric::control));
+  PUTGD_TRY_COMPARE(retry->width(),retry->parentWidget()->contentsRect().width()-retry->parentWidget()->layout()->contentsMargins().left()-retry->parentWidget()->layout()->contentsMargins().right());
+  auto* localSettings=window.findChild<QPushButton*>("historyChangeLocalCopies");
+  QCOMPARE(localSettings->isHidden(),keepLocalCopy);
+  QWidget* lastAction=keepLocalCopy?actions:localSettings;
+  auto* rule=window.findChild<QWidget*>("historyActionsRule");
+  PUTGD_TRY_COMPARE(rule->mapTo(&window,QPoint()).y()-lastAction->mapTo(&window,QPoint(0,lastAction->height())).y(),Ui::space(Ui::Space::m));
+  if(!keepLocalCopy)QCOMPARE(localSettings->mapTo(&window,QPoint()).y()-actions->mapTo(&window,QPoint(0,actions->height())).y(),Ui::space(Ui::Space::s));
   save->click();PUTGD_TRY_COMPARE(notified.size(),1);
   const auto path=notified[0].toObject()["path"].toString();QCOMPARE(QFileInfo(path).absolutePath(),QFileInfo(out.path()).absoluteFilePath());QVERIFY(QFileInfo(path).isFile());QCOMPARE(notified[0].toObject()["operations"].toInt(),1);
   // The UI-driving path (ui.historySaveDiagnostics) selects the row by operation ID.

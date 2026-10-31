@@ -300,6 +300,11 @@ bool captureTrayMenus(const QString& output,QJsonArray& captures){
 }
 int main(int argc,char** argv){
  QApplication app(argc,argv);app.setApplicationName("putgd-ui-catalog");
+ // Settings renders the resident's disk reserve. Keep both disk inputs synthetic,
+ // just like the catalog's clock and build identity, regardless of the CI volume.
+ constexpr qint64 gib=1LL<<30;
+ ArtifactStore::setDiskForTesting(60*gib,100*gib);
+ auto resetDisk=qScopeGuard([]{ArtifactStore::setDiskForTesting(-1,-1);});
  // A steady text cursor: a blinking one would differ between otherwise identical captures.
  QApplication::setCursorFlashTime(0);
  // Offscreen renders show put.gd's own frame (header window controls,

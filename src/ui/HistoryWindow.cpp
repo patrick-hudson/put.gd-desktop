@@ -986,7 +986,9 @@ void HistoryWindow::loadSelectedItem(){
  // Remote deletion needs a settled confirmed upload and a provider that can delete exactly that target.
  {const auto caps=data["capabilities"].toObject();g->remove_->setVisible(HistoryModel::remoteDeletable(data)&&caps["delete"].toBool()&&caps["stat"].toBool()&&(caps["conditionalDelete"].toBool()||caps["versionAddressing"].toBool())&&!caps["deletionEffect"].toString().isEmpty());}
  if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")Ui::feedback(g->status_,"Superseded: this stored link may serve replacement content. Deletion still targets the original receipt.",true);else if(!g->sharingFeedback_.isEmpty())Ui::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);const auto previewPath=data["previewPath"].toString();
-  if(g->shownItemId_!=data["id"].toString()||g->shownPreviewPath_!=previewPath||!QFileInfo(previewPath).isFile()){g->shownItemId_.clear();g->shownPreviewPath_.clear();g->updatePreviewState();g->pendingPreviewPath_=previewPath;g->startPreview();}
+  // Cache replies use artifacts/../previews; older detail snapshots can use previews.
+  // Equivalent spellings must not clear the image while a redundant read is queued.
+  if(g->shownItemId_!=data["id"].toString()||QDir::cleanPath(g->shownPreviewPath_)!=QDir::cleanPath(previewPath)||!QFileInfo(previewPath).isFile()){g->shownItemId_.clear();g->shownPreviewPath_.clear();g->updatePreviewState();g->pendingPreviewPath_=previewPath;g->startPreview();}
   // History reloads the same selection whenever the resident reports a change;
   // only a different item restarts the wait.
   if(g->previewMissing(data)&&(!g->previewRequestTimer_->isActive()||g->previewCandidate_!=data["id"].toString())){g->previewCandidate_=data["id"].toString();g->previewRequestTimer_->start();}});
