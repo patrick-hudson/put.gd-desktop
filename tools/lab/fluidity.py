@@ -237,8 +237,10 @@ def find_strip(width, height, stride, data):
                 bright = 0
                 while x + bright < width and row[x + bright] > 208:
                     bright += 1
-                if dark >= 8 and abs(bright - dark) <= max(2, dark // 6):
-                    cell = (dark + bright) // 2
+                # The white reference may be followed by white data cells, so the
+                # bright run is at least a cell; the dark run is exactly one.
+                if dark >= 8 and bright >= dark * 0.8:
+                    cell = dark
                     # The strip is `cell` tall: confirm the row above the top edge is background.
                     if best is None or best[2] < cell:
                         best = (start, y, cell)
