@@ -50,7 +50,7 @@ bool traceCursor(const QString& phase,const QJsonObject& bootstrap,const QJsonOb
  if(::fstat(fd,&st)||!S_ISREG(st.st_mode)||st.st_uid!=getuid()||(st.st_mode&0777)!=0600||st.st_nlink!=1||st.st_size>65536){::close(fd);return false;}
  QFile file;if(!file.open(fd,QIODevice::WriteOnly,QFileDevice::AutoCloseHandle)){::close(fd);return false;}
  const auto cursor=bootstrap["cursor"].toObject();
- const auto record=QJsonObject{{"phase",phase},{"outcome",bootstrap["outcome"]},{"action",bootstrap["target"].toObject()["action"]},
+ const auto record=QJsonObject{{"phase",phase},{"appearance",bootstrap["appearance"]},{"outcome",bootstrap["outcome"]},{"action",bootstrap["target"].toObject()["action"]},
                               {"generation",bootstrap["generation"]},{"cache",cursor["cache"]},
                               {"cursorId",phase=="bootstrap"?cursor["id"]:frame["cursor"]}};
  const auto bytes=QJsonDocument(record).toJson(QJsonDocument::Compact)+'\n';
@@ -62,7 +62,7 @@ int main(int argc,char** argv){
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(type=="bootstrap"){
    const auto cursor=payload["cursor"].toObject();
-   if(payload.size()!=(payload.contains("outcome")?10:9)||cursor.size()!=2||!cursorId(cursor["id"])||!cursor["cache"].isBool()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){app.exit(4);return;}
+   if(payload.size()!=((payload.contains("outcome")?10:9)+int(payload.contains("appearance")))||cursor.size()!=2||!cursorId(cursor["id"])||!cursor["cache"].isBool()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){app.exit(4);return;}
    if(!artifact.acquire(payload["path"].toString(),payload["device"].toString(),payload["inode"].toString())){app.exit(5);return;}
    if(bootstrapped){app.exit(4);return;}bootstrapped=true;bootstrap=payload;
    if(!traceCursor("bootstrap",bootstrap,payload)){app.exit(5);return;}
