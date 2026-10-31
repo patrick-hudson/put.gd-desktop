@@ -490,6 +490,16 @@ size and checksum; a source-build receipt, when present, must match as well.
 
 ## SBOMs and vulnerability scans
 
+The stable draft workflow also runs `tools/releases/audit_assets.py` on exact
+GitHub downloads, including all five packages/SBOMs, the linked complete/curated
+sources and the pinned Proton transport parts. It verifies the published SBOM
+declarations against the extracted files before regenerating/scanning them with
+the current database and stable policy. Official Bun advisories supplement the
+scanner because a database can miss a newly published embedded-runtime advisory.
+The retained `exact-asset-audit-TAG` artifact includes failures and raw findings.
+See [the runbook](release-runbook.md#4-run-acceptance-on-the-stable-draft) for the
+builder command and the separate manual review/acceptance boundary.
+
 Every `package.yml` run, tagged or not, ends with an `sbom` job (#420). It
 downloads the five packages, pins Syft and Grype by version and SHA-256
 (`packaging/sbom/tools.lock.json`), and runs `tools/releases/sbom.py`:

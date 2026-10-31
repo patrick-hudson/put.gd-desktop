@@ -1,0 +1,38 @@
+{
+  "nightly": "v26.1031.3384-nightly",
+  "source": "SBOM regenerated from exact extracted AppImage on d69",
+  "scopes": [
+    {
+      "scope": "appimage-ffmpeg-7.1.5",
+      "component": "ffmpeg",
+      "version": "7.1.5",
+      "expected": {
+        "putgd:commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+        "putgd:filesSha256": "94490000aa605170dd9170fa6a9dc2f29bd1989259ca251f90d5cf9e6ce4ea61",
+        "putgd:toolsAbsent": "true"
+      },
+      "observed": {
+        "putgd:commit": "3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+        "putgd:filesSha256": "94490000aa605170dd9170fa6a9dc2f29bd1989259ca251f90d5cf9e6ce4ea61",
+        "putgd:toolsAbsent": "true"
+      },
+      "match": true
+    },
+    {
+      "scope": "appimage-icu-73.2",
+      "component": "icu",
+      "version": "73.2",
+      "expected": {
+        "putgd:commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf",
+        "putgd:filesSha256": "21a40d23f96b21706481da95efd2205f6a93216d052f1afc83b640d2decfefd3",
+        "putgd:toolsAbsent": "true"
+      },
+      "observed": {
+        "putgd:commit": "680f521746a3bd6a86f25f25ee50a62d88b489cf",
+        "putgd:filesSha256": "21a40d23f96b21706481da95efd2205f6a93216d052f1afc83b640d2decfefd3",
+        "putgd:toolsAbsent": "true"
+      },
+      "match": true
+    }
+  ]
+}

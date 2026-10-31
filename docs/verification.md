@@ -9,6 +9,18 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Published nightly artifact/source/CVE audit — 2026-10-31
+
+The [exact-asset rehearsal](evidence/2026-10-31-exact-asset-audit/README.md) covers
+`v26.1031.3384-nightly` (`4d3840c6108c`) on d69: all five packages/SBOMs,
+15 installer/support assets, four linked source assets and six Proton source
+packets. Checksums, notices and source closure pass; 30 FFmpeg/ICU findings match
+existing dispositions. Stable remains blocked by the HarfBuzz scan finding
+(#1055) and real embedded Bun High advisories missed by Grype (#1054). Code
+PR #1053 restores stable source-rebuild provenance and automates the uploaded-draft
+audit. This records artifact/source evidence and a manual upstream review, not
+legal, live-service, graphical or stable acceptance; #383/#511/#384 remain open.
+
 ## UI catalog reference images (#708) — 2026-10-30
 
 Every `putgd-ui-catalog` state except the exempt ones is now compared with a reference image in CI (see

@@ -1,0 +1,71 @@
+{
+  "release": {
+    "schemaVersion": 1,
+    "tag": "v26.1031.3384-nightly",
+    "version": "26.1031.3384-nightly",
+    "baseVersion": "26.1031.3384",
+    "packageVersion": "26.1031.3384~nightly",
+    "channel": "nightly",
+    "prerelease": true,
+    "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "gitTree": "abf0a3c9d5fe23b1341f7a138d67cd1ffa347576",
+    "commitCount": 3384
+  },
+  "packages": {
+    "ubuntu24.04": {
+      "file": "putgd-26.1031.3384-nightly-ubuntu24.04-x86_64.deb",
+      "sha256": "c0ec0359d3533c6cf693fb64f071f9dabb018710ad6fbf261f62f8c5111ed278",
+      "bytes": 59972870,
+      "runtimeSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0"
+    },
+    "ubuntu26.04": {
+      "file": "putgd-26.1031.3384-nightly-ubuntu26.04-x86_64.deb",
+      "sha256": "533252f08be2583afd9eaf1f379f623e3f764cead733f1fcc5a5c32905b25b9b",
+      "bytes": 60379514,
+      "runtimeSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0"
+    },
+    "debian13": {
+      "file": "putgd-26.1031.3384-nightly-debian13-x86_64.deb",
+      "sha256": "40a2b2a55ff5bc97bb9b9b73d7c0abf133c21270689e6ef520d276a599368a05",
+      "bytes": 59823584,
+      "runtimeSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0"
+    },
+    "fedora44": {
+      "file": "putgd-26.1031.3384-nightly-fedora44-x86_64.rpm",
+      "sha256": "94b5856e4a541a41578f31a0b241909f335e883c7c5809d21b5205e92405be27",
+      "bytes": 47194075,
+      "runtimeSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0"
+    },
+    "appimage": {
+      "file": "putgd-26.1031.3384-nightly-x86_64.AppImage",
+      "sha256": "ef0ae99f5b3990241eac14977be82fa779da40c8f741e4e8885c626d59f2fce2",
+      "bytes": 118745592,
+      "runtimeSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0"
+    }
+  },
+  "sources": {
+    "schemaVersion": 1,
+    "repository": "patrick-hudson/put.gd-desktop",
+    "tag": "sources-v26.1031.3384-nightly-files",
+    "gitCommit": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+    "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/sources-v26.1031.3384-nightly-files",
+    "assets": {
+      "putgd-26.1031.3384-nightly-appimage-complete-source.tar.gz": {
+        "sha256": "d77232e8713a5dae5db84064a349fb86c70f2cb1c1930fd176376237f37cdf1b",
+        "bytes": 758922863
+      },
+      "putgd-26.1031.3384-nightly-source.tar.gz": {
+        "sha256": "220c21f7e084eb5f4c09593afd70830b9a612a31ec9f4c6496217a1c01a6dbd5",
+        "bytes": 4701707
+      },
+      "putgd-gnome50-26.1031.3384-nightly.zip": {
+        "sha256": "b90a9cfbe0de452f8f1e91382291b5a8bee8347161ba3d3fb5f5c017ca604846",
+        "bytes": 80262
+      },
+      "SHA256SUMS": {
+        "sha256": "d0fb3c055b10bc1a86b87afef12ba2c555a579bebca2d2b5891ff56b49ff1c15",
+        "bytes": 337
+      }
+    }
+  }
+}
