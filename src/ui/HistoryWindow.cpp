@@ -57,6 +57,7 @@
 #include <QStyledItemDelegate>
 #include <QStyleOptionButton>
 #include <QTextDocument>
+#include <memory>
 #include <QTextCursor>
 #include <QTextBlock>
 #include <QTextLayout>
@@ -245,16 +246,23 @@ Columns historyColumns(const QRect& row,bool details=false,bool destination=true
  c.actions=QRect(row.right()-tail+1,row.top(),tail,row.height());c.created={};
  c.output=output?QRect(row.left()+width-output,row.top(),output,row.height()):QRect();c.item=QRect(row.left(),row.top(),width-output,row.height());return c;
 }
-int dayHeadingHeight(){return qMax(32,QFontMetrics(Ui::font(Ui::Type::micro,true)).height()+8);}
+// Row metrics follow only the application font and the UI family, and the
+// list asks for them many times per row in every frame (#1064).
+class FontMetric {
+public:
+ template<class Compute> int operator()(Compute compute){const auto font=QApplication::font();const auto family=Ui::uiFamily();if(!valid_||font!=font_||family!=family_){font_=font;family_=family;value_=compute();valid_=true;}return value_;}
+private:QFont font_;QString family_;int value_=0;bool valid_=false;
+};
+int dayHeadingHeight(){static FontMetric memo;return memo([]{return qMax(32,QFontMetrics(Ui::font(Ui::Type::micro,true)).height()+8);});}
 // Compact targets follow text enlargement.
 int actionHeight(){return Ui::scaled(28);}
 constexpr int historyThumbWidth=96,historyThumbHeight=60;
 int rowTextInset(){return space(Ui::scaled(100)>125?Space::xs:Space::s);}
 int compactTextInset(){return Ui::scaled(100)>125?qMin(space(Space::xs),Ui::Metric::space):rowTextInset();}
 QFont historyTitleFont(bool selected=false){auto font=Ui::font(Ui::Type::body);font.setWeight(selected?QFont::DemiBold:QFont::Medium);return font;}
-int compactMetadataGap(){return Ui::scaled(100)>125?qMin(space(Space::xs),Ui::Metric::space):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Ui::font(Ui::Type::technical)).height())/2);}
+int compactMetadataGap(){static FontMetric memo;return memo([]{return Ui::scaled(100)>125?qMin(space(Space::xs),Ui::Metric::space):qMax(space(Space::xs),(actionHeight()-QFontMetrics(Ui::font(Ui::Type::technical)).height())/2);});}
 int compactDetailGap(){return qMax(compactMetadataGap(),(actionHeight()-QFontMetrics(Ui::font(Ui::Type::technical)).height()+1)/2);}
-int rowContentHeight(){const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Ui::font(Ui::Type::technical)).height();return qMax(Ui::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*compactTextInset()+4,compactTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));}
+int rowContentHeight(){static FontMetric memo;return memo([]{const int title=QFontMetrics(historyTitleFont()).height(),meta=QFontMetrics(Ui::font(Ui::Type::technical)).height();return qMax(Ui::Metric::historyRow,qMax(historyThumbHeight+4,qMax(title+meta+space(Space::xs)+2*compactTextInset()+4,compactTextInset()+title+compactMetadataGap()+(meta+actionHeight()+1)/2+4)));});}
 // Compact insets leave room for the taller outcome without losing a whole row.
 int galleryTextHeight(){return QFontMetrics(historyTitleFont()).height()+space(Space::s)+2*QFontMetrics(Ui::font(Ui::Type::technical)).height()+space(Space::s)+actionHeight();}
 // The picture spends only the space left after the caption and status lines.
@@ -370,10 +378,10 @@ public:
   for(auto* button:{primary_,more_})button->installEventFilter(this);QWidget::setTabOrder(view_,primary_);QWidget::setTabOrder(primary_,more_);
   auto update=[this]{QTimer::singleShot(0,this,[this]{updateMore();});};
   connect(view_->selectionModel(),&QItemSelectionModel::currentChanged,this,update);connect(view_->selectionModel(),&QItemSelectionModel::selectionChanged,this,update);connect(view_->verticalScrollBar(),&QScrollBar::valueChanged,this,update);connect(view_->model(),&QAbstractItemModel::modelReset,this,update);
-  auto cancel=[this]{cancelPress();};connect(view_->model(),&QAbstractItemModel::modelAboutToBeReset,this,cancel);connect(view_->model(),&QAbstractItemModel::modelReset,this,[this]{captions_.clear();forgetPass();});connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{captions_.clear();forgetPass();primary_->setProperty("historyGlyph",QVariant());});
-  for(const auto change:{&QAbstractItemModel::rowsInserted,&QAbstractItemModel::rowsRemoved})connect(view_->model(),change,this,[this]{forgetPass();});
-  connect(view_->model(),&QAbstractItemModel::layoutChanged,this,[this]{forgetPass();});
-  connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})forgetPass();});connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})cancelPress();});
+  auto cancel=[this]{cancelPress();};connect(view_->model(),&QAbstractItemModel::modelAboutToBeReset,this,cancel);connect(view_->model(),&QAbstractItemModel::modelReset,this,[this]{captions_.clear();metadata_.clear();forgetPass();});connect(&Theme::Notifier::instance(),&Theme::Notifier::changed,this,[this]{captions_.clear();metadata_.clear();forgetPass();primary_->setProperty("historyGlyph",QVariant());});
+  for(const auto change:{&QAbstractItemModel::rowsInserted,&QAbstractItemModel::rowsRemoved})connect(view_->model(),change,this,[this]{metadata_.clear();forgetPass();});
+  connect(view_->model(),&QAbstractItemModel::layoutChanged,this,[this]{metadata_.clear();forgetPass();});
+  connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole}){metadata_.clear();forgetPass();}});connect(view_->model(),&QAbstractItemModel::rowsAboutToBeRemoved,this,cancel);connect(view_->model(),&QAbstractItemModel::layoutAboutToBeChanged,this,cancel);connect(view_->model(),&QAbstractItemModel::dataChanged,this,[this](const QModelIndex&,const QModelIndex&,const QList<int>& roles){if(roles!=QList<int>{HistoryModel::ThumbnailRole})cancelPress();});
  }
  void updateMore(){
   // This runs on every viewport paint, so it changes the buttons only when
@@ -497,6 +505,20 @@ public:
  // loop turns, or until the model or theme changes within the pass.
  void holdForPass()const{if(passQueued_)return;passQueued_=true;QTimer::singleShot(0,const_cast<HistoryDelegate*>(this),[this]{forgetPass();});}
  void forgetPass()const{passRows_.clear();passPrimaryWidths_.clear();passQueued_=false;}
+ // A row's rich-text metadata is the costliest part of its layout and paint,
+ // and scrolling lays out every visible row again. Keep each document until
+ // its row data, status line (age, local copy), font or theme changes (#1064).
+ std::shared_ptr<QTextDocument> metadataFor(const QModelIndex& i,int width,bool createdColumn,bool bounded=false,bool compact=false,bool separated=false,int facts=0)const{
+  const quint64 key=(quint64(quint32(i.row()))<<32)|(quint64(quint16(width))<<16)|(quint64(quint8(facts))<<4)|(createdColumn?1:0)|(bounded?2:0)|(compact?4:0)|(separated?8:0);
+  const auto status=i.data(HistoryModel::SubtitleRole).toString()+QChar(u'\n')+i.data(HistoryModel::CreatedRole).toString();const auto font=QApplication::font();
+  auto found=metadata_.find(key);
+  if(found==metadata_.end()||found->status!=status||found->font!=font){
+   if(metadata_.size()>2048)metadata_.clear();
+   auto document=std::make_shared<QTextDocument>();HistoryWindow::metadataDocument(*document,i,width,createdColumn,bounded,compact,separated,facts);
+   found=metadata_.insert(key,{status,font,document});
+  }
+  return found->document;
+ }
  int galleryActionsWidth(const QModelIndex& i)const{const int primary=galleryPrimaryWidth(i);return actionHeight()+(primary?space(Space::xs)+primary:0);}
  struct GalleryRow {bool below=false;int metadataHeight=0,picture=0,height=0;};
  GalleryRow galleryRow(const QModelIndex& i,int width)const{
@@ -539,7 +561,7 @@ public:
  // line with Retry and ⋯, and the actions take their own line only when that can't fit.
  int compactStatusFacts(const QRect& r,const QModelIndex& i)const{
   const auto record=i.data(HistoryModel::RecordRole).toJsonObject();const auto facts=failureDetail(record).split(" · ",Qt::SkipEmptyParts);const auto created=i.data(HistoryModel::CreatedRole).toString();const int width=rowBody(r,false,heading(i)).width();
-  for(int count=facts.size();count>0;--count){QStringList expected{HistoryModel::failureLabel(record)};expected+=facts.mid(0,count);if(!created.isEmpty())expected.append(created);QTextDocument line;HistoryWindow::metadataDocument(line,i,width,false,false,true,false,count);if(line.toPlainText()==expected.join(" · "))return count;}
+  for(int count=facts.size();count>0;--count){QStringList expected{HistoryModel::failureLabel(record)};expected+=facts.mid(0,count);if(!created.isEmpty())expected.append(created);if(metadataFor(i,width,false,false,true,false,count)->toPlainText()==expected.join(" · "))return count;}
   return 0;
  }
  bool compactFailureActionsBelow(const QRect& r,const QModelIndex& i)const{
@@ -557,8 +579,8 @@ public:
   if(compactRow(r,i))return !i.data(HistoryModel::FailedRole).toBool()&&rowBody(r,false,heading(i)).width()-compactActionWidth(i)<QFontMetrics(Ui::font(Ui::Type::technical)).horizontalAdvance(i.data(HistoryModel::CreatedRole).toString())+space(Space::xxl);
   if(!grid()&&i.data(HistoryModel::FailedRole).toBool())return false;
   if(grid()||(compactList&&!compactList()))return false;
-  const auto body=rowBody(r,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
-  return std::ceil(metadata.size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(historyTitleFont()).height()-6;
+  const auto body=rowBody(r,false,heading(i));const auto metadata=metadataFor(i,inlineTextWidth(r,i),!rowColumns(body,i).created.isEmpty());
+  return std::ceil(metadata->size().height())>rowContentHeight()-4-2*rowTextInset()-QFontMetrics(historyTitleFont()).height()-6;
  }
  QRect primaryRect(QRect r,const QModelIndex& i)const{
   const auto c=card(r,i);const int h=actionHeight(),detailsSpace=detailsShown(i)?listDetailsSpace():0;const int w=qMin(primaryWidth(i),qMax(0,c.width()-2*space(Space::m)-h-space(Space::s)-(grid()?detailsWidth()+space(Space::s):detailsSpace)));
@@ -583,10 +605,10 @@ public:
    if(failed)return {width,qMax(rowContentHeight()+metaHeight+space(Space::xs)+heading(i),compactErrorTop(outer,i)+(compactFailureActionsBelow(outer,i)?compactDetailHeight(outer,i)+space(Space::xs)+actionHeight():(metaHeight+actionHeight()+1)/2)+space(Space::xs)+3)};
    height=qMax(rowContentHeight(),bottom-heading(i)+2+(below?actionHeight()+space(Space::m):0))+heading(i);return {width,height};
   }
-  if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,inlineTextWidth(outer,i),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()))+rowTextInset()+4)+heading(i);}
+  if(i.data(HistoryModel::FailedRole).toBool()){const auto body=rowBody(outer,false,heading(i));const auto metadata=metadataFor(i,inlineTextWidth(outer,i),false);height=qMax(rowContentHeight(),rowTextInset()+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata->size().height()))+rowTextInset()+4)+heading(i);}
   if(actionsBelow(outer,i)){
-   const auto body=rowBody(outer,false,heading(i));QTextDocument metadata;HistoryWindow::metadataDocument(metadata,i,body.width(),false);
-   const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata.size().height()));
+   const auto body=rowBody(outer,false,heading(i));const auto metadata=metadataFor(i,body.width(),false);
+   const int text=rowTextInset()+qMax(8,rowTextInset())+4+QFontMetrics(historyTitleFont()).height()+6+int(std::ceil(metadata->size().height()));
    height=qMax(rowContentHeight(),text)+heading(i)+actionHeight()+12;
   }
   return {width,height};
@@ -630,10 +652,10 @@ public:
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+(grid()?space(Space::xs):6);
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
   if(compact){
-   const int statusFacts=failed?compactStatusFacts(outer,i):0;QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,false,true,false,statusFacts);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document.drawContents(p);p->restore();
+   const int statusFacts=failed?compactStatusFacts(outer,i):0;const auto document=metadataFor(i,metadataWidth,false,false,true,false,statusFacts);p->save();p->translate(metadata.topLeft());p->setClipRect(QRectF(0,0,metadataWidth,QFontMetrics(metaFont).height()));document->drawContents(p);p->restore();
    if(failed){const bool own=compactFailureActionsBelow(outer,i);QTextDocument error;compactFailureDetail(error,i,body.width()-(own?0:compactActionWidth(i)),statusFacts,own);p->save();p->translate(body.left(),compactErrorTop(outer,i));p->setClipRect(QRectF(0,0,body.width(),own?compactDetailHeight(outer,i):QFontMetrics(metaFont).height()));error.drawContents(p);p->restore();}
   }
-  else if(!grid()){QTextDocument document;HistoryWindow::metadataDocument(document,i,metadataWidth,false,true);p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document.drawContents(p);p->restore();}
+  else if(!grid()){const auto document=metadataFor(i,metadataWidth,false,true);p->save();p->translate(metadata.topLeft());const int available=below?r.bottom()-actionHeight()-12-metadata.top()+1:r.bottom()-metadata.top()+1;p->setClipRect(QRectF(0,0,metadataWidth,available));document->drawContents(p);p->restore();}
   else{
    const auto caption=galleryCaption(i,metadataWidth);const auto row=galleryRow(i,outer.width());QTextDocument document;document.setDocumentMargin(0);document.setDefaultFont(metaFont);document.setHtml(caption.html);document.setTextWidth(metadataWidth);
    const int shift=row.below?0:qMax(0,(actionHeight()-caption.lastHeight)/2);
@@ -667,6 +689,8 @@ public:
 private:
  void cancelPress(){pressed_=QPersistentModelIndex{};pressedAction_=0;view_->viewport()->update();}
  mutable QHash<std::pair<int,int>,std::pair<QString,GalleryCaption>> captions_;
+ struct Metadata {QString status;QFont font;std::shared_ptr<QTextDocument> document;};
+ mutable QHash<quint64,Metadata> metadata_;
  // Scaled previews for the cards on screen, in KiB; dropped while the list is hidden.
  mutable QCache<std::pair<qint64,std::pair<std::pair<int,int>,int>>,QImage> thumbnails_{6144};
  mutable QHash<std::pair<std::pair<int,int>,std::pair<int,int>>,GalleryRow> passRows_;mutable QHash<QString,int> passPrimaryWidths_;mutable bool passQueued_=false;
@@ -1004,7 +1028,12 @@ void HistoryWindow::updateActivity(){
 }
 void HistoryWindow::updateActions(){
  while(auto* item=actions_->takeAt(0))delete item;
- auto* more=findChild<QToolButton*>("historyInspectorMore");more->setVisible(copyImage_->isEnabled()||saveAs_->isEnabled());bool first=true;for(auto* widget:QList<QWidget*>{open_,editAgain_,saveDiagnostics_,more}){const bool flush=first&&!widget->isHidden();if(widget->property("uiFlush").toBool()!=flush){widget->setProperty("uiFlush",flush);QEvent changed(QEvent::StyleChange);QCoreApplication::sendEvent(widget,&changed);widget->updateGeometry();widget->update();}if(!widget->isHidden())first=false;}browserAction_->setVisible(!first);int position=0;if(!browserAction_->isHidden())actions_->addWidget(browserAction_,position++,0);
+ // While a selection loads every action is hidden. Keep the flush edge until
+ // one shows: the inspector's width sums these hints, and the list beside it
+ // would otherwise reflow twice on every selection change (#1064).
+ auto* more=findChild<QToolButton*>("historyInspectorMore");more->setVisible(copyImage_->isEnabled()||saveAs_->isEnabled());
+ const QList<QWidget*> row{open_,editAgain_,saveDiagnostics_,more};const bool shown=std::any_of(row.begin(),row.end(),[](const QWidget* widget){return !widget->isHidden();});
+ bool first=true;for(auto* widget:row){const bool flush=first&&!widget->isHidden();if(shown&&widget->property("uiFlush").toBool()!=flush){widget->setProperty("uiFlush",flush);QEvent changed(QEvent::StyleChange);QCoreApplication::sendEvent(widget,&changed);widget->updateGeometry();widget->update();}if(!widget->isHidden())first=false;}browserAction_->setVisible(!first);int position=0;if(!browserAction_->isHidden())actions_->addWidget(browserAction_,position++,0);
  for(auto* button:{share_,revoke_,inspectLink_,cancel_})if(!button->isHidden())actions_->addWidget(button,position++,0,Qt::AlignLeft);
  findChild<QWidget*>("historyLinkRule")->setVisible(!link_->parentWidget()->isHidden());updateInspectorLayout();
 }

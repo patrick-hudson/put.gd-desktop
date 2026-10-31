@@ -2,9 +2,11 @@
 #include "ui/RegionSelector.h"
 #include "ui/RegionSelection.h"
 #include <QElapsedTimer>
+#include <algorithm>
 #include <QRegion>
 #include <QPointer>
 #include <QTimer>
+#include <thread>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 class QSocketNotifier;
@@ -20,6 +22,11 @@ public:
  explicit NativeRegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,xcb_cursor_t residentCursor=XCB_CURSOR_NONE,QString outcome={},bool frozen=false);
  ~NativeRegionOverlay() override;
  static bool supportsLayout(const QList<CaptureFrame>&);
+ // The first font metrics populate Qt's whole font database: about 30 ms on
+ // a 4-core i5 (#1063). This does it on a worker; until it ends, frames draw
+ // the outline without the hint and size pills, which follow when it does.
+ // Call once after QGuiApplication; join the thread before it is destroyed.
+ [[nodiscard]] static std::thread preloadFonts();
  // How long selection waits for another client's grab, such as an open
  // menu's, to end before it explains why it cannot start (#341).
  static constexpr int grabWaitMs=3000,grabRetryMs=50;
@@ -50,7 +57,9 @@ private:
  // painted: the native pixels this surface currently shows (outline strips
  // and pill images); the next present clears only what it no longer covers.
  struct Surface {CaptureFrame frame;int index=0;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage frozen;xcb_pixmap_t background=XCB_NONE;Badge hint,size;QRegion painted;};
+ // Reads every queued event, then presents their final state once.
  void events();
+ void drain();
  QPointF logicalPoint(QPoint)const;
  void move(QPointF);
  void release(QPointF);
@@ -64,9 +73,12 @@ private:
  void key(int,Qt::KeyboardModifiers,QPoint);
  int screenAt(QPoint)const;
  void prepareBadges(Surface&);
+ // The worker from preloadFonts() finished: draw the pills it held back.
+ void fontsLoaded();
  void prepareBadge(Surface&,Badge&,const QRect&,const QString&,qreal);
  void showFrozen();
  bool presenting()const{return !frozen_||frozenShown_;}
+ bool outlined()const{return std::any_of(surfaces_.begin(),surfaces_.end(),[](const Surface& surface){return !surface.outline.isEmpty();});}
  void finish();
  bool checked(xcb_void_cookie_t);
  QList<CaptureFrame> frames_;
@@ -92,7 +104,8 @@ private:
  bool frozen_=false,frozenShown_=false;
  QTimer presentTimer_;
  QElapsedTimer presentClock_,pendingSince_;
- bool pending_=false;
+ // draining_: events() is reading a queued batch; its presents wait for the end.
+ bool pending_=false,draining_=false;
  Stats stats_;
  RegionHintFade hint_{[this]{schedulePresent();}};
 };

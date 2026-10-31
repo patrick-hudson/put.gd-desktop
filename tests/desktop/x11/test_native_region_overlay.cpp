@@ -229,6 +229,39 @@ private slots:
   QVERIFY(white({41,200}));QVERIFY(white({300,41}));
   button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
+ void firstOutlineIsNotPacedBehindThePress(){
+  // #1063: the press frame shows no outline, so the drag's first outline is
+  // drawn when its motion arrives, not a frame interval later; a press and the
+  // motion queued behind it are read as one batch and presented once.
+  motion({100,400});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  const auto releaseButton=qScopeGuard([&]{button(1,false);});
+  xcb_test_fake_input(connection_,XCB_MOTION_NOTIFY,0,XCB_CURRENT_TIME,root_,40,40,0);
+  xcb_test_fake_input(connection_,XCB_BUTTON_PRESS,1,XCB_CURRENT_TIME,root_,0,0,0);
+  xcb_test_fake_input(connection_,XCB_MOTION_NOTIFY,0,XCB_CURRENT_TIME,root_,400,300,0);xcb_flush(connection_);
+  PUTGD_TRY_VERIFY(white({300,41}));PUTGD_TRY_VERIFY(white({41,200}));
+  const auto stats=overlay.stats();
+  QVERIFY2(stats.waits>=1&&stats.waitMaxMs<stats.frameIntervalMs/2.0,qPrintable(QStringLiteral("first outline waited %1 ms at %2 ms frames").arg(stats.waitMaxMs).arg(stats.frameIntervalMs)));
+  overlay.cancel();PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
+ void pillsFollowPreloadedFonts(){
+  // The capture helper loads the pill font on a worker; frames meanwhile
+  // carry the outline alone, and the hint and size pills still arrive.
+  auto fonts=NativeRegionOverlay::preloadFonts();const auto join=qScopeGuard([&]{fonts.join();});
+  motion({100,700});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
+  const auto releaseButton=qScopeGuard([&]{button(1,false);});
+  motion({40,300});button(1,true);motion({400,500});PUTGD_TRY_VERIFY(white({44,301}));
+  const auto pills=[&]{
+   const auto w=at({10,10});if(!w)return false;
+   const auto image=x11::reply(xcb_get_image_reply(connection_,xcb_get_image(connection_,XCB_IMAGE_FORMAT_Z_PIXMAP,w,0,0,640,800,~0u),nullptr));if(!image)return false;
+   const QImage rendered(xcb_get_image_data(image.get()),640,800,QImage::Format_ARGB32_Premultiplied);
+   // The hint pill sits away from the selection at the top; the size pill below it.
+   int hint=0,size=0;
+   for(int y=0;y<800;++y)for(int x=0;x<640;++x){const auto c=rendered.pixelColor(x,y);if(c.alpha()!=255||(x>=37&&x<=403&&y>=297&&y<=503))continue;(y<160?hint:size)+=1;}
+   return hint>100&&size>100;
+  };
+  PUTGD_TRY_VERIFY(pills());
+  overlay.cancel();PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
  void movingOutlineClearsPreviousPixels(){
   NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);motion({40,40});button(1,true);motion({1200,600});
   auto whiteCount=[&]{const auto bytes=pixels({1196,300},8);int count=0;for(int i=0;i+3<bytes.size();i+=4)if(quint8(bytes[i])==255&&quint8(bytes[i+1])==255&&quint8(bytes[i+2])==255&&quint8(bytes[i+3])==255)++count;return count;};
