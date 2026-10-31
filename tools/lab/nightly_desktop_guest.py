@@ -15,7 +15,8 @@ DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-o
 
 FEDORA_DESKTOP = ('gnome-shell*', 'mutter*', 'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
 FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesseract '
-                'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring')
+                'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring '
+                'openh264 gstreamer1-plugin-openh264')
 
 
 def install_rpm(run, package, out):
@@ -65,6 +66,39 @@ def install_rpm(run, package, out):
     lab.write_json(run/'package.json', receipt)
     lab.write_json(out/'rpm-install.json', receipt)
     return receipt
+
+
+GNOME_DESKTOP = r'''python3 - <<'NIGHTLY_GNOME'
+import dbus,json,time
+from pathlib import Path
+from gi.repository import Gio
+settings=Gio.Settings.new('org.gnome.shell')
+uuid='putgd-lab-witness@put.gd'
+assert uuid in settings.get_strv('enabled-extensions'), 'lab witness is not enabled'
+assert not settings.get_boolean('disable-user-extensions'), 'user extensions are disabled'
+assert (Path.home()/'.local/share/gnome-shell/extensions'/uuid/'extension.js').is_file()
+witness=dbus.Interface(dbus.SessionBus().get_object('org.gnome.Shell','/org/putgd/LabWitness'),
+                       'org.putgd.LabWitness')
+before=json.loads(str(witness.Desktop(timeout=3)))
+assert before['witnessVersion']>=7, 'lab witness is stale'
+assert before['locked'] is False, 'GNOME session is locked'
+assert witness.HideOverview(timeout=3), 'overview dismissal refused'
+deadline=time.monotonic()+5
+while True:
+ after=json.loads(str(witness.Desktop(timeout=3)))
+ if after['overviewVisible'] is False and after['overviewAnimating'] is False and after['locked'] is False:break
+ assert time.monotonic()<deadline, 'GNOME overview did not close'
+ time.sleep(.1)
+print(json.dumps(dict(witnessEnabled=True,before=before,after=after)))
+NIGHTLY_GNOME
+'''
+
+
+def prepare_gnome_desktop(run, out):
+    lab.verify_owned_guest(run)
+    report = json.loads(lab.guest_session(run, 'export XDG_CONFIG_HOME="$HOME/.config"\n'+GNOME_DESKTOP))
+    lab.write_json(Path(out)/'gnome-desktop.json', report)
+    return report
 
 
 QUIET = r'''python3 - <<'NIGHTLY_QUIET'
@@ -233,6 +267,7 @@ PROBES
         from tools.lab.guest_reboot import reboot
         (out/'witness.txt').write_text(stage(run, Path(__file__).parent/'surface_driver/compositor/gnome-witness'))
         (out/'reboot.json').write_text(json.dumps(reboot(run), indent=2))
+        prepare_gnome_desktop(run, out)
     elif 'kde' in row['desktop']:
         from tools.lab.surface_driver.compositor.stage_plasma_accessibility import stage
         (out/'accessibility.txt').write_text(stage(run))

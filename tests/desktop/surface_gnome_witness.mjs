@@ -47,6 +47,16 @@ const selector={mapped:true,visible:true,_closed:false,_grab:{},
 const request={id:'request-1',sender:owner,selector,stage:'region-select',action:'region'};
 const extension={_enabled:true,_selector:selector,_requests:new Map([[request.id,request]])};
 fake.Main={sessionMode:{isLocked:false},extensionManager:{lookup:()=>({stateObj:extension})}};
+w.metadata={version:7};
+let overviewHides=0;
+fake.Main.overview={visible:true,animationInProgress:false,hide(){overviewHides++;this.visible=false;}};
+assert.equal(JSON.parse(w.Desktop()).overviewVisible,true);
+fake.Main.sessionMode.isLocked=true;
+assert.equal(w.HideOverview(),false);assert.equal(overviewHides,0);
+assert.equal(JSON.parse(w.Desktop()).locked,true);
+fake.Main.sessionMode.isLocked=false;
+assert.equal(w.HideOverview(),true);assert.equal(overviewHides,1);
+assert.deepEqual(JSON.parse(w.Desktop()),{overviewVisible:false,overviewAnimating:false,locked:false,witnessVersion:7});
 fake.GLib.Variant=class{};fake.GLib.VariantType=class{};
 fake.Gio.DBusCallFlags={NONE:0};fake.Clutter={PickMode:{REACTIVE:1}};
 fake.Gio.DBus.session.call_sync=(_bus,_path,_iface,method)=>({deep_unpack:()=>[method==='GetNameOwner'?owner:50]});

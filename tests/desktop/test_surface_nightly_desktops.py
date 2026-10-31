@@ -175,6 +175,21 @@ class NightlyTests(unittest.TestCase):
             (root/'receipt.json').write_text(json.dumps(value));mark_terminal(root,2)
             self.assertEqual(nightly.verdict(root,'outcomes.region_upload')['status'],'not_run')
 
+    def test_overview_or_missing_focus_refuses_input_without_app_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for note in ("input target 'outcome-pattern' is obscured by 'no focused window' (window None)",
+                         "uploaded/local sha256=verified; input target 'history' is obscured by 'shell overview' (window None)",
+                         "desktop input is obscured by 'shell overview'"):
+                with self.subTest(note=note):
+                    self.receipt(root, functional='failed', note=note)
+                    self.assertEqual(nightly.verdict(root, 'outcomes.region_upload')['status'], 'not_run')
+            for note in ("pixel mismatch; no focused window", "resident recording.prepare: recording_unavailable",
+                         "input target 'editor' is obscured by 'put.gd confirmation' (window 42)"):
+                with self.subTest(note=note):
+                    self.receipt(root, functional='failed', note=note)
+                    self.assertEqual(nightly.verdict(root, 'outcomes.region_upload')['status'], 'red')
+
     def test_grey_reason_is_one_table_line_and_disabled_is_explicit(self):
         result=dict(desktops=[dict(desktop='Aurora',host='aurora-amd',notRunReason='load at core count',cells={
             'region_upload':nightly.cell(assertion='load at core count'),

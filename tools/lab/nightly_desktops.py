@@ -181,8 +181,10 @@ def verdict(out, recipe):
                           'deadline exceeded', 'shell crashed')
         failed = any(r['functional'] == 'failed' for r in rows)
         status = 'green' if passed else 'red' if failed else 'not_run'
+        input_blocked = re.search(r"(?:input target '[^']+'|desktop input) is obscured by "
+                                 r"'(?:shell overview|no focused window)'(?: \(window None\))?$", assertion)
         if (env.get('cleanup_errors') or env.get('interrupted') or not rows
-                or any(text in assertion.lower() for text in infrastructure)):
+                or input_blocked or any(text in assertion.lower() for text in infrastructure)):
             status = 'not_run'
         return cell(status, assertion[-1800:], terminal=terminal, observedBuild=observed['gitCommit'],
                     observations=list(dict.fromkeys((r.get('note') or '')[-1800:] for r in rows)),
