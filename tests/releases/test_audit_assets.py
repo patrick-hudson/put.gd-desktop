@@ -231,7 +231,8 @@ class ProtonCiAudit(unittest.TestCase):
                 root = Path(temporary)
                 directory = root / 'artifacts'
                 directory.mkdir()
-                (directory / 'putgd-test.deb').write_bytes(b'exact CI installer')
+                (directory / 'putgd_test_amd64.deb').write_bytes(b'exact CI Debian installer')
+                (directory / 'putgd-test.x86_64.rpm').write_bytes(b'exact CI RPM installer')
                 source = root / 'tools/proton'
                 (source / 'notices').mkdir(parents=True)
                 lock = {'bunVersion': '1.4.4', 'bunSourceReference': 'b' * 40, 'bunSha256': 'c' * 64}
@@ -254,6 +255,8 @@ class ProtonCiAudit(unittest.TestCase):
                         patch.object(audit_assets, 'bun_advisories', return_value=findings):
                     result = audit_assets.audit_proton_ci(directory, root / 'audit')
                 self.assertEqual(result['passed'], scenario == 'fixed')
+                if scenario == 'fixed':
+                    self.assertEqual(len(result['packages']), 2)
                 self.assertEqual(json.loads((root / 'audit/audit.json').read_text()), result)
 
     def test_no_installers_is_not_a_pass(self):
