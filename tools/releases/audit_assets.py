@@ -456,18 +456,82 @@ def audit(args):
     return result
 
 
+
+def audit_proton_ci(directory, output):
+    """Audit rebuilt Proton in exact CI installers before a release tag exists.
+
+    This deliberately has no whole-release acceptance claim: linked source
+    publication, other components, Grype and desktops still use audit().
+    """
+    directory, output = directory.resolve(), output.resolve()
+    output.mkdir(parents=True, mode=0o700, exist_ok=False)
+    result = {'schemaVersion': 1, 'passed': False,
+              'scope': 'CI installer Proton integrity, embedded runtime identity and official Bun advisories only',
+              'date': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'host': run('hostname'), 'auditorCommit': run('git', '-C', ROOT, 'rev-parse', 'HEAD'),
+              'auditorScriptSha256': sha256(Path(__file__)), 'packages': [], 'errors': []}
+    try:
+        lock = json.loads((ROOT / 'tools/proton/runtime-lock.json').read_text())
+        catalog_path = ROOT / 'tools/proton/notices/SOURCES.json'
+        catalog = json.loads(catalog_path.read_text())
+        packages = sorted(p for p in directory.rglob('*') if p.is_file()
+                          and p.name.startswith(('putgd-', 'putgd_')) and p.suffix in ('.deb', '.rpm', '.AppImage'))
+        if not packages:
+            raise ValueError('No CI installers supplied')
+        versions = {}
+        for index, package in enumerate(packages):
+            label = 'appimage' if package.suffix == '.AppImage' else (
+                'fedora44' if package.suffix == '.rpm' else 'debian13')
+            work = output / str(index)
+            work.mkdir()
+            root = sbom.extract(package, label, work)
+            proton = audit_proton(root, required=True)
+            manifest = proton['manifest']
+            if (proton['runtimeSha256'] != catalog['helperSha256']
+                    or proton['sourceCatalogSha256'] != sha256(catalog_path)
+                    or any(manifest.get(key) != lock[key] for key in
+                           ('bunVersion', 'bunSourceReference', 'bunSha256'))):
+                raise ValueError('CI Proton runtime differs from current source pins')
+            helper = root / proton['helper']
+            identity = json.loads(run(helper, '--version'))
+            if identity['bunVersion'] != lock['bunVersion']:
+                raise ValueError('Actual embedded Bun version differs from manifest')
+            result['packages'].append({'file': str(package.relative_to(directory)),
+                'sha256': sha256(package), 'helperSha256': proton['runtimeSha256'],
+                'identity': identity, 'sourceCatalogSha256': proton['sourceCatalogSha256']})
+            versions.setdefault(identity['bunVersion'], []).append(package.name)
+        findings = bun_advisories(versions)
+        write(output / 'upstream-bun-findings.json', findings)
+        result['bunFindings'] = findings
+        if findings:
+            result['errors'].append('Embedded Bun has official security advisories')
+        result['passed'] = not result['errors']
+    except Exception as error:
+        result['errors'].append(str(error))
+    write(output / 'audit.json', result)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tag', required=True)
+    parser.add_argument('--tag')
     parser.add_argument('--repository', default=REPOSITORY)
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--proton-ci', action='store_true', help='Audit only Proton integrity and Bun advisories in local CI installers; no whole-release acceptance')
     parser.add_argument('--download', action='store_true')
     parser.add_argument('--reuse-downloads', type=Path, help='Previous audit directory; reverify its source bytes without downloading them again')
     parser.add_argument('--source-build-result', type=Path, help='Fresh check_source_build.py results for these exact source bytes')
     parser.add_argument('--source-root', type=Path, default=ROOT, help='Full Git history containing the audited tag')
     args = parser.parse_args()
-    result = audit(args)
+    if args.proton_ci:
+        if args.tag or args.download or args.reuse_downloads or args.source_build_result:
+            parser.error('--proton-ci accepts local CI installers only')
+        result = audit_proton_ci(args.directory, args.output)
+    else:
+        if not args.tag:
+            parser.error('--tag is required for a complete release audit')
+        result = audit(args)
     print(json.dumps({'passed': result['passed'], 'errors': result['errors']}))
     raise SystemExit(0 if result['passed'] else 1)
 

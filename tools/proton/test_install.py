@@ -75,6 +75,15 @@ include("{REPO / 'cmake/Proton.cmake'}")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('runtime-lock.json changed', result.stdout + result.stderr)
 
+    def test_stale_bun_source_catalog_is_rejected_before_install(self):
+        path = self.root / 'tools/proton/notices/SOURCES.json'
+        catalog = json.loads(path.read_text())
+        catalog['sourcePins']['bun'] = '0' * 40
+        path.write_text(json.dumps(catalog))
+        result = self.configure()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('catalog does not match', result.stdout + result.stderr)
+
     def test_changed_runtime_notice_is_rejected_before_install(self):
         path = self.runtime / 'redistribution/BUN-THIRD-PARTY-NOTICES.txt.gz'
         with path.open('ab') as stream:

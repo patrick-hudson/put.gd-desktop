@@ -1,4 +1,4 @@
-// Standalone private Bun 1.4.2 broker. API provenance: tools/proton/account.ts
+// Standalone private Bun 1.4.4 broker. API provenance: tools/proton/account.ts
 // and pinned upstream/cli/src/credentials/{parseCredentials,secretCredentialsStore}.
 // The Qt relay holds the production account QLockFile for every invocation.
 import { fstatSync } from 'node:fs';

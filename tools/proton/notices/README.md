@@ -1,6 +1,6 @@
 # Proton runtime redistribution materials
 
-The selected helper uses official SDK 0.22.2, Bun 1.4.2 and the explicit GPL
+The selected helper uses official SDK 0.22.2, Bun 1.4.4 and the explicit GPL
 WebPackages crypto source 2.0.1 at `956a713c0823b365cc512018974eb4fcba47c9dd`.
 The user approved this source change on 2026-10-15. Historical npm crypto 2.0.0
 ISC notice provenance remains unresolved; it is used only as a dependency
@@ -12,7 +12,7 @@ package locations. Bun attribution and OpenPGP prebundled code are separate:
 
 - `BUN-THIRD-PARTY-NOTICES.txt.gz` preserves upstream texts as a labelled source
   superset. `BUN-NOTICE-PROVENANCE.json.gz` maps every text to its source.
-  `BUN-LINUX-ATTRIBUTION.md` explains the conservative Linux graph and limits.
+  `BUN-LINUX-ATTRIBUTION.md` explains the source scope and limits.
 - `OPENPGP-PREBUNDLED-NOTICES.txt` preserves original component notices.
 - `LICENSE.crypto-GPL-3.0`, `LICENSE.pmcrypto-MIT` and `LICENSE.srp-MIT` preserve
   selected-source and actual predecessor texts. `CRYPTO-PROVENANCE.md` explains
@@ -20,19 +20,22 @@ package locations. Bun attribution and OpenPGP prebundled code are separate:
 - `SOURCES.json` identifies the required accompanying source assets by SHA256.
   `REBUILD.md` and `OPENPGP-REBUILD.patch` give the reconstruction route.
 
-The manifest hashes all twelve delivery files. CMake rejects changed source,
+The manifest hashes each required redistribution file. CMake rejects changed source,
 locks, notices or runtime copies and installs them together. This verifies
 install rules; actual shipping packages and source publication remain P4/P6.
 
 The [materials receipt](../../../docs/evidence/2026-10-15-proton-p3-materials.md)
 records the approved source choice and original prepared assets. The later
-[rebuild receipt](../../../docs/evidence/2026-10-15-proton-p3-rebuild.md) completes
-native Bun/JavaScriptCore/TinyCC modification/relink and Argon2 WASM compiler
-proof using disposable pinned toolchains. P3's notice/source/rebuild work is
-complete. The marked native proof binaries are not production replacements.
-The current catalog adds the corrected rebuild supplement and refreshed build
-controls; the original source packets stay unchanged. P4 source publication and
-P6 final-helper functional/resource/package acceptance remain required.
+[rebuild receipt](../../../docs/evidence/2026-10-15-proton-p3-rebuild.md) records
+native Bun 1.4.2/JavaScriptCore/TinyCC modification/relink and Argon2 WASM compiler
+proof using disposable pinned toolchains. P3's notice/source/rebuild work was
+completed for that earlier runtime. This proof does not establish Bun 1.4.4
+native relink; that current-version check remains open in SOURCES.json.
+The marked native proof binaries are not production replacements.
+The current catalog updates the Bun 1.4.4, helper and build-controls packets.
+The crypto, OpenPGP and historical native rebuild supplement retain their
+original bytes. Source publication and P6 final-helper functional/resource/package
+acceptance remain required.
 
 Collect a fresh compiler-backed bundle into a new output directory:
 

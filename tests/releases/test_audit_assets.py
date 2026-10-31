@@ -223,5 +223,50 @@ class AdvisoryRanges(unittest.TestCase):
             audit_assets.version_in_range('1.4.2', '^1.0')
 
 
+
+class ProtonCiAudit(unittest.TestCase):
+    def test_ci_installer_runtime_identity_and_advisories_fail_closed(self):
+        for scenario in ('fixed', 'vulnerable', 'wrong_actual_version', 'wrong_catalog'):
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                directory = root / 'artifacts'
+                directory.mkdir()
+                (directory / 'putgd_test_amd64.deb').write_bytes(b'exact CI Debian installer')
+                (directory / 'putgd-test.x86_64.rpm').write_bytes(b'exact CI RPM installer')
+                source = root / 'tools/proton'
+                (source / 'notices').mkdir(parents=True)
+                lock = {'bunVersion': '1.4.4', 'bunSourceReference': 'b' * 40, 'bunSha256': 'c' * 64}
+                (source / 'runtime-lock.json').write_text(json.dumps(lock))
+                catalog = source / 'notices/SOURCES.json'
+                catalog.write_text(json.dumps({'helperSha256': 'a' * 64}))
+                proton = {'manifest': lock, 'runtimeSha256': 'a' * 64,
+                          'sourceCatalogSha256': audit_assets.sha256(catalog),
+                          'helper': 'helper'}
+                if scenario == 'wrong_catalog':
+                    proton['sourceCatalogSha256'] = 'd' * 64
+                identity = {'bunVersion': '1.4.2' if scenario == 'wrong_actual_version' else '1.4.4'}
+                def run(*args, **kwargs):
+                    return json.dumps(identity) if args[-1] == '--version' else 'test-builder'
+                findings = [{'ghsa_id': 'GHSA-test'}] if scenario == 'vulnerable' else []
+                with patch.object(audit_assets, 'ROOT', root), \
+                        patch.object(audit_assets, 'run', side_effect=run), \
+                        patch.object(audit_assets.sbom, 'extract', return_value=root), \
+                        patch.object(audit_assets, 'audit_proton', return_value=proton), \
+                        patch.object(audit_assets, 'bun_advisories', return_value=findings):
+                    result = audit_assets.audit_proton_ci(directory, root / 'audit')
+                self.assertEqual(result['passed'], scenario == 'fixed')
+                if scenario == 'fixed':
+                    self.assertEqual(len(result['packages']), 2)
+                self.assertEqual(json.loads((root / 'audit/audit.json').read_text()), result)
+
+    def test_no_installers_is_not_a_pass(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            with patch.object(audit_assets, 'run', return_value='test-builder'):
+                result = audit_assets.audit_proton_ci(root, root / 'audit')
+            self.assertFalse(result['passed'])
+            self.assertIn('No CI installers supplied', result['errors'])
+
+
 if __name__ == '__main__':
     unittest.main()

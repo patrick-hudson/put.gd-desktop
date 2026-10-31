@@ -3,14 +3,14 @@
   "materialsReady": true,
   "distributionReady": false,
   "published": true,
-  "distributionRequirement": "Retain public corresponding-source availability. Deliver this current catalog beside the installers; its permanent checksum-pinned dependency URLs may be linked instead of copying unchanged transport parts to every release. Deliver the current application source overlay in the linked sources release.",
-  "helperSha256": "e93b3b520d20a19e37569c7a97a1680f47bc43fcb5acaf6a5d69fa660e0a34b0",
+  "distributionRequirement": "Retain public availability of this updated corresponding-source transport. Deliver this current catalog beside installers and the current application source archive. Older Bun 1.4.2 transport remains historical.",
+  "helperSha256": "4683e9fb28673df66a590660f2932f5b202fd61b1c229f49c61b8e8754113be4",
   "sourcePins": {
     "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
     "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
     "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
-    "bun": "744846f844374847c902b5e7fd59b4342a51ef99",
-    "webkit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+    "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+    "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
     "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
     "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
   },
@@ -19,27 +19,28 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": true,
+    "nativeBunRelinkVerified": false,
     "argon2WasmRebuildVerified": true,
     "finalPackageAcceptanceVerified": false,
-    "nativeCompiledHelperSourceSelectionVerified": true,
+    "nativeCompiledHelperSourceSelectionVerified": false,
     "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Fresh final-helper functional, resource and actual package acceptance (P6)"
+    "Fresh Bun 1.4.4 native modification/relink verification",
+    "Fresh final-helper desktop functional/resource and actual package acceptance (P6)"
   ],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
-      "bytes": 3223548,
-      "sha256": "0dd9bb6985606925b4cd71d85d23079c14b480f4f6c7d5df0d32fa8e89197fd6",
-      "purpose": "Proton component sources, locks, provisioner, audit/tests, notices and CMake integration; SOURCES.json accompanies separately to avoid a hash cycle"
+      "bytes": 22274316,
+      "sha256": "6fe9c393df6992d308665517086897e781e05b8b1a0970aabfd88c676973e159",
+      "purpose": "Current Proton controls, locks, tests, notices, adapter/CMake and audit source; SOURCES.json accompanies separately to avoid a hash cycle"
     },
     {
       "filename": "putgd-proton-helper-rebuild.tar.gz",
-      "bytes": 15261507,
-      "sha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
-      "purpose": "Original patched helper/SDK/account/crypto source graph and dependencies; 6298 public files. Apply applicationSourceOverlay from the current application source archive for the current helper."
+      "bytes": 15912268,
+      "sha256": "905f4ddac8aacbf758b456b5fbb7289266f56c0ca9c9d70fd576d24825392812",
+      "purpose": "Current patched helper/SDK/account/GPL crypto source graph and locked dependencies for Bun 1.4.4; 7360 public files. Apply the checksum-pinned current application overlay before recompilation."
     },
     {
       "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
@@ -54,10 +55,10 @@
       "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source and prebundled preferred source/notices; use accompanying supplement for clean pinned compiler replay"
     },
     {
-      "filename": "putgd-proton-bun-sources-1.4.2.tar",
-      "bytes": 2352957440,
-      "sha256": "754765f1f38e6e57e369806ac8e19b190a6eea812696848003bd40df9f06df27",
-      "purpose": "Full pinned Bun/WebKit/native/Cargo/npm source/build inputs, patches and offline reconstruction; includes optional build-tool binaries, not a pure text-only source archive"
+      "filename": "putgd-proton-bun-sources-1.4.4.tar",
+      "bytes": 2240788480,
+      "sha256": "0a58af4f9af2a0d9ee61fb381025826bd91bdc393ba1f06f8d67e5eb03c70e8f",
+      "purpose": "Bun 1.4.4 and exact WebKit source objects, current native/Cargo/npm source inputs, ICU and pinned Rust standard-library source, patches and successful offline assembly/native fetch-identity checks. Native compilation/relink remains open; optional npm build-tool binaries are preserved as upstream inputs."
     },
     {
       "filename": "putgd-proton-native-rebuild-supplement.tar.gz",
@@ -67,47 +68,44 @@
     }
   ],
   "rebuildToolchains": {
-    "nativeCpp": "LLVM 21.1.8",
-    "rustNightly": "2026-07-20",
-    "rustSource": "9f36de775bc636c8e88c31a173c2bcb6995956a0",
-    "cargoSource": "3efb1f477e99b42974b982d939fd100303cdf7db",
+    "nativeCpp": "LLVM 23.1.1",
+    "rustNightly": "2026-09-15",
+    "rustSource": "574ff7d98bd6d037e5236a8453029173b32631fd",
+    "cargoSource": "574ff7d98bd6d037e5236a8453029173b32631fd",
     "profile": "release-local with local JSC and system ICU 74.2",
     "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
     "nativeOrWasmByteIdentityClaimed": false
   },
   "delivery": {
     "file": "putgd-proton-corresponding-source.tar.gz",
-    "bytes": 2484914096,
-    "sha256": "74ccb7b1be2c3fd3db2ed70222e1dd06a1dea0eb901448170a76709bcfe4c8ab",
+    "bytes": 2393019861,
+    "sha256": "16c3a0ce6ff7f29fedd395576edba698a61190d29c947cdfc828a991fbaa5527",
     "parts": [
       {
         "file": "putgd-proton-corresponding-source.tar.gz.part1",
         "bytes": 1300000000,
-        "sha256": "ed4ad0f31dc9a8e8e47f2e0ad7ce8b61bd812240640095866ae1ac036abab757",
-        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part1"
+        "sha256": "a7fbd89f638a1d5d4950fdd974b070c2204629a5901a9b3cc0b012ed1f872400",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part1"
       },
       {
         "file": "putgd-proton-corresponding-source.tar.gz.part2",
-        "bytes": 1184914096,
-        "sha256": "9b47aab2e8229fda914fdb142812893c78fb04d51f91850b782f957868b36684",
-        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part2"
+        "bytes": 1093019861,
+        "sha256": "61e3c6cf3c95d9da5ffa3496d64404e0415422f67a22c1b5dfdf964eb774300f",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part2"
       }
     ]
   },
   "publication": {
-    "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.22.2-crypto2.0.1",
-    "publishedAt": "2026-10-15T22:52:51Z",
-    "releaseId": 414343618,
-    "scope": "Verified corresponding-source materials only; final binary package acceptance is recorded separately"
+    "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.22.2-crypto2.0.1-bun1.4.4",
+    "scope": "Current Bun 1.4.4 source handoff; no native relink, desktop/resource or final release acceptance"
   },
   "applicationSourceOverlay": {
     "required": true,
     "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
-    "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+    "baseSourceArtifactSha256": "905f4ddac8aacbf758b456b5fbb7289266f56c0ca9c9d70fd576d24825392812",
     "repository": "https://github.com/patrick-hudson/put.gd-desktop",
-    "sourceCommit": "692a93265208bc6e7b5d4800e5259fa663db97d9",
-    "delivery": "Included in the current put.gd application source archive in the linked sources release. Fetch the six unchanged original packets from the permanent delivery URLs in this catalog, then apply the listed files before rebuilding the current helper.",
-    "reason": "Return the connected account email from existing SDK root metadata (#40), and report Proton error 200003 as destination_file_too_large_for_plan instead of quota_exceeded (#147), settling it and quota refusals as failed when the name is still free afterwards (#201). Report a refused keychain session write as keychain_unavailable (#252) and return the confirmed link expiry from share create and inspect (#253). No SDK, crypto, Bun or dependency source changes.",
+    "delivery": "Included in the current application source archive. Apply the listed checksum-verified files to the current helper packet, then compile with the pinned official Bun 1.4.4 executable.",
+    "reason": "Rebuild the helper with official Bun 1.4.4 for #1054, including its current dependency lock. The updated helper packet contains the matching dependency graph; the old Bun packet is historical.",
     "files": [
       {
         "source": "tools/proton/runtime.ts",
@@ -133,6 +131,31 @@
         "source": "tools/proton/account.ts",
         "destination": "build-source/account.ts",
         "sha256": "4e2209a305ff23ccc870511585fbdf93fafd192ebb575dc116c00de01ff16a01"
+      },
+      {
+        "source": "tools/proton/crypto-cache.ts",
+        "destination": "build-source/crypto-cache.ts",
+        "sha256": "ce92f727d394362cf0f85684c358e5d345e6cf7acdc32e518da6ab7e962c57b1"
+      },
+      {
+        "source": "tools/proton/stdout.ts",
+        "destination": "build-source/stdout.ts",
+        "sha256": "38a846328dd9f95b1deadf5929dd8a667ae4a4ef8d32ba87288fab350a64ba82"
+      },
+      {
+        "source": "tools/proton/progress.ts",
+        "destination": "build-source/progress.ts",
+        "sha256": "64f643289756a8c4b2df28448c80920069ee69117d7cdaab3b21ca1032e39634"
+      },
+      {
+        "source": "tools/proton/package.json",
+        "destination": "build-source/package.json",
+        "sha256": "ffd1272c70fc6223905fef59eb23752e304d4a9eb6dfe989ebfd35ab460898f8"
+      },
+      {
+        "source": "tools/proton/package-lock.json",
+        "destination": "build-source/package-lock.json",
+        "sha256": "00eae03e61ef65611aae9b05c90d68995dc4971d8eca0862585caf5c36323641"
       }
     ],
     "exactHelperRebuildVerified": true
