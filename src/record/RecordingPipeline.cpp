@@ -235,8 +235,11 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         // configured frame rate, and a region is cropped out of the shared
         // monitor (crop values are stream-relative) before the colour
         // conversion, so only the recorded pixels are converted.
+        // Lab A/B: PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS replaces the request
+        // (for example a rate above the output's to exercise the fallback).
+        const QString labCaps = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_UNTHROTTLED_CAPS");
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
-            + (unthrottled ? pipewireUnthrottledCaps() : QString()) + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
+            + (unthrottled ? (labCaps.isEmpty() ? pipewireUnthrottledCaps() : QStringLiteral(" ! ") + labCaps) : QString()) + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
         description += convert();
     } else {
@@ -320,11 +323,17 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         gst_element_set_state(pipeline, GST_STATE_NULL); gst_object_unref(pipeline); return false;
     }
     // Live sources report ASYNC/NO_PREROLL; watch the bus briefly for a
-    // negotiation or device error before accepting this encoder.
+    // negotiation or device error before accepting this encoder. A PipeWire
+    // stream negotiates on its streaming thread after the pipeline is PLAYING,
+    // so an unthrottled request keeps watching for its refusal a while longer
+    // (relaunchThrottled covers one that arrives later still).
     GstBus* bus = gst_element_get_bus(pipeline);
     QElapsedTimer clock; clock.start();
     bool failed = false;
+    qint64 playingAt = -1;
+    const qint64 settleMs = options.pipewireNode && unthrottled ? 500 : 0;
     while (clock.elapsed() < 1500 && !failed) {
+        if (playingAt >= 0 && clock.elapsed() - playingAt >= settleMs) break;
         GstMessage* message = gst_bus_timed_pop_filtered(bus, 100 * GST_MSECOND, GstMessageType(GST_MESSAGE_ERROR | GST_MESSAGE_STATE_CHANGED));
         if (!message) continue;
         if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ERROR) {
@@ -337,7 +346,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         } else if (GST_MESSAGE_SRC(message) == GST_OBJECT(pipeline)) {
             GstState current, pending;
             gst_message_parse_state_changed(message, nullptr, &current, &pending);
-            if (current == GST_STATE_PLAYING && pending == GST_STATE_VOID_PENDING) { gst_message_unref(message); break; }
+            if (current == GST_STATE_PLAYING && pending == GST_STATE_VOID_PENDING && playingAt < 0) { playingAt = clock.elapsed(); if (settleMs == 0) { gst_message_unref(message); break; } }
         }
         gst_message_unref(message);
     }
@@ -346,6 +355,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     if (GstClock* clock = gst_pipeline_get_clock(GST_PIPELINE(pipeline))) { clockName_ = QString::fromUtf8(G_OBJECT_TYPE_NAME(clock)); gst_object_unref(clock); }
     debugLog("started with " + encoder + (audioEncoder.isEmpty() ? QString() : " + " + audioEncoder) + " on " + clockName_ + (options.pipewireNode ? (unthrottled ? QStringLiteral(", max_framerate unthrottled") : QStringLiteral(", max_framerate throttled")) : QString()));
     pipeline_ = pipeline;
+    options_ = options;
+    unthrottled_ = options.pipewireNode && unthrottled;
     return true;
 }
 
@@ -461,6 +472,18 @@ void RecordingPipeline::poll() {
         }
         GError* e = nullptr; gchar* debug = nullptr;
         gst_message_parse_error(message, &e, &debug);
+        // A compositor that refused the unthrottled request after PLAYING: start
+        // again with the plain request while nothing has been encoded yet.
+        if (unthrottled_ && !stopping_ && framesEncoded() == 0) {
+            debugLog(QStringLiteral("unthrottled stream failed before any frame (%1); relaunching throttled").arg(e ? QString::fromUtf8(e->message) : QString()));
+            if (e) g_error_free(e);
+            g_free(debug);
+            gst_message_unref(message);
+            gst_object_unref(bus);
+            if (relaunchThrottled()) return;
+            emit failed({"recording_failed", "Capture failed: the compositor refused the stream twice", {}});
+            return;
+        }
         Error error{"recording_failed", QStringLiteral("Capture failed: %1").arg(e ? QString::fromUtf8(e->message) : QString()), {{"debug", QString::fromUtf8(debug ? debug : "").left(512)}}};
         const auto disk = storage();
         // A previous low-space stop is context, not evidence that a later
@@ -504,6 +527,17 @@ void RecordingPipeline::poll() {
         }
     }
     if (byteLimit) { budgetSignalled_ = true; emit budgetReached({}); }
+}
+bool RecordingPipeline::relaunchThrottled() {
+    tearDown();
+    const auto options = options_;
+    const QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
+    for (const auto& encoder : options.encoders) {
+        QString failure;
+        if (launch(options, encoder, audioEncoder, false, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return true; }
+        debugLog("relaunch failed: " + failure);
+    }
+    return false;
 }
 void RecordingPipeline::tearDown() {
     bus_.stop();

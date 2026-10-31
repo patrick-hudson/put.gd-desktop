@@ -112,6 +112,13 @@ private:
     QString clockName_;
     gint64 frameDurationNs_ = 0;
     QString encoder_, audioEncoder_, output_;
+    // The options of the running capture and whether its PipeWire stream was
+    // negotiated unthrottled: a compositor that refuses that request after the
+    // pipeline reached PLAYING fails the stream later, and the capture is then
+    // relaunched with the plain request as long as no frame has been encoded.
+    Options options_;
+    bool unthrottled_ = false;
+    bool relaunchThrottled();
     qint64 budget_ = 0;
     QElapsedTimer storageClock_;
     QJsonObject diskStop_;
