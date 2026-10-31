@@ -56,7 +56,7 @@ assert.equal(w.HideOverview(),false);assert.equal(overviewHides,0);
 assert.equal(JSON.parse(w.Desktop()).locked,true);
 fake.Main.sessionMode.isLocked=false;
 assert.equal(w.HideOverview(),true);assert.equal(overviewHides,1);
-assert.deepEqual(JSON.parse(w.Desktop()),{overviewVisible:false,overviewAnimating:false,locked:false,witnessVersion:7});
+assert.deepEqual(JSON.parse(w.Desktop()),{overviewVisible:false,overviewAnimating:false,locked:false,witnessVersion:7,nativeHelperEnabled:true});
 fake.GLib.Variant=class{};fake.GLib.VariantType=class{};
 fake.Gio.DBusCallFlags={NONE:0};fake.Clutter={PickMode:{REACTIVE:1}};
 fake.Gio.DBus.session.call_sync=(_bus,_path,_iface,method)=>({deep_unpack:()=>[method==='GetNameOwner'?owner:50]});

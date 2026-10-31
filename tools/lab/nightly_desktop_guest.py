@@ -69,7 +69,7 @@ def install_rpm(run, package, out):
 
 
 GNOME_DESKTOP = r'''python3 - <<'NIGHTLY_GNOME'
-import dbus,json,time
+import dbus,json,subprocess,time
 from pathlib import Path
 from gi.repository import Gio
 settings=Gio.Settings.new('org.gnome.shell')
@@ -82,12 +82,14 @@ witness=dbus.Interface(dbus.SessionBus().get_object('org.gnome.Shell','/org/putg
 before=json.loads(str(witness.Desktop(timeout=3)))
 assert before['witnessVersion']>=7, 'lab witness is stale'
 assert before['locked'] is False, 'GNOME session is locked'
+subprocess.run(['gnome-extensions','enable','putgd@put.gd'],check=True,capture_output=True)
 assert witness.HideOverview(timeout=3), 'overview dismissal refused'
 deadline=time.monotonic()+5
 while True:
  after=json.loads(str(witness.Desktop(timeout=3)))
- if after['overviewVisible'] is False and after['overviewAnimating'] is False and after['locked'] is False:break
- assert time.monotonic()<deadline, 'GNOME overview did not close'
+ if (after['overviewVisible'] is False and after['overviewAnimating'] is False and
+     after['locked'] is False and after['nativeHelperEnabled'] is True):break
+ assert time.monotonic()<deadline, 'GNOME desktop/native helper did not become ready'
  time.sleep(.1)
 print(json.dumps(dict(witnessEnabled=True,before=before,after=after)))
 NIGHTLY_GNOME

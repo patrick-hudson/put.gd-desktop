@@ -118,7 +118,8 @@ export default class LabWitness extends Extension {
     Desktop() {
         return JSON.stringify({overviewVisible: Main.overview.visible,
             overviewAnimating: Boolean(Main.overview.animationInProgress),
-            locked: Main.sessionMode.isLocked, witnessVersion: this.metadata.version});
+            locked: Main.sessionMode.isLocked, witnessVersion: this.metadata.version,
+            nativeHelperEnabled: Boolean(Main.extensionManager.lookup('putgd@put.gd')?.stateObj?._enabled)});
     }
 
     HideOverview() {
