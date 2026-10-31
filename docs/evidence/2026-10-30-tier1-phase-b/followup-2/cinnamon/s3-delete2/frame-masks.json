@@ -1,0 +1,230 @@
+{
+  "frames": {
+    "frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.finish/01-browser-failure-fully-masked.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.finish/02-history-before-remote-cleanup.png": {
+      "sha256": "9954f9a75822b21db6cbeb3bd29639156ef5907e9dc0ff4a26ac9d5516fa4ca0",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          360
+        ],
+        [
+          230,
+          166,
+          656,
+          112
+        ],
+        [
+          914,
+          464,
+          352,
+          154
+        ],
+        [
+          922,
+          377,
+          227,
+          28
+        ],
+        [
+          914,
+          308,
+          352,
+          25
+        ],
+        [
+          620,
+          122,
+          304,
+          40
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.finish/03-delete-exact-owned-object.png": {
+      "sha256": "4d3a05906abc81adc4b3b992eb40abe853a018141e6114db41f20dfb9d052e98",
+      "size": [
+        560,
+        408
+      ],
+      "regions": [
+        [
+          410,
+          0,
+          150,
+          264
+        ],
+        [
+          410,
+          264,
+          150,
+          144
+        ],
+        [
+          101,
+          235,
+          425,
+          55
+        ],
+        [
+          22,
+          189,
+          504,
+          23
+        ],
+        [
+          22,
+          68,
+          516,
+          42
+        ],
+        [
+          22,
+          14,
+          516,
+          46
+        ],
+        [
+          0,
+          30,
+          536,
+          112
+        ],
+        [
+          270,
+          0,
+          290,
+          26
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true
+    },
+    "frames/__main__.finish/04-history-after-remote-cleanup.png": {
+      "sha256": "e3e964ab2a3a82ef42b61490c0810b6eeddcbae260c75fe50822ff8599dc9f00",
+      "size": [
+        1280,
+        760
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          760
+        ]
+      ],
+      "fallback": true,
+      "guard": "ocr-sensitive-text-fully-masked",
+      "visible_pixels": false
+    },
+    "frames/__main__.finish/05-browser-cloudfront-status-403.png": {
+      "sha256": "44e96d9d8ffcf89d2360250d0d878940d4d3a3fb987dd45d3bfb886f200f407a",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ],
+        [
+          22,
+          155,
+          1258,
+          19
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/__main__.finish/06-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

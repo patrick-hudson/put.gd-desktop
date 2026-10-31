@@ -214,6 +214,13 @@ class F1OwnedWindowOnly(Base):
     def test_real_ocr_reads_small_banner_text(self):
         # The validator's banner case with the text inside the 40 px canvas.
         path = next(p for p in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                                '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf',
+                                '/usr/share/fonts/TTF/DejaVuSans.ttf',
+                                '/usr/share/fonts/liberation-sans-fonts/LiberationSans-Regular.ttf',
+                                '/usr/share/fonts/adwaita-sans-fonts/AdwaitaSans-Regular.ttf',
+                                '/usr/share/fonts/google-noto-vf/NotoSans[wght].ttf',
+                                '/usr/share/fonts/google-noto/NotoSans-Regular.ttf',
+                                '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
                                 '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf') if Path(p).is_file())
         results = {}
         for link, literals in ((SHARE, ()), (B2.split('://')[1], ()), (B2, (B2_TOKEN,))):

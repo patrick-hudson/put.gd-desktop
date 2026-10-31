@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/dev/shm/rksd/runtime/putgd/session.sock", "utf8Bytes": 40, "passed": true}]}

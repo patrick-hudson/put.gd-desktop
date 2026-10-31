@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 2,
+  "campaign": "tier1-phase-b-followup-2",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3a/receipt.json",
+      "issue": 942,
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; Capture operation 10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; desktop frame selector-readback-unavailable masked by live evidence policy; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): timeout: region owned selector geometry; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "selector-readback-unavailable",
+          "path": "frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:20:01Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3a/receipt.json",
+      "issue": 942,
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; Capture operation 10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; desktop frame selector-readback-unavailable masked by live evidence policy; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): timeout: region owned selector geometry; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "selector-readback-unavailable",
+          "path": "frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:20:01Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3a/receipt.json",
+      "issue": 942,
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; Capture operation 10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; desktop frame selector-readback-unavailable masked by live evidence policy; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): timeout: region owned selector geometry; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "selector-readback-unavailable",
+          "path": "frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:20:01Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3a/receipt.json",
+      "issue": 942,
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; Capture operation 10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; desktop frame selector-readback-unavailable masked by live evidence policy; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): timeout: region owned selector geometry; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "selector-readback-unavailable",
+          "path": "frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:20:01Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3a/receipt.json",
+      "issue": 942,
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; Capture operation 10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; desktop frame selector-readback-unavailable masked by live evidence policy; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): timeout: region owned selector geometry; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "selector-readback-unavailable",
+          "path": "frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:20:01Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "mint-cinnamon-x11",
+      "package": "deb",
+      "functional": "failed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r3e/cin-s3a/receipt.json",
+      "issue": 942,
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; operationId=10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; Capture operation 10c5cb1a-45b3-46b8-b36d-9e8167dd5d17; desktop frame selector-readback-unavailable masked by live evidence policy; desktop frame after masked by live evidence policy; Capture selector has no live AT-SPI node or authorized geometry in this session (#942): timeout: region owned selector geometry; fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked; S3 bridge credential: RecipeBlocked; owned directory: RecipeBlocked",
+      "host": "d69",
+      "placement": "guest",
+      "guest": "cinnamon-x11",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "selector-readback-unavailable",
+          "path": "frames/outcomes_live.s3_region_upload/02-selector-readback-unavailable.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T06:20:01Z"
+    }
+  ]
+}

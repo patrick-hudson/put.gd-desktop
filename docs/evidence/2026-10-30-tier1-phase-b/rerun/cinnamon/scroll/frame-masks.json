@@ -1,0 +1,73 @@
+{
+  "frames": {
+    "frames/__main__.finish/00-before.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    },
+    "frames/__main__.finish/01-browser-content.png": {
+      "sha256": "e6ff66e8f12bdbe81832dc43529cbcb545268f08888b62d5cce8634251c729ae",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          760,
+          0,
+          520,
+          400
+        ],
+        [
+          760,
+          400,
+          520,
+          400
+        ],
+        [
+          0,
+          0,
+          1280,
+          752
+        ]
+      ],
+      "fallback": false,
+      "guard": "ocr-checked",
+      "visible_pixels": true,
+      "desktop_safe": "private Firefox kiosk without address bar owns the verified foreground"
+    },
+    "frames/__main__.finish/02-after.png": {
+      "sha256": "05713dbacb00cfa92e8cad1581147b0f1349f6ee14c97d122440aff36011bd53",
+      "size": [
+        1280,
+        800
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1280,
+          800
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false,
+      "policy": "live-desktop-masked"
+    }
+  }
+}

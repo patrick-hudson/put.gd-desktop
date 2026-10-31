@@ -361,11 +361,14 @@ class Running(unittest.TestCase):
         environment=json.loads((self.path/'run/receipt.json').read_text())['environment']
         self.assertEqual(environment['observed_build']['gitCommit'],'abcdef0123456789abcdef0123456789abcdef01')
         self.assertEqual(environment['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
+        from tools.lab.surface_driver.collect import require_terminal
+        self.assertEqual(require_terminal(self.path/'run')['exit_code'], 0)
         target.close=lambda:['cleanup incomplete']
         args[args.index('--out')+1]=str(self.path/'run-error')
         with patch('tools.lab.surface_driver.run.Target',return_value=target),patch('tools.lab.surface_driver.run.discover',return_value=[recipe]),patch('tools.lab.surface_driver.run.guard_target'),patch('tools.lab.surface_driver.run.resolve_boat_cli',return_value='/trusted/boat'):
             self.assertEqual(main(args),2)
         self.assertEqual(json.loads((self.path/'run-error/receipt.json').read_text())['environment']['cleanup_errors'],['cleanup incomplete'])
+        self.assertEqual(require_terminal(self.path/'run-error')['exit_code'], 2)
 
     def test_cleanup_attempts_quit_when_monitor_transport_fails(self):
         target=Target.__new__(Target)

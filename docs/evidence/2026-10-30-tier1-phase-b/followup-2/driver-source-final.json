@@ -1,0 +1,19 @@
+{
+  "commit": "75dbc1701cabc4e6df1f73619841501f2a447b93",
+  "mainRerunCheckpoint": "4389a3ff2b76bec30e5ee9c82e19ed01a2f0e8dc",
+  "secondGnomeKdeS3Checkpoint": "4715bd53",
+  "files": {
+    "tools/lab/surface_driver/browser.py": "d4200ec34483ac0f2a9a9fd658a154d4c267c201d7aed138c59f6be3b9cdb458",
+    "tools/lab/surface_driver/fixtures/live_outcomes.py": "abb99d8f23b402b4b3cb29855b242571f12bb2144468bc2b718d60ffb1e0352f",
+    "tools/lab/surface_driver/recipes/outcomes.py": "7158196262df6f73d31ec2351d188521d9e336b3b73c6b224755ac25885e0787",
+    "tools/lab/surface_driver/recipes/outcomes_live.py": "698e10a2932f9cd7dea5656dd2ccc7541baebe645950529135091e2ac2f13528",
+    "tools/lab/surface_driver/context.py": "23c5d84d7068cacb7924fe4b066d847a507fa5230131cd2a9b9442d20d65fa06",
+    "tools/lab/surface_driver/probe.py": "1e99aea551602aeee606466ccdf90257d59f9936513594c76c33c76981fb02dc",
+    "tools/lab/surface_driver/profiles/mint-cinnamon-x11.json": "e0cc291e995bd0aefd5da9c83e9ae59ac47b73cbc9acb0d4669b2b245b490cff",
+    "tests/desktop/test_surface_outcomes_live.py": "b04a2ad2d13180178bf93069f1b07895b39c9f5fb73fd6ab0062c1b77e39152b",
+    "tests/desktop/test_surface_recipes_links.py": "cda6d3cbde7cfb7bc4c63bc3866d2f58d90d2e6dd02c208b7fdd732652a618c7",
+    "tools/lab/surface_driver/redact.py": "7e0efb1cc16e5f00442e88edb30b8c270cc468338c8a89a782c891caab330a41",
+    "tools/lab/surface_driver/gate.py": "b1d7c33d396e9dce23c637f575c698d3ddd8e9ad91a518a18d32fe1c1d7eb585",
+    "tools/lab/surface_driver/secret-states.json": "d92f49f82913f8217fa99cb3e5ff21e310a6bbe5fcf4adc092730327d796ac29"
+  }
+}

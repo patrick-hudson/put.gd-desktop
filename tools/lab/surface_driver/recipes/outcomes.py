@@ -167,6 +167,29 @@ def _pattern(ctx):
         last[0] = current
         return current if same else None
     image = ctx.wait(stable, 'frozen independent pattern frame', interval=.5)
+    if not pattern_visible(image, scene.rect):
+        from ..receipts import write_json
+        layout = ctx._probe('layout', {'compositor': ctx.profile.get('compositor')})
+        if ctx.profile.get('session') == 'x11':
+            ids = [str(w['id']) for w in layout['windows']]
+            result = ctx.shell("python3 - <<'CLASSES'\nimport json,subprocess\n"+
+                "ids="+repr(ids)+"\nprint(json.dumps({wid:subprocess.run(['xprop','-id',wid,'WM_CLASS'],capture_output=True,text=True).stdout.strip() for wid in ids}))\nCLASSES")
+            ctx.expect(result['returncode'] == 0, 'pattern obstruction classes read')
+            classes = json.loads(result['stdout'])
+            for window in layout['windows']:
+                window['class'] = classes.get(str(window['id']), '')
+        layout['pattern_rect'] = list(scene.rect)
+        Image, ImageChops, _ = image_modules()
+        background = image.convert('RGB').copy()
+        x, y, w, h = scene.rect
+        background.paste((255, 0, 255), (x, y, x+w, y+h))
+        layout['outside_pattern_difference_bounds'] = ImageChops.difference(
+            background, Image.new('RGB', image.size, (255, 0, 255))).getbbox()
+        colors = image.crop((x, y, x+w, y+h)).convert('RGB').getcolors(4)
+        layout['video_color_count'] = len(colors) if colors is not None else '>4'
+        write_json(ctx.out/'pattern-occlusion.json', layout, redactor=ctx.evidence.redactor)
+        ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png',
+                           [[0, 0, image.width, image.height]], fallback=True)
     ctx.expect(pattern_visible(image, scene.rect), 'known fullscreen pattern covers the chosen monitor without foreign UI')
     _frame(ctx, 'independent-frozen-pattern')
     return scene, image

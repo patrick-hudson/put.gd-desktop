@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "vm-overlay-cleanup-evidence",
+  "run": "/home/patrick/t1b/work/lab-runs/rk1",
+  "runId": "eb888216-2d5d-4f69-9ffb-2eb0d7abe2d4",
+  "completed": true,
+  "outcome": "failed",
+  "evidenceExportVerified": true
+}

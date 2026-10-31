@@ -1148,6 +1148,7 @@ def xwininfo(wid):
         return found[1]
     return {'x': int(field('Absolute upper-left X')), 'y': int(field('Absolute upper-left Y')),
             'width': int(field('Width')), 'height': int(field('Height')),
+            'viewable': bool(re.search(r'^\s*Map State:\s*IsViewable\s*$', raw, re.M)),
             'override_redirect': field('Override Redirect State') == 'yes'}
 
 
@@ -1193,6 +1194,8 @@ def x11_windows(query):
             # frame a second time (native decorated dialogs land 1x title bar
             # low). xwininfo reports the server's absolute client origin.
             info = xwininfo(wid)
+            if query.get('selector_screens') and not info['viewable']:
+                continue  # Root enumeration also includes not-yet-mapped covers.
             values = {'X': info['x'], 'Y': info['y'], 'WIDTH': info['width'], 'HEIGHT': info['height']}
             state = xprop(wid, '_NET_WM_STATE')
             extents = [int(v) for v in re.findall(r'\d+',xprop(wid,'_NET_FRAME_EXTENTS'))]
@@ -1201,9 +1204,13 @@ def x11_windows(query):
                 left,right,top,bottom=extents
                 frame = {'x':int(values['X'])-left,'y':int(values['Y'])-top,
                          'width':int(values['WIDTH'])+left+right,'height':int(values['HEIGHT'])+top+bottom}
+            # Native XCB covers deliberately have no WM_NAME. Do not discard
+            # an otherwise verified cover when xdotool cannot read its name.
+            name = ('' if query.get('selector_screens') and info['override_redirect'] and native_capture_process(pid)
+                    else run('xdotool', 'getwindowname', wid))
             found.append({'x': int(values['X']), 'y': int(values['Y']), 'width': int(values['WIDTH']),
                           'height': int(values['HEIGHT']), 'scale': 1, 'pid': pid, 'window_id': wid,
-                          'name': run('xdotool', 'getwindowname', wid), 'coordinate_space': 'framebuffer', 'frame':frame,
+                          'name': name, 'coordinate_space': 'framebuffer', 'frame':frame,
                           'override_redirect': info['override_redirect'],
                           'states': {'active':wid==active, 'minimized': '_NET_WM_STATE_HIDDEN' in state,
                                      'maximized': all(v in state for v in ('MAXIMIZED_VERT', 'MAXIMIZED_HORZ'))}})

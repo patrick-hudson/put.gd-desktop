@@ -1,0 +1,11 @@
+{
+  "kvm": true,
+  "qemuCount": 0,
+  "freeBytes": 136737185792,
+  "ports": [
+    22222,
+    5920
+  ],
+  "placement": "guest",
+  "uptime": "07:39:54 up 14 days,  7:23,  8 users,  load average: 0.36, 0.80, 0.92"
+}

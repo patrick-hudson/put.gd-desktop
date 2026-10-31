@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "f44",
+    "placement": "guest",
+    "guest": "kde-wayland",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {},
+    "operation_ids": [
+      {
+        "operationId": "0920a9cf-7d17-4c39-8950-ea868e81d37c"
+      }
+    ],
+    "cleanup_errors": []
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r2e/kde-s3-inspect/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; operationId=0920a9cf-7d17-4c39-8950-ea868e81d37c; retained-failure={\"operationState\": \"partial\", \"operationError\": \"\", \"uploadStatus\": \"failed\", \"shareStatus\": \"not_requested\", \"linkAvailable\": false, \"detailError\": \"s3_permission_denied\", \"hasReceipt\": true, \"itemErrors\": [\"s3_permission_denied\"]}; destinationAclMode=public-read; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/__main__.finish/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "failed-upload-history",
+          "path": "frames/__main__.finish/01-failed-upload-history.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/__main__.finish/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "__main__.finish",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T05:10:05Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 8,
+    "pngs": 3,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}

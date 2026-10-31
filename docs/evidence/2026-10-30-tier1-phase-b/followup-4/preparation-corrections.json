@@ -1,0 +1,29 @@
+{
+  "liveAttemptsAdded": 0,
+  "corrections": [
+    {
+      "host": "f44",
+      "stage": "before-guest-allocation",
+      "refusal": "Requested SSH endpoint was absent from the existing authenticated guest pin",
+      "resolution": "Used the prior golden-matching endpoint 22434; preserved refusal privately; no new host key trusted"
+    },
+    {
+      "host": "f44",
+      "stage": "launch-controller",
+      "refusal": "Outer private SSH wrapper used its default 60-second deadline",
+      "resolution": "Confirmed exact owned launch completed and resumed capacity/install/setup without allocating or booting another guest"
+    },
+    {
+      "host": "d69/f44",
+      "stage": "precredential-ready-snapshot",
+      "refusal": "Private script treated the lab screenshot metadata mapping as a path",
+      "resolution": "Decoded its path on the builder to save a PNG, then visually verified each unlocked desktop"
+    },
+    {
+      "host": "d69",
+      "stage": "before-Cinnamon-allocation",
+      "refusal": "Raw bind preflight encountered a recently retired VNC socket in TIME_WAIT",
+      "resolution": "Confirmed no listener and used SO_REUSEADDR for the preflight, preserving active-listener refusal"
+    }
+  ]
+}

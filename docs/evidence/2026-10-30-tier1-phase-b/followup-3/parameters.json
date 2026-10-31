@@ -1,0 +1,19 @@
+{
+  "desktop": "ubuntu-gnome-wayland",
+  "host": "d69",
+  "placement": "guest",
+  "run": "/home/patrick/t1b/work/lab-runs/r4g",
+  "session": "codex-tier1b-r4-6801919c",
+  "sessionRoots": [
+    "/dev/shm/ugsa",
+    "/dev/shm/ugpa"
+  ],
+  "recipes": [
+    "outcomes_live.s3_region_upload",
+    "outcomes_live.proton_region_upload"
+  ],
+  "attemptsPerDestination": 1,
+  "firefoxDownloadObservation": "Gecko Downloads.ALL before any corrective confirm-menu click; exact target hashing in guest RAM",
+  "previewComparison": "decoded RGBA, same dimensions, tolerance zero",
+  "otherDesktops": "not rerun: GNOME did not fully pass"
+}
