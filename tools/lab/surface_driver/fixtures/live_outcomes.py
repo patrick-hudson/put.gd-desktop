@@ -159,7 +159,7 @@ def provider(scope):
         bridge._update_receipt(receipt, state, state='import_confirmed')
         provider_settings = json.loads((Path(__file__).resolve().parents[4]/'config/development.example.json').read_text())['profiles'][0]['settings']
         provider_settings.update(bucket=settings['bucket'], region=region, endpoint='https://s3.'+region+'.amazonaws.com',
-                                 objectPrefix=prefix, publicUrlBase='https://put.gd', aclMode='omit', addressing='auto')
+                                 objectPrefix=prefix, publicUrlBase='https://put.gd', aclMode='public-read', addressing='auto')
         fixture.update(client=client, bucket=settings['bucket'], region=region)
         provider_name = 's3'
     else:

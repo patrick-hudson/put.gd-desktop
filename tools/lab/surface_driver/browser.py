@@ -1198,6 +1198,28 @@ return {width:c.width,height:c.height,naturalWidth:im.naturalWidth,naturalHeight
     return result
 
 
+def _public_s3_digest(client, original):
+    """Independent guest GET; the working URL never leaves this RAM process."""
+    from urllib.parse import urlsplit
+    from urllib.request import Request, urlopen
+    url = client.script('return location.href;')
+    parsed = urlsplit(url)
+    if (parsed.scheme != 'https' or parsed.hostname != 'put.gd' or parsed.username or parsed.password
+            or parsed.port not in (None, 443) or parsed.query or parsed.fragment
+            or not re.fullmatch(r'/acceptance/tier1-live/[0-9a-f]{32}/[^/]+', parsed.path)):
+        raise _TargetError('Guest public GET is outside the exact acceptance URL shape')
+    try:
+        with urlopen(Request(url, headers={'Cache-Control':'no-cache'}), timeout=30) as response:
+            if response.status != 200 or response.geturl() != url:
+                raise _TargetError('Guest public GET did not return an unredirected HTTP 200')
+            data = response.read(32*1024*1024+1)
+    except Exception:
+        raise _TargetError('Guest public GET failed; URL and network details withheld') from None
+    if not 0 < len(data) <= 32*1024*1024:
+        raise _TargetError('Guest public GET exceeded its bounded payload size')
+    return {'status':200, 'bytes':len(data), 'sha256':hashlib.sha256(data).hexdigest(), 'matches':data == original}
+
+
 def _completed_recipient_file(observation, original, expected_name):
     """Use Firefox's actual completed target, including a Downloads fallback."""
     complete = [r for r in observation['entries'] if r['succeeded'] and r['stopped'] and not r['error']]
@@ -1342,7 +1364,7 @@ fetch(images[0].currentSrc||images[0].src,{cache:'no-store',credentials:'omit'})
 """, asynchronous=True)
                 if not isinstance(received, dict) or set(received)!={'status','bytes','sha256'} or received['status']!=200:
                     raise _TargetError('Recipient Firefox could not hash the original S3 image')
-                return {**received, 'matches':received['bytes']==len(original) and
+                return {**received, 'guestGet':_public_s3_digest(client, original), 'matches':received['bytes']==len(original) and
                         received['sha256']==hashlib.sha256(original).hexdigest()}
             else:
                 raise _TargetError('Unsupported live recipient provider')

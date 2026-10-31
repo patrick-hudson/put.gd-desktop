@@ -130,8 +130,9 @@ def _region_upload(ctx):
     if ctx.destination == 's3':
         resolved = next(p for p in ctx.call('settings.get')['document']['profiles'] if p['id'] == service.profile_id)
         ctx.expect(resolved['settings'].get('publicUrlBase') == 'https://put.gd'
+                   and resolved['settings'].get('aclMode') == 'public-read'
                    and resolved['settings'].get('objectPrefix') == service.prefix,
-                   'resolved S3 profile uses CloudFront and this exact acceptance prefix')
+                   'resolved S3 profile uses public-read, CloudFront and this exact acceptance prefix')
         ctx.note('s3_resolved_cloudfront_base_count=1')
     detail, cleaned, owned = None, False, False
     try:
@@ -197,6 +198,10 @@ def _region_upload(ctx):
                         ctx.note('browser_hash_match_count=1')
                         if ctx.destination == 's3':
                             ctx.note('cloudfront_positive_status='+str(downloaded['status']))
+                            public = downloaded['guestGet']
+                            ctx.expect(public['status'] == 200 and public['matches'] and public['sha256'] == digest
+                                       and public['bytes'] == len(data), 'guest CloudFront GET 200 SHA-256 equals saved file')
+                            ctx.note('guest_public_hash_match_count=1; guest_cloudfront_positive_status=200')
                         if ctx.destination == 'proton':
                             ctx.note('remote_hash_match_count=1')
                 except Exception as error:

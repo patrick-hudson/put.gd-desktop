@@ -21,6 +21,24 @@ from tools.lab.surface_driver import browser
 
 
 class LiveOutcomes(unittest.TestCase):
+    def test_guest_public_get_requires_scoped_unredirected_200_and_original_bytes(self):
+        client=Mock();url='https://put.gd/acceptance/tier1-live/'+'a'*32+'/capture.png'
+        client.script.return_value=url
+        response=Mock(status=200);response.geturl.return_value=url;response.read.return_value=b'original'
+        response.__enter__=Mock(return_value=response);response.__exit__=Mock(return_value=False)
+        with patch('urllib.request.urlopen',return_value=response) as request:
+            self.assertTrue(browser._public_s3_digest(client,b'original')['matches'])
+            self.assertFalse(browser._public_s3_digest(client,b'changed')['matches'])
+            self.assertEqual(request.call_args.kwargs['timeout'],30)
+            response.status=403
+            with self.assertRaises(browser._TargetError):browser._public_s3_digest(client,b'original')
+            response.status=200;response.geturl.return_value=url+'?redirected'
+            with self.assertRaises(browser._TargetError):browser._public_s3_digest(client,b'original')
+        client.script.return_value='https://put.gd/foreign/capture.png'
+        with patch('urllib.request.urlopen') as request:
+            with self.assertRaises(browser._TargetError):browser._public_s3_digest(client,b'original')
+            request.assert_not_called()
+
     def test_download_list_drops_source_and_error_messages_and_restores_context(self):
         raw={'available':True,'entries':[{'target':'/tmp/capture.png','sourceUrl':'https://invalid.example/private-token',
              'error':{'result':123,'message':'https://invalid.example/private-token','becauseTargetFailed':True}}]}
@@ -267,7 +285,8 @@ class LiveOutcomes(unittest.TestCase):
                 client.script.side_effect=None
                 for digest,matched in ((hashlib.sha256(saved.read_bytes()).hexdigest(),True),('0'*64,False)):
                     client.script.return_value={'status':200,'bytes':saved.stat().st_size,'sha256':digest}
-                    result=browser._target('download-digest',dict(args,kind='s3'))
+                    with patch.object(browser,'_public_s3_digest',return_value={'status':200,'matches':True}):
+                        result=browser._target('download-digest',dict(args,kind='s3'))
                     self.assertEqual(result['matches'],matched)
                 client.script.return_value={'status':206,'bytes':saved.stat().st_size,'sha256':hashlib.sha256(saved.read_bytes()).hexdigest()}
                 with self.assertRaises(browser._TargetError):browser._target('download-digest',dict(args,kind='s3'))
