@@ -194,8 +194,9 @@ def _region_upload(ctx):
                             preview_only = True
                     if not preview_only:
                         ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
-                                   'Firefox recipient original bytes SHA-256 equals saved file in guest')
-                        ctx.note('browser_hash_match_count=1')
+                                   'recipient original bytes SHA-256 equals saved file in guest')
+                        if ctx.destination == 'proton':
+                            ctx.note('browser_hash_match_count=1')
                         if ctx.destination == 's3':
                             ctx.note('cloudfront_positive_status='+str(downloaded['status']))
                             public = downloaded['guestGet']

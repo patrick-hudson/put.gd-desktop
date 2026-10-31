@@ -1349,23 +1349,14 @@ def _target(action, values):
             if values['kind'] == 'proton':
                 return _proton_recipient_download(client, values, directory, original)
             if values['kind'] == 's3':
-                # Fetch the original image in the recipient Firefox origin;
-                # canvas serialization would not prove the uploaded bytes.
-                received = client.script("""
-const done=arguments[arguments.length-1];
-const images=[...document.images].filter(e=>e.complete&&e.naturalWidth>0);
-if(images.length!==1){done(null);return;}
-fetch(images[0].currentSrc||images[0].src,{cache:'no-store',credentials:'omit'}).then(async r=>{
- if(r.status!==200){done(null);return;}const data=await r.arrayBuffer();
- if(!data.byteLength||data.byteLength>32*1024*1024){done(null);return;}
- const hash=await crypto.subtle.digest('SHA-256',data);
- done({status:r.status,bytes:data.byteLength,sha256:[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('')});
-}).catch(()=>done(null));
-""", asynchronous=True)
-                if not isinstance(received, dict) or set(received)!={'status','bytes','sha256'} or received['status']!=200:
-                    raise _TargetError('Recipient Firefox could not hash the original S3 image')
-                return {**received, 'guestGet':_public_s3_digest(client, original), 'matches':received['bytes']==len(original) and
-                        received['sha256']==hashlib.sha256(original).hexdigest()}
+                # Firefox has already rendered the exact copied image URL.
+                # Fetch independently in the guest: native image documents can
+                # restrict page-script fetch/crypto, which is not app behavior.
+                received = _public_s3_digest(client, original)
+                if (not isinstance(received, dict) or set(received) != {'status','bytes','sha256','matches'}
+                        or received['status'] != 200):
+                    raise _TargetError('Guest could not hash the original public S3 image')
+                return {**received, 'guestGet':dict(received)}
             else:
                 raise _TargetError('Unsupported live recipient provider')
         if action == 'unavailable':

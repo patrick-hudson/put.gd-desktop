@@ -285,11 +285,12 @@ class LiveOutcomes(unittest.TestCase):
                 client.script.side_effect=None
                 for digest,matched in ((hashlib.sha256(saved.read_bytes()).hexdigest(),True),('0'*64,False)):
                     client.script.return_value={'status':200,'bytes':saved.stat().st_size,'sha256':digest}
-                    with patch.object(browser,'_public_s3_digest',return_value={'status':200,'matches':True}):
+                    with patch.object(browser,'_public_s3_digest',return_value={'status':200,'bytes':saved.stat().st_size,'sha256':digest,'matches':matched}):
                         result=browser._target('download-digest',dict(args,kind='s3'))
                     self.assertEqual(result['matches'],matched)
                 client.script.return_value={'status':206,'bytes':saved.stat().st_size,'sha256':hashlib.sha256(saved.read_bytes()).hexdigest()}
-                with self.assertRaises(browser._TargetError):browser._target('download-digest',dict(args,kind='s3'))
+                with patch.object(browser,'_public_s3_digest',return_value={'status':206,'bytes':1,'sha256':'0'*64,'matches':True}):
+                    with self.assertRaises(browser._TargetError):browser._target('download-digest',dict(args,kind='s3'))
 
 
 if __name__=='__main__':unittest.main()
