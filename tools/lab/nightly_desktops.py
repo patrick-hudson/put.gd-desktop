@@ -310,12 +310,12 @@ def retire(run, out, rows):
 
 def baton_returned(run):
     locks = Path.home()/'putgd-lab/locks'
-    last = json.loads((locks/'proton-registry.json').read_text()).get('lastLend', {})
-    if last.get('run') == str(run) and last.get('carriedBack'):
-        return True
     proton = locks/'proton.lock'
     if proton.exists() and 'lent copy outstanding' in proton.read_text():
         raise RuntimeError('Proton carry-back unresolved; overlay retained')
+    last = json.loads((locks/'proton-registry.json').read_text()).get('lastLend', {})
+    if last.get('run') == str(run) and last.get('carriedBack'):
+        return True
     # lend may stop while preparing the guest, before exporting any session.
     return False
 

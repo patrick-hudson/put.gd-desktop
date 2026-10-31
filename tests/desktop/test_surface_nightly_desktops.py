@@ -186,6 +186,9 @@ class NightlyTests(unittest.TestCase):
             (locks/'proton.lock').unlink()
             registry.write_text(json.dumps(dict(lastLend=dict(run='/current',carriedBack='receipt.json'))))
             self.assertTrue(nightly.baton_returned('/current'))
+            (locks/'proton.lock').write_text('blocked: lent copy outstanding on second attempt\n')
+            with self.assertRaisesRegex(RuntimeError,'carry-back unresolved'):
+                nightly.baton_returned('/current')
 
     def test_checksum_failure_blocks_before_guest_launch(self):
         class GitHub:
