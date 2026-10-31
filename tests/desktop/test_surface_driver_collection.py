@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tools.lab.surface_driver.collect import collect, mark_terminal, require_terminal
 
@@ -61,3 +64,7 @@ class TerminalCollection(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'collection refused'):
             collect([self.run, pending], self.root / 'evidence.tgz')
         self.assertFalse((self.root / 'evidence.tgz').exists())
+
+
+if __name__ == '__main__':
+    unittest.main()
