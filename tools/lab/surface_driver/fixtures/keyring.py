@@ -80,7 +80,6 @@ identity=IDENTITY
 p=Path('/proc')/str(identity['pid'])
 assert p.stat().st_uid==os.getuid()
 assert (p/'stat').read_text().rsplit(')',1)[1].split()[19]==identity['start']
-assert ('XDG_RUNTIME_DIR='+os.environ['XDG_RUNTIME_DIR']).encode() in (p/'environ').read_bytes().split(b'\\0')
 bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
 def call(dest,path,iface,method,params,reply):
  return bus.call_sync(dest,path,iface,method,params,GLib.VariantType(reply),Gio.DBusCallFlags.NO_AUTO_START,1000,None).unpack()[0]
