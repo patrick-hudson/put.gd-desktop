@@ -27,8 +27,12 @@ private status. The synthetic file/folder remain; no existing object was changed
 The private receipt retains no session snapshot or capability URL. This is
 headless helper evidence, not desktop or resource acceptance.
 
-The native replay and exact subject are recorded in native_relink/ and
-notices/SOURCES.json. Earlier desktop attempts used the pre-upgrade helper;
+The native replay passed on d69: Bun Rust, JavaScriptCore C++ and TinyCC C
+source markers execute from both the rebuilt native Bun and its compiled helper.
+Both execute TinyCC C code; the 46 helper tests, eleven compiled protocol checks,
+full stdout drain and modified Argon/OpenPGP interoperability fixture pass.
+The production helper is unchanged. Native binary byte identity is not claimed.
+The exact subject and receipts are in native_relink/ and notices/SOURCES.json. Earlier desktop attempts used the pre-upgrade helper;
 no acceptance transfers to this SDK/Crypto build. Final desktop/resource gates
 remain independently recorded in the catalog.
 

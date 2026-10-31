@@ -80,3 +80,14 @@ before removing the disposable container. Hash the exported evidence and retain
 the proof executables privately on the builder. Source modification/relinking
 does not establish native byte identity, live Proton behavior, resources,
 desktop acceptance, or stable-release acceptance.
+
+
+The 2026-10-31 d69 run passed for production helper
+`9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586`.
+See [the execution receipt](evidence/native-proof.json),
+[its prerequisite installer audit](evidence/ci-before-native.json) and
+[the replay input comparison](evidence/recipe-validation.json).
+The native executable reports `--version` 1.4.4 and upstream release-local
+`--revision` metadata `1.4.4-canary.1+38afee6c8`, alongside the three executed
+source markers. Its exact source commit is the pinned Bun 1.4.4 commit; this
+proof does not substitute that marked native executable for the production Bun.

@@ -1,0 +1,37 @@
+--- a/bun/src/runtime/cli/mod.rs
++++ b/bun/src/runtime/cli/mod.rs
+@@ -2293,6 +2293,18 @@
+ 
+ #[cold]
+ pub(crate) fn print_revision_and_exit() -> ! {
++    unsafe extern "C" {
++        fn putgd_jsc_rebuild_proof() -> *const core::ffi::c_char;
++        fn putgd_tcc_rebuild_proof() -> *const core::ffi::c_char;
++    }
++    let proof_writer = Output::writer();
++    let _ = proof_writer.write_all(b"putgd-bun-native-proof ");
++    unsafe {
++        let _ = proof_writer.write_all(std::ffi::CStr::from_ptr(putgd_jsc_rebuild_proof()).to_bytes());
++        let _ = proof_writer.write_all(b" ");
++        let _ = proof_writer.write_all(std::ffi::CStr::from_ptr(putgd_tcc_rebuild_proof()).to_bytes());
++    }
++    let _ = proof_writer.write_all(b"\n");
+     // See `print_version_and_exit` — plain bytes, no `<tag>` rewrite needed.
+     let w = Output::writer();
+     let _ = w.write_all(Global::package_json_version_with_revision.as_bytes());
+--- a/WebKit/Source/JavaScriptCore/API/JSBase.cpp
++++ b/WebKit/Source/JavaScriptCore/API/JSBase.cpp
+@@ -220,3 +220,5 @@
+ 
+     return toRef(object);
+ }
++
++extern "C" const char* putgd_jsc_rebuild_proof(void) { return "putgd-jsc-source-proof"; }
+--- a/bun/vendor/tinycc/libtcc.c
++++ b/bun/vendor/tinycc/libtcc.c
+@@ -2272,3 +2272,5 @@
+     fprintf(stderr, " %d max (bytes)\n", mem_max_size);
+ #endif
+ }
++
++const char* putgd_tcc_rebuild_proof(void) { return "putgd-tinycc-source-proof"; }

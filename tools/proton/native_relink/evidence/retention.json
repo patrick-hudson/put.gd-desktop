@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "host": "d69",
+  "archive": "/home/patrick/work/b1071/native-proof-evidence-complete.tar.gz",
+  "bytes": 1096306740,
+  "sha256": "e573bacaee51fa1e0b88cbe501fcb8ce6ebb9e40d66bf4d57bf6820a4720f1dc",
+  "restoreIndex": "/home/patrick/work/b1071/native-export/restore-index-v2.json",
+  "restoreIndexSha256": "67c8bdcd7ea31ed1268ecdc6a03770453d1d9bd9fdb126ad8de73a092e450010",
+  "verifiedArchiveMemberCount": 66,
+  "verifiedReadback": true,
+  "executablesRetained": true,
+  "sourcePacketsRetained": true,
+  "containerCleanup": {
+    "completedUtc": "2026-10-31T19:02:40.196840+00:00",
+    "ownContainersRemoved": [
+      "putgd-proton-1071b",
+      "putgd-proton-1071"
+    ],
+    "archiveReadbackVerifiedBeforeRemoval": true,
+    "executablesAndSourcePacketsRetained": true,
+    "imageRetained": "sha256:ec9551624ead2639835ea98cf878513048b5566e1bad8e68879b738f684e51b8",
+    "operations": [
+      {
+        "operation": [
+          "stop",
+          "putgd-proton-1071b"
+        ],
+        "exitCode": 0
+      },
+      {
+        "operation": [
+          "rm",
+          "putgd-proton-1071b"
+        ],
+        "exitCode": 0
+      }
+    ],
+    "desktopOrProtonLocksHeld": false
+  },
+  "isolation": {
+    "containerId": "38784bd08460ca499df0bdc71fd2c514dccedecac91e5e9005ff9056084deb2e",
+    "imageId": "sha256:ec9551624ead2639835ea98cf878513048b5566e1bad8e68879b738f684e51b8",
+    "user": "ubuntu",
+    "networkMode": "none",
+    "mounts": [],
+    "capDrop": [
+      "ALL"
+    ],
+    "securityOpt": [
+      "no-new-privileges"
+    ],
+    "memoryBytes": 12884901888,
+    "memorySwapBytes": 12884901888,
+    "nanoCpus": 4000000000,
+    "pidsLimit": 2048,
+    "host": "d69",
+    "hostKernel": "6.12.107+deb13-amd64",
+    "recordedUtc": "2026-10-31T19:00:41.106743+00:00"
+  }
+}

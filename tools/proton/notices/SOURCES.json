@@ -19,15 +19,14 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": false,
+    "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
     "finalPackageAcceptanceVerified": false,
-    "nativeCompiledHelperSourceSelectionVerified": false,
+    "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Fresh Bun 1.4.4 native modification/relink verification",
-    "Fresh final-helper desktop functional/resource and actual package acceptance (P6)"
+    "Fresh final-helper SDK 0.23.0/Crypto 2.2.0 Cinnamon/GNOME/KDE functional/resource and final-package acceptance (P6)"
   ],
   "artifacts": [
     {
@@ -168,5 +167,28 @@
     "vendorWasmBundled": false,
     "vendorWasmSourcePacket": "putgd-proton-helper-rebuild.tar.gz",
     "preferredRustSourceClaimed": false
+  },
+  "nativeRelinkProof": {
+    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "sourcePins": {
+      "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
+      "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "receipt": "tools/proton/native_relink/evidence/native-proof.json",
+    "receiptSha256": "9d47aba1ec3674404f7905fad27999ac589efde49e08b5c1c9f12b643f624985",
+    "nativeBunSha256": "e2501fe8a1f12058166923347657d1a0732eac06d9361beff21b26f5870ef401",
+    "proofHelperSha256": "872e0637c2ca790132364509e2680d1553121518be8f894eacf014cab7e282d6",
+    "scope": "Offline modification/relink of the final helper using source-built Bun/JavaScriptCore/TinyCC; no native byte identity, account or desktop/resource acceptance claim."
+  },
+  "desktopResourceAcceptance": {
+    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "status": "open",
+    "receipt": "tools/proton/native_relink/evidence/desktop-resource-current.json",
+    "historicalProofTransferred": false
   }
 }

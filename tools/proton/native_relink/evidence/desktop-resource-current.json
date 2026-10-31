@@ -24,5 +24,9 @@
   "availableNightlyCoversCurrentHelper": false,
   "reason": "The available nightly predates #1067 and the SDK/Crypto upgrade. No current-helper Cinnamon/GNOME/KDE resource receipts are available; nightly functional cells alone do not provide the two post-use idle windows.",
   "historicalAttempt": "desktop-resource.json",
-  "historicalAttemptDoesNotEstablishCurrentAcceptance": true
+  "historicalAttemptDoesNotEstablishCurrentAcceptance": true,
+  "availableNightlyRelease": "v26.1031.3384-nightly",
+  "nightlyTableUpdatedUtc": "2026-10-31T17:52:34Z",
+  "nightlyTableCheckedUtc": "2026-10-31T19:02:42Z",
+  "nightlyTableUrl": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003"
 }

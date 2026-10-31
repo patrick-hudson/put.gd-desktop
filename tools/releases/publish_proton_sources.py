@@ -68,7 +68,7 @@ def publish(api, catalog, directory, commit, notes):
         missing = set(expected) - {a['name'] for a in value['assets']}
         if missing:
             subprocess.run(['gh', 'release', 'upload', tag, '--repo', api.repository,
-                            *[str(directory / name) for name in sorted(missing)]], check=True, timeout=1800)
+                            *[str(directory / name) for name in sorted(missing)]], check=True, timeout=3600)
         value = metadata()
         if value.get('draft') is not True or value.get('target_commitish') != commit:
             raise ValueError('Source draft changed before publication')

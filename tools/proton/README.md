@@ -180,3 +180,7 @@ The publisher verifies pinned local/uploaded bytes, resumes matching drafts and
 passes `--prerelease --latest=false` at creation and publication. It rejects an
 existing full release. Proton source releases must stay out of the stable
 installer channel; installer publication also verifies their prerelease status.
+
+On a slow upload link, `GODEBUG=http2client=0` gives the two large parts separate
+HTTP connections in gh's concurrent uploader. The publisher allows up to an
+hour for transport and verifies every remote digest before publication.

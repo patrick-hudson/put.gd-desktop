@@ -30,9 +30,15 @@ large-output regression. CI independently reproduces the helper hash with
 audit_redistribution.py. No Proton account is needed for these checks.
 
 A recipient-modified Bun may also be selected with compile-executable-path.
-To install a modified helper, update manifest.sha256 and rebuild put.gd from
-source with that manifest; CMake binds its hash. A modified artifact is not
-expected to match the official production helper hash.
+The stock provisioner expects the stock integrity-locked Bun; use the manual
+compile command above with compile-executable-path for a native variant. To
+install that variant, update runtime-lock.json and the source catalog to describe
+the modified compiler/helper, and recompute all corresponding manifest source,
+lock, notice, catalog and executable hashes. Preserve/update the applicable
+native notices and library dependencies. Rebuild put.gd from source with that
+manifest; CMake checks those inputs and binds the helper hash. No project signing
+key is needed for this source rebuild. A modified artifact is not expected to
+match the official production helper hash or inherit its acceptance receipts.
 
 The Bun 1.4.4 packet preserves its complete Bun source, exact WebKit Git source
 objects, current native recipes/patches, Cargo/npm source inputs, ICU 78.3 source,
