@@ -6,7 +6,7 @@ import tempfile
 import threading
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab import nightly_desktops as nightly
@@ -38,6 +38,18 @@ class FakeGitHub:
 
 
 class NightlyTests(unittest.TestCase):
+    def test_fedora_activation_still_refuses_a_covered_target(self):
+        from test_surface_input_guards import context
+        from tools.lab.surface_driver.api import RecipeFailed
+        ctx, directory = context({'session':'wayland', 'compositor':{'kind':'gnome-lab-witness'},
+                                  'focus':{'raise_before_input':True}})
+        self.addCleanup(directory.cleanup)
+        ctx._probe = Mock(return_value={'ok':False, 'obscuring_window':'Foreign confirmation', 'active':42})
+        with self.assertRaisesRegex(RecipeFailed, 'Foreign confirmation'):
+            ctx.click_at(25,35)
+        self.assertTrue(ctx._probe.call_args.args[1]['raise'])
+        ctx.target.pointer.assert_not_called()
+
     def rpm_install(self, root, *, failure=False, desktop_changed=False, verify_failure=False):
         from tools.lab import nightly_desktop_guest as guest
         run, out, package = root/'run', root/'out', root/'published.rpm'
@@ -174,6 +186,21 @@ class NightlyTests(unittest.TestCase):
             value['environment']['observed_build']['gitCommit']='b'*40
             (root/'receipt.json').write_text(json.dumps(value));mark_terminal(root,2)
             self.assertEqual(nightly.verdict(root,'outcomes.region_upload')['status'],'not_run')
+
+    def test_overview_or_missing_focus_refuses_input_without_app_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for note in ("input target 'outcome-pattern' is obscured by 'no focused window' (window None)",
+                         "uploaded/local sha256=verified; input target 'history' is obscured by 'shell overview' (window None)",
+                         "desktop input is obscured by 'shell overview'"):
+                with self.subTest(note=note):
+                    self.receipt(root, functional='failed', note=note)
+                    self.assertEqual(nightly.verdict(root, 'outcomes.region_upload')['status'], 'not_run')
+            for note in ("pixel mismatch; no focused window", "resident recording.prepare: recording_unavailable",
+                         "input target 'editor' is obscured by 'put.gd confirmation' (window 42)"):
+                with self.subTest(note=note):
+                    self.receipt(root, functional='failed', note=note)
+                    self.assertEqual(nightly.verdict(root, 'outcomes.region_upload')['status'], 'red')
 
     def test_grey_reason_is_one_table_line_and_disabled_is_explicit(self):
         result=dict(desktops=[dict(desktop='Aurora',host='aurora-amd',notRunReason='load at core count',cells={
