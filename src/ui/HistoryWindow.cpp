@@ -1252,7 +1252,7 @@ QDialog* HistoryWindow::deletionConfirmation(QWidget* parent,const QJsonObject& 
   QList<std::pair<QString,QString>> fields{{"Destination",originalDestination(receipt,profiles)}};
   if(receipt["destination"].toObject()["providerId"]!="proton-drive"){if(!reference["key"].toString().isEmpty())fields.append({"Key",reference["key"].toString()});
   for(const auto& [key,label]:QList<std::pair<QString,QString>>{{"versionId","Version"},{"fileId","File version"},{"revisionUid","Revision"},{"nodeUid","Node"}})if(!reference[key].toString().isEmpty())fields.append({label,reference[key].toString()});
-  if(reference["key"].toString().isEmpty()&&fields.size()==1)fields.append({"Target",QString::fromUtf8(QJsonDocument(reference).toJson(QJsonDocument::Compact))});
+  if(reference["key"].toString().isEmpty()&&fields.size()==1)fields.append({"Target",receipt["directUrl"].toString().isEmpty()?QString("Recorded remote file (see technical details)"):receipt["directUrl"].toString()});
   }
   int line=1;for(const auto& [label,value]:fields){auto* l=new QLabel(label,list);Ui::role(l,"meta");auto* v=new QLabel(value,list);v->setTextFormat(Qt::PlainText);v->setWordWrap(true);v->setTextInteractionFlags(Qt::TextSelectableByMouse);if(label!="Destination"&&label!="Effect")Ui::role(v,"mono");grid->addWidget(l,line,0,Qt::AlignTop);grid->addWidget(v,line,1);++line;}
   rows->addLayout(grid);

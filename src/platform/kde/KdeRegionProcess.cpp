@@ -45,7 +45,7 @@ QJsonObject KdeRegionProcess::diagnostics() const {
  return {{"active",busy()},{"processId",processId()},{"lastExit",lastExit_},{"cleanupRequired",cleanupRequired_},{"build",build()}};
 }
 void KdeRegionProcess::closeFrozen() { if(frozenFd_>=0) ::close(frozenFd_); frozenFd_=-1; }
-void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback,QString outcome,const QList<CaptureFrame>& pixels) {
+void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback,QString outcome,const QList<CaptureFrame>& pixels,QJsonObject appearance) {
  if(closing_) { callback({},unavailable("cancelled")); return; }
  if(busy()) { callback({},unavailable("busy_selecting")); return; }
  if(cleanupRequired_) { callback({},{"capture_cleanup_pending","Restart put.gd before capturing again: the region helper did not confirm surface cleanup",{}}); return; }
@@ -74,12 +74,12 @@ void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<voi
  connect(control_,&CaptureControl::failed,this,[this,child,epoch](Error error){
   if(process_==child && generation_==epoch) fail(std::move(error));
  });
- connect(child,&QProcess::started,this,[this,child,epoch,layout,outcome,frozen]{
+ connect(child,&QProcess::started,this,[this,child,epoch,layout,outcome,frozen,appearance]{
   if(process_!=child || generation_!=epoch) return;
   launchPid_=child->processId(); launchStartTicks_=processStartTicks(launchPid_);
   output_.started(launchPid_,{{"generation",QString::number(generation_)}});
   if(launchStartTicks_.isEmpty()) { fail(unavailable("capture_start_failed")); return; }
-  QJsonObject bootstrap{{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"layout",layout},{"outcome",outcome}};
+  QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"layout",layout},{"outcome",outcome}};
   if(frozen.fd>=0) bootstrap["frozen"]=QJsonObject{{"fd",frozen.fd},{"frames",frozen.frames}};
   // The child holds its own copy now.
   closeFrozen();

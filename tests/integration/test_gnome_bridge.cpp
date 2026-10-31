@@ -97,7 +97,8 @@ public slots:
   if(helloError_=="malformed")return "not-json";
   if(helloError_=="incompatible")return json({{"version",99},{"shellMajor",50}});
   if(!helloError_.isEmpty()){sendErrorReply(helloError_,"Synthetic bridge failure");return {};}
-  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion}});}
+  const int loaded=qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion;
+  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",loaded},{"recordingVersion",loaded>=2?1:0}});}
  QString SetUiProcess(uint pid){
   registrations_.append(int(pid));
   if(pid==failPid_&&failures_){--failures_;return json({{"error",QJsonObject{{"code","helper_unavailable"},{"message","Synthetic registration failure"},{"details",QJsonObject{}}}}});}
@@ -295,20 +296,19 @@ private slots:
   source.setUiProcess(5678);QVERIFY(windowAvailable(source));putgd::test::settle(3300);
   PUTGD_TRY_COMPARE(state()["currentPid"].toInt(),5678);PUTGD_TRY_COMPARE(state()["registrations"].toArray(),(QJsonArray{0,1234,0,5678}));
  }
+ void outdatedExtensionAsksForALogOut_data(){QTest::addColumn<int>("loadedVersion");QTest::newRow("no-recording-protocol")<<1;QTest::newRow("prior-appearance-protocol")<<putgd::gnome::extensionVersion-1;}
  void outdatedExtensionAsksForALogOut(){
-  // The package was upgraded while version 1 (no recording protocol) stays loaded.
-  stopFixture();QVERIFY(startFixture(1));
+  QFETCH(int,loadedVersion);stopFixture();QVERIFY(startFixture(loadedVersion));
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
   const auto helper=source.capabilities()["helper"].toObject();
   QVERIFY(helper["outdated"].toBool());QCOMPARE(helper["packagedExtensionVersion"].toInt(),putgd::gnome::extensionVersion);
   QVERIFY(!source.selectsRegions());
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
   QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
-  // Screenshots keep working with the loaded extension.
+  // Non-region acquisition remains available with the loaded extension.
   QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
   QCOMPARE(source.regionError().code,QString("helper_outdated"));
-  // #629: the loaded extension ignores regionMode, so Screenshot first must not
-  // silently select live; Live mode still captures with it.
+  // Neither Screenshot first nor Live may silently ignore the new app appearance.
   const auto before=state()["acquires"].toInt();
   source.setRegionScreenshotFirst(true);PayloadResult frozen;bool frozenDone=false;
   source.acquire("region",{},[&](PayloadResult value){frozen=std::move(value);frozenDone=true;});PUTGD_TRY_VERIFY(frozenDone);
@@ -316,7 +316,9 @@ private slots:
   QCOMPARE(state()["acquires"].toInt(),before);
   source.setRegionScreenshotFirst(false);PayloadResult live;bool liveDone=false;
   source.acquire("region",{},[&](PayloadResult value){live=std::move(value);liveDone=true;});PUTGD_TRY_VERIFY(liveDone);
-  QVERIFY2(!live.error,qPrintable(live.error.code+": "+live.error.message));QCOMPARE(live.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);QCOMPARE(state()["regionMode"].toString(),QString());
+  QCOMPARE(live.error.code,QString("helper_outdated"));QVERIFY(live.error.message.contains("log out and back in"));QCOMPARE(state()["acquires"].toInt(),before);
+  PayloadResult desktop;bool desktopDone=false;source.acquire("desktop",{},[&](PayloadResult value){desktop=std::move(value);desktopDone=true;});PUTGD_TRY_VERIFY(desktopDone);
+  QVERIFY2(!desktop.error,qPrintable(desktop.error.code+": "+desktop.error.message));QCOMPARE(desktop.payload.bytes,QByteArray("x"));QCOMPARE(state()["acquires"].toInt(),before+1);
   stopFixture();PUTGD_TRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
  }
  void ownerReplacementRegistersLatestPid(){

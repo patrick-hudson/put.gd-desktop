@@ -90,6 +90,12 @@ The dialog is styled from the Theme tokens in both schemes:
 
 It opens at 820×520 within the screen, with the Size, Type and Date columns
 sized from the font. It follows a scheme switch while open.
+
+On Linux it is always Qt's widget dialog (`DontUseNativeDialog`, #863). The
+views helper keeps the desktop's Qt platform theme, so without that option the
+fallback was that theme's native chooser: GTK's through `libqgtk3` on GNOME
+(in #863's Ubuntu 26.04 run it never mapped, leaving only Qt's invisible modal
+stand-in), and KDE's on Plasma, in neither case styled.
 `PUTGD_FILE_DIALOG=fallback` skips the portal; the lab and the tests use it.
 
 On Windows the helper opens Qt's dialog directly. With the Windows platform

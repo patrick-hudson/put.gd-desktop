@@ -17,7 +17,7 @@ public:
  ~KdeRegionProcess() override;
  // pixels (Screenshot first, #629): the frozen frames, in layout order, that the
  // helper shows as its backdrop. Empty keeps the transparent live selector.
- void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>,QString outcome={},const QList<CaptureFrame>& pixels={});
+ void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>,QString outcome={},const QList<CaptureFrame>& pixels={},QJsonObject appearance={});
  void cancel(Error={"cancelled","Region selection cancelled",{}});
  // Permanently stop this request owner without calling into its dying caller.
  void shutdown();

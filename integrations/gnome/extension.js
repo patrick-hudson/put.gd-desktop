@@ -197,9 +197,16 @@ const RegionSelection = {
     hint: 'Drag to select · Esc to cancel',
     hintHoldMs: 1700,
     hintFadeMs: 300,
-    pillStyle(scheme) {
-        const dark = scheme === 'prefer-dark';
-        return `background-color: ${dark ? '#191919' : '#eeeeeb'}; color: ${dark ? '#f0f0ec' : '#292926'}; border: 1px solid ${dark ? '#515151' : '#aaaaa3'}; border-radius: 999px; padding: 4px 12px; font-size: 10.5pt;`;
+    // Native fallback for older clients; keep this contracted to Theme.cpp.
+    pillTokens(scheme) {
+        return scheme === 'prefer-dark'
+            ? {surfaceRaised: '#2a2a2a', text: '#f0f0ec', borderStrong: '#737373'}
+            : {surfaceRaised: '#ffffff', text: '#292926', borderStrong: '#8e8e87'};
+    },
+    pillStyle(tokens) {
+        for (const key of ['surfaceRaised', 'text', 'borderStrong'])
+            check(/^#[0-9a-f]{6}$/i.test(tokens[key]), 'bridge_protocol', 'Invalid region theme token');
+        return `background-color: ${tokens.surfaceRaised}; color: ${tokens.text}; border: 1px solid ${tokens.borderStrong}; border-radius: 999px; padding: 4px 12px; font-size: 10.5pt;`;
     },
     switchDisplay(region, monitors, current, backwards = false) {
         const next = (current + (backwards ? -1 : 1) + monitors.length) % monitors.length;
@@ -293,7 +300,7 @@ const RegionSelection = {
 const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
     // frozen (#629): the stage screenshot taken before selection, drawn as the
     // backdrop; without it the selector is transparent over the live desktop.
-    _init(recording = false, outputs = null, outcome = '', frozen = null) {
+    _init(recording = false, outputs = null, outcome = '', frozen = null, appearance = {}) {
         super._init({reactive: true, visible: false, accessible_name: recording ? 'Recording region' : 'Capture region', x: 0, y: 0});
         this._outputs = outputs;
         this._outcome = outcome;
@@ -312,9 +319,9 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._recording = recording;
         this._keyboardMonitor = this._monitor();
         this._hintMonitor = this._keyboardMonitor;
-        // The capture bridge has no app scheme field; use the native preference.
+        // The resident resolves System/Dark/Light and supplies the app tokens.
         const settings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
-        const style = RegionSelection.pillStyle(settings.get_string('color-scheme'));
+        const style = RegionSelection.pillStyle(appearance.tokens ?? RegionSelection.pillTokens(settings.get_string('color-scheme')));
         this._hint = new St.Label({reactive: false, text: RegionSelection.hint, style});
         this.add_child(this._hint);
         this._size = new St.Label({reactive: false, visible: false, text: '', style});
@@ -990,6 +997,10 @@ export default class PutgdExtension extends Extension {
             const sender = Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
                 'org.freedesktop.DBus', 'GetNameOwner', new GLib.Variant('(s)', [CLIENT]),
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+            // A selection needs the pointer and keyboard put.gd's open tray menu
+            // holds, and must not show that menu (#924).
+            if (action !== 'desktop' && action !== 'window')
+                this._closeTrayMenu(sender);
             // Recording selects its own region later; only the key press is relayed.
             if (action === 'record') {
                 if (this._enabled)
@@ -1010,6 +1021,27 @@ export default class PutgdExtension extends Extension {
             // No resident bridge: binding has no capture or clipboard effect.
             this._drop(id);
         }
+    }
+
+    // put.gd's tray menu, drawn by the Shell's AppIndicator host, keeps its grab
+    // while the binding runs (it is allowed in POPUP mode, #341) and stays over
+    // a selection and in its picture (#924). Close it, as put.gd's own Qt tray
+    // menu closes; desktop and window captures keep menus in the picture.
+    // Only a menu whose StatusNotifierItem belongs to the resident is closed.
+    _closeTrayMenu(sender) {
+        const menu = Main.panel?.menuManager?.activeMenu;
+        const busName = menu?.isOpen ? menu.sourceActor?._indicator?.busName : null;
+        if (typeof busName !== 'string' || !busName)
+            return false;
+        try {
+            if (this._clientPid(busName) !== this._clientPid(sender))
+                return false;
+        } catch {
+            return false;
+        }
+        // BoxPointer.PopupAnimation.NONE: gone before the selection or freeze.
+        menu.close(0);
+        return true;
     }
 
     PrepareAsync([id, action], invocation) {
@@ -1099,7 +1131,7 @@ export default class PutgdExtension extends Extension {
                     check(content && Number.isFinite(scale) && scale > 0, 'capture_failed', 'GNOME could not freeze the desktop');
                     frozen = {content, scale, texture: content.get_texture()};
                 }
-                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null);
+                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null, request.limits.appearance ?? {});
                 this._selector = request.selector = selector;
                 request.stage = 'region-select';
                 const selected = await selector.selectAsync();
@@ -1295,21 +1327,30 @@ export default class PutgdExtension extends Extension {
     // Screen recording: the resident asks for a rectangle before the helper
     // starts the Mutter stream, so the region is chosen with the same selector
     // as screenshots. Release(id) cancels it.
-    SelectAreaAsync([id], invocation) {
+    SelectAreaAsync([selection], invocation) {
         this._run(invocation, async sender => {
             check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+            check(selection.length <= 4096, 'bridge_protocol', 'Invalid region appearance');
+            const options = selection.startsWith('{') ? JSON.parse(selection) : {id: selection};
+            const id = options.id;
             const request = this._new(id, sender);
-            request.action = 'select';
-            request.stage = 'region-select';
-            const selector = new RegionSelector(true);
-            this._selector = request.selector = selector;
-            const selected = await selector.selectAsync();
-            request.selector = null;
-            this._selector = null;
-            this._alive(request);
-            check(selected, 'cancelled', 'GNOME region selection cancelled');
-            this._finish(id);
-            return {version: 1, requestId: id, rect: rectangle(selected)};
+            try {
+                request.action = 'select';
+                request.stage = 'region-select';
+                const selector = new RegionSelector(true, null, '', null, options.appearance ?? {});
+                this._selector = request.selector = selector;
+                const selected = await selector.selectAsync();
+                request.selector = null;
+                this._selector = null;
+                this._alive(request);
+                check(selected, 'cancelled', 'GNOME region selection cancelled');
+                this._finish(id);
+                return {version: 1, requestId: id, rect: rectangle(selected)};
+            } finally {
+                // _run receives the JSON envelope, not this decoded request ID.
+                // Release a revoked grab or failed selector immediately as well.
+                this._drop(id);
+            }
         });
     }
 

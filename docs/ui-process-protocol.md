@@ -70,6 +70,13 @@ contents enter error messages. The Unix helper pipe adapter uses nonblocking fil
 descriptors and Qt socket notifiers; it has no polling thread. Other platforms
 compile the adapter but currently report it unavailable, pending native pipe work.
 
+`activate` names the `view` and, when a native tray click asked for it, an
+`activationToken`: the xdg-activation token the tray host handed over (#657).
+The helper sets `XDG_ACTIVATION_TOKEN` only around Qt's activation request and
+clears it afterwards, so the token never reaches a later window or a child
+process. Activations without a token still coalesce per view; each one with a
+token is delivered.
+
 The lifecycle/state rules are in [resident-ui-process.md](resident-ui-process.md)
 and U11 of the requirements plan. Ordinary last-window close must retain safe
 unsaved state before exit; minimized windows and native dialogs remain alive.

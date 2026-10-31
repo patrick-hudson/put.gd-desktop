@@ -237,7 +237,7 @@ int main(int argc,char* argv[]) {
  putgd::Appearance appearance(nullptr,putgd::Appearance::Role::Resolver);
  {
   auto* backend=recordingBackend.get();
-  const auto follow=[&appearance,&settings,&operations,backend]{appearance.setPreference(settings.snapshot().appearanceTheme);backend->setAppearance(putgd::Theme::name(appearance.scheme()));operations.setEditorAppearance(putgd::Theme::name(appearance.scheme()));};
+  const auto follow=[&appearance,&settings,&operations,&source,backend]{appearance.setPreference(settings.snapshot().appearanceTheme);putgd::Theme::setScheme(appearance.scheme());source->setCaptureAppearance(appearance.state());backend->setAppearance(putgd::Theme::name(appearance.scheme()));operations.setEditorAppearance(putgd::Theme::name(appearance.scheme()));};
   follow();
   QObject::connect(&settings,&putgd::SettingsService::accepted,&appearance,follow);
   QObject::connect(&appearance,&putgd::Appearance::changed,&appearance,follow);
@@ -364,7 +364,7 @@ int main(int argc,char* argv[]) {
 #endif
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
  QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
- putgd::TrayController tray(operations,[&](const QString& requested){startupRecovery.stop();ui.activate(requested);},quitApplication);
+ putgd::TrayController tray(operations,[&](const QString& requested,const QString& activationToken){startupRecovery.stop();ui.activate(requested,{},activationToken);},quitApplication);
  // Native shortcuts use the tray feedback with selection-safe re-entry handling.
  const auto requested=[&tray,&recordingShortcut](const QString& action){if(!recordingShortcut)tray.invokeShortcut(action);};
 #ifdef PUTGD_NATIVE_X11

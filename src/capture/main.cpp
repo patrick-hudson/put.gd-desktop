@@ -5,6 +5,7 @@
 #include <QLibrary>
 #include "platform/x11/CaptureArtifactLease.h"
 #include "ui/StdioDevice.h"
+#include "ui/Theme.h"
 #include "core/BuildInfo.h"
 #include <QApplication>
 #include <QWindow>
@@ -182,7 +183,9 @@ int main(int argc,char** argv){
  };
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(type=="bootstrap"){
-   if(bootstrapped||payload.size()!=9+int(payload.contains("outcome"))+int(payload.contains("regionMode"))||(payload.contains("regionMode")&&payload["regionMode"]!="screenshot_first")||payload["build"].toObject()!=build||!payload["nonce"].isString()||QUuid(payload["nonce"].toString()).isNull()||!payload["generation"].isString()||!payload["path"].isString()||!payload["device"].isString()||!payload["inode"].isString()||!payload["limits"].isObject()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){rejectProtocol();return;}
+   if(bootstrapped||payload.size()!=9+int(payload.contains("outcome"))+int(payload.contains("regionMode"))+int(payload.contains("appearance"))||(payload.contains("regionMode")&&payload["regionMode"]!="screenshot_first")||payload["build"].toObject()!=build||!payload["nonce"].isString()||QUuid(payload["nonce"].toString()).isNull()||!payload["generation"].isString()||!payload["path"].isString()||!payload["device"].isString()||!payload["inode"].isString()||!payload["limits"].isObject()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){rejectProtocol();return;}
+   if(payload.contains("appearance")&&(!payload["appearance"].isObject()||(!payload["appearance"].toObject().isEmpty()&&payload["appearance"]["scheme"]!="light"&&payload["appearance"]["scheme"]!="dark"))){rejectProtocol();return;}
+   putgd::Theme::setScheme(payload["appearance"]["scheme"]=="light"?putgd::Theme::Scheme::Light:putgd::Theme::Scheme::Dark);
    nonce=payload["nonce"].toString();generation=payload["generation"].toString();bool ok=false;const auto g=generation.toULongLong(&ok);if(!ok||!g||QString::number(g)!=generation){rejectProtocol();return;}
    path=payload["path"].toString();device=payload["device"].toString();inode=payload["inode"].toString();frozen=payload["target"].toObject();const auto l=payload["limits"].toObject();
    if(l.size()!=3||!positive(l["imagePixels"],1000000000LL)||!positive(l["imageBytes"],1099511627776LL)||!positive(l["maxFileBytes"],1099511627776LL)||!path.startsWith("/tmp/putgd-capture-")||!path.endsWith("/result.png")||path.contains("/../")||path.count('/')!=3){rejectProtocol();return;}

@@ -583,6 +583,26 @@ private slots:
   // No event processing between a rebuild and its name checks: retired widgets still await deleteLater().
   QVERIFY2(pick(QColor("#123456")),"Custom colour dialog was not found");QCOMPARE(window.recentColors(),QStringList({"#123456","#abcdef"}));checkNames();
  }
+ void textSizeStopsAtTheCroppedImageEdge(){
+  EditDocument doc(canvasImage());doc.setCrop(QRect(30,25,300,180));EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  add(doc,{{"kind","text"},{"at",QJsonArray{210,150}},{"text","Label"},{"fontPixels",16}});window.documentEdited();
+  const auto original=doc.shapes().first();auto& canvas=window.canvas();canvas.select(original.id);
+  auto* size=window.findChild<QSpinBox*>("textSize");size->setValue(200);
+  auto limited=*doc.find(original.id);QCOMPARE(size->value(),limited.fontPixels);QVERIFY(limited.fontPixels<200);QVERIFY(limited.fontPixels>=16);QCOMPARE(limited.rect.topLeft(),original.rect.topLeft());QVERIFY(doc.crop().contains(limited.rect));QVERIFY(QRectF(doc.crop()).contains(textOutputBounds(limited)));
+  for(int i=0;i<10;++i)QTest::keyClick(&canvas,Qt::Key_Right,Qt::ControlModifier|Qt::ShiftModifier);
+  QCOMPARE(*doc.find(original.id),limited);
+  QVERIFY(doc.undo());canvas.documentChanged();QCOMPARE(*doc.find(original.id),original);
+ }
+ void textCornersStopAtEveryImageEdge_data(){QTest::addColumn<int>("corner");for(int i=0;i<4;++i)QTest::newRow(qPrintable(QString::number(i)))<<i;}
+ void textCornersStopAtEveryImageEdge(){
+  QFETCH(int,corner);EditDocument doc(canvasImage());doc.setCrop(QRect(30,25,300,180));EditorCanvas canvas(doc);canvas.resize(440,300);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));
+  add(doc,{{"kind","text"},{"at",QJsonArray{140,100}},{"text","Label"},{"fontPixels",20}});canvas.documentChanged();const auto original=doc.shapes().first();canvas.select(original.id);
+  const QRectF box(original.rect);const QPointF corners[]{box.topLeft(),box.topRight(),box.bottomRight(),box.bottomLeft()};const QPoint origin((canvas.width()-300)/2-30,(canvas.height()-180)/2-25);
+  const QPoint from=origin+corners[corner].toPoint(),to=origin+QPoint(corner==0||corner==3?-1000:1000,corner<2?-1000:1000);
+  QTest::mousePress(&canvas,Qt::LeftButton,{},from);QMouseEvent move(QEvent::MouseMove,QPointF(to),canvas.mapToGlobal(QPointF(to)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);QTest::mouseRelease(&canvas,Qt::LeftButton,{},to);
+  const auto scaled=*doc.find(original.id);QVERIFY(scaled.fontPixels>20);QVERIFY(doc.crop().contains(scaled.rect));QVERIFY(QRectF(doc.crop()).contains(textOutputBounds(scaled)));
+  const QPoint anchorsBefore[]{original.rect.bottomRight(),original.rect.bottomLeft(),original.rect.topLeft(),original.rect.topRight()};const QPoint anchorsAfter[]{scaled.rect.bottomRight(),scaled.rect.bottomLeft(),scaled.rect.topLeft(),scaled.rect.topRight()};QCOMPARE(anchorsAfter[corner],anchorsBefore[corner]);
+ }
  void textSizeControlFollowsACornerDrag(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   add(doc,{{"kind","text"},{"at",QJsonArray{40,40}},{"text","Label"},{"fontPixels",30}});window.documentEdited();

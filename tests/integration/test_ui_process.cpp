@@ -9,8 +9,8 @@ class UiProcessTest:public QObject {
  static Error valid(const QJsonObject& value){return value["schemaVersion"]==1?Error{}:Error{"invalid_state","Keep the draft open",{}};}
  static QString helper(){return QString::fromUtf8(PUTGD_UI_FIXTURE_PATH);}
 private slots:
- void init(){qunsetenv("PUTGD_TEST_UI_MODE");}
- void cleanup(){qunsetenv("PUTGD_TEST_UI_MODE");}
+ void init(){qunsetenv("PUTGD_TEST_UI_MODE");qunsetenv("PUTGD_TEST_UI_TOKEN");}
+ void cleanup(){qunsetenv("PUTGD_TEST_UI_MODE");qunsetenv("PUTGD_TEST_UI_TOKEN");}
  void recordingWaitsForNativeAcknowledgementAndRestores(){
   qputenv("PUTGD_TEST_UI_MODE","recording-cycle");UiProcessController controller("/unused","epoch",helper(),valid);
   QList<bool> requests;UiProcessController::Reply suspension;
@@ -107,6 +107,20 @@ private slots:
   auto reply=[&](Error e){error=e;++shown;};controller.activate("settings",reply);controller.activate("about",reply);controller.activate("settings",reply);
   PUTGD_TRY_COMPARE(shown,3);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(launches,1);QCOMPARE(controller.status()["state"].toString(),QString("ready"));
   bool stopped=false;controller.shutdown([&]{stopped=true;});PUTGD_TRY_VERIFY(stopped);QCOMPARE(controller.status()["pid"].toInteger(),qint64(0));
+ }
+ // #657: a tray click's xdg-activation token reaches the helper with its view, once;
+ // a malformed one is dropped, and an activation without one carries none.
+ void activationTokenTravelsWithItsView(){
+  qputenv("PUTGD_TEST_UI_MODE","token");qputenv("PUTGD_TEST_UI_TOKEN","gnome-shell/putgd/1234-0-host_TIME56789");
+  UiProcessController controller("/unused/test.sock","epoch",helper(),valid);int shown=0,failed=0;
+  auto reply=[&](Error e){if(e)++failed;else ++shown;};
+  controller.activate("settings",reply,"gnome-shell/putgd/1234-0-host_TIME56789");PUTGD_TRY_COMPARE(shown,1);
+  // Coalescing never swallows a click's token: both activations arrive, each with it.
+  controller.activate("history",reply,"gnome-shell/putgd/1234-0-host_TIME56789");controller.activate("history",reply,"gnome-shell/putgd/1234-0-host_TIME56789");PUTGD_TRY_COMPARE(shown,3);
+  controller.activate("about",reply);PUTGD_TRY_COMPARE(failed,1);
+  controller.activate("about",reply,"bad token\n");PUTGD_TRY_COMPARE(failed,2);QCOMPARE(shown,3);
+  controller.activate("about",reply,QString(600,'a'));PUTGD_TRY_COMPARE(failed,3);QCOMPARE(shown,3);
+  bool stopped=false;controller.shutdown([&]{stopped=true;});PUTGD_TRY_VERIFY(stopped);
  }
  void closeRetainsDraftAndActivationDuringExitStartsFresh(){
   qputenv("PUTGD_TEST_UI_MODE","close");UiProcessController controller("/unused/test.sock","epoch",helper(),valid);int launches=0,shown=0;Error error;

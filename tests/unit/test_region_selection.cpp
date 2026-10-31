@@ -7,6 +7,17 @@ using namespace putgd;
 class RegionSelectionTest final:public QObject {
  Q_OBJECT
 private slots:
+ void hintAndSizePillsUseTheSameSchemeTokens(){
+  const auto before=Theme::scheme();
+  for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);QImage image(800,600,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);painter.setFont(nativeRegionFont());const QRectF selection(100,100,300,200);
+   paintRegionChrome(painter,image.rect(),selection,"300 × 200",true,1,true);painter.end();
+   const QFontMetrics metrics(nativeRegionFont());const auto hint=regionHintBox(image.rect(),metrics,regionHint(),selection),size=regionSizeBox(image.rect(),metrics,"300 × 200",selection);
+   QCOMPARE(image.pixelColor(hint.center().x(),hint.top()+3),Theme::palette(scheme).surfaceRaised);QCOMPARE(image.pixelColor(size.center().x(),size.top()+3),Theme::palette(scheme).surfaceRaised);
+  }
+  Theme::setScheme(before);
+ }
+
  void hintPillUsesThemeAndOneLine(){
   const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});
   for(int pixels:{14,21})for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){

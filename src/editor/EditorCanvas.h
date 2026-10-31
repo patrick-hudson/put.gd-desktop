@@ -95,6 +95,7 @@ private:
  // The selected shape's handle under the pointer: arrow ends, a box's eight
  // handles, or a text label's four corners (text keeps its proportions).
  int selectionHandleAt(const Shape&,const QPointF& widgetPoint) const;
+ Shape boundedText(const Shape& original,Shape requested,int handle=4) const;
  Shape scaledText(const Shape& original,int handle,const QPointF& imagePoint) const;
  quint64 shapeAt(const QPointF& imagePoint) const;
  quint64 grabAt(const QPointF& imagePoint) const;

@@ -219,7 +219,11 @@ QJsonObject OperationService::currentObservation(QJsonObject document)const{
  for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();const auto observed=observedItems.constFind(item["artifact"].toObject()["id"].toString());if(observed!=observedItems.cend()){item["phase"]=(*observed)["phase"];item["uploadProgress"]=(*observed)["uploadProgress"]; }items[i]=item;}
  document["items"]=items;return document;
 }
-void OperationService::invoke(const QString& action,JsonReply reply,const QJsonObject& options) {
+void OperationService::invoke(const QString& action,JsonReply reply,const QJsonObject& requested) {
+ // A tray click's xdg-activation token brings an open editor forward (#657);
+ // only the tray passes it, session requests cannot.
+ auto stripped=requested;const auto activationToken=stripped.take("activationToken").toString();
+ const QJsonObject options=stripped; // const: operator[] must not insert
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  // Screen recording is its own session: the tray opens or raises it, a global
  // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
@@ -235,7 +239,7 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  const auto source=action=="edit"?options["source"].toString("region"):action;
  const auto sourcePath=options["path"].toString();
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
- if(action=="edit"&&editor_){editor_->request("raise",{},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
+ if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is active; stop or cancel it before editing",{{"operationId",recording_->activeId()}}},{});return;}
  const bool interactive=source!="clipboard"&&source!="file";
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}

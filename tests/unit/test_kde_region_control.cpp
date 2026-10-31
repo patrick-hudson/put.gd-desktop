@@ -35,6 +35,7 @@ int fixture(const QString& mode) {
   std::cout<<bytes.constData()<<'\n'<<std::flush;
  };
  auto envelope=[&]{return QJsonObject{{"nonce",nonce},{"generation",generation}};};
+ if(mode=="appearance-light" && first["appearance"]["scheme"]!="light") return 4;
  if(mode=="early-eof") return 0;
  if(mode=="malformed") { std::cout<<"{broken-frame}\n"<<std::flush;std::this_thread::sleep_for(std::chrono::seconds(10));return 0; }
  auto ready=envelope(); ready["build"]=first["build"];
@@ -69,6 +70,11 @@ int fixture(const QString& mode) {
 class KdeRegionControlTest:public QObject {
  Q_OBJECT
 private slots:
+ void resolvedAppearanceReachesTheRegionHelper(){
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","appearance-light");KdeRegionProcess process(QCoreApplication::applicationFilePath());int callbacks=0;Error error;
+  process.start(frames(),[&](QRectF rect,Error e){QVERIFY(!rect.isEmpty());error=e;++callbacks;},{},{},{{"scheme","light"}});
+  PUTGD_TRY_COMPARE(callbacks,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");QVERIFY2(!error,qPrintable(error.message));QVERIFY(!process.busy());
+ }
  void layoutAndRectangleRoundTrip() {
   Error e; const auto encoded=kdeRegionLayout(frames(),e);QVERIFY(!e);QCOMPARE(encoded.size(),2);
   const auto decoded=kdeRegionLayout(encoded,e);QVERIFY(!e);QVERIFY(kdeRegionLayoutsMatch(frames(),decoded));

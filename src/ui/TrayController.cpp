@@ -1,4 +1,5 @@
 #include "TrayController.h"
+#include <QScopeGuard>
 #include <QJsonDocument>
 #include "Ui.h"
 #include "Theme.h"
@@ -154,7 +155,7 @@ QString activityText(const QJsonArray& observations) {
 }
 
 TrayController::TrayController(OperationService& operations,
-                               std::function<void(const QString&)> openView,
+                               ViewOpener openView,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
@@ -176,7 +177,10 @@ TrayController::TrayController(OperationService& operations,
   });
   connect(native_.get(), &NativeTray::menuAboutToShow,this,&TrayController::refreshMenu);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
-  connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
+  connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action, const QString& token) {
+   // Views opened for this click carry the host's token, so Wayland activates them.
+   activationToken_ = token;
+   const auto clear = qScopeGuard([guard = QPointer<TrayController>(this)] { if (guard) guard->activationToken_.clear(); });
    if (Settings::invocableActionNames().contains(action)) invokeAction(action);
    else if (action == "cancel-upload") cancelUploads();
    else if (action == "failed-uploads") acknowledgeFailures();
@@ -279,7 +283,7 @@ TrayController::TrayController(OperationService& operations,
    // A failed upload offers a diagnostics package for just that operation (#122).
    const auto diagnostics=state!="completed"&&guard->saveDiagnostics_?operation["id"].toString():QString{};
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("operation_" + state,completionTitle(operation),completionMessage(operation,!link.isEmpty()),failed,link,diagnostics);
+    guard->notifyMessage("operation_" + state,completionTitle(operation),completionMessage(operation,!link.isEmpty()),failed,link,diagnostics,{},diagnosticsActionText(operation));
   });
  });
 }
@@ -307,6 +311,18 @@ QString TrayController::failureReason(const QJsonObject& error) {
  while(message.endsWith('.'))message.chop(1);
  if(message.isEmpty())return {};
  return message.left(1).toLower()+message.mid(1);
+}
+QString TrayController::diagnosticsActionText(const QJsonObject& operation) {
+ // A failed acquisition has no items and never reached a destination. Local-only
+ // captures also have items, so use their upload state rather than their count.
+ bool uploaded=false;
+ for(const auto& value:operation["items"].toArray()){
+  const auto status=value.toObject()["uploadStatus"].toString();
+  uploaded|=QStringList{"uploading","uploaded","failed","unknown","conflict","skipped"}.contains(status);
+ }
+ if(uploaded)return "Save diagnostics for this upload";
+ const auto action=operation["action"].toString();
+ return QStringList{"region","window","desktop","edit"}.contains(action)?QString("Save diagnostics for this capture"):action=="record"?QString("Save diagnostics for this recording"):QString("Save diagnostics for this operation");
 }
 QString TrayController::completionTitle(const QJsonObject& operation) {
  const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false;
@@ -495,7 +511,7 @@ void TrayController::showHistory() { showView("history"); }
 void TrayController::showAbout() { showView("about"); }
 void TrayController::showView(const QString& view) {
  const auto open = openView_;
- open(view);
+ open(view, activationToken_);
 }
 void TrayController::invokeShortcut(const QString& action) {
  // This tray's own open menu holds the keyboard and mouse a selection needs,
@@ -505,7 +521,9 @@ void TrayController::invokeShortcut(const QString& action) {
 }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
  // The tray opens or raises a recording; its shortcut toggles it.
- const auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
+ auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
+ // A click's token raises the editor that is already open (#657).
+ if (action == "edit" && !activationToken_.isEmpty()) effective["activationToken"] = activationToken_;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut,action](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
@@ -533,8 +551,8 @@ void TrayController::openNotificationLink(const QUrl& link) {
  openLink(link,"notification-link");
 }
 #endif
-void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath) {
- Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);
+void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath,const QString& diagnosticsLabel) {
+ Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);Q_UNUSED(diagnosticsLabel);
  // Each toast, so "a toast appeared" can be matched to its cause (#250). The
  // text can name files: diagnostics packages hash it unless --include-names.
  QJsonObject fields{{"notificationId",qint64(++notifications_)},{"summary",code},{"title",title},{"notificationText",message},{"warning",warning}};
@@ -543,7 +561,7 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 #ifdef Q_OS_LINUX
  if (native_) {
   QList<NotificationAction> actions;
-  if(!diagnosticsOperation.isEmpty())actions.append({"save-diagnostics","Save diagnostics for this upload",diagnosticsOperation});
+  if(!diagnosticsOperation.isEmpty())actions.append({"save-diagnostics",diagnosticsLabel.isEmpty()?QString("Save diagnostics for this operation"):diagnosticsLabel,diagnosticsOperation});
   if(!revealPath.isEmpty())actions.append({"show-in-folder","Show in folder",revealPath});
   native_->notify(title, message, warning,link,actions);
  }

@@ -443,7 +443,7 @@ print('PASS each recoverable failure episode receives a fresh bounded retry budg
 // graphical acceptance and proves nothing about the Mutter stream's pixels.
 const pendingSelectors = [];
 globalThis.RegionSelectorFixture = class {
-    selectAsync() {return new Promise(resolve => {this.resolve = resolve; pendingSelectors.push(this);});}
+    selectAsync() {return new Promise((resolve, reject) => {this.resolve = resolve; this.reject = reject; pendingSelectors.push(this);});}
     cancel() {this.resolve(null);}
 };
 {
@@ -461,6 +461,18 @@ globalThis.RegionSelectorFixture = class {
     assert.equal((await cancelled).error.code, 'cancelled');
     assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
     print('PASS recording selection answers the rectangle and Release cancels it');
+    const failedId = id();
+    const failed = bridge(extension, 'SelectAreaAsync', [JSON.stringify({id: failedId, appearance: {}})]); await flush();
+    const failedSelector = pendingSelectors.pop();
+    failedSelector.reject(Object.assign(new Error('Synthetic revoked grab'), {bridgeCode: 'cancelled'}));
+    assert.equal((await failed).error.code, 'cancelled');
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    const recoveredId = id();
+    const recovered = bridge(extension, 'SelectAreaAsync', [JSON.stringify({id: recoveredId, appearance: {}})]); await flush();
+    pendingSelectors.pop().resolve({x: 40, y: 50, width: 640, height: 360});
+    assert.deepEqual(await recovered, {version: 1, requestId: recoveredId, rect: [40, 50, 640, 360]});
+    assert.equal(extension._requests.size, 0); assert.equal(extension._selector, null); assert.equal(timers.size, 0);
+    print('PASS failed JSON selection releases its decoded request and allows immediate recovery');
 }
 const work = [[0, 32, 1920, 1048]];
 assert.deepEqual(globalThis.barPlacement([100, 100, 640, 360], [400, 40], work), {rect: [100, 470, 400, 40], outside: true});
@@ -530,4 +542,44 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.equal(context.Main.uiGroup.get_children().length, before); assert.equal(timers.size, 0);
     assert.equal(disconnected, 7); assert.equal(extension._barFollow, null);
     print('PASS recording frame places only the resident child\'s bar, follows its size and keeps every actor outside the area');
+}
+{
+    // #924: a selection hotkey closes put.gd's own open tray menu first; desktop
+    // and window captures keep it, and another application's menu stays open.
+    const session = context.Gio.DBus.session, original = session.call_sync;
+    const pids = new Map([[resident, residentPid], [':1.60', residentPid], [':1.70', 4242]]);
+    session.call_sync = (_service, _path, _iface, method, parameters) => {
+        if (method === 'GetNameOwner')
+            return {deep_unpack: () => [resident]};
+        const name = parameters.value[0];
+        if (!pids.has(name))
+            throw new Error('No such name');
+        return {deep_unpack: () => [pids.get(name)]};
+    };
+    const menu = busName => ({isOpen: true, closed: [], sourceActor: {_indicator: {busName}},
+        close(animation) {this.closed.push(animation); this.isOpen = false;}});
+    const {extension} = fixture();
+    extension._dbus = {emit_signal() {}};
+    let uuid = 0;
+    GLib.uuid_string_random ??= () => `00000000-0000-0000-0001-${String(++uuid).padStart(12, '0')}`;
+    for (const action of ['region', 'edit', 'record']) {
+        const own = menu(':1.60');
+        context.Main.panel.menuManager = {activeMenu: own};
+        await extension._hotkey(action);
+        assert.deepEqual(own.closed, [0]);
+    }
+    for (const [action, busName] of [['desktop', ':1.60'], ['region', ':1.70'], ['region', ':1.80'], ['region', undefined]]) {
+        const other = menu(busName);
+        context.Main.panel.menuManager = {activeMenu: other};
+        await extension._hotkey(action);
+        assert.deepEqual(other.closed, []);
+    }
+    const shut = menu(':1.60'); shut.isOpen = false;
+    context.Main.panel.menuManager = {activeMenu: shut};
+    assert.equal(extension._closeTrayMenu(resident), false); assert.deepEqual(shut.closed, []);
+    context.Main.panel.menuManager = {activeMenu: null};
+    assert.equal(extension._closeTrayMenu(resident), false);
+    delete context.Main.panel.menuManager; session.call_sync = original;
+    for (const id of extension._requests.keys()) extension._drop(id);
+    print('PASS selection hotkeys close only the resident\'s own open tray menu');
 }

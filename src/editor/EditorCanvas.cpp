@@ -124,8 +124,9 @@ void EditorCanvas::applyStyleToSelection(){
   if(k==Kind::Arrow||k==Kind::Rectangle)shape.width=style.width;
   if(k==Kind::Blur)shape.strength=style.strength;
   if(k==Kind::Text){shape.fontPixels=style.fontPixels;shape.fontFamily=style.fontFamily;}
-  if(shape.kind==Shape::Kind::Text&&!shape.text.isEmpty()){const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));}
+  if(shape.kind==Shape::Kind::Text&&!shape.text.isEmpty())shape=boundedText(*current,shape);
   if(doc_.replace(shape))emit changed();
+  emit selectionChanged();
  }
  update();
 }
@@ -229,6 +230,22 @@ int EditorCanvas::selectionHandleAt(const Shape& shape,const QPointF& p) const {
  if(shape.kind==Shape::Kind::Arrow)return arrowHandleAt(shape,p);
  return handleAt(shape.rect,p,shape.kind==Shape::Kind::Text);
 }
+// Size edits stop where both the layout box and the exported glyph stroke
+// fit. A label clipped by a later crop can shrink without jumping its anchor.
+Shape EditorCanvas::boundedText(const Shape& original,Shape requested,int handle) const {
+ const QRectF allowed=QRectF(doc_.crop()).united(QRectF(original.rect)).united(textOutputBounds(original));
+ for(int pixels=requested.fontPixels;pixels>=minimumFontPixels;--pixels){
+  requested.fontPixels=pixels;
+  const QFontMetrics metrics(textFont(requested.fontFamily,pixels));
+  requested.rect.setSize(QSize(metrics.horizontalAdvance(requested.text)+1,metrics.height()));
+  if(handle==0)requested.rect.moveBottomRight(original.rect.bottomRight());
+  else if(handle==2)requested.rect.moveBottomLeft(original.rect.bottomLeft());
+  else if(handle==6)requested.rect.moveTopRight(original.rect.topRight());
+  else requested.rect.moveTopLeft(original.rect.topLeft());
+  if(allowed.contains(QRectF(requested.rect))&&allowed.contains(textOutputBounds(requested)))return requested;
+ }
+ return original;
+}
 // Dragging a text corner scales the font around the opposite corner, which
 // stays fixed. The scale is the drag projected onto the box's diagonal, so
 // pulling outward along any direction grows the text smoothly.
@@ -240,11 +257,7 @@ Shape EditorCanvas::scaledText(const Shape& original,int handle,const QPointF& n
  const double scale=length>0?std::max(0.0,QPointF::dotProduct(now-anchor,diagonal)/length):1.0;
  auto shape=original;
  shape.fontPixels=std::clamp(int(std::lround(original.fontPixels*scale)),minimumFontPixels,maximumFontPixels);
- const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));
- QRect resized(QPoint(),QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));
- if(handle==0)resized.moveBottomRight(box.bottomRight());else if(handle==2)resized.moveBottomLeft(box.bottomLeft());
- else if(handle==4)resized.moveTopLeft(box.topLeft());else resized.moveTopRight(box.topRight());
- shape.rect=resized;return shape;
+ return boundedText(original,shape,handle);
 }
 // The edges a handle moves stay inside bounds; one already outside (a mark
 // cropped since) may come in but never jumps there or moves farther out.
@@ -515,7 +528,7 @@ bool EditorCanvas::nudge(const QPoint& d,bool resize){
  else if(shape.kind==Kind::Arrow){shape.to=insideFrom(shape.to,shape.to+d,area);if(shape.to==shape.from)return true;}
  else if(shape.kind==Kind::Text){
   shape.fontPixels=std::clamp(shape.fontPixels+d.x()+d.y(),minimumFontPixels,maximumFontPixels);
-  const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));
+  shape=boundedText(*current,shape);
  }else{
   // The moving edges stay on the crop; one already outside may only come in.
   shape.rect.setRight(std::clamp(shape.rect.right()+d.x(),std::min(area.left(),current->rect.right()),std::max(area.right(),current->rect.right())));
