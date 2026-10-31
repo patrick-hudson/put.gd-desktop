@@ -57,7 +57,10 @@ class SourceChecks(unittest.TestCase):
                 member = tarfile.TarInfo(name)
                 member.size = len(value)
                 archive.addfile(member, io.BytesIO(value))
-        return artifact, {'archiveRoot': 'source', 'identity': identity}
+        return artifact, {'archiveRoot': 'source', 'identity': identity, 'members': [
+            {'path': path, 'bytes': len(body), 'sha256': hashlib.sha256(recorded or body).hexdigest()},
+            {'path': 'source-info.json', 'bytes': len(content['source/source-info.json']),
+             'sha256': hashlib.sha256(content['source/source-info.json']).hexdigest()}]}
 
     def test_source_hashes_and_private_path_exclusion(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -69,6 +72,15 @@ class SourceChecks(unittest.TestCase):
                 artifact, receipt = self.make_archive(root, path, recorded=recorded)
                 with self.subTest(path=path), self.assertRaises(ValueError):
                     audit_assets.source_export(artifact, receipt)
+
+
+class AdvisoryRanges(unittest.TestCase):
+    def test_fixed_boundary_and_union(self):
+        self.assertTrue(audit_assets.version_in_range('1.4.2', '>=1.0.21, <1.4.4'))
+        self.assertFalse(audit_assets.version_in_range('1.4.4', '>=1.0.21, <1.4.4'))
+        self.assertTrue(audit_assets.version_in_range('1.4.2', '<1.0.0 || >=1.3.14 <1.4.4'))
+        with self.assertRaises(ValueError):
+            audit_assets.version_in_range('1.4.2', '^1.0')
 
 
 if __name__ == '__main__':

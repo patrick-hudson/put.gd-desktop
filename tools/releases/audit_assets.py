@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import subprocess
 import tarfile
+import xml.etree.ElementTree as ET
 from urllib.parse import unquote, urlsplit
 
 import appimage_complete_sources
@@ -93,7 +94,7 @@ def source_export(path, receipt):
     prefix = receipt['archiveRoot'] + '/'
     with tarfile.open(path) as archive:
         info = json.load(archive.extractfile(prefix + 'source-info.json'))
-        if info['identity'] != receipt['identity'] or info['files'] != receipt.get('members', info['files']):
+        if info['identity'] != receipt['identity'] or info['files'] != [item for item in receipt.get('members', info['files']) if item['path'] != 'source-info.json']:
             raise ValueError('Source export identity mismatch')
         expected = {prefix + item['path']: item for item in info['files']}
         seen = set()
@@ -126,6 +127,50 @@ def download_part(item, repository, directory):
         raise ValueError('Invalid Proton source delivery URL')
     run('gh', 'release', 'download', unquote(tail[0]), '--repo', repository,
         '--pattern', item['file'], '--dir', directory)
+
+
+def version_in_range(version, expression):
+    """The numeric comparator ranges in Bun's published advisories; fail closed otherwise."""
+    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+        raise ValueError('Unsupported embedded Bun version')
+    selected = tuple(map(int, version.split('.')))
+    for alternative in expression.split('||'):
+        clauses = alternative.replace(',', ' ').split()
+        if not clauses:
+            raise ValueError('Empty upstream advisory version range')
+        matches = []
+        for clause in clauses:
+            match = re.fullmatch(r'(>=|<=|>|<|=)?(\d+\.\d+\.\d+)', clause)
+            if not match:
+                raise ValueError('Upstream advisory version range needs manual review: ' + expression)
+            other = tuple(map(int, match[2].split('.')))
+            matches.append({'>=': selected >= other, '<=': selected <= other,
+                            '>': selected > other, '<': selected < other, '=': selected == other}[match[1] or '='])
+        if all(matches):
+            return True
+    return False
+
+
+def bun_advisories(versions):
+    # Compiled Bun includes its runtime and trust store. The official advisories
+    # can precede Grype's database; a scanner miss is not an acceptance.
+    pages = json.loads(run('gh', 'api', '--paginate', '--slurp',
+                          'repos/oven-sh/bun/security-advisories?per_page=100'))
+    findings = []
+    for advisory in (item for page in pages for item in page):
+        if advisory.get('withdrawn_at'):
+            continue
+        for vulnerability in advisory['vulnerabilities']:
+            if vulnerability['package']['name'] != 'bun':
+                continue
+            for version, packages in versions.items():
+                if version_in_range(version, vulnerability['vulnerable_version_range']):
+                    findings.append({key: advisory.get(key) for key in
+                        ('ghsa_id', 'cve_id', 'severity', 'summary', 'html_url', 'published_at')} |
+                        {'component': 'bun', 'version': version, 'packages': packages,
+                         'vulnerableRange': vulnerability['vulnerable_version_range'],
+                         'fixedIn': vulnerability.get('patched_versions')})
+    return findings
 
 
 def audit(args):
@@ -163,7 +208,14 @@ def audit(args):
             raise ValueError('Source delivery manifest copies differ')
         sources = output / 'sources'
         sources.mkdir()
-        run('gh', 'release', 'download', delivery['tag'], '--repo', args.repository, '--dir', sources)
+        if args.reuse_downloads:
+            for name in delivery['assets']:
+                cached = args.reuse_downloads / 'sources' / name
+                if cached.is_symlink() or not cached.is_file():
+                    raise ValueError('Invalid cached source download')
+                os.link(cached, sources / name)
+        else:
+            run('gh', 'release', 'download', delivery['tag'], '--repo', args.repository, '--dir', sources)
         checks['sourceAssets'] = checksums(sources, delivery['assets'])
         if checks['sourceAssets'] != delivery['assets']:
             raise ValueError('Linked source assets differ from installer binding')
@@ -183,11 +235,20 @@ def audit(args):
         appimage_complete_sources.verify(sources, receipts['appimageCompleteSource'], receipts['appimage'])
         checks['completeSource'] = receipts['appimageCompleteSource']
         catalog = proton_sources.catalog_value(directory / proton_sources.CATALOG_NAME)
+        if built is not None and (built.get('rebuiltProton', {}).get('sha256') != catalog['helperSha256']
+                or built.get('rebuiltProton', {}).get('bundledSha256') != catalog['helperSha256']):
+            raise ValueError('Source rebuild Proton helper differs from release catalog')
         print('Verifying Proton source transport and packets', flush=True)
         parts = output / 'proton-sources'
         parts.mkdir()
         for item in catalog['delivery']['parts']:
-            download_part(item, args.repository, parts)
+            if args.reuse_downloads:
+                cached = args.reuse_downloads / 'proton-sources' / item['file']
+                if cached.is_symlink() or not cached.is_file():
+                    raise ValueError('Invalid cached Proton download')
+                os.link(cached, parts / item['file'])
+            else:
+                download_part(item, args.repository, parts)
         proton_sources.verify(parts, catalog)
         checks['protonSource'] = catalog
         regenerated = output / 'sboms'
@@ -196,13 +257,16 @@ def audit(args):
         checks['tools'] = sbom.fetch_tools(tools_dir)
         checks['packages'] = {}
         checks['dependencies'] = {}
+        bun_versions = {}
         generated = {}
         for label in sbom.LABELS:
             print('Auditing package and regenerating SBOM: ' + label, flush=True)
             receipt = receipts[label]
             appimage = label == 'appimage'
             artifact = receipt['artifact'] if appimage else receipt['package']
-            package = directory / artifact['file']
+            filename = (artifact['file'] if appimage else
+                        f'putgd-{release["version"]}-{label}-x86_64' + ('.rpm' if label == 'fedora44' else '.deb'))
+            package = directory / filename
             if sha256(package) != artifact['sha256']:
                 raise ValueError('Package differs from CI audit: ' + label)
             expected = receipt['build'] if appimage else receipt['manifest']
@@ -215,13 +279,35 @@ def audit(args):
             if (proton['runtimeSha256'] != catalog['helperSha256']
                     or proton['sourceCatalogSha256'] != sha256(directory / proton_sources.CATALOG_NAME)):
                 raise ValueError('Packaged Proton runtime/catalog differs from supplied source')
+            if 'Package: @openpgp/web-stream-tools ' not in (root / 'usr/libexec/putgd/proton/THIRD-PARTY-NOTICES.txt').read_text():
+                raise ValueError('Direct OpenPGP web-stream-tools dependency missing from notices')
+            bun_versions.setdefault(proton['manifest']['bunVersion'], []).append(label)
             if appimage:
                 observed = appimage_notices.audit(root)
+                actual_files = {p.relative_to(root).as_posix(): sha256(p) for p in root.rglob('*') if p.is_file()}
+                if actual_files != {i['path']: i['sha256'] for i in receipt['inventory']}:
+                    raise ValueError('AppImage file hashes differ from deployed CI audit')
+                if json.loads((root / 'usr/share/putgd/build-info.json').read_text()) != expected:
+                    raise ValueError('AppImage installed manifest differs from release')
+                environment = {**os.environ, 'LD_LIBRARY_PATH': str(root / 'usr/lib') + ':' + str(root / 'usr/lib/putgd')}
+                observed['compiledIdentities'] = {}
+                for program in receipt['postDeploymentAudit']['identityMatchedPrograms']:
+                    identity = json.loads(run(root / 'usr/bin' / program, '--version-json', env=environment, timeout=30))
+                    if identity != expected:
+                        raise ValueError('AppImage compiled identity differs from release: ' + program)
+                    observed['compiledIdentities'][program] = identity
                 if not (root / 'usr/share/doc/putgd/APPIMAGE-GPL-NOTICE.txt').is_file():
                     raise ValueError('Missing combined-work GPL notice')
             else:
                 observed = validate_inventory(root, expected, require_proton=True)
                 observed['metadata'] = package_metadata(package, 'DEB' if package.suffix == '.deb' else 'RPM')
+                found_license = ET.parse(root / appimage_notices.METAINFO).getroot().findtext('project_license')
+                if set(re.findall(r'[A-Za-z0-9.+-]+', found_license or '')) != {'MIT', 'AND', 'Apache-2.0', 'GPL-3.0-or-later'}:
+                    raise ValueError('Native AppStream license differs from bundled components')
+                if label == 'fedora44':
+                    observed['metadata']['license'] = run('rpm', '-qp', '--qf', '%{LICENSE}', package)
+                    if observed['metadata']['license'] != 'MIT AND Apache-2.0 AND GPL-3.0-or-later':
+                        raise ValueError('RPM license metadata differs from bundled components')
                 # Recheck CI's compiled identities against the extracted file hashes.
                 current = {i['path']: i['sha256'] for i in observed['inventory']}
                 if current != {i['path']: i['sha256'] for i in receipt['inventory']}:
@@ -240,6 +326,10 @@ def audit(args):
             if any(item not in published['components'] for item in declared):
                 raise ValueError('Published SBOM declarations differ from actual package: ' + label)
             checks['dependencies'][label] = fresh['components']
+        upstream = bun_advisories(bun_versions)
+        checks['upstreamAdvisories'] = upstream
+        if any(item['severity'].capitalize() in ('High', 'Critical') and item['fixedIn'] for item in upstream):
+            result['errors'].append('Official Bun advisories exceed the stable threshold; see upstreamAdvisories')
         write(regenerated / 'sbom-receipts.json', {'schemaVersion': 1, 'sboms': generated})
         print('Scanning with a fresh vulnerability database and stable policy', flush=True)
         db = sbom.database_listing()
@@ -286,6 +376,7 @@ def main():
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--download', action='store_true')
+    parser.add_argument('--reuse-downloads', type=Path, help='Previous audit directory; reverify its source bytes without downloading them again')
     parser.add_argument('--source-build-result', type=Path, help='Fresh check_source_build.py results for these exact source bytes')
     parser.add_argument('--source-root', type=Path, default=ROOT, help='Full Git history containing the audited tag')
     args = parser.parse_args()
