@@ -47,8 +47,6 @@ TOLERANCE = image_diff.Tolerance()
 # States that must render but whose pixels are not compared, each with the
 # issue that removes it. Keep this short: an exempt state can regress unseen.
 IMAGE_EXEMPT = {
-    # The General page header can keep a stale height after the resize (#778).
-    '51a-settings-conflict-compact-update': '#778',
 }
 
 

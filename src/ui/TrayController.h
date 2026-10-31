@@ -40,6 +40,7 @@ public:
  // item; for a failed or partial upload, the failure in plain words, whether a
  // local copy was kept and what was copied (#152).
  static QString completionTitle(const QJsonObject& operation);
+ static QString diagnosticsActionText(const QJsonObject& operation);
  static QString completionMessage(const QJsonObject& operation,bool hasLink);
  // A provider or operation error as a short lower-case phrase.
  static QString failureReason(const QJsonObject& error);
@@ -80,7 +81,7 @@ private:
  // The Show in folder button: a refusal is logged and said, never silent.
  void showSavedPackage(const QString& path);
  // `code` names the notification in the log, which records each one (#250).
- void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {});
+ void notifyMessage(const QString& code, const QString& title, const QString& message, bool warning, const QUrl& link = {}, const QString& diagnosticsOperation = {}, const QString& revealPath = {}, const QString& diagnosticsLabel = {});
  quint64 notifications_ = 0;
  std::function<void(const QString&,JsonReply)> saveDiagnostics_;
  void refreshActivity();void refreshMenu();void cancelUploads();
