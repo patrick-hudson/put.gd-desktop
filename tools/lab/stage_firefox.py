@@ -16,7 +16,8 @@ from tools.lab import lab
 SCRIPT = r'''python3 - <<'SD_FIREFOX'
 import hashlib,io,json,os,re,subprocess,tarfile,urllib.request
 from pathlib import Path
-root=Path.home()/'.local/share/putgd-lab-firefox'
+home=Path.home().resolve(strict=True)
+root=home/'.local/share/putgd-lab-firefox'
 assert root.resolve()==root
 receipt=root/'installation.json'
 if root.exists():
@@ -44,7 +45,7 @@ with tarfile.open(fileobj=io.BytesIO(data),mode='r:*') as archive:
 binary=root/'firefox/firefox'
 assert binary.is_file() and not binary.is_symlink()
 reported=subprocess.check_output([str(binary),'--version'],stderr=subprocess.DEVNULL,text=True,timeout=20).strip()
-info={'command':[str(binary)],'profile_root':str(Path.home()/'.mozilla/firefox'),'version':reported,
+info={'command':[str(binary)],'profile_root':str(home/'.mozilla/firefox'),'version':reported,
       'archiveSha256':hashlib.sha256(data).hexdigest(),'archiveSha512':expected[0],
       'binarySha256':hashlib.sha256(binary.read_bytes()).hexdigest(),'source':final,'checksums':checks,'scope':'owned-overlay'}
 with open(os.open(receipt,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600),'w') as stream:json.dump(info,stream)
