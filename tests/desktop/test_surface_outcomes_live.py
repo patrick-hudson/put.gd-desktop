@@ -41,11 +41,20 @@ class LiveOutcomes(unittest.TestCase):
                     self.assertEqual(kwargs, dict(window='history'))
                     events.append('click')
                     if clicked:
-                        selection[0] = url
-                def expect(value, message):
-                    if not value:
-                        raise RecipeFailed(message)
-                ctx = SimpleNamespace(click=click, expect=expect, clipboard_text=lambda:selection[0])
+                        pending[0] = 2  # The desktop applies the copy a few reads later.
+                pending = [0]
+                def clipboard_text():
+                    if pending[0]:
+                        pending[0] -= 1
+                        if not pending[0]:
+                            selection[0] = url
+                    return selection[0]
+                def wait(predicate, what):
+                    for _ in range(5):
+                        if predicate():
+                            return True
+                    raise RecipeFailed(what)
+                ctx = SimpleNamespace(click=click, wait=wait, clipboard_text=clipboard_text)
                 with patch.object(clipboard, 'owner', side_effect=own), \
                         patch.object(outcomes_live.outcomes, '_history'):
                     if clicked:

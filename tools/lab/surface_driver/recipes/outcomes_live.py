@@ -130,7 +130,8 @@ def _copy_history_link(ctx, scope, detail):
     owner(scope, sentinel, 'text/plain', name='copy-link-sentinel')
     outcomes._history(ctx, detail)
     ctx.click('copyHistoryLink', window='history')
-    ctx.expect(ctx.clipboard_text() == detail['receipt']['directUrl'], 'UI copied exact uploaded share link')
+    ctx.wait(lambda: ctx.clipboard_text() == detail['receipt']['directUrl'],
+             'UI copied exact uploaded share link')
 
 
 def _region_upload(ctx):
