@@ -575,7 +575,7 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 #endif
 }
 #ifdef Q_OS_LINUX
-// Qt 6.12's D-Bus tray waits on this thread for Notify's reply. On Plasma X11 the
+// Qt 6.11.2+'s D-Bus tray waits on this thread for Notify's reply. On Plasma X11 the
 // server is plasmashell, whose Klipper is meanwhile waiting for this thread to
 // hand over the link just copied: both stall until Klipper's clipboard reads
 // time out, 10-20 s with every session request unanswered (#597). Send Qt's own
