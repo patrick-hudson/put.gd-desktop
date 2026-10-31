@@ -252,5 +252,11 @@ int main(int argc,char** argv){
   if(type=="accept"&&resultSent&&!settled){settled=true;deadline.stop();app.quit();return;}
   rejectProtocol();
  });
- const int status=app.exec();if(encoder){encoder->disconnect(&app);encoder->wait();delete encoder;}artifact.cleanup();return status;
+ // Not app.exec(): QGuiApplication::exec() first creates Qt's AT-SPI bridge,
+ // which on X11 desktops (AT_SPI_BUS on the root window) means a session bus
+ // connection and synchronous org.a11y reads, 20-30 ms before the bootstrap is
+ // read (#1063). The overlay starts it after its first frame instead. The
+ // AT-SPI bridge does not use the root object exec() sets; only
+ // QAccessibleBridge plugins do.
+ const int status=QCoreApplication::exec();if(encoder){encoder->disconnect(&app);encoder->wait();delete encoder;}artifact.cleanup();return status;
 }

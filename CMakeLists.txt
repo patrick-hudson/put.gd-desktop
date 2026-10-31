@@ -1334,7 +1334,7 @@ endif()
 
 if(BUILD_TESTING AND TARGET putgd-capture)
   add_executable(test_capture_preparation tests/desktop/x11/test_capture_preparation.cpp)
-  target_link_libraries(test_capture_preparation PRIVATE putgd_x11 putgd_x11_native_snapshot putgd_capture_control putgd_build_identity Qt6::Test Qt6::Gui PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCURSOR)
+  target_link_libraries(test_capture_preparation PRIVATE putgd_x11 putgd_x11_native_snapshot putgd_capture_control putgd_build_identity Qt6::Test Qt6::Gui Qt6::Network PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCURSOR)
   target_compile_definitions(test_capture_preparation PRIVATE PUTGD_REAL_CAPTURE_HELPER="$<TARGET_FILE:putgd-capture>")
   add_dependencies(test_capture_preparation putgd-capture)
   putgd_xvfb_display(xvfb)
