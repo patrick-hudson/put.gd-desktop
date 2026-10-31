@@ -165,14 +165,18 @@ class Retention(unittest.TestCase):
     def test_failed_installer_deletion_leaves_its_sources_untouched(self):
         self.releases.append(release(prune.source_tag(self.releases[0]['tag_name']), 10))
         original = self.api.json
+        attempted = []
         def fail(path, **kwargs):
             if kwargs.get('method'):
+                attempted.append(path)
                 raise OSError('deletion failed')
             return original(path, **kwargs)
         with patch.object(prune, 'repository_tags', return_value={}), \
                 patch.object(self.api, 'json', side_effect=fail), patch('sys.stdout', new=io.StringIO()):
             with self.assertRaises(OSError):
                 prune.run(self.api, dry_run=False, get=lambda _: json.dumps(self.site).encode())
+        # The installer is deleted first; its failure stops before any source release.
+        self.assertEqual(attempted, ['releases/1'])
         self.assertFalse(self.api.mutations)
 
     def test_concurrent_release_asset_change_aborts_before_deletion(self):

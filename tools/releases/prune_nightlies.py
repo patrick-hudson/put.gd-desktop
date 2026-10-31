@@ -16,7 +16,7 @@ from pathlib import Path
 import re
 import subprocess
 from urllib.parse import unquote, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 import xml.etree.ElementTree as ET
 
 from github_api import GitHub
@@ -32,10 +32,29 @@ PRIMARY_NS = '{http://linux.duke.edu/metadata/common}'
 MANIFESTS = {'source-delivery.json', 'proton-source-catalog.json'}
 
 
+ALLOWED_HOSTS = {'app.put.gd', 'pkg.put.gd'}
+
+
+def _allowed(url):
+    parts = urlsplit(url)
+    return parts.scheme == 'https' and parts.hostname in ALLOWED_HOSTS
+
+
+class _AllowlistRedirect(HTTPRedirectHandler):
+    # Protection metadata may only come from our own hosts over HTTPS, even after a redirect.
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _allowed(newurl):
+            raise ValueError('Protection metadata redirected off the allowed hosts: ' + newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch(url):
     # Public metadata only: never forward the GitHub token to the site/CDN.
-    with urlopen(Request(url, headers={'User-Agent': 'putgd-nightly-retention',
-                                      'Cache-Control': 'no-cache'}), timeout=60) as response:
+    if not _allowed(url):
+        raise ValueError('Protection metadata must come from an allowed HTTPS host: ' + url)
+    opener = build_opener(_AllowlistRedirect)
+    with opener.open(Request(url, headers={'User-Agent': 'putgd-nightly-retention',
+                                           'Cache-Control': 'no-cache'}), timeout=60) as response:
         data = response.read(LIMIT + 1)
     if len(data) > LIMIT:
         raise ValueError('Protection metadata exceeds size limit: ' + url)
