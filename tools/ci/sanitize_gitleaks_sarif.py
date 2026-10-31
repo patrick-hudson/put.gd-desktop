@@ -11,6 +11,8 @@ import re
 
 
 def sanitize(report):
+    if not isinstance(report, dict) or report.get('version') != '2.1.0':
+        raise ValueError('Expected a SARIF 2.1.0 report')
     runs = []
     for run in report['runs']:
         results = []

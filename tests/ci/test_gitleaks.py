@@ -47,6 +47,13 @@ class Sanitization(unittest.TestCase):
         clean = sanitizer.sanitize(report)
         self.assertEqual(clean['runs'][1]['results'], [])
         self.assertEqual(clean['version'], '2.1.0')
+        self.assertEqual(sanitizer.sanitize({'version': '2.1.0', 'runs': []})['runs'], [])
+
+    def test_invalid_report_types_and_versions_are_rejected(self):
+        for report in (None, [], 'PRIVATE_SENTINEL', {}, {'version': '2.0.0', 'runs': []},
+                       {'version': 'PRIVATE_SENTINEL', 'runs': []}):
+            with self.subTest(report=report), self.assertRaises(ValueError):
+                sanitizer.sanitize(report)
 
     def test_failed_scan_is_sanitized_before_always_upload_and_status_is_preserved(self):
         workflow = (ROOT / '.github/workflows/ci.yml').read_text()
