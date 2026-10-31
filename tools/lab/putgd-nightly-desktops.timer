@@ -1,11 +1,8 @@
 [Unit]
-Description=Check for published nightlies, including the usual 07:30 UTC slot
+Description=Check the newest untested nightly daily at 07:30 UTC
 
 [Timer]
-# Metadata polls do not rerun a completed release. Drain new releases in order
-# so an additional daytime publication is checked without an agent or human.
-OnCalendar=*-*-* *:00,30:00 UTC
-RandomizedDelaySec=5min
+OnCalendar=*-*-* 07:30:00 UTC
 Persistent=true
 Unit=putgd-nightly-desktops.service
 

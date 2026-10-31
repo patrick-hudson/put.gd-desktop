@@ -11,6 +11,7 @@ The worker uses only existing lab launch/install/recipes/collection/retirement.
 No compilation, map updates, per-night commits, or visual approval step.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 import datetime as dt
 import fcntl
@@ -27,6 +28,7 @@ import subprocess
 import sys
 import tarfile
 import threading
+import time
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -37,6 +39,15 @@ FLOWS = dict(region_upload='Region', window_desktop='Window / desktop',
              s3_region_upload='Live S3', proton_region_upload='Live Proton')
 LOCAL = list(FLOWS)[:6]
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
+HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
+
+
+class NotRun(RuntimeError):
+    """Infrastructure prevented a valid app-flow observation."""
+
+
+def cell(status='not_run', assertion='', **proof):
+    return dict(status=status, green=status == 'green', assertion=assertion, **proof)
 
 
 def save(path, value):
@@ -155,18 +166,29 @@ def verdict(out, recipe):
         receipt = json.loads((Path(out)/'receipt.json').read_text())
         rows = [r for r in receipt['interactions'] if r['recipe'] == recipe]
         env = receipt['environment']
+        observed = env.get('observed_build', {})
+        if observed.get('gitCommit') != env.get('build') or observed.get('dirty') is not False:
+            return cell(assertion='installed clean build was not verified')
         passed = bool(rows) and all(r['functional'] == 'passed' for r in rows)
-        passed = passed and not env.get('cleanup_errors') and not env.get('interrupted')
         assertion = next((r.get('note') or r['functional'] for r in rows if r['functional'] != 'passed'), '')
         if not rows:
             assertion = env.get('blocked') or 'flow produced no assertion receipt'
         if env.get('cleanup_errors'):
             assertion = 'private target cleanup failed'
-        return dict(green=bool(passed), assertion=assertion[-1800:], terminal=terminal,
+        # The runner retains safe assertion messages for RecipeFailed; unexpected
+        # driver errors, blocked fixtures, deadlines and cleanup are infrastructure.
+        infrastructure = ('driver error:', 'fixture cleanup failed', 'recipe cleanup',
+                          'deadline exceeded', 'shell crashed')
+        failed = any(r['functional'] == 'failed' for r in rows)
+        status = 'green' if passed else 'red' if failed else 'not_run'
+        if (env.get('cleanup_errors') or env.get('interrupted') or not rows
+                or any(text in assertion.lower() for text in infrastructure)):
+            status = 'not_run'
+        return cell(status, assertion[-1800:], terminal=terminal, observedBuild=observed['gitCommit'],
                     observations=list(dict.fromkeys((r.get('note') or '')[-1800:] for r in rows)),
                     receiptSha256=digest(Path(out)/'receipt.json'), receipt=str(Path(out)/'receipt.json'))
     except (OSError, ValueError, KeyError, RuntimeError, TypeError):
-        return dict(green=False, assertion='terminal audited receipt missing or invalid', receipt=str(Path(out)/'receipt.json'))
+        return cell(assertion='terminal audited receipt missing or invalid', receipt=str(Path(out)/'receipt.json'))
 
 
 @contextmanager
@@ -201,27 +223,58 @@ def lease(host, session, out):
         save(out/'lock-release.json', lock.release(session, verified_clean=True))
 
 
-def preflight(out):
-    command(['uptime'], log=out/'uptime.txt')
+def preflight(config):
+    from tools.lab import lab
+    row = config['rows'][0]
+    if not Path(row['golden']).is_file():
+        raise NotRun('golden missing')
     if not os.access('/dev/kvm', os.R_OK | os.W_OK):
-        raise RuntimeError('builder KVM unavailable')
-    for proc in Path('/proc').iterdir():
-        try:
-            if proc.name.isdigit() and (proc/'comm').read_text().startswith('qemu-system'):
-                raise RuntimeError('builder guest slot occupied')
-        except OSError:
-            pass
+        raise NotRun('builder KVM unavailable')
+    profile = lab.load_profile(row['profile'])
     available = int(next(line.split()[1] for line in Path('/proc/meminfo').read_text().splitlines()
                          if line.startswith('MemAvailable:'))) * 1024
-    if available < 8*2**30 or os.getloadavg()[0] > os.cpu_count():
-        raise RuntimeError('builder memory/load capacity unavailable')
-    if shutil.disk_usage(ROOT).free < 20*2**30:
-        raise RuntimeError('builder storage reserve unavailable')
-    for port in (22446, 5946):
+    needed = profile['memory_mib']*2**20 + 4*2**30
+    if available < needed:
+        raise NotRun('RAM below guest requirement plus 4 GiB headroom')
+    if os.getloadavg()[0] >= os.cpu_count():
+        raise NotRun('load at or above core count')
+    budget = config.get('overlayBudgetGiB', 4)
+    if shutil.disk_usage(ROOT).free < (10+budget)*2**30:
+        raise NotRun('disk below sparse overlay budget plus 10 GiB reserve')
+    for port in (config.get('sshPort', 22446), 5900+config.get('vncDisplay', 46)):
         with socket.socket() as sock:
-            sock.bind(('127.0.0.1', port))
-    save(out/'host-preflight.json', dict(kvm=True, availableMemory=available,
-         freeBytes=shutil.disk_usage(ROOT).free, ports=[22446, 5946], placement='guest'))
+            try:
+                sock.bind(('127.0.0.1', port))
+            except OSError:
+                raise NotRun('reserved nightly guest port is occupied') from None
+    return dict(kvm=True, availableMemory=available, requiredMemory=needed,
+                freeBytes=shutil.disk_usage(ROOT).free, overlayBudgetGiB=budget,
+                overlay='sparse qcow2; no preallocation', placement='guest')
+
+
+def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep):
+    """Wait outside every desktop/Proton lease; other guests are never touched."""
+    from tools.lab.desktop_lock import Desktop
+    started = clock()
+    deadline = started + config.get('waitSeconds', 1200)
+    attempts = []
+    while True:
+        try:
+            for resource in ('desktop', 'proton') if config['rows'][0].get('live') else ('desktop',):
+                state = Desktop(Path.home()/'putgd-lab/locks', config['host'], resource=resource).status()
+                if state['state'] != 'free':
+                    raise NotRun(resource+' lease held by another session')
+            if (Path.home()/'putgd-lab/locks/tier1-guest.lock.d').exists():
+                raise NotRun('nightly guest slot held by another session')
+            ready = preflight(config)
+            save(out/'availability.json', dict(attempts=attempts, waitedSeconds=round(clock()-started, 3), ready=ready))
+            return clock()-started
+        except NotRun as error:
+            attempts.append(dict(elapsedSeconds=round(clock()-started, 3), reason=str(error)))
+            save(out/'availability.json', dict(attempts=attempts, waitedSeconds=round(clock()-started, 3)))
+            if clock() >= deadline or str(error) in ('golden missing', 'builder KVM unavailable'):
+                raise NotRun(str(error)+'; not run after '+str(round(clock()-started))+'s') from None
+            sleep(min(30, max(0, deadline-clock())))
 
 
 def retire(run, out, rows):
@@ -260,21 +313,28 @@ def worker(config, tag, identity, artifacts, out):
     # Live admission reads the classifier/pin from this exact app commit.
     command(['git', 'fetch', '--no-tags', 'origin', 'tag', tag], log=out/'build-source-fetch.txt')
     host = config['host']
+    if len(config['rows']) != 1:
+        raise NotRun('configure exactly one desktop per builder')
     result = []
     for row in config['rows']:
+        started = time.monotonic()
         rowout = out/row['name'].lower().replace(' ', '-')
         rowout.mkdir(mode=0o700)
         session = 'nightly-'+uuid.uuid4().hex[:12]
-        cells = {flow: dict(green=False, assertion='desktop setup did not complete')
+        cells = {flow: cell(assertion='desktop setup did not complete')
                  for flow in LOCAL + (['s3_region_upload', 'proton_region_upload'] if row.get('live') else [])}
         record = dict(desktop=row['name'], host=host, profile=row['profile'], cells=cells,
                       release=tag, build=identity['gitCommit'], driver=identity['driver'],
                       session=session, evidence=str(rowout))
         run = ROOT/'work/lab-runs'/('n'+uuid.uuid4().hex[:8])
+        setup_started = None
         try:
+            record['waitSeconds'] = round(await_host(config, rowout), 3)
             with lease(host, session, rowout) as lease_errors:
                 try:
-                    preflight(rowout)
+                    setup_started = time.monotonic()
+                    command(['uptime'], log=rowout/'uptime.txt')
+                    save(rowout/'host-preflight.json', preflight(config))
                     command([sys.executable, 'tools/diagnostics/check_socket_paths.py', '--socket',
                              run/'qmp.sock', run/'vnc.sock', '/dev/shm/nd/runtime/putgd/session.sock'],
                             log=rowout/'sockets.json')
@@ -282,10 +342,12 @@ def worker(config, tag, identity, artifacts, out):
                     pins = Path(row['knownHosts']).read_text().splitlines()
                     key = next(' '.join(p.split()[1:3]) for p in pins if ' ssh-ed25519 ' in p)
                     known = rowout/'known_hosts'
-                    known.write_text('[127.0.0.1]:22446 '+key+'\n')
+                    ssh_port = config.get('sshPort', 22446)
+                    vnc_display = config.get('vncDisplay', 46)
+                    known.write_text(f'[127.0.0.1]:{ssh_port} '+key+'\n')
                     command([sys.executable, 'tools/lab/lab.py', 'launch', '--profile', row['profile'],
                         '--golden', row['golden'], '--run', run, '--bootstrap-key', row['bootstrapKey'],
-                        '--known-hosts', known, '--ssh-port', '22446', '--vnc-display', '46', '--timeout', '420'],
+                        '--known-hosts', known, '--ssh-port', str(ssh_port), '--vnc-display', str(vnc_display), '--timeout', '420'],
                         log=rowout/'launch.log', timeout=600)
                     package = artifacts/'packages'/f'putgd-{tag[1:]}-{row["asset"]}'
                     if digest(package) != identity['packages'][package.name]:
@@ -301,8 +363,10 @@ def worker(config, tag, identity, artifacts, out):
                     save(rowout/'identity.json', dict(lab.state(run), driver=identity['driver']))
                     record.update(runId=lab.state(run)['id'], goldenSha256=lab.state(run)['golden_sha256'],
                                   packageSha256=digest(package))
+                    record['setupSeconds'] = round(time.monotonic()-setup_started, 3)
                     env = dict(os.environ, PUTGD_TIER1_SESSION=session)
                     for flow in cells:
+                        flow_started = time.monotonic()
                         destination = 's3' if flow.startswith('s3_') else 'proton' if flow.startswith('proton_') else 'local'
                         recipe = ('outcomes.' if destination == 'local' else 'outcomes_live.')+flow
                         for attempt in (1, 2):
@@ -322,10 +386,11 @@ def worker(config, tag, identity, artifacts, out):
                                 '--out', str(target), '--campaign', 'nightly-desktops',
                                 '--coverage', str(rowout/(name+'-coverage.json'))]
                             if destination == 'proton':
-                                check = [sys.executable, 'tools/lab/proton_lab.py', 'check', '--session', session,
+                                proton_command = config.get('protonCommand', [sys.executable, str(ROOT/'tools/lab/proton_lab.py')])
+                                check = [*proton_command, 'check', '--session', session,
                                          '--owner', 'nightly-desktops']
                                 command(check, log=rowout/(name+'-check-before.json'), env=env)
-                                args = [sys.executable, 'tools/lab/proton_lab.py', 'lend', str(run),
+                                args = [*proton_command, 'lend', str(run),
                                         '--session', session, '--owner', 'nightly-desktops',
                                         '--purpose', 'automatic nightly outcome', '--']+args
                             # The driver exits nonzero for functional reds. Collect its
@@ -334,10 +399,10 @@ def worker(config, tag, identity, artifacts, out):
                                 command(['nice', '-n', '10', *args], log=rowout/(name+'.log'), env=env, timeout=1800)
                             except RuntimeError:
                                 pass
-                            cell = verdict(target, recipe)
-                            cell['attempt'] = attempt
-                            cells[flow].setdefault('attempts', []).append(cell)
-                            cells[flow].update({k: v for k, v in cell.items() if k != 'attempts'})
+                            observed = verdict(target, recipe)
+                            observed['attempt'] = attempt
+                            cells[flow].setdefault('attempts', []).append(observed)
+                            cells[flow].update(observed)
                             if destination == 'proton':
                                 # lend must have returned the baton even when assertions failed.
                                 registry = json.loads((Path.home()/'putgd-lab/locks/proton-registry.json').read_text())
@@ -345,8 +410,9 @@ def worker(config, tag, identity, artifacts, out):
                                 if last.get('run') != str(run) or not last.get('carriedBack'):
                                     raise RuntimeError('Proton baton not confirmed returned; overlay retained')
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
-                            if cell['green']:
+                            if observed['status'] == 'green':
                                 break
+                        cells[flow]['seconds'] = round(time.monotonic()-flow_started, 3)
                     retire(run, rowout, cells)
                 finally:
                     # A failed live cleanup may own the only current baton or a
@@ -367,10 +433,15 @@ def worker(config, tag, identity, artifacts, out):
                             lab.reset(run)
         except Exception as error:
             # Only our fixed messages are public. Harness/SSH exception payloads stay private.
-            reason = str(error) if type(error) is RuntimeError else 'controller '+type(error).__name__+'; private evidence retained'
-            record['controllerFailure'] = reason
-            for cell in cells.values():
-                cell.update(green=False, assertion=reason)
+            reason = str(error) if isinstance(error, NotRun) or type(error) is RuntimeError else 'controller '+type(error).__name__+'; private evidence retained'
+            record['notRunReason'] = reason
+            for value in cells.values():
+                if value['status'] == 'not_run' and not value.get('attempts'):
+                    value.update(assertion=reason)
+        if (rowout/'availability.json').exists():
+            record['waitSeconds'] = json.loads((rowout/'availability.json').read_text()).get('waitedSeconds', 0)
+        record['seconds'] = round(time.monotonic()-started, 3)
+        record['finishedAt'] = dt.datetime.now(dt.timezone.utc).isoformat()
         save(rowout/'result.json', record)
         result.append(record)
         print(json.dumps(dict(desktop=row['name'], green=sum(c['green'] for c in cells.values()), total=len(cells))), flush=True)
@@ -379,27 +450,45 @@ def worker(config, tag, identity, artifacts, out):
 
 
 def table(result):
-    lines = ['| Desktop | '+' | '.join(FLOWS.values())+' |', '| --- | '+' | '.join('---' for _ in FLOWS)+' |']
+    lines = ['| Desktop / host | '+' | '.join(FLOWS.values())+' | Not run |',
+             '| --- | '+' | '.join('---' for _ in FLOWS)+' | --- |']
     for row in result['desktops']:
         values = []
+        reasons = []
         for flow in FLOWS:
-            cell = row['cells'].get(flow)
-            if cell is None:
+            value = row['cells'].get(flow)
+            if value is None:
                 values.append('—')
-            else:
-                color = '🟢' if cell['green'] else '🔴'
-                values.append(f'[{color}]({cell["receiptUrl"]})' if cell.get('receiptUrl') else color)
-        lines.append('| '+row['desktop']+' | '+' | '.join(values)+' |')
+                continue
+            color = {'green':'🟢', 'red':'🔴', 'not_run':'⚪'}[value['status']]
+            values.append(f'[{color}]({value["receiptUrl"]})' if value.get('receiptUrl') else color)
+            if value['status'] == 'not_run' and value.get('assertion'):
+                reasons.append(value['assertion'])
+        reason = row.get('notRunReason') or '; '.join(dict.fromkeys(reasons))
+        reason = reason.replace('|', '/').replace('\n', ' ')[:500]
+        lines.append('| '+row['desktop']+' / '+row['host']+' | '+' | '.join(values)+' | '+reason+' |')
     return '\n'.join(lines)+'\n'
 
 
-def select_release(releases, cursor=None, completed=(), force=False):
+def select_release(releases, completed=(), force=False):
     published = sorted((r for r in releases if not r['draft'] and TAG.fullmatch(r['tag_name'])),
                        key=lambda r:r['published_at'])
-    if force or cursor is None:
-        return published[-1]
-    return next((r for r in published if r['published_at'] > cursor
-                 and r['tag_name'] not in completed), None)
+    latest = published[-1]
+    return latest if force or latest['tag_name'] not in completed else None
+
+
+def tested_release(path):
+    try:
+        marker = json.loads(Path(path).read_text())
+        return marker.get('schemaVersion') == 2 and marker.get('eligibleDesktops', 0) >= 3
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def eligible_desktops(result):
+    return sum(any(value['status'] in ('red', 'green') and value.get('terminal')
+                   and value.get('observedBuild') == result['build']
+                   for value in row['cells'].values()) for row in result['desktops'])
 
 
 def publish(github, result, out):
@@ -407,35 +496,45 @@ def publish(github, result, out):
     title = 'Nightly desktop results'
     pinned = next((i for i in issues if i['title'] == title), None)
     if not pinned:
-        pinned = github.issue(title, 'First automatic nightly run is being published.')
+        pinned = github.issue(title, 'Automatic nightly results are being published.')
     result['issueUrl'] = pinned['html_url']
     for row in result['desktops']:
-        for flow, cell in row['cells'].items():
-            # Compact receipt contains only the audited assertion/terminal proof,
-            # exact identities and attachment archive path. Never publish raw logs.
-            receipt = dict(desktop=row['desktop'], host=row['host'], release=result['release'],
-                build=result['build'], flow=flow, green=cell['green'], assertion=cell.get('assertion'),
-                attempts=cell.get('attempts', []), evidence=row['evidence'],
-                identity={k:row.get(k) for k in ('profile','driver','session','runId','goldenSha256','packageSha256')},
-                attachments=row['evidence']+'/attachments.tgz',
-                controllerFailure=row.get('controllerFailure'))
-            body = f'{result["release"]} · {row["desktop"]} · {FLOWS[flow]}\n\n```json\n'+json.dumps(receipt, indent=2, ensure_ascii=False)+'\n```'
-            comment = github.api(f'repos/{github.repo}/issues/{pinned["number"]}/comments', 'POST', dict(body=body))
-            cell['receiptUrl'] = comment['html_url']
-            failure_title = f'nightly: {row["desktop"]} {FLOWS[flow]} failing'
-            existing = next((i for i in issues if i['title'] == failure_title), None)
-            if not cell['green']:
-                failure = github.issue(failure_title, f'Automatic assertion failed on `{result["release"]}`.\n\n'
-                    f'Assertion: {cell.get("assertion", "no terminal proof")}\n\n[Receipt]({cell["receiptUrl"]})', existing)
-                cell['issueUrl'] = failure['html_url']
-            elif existing and existing['state'] == 'open':
-                github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
-                    dict(body=f'Automatically recovered on `{result["release"]}`. [Passing receipt]({cell["receiptUrl"]}).'))
-                github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed', state_reason='completed'))
+        compact = {}
+        for flow, value in row['cells'].items():
+            compact[flow] = {k:value[k] for k in ('status','assertion','seconds','observedBuild','terminal','receipt','receiptSha256') if k in value}
+            compact[flow]['attempts'] = [{k:a[k] for k in ('status','assertion','terminal','receipt','receiptSha256','attempt') if k in a}
+                                         for a in value.get('attempts', [])]
+        receipt = dict(desktop=row['desktop'], host=row['host'], release=result['release'],
+            build=result['build'], cells=compact, evidence=row['evidence'],
+            identity={k:row.get(k) for k in ('profile','driver','session','runId','goldenSha256','packageSha256')},
+            seconds=row.get('totalSeconds', row.get('seconds')), waitSeconds=row.get('waitSeconds', 0),
+            attachments=row['evidence']+'/attachments.tgz', notRunReason=row.get('notRunReason'))
+        body = f'{result["release"]} · {row["desktop"]} / {row["host"]}\n\n```json\n'+json.dumps(receipt, indent=2, ensure_ascii=False)+'\n```'
+        comment = github.api(f'repos/{github.repo}/issues/{pinned["number"]}/comments', 'POST', dict(body=body))
+        for value in row['cells'].values():
+            value['receiptUrl'] = comment['html_url']
+        # Exactly one stable tracking issue per desktop; grey never creates,
+        # reopens or closes an issue, and legacy per-flow issues stay untouched.
+        failure_title = f'nightly: {row["desktop"]} failing'
+        existing = next((i for i in issues if i['title'] == failure_title), None)
+        failed = [(flow,value) for flow,value in row['cells'].items() if value['status'] == 'red']
+        if failed:
+            body = f'Automatic app-flow assertions failed on `{result["release"]}`.\n\n'
+            body += '\n'.join(f'- **{FLOWS[flow]}**: '+value['assertion'] for flow,value in failed)
+            body += f'\n\n[Desktop receipt]({comment["html_url"]})'
+            issue = github.issue(failure_title, body, existing)
+            row['issueUrl'] = issue['html_url']
+        elif existing and existing['state'] == 'open' and all(v['status'] == 'green' for v in row['cells'].values()):
+            github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
+                dict(body=f'All enabled flows recovered on `{result["release"]}`. [Receipt]({comment["html_url"]}).'))
+            github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed', state_reason='completed'))
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
-    markdown += '\nGreen/red is decided by automatic oracles and terminal proofs. — = live lane disabled. Frames are retained as evidence attachments on the named builder; no manual review is required.\n'
+    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ not run (infrastructure; no issue) · — disabled.\n'
+    markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
+    for row in result['desktops']:
+        markdown += f'| {row["host"]} | {row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n'
+    markdown += '\nFrames remain evidence attachments; no manual visual review is required.\n'
     github.issue(title, markdown, pinned)
-    # Pinning is idempotent through the existing pinnedIssues connection.
     query = 'query($id:ID!){node(id:$id){... on Repository{pinnedIssues(first:10){nodes{issue{id}}}}}}'
     repository = github.api(f'repos/{github.repo}')
     pins = json.loads(github.gh('api', 'graphql', '-f', 'query='+query, '-f', 'id='+repository['node_id']))
@@ -445,93 +544,125 @@ def publish(github, result, out):
     save(out/'results.json', result)
 
 
+def not_run_rows(host, builder, reason, out):
+    return [dict(desktop=row['name'], host=host, evidence=str(out), notRunReason=reason,
+                 cells={flow:cell(assertion=reason) for flow in LOCAL+
+                        (['s3_region_upload','proton_region_upload'] if row.get('live') else [])})
+            for row in builder['rows']]
+
+
+def run_host(host, builder, tag, artifacts, archive, out):
+    """One foreground worker process per host, including d69 itself."""
+    started = time.monotonic()
+    started_at = dt.datetime.now(dt.timezone.utc).isoformat()
+    ssh = builder.get('ssh', [])
+    root = builder['root']
+    output = str(Path(root).parent/'ne'/uuid.uuid4().hex[:8])
+    waited = 0
+    try:
+        if ssh:
+            deadline = time.monotonic()+builder.get('waitSeconds', 1200)
+            while True:
+                try:
+                    command([*ssh, 'true'], timeout=25)
+                    break
+                except (RuntimeError, subprocess.TimeoutExpired):
+                    if time.monotonic() >= deadline:
+                        raise NotRun('SSH unreachable after 20-minute wait') from None
+                    time.sleep(min(30, max(0, deadline-time.monotonic())))
+            waited = time.monotonic()-started
+            inputs = root+'/inputs/'+out.name
+            command([*ssh, 'mkdir -p '+shlex.quote(inputs)])
+            with archive.open('rb') as data:
+                transfer = subprocess.run([*ssh, 'tar -xf - -C '+shlex.quote(inputs)], stdin=data, capture_output=True, timeout=600)
+            if transfer.returncode:
+                raise NotRun('artifact transfer failed')
+            selected = inputs+'/artifacts'
+        else:
+            selected = str(artifacts)
+        args = ['nice','-n','10','python3',root+'/tools/lab/nightly_desktops.py', '--worker',host,
+                '--config',builder['config'], '--artifacts',selected, '--output',output, tag]
+        command([*ssh, shlex.join(args)] if ssh else args, log=out/(host+'.log'), timeout=18000)
+        text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
+        rows = json.loads(text)
+    except Exception as error:
+        reason = str(error) if isinstance(error, NotRun) else 'worker infrastructure failed: '+type(error).__name__
+        rows = not_run_rows(host, builder, reason, out/host)
+    for row in rows:
+        row.update(totalSeconds=round(time.monotonic()-started,3), startedAt=started_at)
+        row['waitSeconds'] = round(row.get('waitSeconds', 0)+waited, 3)
+    return rows
+
+
+def run_hosts(builders, tag, artifacts, out, result, dispatch=run_host):
+    archive = out/'inputs.tar'
+    with tarfile.open(archive, 'w') as stream:
+        stream.add(artifacts, arcname='artifacts')
+    by_host = {}
+    with ThreadPoolExecutor(max_workers=len(builders)) as pool:
+        futures = {pool.submit(dispatch, host, builder, tag, artifacts, archive, out):host
+                   for host,builder in builders.items()}
+        for future in as_completed(futures):
+            host = futures[future]
+            by_host[host] = future.result()
+            result['desktops'] = [row for name in builders for row in by_host.get(name, [])]
+            save(out/'results.json', result)
+            print(json.dumps(dict(host=host, completed=True, seconds=by_host[host][0].get('totalSeconds'))),flush=True)
+    return result
+
+
 def controller(args, config):
     state = Path(config.get('state', str(Path.home()/'putgd-lab/nightly')))
     state.mkdir(parents=True, mode=0o700, exist_ok=True)
     with (state/'controller.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         github = GitHub(config['repository'], args.config.parent/'github-token')
-        tag = args.tag
-        cursor_file = state/'release-cursor.json'
-        cursor = json.loads(cursor_file.read_text())['publishedAt'] if cursor_file.exists() else None
-        if tag is None:
-            releases = github.api(f'repos/{github.repo}/releases?per_page=100')
-            release = select_release(releases, cursor, {p.stem for p in state.glob('v*-nightly.json')}, args.now)
+        if args.tag:
+            if not TAG.fullmatch(args.tag):
+                raise RuntimeError('expected a published nightly release tag')
+            release = github.api(f'repos/{github.repo}/releases/tags/{args.tag}')
+        else:
+            release = select_release(github.api(f'repos/{github.repo}/releases?per_page=100'),
+                                     {p.stem for p in state.glob('v*-nightly.json') if tested_release(p)}, args.now)
             if release is None:
                 print('No new published nightly')
                 return
-            tag = release['tag_name']
-        else:
-            release = github.api(f'repos/{github.repo}/releases/tags/{tag}')
-        if not TAG.fullmatch(tag):
-            raise RuntimeError('expected a published nightly release tag')
+        tag = release['tag_name']
         if release['draft']:
             raise RuntimeError('draft releases cannot enter nightly checks')
-        def completed():
-            save(done, dict(issueUrl=result['issueUrl'], results=str(out/'results.json')))
-            if cursor is None or (not args.now and args.tag is None):
-                save(cursor_file, dict(publishedAt=release['published_at']))
         done = state/(tag+'.json')
-        if done.exists() and not args.now:
-            if cursor is None:
-                save(cursor_file, dict(publishedAt=release['published_at']))
-            print('Already published '+tag)
+        if tested_release(done) and not args.now:
+            print('Already tested '+tag)
             return
+        if set(config['builders']) != set(HOSTS) or any(len(b['rows']) != 1 for b in config['builders'].values()):
+            raise RuntimeError('configure exactly one desktop on each of the five builders')
         out = state/(tag+'-'+uuid.uuid4().hex[:8])
         out.mkdir(mode=0o700)
-        rows = [row for b in config['builders'].values() for row in b['rows']]
         artifacts = out/'artifacts'
         artifacts.mkdir(mode=0o700)
+        result = dict(release=tag,build='unverified',date=dt.datetime.now(dt.timezone.utc).isoformat(),desktops=[])
         try:
+            rows = [row for b in config['builders'].values() for row in b['rows']]
             identity = release_assets(github, tag, artifacts/'packages', rows)
-            identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb', '.rpm', '.AppImage')}
-            identity['driver'] = command(['git', 'rev-parse', 'HEAD']).strip()
+            identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb','.rpm','.AppImage')}
+            identity['driver'] = command(['git','rev-parse','HEAD']).strip()
             identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
+            save(artifacts/'identity.json', identity)
+            result['build'] = identity['gitCommit']
         except Exception as error:
             reason = str(error) if type(error) is RuntimeError else 'release preparation failed: '+type(error).__name__
-            result = dict(release=tag, build='unverified', date=dt.datetime.now(dt.timezone.utc).isoformat(),
-                desktops=[dict(desktop=row['name'], host=host, evidence=str(out),
-                    cells={f:dict(green=False, assertion=reason)
-                           for f in LOCAL+(['s3_region_upload','proton_region_upload'] if row.get('live') else [])})
-                    for host,builder in config['builders'].items() for row in builder['rows']])
-            publish(github, result, out)
-            completed()
-            print(result['issueUrl'])
-            return
-        save(artifacts/'identity.json', identity)
-        result = dict(release=tag, build=identity['gitCommit'], date=dt.datetime.now(dt.timezone.utc).isoformat(), desktops=[])
-        # Each host runs one guest at a time. No detached remote jobs.
-        for host, builder in config['builders'].items():
-            try:
-                if builder.get('ssh'):
-                    remote = builder['root']
-                    archive = out/(host+'-inputs.tgz')
-                    with tarfile.open(archive, 'w:gz') as stream:
-                        stream.add(artifacts, arcname='artifacts')
-                    command([*builder['ssh'], 'mkdir -p '+shlex.quote(remote+'/inputs')])
-                    with archive.open('rb') as data:
-                        transfer = subprocess.run([*builder['ssh'], 'tar -xzf - -C '+shlex.quote(remote+'/inputs')], stdin=data, capture_output=True, timeout=600)
-                    if transfer.returncode:
-                        raise RuntimeError('remote artifact transfer failed')
-                    remote_out = '/home/patrick/ne/'+uuid.uuid4().hex[:8]
-                    command([*builder['ssh'], shlex.join(['python3', remote+'/tools/lab/nightly_desktops.py',
-                        '--worker', host, '--config', builder['config'], '--artifacts', remote+'/inputs/artifacts',
-                        '--output', remote_out, tag])], log=out/(host+'.log'), timeout=14400)
-                    text = command([*builder['ssh'], 'cat '+shlex.quote(remote_out+'/results.json')])
-                    result['desktops'].extend(json.loads(text))
-                else:
-                    result['desktops'].extend(worker(dict(builder, host=host), tag, identity, artifacts,
-                                                     Path.home()/'ne'/uuid.uuid4().hex[:8]))
-            except Exception as error:
-                for row in builder['rows']:
-                    result['desktops'].append(dict(desktop=row['name'], host=host, evidence=str(out/host),
-                        cells={f:dict(green=False, assertion='builder controller failed: '+type(error).__name__)
-                               for f in LOCAL+(['s3_region_upload','proton_region_upload'] if row.get('live') else [])}))
-            save(out/'results.json', result)
-        publish(github, result, out)
-        completed()
+            result['desktops'] = [row for host,builder in config['builders'].items()
+                                  for row in not_run_rows(host,builder,reason,out)]
+        else:
+            run_hosts(config['builders'],tag,artifacts,out,result)
+        result['eligibleDesktops'] = eligible_desktops(result)
+        publish(github,result,out)
+        save(state/'last-run.json',dict(results=str(out/'results.json'),eligibleDesktops=result['eligibleDesktops']))
+        # Grey is not a tested release. A later daily check may try it again.
+        if result['eligibleDesktops'] >= 3:
+            save(done,dict(schemaVersion=2,eligibleDesktops=result['eligibleDesktops'],
+                           issueUrl=result['issueUrl'],results=str(out/'results.json')))
         print(result['issueUrl'])
-
 
 def main():
     os.umask(0o077)
@@ -539,7 +670,7 @@ def main():
     parser.add_argument('tag', nargs='?')
     parser.add_argument('--now', action='store_true', help='manual trigger, including rechecking the same release')
     parser.add_argument('--config', type=Path, default=Path.home()/'.config/putgd-nightly/config.json')
-    parser.add_argument('--worker', choices=['d69','f44'], help=argparse.SUPPRESS)
+    parser.add_argument('--worker', choices=HOSTS, help=argparse.SUPPRESS)
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
