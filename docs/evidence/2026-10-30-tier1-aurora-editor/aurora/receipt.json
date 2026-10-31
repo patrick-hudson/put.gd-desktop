@@ -1,0 +1,952 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "aurora-kde-wayland",
+    "host": "boat",
+    "placement": "boat",
+    "guest": "aurora-kde-wayland",
+    "package": "appimage",
+    "destination": "local",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "boat_sandbox_id": "bx_k35grtk3",
+      "run_id": "e37ae677-180c-4f1d-bc4c-8aa1dc4bc114",
+      "lab_profile": "aurora-kde-wayland",
+      "run_directory": "/home/user/t1/work/lab-runs/ae1",
+      "session_root": "/tmp/sd-0b5a2dee",
+      "socket": "/tmp/sd-0b5a2dee/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "aurora-lab",
+      "kernel": "7.2.11-300.fc45.x86_64",
+      "machine": "x86_64",
+      "os": {
+        "ID": "aurora",
+        "VERSION_ID": "45",
+        "VARIANT_ID": "aurora"
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "kwin_entry_staging": [
+      {
+        "pid": 3556,
+        "executable": "/tmp/.mount_putgd-oHIknA/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/data",
+        "files": [
+          "putgd-appimage-X3LV8uL5.desktop",
+          "putgd-record-appimage-MgYWqy7Q.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 5310,
+        "executable": "/tmp/.mount_putgd-KeFaeD/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-8a0b385e/data",
+        "files": [
+          "putgd-appimage-qYf17qFu.desktop",
+          "putgd-record-appimage-OujTDhkG.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 6846,
+        "executable": "/tmp/.mount_putgd-ndBhdb/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-8a0b385e/data",
+        "files": [
+          "putgd-appimage-nqI26fPv.desktop",
+          "putgd-record-appimage-pGXBMRZR.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 10780,
+        "executable": "/tmp/.mount_putgd-gBbBFl/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/data",
+        "files": [
+          "putgd-appimage-BVMYg7ye.desktop",
+          "putgd-record-appimage-d2xkdBf7.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 11963,
+        "executable": "/tmp/.mount_putgd-HIHDhJ/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-aa36606a/data",
+        "files": [
+          "putgd-appimage-ZqYt5hQp.desktop",
+          "putgd-record-appimage-PRk8RhGz.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 13497,
+        "executable": "/tmp/.mount_putgd-dBmogC/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-aa36606a/data",
+        "files": [
+          "putgd-appimage-MtUQ8pvx.desktop",
+          "putgd-record-appimage-amud6qvh.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 18611,
+        "executable": "/tmp/.mount_putgd-MoDiLf/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/data",
+        "files": [
+          "putgd-appimage-tApj41Sx.desktop",
+          "putgd-record-appimage-nEuORVD6.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 19800,
+        "executable": "/tmp/.mount_putgd-MeohjJ/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-d3501e88/data",
+        "files": [
+          "putgd-appimage-JdqKH3sP.desktop",
+          "putgd-record-appimage-mPhGPQpB.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 21330,
+        "executable": "/tmp/.mount_putgd-EKJNca/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-d3501e88/data",
+        "files": [
+          "putgd-appimage-FaA1KYUZ.desktop",
+          "putgd-record-appimage-ymUf8Vvc.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 26122,
+        "executable": "/tmp/.mount_putgd-NMoiaL/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/data",
+        "files": [
+          "putgd-appimage-pdHdETLM.desktop",
+          "putgd-record-appimage-1u3jajxj.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 27307,
+        "executable": "/tmp/.mount_putgd-CncIJg/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-3fee2383/data",
+        "files": [
+          "putgd-appimage-pHvDkdMZ.desktop",
+          "putgd-record-appimage-EWULcTE7.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 28839,
+        "executable": "/tmp/.mount_putgd-LJedaB/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-3fee2383/data",
+        "files": [
+          "putgd-appimage-uEpT5rBi.desktop",
+          "putgd-record-appimage-b6WHPgS9.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 34207,
+        "executable": "/tmp/.mount_putgd-pAObOf/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/data",
+        "files": [
+          "putgd-appimage-xZiqlk4X.desktop",
+          "putgd-record-appimage-DcUjsmwu.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 35388,
+        "executable": "/tmp/.mount_putgd-InMfHb/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-8194130f/data",
+        "files": [
+          "putgd-appimage-qN7uomo9.desktop",
+          "putgd-record-appimage-AcfBhzbr.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 36922,
+        "executable": "/tmp/.mount_putgd-bNnGIb/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/fx-8194130f/data",
+        "files": [
+          "putgd-appimage-R8xeIhSV.desktop",
+          "putgd-record-appimage-5tapFL5w.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "pid": 43133,
+        "executable": "/tmp/.mount_putgd-GjEniC/usr/bin/putgd",
+        "data_home": "/tmp/sd-0b5a2dee/data",
+        "files": [
+          "putgd-appimage-JM4rswGc.desktop",
+          "putgd-record-appimage-HSMONkeq.desktop"
+        ],
+        "before_first_capture": true
+      },
+      {
+        "cleanup": true,
+        "files": [
+          "putgd-appimage-X3LV8uL5.desktop",
+          "putgd-record-appimage-MgYWqy7Q.desktop",
+          "putgd-appimage-qYf17qFu.desktop",
+          "putgd-record-appimage-OujTDhkG.desktop",
+          "putgd-appimage-nqI26fPv.desktop",
+          "putgd-record-appimage-pGXBMRZR.desktop",
+          "putgd-appimage-BVMYg7ye.desktop",
+          "putgd-record-appimage-d2xkdBf7.desktop",
+          "putgd-appimage-ZqYt5hQp.desktop",
+          "putgd-record-appimage-PRk8RhGz.desktop",
+          "putgd-appimage-MtUQ8pvx.desktop",
+          "putgd-record-appimage-amud6qvh.desktop",
+          "putgd-appimage-tApj41Sx.desktop",
+          "putgd-record-appimage-nEuORVD6.desktop",
+          "putgd-appimage-JdqKH3sP.desktop",
+          "putgd-record-appimage-mPhGPQpB.desktop",
+          "putgd-appimage-FaA1KYUZ.desktop",
+          "putgd-record-appimage-ymUf8Vvc.desktop",
+          "putgd-appimage-pdHdETLM.desktop",
+          "putgd-record-appimage-1u3jajxj.desktop",
+          "putgd-appimage-pHvDkdMZ.desktop",
+          "putgd-record-appimage-EWULcTE7.desktop",
+          "putgd-appimage-uEpT5rBi.desktop",
+          "putgd-record-appimage-b6WHPgS9.desktop",
+          "putgd-appimage-xZiqlk4X.desktop",
+          "putgd-record-appimage-DcUjsmwu.desktop",
+          "putgd-appimage-qN7uomo9.desktop",
+          "putgd-record-appimage-AcfBhzbr.desktop",
+          "putgd-appimage-R8xeIhSV.desktop",
+          "putgd-record-appimage-5tapFL5w.desktop",
+          "putgd-appimage-JM4rswGc.desktop",
+          "putgd-record-appimage-HSMONkeq.desktop"
+        ]
+      }
+    ],
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "wayland",
+      "pid": 3206,
+      "start": "13380",
+      "boot": "144206a3-84d3-4035-8953-7e5477117c73",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "operation_ids": [
+      {
+        "operationId": "c86664f6-42df-4bea-8f44-1788927297b2"
+      },
+      {
+        "operationId": "1b945f54-c28d-45e5-b206-16cf8c8dcb51"
+      },
+      {
+        "operationId": "250d709f-861d-4b20-bd14-c9599a9cccbb"
+      },
+      {
+        "operationId": "521b6b0e-f312-4ccd-88aa-0cfd26c63d9b"
+      },
+      {
+        "operationId": "0a04f49d-a53b-4be1-85fb-3c7904255cc3"
+      },
+      {
+        "operationId": "be310b83-b015-4805-9bfa-e2fe2b796d9f"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=c86664f6-42df-4bea-8f44-1788927297b2; Capture operation c86664f6-42df-4bea-8f44-1788927297b2; operationId=c86664f6-42df-4bea-8f44-1788927297b2; historyId=314e31ae-eacb-4b8f-bfa6-e934b506341b; uploaded/local sha256=7e98f871750943f0b7c9596d0d5958df220ac702ec4eb28f5991498c938b059a; Retained synthetic png sha256=7e98f871750943f0b7c9596d0d5958df220ac702ec4eb28f5991498c938b059a; pixel oracle: (600, 280), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.region_upload/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:04:21Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=c86664f6-42df-4bea-8f44-1788927297b2; Capture operation c86664f6-42df-4bea-8f44-1788927297b2; operationId=c86664f6-42df-4bea-8f44-1788927297b2; historyId=314e31ae-eacb-4b8f-bfa6-e934b506341b; uploaded/local sha256=7e98f871750943f0b7c9596d0d5958df220ac702ec4eb28f5991498c938b059a; Retained synthetic png sha256=7e98f871750943f0b7c9596d0d5958df220ac702ec4eb28f5991498c938b059a; pixel oracle: (600, 280), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.region_upload/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:04:21Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=1b945f54-c28d-45e5-b206-16cf8c8dcb51; operationId=1b945f54-c28d-45e5-b206-16cf8c8dcb51; historyId=90df4ccf-fd3c-45a2-a5c2-0d5e275081f3; uploaded/local sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; Retained synthetic png sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; pixel oracle: (1280, 800), tolerance=0; operationId=250d709f-861d-4b20-bd14-c9599a9cccbb; operationId=250d709f-861d-4b20-bd14-c9599a9cccbb; historyId=027a4796-3f1e-4d09-9a1d-270877d7e328; uploaded/local sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; Retained synthetic png sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; pixel oracle: (1280, 800), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:05:30Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=1b945f54-c28d-45e5-b206-16cf8c8dcb51; operationId=1b945f54-c28d-45e5-b206-16cf8c8dcb51; historyId=90df4ccf-fd3c-45a2-a5c2-0d5e275081f3; uploaded/local sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; Retained synthetic png sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; pixel oracle: (1280, 800), tolerance=0; operationId=250d709f-861d-4b20-bd14-c9599a9cccbb; operationId=250d709f-861d-4b20-bd14-c9599a9cccbb; historyId=027a4796-3f1e-4d09-9a1d-270877d7e328; uploaded/local sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; Retained synthetic png sha256=ed3e72085de68eb768adc5e06aac043801b4dcb891f7cdb81b8d7aa23dc12cea; pixel oracle: (1280, 800), tolerance=0",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/02-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes.window_desktop/03-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.window_desktop/04-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:05:30Z"
+    },
+    {
+      "interaction": "editor.upload",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; editor operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; historyId=c97e9fab-8317-41ba-b9d3-7cfda7c2b395; uploaded/local sha256=45f0e734689d54a37609edbd3cc6ca7914530c58d8e7b80a9493e29e0819790e; Retained synthetic png sha256=45f0e734689d54a37609edbd3cc6ca7914530c58d8e7b80a9493e29e0819790e",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:07:05Z"
+    },
+    {
+      "interaction": "editor.mouse-draw",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; editor operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; historyId=c97e9fab-8317-41ba-b9d3-7cfda7c2b395; uploaded/local sha256=45f0e734689d54a37609edbd3cc6ca7914530c58d8e7b80a9493e29e0819790e; Retained synthetic png sha256=45f0e734689d54a37609edbd3cc6ca7914530c58d8e7b80a9493e29e0819790e",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:07:05Z"
+    },
+    {
+      "interaction": "editor.text-typing",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; editor operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; operationId=521b6b0e-f312-4ccd-88aa-0cfd26c63d9b; historyId=c97e9fab-8317-41ba-b9d3-7cfda7c2b395; uploaded/local sha256=45f0e734689d54a37609edbd3cc6ca7914530c58d8e7b80a9493e29e0819790e; Retained synthetic png sha256=45f0e734689d54a37609edbd3cc6ca7914530c58d8e7b80a9493e29e0819790e",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "before",
+          "path": "frames/outcomes.edit_upload/01-before.png",
+          "window": "editor",
+          "reference": "20-editor-redact",
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "four-marks-before-upload",
+          "path": "frames/outcomes.edit_upload/02-four-marks-before-upload.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.edit_upload/03-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.edit_upload/04-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.edit_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:07:05Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=0a04f49d-a53b-4be1-85fb-3c7904255cc3; operationId=0a04f49d-a53b-4be1-85fb-3c7904255cc3; historyId=90cb792b-4259-4902-a108-f13631507e00; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; {\"url_host\": \"127.0.0.1\", \"title\": \"[redacted]\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes.link_browser/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:08:49Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=0a04f49d-a53b-4be1-85fb-3c7904255cc3; operationId=0a04f49d-a53b-4be1-85fb-3c7904255cc3; historyId=90cb792b-4259-4902-a108-f13631507e00; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; {\"url_host\": \"127.0.0.1\", \"title\": \"[redacted]\", \"matched\": true}; Firefox handler restored; MIME SHA-256 checks passed",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.link_browser/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.link_browser/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes.link_browser/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.link_browser/03-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.link_browser",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:08:49Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=be310b83-b015-4805-9bfa-e2fe2b796d9f; operationId=be310b83-b015-4805-9bfa-e2fe2b796d9f; historyId=e97b2a3d-7676-451c-848e-53fd225c7b51; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=6ea96caf-b372-4537-9550-468138339bce",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:10:32Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "aurora-kde-wayland",
+      "package": "appimage",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/user/t1e/a1/receipt.json",
+      "note": "operationId=be310b83-b015-4805-9bfa-e2fe2b796d9f; operationId=be310b83-b015-4805-9bfa-e2fe2b796d9f; historyId=e97b2a3d-7676-451c-848e-53fd225c7b51; uploaded/local sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; Retained synthetic png sha256=4b809b5ca9f1076f378c55ed3500eb219dd427bdf5ff32c30e90d73a660fe2cb; History list keyboard focus verified through native accessibility; deleteOperationId=6ea96caf-b372-4537-9550-468138339bce",
+      "host": "boat",
+      "placement": "boat",
+      "guest": "aurora-kde-wayland",
+      "destination": "local",
+      "review": true,
+      "review_reason": "desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.history_delete/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "publication-result",
+          "path": "frames/outcomes.history_delete/01-publication-result.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "owned-history-row",
+          "path": "frames/outcomes.history_delete/02-owned-history-row.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "exact-deletion-confirmation",
+          "path": "frames/outcomes.history_delete/03-exact-deletion-confirmation.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "deleted-object-no-longer-resolves",
+          "path": "frames/outcomes.history_delete/04-deleted-object-no-longer-resolves.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.history_delete/05-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.history_delete",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T02:10:32Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 30,
+    "pngs": 25,
+    "image_audit": "known-regions",
+    "findings": []
+  }
+}

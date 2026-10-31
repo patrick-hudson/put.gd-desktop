@@ -1,0 +1,6 @@
+----------------------------------------------------------------------
+Ran 50 tests in 1.173s
+
+OK
+{"before": {"IsEnabled": false}, "after": {"IsEnabled": true}, "scope": "owned-overlay"}
+{"before": {"IsEnabled": false, "ScreenReaderEnabled": true, "Unrelated": false}, "after": {"IsEnabled": true, "ScreenReaderEnabled": true, "Unrelated": false}, "scope": "owned-overlay"}

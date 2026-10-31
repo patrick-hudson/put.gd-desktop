@@ -1,0 +1,52 @@
+{
+  "placement": "boat",
+  "sandboxStarts": 3,
+  "maximumConcurrentSandboxes": 2,
+  "deletions": {
+    "auroraStalled": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-31T01:51:11.105Z",
+        "expectedBy": null,
+        "id": "bdop_8d1aad73a716443a9fd1d74481e8a04f",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-31T01:51:05.941Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_t2npthuj"
+      }
+    },
+    "aurora": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-31T02:12:29.535Z",
+        "expectedBy": null,
+        "id": "bdop_b6fcde05a7e64dd89d03b6a4bd0f6687",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-31T02:12:25.004Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_k35grtk3"
+      }
+    },
+    "cinnamon": {
+      "operation": {
+        "attemptCount": 1,
+        "completedAt": "2026-10-31T02:19:48.025Z",
+        "expectedBy": null,
+        "id": "bdop_28a0eec97564407f8f42266b78f7300f",
+        "kind": "sandbox",
+        "reason": "explicit",
+        "requestedAt": "2026-10-31T02:19:33.968Z",
+        "stage": "completed",
+        "status": "completed",
+        "targetId": "bx_kz4vqmha"
+      }
+    }
+  },
+  "ownedTunnelsStopped": true,
+  "ownedWallTilesRemoved": true,
+  "immutableNamedSnapshotsPreserved": true
+}

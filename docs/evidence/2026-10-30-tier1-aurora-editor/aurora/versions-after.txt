@@ -1,0 +1,9 @@
+kwin-6.7.5-1.fc45.x86_64
+plasma-workspace-6.7.5-2.fc45.x86_64
+qt6-qtbase-6.11.2-3.fc45.x86_64
+qt6-qtwayland-6.11.2-1.fc45.x86_64
+xdg-desktop-portal-1.22.1-2.fc45.x86_64
+xdg-desktop-portal-kde-6.7.5-1.fc45.x86_64
+at-spi2-core-2.62.0.1-1.fc45.x86_64
+masked
+

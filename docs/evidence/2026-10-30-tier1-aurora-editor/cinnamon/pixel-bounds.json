@@ -1,0 +1,27 @@
+{
+  "arrow": [
+    27,
+    28,
+    250,
+    94
+  ],
+  "rectangle": [
+    350,
+    30,
+    590,
+    110
+  ],
+  "text": [
+    37,
+    224,
+    116,
+    252
+  ],
+  "redact": [
+    360,
+    189,
+    551,
+    281
+  ],
+  "oracle": "unchanged outcomes.edited_pixels"
+}
