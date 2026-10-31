@@ -522,6 +522,11 @@ class DriverContext(Context):
         with armed(self.review):
             try:
                 self._press(*start,w,h,button,head)
+                # QMP acknowledges queued input before Qt/X11 consumes it.
+                # On Cinnamon/Qt 6.4 an immediate motion can become the press
+                # position. Let the editor receive the press at the start point.
+                if self.profile.get('session') == 'x11' and self._current_window == 'editor':
+                    time.sleep(.1)
                 # Managed header/resize grabs can leave the client. Unmanaged
                 # selector covers/bars need pointer witnesses, not keyboard focus:
                 # WA_ShowWithoutActivating deliberately leaves that elsewhere.

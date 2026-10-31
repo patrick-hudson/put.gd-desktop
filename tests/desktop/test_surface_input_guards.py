@@ -28,6 +28,18 @@ def context(profile=None):
 
 
 class FocusAndRoles(unittest.TestCase):
+    def test_editor_press_is_released_if_x11_delivery_hold_is_interrupted(self):
+        ctx, directory = context({'session':'x11'})
+        self.addCleanup(directory.cleanup)
+        ctx._current_window = 'editor'
+        ctx._guard = Mock(return_value={'backend':'x11'})
+        with patch('tools.lab.surface_driver.context.time.sleep', side_effect=RecipeFailed('interrupted hold')):
+            with self.assertRaisesRegex(RecipeFailed, 'interrupted hold'):
+                ctx.drag((20,30), (240,90))
+        ctx.target.pointer.assert_called_once_with(20,30,1920,1080,True,'left',0)
+        ctx.target.release_pointer.assert_called_once_with(20,30,1920,1080,'left',0)
+        self.assertFalse(ctx._press_open)
+
     def test_live_control_refuses_any_part_clipped_by_a_viewport(self):
         sys.path.insert(0, str(Path(__file__).parent))
         from test_surface_driver_desktop import row
