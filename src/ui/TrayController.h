@@ -75,6 +75,9 @@ private:
  void invokeAction(const QString&, bool fromShortcut = false, const QJsonObject& options = {});
 #ifdef Q_OS_LINUX
  void openNotificationLink(const QUrl&);
+ // The graphical resident's toast, sent without waiting for the server (#597).
+ void showTrayMessage(const QString& title, const QString& message, bool warning);
+ int trayMessagesInFlight_ = 0;
 #endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;

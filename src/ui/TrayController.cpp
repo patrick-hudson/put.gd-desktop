@@ -8,6 +8,10 @@
 #include "platform/HostOpen.h"
 #ifdef Q_OS_LINUX
 #include "NativeTray.h"
+#include <QDBusConnection>
+#include <QDBusError>
+#include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
 #endif
 #include <QApplication>
 #include <QCoreApplication>
@@ -565,10 +569,34 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
   if(!revealPath.isEmpty())actions.append({"show-in-folder","Show in folder",revealPath});
   native_->notify(title, message, warning,link,actions);
  }
- else
-#endif
+ else if (tray_) showTrayMessage(title, message, warning);
+#else
  if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
+#endif
 }
+#ifdef Q_OS_LINUX
+// Qt 6.11.2+'s D-Bus tray waits on this thread for Notify's reply. On Plasma X11 the
+// server is plasmashell, whose Klipper is meanwhile waiting for this thread to
+// hand over the link just copied: both stall until Klipper's clipboard reads
+// time out, 10-20 s with every session request unanswered (#597). Send Qt's own
+// request without waiting; only a bus with no notification server falls back to
+// Qt, whose tray then shows the message itself.
+void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning) {
+ const auto fallback=[tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning]{if(tray)tray->showMessage(title,message,warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information);};
+ auto bus=QDBusConnection::sessionBus();
+ if(!bus.isConnected()){fallback();return;}
+ if(trayMessagesInFlight_>=8)return;
+ auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
+ call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,QStringList{},QVariantMap{{"urgency",warning?1:0}},10000});
+ ++trayMessagesInFlight_;
+ auto* pending=new QDBusPendingCallWatcher(bus.asyncCall(call),this);
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback](QDBusPendingCallWatcher* p) {
+  --trayMessagesInFlight_;p->deleteLater();
+  const auto error=p->error().type();
+  if(error==QDBusError::ServiceUnknown||error==QDBusError::UnknownObject||error==QDBusError::UnknownInterface||error==QDBusError::UnknownMethod)fallback();
+ });
+}
+#endif
 void TrayController::setUpdateStatus(const QJsonObject& status) {
  const auto result=status["result"].toObject();
  // Stable only; a repository install keeps the item although put.gd does not notify.
