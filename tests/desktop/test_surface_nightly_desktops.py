@@ -59,6 +59,12 @@ class NightlyTests(unittest.TestCase):
             self.assertEqual(json.loads((slot/'retained.json').read_text())['run'], '/owned/run')
 
     def test_worker_wait_and_setup_consume_budget_and_retry_releases_slot(self):
+        self.worker_timeout_cleanup()
+
+    def test_corrupt_cleanup_receipt_keeps_reservation_for_recovery(self):
+        self.worker_timeout_cleanup(corrupt_receipt=True)
+
+    def worker_timeout_cleanup(self, *, corrupt_receipt=False):
         from tools.lab import lab, nightly_desktop_guest as guest
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -93,6 +99,10 @@ class NightlyTests(unittest.TestCase):
                 if '-m' in argv:
                     attempts.append(kwargs['timeout'])
                     clock[0] += kwargs['timeout']
+                    if corrupt_receipt:
+                        target = Path(argv[argv.index('--out')+1])
+                        target.mkdir()
+                        (target/'receipt.json').write_text('invalid receipt')
                     raise subprocess.TimeoutExpired('synthetic attempt', kwargs['timeout'])
             with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
                     patch.object(nightly.time, 'monotonic', side_effect=lambda:clock[0]), \
@@ -108,12 +118,19 @@ class NightlyTests(unittest.TestCase):
                 records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity,
                                              artifacts, root/'output', 100)
             self.assertEqual(attempts, [40], records[0].get('notRunReason'))
-            self.assertIn('deadline exhausted', records[0]['notRunReason'])
             self.assertEqual(records[0]['cells']['window_desktop']['status'], 'not_run')
-            retire.assert_called_once()
-            reset.assert_called_once()
-            lock.return_value.release.assert_called_once()
-            self.assertFalse((root/'putgd-lab/locks/tier1-guest.lock.d').exists())
+            slot = root/'putgd-lab/locks/tier1-guest.lock.d'
+            if corrupt_receipt:
+                retire.assert_not_called()
+                reset.assert_not_called()
+                lock.return_value.release.assert_not_called()
+                self.assertTrue((slot/'retained.json').exists())
+            else:
+                self.assertIn('deadline exhausted', records[0]['notRunReason'])
+                retire.assert_called_once()
+                reset.assert_called_once()
+                lock.return_value.release.assert_called_once()
+                self.assertFalse(slot.exists())
 
     def test_attempt_timeout_caps_remaining_budget_and_refuses_exhaustion(self):
         with patch.object(nightly.time, 'monotonic', return_value=40):

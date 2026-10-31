@@ -520,6 +520,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                 finally:
                     # Work is over. Do not deliver a budget alarm in retirement.
                     signal.setitimer(signal.ITIMER_REAL, 0)
+                    reservation.update(retained=True, reason='guest cleanup incomplete; explicit recovery required')
                     # A failed live cleanup may own the only current baton or a
                     # remote publication. Preserve that running guest for recover.
                     proton = Path.home()/'putgd-lab/locks/proton.lock'
@@ -542,6 +543,9 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                         except Exception:
                             reservation.update(retained=True, reason='guest cleanup failed; explicit recovery required')
                             raise
+                    if not outstanding and not retained:
+                        reservation.pop('retained', None)
+                        reservation.pop('reason', None)
         except Exception as error:
             # Only our fixed messages are public. Harness/SSH exception payloads stay private.
             reason = str(error) if isinstance(error, NotRun) or type(error) is RuntimeError else 'controller '+type(error).__name__+'; private evidence retained'
