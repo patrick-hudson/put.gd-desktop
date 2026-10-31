@@ -78,18 +78,18 @@ HELP
     fi
 
     base=https://app.put.gd/dl
-    # Probe the release itself: a missing package/checksum must never switch channels.
+    # Check the exact download before fetching anything or asking for privilege.
     status=$(curl --proto '=https' --connect-timeout 30 --max-time 60 --silent \
-        --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel") \
+        --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel/$package") \
         || die 'Could not check release availability'
     if [ "$status" = 404 ] && [ "$channel" = stable ]; then
-        note 'No stable release exists yet; falling back to nightly.'
+        note "No stable $package download exists yet; falling back to nightly."
         channel=nightly
         status=$(curl --proto '=https' --connect-timeout 30 --max-time 60 --silent \
-            --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel") \
+            --show-error --output /dev/null --write-out '%{http_code}' "$base/$channel/$package") \
             || die 'Could not check nightly release availability'
     fi
-    [ "$status" = 302 ] || die "No usable $channel release permalink (HTTP $status)"
+    [ "$status" = 302 ] || die "No usable $channel $package download (HTTP $status)"
     note "Installing $channel / $package; verifying the release SHA256SUMS before installation."
 
     case "$package" in

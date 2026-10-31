@@ -49,7 +49,7 @@ url = args[-1]
 assert url.startswith('https://app.put.gd/dl/'), url
 assert args[args.index('--proto') + 1] == '=https'
 if '--write-out' in args:
-    print(os.environ[url.rsplit('/', 1)[-1].upper()], end='')
+    print(os.environ[url.split('/')[-2].upper()], end='')
     sys.exit(0)
 assert args[args.index('--proto-redir') + 1] == '=https'
 out = pathlib.Path(args[args.index('--output') + 1])
@@ -123,9 +123,20 @@ else:
         out = self.run_script('--dry-run')
         self.assertIn('falling back to nightly', out)
         self.assertIn('nightly / ubuntu24.04', out)
+        probes = [call[-1] for call in self.calls() if '--write-out' in call]
+        self.assertEqual(probes, ['https://app.put.gd/dl/stable/ubuntu24.04',
+                                  'https://app.put.gd/dl/nightly/ubuntu24.04'])
         for status in ('403', '500', '000'):
             self.env['STABLE'] = status
             self.assertNotIn('falling back', self.run_script('--dry-run', ok=False))
+
+    def test_package_404_never_reaches_sudo_or_package_manager(self):
+        self.env.update(STABLE='404', NIGHTLY='404')
+        out = self.run_script(ok=False)
+        self.assertIn('falling back to nightly', out)
+        self.assertIn('nightly ubuntu24.04 download (HTTP 404)', out)
+        self.assertTrue(all(call[0] == 'curl' for call in self.calls()))
+        self.assertFalse(list(self.root.glob('putgd-install.*')))
 
     def test_nightly_missing_does_not_fallback(self):
         self.env['NIGHTLY'] = '404'
