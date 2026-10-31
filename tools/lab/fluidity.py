@@ -95,7 +95,9 @@ def fixture(args):
     def draw(_widget, cr):
         width, height = area.get_allocated_width(), area.get_allocated_height()
         frame = state['frame']
-        cr.set_source_rgb(0.12, 0.12, 0.14)
+        # Mid-grey background: the strip's reference cells must be the only
+        # near-black and near-white runs the analyzer meets on their row.
+        cr.set_source_rgb(0.45, 0.45, 0.47)
         cr.rectangle(0, 0, width, height)
         cr.fill()
         # The strip: reference black, reference white, then the Gray-coded frame number, LSB first.
@@ -227,7 +229,7 @@ def find_strip(width, height, stride, data):
         row = data[y * stride:y * stride + width]
         x = 0
         while x < width - 16:
-            if row[x] < 48:
+            if row[x] < 48 and (x == 0 or row[x - 1] >= 48):
                 start = x
                 while x < width and row[x] < 48:
                     x += 1
@@ -276,13 +278,11 @@ def read_counter(width, stride, data, strip):
     return ungray(code)
 
 
-def analyze(args):
+def analyze_clip(clip, fps=0, strip=None, frames_source=None):
+    """The fluidity report of one clip (a dict); frames_source overrides decoding (tests)."""
     frames = []
-    strip = None
-    if args.strip:
-        strip = tuple(int(v) for v in args.strip.split(','))
     unreadable = 0
-    for pts, width, height, stride, data in decode_frames(args.clip):
+    for pts, width, height, stride, data in (frames_source if frames_source is not None else decode_frames(clip)):
         if strip is None:
             strip = find_strip(width, height, stride, data)
             if strip is None:
@@ -294,11 +294,10 @@ def analyze(args):
             unreadable += 1
         frames.append((pts, counter))
     if not frames:
-        print(json.dumps({'ok': False, 'error': 'no frames decoded'}))
-        return 1
+        return {'ok': False, 'error': 'no frames decoded', 'clip': os.path.abspath(clip)}
     pts = [p for p, _ in frames if p is not None]
     counters = [c for _, c in frames]
-    nominal = args.fps
+    nominal = fps
     duration_s = (pts[-1] - pts[0]) / 1e9 + (1 / nominal if nominal else 0) if len(pts) > 1 else 0
     gaps_ms = [(b - a) / 1e6 for a, b in zip(pts, pts[1:])]
     deltas = {'repeat': 0, 'fluid': 0, 'skip1': 0, 'skip2plus': 0, 'backwards': 0}
@@ -331,7 +330,7 @@ def analyze(args):
     distinct = len(set(readable))
     frame_ms = 1000 / nominal if nominal else (statistics.median(gaps_ms) if gaps_ms else 0)
     report = {
-        'ok': True, 'clip': os.path.abspath(args.clip), 'strip': list(strip) if strip else None,
+        'ok': True, 'clip': os.path.abspath(clip), 'strip': list(strip) if strip else None,
         'frames': len(frames), 'durationS': round(duration_s, 3), 'clipFps': round(len(frames) / duration_s, 2) if duration_s else None,
         'nominalFps': nominal, 'unreadable': unreadable,
         'distinctSourceFrames': distinct, 'distinctPerSecond': round(distinct / duration_s, 2) if duration_s else None,
@@ -342,41 +341,53 @@ def analyze(args):
         'ptsGapMs': {'min': round(min(gaps_ms), 2), 'median': round(statistics.median(gaps_ms), 2), 'max': round(max(gaps_ms), 2),
                      'offGrid': sum(1 for g in gaps_ms if frame_ms and abs(g - frame_ms) > frame_ms / 4)} if gaps_ms else None,
     }
+    return report
+
+
+def analyze(args):
+    strip = tuple(int(v) for v in args.strip.split(',')) if args.strip else None
+    report = analyze_clip(args.clip, args.fps, strip)
     text = json.dumps(report, indent=2)
     print(text)
     if args.json:
         with open(args.json, 'w') as handle:
             handle.write(text + '\n')
-    return 0
+    return 0 if report.get('ok') else 1
 
 
 # --- ticks -------------------------------------------------------------------
 
-def ticks(args):
+def ticks_report(path, hz=60, since=None, until=None):
+    """Frame intervals of a fixture --ticks log, optionally between two GdkFrameClock times (microseconds)."""
     times = []
-    with open(args.file) as handle:
+    with open(path) as handle:
         for line in handle:
             if line.startswith('#') or not line.strip():
                 continue
             parts = line.split()
             if len(parts) >= 2:
-                times.append(int(parts[1]))
+                stamp = int(parts[1])
+                if (since is None or stamp >= since) and (until is None or stamp <= until):
+                    times.append(stamp)
     if len(times) < 2:
-        print(json.dumps({'ok': False, 'error': 'fewer than two ticks'}))
-        return 1
+        return {'ok': False, 'error': 'fewer than two ticks', 'file': os.path.abspath(path)}
     intervals = [(b - a) / 1000 for a, b in zip(times, times[1:])]
-    nominal = 1000 / args.hz
+    nominal = 1000 / hz
     late = [i for i in intervals if i > 1.5 * nominal]
-    report = {'ok': True, 'file': os.path.abspath(args.file), 'frames': len(times), 'seconds': round((times[-1] - times[0]) / 1e6, 2),
-              'nominalMs': round(nominal, 2), 'meanMs': round(statistics.mean(intervals), 3), 'maxMs': round(max(intervals), 2),
-              'lateFrames': len(late), 'lateFraction': round(len(late) / len(intervals), 4),
-              'missedFrames': sum(int(round(i / nominal)) - 1 for i in late)}
+    return {'ok': True, 'file': os.path.abspath(path), 'frames': len(times), 'seconds': round((times[-1] - times[0]) / 1e6, 2),
+            'nominalMs': round(nominal, 2), 'meanMs': round(statistics.mean(intervals), 3), 'maxMs': round(max(intervals), 2),
+            'lateFrames': len(late), 'lateFraction': round(len(late) / len(intervals), 4),
+            'missedFrames': sum(int(round(i / nominal)) - 1 for i in late)}
+
+
+def ticks(args):
+    report = ticks_report(args.file, args.hz)
     text = json.dumps(report, indent=2)
     print(text)
     if args.json:
         with open(args.json, 'w') as handle:
             handle.write(text + '\n')
-    return 0
+    return 0 if report.get('ok') else 1
 
 
 def main(argv=None):

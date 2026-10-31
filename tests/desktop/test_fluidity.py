@@ -18,7 +18,7 @@ def fluidity():
     return module
 
 
-def frame_with_strip(fluidity, counter, width=640, height=360, x0=24, y0=24, cell=24, background=30):
+def frame_with_strip(fluidity, counter, width=640, height=360, x0=24, y0=24, cell=24, background=115):
     """A GRAY8 frame as the fixture draws it: reference black, reference white, Gray-coded bits."""
     data = bytearray([background]) * (width * height)
     code = fluidity.gray(counter)
@@ -55,7 +55,7 @@ def test_strip_is_found_at_an_offset_and_other_cell_size(fluidity):
 
 def test_frame_without_strip_is_unreadable(fluidity):
     width, height = 320, 200
-    data = bytes([90]) * (width * height)
+    data = bytes([115]) * (width * height)
     assert fluidity.find_strip(width, height, width, data) is None
     # A strip whose references do not contrast (a blurred or scaled clip) reads as unreadable, not as a number.
     width, height, stride, data = frame_with_strip(fluidity, 5)
@@ -71,6 +71,7 @@ def test_analysis_counts_repeats_and_skips(fluidity, tmp_path, monkeypatch):
     counters = [1, 2, 3, 3, 4, 6, 7]
     frames = [(i * 16_666_667, *frame_with_strip(fluidity, c)) for i, c in enumerate(counters)]
     monkeypatch.setattr(fluidity, 'decode_frames', lambda path: iter(frames))
+    assert fluidity.analyze_clip('clip.mkv', 60, frames_source=iter(frames))['pairs']['fluid'] == 4
     out = tmp_path / 'report.json'
     assert fluidity.main(['analyze', 'clip.mkv', '--fps', '60', '--json', str(out)]) == 0
     import json
