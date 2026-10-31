@@ -1,73 +1,34 @@
 {
   "schemaVersion": 2,
-  "scope": "coordinator-follow-up-2",
+  "scope": "coordinator-follow-up-3-gnome-only",
   "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
   "release": "v26.1030.3203-nightly",
   "catalogCiRun": 41111404666,
-  "driverCodeCommit": "75dbc1701cabc4e6df1f73619841501f2a447b93",
+  "executedDriverCommit": "8c125ebc80a5beffc70fd090bf651e8534a2997b",
+  "finalDriverCommit": "f0d9e03dc10944ab9a34aef19cab8357b899b6b2",
   "placement": "guest",
-  "completedUploads": 8,
-  "verifiedRemoteHashes": 5,
-  "verifiedBrowserHashes": 0,
-  "uiRevocations": 3,
-  "uiDeletions": 5,
-  "independentUnavailableLinks": 6,
-  "s3OriginAbsenceProofs": 5,
-  "s3MissingHead404": 6,
-  "batonsLent": 3,
-  "batonsReturned": 3,
-  "overlaysRetired": 3,
+  "completedUploads": 2,
+  "verifiedRemoteHashes": 2,
+  "verifiedBrowserHashes": 1,
+  "uiRevocations": 1,
+  "uiDeletions": 1,
+  "independentUnavailableLinks": 2,
+  "s3OriginAbsenceProofs": 1,
+  "s3MissingHead404": 1,
+  "batonsLent": 1,
+  "batonsReturned": 1,
+  "overlaysRetired": 1,
+  "protonProof": "P",
+  "pPreviewExceptionUsed": false,
+  "expansionRun": false,
+  "expansionBlockedBy": "S3 public CloudFront GET 403 on GNOME",
   "locksReleased": true,
-  "matrix": [
-    {
-      "desktop": "cinnamon",
-      "host": "d69",
-      "s3": "F",
-      "proton": "F"
-    },
-    {
-      "desktop": "gnome",
-      "host": "d69",
-      "s3": "F",
-      "proton": "F"
-    },
-    {
-      "desktop": "kde",
-      "host": "f44",
-      "s3": "F",
-      "proton": "F"
-    }
-  ],
-  "coverageSha256": "815a5d86911e3ba54a72f6b0c3b6b5243c57a64a4057f7471f4953f30c474187",
+  "coverageSha256": "df63be4322fc3fd292515b273f8f806ddc1e5b04d93727804fccdc733cefedf0",
   "issues": [
-    973,
-    974,
-    975,
-    977,
     978,
-    979,
-    986,
-    987,
-    988,
-    989,
-    990,
-    991,
-    992,
-    993,
-    994,
-    995
+    992
   ],
   "previousCumulative": {
-    "completedUploads": 7,
-    "uiRevocations": 7,
-    "uiDeletions": 0,
-    "verifiedRemoteHashes": 0,
-    "independentUnavailableLinks": 2,
-    "batonsLent": 18,
-    "batonsReturned": 18,
-    "overlaysRetired": 6
-  },
-  "cumulative": {
     "verifiedBrowserHashes": 0,
     "uiRevocations": 10,
     "batonsReturned": 21,
@@ -79,5 +40,18 @@
     "verifiedRemoteHashes": 5,
     "s3MissingHead404": 6,
     "independentUnavailableLinks": 8
+  },
+  "cumulative": {
+    "independentUnavailableLinks": 10,
+    "s3MissingHead404": 7,
+    "verifiedRemoteHashes": 7,
+    "overlaysRetired": 10,
+    "uiRevocations": 11,
+    "s3OriginAbsenceProofs": 6,
+    "verifiedBrowserHashes": 1,
+    "batonsLent": 22,
+    "uiDeletions": 6,
+    "completedUploads": 17,
+    "batonsReturned": 22
   }
 }

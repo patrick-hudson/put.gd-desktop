@@ -1,0 +1,18 @@
+{
+  "broadBuilder": {
+    "cases": 80,
+    "passed": 79,
+    "skipped": 1
+  },
+  "finalFocusedBuilder": {
+    "cases": 18,
+    "passed": 17,
+    "skipped": 1
+  },
+  "guestRealQtDecoder": {
+    "cases": 1,
+    "passed": 1,
+    "skipped": 0
+  },
+  "skipReason": "Builder lacks PyQt6; the real Qt PNG oracle was executed and passed in the prepared guest"
+}
