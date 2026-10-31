@@ -754,6 +754,7 @@ def main(argv=None):
         if environment['target'].get('session_type')!=profile['session']:
             raise RecipeBlocked('native session type does not match the selected desktop profile')
         target.start()
+        environment['kwin_entry_staging'] = getattr(target, 'kwin_entry_receipts', [])
         clipboard_report = getattr(target, 'clipboard_report', None)
         if isinstance(clipboard_report, dict):
             environment['clipboard_preservation'] = clipboard_report
