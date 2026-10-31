@@ -64,7 +64,8 @@ def add(args):
     if edid is None:
         for name in connectors(args.card):
             base = '/sys/class/drm/%s-%s' % (args.card, name)
-            if read(base + '/status') == 'connected' and os.path.getsize(base + '/edid') >= 128:
+            # sysfs binary attributes report size 0; read them to know.
+            if read(base + '/status') == 'connected' and len(Path(base + '/edid').read_bytes()) >= 128:
                 edid = Path(base + '/edid')
                 break
         if edid is None:
