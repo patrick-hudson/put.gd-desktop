@@ -116,5 +116,29 @@ class LiveOutcomes(unittest.TestCase):
         self.assertEqual(image.size,(1,1));self.assertEqual(connect.call_count,2)
         first.close.assert_called_once();second.close.assert_called_once()
 
+    def test_recipient_comparison_rejects_wrong_bytes_and_foreign_saved_paths(self):
+        from tools.lab.surface_driver import browser
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);app=root/'app';app.mkdir();state=root/'firefox';state.mkdir()
+            downloads=state/'downloads';downloads.mkdir()
+            saved=app/'saved.png';saved.write_bytes(b'\x89PNG\r\n\x1a\noriginal')
+            foreign=root/'foreign.png';foreign.write_bytes(b'private unrelated input')
+            link=app/'link.png';link.symlink_to(saved)
+            (state/'transaction.json').write_text(json.dumps({'directory':str(state)}))
+            client=Mock()
+            def receive(*a,**kw):
+                (downloads/'received.png').write_bytes(b'\x89PNG\r\n\x1a\nwrong bytes')
+                return True
+            client.script.side_effect=receive
+            args=dict(directory=str(state),port=1,kind='proton',saved_path=str(saved),app_root=str(app))
+            with patch.object(browser,'_Marionette',return_value=client),patch.object(browser.subprocess,'run',return_value=SimpleNamespace(stdout='tmpfs\n')):
+                result=browser._target('download-digest',args)
+                self.assertFalse(result['matches'])
+                self.assertEqual(set(result),{'bytes','sha256','matches'})
+                for path in (foreign,link):
+                    (downloads/'received.png').unlink()
+                    with self.assertRaises(browser._TargetError):
+                        browser._target('download-digest',dict(args,saved_path=str(path)))
+
 
 if __name__=='__main__':unittest.main()

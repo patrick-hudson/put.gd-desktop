@@ -130,6 +130,7 @@ def _region_upload(ctx):
                    'live region pixels equal independently captured pattern crop (tolerance=0)')
         if ctx.destination == 's3':
             verify_s3(ctx, service, detail, data)
+            ctx.note('remote_hash_match_count=1')
         with default_browser(ctx, 'firefox'):
             previous = ctx.profile.get('windows', {})
             ctx.profile['windows'] = {**previous, 'outcome-browser': {'title': '.*Firefox.*'}}
@@ -147,7 +148,8 @@ def _region_upload(ctx):
                 ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
                            'Firefox recipient original bytes SHA-256 equals saved file in guest')
                 ctx.note('browser_hash_match_count=1')
-                ctx.note('remote_hash_match_count=1')
+                if ctx.destination == 'proton':
+                    ctx.note('remote_hash_match_count=1')
                 # Cleanup is inside the browser guard: its URL stays only in
                 # the private Firefox memory for the fresh negative check.
                 _cleanup(ctx, detail)
