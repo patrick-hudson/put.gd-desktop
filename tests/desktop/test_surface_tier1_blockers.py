@@ -1,5 +1,6 @@
 """Targeted refusal regressions; these synthetic tests are not desktop proof."""
 from pathlib import Path
+from contextlib import redirect_stdout
 import json
 import io
 import sys
@@ -11,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
 from tools.lab.surface_driver.api import RecipeBlocked, ReceiptRow
 from tools.lab.surface_driver import run as runner
+from tools.lab.surface_driver import redact
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.compositor import stage_plasma_accessibility as plasma
 from tools.lab.surface_driver.fixtures import keyring
@@ -111,6 +113,17 @@ class LocalFrames(Base):
         self.assertTrue(result['passed'],result)
         self.assertEqual(rows[0].functional,'passed')
         self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
+
+    def test_independent_cli_reaudit_preserves_local_frames_but_requires_live_ocr(self):
+        ctx=self.context();ctx._secret_regions=Mock(return_value=[])
+        ctx.frame('content')
+        rows=[ReceiptRow('region.drag',self.env['desktop'],'deb','passed')]
+        with patch('tools.lab.surface_driver.redact.shutil.which',return_value=None),redirect_stdout(io.StringIO()):
+            runner.finish_evidence(ctx.evidence,self.out,self.env,rows,'local',self.path/'coverage.json')
+            self.assertEqual(redact.main([str(self.out),'--coverage',str(self.path/'coverage.json')]),0)
+            receipt=self.out/'receipt.json';value=json.loads(receipt.read_text())
+            value['environment']['destination']='s3';receipt.write_text(json.dumps(value))
+            self.assertEqual(redact.main([str(self.out),'--coverage',str(self.path/'coverage.json')]),1)
 
 
 class PlasmaProperties(unittest.TestCase):

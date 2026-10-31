@@ -788,7 +788,9 @@ def main(argv=None):
         value = json.loads(receipt.read_text()) if receipt.exists() else None
     except (OSError, ValueError):
         value = None
-    result = scan_run(args.run, literals=literals, require_ocr=bool(value and value.get('environment', {}).get('destination', 'local') != 'local'), quarantine=True)
+    local = bool(value and value.get('environment', {}).get('destination') == 'local')
+    result = scan_run(args.run, literals=literals, require_ocr=bool(value and not local),
+                      quarantine=True, audit_images=not local)
     if value and not value.get('secret_scan', {'passed': True}).get('passed', True):
         previous = value['secret_scan']
         result['passed'] = False
