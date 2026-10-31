@@ -1,0 +1,88 @@
+[New LWP 62662]
+[New LWP 62661]
+[New LWP 62589]
+[New LWP 62588]
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+0x0000000000588b54 in PyObject_Realloc ()
+
+Thread 5 (Thread 0x7b1d254ff6c0 (LWP 62588) "python3"):
+#0  0x00007b1d2651bbca in read () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000000000061bc73 in _Py_read ()
+#2  0x0000000000639b99 in ?? ()
+#3  0x0000000000551ede in ?? ()
+#4  0x00000000005497ef in PyObject_VectorcallMethod ()
+#5  0x000000000063d376 in ?? ()
+#6  0x000000000063b01f in ?? ()
+#7  0x0000000000551852 in ?? ()
+#8  0x0000000000549935 in PyObject_Vectorcall ()
+#9  0x00000000005d6f09 in _PyEval_EvalFrameDefault ()
+#10 0x000000000054cad2 in ?? ()
+#11 0x00000000006f89dc in ?? ()
+#12 0x00000000006b931c in ?? ()
+#13 0x00007b1d2649cb84 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#14 0x00007b1d26529d6c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 4 (Thread 0x7b1d24cfe6c0 (LWP 62589) "python3"):
+#0  0x00007b1d2651bbca in read () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000000000061bc73 in _Py_read ()
+#2  0x0000000000639b99 in ?? ()
+#3  0x0000000000551ede in ?? ()
+#4  0x00000000005497ef in PyObject_VectorcallMethod ()
+#5  0x000000000063d376 in ?? ()
+#6  0x000000000063b01f in ?? ()
+#7  0x00000000005d82c7 in _PyEval_EvalFrameDefault ()
+#8  0x000000000054cad2 in ?? ()
+#9  0x00000000006f89dc in ?? ()
+#10 0x00000000006b931c in ?? ()
+#11 0x00007b1d2649cb84 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#12 0x00007b1d26529d6c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 3 (Thread 0x7b1d1feff6c0 (LWP 62661) "python3"):
+#0  0x00007b1d2651bbca in read () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000000000061bc73 in _Py_read ()
+#2  0x0000000000639b99 in ?? ()
+#3  0x0000000000551ede in ?? ()
+#4  0x00000000005497ef in PyObject_VectorcallMethod ()
+#5  0x000000000063d376 in ?? ()
+#6  0x000000000063b01f in ?? ()
+#7  0x00000000005d82c7 in _PyEval_EvalFrameDefault ()
+#8  0x000000000054cad2 in ?? ()
+#9  0x00000000006f89dc in ?? ()
+#10 0x00000000006b931c in ?? ()
+#11 0x00007b1d2649cb84 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#12 0x00007b1d26529d6c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 2 (Thread 0x7b1d1f6fe6c0 (LWP 62662) "python3"):
+#0  0x00007b1d2651bbca in read () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x000000000061bc73 in _Py_read ()
+#2  0x0000000000639b99 in ?? ()
+#3  0x0000000000551ede in ?? ()
+#4  0x00000000005497ef in PyObject_VectorcallMethod ()
+#5  0x000000000063d376 in ?? ()
+#6  0x000000000063b01f in ?? ()
+#7  0x00000000005d82c7 in _PyEval_EvalFrameDefault ()
+#8  0x000000000054cad2 in ?? ()
+#9  0x00000000006f89dc in ?? ()
+#10 0x00000000006b931c in ?? ()
+#11 0x00007b1d2649cb84 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#12 0x00007b1d26529d6c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+
+Thread 1 (Thread 0x7b1d267ea080 (LWP 62587) "python3"):
+#0  0x0000000000588b54 in PyObject_Realloc ()
+#1  0x00000000005be9c6 in PyUnicode_Format ()
+#2  0x000000000053f682 in PyNumber_Remainder ()
+#3  0x00000000005d84a0 in _PyEval_EvalFrameDefault ()
+#4  0x00000000005551d6 in ?? ()
+#5  0x000000000055fad4 in ?? ()
+#6  0x000000000053ef1d in PySequence_List ()
+#7  0x000000000053dcdc in PySequence_Fast ()
+#8  0x00000000005b8fff in ?? ()
+#9  0x00000000005d9880 in _PyEval_EvalFrameDefault ()
+#10 0x00000000005d544b in PyEval_EvalCode ()
+#11 0x00000000006085a2 in ?? ()
+#12 0x00000000006b5033 in ?? ()
+#13 0x00000000006b4d9a in _PyRun_SimpleFileObject ()
+#14 0x00000000006b4bcf in _PyRun_AnyFileObject ()
+#15 0x00000000006bcc35 in Py_RunMain ()
+[Inferior 1 (process 62587) detached]

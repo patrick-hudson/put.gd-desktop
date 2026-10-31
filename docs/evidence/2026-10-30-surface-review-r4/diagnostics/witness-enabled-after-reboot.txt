@@ -1,0 +1,7 @@
+putgd-lab-witness@put.gd
+  Name: put.gd lab compositor witness
+  Description: Lab-only, for disposable guests: window geometry, focus, stacking, stage hit-tests, interactive-grab signals and explicit activation for the surface driver. Never ship or install on a real desktop.
+  Path: /home/lab/.local/share/gnome-shell/extensions/putgd-lab-witness@put.gd
+  Version: 4
+  Enabled: Yes
+  State: ACTIVE

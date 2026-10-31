@@ -1,0 +1,77 @@
+{
+  "controllerBase": "537a49a7908f01f9d8f9a01907f560994b34f061",
+  "publishedRelease": {
+    "release": {
+      "schemaVersion": 1,
+      "tag": "v26.1030.3203-nightly",
+      "version": "26.1030.3203-nightly",
+      "baseVersion": "26.1030.3203",
+      "packageVersion": "26.1030.3203~nightly",
+      "channel": "nightly",
+      "prerelease": true,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "commitCount": 3203
+    },
+    "sha256": {
+      "putgd-26.1030.3203-nightly-ubuntu26.04-x86_64.deb": "adfe9f221271b936b33dccd32b073da7b791745911a36e609c7abf22ab652aee",
+      "putgd-26.1030.3203-nightly-ubuntu24.04-x86_64.deb": "2754650eb3c40d139630ff969bfc345d3ae182b457e8e660f7db73afff0a3cbe"
+    },
+    "catalogCiRun": 41111404666,
+    "catalogArtifactId": 13005525179,
+    "catalogTarSha256": "6410628bba29d1ddd33ab70464c9d00bd81283565de523d3259c39b050779bb8"
+  },
+  "guests": {
+    "mint-cinnamon-x11": {
+      "boatId": "bx_8uwsqf42",
+      "placement": "boat",
+      "machineProvider": "baremetal",
+      "snapshot": {
+        "name": "putgd-lab-cinnamon-v3",
+        "snapshotId": "849cde13-4322-4f89-a08e-86fa427564c9",
+        "createdAt": "2026-10-30T05:38:47.569Z"
+      },
+      "runId": "96795680-f69c-4a7b-b320-fd05a96d1490",
+      "profile": "cinnamon-x11",
+      "runDirectory": "/home/user/r4/src/work/lab-runs/r4a",
+      "applicationCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "packageSha256": "2754650eb3c40d139630ff969bfc345d3ae182b457e8e660f7db73afff0a3cbe",
+      "recipeCommit": "57f9f9600b80b31189fb0a0710d981ec16145f2e",
+      "destination": "local"
+    },
+    "kubuntu-kde-wayland": {
+      "boatId": "bx_gpjstesc",
+      "placement": "boat",
+      "machineProvider": "baremetal",
+      "snapshot": {
+        "name": "putgd-lab-kubuntu-kde-v1",
+        "snapshotId": "06aeb588-fae4-4b84-bfc6-b13ab955c361",
+        "createdAt": "2026-10-30T13:00:44.027Z"
+      },
+      "runId": "64909bfb-a858-4c47-88cc-021c5ec50bbe",
+      "profile": "kde-wayland",
+      "runDirectory": "/home/user/r4/src/work/lab-runs/r4a",
+      "applicationCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "packageSha256": "adfe9f221271b936b33dccd32b073da7b791745911a36e609c7abf22ab652aee",
+      "recipeCommit": "57f9f9600b80b31189fb0a0710d981ec16145f2e",
+      "destination": "local"
+    },
+    "ubuntu-gnome-wayland": {
+      "boatId": "bx_5m7d5zpz",
+      "placement": "boat",
+      "machineProvider": "baremetal",
+      "snapshot": {
+        "name": "putgd-lab-ubuntu-gnome-v4",
+        "snapshotId": "e27763c5-50e2-4ece-b27f-412345fb796f",
+        "createdAt": "2026-10-30T05:31:49.764Z"
+      },
+      "runId": "7c137883-cd4e-479e-ad69-306dabe48da5",
+      "profile": "gnome-wayland",
+      "runDirectory": "/home/user/r4/src/work/lab-runs/r4a",
+      "applicationCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "packageSha256": "adfe9f221271b936b33dccd32b073da7b791745911a36e609c7abf22ab652aee",
+      "recipeCommit": "68f9d0a7af0572e38c77677bd5dfa783de510b2f",
+      "destination": "local"
+    }
+  }
+}

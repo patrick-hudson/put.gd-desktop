@@ -1,0 +1,40 @@
+Process 62587: python3 tools/lab/surface_driver/run.py --desktop mint-cinnamon-x11 --host boat --placement boat --guest cinnamon-x11 --run /home/user/r4/src/work/lab-runs/r4a --boat-id bx_8uwsqf42 --package deb --destination local --recipes review --catalog /home/user/r4/catalog --profiles /home/user/r4/profiles --build cc9d9410d6e9 --out /home/user/r4/a --coverage /home/user/r4/a-coverage.json --campaign surface-driver-review-r4
+Python v3.12.3 (/usr/bin/python3.12)
+
+Thread 62587 (active+gil): "MainThread"
+    <lambda> (surface_driver/redact.py:98)
+    sub (re/__init__.py:186)
+    spellings (surface_driver/redact.py:98)
+    scrub (surface_driver/redact.py:319)
+    text (surface_driver/redact.py:350)
+    safe (surface_driver/redact.py:374)
+    safe (surface_driver/redact.py:383)
+    safe (surface_driver/redact.py:380)
+    write_json (surface_driver/receipts.py:89)
+    write_receipts (surface_driver/receipts.py:118)
+    _run_recipes (surface_driver/run.py:567)
+    run_recipes (surface_driver/run.py:408)
+    invoke (surface_driver/run.py:387)
+    main (surface_driver/run.py:789)
+    invoke (surface_driver/run.py:387)
+    <module> (surface_driver/run.py:831)
+Thread 62588 (idle): "Thread-1 (drain)"
+    drain (surface_driver/run.py:360)
+    run (threading.py:1010)
+    _bootstrap_inner (threading.py:1073)
+    _bootstrap (threading.py:1030)
+Thread 62589 (idle): "Thread-2 (drain)"
+    drain (surface_driver/run.py:360)
+    run (threading.py:1010)
+    _bootstrap_inner (threading.py:1073)
+    _bootstrap (threading.py:1030)
+Thread 62661 (idle): "Thread-3 (drain)"
+    drain (surface_driver/run.py:360)
+    run (threading.py:1010)
+    _bootstrap_inner (threading.py:1073)
+    _bootstrap (threading.py:1030)
+Thread 62662 (idle): "Thread-4 (drain)"
+    drain (surface_driver/run.py:360)
+    run (threading.py:1010)
+    _bootstrap_inner (threading.py:1073)
+    _bootstrap (threading.py:1030)

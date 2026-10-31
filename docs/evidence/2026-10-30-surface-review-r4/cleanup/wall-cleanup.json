@@ -1,0 +1,18 @@
+{
+  "removed": [
+    {
+      "name": "Review R4 cinnamon",
+      "port": 5992
+    },
+    {
+      "name": "Review R4 kde",
+      "port": 5993
+    },
+    {
+      "name": "Review R4 gnome",
+      "port": 5994
+    }
+  ],
+  "preservedEntries": 19,
+  "tunnelsStopped": true
+}
