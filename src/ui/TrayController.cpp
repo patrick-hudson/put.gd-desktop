@@ -279,7 +279,7 @@ TrayController::TrayController(OperationService& operations,
    // A failed upload offers a diagnostics package for just that operation (#122).
    const auto diagnostics=state!="completed"&&guard->saveDiagnostics_?operation["id"].toString():QString{};
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("operation_" + state,completionTitle(operation),completionMessage(operation,!link.isEmpty()),failed,link,diagnostics);
+    guard->notifyMessage("operation_" + state,completionTitle(operation),completionMessage(operation,!link.isEmpty()),failed,link,diagnostics,{},diagnosticsActionText(operation));
   });
  });
 }
@@ -307,6 +307,18 @@ QString TrayController::failureReason(const QJsonObject& error) {
  while(message.endsWith('.'))message.chop(1);
  if(message.isEmpty())return {};
  return message.left(1).toLower()+message.mid(1);
+}
+QString TrayController::diagnosticsActionText(const QJsonObject& operation) {
+ // A failed acquisition has no items and never reached a destination. Local-only
+ // captures also have items, so use their upload state rather than their count.
+ bool uploaded=false;
+ for(const auto& value:operation["items"].toArray()){
+  const auto status=value.toObject()["uploadStatus"].toString();
+  uploaded|=QStringList{"uploading","uploaded","failed","unknown","conflict","skipped"}.contains(status);
+ }
+ if(uploaded)return "Save diagnostics for this upload";
+ const auto action=operation["action"].toString();
+ return QStringList{"region","window","desktop","edit"}.contains(action)?QString("Save diagnostics for this capture"):action=="record"?QString("Save diagnostics for this recording"):QString("Save diagnostics for this operation");
 }
 QString TrayController::completionTitle(const QJsonObject& operation) {
  const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false;
@@ -533,8 +545,8 @@ void TrayController::openNotificationLink(const QUrl& link) {
  openLink(link,"notification-link");
 }
 #endif
-void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath) {
- Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);
+void TrayController::notifyMessage(const QString& code, const QString& title, const QString& message, bool warning,const QUrl& link,const QString& diagnosticsOperation,const QString& revealPath,const QString& diagnosticsLabel) {
+ Q_UNUSED(link);Q_UNUSED(diagnosticsOperation);Q_UNUSED(revealPath);Q_UNUSED(diagnosticsLabel);
  // Each toast, so "a toast appeared" can be matched to its cause (#250). The
  // text can name files: diagnostics packages hash it unless --include-names.
  QJsonObject fields{{"notificationId",qint64(++notifications_)},{"summary",code},{"title",title},{"notificationText",message},{"warning",warning}};
@@ -543,7 +555,7 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 #ifdef Q_OS_LINUX
  if (native_) {
   QList<NotificationAction> actions;
-  if(!diagnosticsOperation.isEmpty())actions.append({"save-diagnostics","Save diagnostics for this upload",diagnosticsOperation});
+  if(!diagnosticsOperation.isEmpty())actions.append({"save-diagnostics",diagnosticsLabel.isEmpty()?QString("Save diagnostics for this operation"):diagnosticsLabel,diagnosticsOperation});
   if(!revealPath.isEmpty())actions.append({"show-in-folder","Show in folder",revealPath});
   native_->notify(title, message, warning,link,actions);
  }

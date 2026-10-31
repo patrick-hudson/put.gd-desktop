@@ -1216,6 +1216,23 @@ QCOMPARE(button->property("captureUnavailable").toBool(),button->property("captu
   auto* retry=window.findChild<QPushButton*>("retryHistoryDeletion");auto* cancel=window.findChild<QPushButton*>("cancelHistoryDeletion");auto* status=window.findChild<QLabel*>("historyDeletionStatus");PUTGD_TRY_VERIFY(retry->isVisible());QVERIFY(!cancel->isVisible());QVERIFY(status->text().contains("Synthetic removal failure"));QVERIFY(!window.historyState()["deletion"].toObject()["canCancel"].toBool());QCOMPARE(model->index(0).data(HistoryModel::PrimaryActionRole).toString(),QString("Retry deletion"));auto* title=window.findChild<QLabel*>("historyTitle");QVERIFY(retry->mapTo(&window,QPoint()).y()>title->mapTo(&window,QPoint()).y());QVERIFY(retry->mapTo(&window,QPoint()).y()<window.findChild<QPushButton*>("copyHistoryLink")->mapTo(&window,QPoint()).y());QCOMPARE(window.findChild<QPushButton*>("copyHistoryLink")->property("visualRole").toString(),QString("secondary"));QCOMPARE(window.historyState()["deletion"].toObject()["historyId"],file["id"]);
   selectRow(list,1);PUTGD_TRY_VERIFY(!retry->isVisible());QVERIFY(!cancel->isVisible());QVERIFY(window.historyState()["deletion"].toObject().isEmpty());selectRow(list,0);PUTGD_TRY_VERIFY(retry->isVisible());retry->click();PUTGD_TRY_COMPARE(provider->deletes.load(),1);PUTGD_TRY_VERIFY(!retry->isVisible());QCOMPARE(provider->uploads.load(),2);
  }
+ void deletionSummaryNeverExposesOpaqueReceiptFields(){
+  const auto before=Theme::scheme();auto restore=qScopeGuard([&]{Theme::setScheme(before);});
+  for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light})for(int count:{1,2}){
+   Theme::setScheme(scheme);QWidget parent;parent.resize(1060,680);parent.show();QJsonArray targets;QHash<QString,QString> names;
+   for(int i=0;i<count;++i){const auto id=QString::number(i);names[id]="Synthetic.png";targets.append(QJsonObject{{"historyId",id},{"effect","Removes the exact recorded file."},{"receipt",QJsonObject{{"destination",QJsonObject{{"providerId","opaque"},{"profileId","synthetic-profile"}}},{"objectReference",QJsonObject{{"privateProviderToken","SYNTHETIC-RECEIPT-ONLY"}}}}}});}
+   std::unique_ptr<QDialog> dialog(HistoryWindow::deletionConfirmation(&parent,{{"targets",targets},{"acknowledgement","SYNTHETIC-ACK"}},names,QJsonArray{QJsonObject{{"id","synthetic-profile"},{"label","Test destination"}}}));dialog->show();QApplication::processEvents();
+   QStringList visible;for(auto* label:dialog->findChildren<QLabel*>())if(label->isVisible())visible<<label->text();
+   const auto summary=visible.join("\n");QVERIFY(summary.contains("Synthetic.png"));QVERIFY(summary.contains("Test destination"));QVERIFY(!summary.contains("SYNTHETIC-RECEIPT-ONLY"));QVERIFY(!summary.contains("SYNTHETIC-ACK"));QVERIFY(!summary.contains("{\""));
+   auto* details=dialog->findChild<QPlainTextEdit*>("deleteConfirmationDetails");QVERIFY(!details->isVisible());QVERIFY(details->toPlainText().contains("SYNTHETIC-RECEIPT-ONLY"));QVERIFY(dialog->findChild<QPushButton*>("confirmCancel")->isDefault());
+  }
+ }
+ void oneHistoryItemUsesTheSingularAccessibleCount(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));auto config=configuration(d.path(),true);QVERIFY(settings.save(config,{}));ProviderRegistry registry;Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);
+  auto* count=window.findChild<QLabel*>("historyCount");QCOMPARE(count->text(),QString("1"));QVERIFY(count->accessibleName().startsWith("1 item"));QVERIFY(!count->accessibleName().contains("1 items"));QVERIFY(!count->toolTip().contains("1 captures"));
+ }
  void deletionConfirmationRejectsStaleProtonEffects_data(){QTest::addColumn<int>("count");QTest::newRow("one")<<1;QTest::newRow("several")<<2;}
  void deletionConfirmationRejectsStaleProtonEffects(){
   QFETCH(int,count);QWidget parent;parent.resize(1060,680);parent.show();QJsonArray targets;QHash<QString,QString> names;
