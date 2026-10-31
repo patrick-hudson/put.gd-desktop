@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-10-31T01:38:17.928125+00:00",
+  "units": {
+    "putgd-t1-f299-gno.service": "inactive",
+    "putgd-t1-f299-kde.service": "inactive",
+    "putgd-t1-f299-aur.service": "inactive",
+    "putgd-t1-f299-c2.service": "inactive"
+  },
+  "agent": {
+    "stopped": true,
+    "pid": 3197002,
+    "uid": 1000,
+    "ownership": "exact private socket command + UID + start-time + pidfd",
+    "socket_exists_after": false
+  },
+  "ownedWallEntriesAbsent": true,
+  "priorWallEntriesPreserved": true,
+  "retainedEntryCount": 8
+}

@@ -1,0 +1,8 @@
+{
+  "sourceCommit": "faaecaa07c22190eded6d6b1ace3e57bbdbfc5f9",
+  "tests": 27,
+  "passed": true,
+  "durationSeconds": 0.134,
+  "command": "python3 -m unittest -q tests.desktop.test_surface_tier1_blockers tests.desktop.test_surface_plasma.IsolatedSecretService tests.desktop.test_surface_shell_health.RawAccessibility",
+  "location": "workstation: lightweight synthetic unit checks; not desktop evidence"
+}
