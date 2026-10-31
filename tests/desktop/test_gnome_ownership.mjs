@@ -531,3 +531,43 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     assert.equal(disconnected, 7); assert.equal(extension._barFollow, null);
     print('PASS recording frame places only the resident child\'s bar, follows its size and keeps every actor outside the area');
 }
+{
+    // #924: a selection hotkey closes put.gd's own open tray menu first; desktop
+    // and window captures keep it, and another application's menu stays open.
+    const session = context.Gio.DBus.session, original = session.call_sync;
+    const pids = new Map([[resident, residentPid], [':1.60', residentPid], [':1.70', 4242]]);
+    session.call_sync = (_service, _path, _iface, method, parameters) => {
+        if (method === 'GetNameOwner')
+            return {deep_unpack: () => [resident]};
+        const name = parameters.value[0];
+        if (!pids.has(name))
+            throw new Error('No such name');
+        return {deep_unpack: () => [pids.get(name)]};
+    };
+    const menu = busName => ({isOpen: true, closed: [], sourceActor: {_indicator: {busName}},
+        close(animation) {this.closed.push(animation); this.isOpen = false;}});
+    const {extension} = fixture();
+    extension._dbus = {emit_signal() {}};
+    let uuid = 0;
+    GLib.uuid_string_random ??= () => `00000000-0000-0000-0001-${String(++uuid).padStart(12, '0')}`;
+    for (const action of ['region', 'edit', 'record']) {
+        const own = menu(':1.60');
+        context.Main.panel.menuManager = {activeMenu: own};
+        await extension._hotkey(action);
+        assert.deepEqual(own.closed, [0]);
+    }
+    for (const [action, busName] of [['desktop', ':1.60'], ['region', ':1.70'], ['region', ':1.80'], ['region', undefined]]) {
+        const other = menu(busName);
+        context.Main.panel.menuManager = {activeMenu: other};
+        await extension._hotkey(action);
+        assert.deepEqual(other.closed, []);
+    }
+    const shut = menu(':1.60'); shut.isOpen = false;
+    context.Main.panel.menuManager = {activeMenu: shut};
+    assert.equal(extension._closeTrayMenu(resident), false); assert.deepEqual(shut.closed, []);
+    context.Main.panel.menuManager = {activeMenu: null};
+    assert.equal(extension._closeTrayMenu(resident), false);
+    delete context.Main.panel.menuManager; session.call_sync = original;
+    for (const id of extension._requests.keys()) extension._drop(id);
+    print('PASS selection hotkeys close only the resident\'s own open tray menu');
+}
