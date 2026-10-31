@@ -179,6 +179,14 @@ def _pattern(ctx):
             for window in layout['windows']:
                 window['class'] = classes.get(str(window['id']), '')
         layout['pattern_rect'] = list(scene.rect)
+        Image, ImageChops, _ = image_modules()
+        background = image.convert('RGB').copy()
+        x, y, w, h = scene.rect
+        background.paste((255, 0, 255), (x, y, x+w, y+h))
+        layout['outside_pattern_difference_bounds'] = ImageChops.difference(
+            background, Image.new('RGB', image.size, (255, 0, 255))).getbbox()
+        colors = image.crop((x, y, x+w, y+h)).convert('RGB').getcolors(4)
+        layout['video_color_count'] = len(colors) if colors is not None else '>4'
         write_json(ctx.out/'pattern-occlusion.json', layout, redactor=ctx.evidence.redactor)
         ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png',
                            [[0, 0, image.width, image.height]], fallback=True)
