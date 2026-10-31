@@ -425,9 +425,13 @@ class Driver:
         time.sleep(0.3)
         return took
 
-    def escape(self, agent):
+    def escape(self, agent, point, geometry):
+        """Cancel the selection while the button is held, then release the button:
+        a button left down makes every later press a duplicate the compositor ignores."""
         if agent:
             agent.key('esc')
+            time.sleep(0.2)
+            agent.pointer(point[0], point[1], geometry[2], geometry[3], down=False)
         else:
             subprocess.run(['xdotool', 'key', 'Escape', 'mouseup', '1'], env=self.env, check=True)
 
@@ -452,7 +456,7 @@ class Driver:
             result['cpuMs'] = {key: None if before[key] is None else (self.cpu_ms(pattern) or 0) - before[key]
                                for key, pattern in (('selector', selector), ('compositor', compositor))}
             result['frame'] = self.frame('select-' + label)
-            self.escape(agent)
+            self.escape(agent, end, geometry)
             time.sleep(1.0)
         finally:
             self.stop_resident(build)
