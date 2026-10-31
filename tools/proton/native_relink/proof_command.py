@@ -12,20 +12,24 @@ def run(args, name, *, logs, proof, timeout_seconds, cwd=None, env=None, capture
     path = logs / name
     command = [str(value) for value in args]
     try:
-        with path.open('w') as stream:
+        with path.open('wb') as stream:
             process = subprocess.Popen(command, cwd=cwd, env=env, start_new_session=True,
-                                       stdout=stream,
+                                       stdout=subprocess.PIPE if capture_stdout else stream,
                                        stderr=subprocess.PIPE if capture_stdout else subprocess.STDOUT)
             try:
-                _, stderr = process.communicate(timeout=timeout_seconds)
+                stdout, stderr = process.communicate(timeout=timeout_seconds)
             except subprocess.TimeoutExpired:
                 # The proof owns this new process group, including the smoke driver's helper.
                 try:
                     os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
-                process.communicate()
+                stdout, stderr = process.communicate()
+                if capture_stdout:
+                    stream.write(stdout)
                 raise
+            if capture_stdout:
+                stream.write(stdout)
             if process.returncode:
                 raise subprocess.CalledProcessError(process.returncode, command, stderr=stderr)
     except subprocess.TimeoutExpired:

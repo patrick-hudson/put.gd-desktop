@@ -99,11 +99,15 @@ writes `proof/command-timeout.json`; it cannot produce a successful receipt.
 Each command owns a separate process group, which is killed on timeout so the
 smoke driver's compiled helper exits too. The binary stdout fixture uses the
 same configured deadline and keeps stderr separate for its empty-stderr check.
+Its stdout remains pipe-backed and is drained with `communicate`, preserving
+the large-output backpressure regression before its bytes are written to a log.
 The long native source build uses its separate build driver.
 
-The [bounded-command replay](evidence/bounded-replay.json) reruns the current
-proof controls against the retained source-built runtime. It passes the same
+The first [bounded-command replay](evidence/bounded-replay.json) records the
+initial deadline wrapper against the retained source-built runtime. It passes the same
 suite and reproduces all three recorded primary proof executable hashes; the original complete
 native build and its receipts remain unchanged.
-The [process-group replay](evidence/bounded-process-group-replay.json) verifies
-the final runner, including the binary stdout fixture's configured deadline.
+The [process-group replay](evidence/bounded-process-group-replay.json) records
+the intermediate runner and its configured deadline. Its file-backed stdout
+diagnostic is superseded by the [pipe-backed replay](evidence/pipe-backed-replay.json),
+which verifies the final runner and the complete large-output pipe regression.

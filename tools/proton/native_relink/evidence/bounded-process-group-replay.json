@@ -106,5 +106,7 @@
     }
   },
   "timeoutCleanupScope": "SIGKILL the owned process group, including descendant helpers",
-  "binaryStdoutUsesConfiguredDeadline": true
+  "binaryStdoutUsesConfiguredDeadline": true,
+  "stdoutTransport": "Regular file; the final pipe-backed replay supersedes this diagnostic for backpressure coverage.",
+  "supersededForPipeBackpressureBy": "pipe-backed-replay.json"
 }

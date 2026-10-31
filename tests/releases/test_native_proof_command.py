@@ -62,10 +62,13 @@ class Commands(unittest.TestCase):
                 os.close(child_fd)
 
     def test_binary_stdout_uses_the_same_deadline_and_keeps_stderr_separate(self):
-        result = proof_command.run([sys.executable, '-c', "import sys; sys.stdout.buffer.write(b'\\x00\\xff')"],
+        script = ("import os,stat,sys; assert stat.S_ISFIFO(os.fstat(1).st_mode); "
+                  "sys.stdout.buffer.write(b'\\x00\\xff'*(512*1024)); sys.stderr.write('separate stderr')")
+        result = proof_command.run([sys.executable, '-c', script],
             'stdout.log', logs=self.logs, proof=self.proof, timeout_seconds=5, capture_stdout=True)
-        self.assertEqual(result.stdout, b'\x00\xff')
-        self.assertEqual(result.stderr, b'')
+        self.assertEqual(result.stdout, b'\x00\xff' * (512 * 1024))
+        self.assertEqual(result.stderr, b'separate stderr')
+        self.assertEqual((self.logs / 'stdout.log').read_bytes(), result.stdout)
         with self.assertRaisesRegex(SystemExit, 'timed out: stdout.log'):
             proof_command.run([sys.executable, '-c', 'import time; time.sleep(60)'],
                 'stdout.log', logs=self.logs, proof=self.proof, timeout_seconds=.05, capture_stdout=True)
