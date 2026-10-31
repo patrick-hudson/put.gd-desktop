@@ -14,6 +14,8 @@ DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-o
              'xdotool x11-utils x11-xserver-utils xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring')
 
 FEDORA_DESKTOP = ('gnome-shell*', 'mutter*', 'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
+FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesseract '
+                'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring')
 
 
 def install_rpm(run, package, out):
@@ -44,7 +46,7 @@ def install_rpm(run, package, out):
     lab.put(run, str(package), 'putgd-nightly.rpm')
     exclude = shlex.quote('--exclude='+','.join(FEDORA_DESKTOP))
     result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900,
-        input=f'sudo -n dnf --color=never {exclude} install -y "$HOME/putgd-nightly.rpm"\n')
+        input=f'sudo -n dnf --color=never {exclude} install -y "$HOME/putgd-nightly.rpm" {FEDORA_TOOLS}\n')
     (out/'rpm-install.txt').write_text(result.stdout+'\n'+result.stderr)
     after = inventory()
     lab.write_json(out/'rpm-after.json', after)
@@ -191,8 +193,7 @@ def prepare(run, row, out):
                 raise RuntimeError('desktop-package transaction refused')
         (out/'probe-install.txt').write_text(lab.ssh(run, 'sudo -n apt-get install -y --no-install-recommends '+DEB_TOOLS, timeout=300))
     elif package == 'rpm':
-        # Native Fedora golden already carries the system probes; refuse missing
-        # dependencies instead of allowing dnf to upgrade a desktop stack.
+        # install_rpm provisions the distro probes in its protected transaction.
         pass  # Individual probe diagnostics are recorded below.
     else:
         # Reuse Phase A's Atomic overlay layering; the immutable source stays

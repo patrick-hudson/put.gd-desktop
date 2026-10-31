@@ -71,6 +71,8 @@ class NightlyTests(unittest.TestCase):
             self.assertNotIn('sudo -n rpm', script)
             for protected in guest.FEDORA_DESKTOP:
                 self.assertIn(protected, script)
+            for probe in guest.FEDORA_TOOLS.split():
+                self.assertIn(probe, script)
             inventory = json.loads((out/'rpm-before.json').read_text())
             self.assertEqual(len(inventory['kernel-core.x86_64']), 2)
             self.assertIn('solver diagnostic', (out/'rpm-install.txt').read_text())
