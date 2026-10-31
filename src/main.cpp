@@ -364,7 +364,7 @@ int main(int argc,char* argv[]) {
 #endif
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
  QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
- putgd::TrayController tray(operations,[&](const QString& requested){startupRecovery.stop();ui.activate(requested);},quitApplication);
+ putgd::TrayController tray(operations,[&](const QString& requested,const QString& activationToken){startupRecovery.stop();ui.activate(requested,{},activationToken);},quitApplication);
  // Native shortcuts use the tray feedback with selection-safe re-entry handling.
  const auto requested=[&tray,&recordingShortcut](const QString& action){if(!recordingShortcut)tray.invokeShortcut(action);};
 #ifdef PUTGD_NATIVE_X11

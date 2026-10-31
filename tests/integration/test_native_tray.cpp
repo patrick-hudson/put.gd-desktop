@@ -527,6 +527,26 @@ private slots:
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
   PUTGD_TRY_COMPARE(actions.size(), ids.size()+2); QCOMPARE(actions.last().at(0).toString(), QString("region"));
  }
+ // #657: hosts hand over an xdg-activation token just before the click; it goes
+ // with that click's action only, and a malformed one is refused.
+ void activationTokenGoesWithTheNextClickOnly() {
+  NativeTray tray; PUTGD_TRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
+  auto provide = [&](const QString& token) { return call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "ProvideXdgActivationToken", {token}); };
+  QCOMPARE(provide("gnome-shell/putgd/7-0-host_TIME42").type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(click(7).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 1);
+  QCOMPARE(actions.at(0).at(0).toString(), QString("settings")); QCOMPARE(actions.at(0).at(1).toString(), QString("gnome-shell/putgd/7-0-host_TIME42"));
+  QCOMPARE(click(8).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 2); QVERIFY(actions.at(1).at(1).toString().isEmpty());
+  // Plasma's left click: token, then Activate.
+  QCOMPARE(provide("kwin-0123456789abcdef").type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
+  PUTGD_TRY_COMPARE(actions.size(), 3); QCOMPARE(actions.at(2).at(0).toString(), QString("history")); QCOMPARE(actions.at(2).at(1).toString(), QString("kwin-0123456789abcdef"));
+  // A click that dispatches nothing still uses up its token.
+  QCOMPARE(provide("unused-token").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(click(11).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 4); QVERIFY(actions.at(3).at(1).toString().isEmpty());
+  for (const auto& bad : {QString(), QString("has space"), QString("tab\there"), QString(513, 'a')}) QCOMPARE(provide(bad).type(), QDBusMessage::ErrorMessage);
+  QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "ProvideXdgActivationToken", {42}).type(), QDBusMessage::ErrorMessage);
+  QCOMPARE(click(7).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(actions.size(), 5); QVERIFY(actions.at(4).at(1).toString().isEmpty());
+ }
  void shortcutsAndLiveUploadEntriesUseStableIds(){
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());QSignalSpy actions(&tray,&NativeTray::actionActivated);tray.setCommands({{"region","Ctrl+Shift+R"}},"Uploading 2 files…",2,true);auto reply=call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}});auto root=qdbus_cast<WireLayout>(reply.arguments().at(1));auto status=qdbus_cast<WireLayout>(root.children[0].variant());QCOMPARE(status.id,19);QCOMPARE(status.props["label"].toString(),QString("Uploading 2 files…"));QVERIFY(status.props["visible"].toBool());QVERIFY(!status.props["enabled"].toBool());auto cancel=qdbus_cast<WireLayout>(root.children[1].variant());QCOMPARE(cancel.id,20);QVERIFY(cancel.props["enabled"].toBool());QCOMPARE(cancel.props["label"].toString(),QString("Cancel all uploads…"));QCOMPARE(call("/Menu","com.canonical.dbusmenu","GetProperty",{22,QString("visible")}).arguments().first().value<QDBusVariant>().variant().toBool(),true);auto region=qdbus_cast<WireLayout>(root.children[5].variant());QCOMPARE(region.id,1);QCOMPARE(qdbus_cast<QList<QStringList>>(region.props["shortcut"]),QList<QStringList>({{"Control","Shift","R"}}));click(19);PUTGD_VERIFY_STEADY(actions.isEmpty(),30);click(20);PUTGD_TRY_COMPARE(actions.size(),1);QCOMPARE(actions.first().first().toString(),QString("cancel-upload"));tray.setCommands({},{});click(20);PUTGD_COMPARE_STEADY(actions.size(),1,30);
  }
@@ -771,6 +791,20 @@ private slots:
   operations.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});PUTGD_TRY_COMPARE(source.copies,1);PUTGD_TRY_VERIFY(!notifications.values.isEmpty());
   for(int i=0;i<50;++i)emit operations.changed(id);
   putgd::test::settle(400);PUTGD_TRY_COMPARE(notifications.values.size(),1);PUTGD_TRY_VERIFY(views.isEmpty());PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);bool copied=false;operations.copyResult(id,[&](Error e,QJsonObject){QVERIFY(!e);copied=true;});PUTGD_TRY_VERIFY(copied);PUTGD_TRY_COMPARE(notifications.values.size(),2);QCOMPARE(source.copies,2);
+ }
+ // #657: views a click opens get its token; the editor raise for an open edit too.
+ void coreControllerPassesTheClickTokenToViews() {
+  QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;
+  SettingsService settings(directory.filePath("config.json")); QVERIFY(settings.save(configuration(directory.path(), true), {}));
+  Source source; OperationService operations(directory.filePath("data"), settings, providers, source); PUTGD_TRY_VERIFY(operations.ready());
+  QList<QStringList> views;
+  TrayController controller(operations, TrayController::ViewOpener([&](const QString& view, const QString& token) { views.append({view, token}); }), [] {});
+  PUTGD_TRY_VERIFY(controller.available());
+  QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "ProvideXdgActivationToken", {QString("kwin-42")}).type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(click(7).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(views.size(), 1);
+  QCOMPARE(views.at(0), QStringList({"settings", "kwin-42"}));
+  QCOMPARE(click(18).type(), QDBusMessage::ReplyMessage); PUTGD_TRY_COMPARE(views.size(), 2);
+  QCOMPARE(views.at(1), QStringList({"destinations", ""}));
  }
  void coreControllerDelegatesViewsAndPreservesCopyPendingAndNotificationSetting() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;

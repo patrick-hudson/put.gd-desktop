@@ -15,7 +15,9 @@ public:
  ~UiProcessController() override;
  using ShortcutRecordingHandler=std::function<void(bool,Reply)>;
  void setShortcutRecordingHandler(ShortcutRecordingHandler handler){shortcutRecordingHandler_=std::move(handler);}
- void activate(const QString& view,Reply reply={});
+ // activationToken: an xdg-activation token for the click that asked for the
+ // view (#657); the helper hands it to the compositor when it shows the window.
+ void activate(const QString& view,Reply reply={},const QString& activationToken={});
  // Forwards one command to an open view; the helper validates and answers it.
  using CommandReply=std::function<void(Error,QJsonObject)>;
  void command(const QString& name,const QJsonObject& params,CommandReply reply);
@@ -48,6 +50,7 @@ private:
  QTimer startup_,stopDeadline_,activationDeadline_,closeDeadline_;
  Phase phase_=Phase::Stopped;
  QHash<QString,QList<Reply>> pending_;
+ QHash<QString,QString> pendingTokens_;
  QHash<QString,Activation> activations_;
  QHash<QString,CommandReply> commands_;QTimer commandDeadline_;
  QJsonObject state_,lastExit_;
