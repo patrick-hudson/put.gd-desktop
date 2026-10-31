@@ -115,6 +115,15 @@ class ClipboardContext:
 class ClipboardOracles(unittest.TestCase):
     detail = {'receipt': {'directUrl': 'http://127.0.0.1:1234/exact-object'}}
 
+    def test_wayland_text_reader_accepts_gnome_utf8_qualified_offer(self):
+        for session, mime, selected in (('wayland', 'text/plain', 'text'),
+                                        ('x11', 'text/plain', 'text/plain'),
+                                        ('wayland', 'image/png', 'image/png')):
+            scope = SimpleNamespace(ctx=ClipboardContext(session), json=Mock(return_value={'available':False,'data':''}))
+            with patch.object(outcomes, '_clipboard_reader', return_value=['reader', '--type']):
+                self.assertIsNone(outcomes._clipboard_bytes(scope, mime))
+            self.assertIn(repr(['reader', '--type', selected]), scope.json.call_args.args[0])
+
     def test_auto_copy_requires_exact_independent_text_without_copy_action(self):
         ctx = ClipboardContext()
         for data in (None, b'', b'old clipboard', b'http://127.0.0.1:1234/wrong-object'):

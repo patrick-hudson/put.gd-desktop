@@ -110,13 +110,16 @@ def _clipboard_reader(scope):
 def _clipboard_bytes(scope, mime):
     # Binary data stays in memory until the synthetic image is retained. Neither
     # failed readers' stderr nor clipboard text enters evidence/command output.
+    # Match ctx.clipboard_text's text selector: GNOME advertises only the
+    # UTF-8-qualified MIME, whereas KDE also supplies text/plain aliases.
+    selection = 'text' if mime == 'text/plain' and scope.ctx.profile['session'] == 'wayland' else mime
     result = scope.json('''import base64,json,subprocess
 try:
  reply=subprocess.run(READ,capture_output=True,timeout=3)
  assert len(reply.stdout)<=32*1024*1024
  print(json.dumps({'available':reply.returncode==0,'data':base64.b64encode(reply.stdout).decode() if reply.returncode==0 else ''}))
 except subprocess.TimeoutExpired:print(json.dumps({'timeout':True}))
-'''.replace('READ', repr(_clipboard_reader(scope) + [mime])))
+'''.replace('READ', repr(_clipboard_reader(scope) + [selection])))
     if result.get('timeout'):
         raise RecipeBlocked('independent desktop clipboard reader timed out')
     return base64.b64decode(result['data']) if result['available'] else None
