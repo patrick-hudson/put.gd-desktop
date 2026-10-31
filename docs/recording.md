@@ -541,8 +541,17 @@ Lab A/B runs: `PUTGD_RECORD_PIPEWIRE_TIMESTAMPS=compositor` maps each frame's
 header time instead of stamping its arrival, and `=legacy` restores the
 pipeline before #86 (`pipewiresrc do-timestamp=true` on its own stream clock).
 With `PUTGD_RECORD_DEBUG_LOG` set, stopping logs the pipeline clock, the
-lateness of video and audio at their encoders and the age of the compositor
-frame times (min/mean/max).
+lateness of video and audio at their encoders, the age of the compositor
+frame times (min/mean/max), and `frames: N reached the video encoder, M
+leaked at the capture queue`.
+
+The stamping probe copies each PipeWire frame out on the source thread, so the
+compositor's stream buffers (KWin offers 2–4) return at once instead of
+waiting in the capture queue and the converter; a compositor skips a frame
+whenever none is free (#6). On Plasma 6.7 about 47 distinct frames per second
+is what a 60 Hz output yields even so: KWin's screencast records on a
+software vsync source at the negotiated max_framerate, a timer that beats
+against the real repaints. The nightly before PR #981 got 31.
 
 ### Wayland selection, bounds and bar
 
@@ -629,9 +638,21 @@ region as root coordinates inside the root, a window by decimal or `0x` XID
 (captured through `ximagesrc xid=`, so it keeps its identity when moved).
 Dimensions shrink to even values rather than growing into unselected pixels.
 
-The live pipeline is `ximagesrc → videoconvert → H.264 encoder → h264parse →
-matroskamux` with `pulsesrc device=@DEFAULT_MONITOR@ → AAC` when system audio
-is requested. Encoders are tried in order `vah264lpenc, vah264enc,
+The live pipeline is `ximagesrc → queue (leaky) → videorate → videoconvert →
+queue → H.264 encoder → h264parse → matroskamux` with `pulsesrc
+device=@DEFAULT_MONITOR@ → AAC` when system audio is requested (#6, PR #981).
+Capture, conversion and encoding run in their own threads: the capture queue
+leaks its oldest frame rather than block the source when the stages behind it
+fall behind, `videorate` restores the constant rate, and a frame the queue
+had to leak is counted (`framesDropped` in `status()`, `frames:` in the debug
+log). `videorate` also matters on X11 because ximagesrc skips frame numbers
+when a grab runs late and the `va` encoders stamp their output contiguously
+regardless: without it a 10 s recording on a three-monitor desktop played in
+7.4 s. x264 runs frame threads with a short lookahead and a preset chosen by
+pixel rate (veryfast up to about 1080p30, superfast to 1440p30 or 1080p60,
+ultrafast above); zerolatency's two sliced threads stalled the capture at
+1080p. The CPU stages take about two thirds of the cores, bounded, so the
+desktop being recorded keeps its own. Encoders are tried in order `vah264lpenc, vah264enc,
 vaapih264enc, x264enc, openh264enc` (AAC: `avenc_aac, fdkaacenc, voaacenc`)
 by actually starting the pipeline, GPU first, and the chosen names are
 reported in `recording.inspect` progress. The VA encoders take NV12, the CPU
@@ -771,6 +792,15 @@ trim start (Matroska clips whose first cluster has no cue point otherwise
 start at the next keyframe). Preview decodes the frame at or after the
 requested time and applies the masks active at that source time with a box
 blur or a solid fill, so preview and export agree on timing and placement.
+
+Selectors (the X11 native overlay, the Qt fallback, the KDE Wayland layer
+surfaces and the recorder's own) repaint only the outline strips and the pills
+of the previous and the next state, and the native overlay presents at most
+once per display refresh (#6). `PUTGD_REGION_DEBUG_LOG=<file>` appends one
+line per selection with the pointer moves, paints or presents and their
+timing. `tools/lab/fluidity.py` and `tools/lab/fluidity_run.py` measure a
+recording's distinct frames per second and a drag's cost per build on a
+physical desktop ([receipt](evidence/2026-10-31-fluidity-campaign.md)).
 
 Lab diagnostics: `PUTGD_RECORD_DEBUG_LOG=<file>` appends pipeline and command
 traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip,

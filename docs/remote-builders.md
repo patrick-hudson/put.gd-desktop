@@ -293,6 +293,16 @@ tools for that are `tools/lab/cover_player.py` and `tools/lab/record_run.py`
 - `cover_player.py check-frame FRAME [--crop OUT]` deletes a saved frame unopened
   when it is under half cover colour, and `--crop` keeps only the covered
   output.
+- `fluidity.py fixture --output NAME --ticks FILE` shows a moving picture full
+  screen whose every frame carries its frame number in a machine-readable
+  strip, at the display's frame clock; `fluidity.py analyze CLIP --fps N`
+  reads those numbers back out of a recording (distinct source frames per
+  second, repeat/skip pairs, longest stall) and `fluidity.py ticks FILE` reports
+  the fixture's own frame intervals. `fluidity_run.py record|select` runs both
+  per build on the host, with private directories, `--runtime-dir` beside a
+  running resident, `--kwin-entry` for a build tree's screencast entry and
+  `--real-data-home` for AppImages; `select` drags through the uinput agent
+  (`--input-socket`) or xdotool and must release the button it pressed (#6).
 - `record_run.py` runs a whole check on the host: cover, precheck, each build's
   resident with private config/data/cache/state, `putgd-cli` recordings
   (monitor, region or window; any format; optional pause), `--motion`,
