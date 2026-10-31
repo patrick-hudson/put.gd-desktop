@@ -825,6 +825,11 @@ def _prepare(options):
         # activation environment, and a new parent must retain our ownership.
         scoped = {'XDG_CACHE_HOME': str(directory / 'xdg-cache'), 'XDG_STATE_HOME': str(directory / 'xdg-state'),
                   'XDG_RUNTIME_DIR': os.environ['XDG_RUNTIME_DIR']}
+        if display := os.environ.get('WAYLAND_DISPLAY'):
+            # Target already resolved this socket before isolating runtime.
+            # A relative native-session name would resolve inside our private
+            # runtime when GNOME activates the handler instead of remoting.
+            scoped['WAYLAND_DISPLAY'] = display
         env = dict(_environment(config, data), **scoped)
         env['MOZ_APP_REMOTINGNAME'] = token
         # The handler forwards to the running instance through profile-keyed
