@@ -1,0 +1,75 @@
+"""Controller policy tests; these do not claim graphical desktop acceptance."""
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from tools.lab import nightly_desktops as nightly
+from tools.lab.surface_driver.collect import mark_terminal
+
+
+class NightlyTests(unittest.TestCase):
+    def receipt(self, root, *, functional='passed', review=True, cleanup=None):
+        export = dict(published=True, scanned_before_copy=True, copy_scan_passed=True)
+        value = dict(environment=dict(coverage_export=export, cleanup_errors=cleanup),
+            secret_scan=dict(passed=True), interactions=[dict(recipe='outcomes.region_upload',
+                functional=functional, review=review, visual='frames', note='independent pixel assertion')])
+        (root/'receipt.json').write_text(json.dumps(value))
+        (root/'coverage.json').write_text('{}')
+        mark_terminal(root, 0 if functional == 'passed' else 2)
+
+    def test_visual_review_does_not_gate_automatic_oracles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.receipt(root)
+            self.assertTrue(nightly.verdict(root, 'outcomes.region_upload')['green'])
+
+    def test_red_for_failed_missing_changed_or_unclean_proof(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.receipt(root, functional='failed')
+            self.assertFalse(nightly.verdict(root, 'outcomes.region_upload')['green'])
+            self.receipt(root, cleanup=['owned process retained'])
+            self.assertFalse(nightly.verdict(root, 'outcomes.region_upload')['green'])
+            self.receipt(root)
+            self.assertFalse(nightly.verdict(root, 'outcomes.history_delete')['green'])
+            (root/'receipt.json').write_text('{}')
+            self.assertFalse(nightly.verdict(root, 'outcomes.region_upload')['green'])
+
+    def test_live_disabled_is_explicit_and_red_has_receipt_link(self):
+        table = nightly.table(dict(desktops=[dict(desktop='Aurora', cells={
+            'region_upload':dict(green=False, receiptUrl='https://example.test/receipt'),
+            'history_delete':dict(green=True)})]))
+        self.assertIn('[🔴](https://example.test/receipt)', table)
+        self.assertIn('🟢 | — | —', table)
+
+    def test_secret_file_permissions_are_enforced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp)/'token'
+            path.write_text('synthetic-only')
+            path.chmod(0o644)
+            with self.assertRaises(RuntimeError):
+                nightly.private_file(path)
+            path.chmod(0o600)
+            self.assertEqual(nightly.private_file(path), path)
+            link = Path(tmp)/'link'
+            link.symlink_to(path)
+            with self.assertRaises(RuntimeError):
+                nightly.private_file(link)
+
+    def test_package_checksum_failure_blocks_before_any_guest(self):
+        class GitHub:
+            repo = 'owner/repo'
+            def gh(self, *args):
+                target = Path(args[args.index('--dir')+1])
+                name = args[args.index('--pattern')+1]
+                (target/name).write_text('0'*64+'  package.deb\n' if name == 'SHA256SUMS' else '{}')
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(RuntimeError, 'checksum mismatch'):
+                nightly.release_assets(GitHub(), 'v26.1031.3384-nightly', Path(tmp)/'packages',
+                                       [dict(asset='ubuntu26.04-x86_64.deb')])
+
+
+if __name__ == '__main__':
+    unittest.main()

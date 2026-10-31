@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the newest published nightly at 07:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 07:30:00 UTC
+RandomizedDelaySec=5min
+Persistent=true
+Unit=putgd-nightly-desktops.service
+
+[Install]
+WantedBy=timers.target
