@@ -5,6 +5,7 @@ endif()
 include("${PROJECT_SOURCE_DIR}/cmake/InstallPackageSnapshot.cmake")
 putgd_install_snapshot(putgd-ui.desktop "${CMAKE_INSTALL_DATADIR}/applications")
 putgd_install_snapshot(putgd.svg "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
+add_subdirectory(icons)
 option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (development only)" OFF)
 configure_file(app.desktop.in putgd.desktop @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
@@ -200,7 +201,12 @@ set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 # History previews of WebP recordings and images read through Qt's WebP image
 # plugin (#189), which Debian, Ubuntu and Fedora ship apart from Qt GUI (GIF and
 # JPEG come with it). The AppImage and the Flatpak runtime carry it already.
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland, qt6-image-formats-plugins, libglib2.0-bin, hicolor-icon-theme, gtk-update-icon-cache")
+configure_file(refresh-icon-cache.sh package-inputs/postinst COPYONLY)
+configure_file(refresh-icon-cache.sh package-inputs/postrm COPYONLY)
+list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
+  "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postinst;${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postrm")
+set(CPACK_DEBIAN_PACKAGE_CONTROL_STRICT_PERMISSION TRUE)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 # Resolve system SONAMEs on Fedora; Qt's platform/SQL plugins are loaded at runtime.
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
@@ -209,11 +215,26 @@ set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 # licence of the shipped code (#469, Patrick's decision).
 set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
-set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2")
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland, qt6-qtimageformats, glib2, hicolor-icon-theme, /usr/bin/gtk-update-icon-cache")
+set(CPACK_RPM_POST_TRANS_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postinst")
+# Keep the repository erase handling as well as refreshing the theme cache.
+if(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE)
+  configure_file("${CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE}" package-inputs/rpm-postun.sh COPYONLY)
+  file(READ "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postrm" putgd_icon_cache_script)
+  file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/rpm-postun.sh" "\n${putgd_icon_cache_script}")
+  set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/rpm-postun.sh")
+else()
+  set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/postrm")
+endif()
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 # Directories the filesystem, hicolor-icon-theme and appstream packages own.
 list(APPEND putgd_rpm_system_dirs /usr/libexec /usr/share/applications /usr/share/metainfo /usr/share/icons
   /usr/share/icons/hicolor /usr/share/icons/hicolor/scalable /usr/share/icons/hicolor/scalable/apps)
+foreach(icon_size 16 22 24 32 48 64 128 256)
+  list(APPEND putgd_rpm_system_dirs
+    "/usr/share/icons/hicolor/${icon_size}x${icon_size}"
+    "/usr/share/icons/hicolor/${icon_size}x${icon_size}/apps")
+endforeach()
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION ${putgd_rpm_system_dirs})
 # Private AWS libraries satisfy only this app, never another RPM. Keep automatic
 # detection of their system dependencies; filter only the bundled SONAMEs.
