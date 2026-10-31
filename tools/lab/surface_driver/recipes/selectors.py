@@ -156,26 +156,9 @@ def _expect_rect(ctx, wanted, recording=False):
 
 
 def _focus_selector(ctx, role):
-    # The helper advertises its accessible before the native window is mapped.
-    # Retry only an absent window; ambiguous geometry and input refusals remain
-    # immediate blockers. focus(..., False) observes and never raises a cover.
-    missing = None
-    def mapped():
-        nonlocal missing
-        try:
-            ctx.focus(role, raise_window=False)
-            return True
-        except RecipeBlocked as error:
-            if "live window match is missing or ambiguous (0 matches)" not in str(error):
-                raise
-            missing = error
-            return False
-    try:
-        ctx.wait(mapped, role + " selector mapped", timeout=10)
-    except RecipeFailed:
-        if missing is not None:
-            raise missing
-        raise
+    # geometry() owns the bounded mapping wait, also for subsequent input.
+    # Foreground/ownership refusals are never retried or turned into success.
+    ctx.focus(role, raise_window=False)
 
 
 def _open_region(ctx, edit=False, accessible=True):

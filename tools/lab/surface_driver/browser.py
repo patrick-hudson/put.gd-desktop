@@ -820,8 +820,16 @@ def _prepare(options):
         (directory / 'user.js').write_text(''.join('user_pref(%s, %s);\n' % (json.dumps(k), json.dumps(v))
                                                   for k, v in preferences.items()))
         # Cache and state are the transaction's own, removed with it: the
-        # run's private XDG root may be gone before this Firefox exits.
-        scoped = {'XDG_CACHE_HOME': str(directory / 'xdg-cache'), 'XDG_STATE_HOME': str(directory / 'xdg-state')}
+        # run's private XDG root may be gone before this Firefox exits. Pin
+        # runtime for the desktop handler too: GNOME launches it from its own
+        # activation environment, and a new parent must retain our ownership.
+        scoped = {'XDG_CACHE_HOME': str(directory / 'xdg-cache'), 'XDG_STATE_HOME': str(directory / 'xdg-state'),
+                  'XDG_RUNTIME_DIR': os.environ['XDG_RUNTIME_DIR']}
+        if display := os.environ.get('WAYLAND_DISPLAY'):
+            # Target already resolved this socket before isolating runtime.
+            # A relative native-session name would resolve inside our private
+            # runtime when GNOME activates the handler instead of remoting.
+            scoped['WAYLAND_DISPLAY'] = display
         env = dict(_environment(config, data), **scoped)
         env['MOZ_APP_REMOTINGNAME'] = token
         # The handler forwards to the running instance through profile-keyed

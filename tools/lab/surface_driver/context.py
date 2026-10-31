@@ -269,7 +269,20 @@ class DriverContext(Context):
                 screen = next((s for s in screens if s.get('head', 0) == self._input_head), None)
                 if screen:
                     query['point'] = [screen['x']+screen['width']/2, screen['y']+screen['height']/2]
-        result = self._probe('geometry', query)
+        if window in ('region', 'recsel'):
+            # Acquisition is acknowledged before the helper maps/populates its
+            # cover. Every selector geometry read (including a drag's fresh
+            # read) must wait for that same owned cover, not only focus().
+            def mapped():
+                try:
+                    return self._probe('geometry', query)
+                except RecipeBlocked as error:
+                    if str(error) != 'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)':
+                        raise
+                    return None
+            result = self.wait(mapped, window + ' owned selector geometry', timeout=30)
+        else:
+            result = self._probe('geometry', query)
         if window in ('region', 'recsel'):
             self._current_window = window
         return self._map_geometry(result)
