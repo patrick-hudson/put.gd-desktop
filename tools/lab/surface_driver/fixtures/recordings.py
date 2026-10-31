@@ -110,7 +110,7 @@ def capture(scope, scene, *, seconds=4.5, automatic=False):
     ctx=scope.ctx
     scene.command('raise')
     # Observe the portal before prepare: consent is driven only for this request.
-    watch=consent.start(scope)
+    watch=consent.start(scope, target=scene.prepare.get('target'))
     prepared=ctx.call('recording.prepare',scene.prepare)
     identity=prepared.get('recordingId') or prepared.get('id')
     if not identity:raise RecipeBlocked('recording.prepare returned no identity',issue=672)

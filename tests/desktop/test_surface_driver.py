@@ -954,6 +954,23 @@ signal time=100.5 sender=:1.3 -> destination=(null destination) serial=22 interf
 
 
 class TargetSafety(unittest.TestCase):
+    def test_private_runtime_preserves_discovered_session_pipewire_directory(self):
+        target = Target.__new__(Target)
+        target.root, target.bin_dir = '/tmp/sd-isolated', None
+        # This is the native-session environment supplied by session(), also
+        # used when the probe and clipboard keeper launch their SSH children.
+        for native in ('/run/user/1234', '/tmp/native session'):
+            environment = dict(os.environ, XDG_RUNTIME_DIR=native, PIPEWIRE_RUNTIME_DIR='/foreign')
+            script = target.prefix() + "python3 -c 'import json,os;print(json.dumps(dict(os.environ)))'"
+            child = subprocess.run(['sh', '-s'], input=script, env=environment,
+                                   text=True, capture_output=True, check=True)
+            actual = json.loads(child.stdout)
+            self.assertEqual(actual['PIPEWIRE_RUNTIME_DIR'], native)
+            self.assertEqual(actual['XDG_RUNTIME_DIR'], target.root + '/runtime')
+            for key, suffix in (('XDG_CONFIG_HOME', 'config'), ('XDG_DATA_HOME', 'data'),
+                                ('XDG_STATE_HOME', 'state'), ('XDG_CACHE_HOME', 'cache')):
+                self.assertEqual(actual[key], target.root + '/' + suffix)
+
     def setUp(self):
         endpoint_check=patch('tools.lab.surface_driver.run.verify_physical_endpoints')
         self.endpoint_check=endpoint_check.start()
