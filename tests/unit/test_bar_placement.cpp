@@ -68,6 +68,22 @@ std::pair<int, double> greyLevels(const QImage& indicator) {
 class BarPlacement : public QObject {
     Q_OBJECT
 private slots:
+    void dimStripsAreMappedBeforeControlsAndReused() {
+        if (surfaceMode() != SurfaceMode::X11) QSKIP("X11/offscreen map lifecycle");
+        BoundsOverlay bounds; bounds.showBounds(QRect(100,100,300,200));
+        QList<QWidget*> strips;
+        for (auto* w : QApplication::topLevelWidgets())
+            if (w->isVisible() && w->objectName()=="putgd-record-bounds" && (w->width()>10 && w->height()>10)) strips.append(w);
+        QVERIFY(!strips.isEmpty());
+        QHash<QWidget*,WId> windows;
+        for(auto* strip:strips){windows[strip]=strip->winId();QCOMPARE(strip->grab().toImage().pixelColor(10,10).alpha(),0);}
+        ControlBar bar(barOptions(),{});bar.show();
+        for(bool dimmed:{true,false,true}){
+            bounds.setDimmed(dimmed);QApplication::processEvents();
+            for(auto* strip:strips){QVERIFY(strip->isVisible());QCOMPARE(strip->winId(),windows[strip]);QCOMPARE(strip->grab().toImage().pixelColor(10,10).alpha()>0,dimmed);}
+        }
+        bounds.hideAll();
+    }
     void timerOnlyAppearsAfterRecordingStarts() {
         ControlBar::Options options;
         options.formats = {"mp4"};

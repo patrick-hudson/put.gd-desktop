@@ -70,8 +70,9 @@ private slots:
         QTemporaryDir dir; RecordSession session; setup(session, dir);
         session.config_.codec = "h264"; session.config_.audio.system = true;
         session.audioCaptured_ = captured; session.recorded_ = true; session.durationUs_ = 12000000;
+        session.bar_ = new ControlBar({},session.config_);session.bar_->show();
         session.capabilities_ = {{"formats", QJsonArray{"mp4", "gif"}}, {"codecs", QJsonObject{{"mp4", QJsonArray{"h264"}}}}};
-        session.openReview();
+        session.openReview();QVERIFY(!session.bar_->isVisible());
         QVERIFY(session.review_->drive({{"action", "format"}, {"format", "gif"}}).code.isEmpty());
         QVERIFY(!session.config_.audio.system); QCOMPARE(session.audioCaptured_, captured);
         QCOMPARE(session.config_.toJson()["format"].toString(), QString("gif"));
@@ -87,6 +88,25 @@ private slots:
         QCOMPARE(session.review_->inspect()["format"].toObject(), (QJsonObject{{"format", "mp4"}, {"codec", "h264"}}));
         const auto audio = session.review_->findChild<QLabel*>("exportAudioSummary")->text();
         QVERIFY(audio.contains(captured ? QString("System audio") : QString("No audio recorded")));
+    }
+    void stoppedBarCannotReappearOverReview() {
+        QTemporaryDir dir; RecordSession session; setup(session, dir);
+        session.prepared_ = true;
+        session.bar_ = new ControlBar({}, session.config_);
+        session.barHidden_ = false;
+        session.pipeline_.storageProbe_ = [] { return healthy(); };
+        QVERIFY(!start(session));
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(session.pipeline_.retainedUs() > 200000, 8000);
+        session.showBar("recording"); QVERIFY(session.bar_->isVisible());
+        int replies=0;Error stopError;
+        session.stop([&](Error error,QJsonObject){stopError=error;++replies;});
+        PUTGD_TRY_COMPARE(replies,1);QVERIFY2(!stopError,qPrintable(stopError.message));
+        QVERIFY(session.recorded_);QVERIFY(session.review_&&session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
+        session.review_->hide();
+        session.command("raise",{},[&](Error error,QJsonObject){QVERIFY(!error);++replies;});
+        QCOMPARE(replies,2);QVERIFY(session.review_->isVisible());QVERIFY(!session.bar_->isVisible());
+        session.command("overlay",{{"visible",true}},[](Error error,QJsonObject result){QVERIFY(!error);QVERIFY(!result["visible"].toBool());});
+        session.showBar("paused");QVERIFY(!session.bar_->isVisible());
     }
     void automaticStop_data() {
         QTest::addColumn<bool>("paused");

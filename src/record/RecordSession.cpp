@@ -117,6 +117,7 @@ QString RecordSession::targetLabel() const {
 }
 void RecordSession::showBar(const QString& state) {
     if (!bar_) return;
+    if (recorded_) { bar_->hide(); return; }
     bar_->setState(state);
     if (barHidden_) return;
     bar_->show();
@@ -148,7 +149,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
     }
     if (command == "raise") {
         barHidden_ = false;
-        if (bar_) { bar_->show(); bar_->raise(); }
+        if (bar_) { if (recorded_) bar_->hide(); else { bar_->show(); bar_->raise(); } }
         if (review_) review_->reopen(params["error"].toString());
         reply({}, {});
         return;
@@ -176,7 +177,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         // {visible} hides or shows the bar; {handle} (from the resident, when the
         // GNOME Shell had to leave the bar inside the area) collapses it from Record on.
         if (params["handle"].isBool() && bar_) bar_->setHandleWhileRecording(params["handle"].toBool());
-        if (params.contains("visible")) { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_); }
+        if (params.contains("visible")) { barHidden_ = !params["visible"].toBool(true); if (bar_) bar_->setVisible(!barHidden_ && !recorded_); }
         reply({}, {{"visible", bar_ ? bar_->isVisible() : false}});
         return;
     }
@@ -563,6 +564,7 @@ void RecordSession::stop(Reply reply) {
 }
 void RecordSession::openReview() {
     debugLog("review: open");
+    if (bar_) bar_->hide();
     delete review_;
     ReviewWindow::Options options;
     options.workingClip = workingClip_;
