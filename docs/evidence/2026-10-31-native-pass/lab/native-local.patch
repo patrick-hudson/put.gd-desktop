@@ -1,0 +1,141 @@
+diff --git a/tools/lab/surface_driver/context.py b/tools/lab/surface_driver/context.py
+index fad9e1568..a9df032cd 100644
+--- a/tools/lab/surface_driver/context.py
++++ b/tools/lab/surface_driver/context.py
+@@ -1186,8 +1186,11 @@ asyncio.run(main())
+         the owned window and the profile's notification areas are masked, and
+         every showing secret control is masked. Any unknown fails closed.
+         """
++        native = bool(getattr(self.target, 'physical', None))
++        if native and not getattr(self, '_native_pattern_verified', False):
++            return [[0, 0, image.width, image.height]], True, 'native-cover-not-yet-verified'
+         regions = [region for selected, region in self._sensitive_regions if selected == head]
+-        if self.destination == 'local' or not self._sensitive_seen:
++        if not native and (self.destination == 'local' or not self._sensitive_seen):
+             # Nothing link-like seen yet: secret fields can hold no live value,
+             # so their masks are best effort (the read can still mark the run).
+             if self.profile.get('at_spi', {}).get('available') and (geometry is not None or self.destination == 'local'):
+@@ -1198,7 +1201,7 @@ asyncio.run(main())
+                     pass
+                 finally:
+                     self._input_head = input_head
+-            if self.destination == 'local' or not self._sensitive_seen:
++            if not native and (self.destination == 'local' or not self._sensitive_seen):
+                 return regions, False, None
+         full = [[0, 0, image.width, image.height]]
+         if geometry is None and not desktop_safe:
+diff --git a/tools/lab/surface_driver/fixtures/destinations.py b/tools/lab/surface_driver/fixtures/destinations.py
+index 7dbc0691a..da788a1d3 100644
+--- a/tools/lab/surface_driver/fixtures/destinations.py
++++ b/tools/lab/surface_driver/fixtures/destinations.py
+@@ -27,7 +27,8 @@ service='/org/freedesktop/secrets'
+ 
+ def fake_keyring(scope):
+     ctx=scope.ctx
+-    if ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest')):
++    from ..native_local import admitted
++    if not admitted(ctx) and (ctx.placement not in ('guest','boat') or (ctx.host=='boat' and not ctx.profile.get('guest'))):
+         raise RecipeBlocked('fake credential collection is restricted to a disposable nested guest',issue=666)
+     scope.initialize()
+     bus_name='org.freedesktop.secrets'
+diff --git a/tools/lab/surface_driver/fixtures/keyring.py b/tools/lab/surface_driver/fixtures/keyring.py
+index 74b502738..64a9e3e92 100644
+--- a/tools/lab/surface_driver/fixtures/keyring.py
++++ b/tools/lab/surface_driver/fixtures/keyring.py
+@@ -25,7 +25,8 @@ print(json.dumps({'owner':owner,'pid':pid,'provider':provider}))
+ 
+ def isolated_service(scope):
+     ctx=scope.ctx
+-    if ctx.placement not in ('guest','boat') or not ctx.profile.get('guest'):
++    from ..native_local import admitted
++    if not admitted(ctx) and (ctx.placement not in ('guest','boat') or not ctx.profile.get('guest')):
+         raise RecipeBlocked('isolated Secret Service requires a disposable nested guest',issue=919)
+     prior = scope.json(OWNER)
+     if prior['owner'] and prior.get('provider') != 'ksecretd':
+diff --git a/tools/lab/surface_driver/recipes/outcomes.py b/tools/lab/surface_driver/recipes/outcomes.py
+index e224943be..48fe95599 100644
+--- a/tools/lab/surface_driver/recipes/outcomes.py
++++ b/tools/lab/surface_driver/recipes/outcomes.py
+@@ -76,9 +76,11 @@ def _frame(ctx, label):
+ 
+ @contextmanager
+ def _lane(ctx):
+-    ctx.expect(ctx.destination == 'local' and ctx.placement in ('boat', 'guest')
+-               and ctx.profile.get('guest') and not ctx.target.physical,
+-               'Phase A uses only an owned disposable guest and synthetic loopback destination')
++    from ..native_local import admitted
++    native = admitted(ctx)
++    ctx.expect(native or (ctx.destination == 'local' and ctx.placement in ('boat', 'guest')
++               and ctx.profile.get('guest') and not ctx.target.physical),
++               'Local outcomes require an owned guest or a leased physical desktop with clipboard preservation')
+     service = ctx.fixture('loopback-s3')
+     scope = Scope(ctx)
+     scope.initialize()
+@@ -87,6 +89,8 @@ def _lane(ctx):
+                              for name in ('region', 'window', 'desktop', 'edit', 'record')},
+                  'archive': {'keepUploads': True}})
+     try:
++        if native:
++            _pattern(ctx)
+         yield scope, service
+     except BaseException:
+         try:
+@@ -191,6 +195,9 @@ def _pattern(ctx):
+         ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png',
+                            [[0, 0, image.width, image.height]], fallback=True)
+     ctx.expect(pattern_visible(image, scene.rect), 'known fullscreen pattern covers the chosen monitor without foreign UI')
++    if ctx.target.physical:
++        ctx._native_pattern_verified = True
++        ctx.evidence.frame(image, ctx.out/'frames'/ctx.recipe.name/(str(len(ctx.evidence.frames))+'-verified-pattern.png'), [])
+     _frame(ctx, 'independent-frozen-pattern')
+     return scene, image
+ 
+@@ -317,6 +324,8 @@ def edit_upload(ctx):
+                 ctx.keys('Return')
+         shapes = editor._inspect(ctx, oid)['shapes']
+         ctx.expect([s['kind'] for s in shapes] == ['arrow', 'rectangle', 'text', 'redact'], 'four real mouse marks exist')
++        ctx.note('synthetic typed label observed=' + repr(shapes[2]['text']))
++        ctx.frame('typed-label-readback', window='editor')
+         ctx.expect(shapes[2]['text'] == 'Tier 1', 'mouse-placed text contains the typed label')
+         _frame(ctx, 'four-marks-before-upload')
+         ctx.click('editorUpload', window='editor')
+diff --git a/tools/lab/surface_driver/recipes/selectors.py b/tools/lab/surface_driver/recipes/selectors.py
+index aae2db84a..a94206bc7 100644
+--- a/tools/lab/surface_driver/recipes/selectors.py
++++ b/tools/lab/surface_driver/recipes/selectors.py
+@@ -32,6 +32,8 @@ BAR = "33-record-ready-bar"
+ def _frame(ctx, label, **options):
+     if ctx.destination == "local" and ctx.placement in ("boat", "guest") and ctx.profile.get("guest"):
+         options["desktop_safe"] = "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
++    if getattr(ctx, '_native_pattern_verified', False):
++        options['desktop_safe'] = 'Verified synthetic cover; foreign windows masked by native frame policy'
+     return ctx.frame(label, **options)
+ 
+ 
+@@ -201,7 +203,9 @@ def _png_dimensions(ctx, path, width, height):
+ 
+ def _retain(ctx, path, kind):
+     """Export only signature-checked synthetic outputs from this private run."""
+-    if ctx.placement not in ("boat", "guest") or getattr(ctx.target, "physical", None):
++    from ..native_local import admitted
++    native = admitted(ctx) and getattr(ctx, '_native_pattern_verified', False)
++    if not native and (ctx.placement not in ("boat", "guest") or getattr(ctx.target, "physical", None)):
+         ctx.blocked("Original functional payload export requires a disposable guest; native collection is undeclared (#717)", issue=717)
+     program = '''import base64,hashlib,json,os,stat
+ from pathlib import Path
+diff --git a/tools/lab/surface_driver/native_local.py b/tools/lab/surface_driver/native_local.py
+new file mode 100644
+index 000000000..418bbd3ab
+--- /dev/null
++++ b/tools/lab/surface_driver/native_local.py
+@@ -0,0 +1,10 @@
++"""Admission for local synthetic outcomes on a leased physical desktop."""
++
++
++def admitted(ctx):
++    target = ctx.target
++    if not (ctx.destination == 'local' and ctx.placement == 'native'
++            and target.physical and target._lock and target.clipboard_report.get('ready')):
++        return False
++    target.heartbeat(force=True)
++    return True

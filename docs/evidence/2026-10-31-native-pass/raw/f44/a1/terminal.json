@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "exit_code": 1,
+  "secret_scan": true,
+  "coverage_export": true,
+  "files": {
+    "receipt.json": "65b718b41e87076795b668b4be51e9c0d11673c7127fab5e9ee37bb317a73815",
+    "coverage.json": "df726e5b9ad680c609735c33935a0d5ffeb116f6c22596476ee264f6fa352001"
+  }
+}

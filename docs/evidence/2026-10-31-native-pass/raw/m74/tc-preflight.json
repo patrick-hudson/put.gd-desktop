@@ -1,0 +1,367 @@
+{
+  "tcFixtureScope": {
+    "fixturePort": 37999,
+    "destination": "127.0.0.1",
+    "rateSpecification": "800kbit",
+    "rateBytesPerSecond": 100000,
+    "commands": [
+      {
+        "argv": [
+          "tc",
+          "-j",
+          "qdisc",
+          "show",
+          "dev",
+          "lo"
+        ],
+        "exit": 0,
+        "stdout": "[{\"kind\":\"noqueue\",\"handle\":\"0:\",\"root\":true,\"refcnt\":2,\"options\":{}}]\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "list",
+          "tables"
+        ],
+        "exit": 0,
+        "stdout": "table ip filter\ntable ip nat\ntable ip6 filter\ntable ip6 nat\ntable ip mangle\ntable ip6 mangle\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "-f",
+          "-"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "qdisc",
+          "add",
+          "dev",
+          "lo",
+          "root",
+          "handle",
+          "379:",
+          "htb",
+          "default",
+          "2"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "class",
+          "add",
+          "dev",
+          "lo",
+          "parent",
+          "379:",
+          "classid",
+          "379:1",
+          "htb",
+          "rate",
+          "100gbit",
+          "ceil",
+          "100gbit"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": "Warning: sch_htb: quantum of class 3790001 is big. Consider r2q change.\n"
+      },
+      {
+        "argv": [
+          "tc",
+          "class",
+          "add",
+          "dev",
+          "lo",
+          "parent",
+          "379:1",
+          "classid",
+          "379:2",
+          "htb",
+          "rate",
+          "99gbit",
+          "ceil",
+          "100gbit"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": "Warning: sch_htb: quantum of class 3790002 is big. Consider r2q change.\n"
+      },
+      {
+        "argv": [
+          "tc",
+          "class",
+          "add",
+          "dev",
+          "lo",
+          "parent",
+          "379:1",
+          "classid",
+          "379:10",
+          "htb",
+          "rate",
+          "800kbit",
+          "ceil",
+          "800kbit",
+          "burst",
+          "65536",
+          "cburst",
+          "65536"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "filter",
+          "add",
+          "dev",
+          "lo",
+          "parent",
+          "379:",
+          "protocol",
+          "ip",
+          "prio",
+          "379",
+          "handle",
+          "0x37900000",
+          "fw",
+          "flowid",
+          "379:10"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "class",
+          "show",
+          "dev",
+          "lo"
+        ],
+        "exit": 0,
+        "stdout": "class htb 379:10 parent 379:1 prio 0 rate 800Kbit ceil 800Kbit burst 64Kb cburst 64Kb \nclass htb 379:1 root rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \nclass htb 379:2 parent 379:1 prio 0 rate 99Gbit ceil 100Gbit burst 2376b cburst 2400b \n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "-j",
+          "qdisc",
+          "show",
+          "dev",
+          "lo"
+        ],
+        "exit": 0,
+        "stdout": "[{\"kind\":\"htb\",\"handle\":\"379:\",\"root\":true,\"refcnt\":2,\"options\":{\"r2q\":10,\"default\":\"0x2\",\"direct_packets_stat\":0,\"direct_qlen\":1000}}]\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "-s",
+          "class",
+          "show",
+          "dev",
+          "lo"
+        ],
+        "exit": 0,
+        "stdout": "class htb 379:10 parent 379:1 prio 0 rate 800Kbit ceil 800Kbit burst 64Kb cburst 64Kb \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 10240000 ctokens: 10240000\n\nclass htb 379:1 root rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 3 ctokens: 3\n\nclass htb 379:2 parent 379:1 prio 0 rate 99Gbit ceil 100Gbit burst 2376b cburst 2400b \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 3 ctokens: 3\n\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "qdisc",
+          "del",
+          "dev",
+          "lo",
+          "root",
+          "handle",
+          "379:"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "list",
+          "tables"
+        ],
+        "exit": 0,
+        "stdout": "table ip filter\ntable ip nat\ntable ip6 filter\ntable ip6 nat\ntable ip mangle\ntable ip6 mangle\ntable inet np379_1215616\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "-j",
+          "list",
+          "table",
+          "inet",
+          "np379_1215616"
+        ],
+        "exit": 0,
+        "stdout": "{\"nftables\": [{\"metainfo\": {\"version\": \"1.0.9\", \"release_name\": \"Old Doc Yak #3\", \"json_schema_version\": 1}}, {\"table\": {\"family\": \"inet\", \"name\": \"np379_1215616\", \"handle\": 8}}, {\"chain\": {\"family\": \"inet\", \"table\": \"np379_1215616\", \"name\": \"output\", \"handle\": 1, \"type\": \"filter\", \"hook\": \"output\", \"prio\": -1, \"policy\": \"accept\"}}, {\"rule\": {\"family\": \"inet\", \"table\": \"np379_1215616\", \"chain\": \"output\", \"handle\": 2, \"expr\": [{\"match\": {\"op\": \"==\", \"left\": {\"payload\": {\"protocol\": \"ip\", \"field\": \"daddr\"}}, \"right\": \"127.0.0.1\"}}, {\"match\": {\"op\": \"==\", \"left\": {\"payload\": {\"protocol\": \"tcp\", \"field\": \"dport\"}}, \"right\": 37999}}, {\"counter\": {\"packets\": 0, \"bytes\": 0}}, {\"mangle\": {\"key\": {\"meta\": {\"key\": \"mark\"}}, \"value\": 932184064}}]}}]}\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "delete",
+          "table",
+          "inet",
+          "np379_1215616"
+        ],
+        "exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "tc",
+          "-j",
+          "qdisc",
+          "show",
+          "dev",
+          "lo"
+        ],
+        "exit": 0,
+        "stdout": "[{\"kind\":\"noqueue\",\"handle\":\"0:\",\"root\":true,\"refcnt\":2,\"options\":{}}]\n",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "nft",
+          "list",
+          "tables"
+        ],
+        "exit": 0,
+        "stdout": "table ip filter\ntable ip nat\ntable ip6 filter\ntable ip6 nat\ntable ip mangle\ntable ip6 mangle\n",
+        "stderr": ""
+      }
+    ],
+    "scope": "IPv4 TCP destination 127.0.0.1 exact fixture port only; unmarked traffic default 100 Gbit/s",
+    "beforeQdisc": [
+      {
+        "kind": "noqueue",
+        "handle": "0:",
+        "root": true,
+        "refcnt": 2,
+        "options": {}
+      }
+    ],
+    "nftTable": "np379_1215616",
+    "qdiscHandle": "379:",
+    "installedClassesText": "class htb 379:10 parent 379:1 prio 0 rate 800Kbit ceil 800Kbit burst 64Kb cburst 64Kb \nclass htb 379:1 root rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \nclass htb 379:2 parent 379:1 prio 0 rate 99Gbit ceil 100Gbit burst 2376b cburst 2400b \n",
+    "finalClassCountersText": "class htb 379:10 parent 379:1 prio 0 rate 800Kbit ceil 800Kbit burst 64Kb cburst 64Kb \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 10240000 ctokens: 10240000\n\nclass htb 379:1 root rate 100Gbit ceil 100Gbit burst 2400b cburst 2400b \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 3 ctokens: 3\n\nclass htb 379:2 parent 379:1 prio 0 rate 99Gbit ceil 100Gbit burst 2376b cburst 2400b \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n lended: 0 borrowed: 0 giants: 0\n tokens: 3 ctokens: 3\n\n",
+    "nftCounters": {
+      "nftables": [
+        {
+          "metainfo": {
+            "version": "1.0.9",
+            "release_name": "Old Doc Yak #3",
+            "json_schema_version": 1
+          }
+        },
+        {
+          "table": {
+            "family": "inet",
+            "name": "np379_1215616",
+            "handle": 8
+          }
+        },
+        {
+          "chain": {
+            "family": "inet",
+            "table": "np379_1215616",
+            "name": "output",
+            "handle": 1,
+            "type": "filter",
+            "hook": "output",
+            "prio": -1,
+            "policy": "accept"
+          }
+        },
+        {
+          "rule": {
+            "family": "inet",
+            "table": "np379_1215616",
+            "chain": "output",
+            "handle": 2,
+            "expr": [
+              {
+                "match": {
+                  "op": "==",
+                  "left": {
+                    "payload": {
+                      "protocol": "ip",
+                      "field": "daddr"
+                    }
+                  },
+                  "right": "127.0.0.1"
+                }
+              },
+              {
+                "match": {
+                  "op": "==",
+                  "left": {
+                    "payload": {
+                      "protocol": "tcp",
+                      "field": "dport"
+                    }
+                  },
+                  "right": 37999
+                }
+              },
+              {
+                "counter": {
+                  "packets": 0,
+                  "bytes": 0
+                }
+              },
+              {
+                "mangle": {
+                  "key": {
+                    "meta": {
+                      "key": "mark"
+                    }
+                  },
+                  "value": 932184064
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "afterQdisc": [
+      {
+        "kind": "noqueue",
+        "handle": "0:",
+        "root": true,
+        "refcnt": 2,
+        "options": {}
+      }
+    ],
+    "qdiscRestored": true,
+    "ownedTableAbsent": true
+  }
+}

@@ -1,0 +1,26 @@
+ 10:34:52 up 1 day, 15:20,  6 users,  load average: 1.54, 2.62, 2.28
+4
+  1 1000 patrick -     1255    manager -    no -
+  3 1000 patrick -     1421    user    -    no -
+357 1000 patrick -     3365657 user    -    no -
+  4 1000 patrick -     1422    user    -    no -
+509 1000 patrick seat0 3440604 user    tty3 no -
+553 1000 patrick -     3946904 user    -    no -
+  6 1000 patrick -     2308    user    -    no -
+    PID COMMAND         %CPU
+3946904 sshd-session     9.0
+3440764 kwin_wayland     2.4
+   1599 python3          1.0
+3440893 plasmashell      0.9
+3440771 w0vncserver      0.8
+   1600 python3          0.4
+3441081 DiscoverNotifie  0.2
+/sys/class/drm/card1-DP-1/status disconnected
+/sys/class/drm/card1-DP-2/status disconnected
+/sys/class/drm/card1-DP-3/status disconnected
+/sys/class/drm/card1-HDMI-A-1/status connected
+/sys/class/drm/card1-HDMI-A-2/status disconnected
+/sys/class/drm/card1-HDMI-A-3/status disconnected
+/usr/bin/firefox
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                  
+LISTEN 0      5          127.0.0.1:5900      0.0.0.0:*    users:(("w0vncserver",pid=3440771,fd=3))

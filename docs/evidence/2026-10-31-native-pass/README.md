@@ -1,0 +1,86 @@
+# Published nightly: physical native pass, 2026-10-31
+
+**Release acceptance is blocked.** This records real GPU/monitor/native-session work on the four requested builders, local destinations only. It does not certify stable assets, VM results, live S3/Proton or complete U9. No application compilation, app code fix, issue closure, promotion or release action occurred.
+
+Selected newest published nightly at 15:34 UTC: **v26.1031.3384-nightly**, clean app commit `4d3840c6108c22546d83c43a1b7d4c77b1df9d6d`, tree `abf0a3c9d5fe23b1341f7a138d67cd1ffa347576`. The CI catalog (run 41176518810) is a clean **dev** catalog from that same source, not a nightly-version catalog. Package and catalog hashes: [identities.json](identities.json). The documentation PR head is not the tested app source.
+
+## A. Native Tier 1 local outcomes
+
+Pass below means the recipe's functional oracles passed. Initial/after frames intentionally masked before cover verification do not establish visual acceptance. Saved frames, masks and manual visual QA are retained separately. A blocked browser recipe blocks each complete desktop pass.
+
+| Physical host and real session | Native asset | Region | Window + desktop | Recording → upload | Edit → upload | Link → guarded browser | History delete | Complete desktop |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| m74, Mint 22.3 Cinnamon X11, Qt xcb | 24.04 DEB, apt install downloaded file | pass | pass | pass | pass on a3/uinput | **blocked: required frame masked** | pass on a3/uinput | **blocked, 5/6** |
+| f44, Fedora 44 GNOME Wayland, Qt Wayland | fc44 RPM, native rpm install | **blocked: no native window witness** | same | not attempted | not attempted | not attempted | not attempted | **blocked, 0/6** |
+| k72, Kubuntu 26.04 Plasma Wayland, Qt Wayland | 26.04 DEB, apt install downloaded file | pass on a2 | pass on a2 | pass on a2 | pass on a2 | **blocked: snap Firefox geometry, zero owned matches** | pass on a2 | **blocked, 5/6** |
+| aurora-amd, Aurora Fedora 45 Plasma Wayland | AppImage, SHA checked/extracted | preflight blocked | preflight blocked | preflight blocked | preflight blocked | preflight blocked | preflight blocked | **blocked, app never started** |
+
+Direct physical VNC endpoints remained visible through the existing wall/tunnels: m74 X0 server 5900, f44 native Wayland server 5901, k72/Aurora native Wayland servers 5900. Connected DRM output, GPU, host/session/platform, resident PID/start/executable hash where launched, and private XDG identities are under [raw/](raw/). No VM or XWayland substitution was used. f44 was available at admission; its stop was a witness gap, not a build-capacity skip. Its app reported the expected clean build, but no resident PID/start snapshot was retained before that stop; it is not accepted desktop/process-identity evidence. Aurora has no launched app identity.
+
+Failures/corrections are not erased:
+
+- m74 a1 editor text and History-search assertions failed through the VNC shifted-keys path. a2 stopped before input because the root-start/drop-UID input server could not be attested. A new user-owned uinput server, with `/dev/uinput` ACL restored immediately after opening, passed those two recipes on a3. Typed label was exactly `Tier 1`; no product change. The initial full run remains in `raw/m74/a1`.
+- k72 a1 lacked the synthetic isolated Secret Service helper. Installing only required distro probes enabled a2's five successful recipes. Its private daemon never changed real KWallet credentials/aliases.
+- f44's DNF install dry run warned that it would invalidate an existing offline transaction. DNF5 does not accept `--noautoremove` for install. We preserved that transaction and installed exactly seven reviewed **new** RPMs with rpm, then removed those exact additions with rpm; no upgrades or broad transaction were performed. A discarded all-architecture dependency download/test was never installed. Region and window recipes hit the same missing physical GNOME witness, so later recipes were stopped.
+- Aurora lacked native PyQt6 probes. The narrowly requested rpm-ostree additions could not apply live without 14 replacements; replacements were refused. Removing the three requested additions preserved the active booted checksum and restored staged base/package/request/state identities, but recomposed a different staged commit timestamp/repository metadata. See the before/restored JSON; do not claim a byte-identical staged commit. No reboot/logout or desktop/portal replacement occurred.
+- Mint's Firefox navigation/image oracle passed but the mandatory content frame stayed fully masked. Kubuntu's snap Firefox could not supply an attributed geometry. Guards were not weakened to obtain pictures.
+
+## B. #379: physical m74
+
+All payloads are synthetic, destinations are loopback only, and timings ran without other campaign work on m74. The 10k fixture was grown while stopped from six synthetic images/videos with independent row/item/operation IDs and SQL integrity checks; no 10,000 real uploads occurred. The stopped fixture contains exactly 5,000 images and 5,000 videos; post-run SQL integrity is `ok`, and both pure-capture cohorts added 35 cancelled operations without adding History rows ([postchecks](raw/m74/postchecks.json)). Upload concurrency is 4, pending limit 64. Original frozen observer sources remain unchanged at `00ab777f2413a1fbd7670a7259dc614eced896e6`; supplemental Python observers are separately hashed and retained under [lab/](lab/).
+
+| Workload | Measured result | Approved gate / assessment |
+| --- | --- | --- |
+| Empty-history capture, 5 warmups + 30 | drawable p50 **122.306 ms**, p95 **138.854 ms**, max 154.973 ms | p95 ≤150 ms: **pass** |
+| 10k-history capture, 5 warmups + 30 | drawable p50 **127.197 ms**, p95 **158.401 ms**, max 160.579 ms | p95 ≤150 ms: **fail, #1063** |
+| Capture → available link, 5 warmups + 30 uploads | p50 **814.546 ms**, p95 **947.144 ms**, max 969.655 ms | observed upper bound; no approved limit |
+| Cold idle, 300.055 s, 10k loaded | CPU **0.0900%** of one core; RSS **31.18 MiB**, PSS **16.91 MiB** | CPU <0.5%, RSS ≤40, PSS ≤29: **pass** |
+| History open, 30.162 s | peak family PSS **53.94 MiB** | ≤60 MiB: **pass** |
+| History closed, 300.045 s | CPU **0.00333%**; RSS **35.30 MiB**, PSS **21.05 MiB** | same closed limits: **pass** |
+| History content open, 20 samples | p50 **753.479 ms**, p95 **776.646 ms**, max **780.531 ms** | maximum ≤1000 ms: **pass** |
+| History search, 6 queries ×5 | p50 **112.609 ms**, p95 **119.823 ms**, max 130.305 ms | p95 ≤250 ms: **pass** |
+| History PageDown, 8 steps ×5 | p50 **79.642 ms**, p95 **101.779 ms**, max 109.482 ms | p95 ≤100 ms: **fail, #1064** |
+| Image preview only, ten warm reopens | p50 **333.247 ms**, p95/max **346.870 ms**, retained pixels match | image subset ≤1000 ms; **overall media/Copy image/delete blocked, #1066** |
+| Native upload burst | **50 captures, 50 byte-verified uploads, 50 distinct links**; queued peak **1**, uploading peak **3** (4 slots) | functional completion; tray returned to idle title |
+| Post-burst settle, 300 s | RSS **32.56 MiB**, PSS **17.57 MiB** | RSS ≤40, PSS ≤29: **pass** |
+| Full History traversal | **10,000 rows / 200 pages / 172.052 s**; each page tail reached | functional completion; not FPS |
+| Slow proxy, 256 KiB/s | 6,223,843-byte PNG in **25.490 s**; stalled cancel **754.048 ms**, retry verified | progress/cancel/retry complete; cancel time ungraded |
+| Fixture-port tc/nft, 100,000 B/s | same PNG in **62.607 s**; stalled cancel **732.417 ms**, retry verified | progress/cancel/retry complete; shaper restored; cancel time ungraded |
+
+The capture timing boundary is native hotkey → owned drawable white selection ring; it includes the observer's map/input overhead and 1 ms held-drag pause. It is not monitor presentation latency. Separate root-window p95 observations were 232.439 ms empty and 213.085 ms with 10k, ungraded. The B3 wrapper initially graded the maximum of these two boundaries against 150 ms; that extra root gate is stricter than #379's frozen drawable gate. Raw receipts stay unchanged; `assessment.json` applies the approved boundary and records the correction. Capture-to-link is an upper bound including the automatic selection, polling, History detail and independent local pixel check before recording the endpoint; fixture byte verification follows.
+
+History open/search/scroll use exact calibrated filename ink in PID-owned native and visible root pixels, then verify expected production AT-SPI row names. The first attempt used a complete viewport hash and failed when normal “N min ago” metadata changed. The corrected oracle excludes that metadata, requires six distinct filename hashes, and retains calibration rectangles/samples. Scroll is PageDown response across a full 50-row page repeated five times, **not animation FPS**. The separate traversal visits every page and exposes its tail. UI/AT-SPI instrumentation applies only to those phases; it is absent from the cold/closed memory and capture gates. Timing includes observer cost; no app-only or photon-latency claim is made.
+
+History preview coverage is partial: ten warm reopens of one image were observed. Copy image then hit a missing/ambiguous current AT-SPI target, so video previews and fresh-object deletion with 10k were not reached. Two bounded observer attempts are retained; the campaign stopped under the task’s two-attempt desktop-quirk rule. A’s small-history deletion is not substituted. Follow-up [#1066](https://github.com/patrick-hudson/put.gd-desktop/issues/1066).
+
+Burst sampled family peak was 174.72 MiB RSS / 55.00 MiB PSS; CPU lower bound 14.24% over the entire 481.95 s workload/settle sampling span, ungraded. Other sampled family telemetry is in `assessment.json`. Mapping/process samples are lower bounds and are not continuous tracing of every History traversal step; the separate cold/open/closed memory intervals establish only their stated scope. Generic slow-network repaint observations (38.685/41.780 ms at 256 KiB/s/100 KB/s) are ungraded, not content-specific first presentation.
+
+## Safety, failures and restoration
+
+All four desktop lock acquires succeeded. Every started graphical app run used private `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` and runtime directory, a scoped clipboard keeper and synthetic cover/owned windows. A’s browser interactions used guarded private Firefox; B audited link availability and fixture bytes through the production session and HTTP. Native local frame handling retained strict foreign-window/notification masks; pre-cover/startup-failure frames stayed fully masked. Raw synthetic frame files were inspected before public inclusion. Black pixels are privacy masks, not rendered product content. No revealed credential or protected login was captured; no real account/object/bucket policy/versioning was used or changed.
+
+Frozen sources were never edited. The first supplemental capture witness incorrectly expected a ring before selection; the second lacked compositor-cover settling between trials. Both failures are retained, with no latency inferred from them. B1 also lacked Gdk4 GIR metadata needed by the independent clipboard probe. B2's 100 KB/s setup failed before workload execution: Mint's tc did not emit class JSON, and cleanup's parser masked the original class setup failure. Its exact `379:` qdisc and owned nft table were recovered and restoration verified. B3's corrected shaper completed at 100,000 bytes/s, restored the original noqueue root and removed only its owned table. It uses textual class evidence and cleanup in nested `finally` blocks. No global nft flush or unrelated process kill occurred. Teardown inherited the frozen observer’s `stop_owned_process_group(Popen)` for its own newly created cover/clipboard/proxy sessions; that helper uses `killpg`, rather than a PID-only signal API. Direct controller/input cleanup uses exact PID/start identities. This is a cleanup-method limitation of these runs, not a claim that the frozen helper implements PID-only signaling; [follow-up #1068](https://github.com/patrick-hudson/put.gd-desktop/issues/1068) requires a separately identified PID-generation adapter before another physical acceptance run.
+
+The first burst attempted the next hotkey after overlay disappearance but before production's exclusive interactive acquisition had drained (`busy_selecting` is intentional). The corrected burst waits only for that acquisition phase, leaving uploads concurrent; queued/uploading observations use the actual operation phase/item schema. Earlier failed outcomes are retained, not reclassified as passes.
+
+The native driver prototype is a **dated evidence patch**, not an integrated product/tool change. To keep this PR documentation-only, actual `tools/` edits were restored after saving the patch and exact private inputs. [Replay notes](lab/REPLAY.md) explain admission, source versions, commands and prerequisites. An unused/untested AppImage-entry experiment is omitted. Light validation: 4 admission, 5 outcome and 10 clipboard tests passed; no CMake, Ninja, ctest or app compiler was invoked.
+
+Follow-ups: [physical GNOME witness #1060](https://github.com/patrick-hudson/put.gd-desktop/issues/1060), [Aurora probe admission #1061](https://github.com/patrick-hudson/put.gd-desktop/issues/1061), [native browser proof #1062](https://github.com/patrick-hudson/put.gd-desktop/issues/1062), [10k capture latency #1063](https://github.com/patrick-hudson/put.gd-desktop/issues/1063), [History scroll response #1064](https://github.com/patrick-hudson/put.gd-desktop/issues/1064). Lab admission failures do not establish application defects. #379 and #44 remain open.
+
+## Saved visual evidence
+
+Physical k72 editor, exact published `v26.1031.3384-nightly` / app `4d3840c6108c`: yellow boxes identify the four real mouse edits before explicit Upload. The image contains only the synthetic source, app UI and retained privacy masks. Image committed independently from the tested app; immutable image reference:
+
+![Physical k72 editor; four marks boxed; nightly3384](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/bd6ae6edea2130595bdd6cb0c4d2fc07187c7038/docs/evidence/2026-10-31-native-pass/images/k72-editor-annotated.png)
+
+Physical m74 Cinnamon/X11, exact published `v26.1031.3384-nightly` / `4d3840c6108c`: the cropped owned window is on the final fixture page. Boxes identify the 10,000 count, disabled Next and exact version. This picture supports traversal/identity; timing claims come from the raw samples.
+
+![Physical m74 10k History final page; count, Next and version boxed](https://raw.githubusercontent.com/patrick-hudson/put.gd-desktop/d5d6df6460d46b50baadc2abc8b97fe5689a2e18/docs/evidence/2026-10-31-native-pass/images/m74-history-10k-annotated.png)
+
+## Cleanup and retention
+
+All four locks were released after their cleanup checks passed; each release receipt has empty new/unowned-item lists. m74's exact input PID/start and socket inode were removed, its original `/dev/uinput` ACL matched, clipboard keepers restored/stopped, private-profile PID inventory was empty, and the loopback root/table restoration passed. Exactly the four new m74 packages and fourteen new k72 packages were removed without autoremove; f44's seven new RPMs were removed. Existing user sessions/work were retained. Package conffiles may remain; this is not a byte-identical whole-OS rollback. Existing wall tunnels were untouched; no VM/boat/golden/base was created, modified or retired.
+
+Raw failed attempts, fixture databases/payloads, source transfers, published packages, source hashes and restoration receipts remain private on the builders and under `/home/patrick/work/put.gd/work/native-pass-20261031-ddd3576a/`. [Archive index](private-archives.json) records verified hashes/restore instructions. The repository includes sanitized JSON/events/visuals and exact replay source; it excludes raw clipboard snapshots, protected login input, personal history and cloud credentials. No test source was deleted. Public frame membership and SHA-256s are recorded in `visual-review.json`; raw receipt flags were not rewritten after review.
+
+Exact raw terminal/source/patch bytes retain their original CR/progress spacing, terminal blank lines and unified-diff context spaces; broad whitespace checks report these preserved artifacts. Authored prose/current scripts passed a scoped whitespace check. CI path selection is contracts-only; application/package/sanitizer/PipeWire builds are not selected.
