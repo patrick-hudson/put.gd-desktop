@@ -4,7 +4,7 @@
   "distributionReady": false,
   "published": false,
   "distributionRequirement": "Retain public availability of this current corresponding-source transport and deliver the current application source and catalog beside installers. Earlier SDK/Crypto/Bun transports remain historical.",
-  "helperSha256": "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
   "sourcePins": {
     "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
     "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -38,14 +38,14 @@
     },
     {
       "filename": "putgd-proton-helper-rebuild.tar.gz",
-      "bytes": 15994978,
-      "sha256": "deb5442ff3a56806aa59148f4a72982a07aa99414610877f4f1f97663e93aaa9",
+      "bytes": 15994986,
+      "sha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
       "purpose": "SDK 0.23.0/Crypto 2.2.0/OpenPGP 6.3.1 patched helper and matching locked dependencies, 7395 public files; includes unbundled SDK search vendor WASM as an input, not a rebuilt or embedded search engine."
     },
     {
       "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
-      "bytes": 1630441,
-      "sha256": "97ada90ecfe563295be00d2bb2815d6b7f058208ea3c381754de904cb1e0f228",
+      "bytes": 1630506,
+      "sha256": "c6bcd11530ad175b42745e7bde8b820a44afa2a9ff049524a3e823adf7e83b5d",
       "purpose": "Complete official WebPackages 2.2.0 preferred repository source/build locks, GPL and MIME parser MIT/MPL notices, SDK search scope, and the unchanged historical crypto provenance packet."
     },
     {
@@ -102,7 +102,7 @@
   "applicationSourceOverlay": {
     "required": true,
     "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
-    "baseSourceArtifactSha256": "deb5442ff3a56806aa59148f4a72982a07aa99414610877f4f1f97663e93aaa9",
+    "baseSourceArtifactSha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
     "repository": "https://github.com/patrick-hudson/put.gd-desktop",
     "delivery": "Included in the current application source archive. Apply the listed checksum-verified files to the current helper packet, then compile with the pinned official Bun 1.4.4 executable.",
     "reason": "Current SDK 0.23.0/Crypto 2.2.0 helper, official server-time hook and matching locked graph with Bun 1.4.4; historical helpers are not current rebuild inputs.",
@@ -110,12 +110,12 @@
       {
         "source": "tools/proton/runtime.ts",
         "destination": "build-source/runtime.ts",
-        "sha256": "4a1b18be9770f0a12eb4866155e3650f99a5a5c20dfcfed7f0228d702dc468a3"
+        "sha256": "db3858fca53262970442805fa4ff1ad5c254a2f9c96a70954897e20962a3ca98"
       },
       {
         "source": "tools/proton/runtime.test.ts",
         "destination": "build-source/runtime.test.ts",
-        "sha256": "c26324daa41e4019f36dd03ddf03e33400b3611312ca52f3081e1a1c1246f8ef"
+        "sha256": "83ee273493b7edca7f0f66091786a253300e21dec290eb6fe7abf9379d14e724"
       },
       {
         "source": "tools/proton/protocol.ts",

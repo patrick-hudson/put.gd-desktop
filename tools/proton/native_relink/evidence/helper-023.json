@@ -1,62 +1,72 @@
 {
   "host": "d69",
   "scope": "Guarded headless live SDK 0.23.0/Crypto 2.2.0 list/upload/share-link/revoke; not desktop acceptance",
-  "helperSha256": "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+  "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
   "checks": [
     {
       "name": "existing-runtime-before",
       "passed": true,
-      "seconds": 3.126
+      "seconds": 4.0
     },
     {
       "name": "new-helper-list-before",
       "passed": true,
-      "seconds": 3.745
+      "seconds": 3.951
     },
     {
       "name": "new-isolated-test-folder",
       "passed": true,
-      "seconds": 5.179
+      "seconds": 2.248
     },
     {
       "name": "new-helper-list-test-folder",
       "passed": true,
-      "seconds": 5.441
+      "seconds": 5.195
+    },
+    {
+      "name": "file-name-free-before-upload",
+      "passed": true,
+      "seconds": 3.645
     },
     {
       "name": "synthetic-upload",
       "passed": true,
-      "seconds": 7.889
+      "seconds": 5.883
     },
     {
       "name": "uploaded-identity",
       "passed": true,
-      "seconds": 2.977
+      "seconds": 1.683
+    },
+    {
+      "name": "file-name-present-after-upload",
+      "passed": true,
+      "seconds": 1.714
     },
     {
       "name": "share-link-create",
       "passed": true,
-      "seconds": 8.625
+      "seconds": 4.681
     },
     {
       "name": "share-link-revoke",
       "passed": true,
-      "seconds": 8.924
+      "seconds": 4.073
     },
     {
       "name": "link-private-after-revoke",
       "passed": true,
-      "seconds": 5.561
+      "seconds": 2.485
     },
     {
       "name": "new-helper-list-after",
       "passed": true,
-      "seconds": 5.359
+      "seconds": 4.962
     },
     {
       "name": "existing-runtime-after",
       "passed": true,
-      "seconds": 3.263
+      "seconds": 2.611
     }
   ],
   "sessionMaterialRetained": false,
@@ -70,9 +80,9 @@
   "brokerAfter": true,
   "shareRevoked": true,
   "passed": true,
-  "privateReceipt": "/home/patrick/work/b1071/live-023.json",
-  "privateReceiptSha256": "6feb218c9f8321f67df1ee55ebc66e2dee956de40c334a638f8bc90064a1c02a",
-  "syntheticPublicationId": "ab5af642-d7e1-4e25-acc0-57b73494f165",
+  "privateReceipt": "/home/patrick/work/b1071/live-023-api.json",
+  "privateReceiptSha256": "4778b5494ce5be7d7714b9277806a0e6a998735d20ab4d3b67ed6d47eb8f166b",
+  "syntheticPublicationId": "64116ec2-701e-4ff7-aa79-48c5b2bf4a49",
   "sourcePins": {
     "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
     "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
@@ -108,13 +118,14 @@
       "cryptoCommit": "68b93b7d2cadd043cd08203710af382706ed1458",
       "cryptoSourceVersion": "2.2.0",
       "cryptoSourcesMatchRegistry": true
-    }
+    },
+    "helperSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586"
   },
   "independentCompilerAudit": {
-    "runtimeSha256": "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
+    "runtimeSha256": "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
     "exactRebuild": true,
     "sourceFiles": 7395,
-    "sourceArchiveSha256": "deb5442ff3a56806aa59148f4a72982a07aa99414610877f4f1f97663e93aaa9",
+    "sourceArchiveSha256": "ff0f7368e9c0fa0ea310f37d37504d1f674af0b61818317c6bd5eaa44ac2e563",
     "classificationCounts": {
       "installed-not-bundled": 8,
       "bundled-js": 9,
@@ -133,8 +144,7 @@
     }
   },
   "repeatedOfficialHelperSha256": [
-    "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
-    "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149",
-    "cb537a95288486552f28d756f7a34e7b567e8d4356d807bdf27f337930e75149"
+    "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586",
+    "9fd4d72f86352cfcf2c8b6ba1db4102ed6f7b22660077698c700989e9fda8586"
   ]
 }

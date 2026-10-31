@@ -130,7 +130,7 @@ test('name preflight uses SDK hashed availability without listing unrelated fold
         const result = await checkName(stub.ctx, request);
         expect(result.status).toBe(available === 'photo.png' ? 'absent' : 'present');
         expect(stub.calls.map(call => call.method)).toEqual(['root', 'node', 'available']);
-        expect(stub.calls[2].args).toEqual(['folder', 'photo.png']);
+        expect(stub.calls[2].args).toEqual(['folder', 'photo.png', NodeType.File]);
     }
 });
 test('failed name availability is inconclusive rather than permission-as-absence', async () => {
@@ -277,7 +277,7 @@ test('a plan or quota refusal settles as failed only when the name is still free
                     artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
                 expect(result.status).toBe(expected);
                 expect(result.error.code).toBe(code);
-                expect(stub.calls.filter(call => call.method === 'available').map(call => call.args)).toEqual([['folder', 'photo.png']]);
+                expect(stub.calls.filter(call => call.method === 'available').map(call => call.args)).toEqual([['folder', 'photo.png', NodeType.File]]);
                 expect(JSON.stringify(result)).not.toContain('synthetic-private-provider-detail');
             }
         }
