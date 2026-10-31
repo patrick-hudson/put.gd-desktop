@@ -1375,6 +1375,8 @@ class RebootAndScope(unittest.TestCase):
                 handler = next((home / '.local/share/applications').glob('putgdsurface*.desktop')).read_text()
                 self.assertIn('"XDG_CACHE_HOME=%s"' % (directory / 'xdg-cache'), handler)
                 self.assertIn('"XDG_STATE_HOME=%s"' % (directory / 'xdg-state'), handler)
+                self.assertEqual(env['XDG_RUNTIME_DIR'], browser.os.environ['XDG_RUNTIME_DIR'])
+                self.assertIn('"XDG_RUNTIME_DIR=%s"' % env['XDG_RUNTIME_DIR'], handler)
                 (directory / 'xdg-cache/mozilla/firefox/startupCache').mkdir(parents=True)
                 browser._restore(state)
             self.assertFalse(directory.exists())

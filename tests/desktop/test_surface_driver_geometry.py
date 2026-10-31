@@ -68,6 +68,44 @@ class Geometry(unittest.TestCase):
                          [math.ceil(1380*32768/2304), 4096])
 
 
+class SelectorMapping(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.ctx = DriverContext(SimpleNamespace(root='/tmp/sd-fake', physical=None),
+                                 dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', package='deb', destination='local'), {},
+                                 self.directory.name, self.directory.name)
+        self.box = dict(x=0, y=0, width=1280, height=800, pid=7, override_redirect=True)
+
+    def test_every_selector_geometry_read_waits_for_mapping(self):
+        for role in ('region', 'recsel'):
+            with self.subTest(role=role):
+                self.ctx._probe = Mock(side_effect=[RecipeBlocked(
+                    'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)'), self.box])
+                self.assertEqual(self.ctx.geometry(role)['pid'], 7)
+                self.assertEqual(self.ctx._probe.call_count, 2)
+                self.assertTrue(self.ctx._probe.call_args.args[1]['selector'])
+
+    def test_ambiguous_or_unowned_is_never_retried(self):
+        for reason in ('geometry: RuntimeError: live window match is missing or ambiguous (2 matches)',
+                       'geometry: unowned override-redirect target'):
+            self.ctx._probe = Mock(side_effect=RecipeBlocked(reason))
+            with self.assertRaisesRegex(RecipeBlocked, reason.replace('(', r'\(').replace(')', r'\)')):
+                self.ctx.geometry('region')
+            self.ctx._probe.assert_called_once()
+
+    def test_missing_cover_has_a_bounded_wait(self):
+        self.ctx._probe = Mock(side_effect=RecipeBlocked(
+            'geometry: RuntimeError: live window match is missing or ambiguous (0 matches)'))
+        def bounded(predicate, what, timeout):
+            self.assertEqual(timeout, 10)
+            self.assertIsNone(predicate())
+            raise RecipeFailed('timeout: ' + what)
+        self.ctx.wait = bounded
+        with self.assertRaisesRegex(RecipeFailed, 'timeout: region owned selector geometry'):
+            self.ctx.geometry('region')
+
+
 class PhysicalPointerSafety(unittest.TestCase):
     """Fake transports only: never connect to a desktop or an RFB listener."""
     def setUp(self):

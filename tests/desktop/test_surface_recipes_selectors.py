@@ -469,25 +469,14 @@ class SelectorRecipes(unittest.TestCase):
         self.assertIsNone(ctx._selectors_consent)
         self.assertFalse(ctx.inputs)
 
-    def test_selector_mapping_wait_retries_only_absent_windows(self):
+    def test_selector_focus_keeps_guard_refusals(self):
         ctx = FakeContext()
-        calls = []
-        def focus(*args, **kwargs):
-            calls.append(args[0])
-            if len(calls) == 1:
-                raise RecipeBlocked("geometry: RuntimeError: live window match is missing or ambiguous (0 matches)")
-        ctx.focus = focus
-        ctx.wait = lambda predicate, *a, **k: predicate() or predicate()
-        selectors._focus_selector(ctx, "region")
-        self.assertEqual(calls, ["region", "region"])
-        calls.clear()
-        def ambiguous(*args, **kwargs):
-            calls.append(args[0])
-            raise RecipeBlocked("geometry: RuntimeError: live window match is missing or ambiguous (2 matches)")
-        ctx.focus = ambiguous
-        with self.assertRaisesRegex(RecipeBlocked, "2 matches"):
-            selectors._focus_selector(ctx, "recsel")
-        self.assertEqual(calls, ["recsel"])
+        def refused(*args, **kwargs):
+            self.assertEqual(kwargs, {'raise_window': False})
+            raise RecipeBlocked('unowned override-redirect target')
+        ctx.focus = refused
+        with self.assertRaisesRegex(RecipeBlocked, 'unowned'):
+            selectors._focus_selector(ctx, 'region')
 
     def test_format_popup_uses_owned_item_clicks_without_parent_keys(self):
         ctx = FakeContext()

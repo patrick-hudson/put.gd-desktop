@@ -824,4 +824,7 @@ def main(argv=None):
 
 
 if __name__=='__main__':
-    raise SystemExit(main())
+    code = main()
+    from tools.lab.surface_driver.collect import mark_terminal
+    mark_terminal(parser().parse_args().out.resolve(), code)
+    raise SystemExit(code)
