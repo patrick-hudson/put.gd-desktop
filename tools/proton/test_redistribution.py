@@ -11,6 +11,54 @@ spec.loader.exec_module(audit)
 
 
 class RedistributionTests(unittest.TestCase):
+    def test_search_capability_glue_does_not_imply_wasm_engine_or_ffi(self):
+        prefix = 'node_modules/@protontech/drive-sdk/src/search/'
+        result = audit.search_import_graph({'outputs': {'helper': {'inputs': {
+            prefix + 'sdkCapabilities.ts': {'bytesInOutput': 100},
+            prefix + 'types.ts': {'bytesInOutput': 0}}}}})
+        self.assertFalse(result['rustWasmSearchEngineBundled'])
+        self.assertFalse(result['boltffiRuntimeBundled'])
+
+    def test_search_engine_wasm_or_ffi_cannot_silently_enter_helper(self):
+        for path in ('node_modules/@protontech/drive-sdk/src/search/core/driveEngineLoaders.ts',
+                     'node_modules/@protontech/drive-sdk/src/search/vendor/engine.wasm',
+                     'node_modules/@boltffi/runtime/index.js'):
+            with self.subTest(path=path), self.assertRaisesRegex(ValueError, 'unexpected bundled search'):
+                audit.search_import_graph({'outputs': {'helper': {'inputs': {path: {'bytesInOutput': 1}}}}})
+
+    def test_remaining_evidence_uses_current_exact_helper_catalog(self):
+        catalog = {'helperSha256': 'a' * 64, 'published': True,
+                   'openGates': ['Current final-package acceptance']}
+        self.assertEqual(audit.remaining_evidence(catalog, 'a' * 64),
+                         ['Current final-package acceptance'])
+        catalog['published'] = False
+        self.assertIn('Publish corresponding source assets with final binary packages',
+                      audit.remaining_evidence(catalog, 'a' * 64))
+
+    def test_remaining_evidence_rejects_another_helpers_proof(self):
+        with self.assertRaisesRegex(ValueError, 'does not describe'):
+            audit.remaining_evidence({'helperSha256': 'a' * 64, 'openGates': []}, 'b' * 64)
+
+    def test_native_receipt_cannot_silently_transfer_to_new_sources(self):
+        pins = {'bun': '1' * 40, 'webkit': '2' * 40, 'tinycc': '3' * 40}
+        catalog = {'helperSha256': 'a' * 64, 'published': True, 'openGates': ['P6'],
+                   'sourcePins': pins, 'proof': {'nativeBunRelinkVerified': True},
+                   'nativeRelinkProof': {'helperSha256': 'a' * 64, 'sourcePins': dict(pins)}}
+        self.assertEqual(audit.remaining_evidence(catalog, 'a' * 64), ['P6'])
+        for name in pins:
+            with self.subTest(name=name):
+                catalog['nativeRelinkProof']['sourcePins'] = {**pins, name: '0' * 40}
+                with self.assertRaisesRegex(ValueError, 'native relink proof'):
+                    audit.remaining_evidence(catalog, 'a' * 64)
+
+    def test_native_receipt_requires_current_helper_even_when_runtime_sources_match(self):
+        pins = {'bun': '1' * 40, 'webkit': '2' * 40, 'tinycc': '3' * 40}
+        catalog = {'helperSha256': 'a' * 64, 'openGates': [], 'sourcePins': pins,
+                   'proof': {'nativeCompiledHelperSourceSelectionVerified': True},
+                   'nativeRelinkProof': {'helperSha256': 'b' * 64, 'sourcePins': pins}}
+        with self.assertRaisesRegex(ValueError, 'native relink proof'):
+            audit.remaining_evidence(catalog, 'a' * 64)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -16,10 +16,11 @@ import { HTTPClient } from './upstream/cli/src/api/httpClient';
 import { DriveAccountAdapter } from './upstream/cli/src/api/driveAccountAdapter';
 import { getOrGenerateClientUid } from './upstream/cli/src/clientUid';
 import { processDriveRequirementHeaders, SUPPORTED_REQUIREMENT_MASK_BY_SCOPE } from './upstream/cli/src/api/apiRequirements';
+import { createServerTimeAfterResponseHook } from './upstream/cli/src/api/serverTimeHook';
 import { ProtocolError, publicationClientUid, type JsonObject } from './protocol';
 import { RequestCryptoCache } from './crypto-cache';
 export const APP_VERSION = 'external-drive-put_gd@0.1.1-alpha';
-export const SDK_VERSION = 'js@0.22.2';
+export const SDK_VERSION = 'js@0.23.0';
 export const SECRET_SERVICE = 'ch.proton.drive/putgd';
 export async function privateDataDirectory(): Promise<string> {
     const input = process.env.PUTGD_PROTON_DATA_DIR;
@@ -36,6 +37,14 @@ export function createCryptoCache(): ProtonDriveCryptoCache { return new Request
 export async function saveToKeychain(save: () => Promise<void>): Promise<void> {
     try { await save(); }
     catch { throw new ProtocolError('keychain_unavailable'); }
+}
+export function accountResponseHooks(onUnsupported: () => never) {
+    return [createServerTimeAfterResponseHook(), (_request: Request, _options: unknown, response: Response) => {
+        processDriveRequirementHeaders(response.headers, { clientSdkVersion: SDK_VERSION,
+            supportedRequirementMasksByScope: SUPPORTED_REQUIREMENT_MASK_BY_SCOPE,
+            onUnsupportedFeature: onUnsupported, onRequiredUpdate: onUnsupported,
+            onSuggestedUpdate: () => {} });
+    }];
 }
 export async function initialize(request: JsonObject) {
     const dataDir = await privateDataDirectory();
@@ -57,12 +66,7 @@ export async function initialize(request: JsonObject) {
     }, logger);
     const requirementFailure = () => { throw new ProtocolError('unsupported_request'); };
     const apiClient = new ApiClient({ baseUrl: 'drive-api.proton.me', appVersion: APP_VERSION, credentials, logger,
-        headers: { 'x-pm-drive-sdk-version': SDK_VERSION }, afterResponseHooks: [(_request, _options, response) => {
-            processDriveRequirementHeaders(response.headers, { clientSdkVersion: SDK_VERSION,
-                supportedRequirementMasksByScope: SUPPORTED_REQUIREMENT_MASK_BY_SCOPE,
-                onUnsupportedFeature: requirementFailure, onRequiredUpdate: requirementFailure,
-                onSuggestedUpdate: () => {} });
-        }] });
+        headers: { 'x-pm-drive-sdk-version': SDK_VERSION }, afterResponseHooks: accountResponseHooks(requirementFailure) });
     let account;
     try {
         account = await initAccount({ authClientId: 'external-drive', apiClient, credentials, cryptoProxy: CryptoProxy,

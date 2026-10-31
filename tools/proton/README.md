@@ -20,9 +20,10 @@ approved crypto source/version, runtime versions, dependency notices and each
 redistribution file. The manifest, notices and `redistribution/` ship next to
 the runtime. See [the source catalog](notices/SOURCES.json) and
 [rebuild instructions](notices/REBUILD.md) for required accompanying source assets.
-Crypto source 2.0.1 replaces the npm 2.0.0 bootstrap under the user-approved GPL
-selection; [provenance](notices/CRYPTO-PROVENANCE.md) preserves the distinction. Supported command lines are
-`--version` and `--stdio` only.
+Crypto source 2.2.0 and the npm 2.2.0 bootstrap now match; the public source
+commit and full dependency graph are locked. Historical 2.0.0/2.0.1 provenance
+remains in [the provenance record](notices/CRYPTO-PROVENANCE.md). Supported command
+lines are `--version` and `--stdio` only.
 
 `--stdio` consumes exactly one UTF-8 JSON request (maximum 128 KiB) until EOF;
 the caller closes stdin. It emits at most one `{"event":"auth","url":...}`

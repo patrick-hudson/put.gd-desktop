@@ -490,12 +490,15 @@ def audit_proton_ci(directory, output):
             if (proton['runtimeSha256'] != catalog['helperSha256']
                     or proton['sourceCatalogSha256'] != sha256(catalog_path)
                     or any(manifest.get(key) != lock[key] for key in
-                           ('bunVersion', 'bunSourceReference', 'bunSha256'))):
+                           ('bunVersion', 'bunSourceReference', 'bunSha256', 'cryptoVersion',
+                            'cryptoSourceReference', 'sourceReference'))
+                    or manifest.get('sdkVersion') != 'js@' + lock['sdkVersion']):
                 raise ValueError('CI Proton runtime differs from current source pins')
             helper = root / proton['helper']
             identity = json.loads(run(helper, '--version'))
-            if identity['bunVersion'] != lock['bunVersion']:
-                raise ValueError('Actual embedded Bun version differs from manifest')
+            if (identity['bunVersion'] != lock['bunVersion']
+                    or identity['sdkVersion'] != 'js@' + lock['sdkVersion']):
+                raise ValueError('Actual embedded Bun/SDK version differs from current pins')
             result['packages'].append({'file': str(package.relative_to(directory)),
                 'sha256': sha256(package), 'helperSha256': proton['runtimeSha256'],
                 'identity': identity, 'sourceCatalogSha256': proton['sourceCatalogSha256']})
