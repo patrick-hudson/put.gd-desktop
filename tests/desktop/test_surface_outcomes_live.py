@@ -56,6 +56,13 @@ class LiveOutcomes(unittest.TestCase):
         proof=browser._recipient_preview_pixels(client,stream.getvalue())
         self.assertFalse(proof['matches']);self.assertEqual(proof['tolerance'],0)
 
+    def test_preview_fallback_never_hides_a_proven_hash_mismatch(self):
+        proof={'matches':False,'preview':{'matches':True},'downloadObservations':[{'available':True,'entries':[]}]}
+        self.assertTrue(outcomes_live._preview_only_eligible(proof))
+        self.assertFalse(outcomes_live._preview_only_eligible(dict(proof,sha256='0'*64)))
+        self.assertFalse(outcomes_live._preview_only_eligible(dict(proof,downloadObservations=[])))
+        self.assertFalse(outcomes_live._preview_only_eligible(dict(proof,preview={'matches':False})))
+
     def test_download_confirmation_follows_first_list_observation(self):
         with tempfile.TemporaryDirectory(dir='/dev/shm') as td:
             directory=Path(td);payload=b'synthetic original PNG';target=directory/'capture.png'

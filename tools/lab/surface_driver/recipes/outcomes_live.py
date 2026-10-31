@@ -114,6 +114,14 @@ print(json.dumps(hashlib.sha256(data).hexdigest()))
 '''.replace('PATH', repr(path)).replace('ROOT', repr(scope.ctx.target.root)))
 
 
+def _preview_only_eligible(downloaded):
+    # A completed file with the wrong hash is a failure, never an unproven hash.
+    observations = downloaded.get('downloadObservations', [])
+    return (not downloaded.get('matches') and 'sha256' not in downloaded
+            and downloaded.get('preview', {}).get('matches') is True
+            and bool(observations) and all(o.get('available') is True for o in observations))
+
+
 def _region_upload(ctx):
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
@@ -177,7 +185,7 @@ def _region_upload(ctx):
                     if ctx.destination == 'proton':
                         ctx.note('firefox_download_list='+json.dumps(downloaded['downloadObservations'], sort_keys=True))
                         ctx.note('recipient_preview_pixels='+json.dumps(downloaded['preview'], sort_keys=True))
-                        if not downloaded['matches'] and downloaded['preview'].get('matches'):
+                        if _preview_only_eligible(downloaded):
                             ctx.expect(bool(downloaded['downloadObservations']) and
                                        all(o.get('available') for o in downloaded['downloadObservations']),
                                        'P-preview requires Firefox own Download-list state')
