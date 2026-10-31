@@ -1,6 +1,7 @@
 """Real default-Firefox verification, with target-side URL/token confinement.
 
-Only stdlib is required on the target. Marionette is Firefox's shipped remote
+Normal browser actions need only stdlib on the target; the live Proton pixel
+oracle also uses the guest's distro PyQt6 PNG decoder. Marionette is Firefox's shipped remote
 protocol (firefox-source-docs.mozilla.org/remote/marionette/Protocol.html).
 The temporary handler launches Firefox itself; it never records URL arguments.
 Profile fragments may set ``browser.command`` (argv, e.g. snap run firefox),
@@ -1333,13 +1334,13 @@ const done=arguments[arguments.length-1];
 const images=[...document.images].filter(e=>e.complete&&e.naturalWidth>0);
 if(images.length!==1){done(null);return;}
 fetch(images[0].currentSrc||images[0].src,{cache:'no-store',credentials:'omit'}).then(async r=>{
- if(!r.ok){done(null);return;}const data=await r.arrayBuffer();
+ if(r.status!==200){done(null);return;}const data=await r.arrayBuffer();
  if(!data.byteLength||data.byteLength>32*1024*1024){done(null);return;}
  const hash=await crypto.subtle.digest('SHA-256',data);
- done({bytes:data.byteLength,sha256:[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('')});
+ done({status:r.status,bytes:data.byteLength,sha256:[...new Uint8Array(hash)].map(v=>v.toString(16).padStart(2,'0')).join('')});
 }).catch(()=>done(null));
 """, asynchronous=True)
-                if not isinstance(received, dict) or set(received)!={'bytes','sha256'}:
+                if not isinstance(received, dict) or set(received)!={'status','bytes','sha256'} or received['status']!=200:
                     raise _TargetError('Recipient Firefox could not hash the original S3 image')
                 return {**received, 'matches':received['bytes']==len(original) and
                         received['sha256']==hashlib.sha256(original).hexdigest()}

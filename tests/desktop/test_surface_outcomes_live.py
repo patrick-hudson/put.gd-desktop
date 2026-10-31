@@ -266,9 +266,11 @@ class LiveOutcomes(unittest.TestCase):
                         browser._target('download-digest',dict(args,saved_path=str(path)))
                 client.script.side_effect=None
                 for digest,matched in ((hashlib.sha256(saved.read_bytes()).hexdigest(),True),('0'*64,False)):
-                    client.script.return_value={'bytes':saved.stat().st_size,'sha256':digest}
+                    client.script.return_value={'status':200,'bytes':saved.stat().st_size,'sha256':digest}
                     result=browser._target('download-digest',dict(args,kind='s3'))
                     self.assertEqual(result['matches'],matched)
+                client.script.return_value={'status':206,'bytes':saved.stat().st_size,'sha256':hashlib.sha256(saved.read_bytes()).hexdigest()}
+                with self.assertRaises(browser._TargetError):browser._target('download-digest',dict(args,kind='s3'))
 
 
 if __name__=='__main__':unittest.main()
