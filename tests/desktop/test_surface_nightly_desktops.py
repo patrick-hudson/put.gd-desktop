@@ -5,6 +5,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -37,6 +38,56 @@ class FakeGitHub:
 
 
 class NightlyTests(unittest.TestCase):
+    def rpm_install(self, root, *, failure=False, desktop_changed=False, verify_failure=False):
+        from tools.lab import nightly_desktop_guest as guest
+        run, out, package = root/'run', root/'out', root/'published.rpm'
+        run.mkdir(); out.mkdir(); package.write_bytes(b'published RPM test input')
+        (run/'package.json').write_text('{"stale":true}')
+        before = ('gnome-shell.x86_64 0:50.0-1.fc44\nqt6-qtbase.x86_64 0:6.10.2-2.fc44\n'
+                  'kernel-core.x86_64 0:6.19.0-1.fc44\nkernel-core.x86_64 0:6.19.1-1.fc44\n')
+        after = before.replace('6.10.2-2', '6.11.2-3')+'putgd.x86_64 0:26.1031.3384~nightly-1.fc44\n'
+        if desktop_changed:
+            after = after.replace('50.0-1', '50.5-1')
+        with patch.object(guest.lab, 'verify_owned_guest'), patch.object(guest.lab, 'ssh', side_effect=[before, after]), \
+                patch.object(guest.lab, 'put'), patch.object(guest.lab, 'ssh_args', return_value=['ssh']), \
+                patch.object(guest.lab, 'command', return_value=SimpleNamespace(
+                    returncode=1 if failure else 0, stdout='private transaction', stderr='solver diagnostic')) as command, \
+                patch.object(guest.lab, 'verify_installed_binaries', side_effect=RuntimeError('binary mismatch')
+                             if verify_failure else None, return_value={'/usr/bin/putgd': 'a'*64}) as verify:
+            if failure or desktop_changed or verify_failure:
+                with self.assertRaises(RuntimeError):
+                    guest.install_rpm(run, package, out)
+                self.assertFalse((run/'package.json').exists())
+                if not verify_failure:
+                    verify.assert_not_called()
+            else:
+                receipt = guest.install_rpm(run, package, out)
+                self.assertEqual(receipt['installedBinarySha256'], {'/usr/bin/putgd': 'a'*64})
+                self.assertEqual(json.loads((run/'package.json').read_text()), receipt)
+                self.assertEqual([v['package'] for v in receipt['rpmTransaction']['packagesChanged']],
+                                 ['putgd.x86_64', 'qt6-qtbase.x86_64'])
+            script = command.call_args.kwargs['input']
+            self.assertIn('sudo -n dnf ', script)
+            self.assertNotIn('sudo -n rpm', script)
+            for protected in guest.FEDORA_DESKTOP:
+                self.assertIn(protected, script)
+            inventory = json.loads((out/'rpm-before.json').read_text())
+            self.assertEqual(len(inventory['kernel-core.x86_64']), 2)
+            self.assertIn('solver diagnostic', (out/'rpm-install.txt').read_text())
+
+    def test_fedora_install_resolves_runtime_and_records_exact_binary_and_package_changes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.rpm_install(Path(tmp))
+
+    def test_fedora_failed_transaction_cannot_certify_a_previous_install(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.rpm_install(Path(tmp), failure=True)
+
+    def test_fedora_desktop_change_or_binary_mismatch_blocks_install_receipt(self):
+        for kwargs in (dict(desktop_changed=True), dict(verify_failure=True)):
+            with self.subTest(**kwargs), tempfile.TemporaryDirectory() as tmp:
+                self.rpm_install(Path(tmp), **kwargs)
+
     def test_filtered_run_preserves_other_desktops_and_exact_build(self):
         builders = {host: dict(rows=[dict(name='Aurora' if host == 'aurora-amd' else host,
                                          desktop=host+'-profile')]) for host in nightly.HOSTS}
