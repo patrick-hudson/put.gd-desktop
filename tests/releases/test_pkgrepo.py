@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import pkgrepo
@@ -305,7 +306,7 @@ class Publishing(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertLess(keys.index('lab/apt/debian13/dists/nightly/main/binary-amd64/Packages'),
                         keys.index('lab/apt/debian13/dists/nightly/InRelease'))
-        # Immutable objects are never invalidated; everything at a fixed path is.
+        # The change list contains mutable objects; packages keep immutable caching.
         self.assertNotIn('lab/apt/debian13/pool/main/p/putgd/putgd_0.1.1~nightly.600_amd64.deb', changed)
         self.assertIn('lab/rpm/fedora/44/x86_64/nightly/repodata/repomd.xml', changed)
         data, kind, cache = self.s3.objects['lab/apt/debian13/pool/main/p/putgd/putgd_0.1.1~nightly.600_amd64.deb']
@@ -341,11 +342,59 @@ class Publishing(unittest.TestCase):
         self.now[0] += 7200
         self.assertEqual(self.publisher('live').retire(self.tree, self.receipt), [])
 
-    def test_invalidation_waits_for_completion_on_each_distribution(self):
-        self.publisher().invalidate(['lab/a', 'lab/b'], self.receipt, ['D1', 'D2'])
-        self.assertEqual([batch[0] for batch in self.cloudfront.batches], ['D1', 'D2'])
-        self.assertEqual(self.cloudfront.batches[0][1], ['/lab/a', '/lab/b'])
-        self.assertEqual(len(self.receipt['invalidations']), 2)
+    def test_existing_mutable_objects_get_short_headers_once_without_changing_bytes(self):
+        publisher = self.publisher()
+        publisher.state['objects'] = {'lab/' + key: hashlib.sha256(data).hexdigest()
+                                      for key, data in TREE.items()}
+        publisher.save()  # the previous signer stored only hashes
+        self.publisher().upload(self.tree, {0, 1, 2, 3, 4}, self.receipt)
+        self.assertTrue(self.s3.calls)
+        for _, key in self.s3.calls:
+            self.assertEqual(self.s3.objects[key][2], 'public, max-age=60, must-revalidate')
+        self.s3.calls.clear()
+        self.assertEqual(self.publisher().upload(self.tree, {0, 1, 2, 3, 4}, self.receipt), [])
+        self.assertEqual(self.s3.calls, [])
+
+    def test_feed_waits_for_previous_five_minute_cdn_cache_without_invalidations(self):
+        cfg = config(self.root, feed_distributions=['APP'])
+        workspace = pkgrepo.Workspace(self.root / 'next', 'nightly', cfg)
+        files = dict(TREE)
+        for label in pkgrepo.DEB_LABELS:
+            for name in ('InRelease', 'main/binary-amd64/Packages'):
+                files[f'apt/{label}/dists/nightly/{name}'] = b'new metadata'
+        write_tree(workspace.tree, files)
+        start = self.now[0]
+
+        def http(url):
+            self.assertNotIn('lab/update/v1/nightly.json', self.s3.objects)
+            return b'old metadata' if self.now[0] - start <= 300 else self.s3.objects[url.split('pkg.put.gd/')[1]][0]
+
+        real_publisher = pkgrepo.Publisher
+        def publisher(*args, **kwargs):
+            return real_publisher(*args, **kwargs, clock=lambda: self.now[0],
+                                  sleep=lambda seconds: self.now.__setitem__(0, self.now[0] + seconds))
+
+        signer = pkgrepo.Signer(cfg, github=object(), clients=(self.s3, self.cloudfront), http=http)
+        with patch.object(pkgrepo, 'Publisher', side_effect=publisher):
+            signer.publish('lab', workspace, self.receipt)
+        self.assertGreater(self.now[0] - start, 300)
+        self.assertEqual(len(self.receipt['readback']), 7)
+        self.assertIn('lab/update/v1/nightly.json', self.s3.objects)
+        self.assertEqual(self.cloudfront.batches, [])
+        self.assertEqual(self.receipt['invalidations'], [])
+
+    def test_all_mutable_metadata_has_a_one_minute_revalidation_policy(self):
+        keys = ['apt/debian13/dists/nightly/' + name for name in
+                ('InRelease', 'Release', 'Release.gpg', 'main/binary-amd64/Packages',
+                 'main/binary-amd64/Packages.gz', 'main/dep11/Components-amd64.yml.gz',
+                 'main/dep11/icons-64x64.tar.gz')]
+        keys += ['rpm/fedora/44/x86_64/nightly/repodata/' + name for name in ('repomd.xml', 'repomd.xml.asc')]
+        keys += ['update/v1/nightly.json', 'update/v1/nightly.json.minisig', 'dl/nightly/appimage.zsync',
+                 f'releases/{TAG}/SHA256SUMS', f'releases/{TAG}/SHA256SUMS.minisig']
+        for key in keys:
+            for prefix in ('', 'lab/'):
+                with self.subTest(key=prefix + key):
+                    self.assertEqual(pkgrepo.cache_control(prefix + key), 'public, max-age=60, must-revalidate')
 
     def test_readback_waits_for_the_cdn_and_gives_up_at_the_deadline(self):
         served = [b'old', b'old', TREE['update/v1/nightly.json']]
