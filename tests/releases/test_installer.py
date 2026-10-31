@@ -34,14 +34,30 @@ class Installer(unittest.TestCase):
         self.log = self.root / 'calls.jsonl'
         self.env = dict(os.environ, HOME=str(self.home), TMPDIR=str(self.root),
                         PATH=str(self.bin), CALLS=str(self.log), ARCH='x86_64', STABLE='302',
-                        NIGHTLY='302', CHECKSUM_MODE='ok', SUFFIX='-ubuntu24.04-x86_64.deb')
-        for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir'):
+                        NIGHTLY='302', CHECKSUM_MODE='ok', SUFFIX='-ubuntu24.04-x86_64.deb',
+                        CODEC='openh264', CISCO_REPO='enabled')
+        for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir', 'sh'):
             (self.bin / name).symlink_to(shutil.which(name))
         self.tool('uname', "import os; print(os.environ['ARCH'])")
         self.tool('getconf', "import os; print(os.environ.get('GLIBC', 'glibc 2.39'))")
-        for name in ('apt', 'dnf', 'sudo'):
+        for name in ('apt', 'dnf', 'sudo', 'rpm'):
             self.tool(name, "import json, os, sys\nwith open(os.environ['CALLS'], 'a') as f: "
                       "f.write(json.dumps(sys.argv) + '\\n')")
+        with (self.bin / 'sudo').open('a') as f:
+            f.write("import subprocess\nsys.exit(subprocess.call(sys.argv[1:]))\n")
+        with (self.bin / 'rpm').open('a') as f:
+            f.write("sys.exit(0 if sys.argv[2] in os.environ['CODEC'].split(',') else 1)\n")
+        with (self.bin / 'dnf').open('a') as f:
+            f.write('''if 'repolist' in sys.argv:
+    if os.environ['CISCO_REPO'] == 'error': sys.exit(1)
+    print('repo id  repo name')
+    print('fedora  Fedora 44')
+    if os.environ['CISCO_REPO'] == 'enabled':
+        print('fedora-cisco-openh264  Fedora 44 openh264 (From Cisco)')
+elif sys.argv[1:3] == ['install', '-y']:
+    sys.exit(int(os.environ.get('CODEC_INSTALL_STATUS', '0')))
+elif os.environ.get('PACKAGE_INSTALL_FAIL') == '1': sys.exit(1)
+''')
         self.tool('curl', '''import hashlib, json, os, pathlib, sys
 args = sys.argv[1:]
 with open(os.environ['CALLS'], 'a') as f: f.write(json.dumps(['curl'] + args) + '\\n')
@@ -169,7 +185,65 @@ else:
             self.run_script()
             sudo = [call for call in self.calls() if Path(call[0]).name == 'sudo']
             self.assertEqual(len(sudo), 1)
-            self.assertEqual(sudo[0][1:], [manager, 'install', './putgd-26.1031.1' + self.env['SUFFIX']])
+            if distro == 'ubuntu':
+                self.assertEqual(sudo[0][1:], [manager, 'install', './putgd-26.1031.1' + self.env['SUFFIX']])
+            else:
+                self.assertEqual(sudo[0][1:3], ['sh', '-c'])
+                self.assertEqual(sudo[0][-2:], ['sh', './putgd-26.1031.1' + self.env['SUFFIX']])
+                self.assertEqual(self.dnf_installs(), [['install', './putgd-26.1031.1' + self.env['SUFFIX']]])
+
+    def fedora(self):
+        self.os_release.write_text('ID=fedora\nVERSION_ID=44\n')
+        self.env['SUFFIX'] = '-fedora44-x86_64.rpm'
+
+    def dnf_installs(self):
+        return [call[1:] for call in self.calls()
+                if Path(call[0]).name == 'dnf' and call[1] == 'install']
+
+    def test_fedora_explicit_codec_install_with_one_sudo(self):
+        self.fedora()
+        for codec in ('noopenh264', '', 'noopenh264,openh264'):
+            with self.subTest(codec=codec):
+                self.log.unlink(missing_ok=True)
+                self.env['CODEC'] = codec
+                out = self.run_script()
+                self.assertIn('Installing Cisco OpenH264 for recording', out)
+                self.assertEqual(self.dnf_installs(), [
+                    ['install', './putgd-26.1031.1-fedora44-x86_64.rpm'],
+                    ['install', '-y', 'openh264', 'gstreamer1-plugin-openh264']])
+                self.assertEqual(sum(Path(call[0]).name == 'sudo' for call in self.calls()), 1)
+
+    def test_fedora_disabled_or_unavailable_repo_only_prints_commands(self):
+        self.fedora()
+        self.env['CODEC'] = 'noopenh264'
+        for repo in ('disabled', 'error'):
+            with self.subTest(repo=repo):
+                self.log.unlink(missing_ok=True)
+                self.env['CISCO_REPO'] = repo
+                out = self.run_script()
+                self.assertIn('sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1\n', out)
+                self.assertIn('sudo dnf install -y openh264 gstreamer1-plugin-openh264\n', out)
+                self.assertEqual(len(self.dnf_installs()), 1)
+                self.assertFalse(any('config-manager' in call for call in self.calls()))
+
+    def test_fedora_codec_or_package_install_failure_is_reported(self):
+        self.fedora()
+        self.env.update(CODEC='noopenh264', CODEC_INSTALL_STATUS='1')
+        self.assertIn('Package installation failed', self.run_script(ok=False))
+        self.log.unlink()
+        self.env['PACKAGE_INSTALL_FAIL'] = '1'
+        self.run_script(ok=False)
+        self.assertEqual(len(self.dnf_installs()), 1)
+        self.assertFalse(any(Path(call[0]).name == 'rpm' for call in self.calls()))
+
+    def test_fedora_dry_run_shows_conditional_codec_command_without_installing(self):
+        self.fedora()
+        self.env['CODEC'] = 'noopenh264'
+        out = self.run_script('--dry-run')
+        self.assertIn('same sudo step', out)
+        self.assertIn('dnf install -y openh264 gstreamer1-plugin-openh264', out)
+        self.assertIn('sudo dnf config-manager setopt fedora-cisco-openh264.enabled=1', out)
+        self.assertTrue(all(call[0] == 'curl' for call in self.calls()))
 
     def test_bad_metadata_and_downloads_never_install(self):
         for mode in ('bad', 'path', 'missing', 'duplicate', 'download-failure'):
