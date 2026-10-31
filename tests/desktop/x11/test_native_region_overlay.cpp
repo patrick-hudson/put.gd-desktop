@@ -206,8 +206,11 @@ private slots:
   const int burst=400;
   for(int i=0;i<burst;++i){motion({200+i*2,150+i});if(i%50==49)QCoreApplication::processEvents();}
   const qint64 burstMs=std::max<qint64>(1,clock.elapsed());
-  // The final outline: right edge at x=998, bottom at y=549 (1 px white inside 3 px black).
-  PUTGD_TRY_VERIFY(white({994,300}));PUTGD_TRY_VERIFY(white({300,545}));
+  // The last motion, root (998,549), is logical (819,274.5) on the scaled right
+  // display: the left surface's bottom edge ends at y=275 (white row 273), the
+  // right surface's right edge at native x=998 (white columns 994-995, pen 2)
+  // and its bottom at native y=549 (white rows 545-546).
+  PUTGD_TRY_VERIFY(white({300,273}));PUTGD_TRY_VERIFY(white({994,300}));PUTGD_TRY_VERIFY(white({800,545}));
   const auto after=overlay.stats();
   QVERIFY2(after.motions-before.motions==burst,qPrintable(QString::number(after.motions-before.motions)));
   // Presents are bounded by elapsed time at the refresh rate, plus one for the
@@ -217,10 +220,13 @@ private slots:
   QVERIFY2(presents>=1&&presents<=allowed,qPrintable(QStringLiteral("%1 presents for %2 motions in %3 ms at %4 ms frames").arg(presents).arg(burst).arg(burstMs).arg(after.frameIntervalMs)));
   QVERIFY(presents<burst/4);
   QVERIFY(after.fullRedraws==before.fullRedraws);
-  // Partial damage: the interior stays transparent and the first outline is gone.
+  // Partial damage: the interior stays transparent, the first outline's right
+  // and bottom edges (x=57..59, y=57..59) are gone, and the shared left and
+  // top edges still show.
   const auto interior=pixels({500,300});QVERIFY(interior.size()==4&&quint8(interior[3])==0);
-  const auto old=pixels({44,41});QVERIFY(old.size()==4&&quint8(old[3])==0);
-  QVERIFY(white({44,300}));
+  const auto oldRight=pixels({58,50});QVERIFY(oldRight.size()==4&&quint8(oldRight[3])==0);
+  const auto oldBottom=pixels({50,58});QVERIFY(oldBottom.size()==4&&quint8(oldBottom[3])==0);
+  QVERIFY(white({41,300}));QVERIFY(white({300,41}));
   button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void movingOutlineClearsPreviousPixels(){

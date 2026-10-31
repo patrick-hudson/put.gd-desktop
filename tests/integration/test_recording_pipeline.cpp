@@ -18,11 +18,12 @@ class RecordingPipelineThroughput : public QObject {
     QProcess display_;
     GstElement* pattern_ = nullptr;
     struct Clip { int frames = 0; qint64 durationNs = 0; qint64 maxGapNs = 0, minGapNs = 0; int irregular = 0; };
-    // Decodes the clip and measures its frame timestamps.
+    // Parses the clip's access units and measures their timestamps; no decoder
+    // is needed (and none may be installed where the tests run).
     static Clip inspect(const QString& path, int fps) {
         Clip clip;
         GError* error = nullptr;
-        GstElement* pipeline = gst_parse_launch(QStringLiteral("filesrc location=\"%1\" ! matroskademux ! h264parse ! avdec_h264 ! fakesink name=sink sync=false").arg(path).toUtf8().constData(), &error);
+        GstElement* pipeline = gst_parse_launch(QStringLiteral("filesrc location=\"%1\" ! matroskademux ! h264parse ! fakesink name=sink sync=false").arg(path).toUtf8().constData(), &error);
         if (!pipeline || error) { if (error) g_error_free(error); if (pipeline) gst_object_unref(pipeline); return clip; }
         std::vector<qint64> times;
         GstElement* sink = gst_bin_get_by_name(GST_BIN(pipeline), "sink");

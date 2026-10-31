@@ -239,6 +239,9 @@ private slots:
    auto* connection=xcb_connect(nullptr,nullptr);
    auto backing=[&]{QImage image;auto* reply=xcb_get_image_reply(connection,xcb_get_image(connection,XCB_IMAGE_FORMAT_Z_PIXMAP,w->winId(),0,0,w->width(),w->height(),~0u),nullptr);
     if(reply&&reply->depth==32&&xcb_get_image_data_length(reply)>=w->width()*w->height()*4){image=QImage(xcb_get_image_data(reply),w->width(),w->height(),w->width()*4,QImage::Format_ARGB32).copy();}free(reply);return image;};
+   // The window's initial paint after show may still be pending: let one
+   // paint of the unchanged selection consume it before measuring damage.
+   QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);paints.painted={};paints.count=0;
    QTest::mouseMove(w,QPoint(90,90));PUTGD_TRY_VERIFY(paints.count>0);
    QVERIFY(!paints.painted.contains(w->rect()));QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
    // The paint reaches the X server after Qt flushes it; wait for the frame there.
