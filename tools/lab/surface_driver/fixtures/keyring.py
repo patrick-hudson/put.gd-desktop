@@ -71,6 +71,9 @@ def isolated_service(scope):
         environment['SECRET_SERVICE_BUS_NAME']=bus_name
     if getattr(ctx,'package',None)=='appimage':
         scope.restart(environment,before=lambda:_appimage_entries(scope))
+        # AppRun has now registered its mount. KWin reads the native session's
+        # service cache, while the app keeps its private cache and settings.
+        ctx.target.session('unset XDG_CACHE_HOME\nkbuildsycoca6 --noincremental >/dev/null\n')
     else:
         scope.restart(environment)
     return dict(identity,bus_name=bus_name) if prior['owner'] else identity
