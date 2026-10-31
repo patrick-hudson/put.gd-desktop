@@ -89,7 +89,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `save_editor_copy` | id, path, optional overwrite → editor.saveCopy | Writes the sanitized PNG to a file; no upload |
 | `editor_file_dialog` | id, action open/inspect/cancel → editor.fileDialog | The editor's **Save a copy…** chooser as the button opens it, its state, or a cancel; a file picked there gets the sanitized PNG |
 | `submit_editor` | id → editor.submit | Sends only the sanitized result through the configured output |
-| `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / bring the window forward |
+| `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / ask to bring the window forward; `raised: false`, `reason: activation_refused` when the desktop keeps it back (#911) |
 | `get_recording_capabilities` | recording.capabilities | Recording support, formats/codecs, audio, limits, active ID; no capture or prompt |
 | `prepare_recording` | target, format, codec?, fps?, system_audio, max_edge? → recording.prepare | Durable intent, ready bounds/overlay and any OS consent; captures nothing yet. `disk_space_insufficient` when the disk can't hold a recording that lasts (#213) |
 | `control_recording` | id, command start/pause/resume/stop/cancel/raise → recording.<command> | Acknowledged state changes; stop always opens private review, cancel uploads nothing |
