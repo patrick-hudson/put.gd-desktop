@@ -16,7 +16,10 @@ monitor's own EDID by default, so the extra outputs match it.
       them with kscreen-doctor on Plasma). Prints each connector's status and
       modes afterwards.
   fake_outputs.py remove CONNECTOR [CONNECTOR ...] [--card card1]
-      Sets the connectors back to detect and clears the overrides.
+      Clears the overrides and forces the connectors off (a plain re-detect
+      keeps the cached override EDID); the compositor drops the outputs.
+  fake_outputs.py detect CONNECTOR [CONNECTOR ...] [--card card1]
+      Hands connectors forced off back to normal probing.
   fake_outputs.py status [--card card1]
       Connector status, enabled flag and first mode, plus the current overrides.
 
@@ -132,21 +135,29 @@ def remove(args):
     # hotplug event to drop the output (udevadm trigger --subsystem-match=drm).
     sudo_write(EDID_PARAM, '')
     sudo_write(PATH_PARAM, '')
-    # A re-detect alone keeps a forced connector's cached state; force it off
-    # (the compositor drops the output on the hotplug event), then hand it back
-    # to detection so a real monitor plugged in later is seen again.
-    for value in ('off', 'detect'):
-        for name in args.connector:
-            sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), value)
-        subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
-        time.sleep(3)
+    # A re-detect keeps the override EDID the connector cached (debugfs
+    # edid_override reset refuses it too), so the connector is forced off: the
+    # compositor drops the output on the hotplug event. `detect` hands the
+    # connectors back to normal probing later (a reboot does too).
+    for name in args.connector:
+        sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'off')
+    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
+    time.sleep(3)
+    return status(args)
+
+
+def detect(args):
+    for name in args.connector:
+        sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'detect')
+    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
+    time.sleep(3)
     return status(args)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     commands = parser.add_subparsers(dest='command', required=True)
-    for name, func in (('add', add), ('remove', remove), ('status', status)):
+    for name, func in (('add', add), ('remove', remove), ('detect', detect), ('status', status)):
         p = commands.add_parser(name)
         p.add_argument('--card', default='card1')
         if name != 'status':
