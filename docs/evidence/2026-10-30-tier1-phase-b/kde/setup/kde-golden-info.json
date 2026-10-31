@@ -1,0 +1,38 @@
+{
+    "children": [
+        {
+            "name": "file",
+            "info": {
+                "children": [
+                ],
+                "virtual-size": 12989249024,
+                "filename": "/home/patrick/work/put.gd/work/lab-images/transfer-459d0181e995/image.qcow2",
+                "format": "file",
+                "actual-size": 12944318464,
+                "format-specific": {
+                    "type": "file",
+                    "data": {
+                    }
+                },
+                "dirty-flag": false
+            }
+        }
+    ],
+    "virtual-size": 34359738368,
+    "filename": "/home/patrick/work/put.gd/work/lab-images/transfer-459d0181e995/image.qcow2",
+    "cluster-size": 65536,
+    "format": "qcow2",
+    "actual-size": 12944318464,
+    "format-specific": {
+        "type": "qcow2",
+        "data": {
+            "compat": "1.1",
+            "compression-type": "zstd",
+            "lazy-refcounts": false,
+            "refcount-bits": 16,
+            "corrupt": false,
+            "extended-l2": false
+        }
+    },
+    "dirty-flag": false
+}

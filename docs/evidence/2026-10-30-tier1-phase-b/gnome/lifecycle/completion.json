@@ -1,0 +1,10 @@
+{
+  "run": "/home/patrick/t1b/work/lab-runs/bg1",
+  "runId": "cb279004-4f63-489a-a31a-7761ab87f13e",
+  "completed": true,
+  "outcome": "failed",
+  "remoteUploadCount": 1,
+  "uiRevocationCount": 1,
+  "independentUnavailableProofCount": 0,
+  "evidenceExportVerified": true
+}
