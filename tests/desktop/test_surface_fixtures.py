@@ -733,6 +733,11 @@ class Loopback(unittest.TestCase):
 
 
 class Restart(unittest.TestCase):
+    def setUp(self):
+        staging = patch('tools.lab.surface_driver.appimage.prepare')
+        self.staging = staging.start()
+        self.addCleanup(staging.stop)
+
     def context(self):
         commands=[]
         ctx=SimpleNamespace(_deadline=time.monotonic()+30)
@@ -751,6 +756,7 @@ class Restart(unittest.TestCase):
         self.assertIs(caught.exception,original)
         self.assertTrue(ctx.target.started)
         self.assertEqual(sum(c.startswith('nohup') for c in commands),1)
+        self.staging.assert_called_once_with(ctx.target)
 
     def test_relaunch_failure_recovers_resident_and_surfaces_original_error(self):
         ctx,commands=self.context();scope=Scope(ctx);launches=[]

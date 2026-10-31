@@ -389,6 +389,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             if response['returncode'] == 0:
                 envelope = json.loads(response['stdout'])
                 if envelope.get('ok'):
+                    from .appimage import prepare
+                    prepare(self)
                     return envelope['result']
             if time.monotonic() > deadline:
                 raise RecipeBlocked('isolated resident did not answer capabilities; private app.log retained')
@@ -749,6 +751,11 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                 self.restore_clipboard()
             except RecipeBlocked:
                 errors.append('previous clipboard restoration unavailable; private session retained')
+        try:
+            from .appimage import prepare
+            prepare(self, cleanup=True)
+        except RecipeBlocked:
+            errors.append('exact mirrored KWin entry cleanup refused; private session retained')
         if getattr(self, '_created_root', False) and not errors and not self.started:
             # Never remove another session or recurse through a retained mount.
             # Wait for the private process family, including fixture helpers.
