@@ -163,16 +163,21 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     if (headerPts >= 0) clock->headerPts = headerPts;
     if (clock->lastArrival >= 0) clock->interval.add(running - clock->lastArrival);
     clock->lastArrival = running;
-    if (clock->sampleContents) {
-        // One row in the middle of the frame tells repeated contents from new ones.
+    // Sixteen rows spread over the frame tell repeated contents from new ones
+    // (about 120 KB read per frame); the same content again adds nothing a
+    // repeat at the encoder would not, and dropping it frees its slot.
+    {
         GstMapInfo map;
         if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
             quint64 hash = 1469598103934665603ULL;
-            const gsize start = std::min<gsize>(map.size / 2, map.size), count = std::min<gsize>(map.size - start, 1920 * 4);
-            for (gsize i = 0; i < count; ++i) { hash ^= map.data[start + i]; hash *= 1099511628211ULL; }
+            const gsize step = std::max<gsize>(1, map.size / 16), span = std::min<gsize>(map.size, 7680);
+            for (gsize start = 0; start < map.size; start += step)
+                for (gsize i = start, end = std::min(map.size, start + span); i < end; ++i) { hash ^= map.data[i]; hash *= 1099511628211ULL; }
             gst_buffer_unmap(buffer, &map);
-            if (hash == clock->contentHash) ++clock->sameContents; else ++clock->distinctContents;
+            const bool same = hash == clock->contentHash && clock->distinctContents > 0;
             clock->contentHash = hash;
+            if (same) { ++clock->sameContents; return GST_PAD_PROBE_DROP; }
+            ++clock->distinctContents;
         }
     }
     auto frame = pipewireFrameTime(headerPts, monotonicNow(), running, clock->previous);
@@ -181,11 +186,15 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     // Arrival is the anchor: KWin's header time is the output's previous
     // presentation, ~40 ms before the frame arrives, and recordings stamped with
     // it played the sound late (+35..+48 ms) where arrival times matched X11.
-    // The smoothed default keeps that anchor and removes the arrival jitter.
+    // The cadence lock keeps that anchor and puts the stamps on the grid.
     if (!clock->compositorTimes) {
-        const qint64 age = frame.ageNs;
         frame = pipewireFrameTime(-1, 0, running, clock->previous);
-        if (clock->smoothed) frame.running = smoothedFrameTime(running, age, clock->smoothing, clock->previous);
+        if (clock->locked) {
+            const qint64 locked = lockedFrameTime(running, clock->previous, clock->lock);
+            if (locked < 0) { ++clock->early; return GST_PAD_PROBE_DROP; }
+            if (clock->previous >= 0 && locked != clock->previous + clock->lock.periodNs) ++clock->resyncs;
+            frame.running = locked;
+        }
     }
     clock->previous = frame.running;
     // The compositor owns a handful of stream buffers (KWin offers 2-4) and
@@ -250,8 +259,8 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     frameClock_ = {};
     frameClock_.compositorTimes = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") == "compositor";
     // =arrival: raw arrival times (the default before #6), for lab A/B runs.
-    frameClock_.smoothed = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
-    frameClock_.sampleContents = !qEnvironmentVariable("PUTGD_RECORD_DEBUG_LOG").isEmpty();
+    frameClock_.locked = qEnvironmentVariable("PUTGD_RECORD_PIPEWIRE_TIMESTAMPS") != "arrival";
+    frameClock_.lock = frameLock(options.fps);
     clockName_.clear();
     if (!frameSource.isEmpty()) {
         // The monotonic system clock is the compositors' frame clock, so frame
@@ -500,8 +509,8 @@ void RecordingPipeline::tearDown() {
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
-    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same")
-                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs")
+                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs));
     stopping_ = false;
 }
 }

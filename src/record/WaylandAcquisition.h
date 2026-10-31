@@ -42,14 +42,17 @@ FrameTime pipewireFrameTime(qint64 framePts, qint64 monotonicNow, qint64 running
 // the link, and the pipeline retries without the filter.
 inline QString pipewireUnthrottledCaps() { return QStringLiteral(" ! video/x-raw,max-framerate=0/1"); }
 
-// Arrival times carry the delivery jitter (readback, deferral, scheduling)
-// while the compositor's header times sit on its vblank grid. Stamping a
-// frame at its arrival minus the deviation of its age from the running mean
-// age keeps the arrival-anchored latency (the audio offset #86 measured) and
-// removes the jitter that made videorate repeat and skip frames. The mean
-// follows an exponential average; a frame without a compositor time keeps its
-// arrival. The result never goes back past `previous`.
-struct FrameSmoothing { qint64 meanAgeNs = -1; };
-inline constexpr int kFrameSmoothingDivisor = 8;
-qint64 smoothedFrameTime(qint64 arrivalRunning, qint64 ageNs, FrameSmoothing& smoothing, qint64 previous);
+// Arrival times carry the delivery jitter (readback, deferral, scheduling):
+// about +-8 ms on KWin for a 16.7 ms frame, enough for videorate to put two
+// frames in one slot and none in the next (a repeat and a skip, 5 of 60 per
+// second). The cadence lock stamps each frame with new content on the slot
+// after the previous stamp as long as it arrived within `tolerance` of that
+// slot; a frame arriving earlier than that is an extra (a cursor move, a
+// second render before one presentation) and is dropped (-1); one arriving
+// later resynchronises to its arrival. Stamps therefore follow arrivals on
+// average (the audio offset #86 measured stays) and sit on the grid between
+// resyncs. `previous` -1 takes the arrival.
+struct FrameLock { qint64 periodNs = 0; qint64 toleranceNs = 0; };
+inline FrameLock frameLock(int fps) { const qint64 period = fps > 0 ? 1'000'000'000 / fps : 0; return {period, period * 7 / 10}; }
+qint64 lockedFrameTime(qint64 arrivalRunning, qint64 previous, const FrameLock& lock);
 }

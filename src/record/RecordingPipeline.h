@@ -80,7 +80,10 @@ private:
     // Lab statistics: repeated compositor times (KWin stamps the output's last
     // presentation, so frames rendered between two presentations share one),
     // distinct frame contents (one sampled row hashed) and arrival intervals.
-    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1; quint64 contentHash = 0; gint64 distinctContents = 0, sameContents = 0; bool compositorTimes = false, smoothed = true, sampleContents = false; Spread age, interval; FrameSmoothing smoothing; };
+    // Frames whose sampled rows repeat the previous frame's are the same
+    // content recorded again (a cursor move, a second render before one
+    // presentation) and are dropped; the rest take cadence-locked stamps.
+    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1; quint64 contentHash = 0; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0; bool compositorTimes = false, locked = true; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).

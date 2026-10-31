@@ -67,29 +67,33 @@ private slots:
         // Early in the pipeline's life a time before running time zero clamps to zero.
         QCOMPARE(pipewireFrameTime(mono - 30 * ms, mono, 10 * ms, -1).running, qint64(0));
     }
-    void smoothsArrivalJitterAroundTheMeanAge() {
-        // #6: arrivals jitter by up to a frame around the compositor's grid; the
-        // smoothed time sits on that grid shifted by the running mean latency.
+    void locksTheCadenceOfJitteredArrivals() {
+        // #6: arrivals jitter by up to +-8 ms around 16.7 ms; each new frame takes
+        // the next slot, so videorate sees one frame per slot.
         const qint64 ms = 1'000'000;
-        FrameSmoothing smoothing;
+        const auto lock = frameLock(60);
+        QCOMPARE(lock.periodNs, qint64(16'666'666));
         qint64 previous = -1;
-        QList<qint64> stamps;
-        // Frames presented every 16.667 ms, arriving 12 ms later on average with +-6 ms jitter.
-        const qint64 jitter[] = {0, 6, -6, 3, -3, 5, -5, 1, -1, 0, 4, -4};
+        const qint64 jitter[] = {0, 8, -8, 3, -6, 5, -7, 1, -1, 7, 4, -4};
         for (int i = 0; i < 12; ++i) {
-            const qint64 presented = i * 16'667 * 1000;
-            const qint64 age = 12 * ms + jitter[i] * ms;
-            const qint64 arrival = presented + age;
-            previous = smoothedFrameTime(arrival, age, smoothing, previous);
-            stamps.append(previous);
+            const qint64 arrival = 100 * ms + i * lock.periodNs + jitter[i] * ms;
+            const qint64 stamp = lockedFrameTime(arrival, previous, lock);
+            QVERIFY(stamp >= 0);
+            if (previous >= 0) QCOMPARE(stamp - previous, lock.periodNs);
+            previous = stamp;
         }
-        // After the first frames the gaps hold the grid within the mean's slow drift.
-        for (int i = 4; i < 12; ++i) QVERIFY2(std::abs((stamps[i] - stamps[i - 1]) - 16'667 * 1000) < 2 * ms, qPrintable(QString::number((stamps[i] - stamps[i - 1]) / 1000)));
-        // The latency anchor stays the arrival's: the mean age is kept, not removed.
-        QVERIFY(stamps.last() > 11 * 16'667 * 1000 + 8 * ms && stamps.last() < 11 * 16'667 * 1000 + 16 * ms);
-        // Without a compositor time the arrival is used, and times never go back.
-        QCOMPARE(smoothedFrameTime(previous + 100 * ms, -1, smoothing, previous), previous + 100 * ms);
-        QCOMPARE(smoothedFrameTime(50 * ms, -1, smoothing, 100 * ms), 100 * ms + 1);
+        // An extra frame well inside the current slot (a cursor move, a second
+        // render) is dropped; a frame after a gap resynchronises to its arrival.
+        QCOMPARE(lockedFrameTime(previous + 3 * ms, previous, lock), qint64(-1));
+        QCOMPARE(lockedFrameTime(previous + 500 * ms, previous, lock), previous + 500 * ms);
+        // 120 Hz input: every other frame is early and dropped.
+        qint64 fast = lockedFrameTime(0, -1, lock);
+        int kept = 0, dropped = 0;
+        for (int i = 1; i <= 20; ++i) { const qint64 stamp = lockedFrameTime(i * lock.periodNs / 2, fast, lock); if (stamp < 0) ++dropped; else { ++kept; fast = stamp; } }
+        QCOMPARE(kept, 10); QCOMPARE(dropped, 10);
+        // Without a period the arrival is used, and times never go back.
+        QCOMPARE(lockedFrameTime(100 * ms, -1, FrameLock{}), 100 * ms);
+        QCOMPARE(lockedFrameTime(50 * ms, 100 * ms, FrameLock{}), 100 * ms + 1);
         QCOMPARE(pipewireUnthrottledCaps(), QString(" ! video/x-raw,max-framerate=0/1"));
     }
     void keepsFrameTimesIncreasing() {
