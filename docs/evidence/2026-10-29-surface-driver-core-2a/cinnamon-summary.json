@@ -1,0 +1,183 @@
+{
+  "kind": "surface-driver-input-foundations",
+  "application": {
+    "baseVersion": "26.1030.2317",
+    "commitCount": 2317,
+    "dirty": false,
+    "gitCommit": "315b99de57089a64b194191e0adbe9b9e2bf1f72",
+    "gitTree": "69e500e87343600ce89234d9d3ac9e8c2be7dbbe",
+    "packageVersion": "26.1030.2317~dev+g315b99de5708",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "26.1030.2317-dev+g315b99de5708"
+  },
+  "target": {
+    "hostname": "putgd-lab",
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "os": {
+      "ID": "linuxmint",
+      "VERSION_ID": "22.3",
+      "VARIANT_ID": null
+    },
+    "session_type": "x11",
+    "desktop": "X-Cinnamon",
+    "qt_platform": "xcb"
+  },
+  "placement": {
+    "host": "boat",
+    "sandbox": "bx_29s65222",
+    "snapshot": "putgd-lab-cinnamon",
+    "run_id": "ecc29df1-09f4-49a1-96bf-f4dd17eb67e4",
+    "wall_port": 6094,
+    "acceleration": "kvm"
+  },
+  "tested_driver_archive_sha256": "c8415500558046e44084a0420666bbd57ba3c094a72a699805f92b2911b5bfa2",
+  "checks": {
+    "fresh-profile-foreground": {
+      "passed": true
+    },
+    "accessible-shape": {
+      "passed": true
+    },
+    "canvas-geometry": {
+      "passed": true
+    },
+    "obscuring-window": {
+      "passed": true
+    },
+    "runtime-context-menu": {
+      "passed": false,
+      "error": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "type": "RecipeBlocked"
+    },
+    "runtime-row-menu": {
+      "passed": false,
+      "error": "control: RuntimeError: owned live control is missing, hidden, disabled or ambiguous (0 matches)",
+      "type": "RecipeBlocked"
+    },
+    "notification-default": {
+      "passed": false,
+      "error": "desktop input is obscured by 'put.gd'",
+      "type": "RecipeFailed"
+    },
+    "notification-button": {
+      "passed": false,
+      "error": "notification button is not uniquely inside the drawn notification",
+      "type": "RecipeBlocked"
+    }
+  },
+  "accessible_sample": {
+    "window": "Edit image \u2014 put.gd",
+    "application": "putgd-ui",
+    "name": "Image being edited",
+    "role": "filler",
+    "text": "",
+    "description": "No marks. Insert places a text label in the middle. Alt+arrow keys pan the image; Alt+Shift+arrow keys pan farther.",
+    "states": {
+      "visible": true,
+      "showing": true,
+      "enabled": true,
+      "sensitive": true,
+      "active": false,
+      "focused": true,
+      "focusable": true,
+      "selected": false,
+      "expanded": false,
+      "checked": false,
+      "editable": false,
+      "modal": false,
+      "iconified": false
+    },
+    "rect": [
+      50,
+      158,
+      659,
+      456
+    ],
+    "attributes": {},
+    "pid": 7035,
+    "owned": true,
+    "objectName": "",
+    "accelerator": "",
+    "visible": true,
+    "showing": true,
+    "enabled": true,
+    "protected": false,
+    "popup": null,
+    "ancestors": [
+      {
+        "name": "main",
+        "role": "desktop frame",
+        "rect": [
+          0,
+          0,
+          1024,
+          768
+        ],
+        "pid": 1155
+      },
+      {
+        "name": "putgd-ui",
+        "role": "application",
+        "rect": null,
+        "pid": 7035
+      },
+      {
+        "name": "Edit image \u2014 put.gd",
+        "role": "filler",
+        "rect": [
+          50,
+          50,
+          900,
+          620
+        ],
+        "pid": 7035
+      },
+      {
+        "name": "",
+        "role": "split pane",
+        "rect": [
+          50,
+          158,
+          900,
+          456
+        ],
+        "pid": 7035
+      },
+      {
+        "name": "",
+        "role": "filler",
+        "rect": [
+          50,
+          158,
+          659,
+          456
+        ],
+        "pid": 7035
+      }
+    ],
+    "bounds": {
+      "x": 50,
+      "y": 158,
+      "width": 659,
+      "height": 456
+    }
+  },
+  "canvas_geometry": {
+    "x": 50,
+    "y": 158,
+    "width": 659,
+    "height": 456,
+    "scale": 1,
+    "pid": 7035,
+    "coordinate_space": "framebuffer",
+    "head": 0
+  },
+  "obscuring_window_failure": "input target 'editor' is obscured by 'Core 2a obstruction' (window 75497524)",
+  "private_export_sha256": "d18e98ad06f610c950686626521899a5b1bec6d26dfdbb1fdcf1c5082c1fb719",
+  "cleanup": "completed",
+  "acceptance": "partial; menu and notification gates blocked after two real attempts",
+  "cleanup_export_sha256": "04822b2efbe18bcf46e382d2a864b17e213ccd4e3f455cf315189df1c9f1e8b8",
+  "sandbox_deleted": true
+}

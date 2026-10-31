@@ -1,0 +1,9 @@
+.............................................
+----------------------------------------------------------------------
+Ran 45 tests in 0.480s
+
+OK
+/tmp/tmpijrqsgv8/native/map.html: 394 interactions, 0 passed, 1 partial, 0 failed, 0 blocked, 393 untested
+/tmp/tmpeqzsasar/unresolved/map.html: 394 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 393 untested
+/tmp/tmpeqzsasar/unresolved/map.html: 394 interactions, 0 passed, 0 partial, 1 failed, 0 blocked, 393 untested
+{"interaction": "editor.undo", "desktop": "aurora-kde-wayland", "package": "source", "source": "mark", "at": "2026-10-30T00:49:10Z", "host": "aurora-amd", "placement": "native", "destination": "local", "review": true, "review_reason": "Desktop drawn"}
