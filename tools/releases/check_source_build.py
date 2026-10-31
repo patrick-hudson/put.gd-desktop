@@ -35,7 +35,7 @@ def check_build(receipt_path, sdk_prefix, sdk_source, output, *, bundle_proton=F
                   'protonOffline': proton_offline,
                   'scope': 'Actual source-export production compilation; no desktop or memory acceptance'}
     (output / 'parameters.json').write_text(json.dumps(parameters, indent=2) + '\n')
-    result = {'schemaVersion': 1, 'passed': False, 'commands': []}
+    result = {'schemaVersion': 1, 'passed': False, 'archive': artifact, 'commands': []}
     started = time.monotonic()
     try:
         with tarfile.open(archive, 'r:gz') as stream:

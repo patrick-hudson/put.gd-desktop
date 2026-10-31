@@ -75,7 +75,7 @@ def verified_source(directory, release, *, require_build=True):
     required = set(PROGRAMS) - {'putgd-launcher'}
     # Optional helpers check_source_build.py reports when the builder has their dependencies.
     allowed = required | {'putgd-kde-region', 'putgd-record'}
-    if (build.get('passed') is not True or build.get('compiledBuild') != expected
+    if (build.get('passed') is not True or build.get('archive') != artifact or build.get('compiledBuild') != expected
             or not isinstance(programs, list) or not all(isinstance(name, str) for name in programs)
             or len(programs) != len(set(programs)) or not required.issubset(programs)
             or not set(programs).issubset(allowed)):
@@ -144,7 +144,7 @@ def collect(root, inputs, output, tag, repository=appimage_update.REPOSITORY, *,
     selected.append((media_source, appimage_complete_sources.archive_name(release['version'])))
     receipts['appimageCompleteSource'] = media_receipt
     source, source_receipt, source_build = verified_source(inputs / 'release-native-ubuntu24.04', release,
-                                                         require_build=not installers_only)
+                                                         require_build=not installers_only or release['channel'] == 'stable')
     selected.append((source, 'putgd-' + release['version'] + '-source.tar.gz'))
     receipts['source'] = source_receipt
     receipts['sourceBuild'] = source_build
