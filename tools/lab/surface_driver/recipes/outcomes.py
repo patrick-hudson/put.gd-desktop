@@ -328,7 +328,7 @@ def copy_image(ctx):
         Image, _, _ = image_modules()
         try:
             actual, expected = Image.open(io.BytesIO(copied)), Image.open(io.BytesIO(data))
-            ctx.expect(pixels_equal(actual, expected), 'desktop image/png pixels equal retained original (tolerance=0)')
+            ctx.expect(actual.format == 'PNG' and pixels_equal(actual, expected), 'desktop image/png pixels equal retained original (tolerance=0)')
         except (OSError, ValueError) as error:
             raise RecipeFailed('desktop image/png is not a decodable PNG') from error
         ctx.note('copy_image_exact_pixels_count=1; independent desktop image/png reader')
@@ -379,16 +379,27 @@ def survives_exit(ctx):
         ctx.wait(lambda: time.monotonic()-started >= 2, 'two seconds after Quit', timeout=4)
         after = _clipboard_bytes(scope, 'text/plain')
         expected_loss = (ctx.profile['session'] == 'x11' and handlers['x11ManagerWindow'] == 0
+                         and not handlers['klipperBusOwner']
+                         and not any(p['name'] in ('klipper', 'copyq', 'clipit', 'parcellite', 'xfce4-clipman', 'diodon', 'gpaste-daemon')
+                                     for p in handlers['processes'])
                          and after in (None, b''))
         ctx.expect(after == wanted or expected_loss, 'clipboard retains exact auto-copied URL two seconds after Quit')
         _frame(ctx, 'clipboard-after-quit')
         resident.launch()
+        started = time.monotonic()
+        ctx.wait(lambda: time.monotonic()-started >= 2, 'two seconds after restart', timeout=4)
         ctx.expect(_clipboard_bytes(scope, 'text/plain') == after, 'restart does not clobber desktop clipboard')
         _frame(ctx, 'clipboard-after-restart')
         if expected_loss:
             ctx.blocked('Expected X11 clipboard loss without CLIPBOARD_MANAGER; docs/desktops/cinnamon.md: '
                         'resident must continue running to serve clipboard results. Restart preserved empty clipboard.')
-        ctx.note('survives_exit_exact_link_count=1; clipboard retained by desktop handlers recorded above')
+        if handlers['klipperBusOwner']:
+            handler = 'KDE Klipper (org.kde.klipper); text re-ownership is allowed'
+        elif any(p['name'] == 'gnome-shell' for p in handlers['processes']):
+            handler = 'GNOME Shell / Mutter clipboard handling'
+        else:
+            handler = 'X11 clipboard manager window '+str(handlers['x11ManagerWindow'])
+        ctx.note('survives_exit_exact_link_count=1; persistence_handler='+handler)
 
 
 @recipe('shell.command-capture-window', 'shell.command-capture-desktop', desktop_drawn=True, timeout=360)

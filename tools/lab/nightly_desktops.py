@@ -555,7 +555,7 @@ def publish(github, result, out, *, previous=None):
     if previous is not None:
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
-    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ not run (infrastructure; no issue) · — disabled.\n'
+    markdown += '\n🟢 automatic oracles passed · 🔴 app-flow oracle failed on the verified installed build · ⚪ infrastructure or documented manager-free X11 loss (no issue) · — disabled.\n'
     markdown += '\n| Host | Total seconds | Capacity/lease wait seconds |\n| --- | ---: | ---: |\n'
     for row in result['desktops']:
         markdown += f'| {row["host"]} | {row.get("totalSeconds", row.get("seconds", 0)):.1f} | {row.get("waitSeconds", 0):.1f} |\n'

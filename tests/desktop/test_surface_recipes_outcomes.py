@@ -99,7 +99,7 @@ class ClipboardContext:
             raise RecipeFailed(message)
 
     def wait(self, predicate, what, **kwargs):
-        if what == 'two seconds after Quit':
+        if what in ('two seconds after Quit', 'two seconds after restart'):
             return True
         value = predicate()
         self.expect(value, 'timeout: '+what)
@@ -125,7 +125,7 @@ class ClipboardOracles(unittest.TestCase):
             outcomes._auto_copy(ctx, object(), self.detail)
         self.assertIn('no copy click', ctx.notes[-1])
 
-    def exit_case(self, session, manager, after, restarted):
+    def exit_case(self, session, manager, after, restarted, processes=()):
         ctx = ClipboardContext(session)
         resident = SimpleNamespace(quit=Mock(), stopped=lambda: True, launch=Mock())
         @contextmanager
@@ -133,7 +133,7 @@ class ClipboardOracles(unittest.TestCase):
             yield object(), object()
         with patch.object(outcomes, '_lane', lane), patch.object(outcomes, '_capture', return_value=self.detail), \
              patch.object(outcomes, '_frame'), patch.object(outcomes, '_clipboard_handlers', return_value={
-                 'x11ManagerWindow': manager, 'processes': [], 'klipperBusOwner': None}), \
+                 'x11ManagerWindow': manager, 'processes': list(processes), 'klipperBusOwner': None}), \
              patch.object(outcomes, '_clipboard_bytes', side_effect=[after, restarted]), \
              patch('tools.lab.surface_driver.fixtures.resident.lifecycle', return_value=resident):
             outcomes.survives_exit(ctx)
@@ -155,6 +155,10 @@ class ClipboardOracles(unittest.TestCase):
         for session, manager in (('wayland', None), ('x11', 123)):
             with self.assertRaisesRegex(RecipeFailed, 'two seconds after Quit'):
                 self.exit_case(session, manager, None, None)
+
+    def test_x11_watcher_without_icccm_registration_still_blocks_expected_loss(self):
+        with self.assertRaises(RecipeFailed):
+            self.exit_case('x11', 0, None, None, [{'name': 'copyq', 'pid': 123}])
 
     def test_foreign_replacement_is_never_expected_x11_loss(self):
         with self.assertRaises(RecipeFailed):
