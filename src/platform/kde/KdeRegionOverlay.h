@@ -22,7 +22,7 @@ signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:
  friend class KdeRegionOverlayTest;
- void addSurface(const CaptureFrame&,QScreen*);
+ bool addSurface(const CaptureFrame&,QScreen*);
  void accept();
  bool eventFilter(QObject*,QEvent*) override;
  class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();

@@ -221,6 +221,12 @@ print('PASS recording selector purpose and live Enter hints');
     equal(RegionSelection.sizeLabel(null, scaledOutputs), '');
     equal(RegionSelection.textureArea([1920, 0, 1280, 720], 1.5, 4800, 1620), [2880, 0, 1920, 1080]);
     equal(RegionSelection.textureArea([1920, -100, 1280, 720], 1, 3200, 1080), [1920, 0, 1280, 620]);
+    // #1049: a window is captured on its head's output grid, not a 2x backing grid.
+    const secondary = {logical: [1280, 0, 1280, 800], density: 1.5};
+    equal(RegionSelection.outputGrid([1280, 0, 1280, 800], secondary), {pixels: [1920, 1200], logical: [1280, 0, 1280, 800]});
+    equal(RegionSelection.outputGrid([1281, 1, 100, 50], secondary), {pixels: [151, 76], logical: [1280 + 1 / 1.5, 1 / 1.5, 151 / 1.5, 76 / 1.5]});
+    equal(RegionSelection.outputGrid([100, 40, 640, 480], {logical: [0, 0, 1280, 800], density: 1}), {pixels: [640, 480], logical: [100, 40, 640, 480]});
+    equal(RegionSelection.outputGrid([-1270, 10, 640, 480], {logical: [-1280, 0, 1280, 800], density: 2}), {pixels: [1280, 960], logical: [-1270, 10, 640, 480]});
 }
 print('PASS hint pill and size label placement, label monitor, sizes and frozen texture areas');
 

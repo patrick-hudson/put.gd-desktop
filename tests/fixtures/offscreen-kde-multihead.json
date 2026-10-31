@@ -1,0 +1,8 @@
+{
+  "windowFrameMargins": false,
+  "screens": [
+    {"name": "Virtual-1", "x": 0, "y": 0, "width": 1280, "height": 800, "logicalDpi": 96, "dpr": 1},
+    {"name": "Virtual-2", "x": 1280, "y": 0, "width": 1280, "height": 800, "logicalDpi": 96, "dpr": 1},
+    {"name": "Virtual-3", "x": 2688, "y": 0, "width": 800, "height": 1280, "logicalDpi": 96, "dpr": 1}
+  ]
+}
