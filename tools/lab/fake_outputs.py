@@ -148,8 +148,17 @@ def remove(args):
     if unknown:
         print('unknown connectors: %s (have %s)' % (', '.join(unknown), ', '.join(known)), file=sys.stderr)
         return 2
-    sudo_write(EDID_PARAM, '')
-    sudo_write(PATH_PARAM, '')
+    # The overrides are shared: keep the mapping of connectors that stay
+    # forced, and refuse to touch a mapping this tool did not write.
+    current = [m for m in read(EDID_PARAM).split(',') if m]
+    foreign = [m for m in current if not m.endswith(':edid/lab.bin')]
+    if foreign:
+        print('%s holds %s, not this tool\'s mapping; leaving it' % (EDID_PARAM, ', '.join(foreign)), file=sys.stderr)
+        return 2
+    remaining = [m for m in current if m.split(':')[0] not in args.connector]
+    sudo_write(EDID_PARAM, ','.join(remaining))
+    if not remaining:
+        sudo_write(PATH_PARAM, '')
     # A re-detect keeps the override EDID the connector cached (debugfs
     # edid_override reset refuses it too), so the connector is forced off: the
     # compositor drops the output on the hotplug event. `detect` hands the
