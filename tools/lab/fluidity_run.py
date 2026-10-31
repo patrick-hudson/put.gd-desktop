@@ -230,16 +230,19 @@ class Driver:
         return info
 
     def close_fixture(self):
-        if self.fixture is None:
+        fixture, self.fixture = self.fixture, None
+        if fixture is None:
             return
         try:
-            self.fixture.stdin.write('quit\n')
-            self.fixture.stdin.flush()
-            self.fixture.wait(10)
-        except (OSError, subprocess.TimeoutExpired):
-            self.fixture.kill()
-            self.fixture.wait(5)
-        self.fixture = None
+            fixture.stdin.write('quit\n')
+            fixture.stdin.flush()
+        except OSError:
+            pass
+        try:
+            fixture.wait(10)
+        except subprocess.TimeoutExpired:
+            fixture.kill()
+            fixture.wait(5)
 
     @staticmethod
     def cpu_ms(pattern):

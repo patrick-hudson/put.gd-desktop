@@ -70,14 +70,13 @@ def fixture(args):
     monitors = [display.get_monitor(i) for i in range(display.get_n_monitors())]
     chosen = None
     for monitor in monitors:
-        if args.output is None or monitor.get_model() == args.output or (monitor.get_connector and monitor.get_connector() == args.output):
+        # GTK 3 names monitors by model; GTK 4 adds the connector. "WxH+X+Y" matches by geometry.
+        geometry = monitor.get_geometry()
+        connector = getattr(monitor, 'get_connector', lambda: None)()
+        names = {monitor.get_model(), connector, f'{geometry.width}x{geometry.height}+{geometry.x}+{geometry.y}'}
+        if args.output is None or args.output in names:
             chosen = monitor
             break
-    if chosen is None:
-        for monitor in monitors:
-            geometry = monitor.get_geometry()
-            if args.output and f'{geometry.width}x{geometry.height}+{geometry.x}+{geometry.y}' == args.output:
-                chosen = monitor
     if chosen is None:
         names = [m.get_model() or '?' for m in monitors]
         print(json.dumps({'ok': False, 'error': 'output not found', 'outputs': names}), flush=True)
