@@ -53,6 +53,7 @@ private:
     // The start-up hint pill fades after about 2 s (#629).
     void repaintSurfaces();
     RegionHintFade hint_{[this] { repaintSurfaces(); }};
+    RegionPaintStats stats_;
     QRectF selection_;
     QPointF anchor_;
     bool dragging_ = false, finished_ = false;

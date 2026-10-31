@@ -57,7 +57,11 @@ bool nativeGeometry(const QRect& r){
  return r.width()>0&&r.height()>0&&r.width()<=32768&&r.height()<=32768&&r.x()>=-32768&&r.y()>=-32768&&qint64(r.x())+r.width()-1<=32767&&qint64(r.y())+r.height()-1<=32767;
 }
 }
-NativeRegionOverlay::NativeRegionOverlay(QList<CaptureFrame> frames,QObject* parent,xcb_cursor_t residentCursor,QString outcome,bool frozen):RegionSelector(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),residentCursor_(residentCursor),frozen_(frozen){static const bool installed=[] {QAccessible::installFactory(accessibleRegion);return true;}();Q_UNUSED(installed);}
+NativeRegionOverlay::NativeRegionOverlay(QList<CaptureFrame> frames,QObject* parent,xcb_cursor_t residentCursor,QString outcome,bool frozen):RegionSelector(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),residentCursor_(residentCursor),frozen_(frozen){
+ static const bool installed=[] {QAccessible::installFactory(accessibleRegion);return true;}();Q_UNUSED(installed);
+ presentTimer_.setSingleShot(true);presentTimer_.setTimerType(Qt::PreciseTimer);
+ connect(&presentTimer_,&QTimer::timeout,this,[this]{if(pending_)present();});
+}
 NativeRegionOverlay::~NativeRegionOverlay(){finish();}
 bool NativeRegionOverlay::supportsLayout(const QList<CaptureFrame>& frames){
  if(frames.isEmpty())return false;
@@ -233,7 +237,7 @@ void NativeRegionOverlay::events(){
    case XK_Up:case XK_KP_Up:qtKey=Qt::Key_Up;break;case XK_Down:case XK_KP_Down:qtKey=Qt::Key_Down;break;default:break;}
    Qt::KeyboardModifiers modifiers;if(event.state&XCB_MOD_MASK_CONTROL)modifiers|=Qt::ControlModifier;if(event.state&XCB_MOD_MASK_SHIFT)modifiers|=Qt::ShiftModifier;
    key(qtKey,modifiers,{event.root_x,event.root_y});if(!guard||finished_)return;}
-  else if(type==XCB_EXPOSE){const auto event=*reinterpret_cast<xcb_expose_event_t*>(raw);std::free(raw);for(auto& surface:surfaces_)if(surface.window==event.window){draw(surface);break;}}
+  else if(type==XCB_EXPOSE){const auto event=*reinterpret_cast<xcb_expose_event_t*>(raw);std::free(raw);for(auto& surface:surfaces_)if(surface.window==event.window){prepareBadges(surface);draw(surface,true);break;}}
   else {std::free(raw);if(type==0){cancel(unavailable());return;}}
   if(!guard)return;
  }
@@ -257,8 +261,7 @@ void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint nat
  case RegionKeyAction::Cancel:cancel();break;
  case RegionKeyAction::Accept:{const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);break;}
  case RegionKeyAction::Change:
-  keyboardScreen_=screen;dragging_=false;describe();
-  for(auto& surface:surfaces_){prepareBadges(surface);draw(surface);}
+  keyboardScreen_=screen;dragging_=false;schedulePresent();
   break;
  case RegionKeyAction::Ignore:break;
  }
@@ -271,7 +274,7 @@ void NativeRegionOverlay::showFrozen(){
   xcb_change_window_attributes(connection_,surface.window,XCB_CW_BACK_PIXMAP,&surface.background);
   // The window keeps its own reference to a background pixmap.
   xcb_free_pixmap(connection_,surface.background);surface.background=XCB_NONE;
-  prepareBadges(surface);draw(surface);
+  prepareBadges(surface);draw(surface,true);
  }
  xcb_flush(connection_);
 }
@@ -301,20 +304,26 @@ void NativeRegionOverlay::prepareBadge(Surface& surface,Badge& badge,const QRect
  QPainter painter(&badge.image);painter.translate(-native.topLeft());painter.scale(sx,sy);painter.setFont(nativeRegionFont());
  paintRegionPill(painter,box,text,opacity);
 }
-void NativeRegionOverlay::draw(Surface& surface){
- // The compositor can consume damage bounds before sampling this drawable's
- // newer pixels. Tight old/new stroke damage then clips an advancing edge.
- // Damage the complete transient surface so every sampled outline fits the
- // repaint area, even when several pointer events arrive before presentation.
- // Core X clears allocate no client-side monitor-sized backing image.
- xcb_clear_area(connection_,false,surface.window,0,0,0,0);
+void NativeRegionOverlay::draw(Surface& surface,bool full){
  // A frozen selection stays transparent until it owns input (#629).
- if(!presenting())return;
+ if(!presenting()){xcb_clear_area(connection_,false,surface.window,0,0,0,0);surface.painted={};return;}
  const auto clipped=selection_.intersected(surface.frame.logicalRect);
  const auto local=clipped.translated(-surface.frame.logicalRect.topLeft());const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
  const QRect bounds(QPoint{},surface.frame.nativeRect.size());
  surface.outline=clipped.isEmpty()?QRect{}:QRectF(local.x()*sx,local.y()*sy,local.width()*sx,local.height()*sy).toAlignedRect().intersected(bounds);
- // No scrim on any display (#629): only pills and the outline are drawn.
+ // What this frame paints: the outline's strips and the pill images. No scrim
+ // on any display (#629). Everything else the window shows is background: the
+ // frozen frame's server-side pixmap or transparency, restored by ClearArea.
+ QRegion next;
+ const int width=3*surface.pen;
+ if(!surface.outline.isEmpty()){const QRect inner=surface.outline.adjusted(width,width,-width,-width);next=inner.isEmpty()?QRegion(surface.outline):QRegion(surface.outline).subtracted(QRegion(inner));}
+ for(const Badge* badge:{&surface.hint,&surface.size})if(!badge->image.isNull())next+=QRect(badge->at,badge->image.size());
+ // A full redraw (expose, first frozen frame) restores the whole background
+ // first. Otherwise the new state is drawn first and only the pixels it no
+ // longer covers are cleared afterwards: a compositor sampling between the
+ // two sees at worst both outlines for a frame, never a missing edge, and the
+ // server copies a few strips per pointer event instead of a monitor.
+ if(full){xcb_clear_area(connection_,false,surface.window,0,0,0,0);++stats_.fullRedraws;}
  const auto put=[&](const Badge& badge){
   if(badge.image.isNull())return;
   // Bound each request even on servers without a large BIG-REQUESTS limit.
@@ -324,29 +333,64 @@ void NativeRegionOverlay::draw(Surface& surface){
   }
  };
  put(surface.hint);put(surface.size);
- if(surface.outline.isEmpty())return;
- // Integer filled strips stay within the selection even for one-pixel drags.
- auto ring=[&](QRect r,int width,uint32_t color){
-  if(r.isEmpty())return;
-  const int x=std::min(width,r.width()),y=std::min(width,r.height());
-  const xcb_rectangle_t strips[]={
-   {int16_t(r.x()),int16_t(r.y()),uint16_t(r.width()),uint16_t(y)},
-   {int16_t(r.x()),int16_t(r.y()+r.height()-y),uint16_t(r.width()),uint16_t(y)},
-   {int16_t(r.x()),int16_t(r.y()),uint16_t(x),uint16_t(r.height())},
-   {int16_t(r.x()+r.width()-x),int16_t(r.y()),uint16_t(x),uint16_t(r.height())}};
-  xcb_change_gc(connection_,gc_,XCB_GC_FOREGROUND,&color);
-  xcb_poly_fill_rectangle(connection_,surface.window,gc_,4,strips);
- };
- ring(surface.outline,3*surface.pen,0xff000000);
- const int inset=surface.pen;
- ring(surface.outline.adjusted(inset,inset,-inset,-inset),surface.pen,0xffffffff);
+ if(!surface.outline.isEmpty()){
+  // Integer filled strips stay within the selection even for one-pixel drags.
+  auto ring=[&](QRect r,int width,uint32_t color){
+   if(r.isEmpty())return;
+   const int x=std::min(width,r.width()),y=std::min(width,r.height());
+   const xcb_rectangle_t strips[]={
+    {int16_t(r.x()),int16_t(r.y()),uint16_t(r.width()),uint16_t(y)},
+    {int16_t(r.x()),int16_t(r.y()+r.height()-y),uint16_t(r.width()),uint16_t(y)},
+    {int16_t(r.x()),int16_t(r.y()),uint16_t(x),uint16_t(r.height())},
+    {int16_t(r.x()+r.width()-x),int16_t(r.y()),uint16_t(x),uint16_t(r.height())}};
+   xcb_change_gc(connection_,gc_,XCB_GC_FOREGROUND,&color);
+   xcb_poly_fill_rectangle(connection_,surface.window,gc_,4,strips);
+  };
+  ring(surface.outline,width,0xff000000);
+  const int inset=surface.pen;
+  ring(surface.outline.adjusted(inset,inset,-inset,-inset),surface.pen,0xffffffff);
+ }
+ if(!full)for(const QRect& stale:surface.painted.subtracted(next))xcb_clear_area(connection_,false,surface.window,int16_t(stale.x()),int16_t(stale.y()),uint16_t(stale.width()),uint16_t(stale.height()));
+ surface.painted=next;
+}
+int NativeRegionOverlay::frameIntervalMs()const{
+ qreal rate=0;
+ if(auto* screen=QGuiApplication::screenAt(pointer_.toPoint()))rate=screen->refreshRate();
+ if(rate<=0&&QGuiApplication::primaryScreen())rate=QGuiApplication::primaryScreen()->refreshRate();
+ if(rate<=0)rate=60;
+ return std::clamp(qRound(1000.0/rate),4,33);
+}
+void NativeRegionOverlay::schedulePresent(){
+ if(finished_||!connection_||!pointerGrabbed_)return;
+ if(!pending_){pending_=true;pendingSince_.start();}
+ if(presentTimer_.isActive())return;
+ const int interval=frameIntervalMs();
+ const qint64 since=presentClock_.isValid()?presentClock_.elapsed():interval;
+ if(since>=interval){present();return;}
+ presentTimer_.start(int(interval-since));
+}
+void NativeRegionOverlay::present(){
+ if(finished_||!connection_){pending_=false;return;}
+ QElapsedTimer work;work.start();
+ describe();
+ for(auto& surface:surfaces_){prepareBadges(surface);draw(surface,false);}
+ xcb_flush(connection_);
+ presentClock_.start();
+ const double took=work.nsecsElapsed()/1e6;
+ ++stats_.presents;stats_.presentSumMs+=took;stats_.presentMaxMs=std::max(stats_.presentMaxMs,took);
+ stats_.frameIntervalMs=frameIntervalMs();
+ if(pending_){const double waited=pendingSince_.nsecsElapsed()/1e6;++stats_.waits;stats_.waitSumMs+=waited;stats_.waitMaxMs=std::max(stats_.waitMaxMs,waited);}
+ pending_=false;
 }
 void NativeRegionOverlay::move(QPointF point){
- pointer_=point;if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();describe();for(auto& surface:surfaces_){prepareBadges(surface);draw(surface);}xcb_flush(connection_);}
+ pointer_=point;if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();++stats_.motions;schedulePresent();}
 void NativeRegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);}
 void NativeRegionOverlay::finish(){
  if(finished_)return;
- finished_=true;hint_.stop();
+ finished_=true;hint_.stop();presentTimer_.stop();pending_=false;
+ if(stats_.presents)regionDebugLog(QStringLiteral("native region: %1 motions, %2 presents, %3 full redraws, frame interval %4 ms, wait %5/%6 ms, present %7/%8 ms (avg/max)")
+  .arg(stats_.motions).arg(stats_.presents).arg(stats_.fullRedraws).arg(stats_.frameIntervalMs)
+  .arg(stats_.waits?stats_.waitSumMs/stats_.waits:0,0,'f',1).arg(stats_.waitMaxMs,0,'f',1).arg(stats_.presentSumMs/stats_.presents,0,'f',2).arg(stats_.presentMaxMs,0,'f',2));
  if(notifier_){notifier_->setEnabled(false);delete notifier_;notifier_=nullptr;}
  // Destroy the Qt-owned child on Qt's connection before its native parent.
  // A native fence flushes destruction without running application callbacks.

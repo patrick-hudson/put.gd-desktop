@@ -4,6 +4,7 @@
 #include <QElapsedTimer>
 #include <QRegion>
 #include <QPointer>
+#include <QTimer>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
 class QSocketNotifier;
@@ -27,6 +28,17 @@ public:
  static constexpr int frozenGrabWaitMs=60000;
  void start() override;
  void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
+ // Presentation statistics for lab logs (PUTGD_REGION_DEBUG_LOG) and tests.
+ // Pointer motions while dragging are coalesced into presents: one flush of
+ // every changed surface, at most one per display refresh. wait: from the
+ // first unpresented motion's arrival to the flush that showed it; present:
+ // how long preparing and queueing one frame took on this side.
+ struct Stats {
+  qint64 motions=0,presents=0,fullRedraws=0,waits=0;
+  double waitSumMs=0,waitMaxMs=0,presentSumMs=0,presentMaxMs=0;
+  int frameIntervalMs=0;
+ };
+ const Stats& stats()const{return stats_;}
 private:
  friend class NativeRegionAccessible;
  void describe();
@@ -35,12 +47,20 @@ private:
  // Only the compact hint and size pills are client raster images; a frozen
  // frame is uploaded once into a server pixmap and repainted by the server.
  struct Badge {QImage image;QString key;QPoint at;};
- struct Surface {CaptureFrame frame;int index=0;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage frozen;xcb_pixmap_t background=XCB_NONE;Badge hint,size;};
+ // painted: the native pixels this surface currently shows (outline strips
+ // and pill images); the next present clears only what it no longer covers.
+ struct Surface {CaptureFrame frame;int index=0;xcb_window_t window=XCB_WINDOW_NONE;QRect outline;int pen=1;QImage frozen;xcb_pixmap_t background=XCB_NONE;Badge hint,size;QRegion painted;};
  void events();
  QPointF logicalPoint(QPoint)const;
  void move(QPointF);
  void release(QPointF);
- void draw(Surface&);
+ void draw(Surface&,bool full);
+ // One frame: describe, prepare and draw every surface, flush once.
+ void present();
+ // Present now when a frame interval has passed since the last one, else at
+ // the end of the current interval; more presents could not be shown.
+ void schedulePresent();
+ int frameIntervalMs()const;
  void key(int,Qt::KeyboardModifiers,QPoint);
  int screenAt(QPoint)const;
  void prepareBadges(Surface&);
@@ -70,6 +90,10 @@ private:
  QElapsedTimer grabClock_;
  int grabAttempts_=0,keyboardScreen_=-1,hintScreen_=0;
  bool frozen_=false,frozenShown_=false;
- RegionHintFade hint_{[this]{if(finished_||!connection_||hintScreen_>=surfaces_.size())return;auto& surface=surfaces_[hintScreen_];prepareBadges(surface);draw(surface);xcb_flush(connection_);}};
+ QTimer presentTimer_;
+ QElapsedTimer presentClock_,pendingSince_;
+ bool pending_=false;
+ Stats stats_;
+ RegionHintFade hint_{[this]{schedulePresent();}};
 };
 }

@@ -17,9 +17,11 @@
 
 namespace putgd::record {
 // One live GStreamer capture: ximagesrc (root rectangle or window) or
-// pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → H.264
+// pipewiresrc (a PipeWire screen-cast stream, optionally cropped) → leaky
+// capture queue → [videorate, videocrop] → videoconvert → queue → H.264
 // (first encoder that negotiates) [+ pulsesrc monitor → AAC] → Matroska
-// working clip. Pause drops buffers and rebases timestamps at the encoder
+// working clip. Capture, conversion and encoding run in separate threads;
+// the capture queue leaks its oldest frame rather than block the source. Pause drops buffers and rebases timestamps at the encoder
 // inputs by one paused interval shared by both tracks (#130), so the clip
 // timeline excludes paused time; the retained duration is the last rebased
 // video timestamp plus one frame. A PipeWire stream runs
@@ -59,6 +61,10 @@ public:
     qint64 fileBytes() const;
     QString encoder() const { return encoder_; }
     QString audioEncoder() const { return audioEncoder_; }
+    // Frames that reached the video encoder, and frames the capture queue had
+    // to leak because conversion or encoding fell behind the frame rate.
+    qint64 framesEncoded() const;
+    qint64 framesDropped() const;
     QJsonObject status() const;
 signals:
     void failed(putgd::Error);
@@ -69,7 +75,7 @@ private:
     std::function<RecordingStorage()> storageProbe_;
     // Lab statistics for PUTGD_RECORD_DEBUG_LOG, written on streaming threads and read after teardown.
     struct Spread { gint64 count = 0, min = 0, max = 0, sum = 0; void add(gint64); QString text() const; };
-    struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; Spread lateness; AudioClockGuard clock; };
+    struct Rebase { std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> passed{0}; Spread lateness; AudioClockGuard clock; };
     struct FrameClock { gint64 previous = -1, arrival = 0; bool compositorTimes = false; Spread age; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
@@ -87,6 +93,7 @@ private:
     std::vector<std::thread> drains_;
     quint64 stops_ = 0;
     FrameClock frameClock_;
+    std::atomic<gint64> dropped_{0};
     QString clockName_;
     gint64 frameDurationNs_ = 0;
     QString encoder_, audioEncoder_, output_;

@@ -1,4 +1,5 @@
 #include "ui/RegionSelection.h"
+#include "ui/SelectionOutline.h"
 #include <QtTest>
 #include <QScopeGuard>
 #include "fixtures/Waits.h"
@@ -19,6 +20,38 @@ private slots:
    QCOMPARE(image.pixelColor(box.left()+box.height(),box.top()+2),Theme::current().surfaceRaised);
    QVERIFY(Theme::contrast(Theme::current().text,Theme::current().surfaceRaised)>=4.5);
   }
+ }
+ void dirtyRegionCoversOnlyOutlineAndPills(){
+  // #6: selectors damage the outline strips and the pills, never the interior.
+  const QRectF selection(10.5,20.25,200,100);
+  const auto outline=selectionOutlineArea(selection);
+  QVERIFY(!outline.isEmpty());
+  const QRect aligned=selection.toAlignedRect();
+  // Every ring pixel paintSelectionOutline writes lies inside the area.
+  QImage image(400,300,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);
+  {QPainter painter(&image);paintSelectionOutline(painter,selection);}
+  for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x)if(image.pixelColor(x,y).alpha())QVERIFY2(outline.contains(QPoint(x,y)),qPrintable(QStringLiteral("%1,%2").arg(x).arg(y)));
+  // The interior and the far outside are not damaged.
+  QVERIFY(!outline.contains(aligned.center()));QVERIFY(!outline.contains(aligned.adjusted(6,6,-6,-6).topLeft()));
+  QVERIFY(!outline.contains(QPoint(0,0)));QVERIFY(!outline.contains(QPoint(399,299)));
+  QVERIFY(outline.boundingRect().width()<=aligned.width()+2&&outline.boundingRect().height()<=aligned.height()+2);
+  // A one-pixel drag is one small rectangle, never an empty or negative ring.
+  QCOMPARE(selectionOutlineArea(QRectF(5,5,1,1)).boundingRect(),QRect(4,4,3,3));
+  QVERIFY(selectionOutlineArea({}).isEmpty());
+  // With the pills: the chrome area adds the hint and the size label boxes and nothing else.
+  const QRect bounds(0,0,800,600);const QFontMetrics metrics(qApp->font());const QString size=QStringLiteral("200 × 100");
+  const auto chrome=regionChromeArea(bounds,metrics,selection,size,true,true);
+  const auto hint=regionHintBox(bounds,metrics,regionHint(),selection),label=regionSizeBox(bounds,metrics,size,selection);
+  QVERIFY(!hint.isEmpty());QVERIFY(!label.isEmpty());
+  QVERIFY(chrome.contains(hint));QVERIFY(chrome.contains(label));QVERIFY(chrome.contains(aligned.topLeft()));
+  QVERIFY(!chrome.contains(aligned.center()));
+  const auto expected=outline.intersected(bounds)+hint.adjusted(-1,-1,1,1)+label.adjusted(-1,-1,1,1);
+  QCOMPARE(chrome,expected);
+  // Without the hint or the label only the outline remains; the area of a
+  // monitor-sized surface stays a few strips, not the surface.
+  QCOMPARE(regionChromeArea(bounds,metrics,selection,size,false,false),outline.intersected(bounds));
+  qint64 pixels=0;for(const QRect& r:chrome)pixels+=qint64(r.width())*r.height();
+  QVERIFY2(pixels<qint64(bounds.width())*bounds.height()/20,qPrintable(QString::number(pixels)));
  }
  void hintFadesAfterAboutTwoSeconds(){
   QCOMPARE(regionHintOpacity(0),1.0);QCOMPARE(regionHintOpacity(regionHintHoldMs),1.0);

@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QElapsedTimer>
 #include <QStorageInfo>
+#include <QThread>
 #include <algorithm>
 #include <gst/base/gstbasesrc.h>
 #include <ctime>
@@ -19,15 +20,42 @@ int bitrateKbps(const QSize& size, int fps) {
     const double kbps = double(size.width()) * size.height() * fps * 0.1 / 1000.0;
     return int(std::clamp(kbps, 1500.0, 20000.0));
 }
-QString encoderDescription(const QString& name, int kbps, int fps) {
+// Threads for the CPU stages: enough to keep up with the frame rate, never
+// the whole machine, so the desktop being recorded keeps its own cores.
+int cpuThreads(int minimum, int maximum) {
+    const int cores = std::max(1, QThread::idealThreadCount());
+    return std::clamp(cores * 2 / 3, minimum, maximum);
+}
+// x264's presets at the pixel rate: a 1080p30 region takes veryfast; above
+// about 1440p30 or 1080p60 superfast, above 1440p60 ultrafast, so a software
+// encode stays real time on the lab's four-core machines at 60 fps too.
+QString x264Preset(const QSize& size, int fps) {
+    const double pixelRate = double(size.width()) * size.height() * fps;
+    if (pixelRate > 2560.0 * 1440 * 45) return QStringLiteral("ultrafast");
+    if (pixelRate > 1920.0 * 1080 * 45) return QStringLiteral("superfast");
+    return QStringLiteral("veryfast");
+}
+QString encoderDescription(const QString& name, int kbps, int fps, const QSize& size) {
     const int keyint = std::max(1, fps * 2);
     if (name == "vah264lpenc" || name == "vah264enc") return QStringLiteral("%1 bitrate=%2 key-int-max=%3").arg(name).arg(kbps).arg(keyint);
     // Intel's iHD driver refuses CBR and VBR for this element; constant QP is the one mode every VA driver has.
     if (name == "vaapih264enc") return QStringLiteral("vaapih264enc rate-control=cqp init-qp=24 keyframe-period=%1").arg(keyint);
-    if (name == "x264enc") return QStringLiteral("x264enc tune=zerolatency speed-preset=veryfast bitrate=%1 key-int-max=%2 bframes=0 threads=2").arg(kbps).arg(keyint);
-    if (name == "openh264enc") return QStringLiteral("openh264enc bitrate=%1 gop-size=%2 complexity=low").arg(qint64(kbps) * 1000).arg(keyint);
+    // A recording has no latency budget: frame threads (one frame in flight
+    // per thread) and a short lookahead encode far more frames per second
+    // than zerolatency's two sliced threads did, which stalled the capture at
+    // 1080p and above and made clips choppy. EOS flushes the frames in flight.
+    if (name == "x264enc") return QStringLiteral("x264enc speed-preset=%1 bitrate=%2 key-int-max=%3 bframes=0 threads=%4 sliced-threads=false rc-lookahead=10 sync-lookahead=0").arg(x264Preset(size, fps)).arg(kbps).arg(keyint).arg(cpuThreads(2, 8));
+    if (name == "openh264enc") return QStringLiteral("openh264enc bitrate=%1 gop-size=%2 complexity=low multi-thread=%3").arg(qint64(kbps) * 1000).arg(keyint).arg(cpuThreads(2, 4));
     return name;
 }
+// Capture and encoding run in their own threads. The capture queue leaks its
+// oldest frame when the stages behind it fall behind, so the source (and, for a
+// PipeWire stream, the compositor waiting for its buffers back) never blocks on
+// the encoder; videorate behind it restores the constant frame rate. Encoded
+// output is queued before the muxer, which also waits on the audio branch.
+QString captureQueue() { return QStringLiteral(" ! queue name=cq leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0"); }
+QString encodeQueue() { return QStringLiteral(" ! queue name=eq max-size-buffers=3 max-size-bytes=0 max-size-time=0"); }
+QString convert() { return QStringLiteral(" ! videoconvert n-threads=%1").arg(cpuThreads(2, 4)); }
 QString encoderFormat(const QString& name) { return name.startsWith("va") ? QStringLiteral("NV12") : QStringLiteral("I420"); }
 QString audioDescription(const QString& name) {
     if (name == "avenc_aac" || name == "fdkaacenc" || name == "voaacenc") return name + " bitrate=128000";
@@ -120,6 +148,7 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad* pad, GstPadProbeInfo* info, g
     // hour); durations are measured from the first retained buffer.
     if (rebase->firstPassed.load() < 0) rebase->firstPassed.store(shifted);
     rebase->lastPassed.store(shifted);
+    rebase->passed.fetch_add(1);
     return GST_PAD_PROBE_OK;
 }
 
@@ -153,25 +182,27 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
     if (options.pipewireNode) {
         // The stream arrives at the compositor's pace; videorate holds the
         // configured frame rate, and a region is cropped out of the shared
-        // monitor (crop values are stream-relative).
+        // monitor (crop values are stream-relative) before the colour
+        // conversion, so only the recorded pixels are converted.
         description = pipewireSourceDescription(frameSource.isEmpty() ? QStringLiteral("pipewiresrc") : frameSource, options.pipewireNode, options.pipewireFd, frameSource.isEmpty())
-            + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1 ! videoconvert n-threads=2").arg(options.fps);
+            + captureQueue() + QStringLiteral(" ! videorate ! video/x-raw,framerate=%1/1").arg(options.fps);
         if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
-    } else if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1 ! videoconvert n-threads=2").arg(options.window).arg(options.fps);
-    else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1 ! videoconvert n-threads=2").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps);
+        description += convert();
+    } else if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1").arg(options.window).arg(options.fps) + captureQueue() + convert();
+    else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps) + captureQueue() + convert();
     // The pause probes sit on the encoders' sink pads (raw frames and samples):
     // dropping encoded buffers would leave P-frames whose references are gone,
     // which strict decoders (OpenH264 on Fedora) refuse while FFmpeg's conceals.
-    description += QStringLiteral(" ! video/x-raw,format=%1 ! %2 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%3")
-        .arg(encoderFormat(encoder), encoderDescription(encoder, kbps, options.fps), shellQuote(options.output));
+    description += QStringLiteral(" ! video/x-raw,format=%1").arg(encoderFormat(encoder)) + encodeQueue() + QStringLiteral(" ! %1 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%2")
+        .arg(encoderDescription(encoder, kbps, options.fps, encoded), shellQuote(options.output));
     if (options.audio && !audioEncoder.isEmpty())
         description += QStringLiteral(" pulsesrc name=asrc device=%1 ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2 ! %2 name=aenc ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.")
             .arg(shellQuote(options.audioDevice), audioDescription(audioEncoder));
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
     if (!pipeline || error) { failure = error ? QString::fromUtf8(error->message) : QStringLiteral("parse failed"); if (error) g_error_free(error); if (pipeline) gst_object_unref(pipeline); return false; }
-    video_.firstPassed = -1; video_.lastPassed = -1; video_.lateness = {}; video_.clock.reset();
-    audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.lateness = {}; audio_.clock.reset();
+    video_.firstPassed = -1; video_.lastPassed = -1; video_.passed = 0; video_.lateness = {}; video_.clock.reset();
+    audio_.firstPassed = -1; audio_.lastPassed = -1; audio_.passed = 0; audio_.lateness = {}; audio_.clock.reset();
     timeline_.reset();
     timeline_.setFrameRate(options.fps);
     frameClock_ = {};
@@ -202,6 +233,13 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         return true;
     };
     if (!attach("venc", video_) || (options.audio && !audioEncoder.isEmpty() && !attach("aenc", audio_))) { failure = "probe attach failed"; gst_object_unref(pipeline); return false; }
+    // Frames the capture queue had to leak: the stages behind it were slower
+    // than the frame rate, and the clip repeats frames there (lab statistic).
+    dropped_.store(0);
+    if (GstElement* capture = gst_bin_get_by_name(GST_BIN(pipeline), "cq")) {
+        g_signal_connect(capture, "overrun", G_CALLBACK(+[](GstElement*, gpointer user) { static_cast<std::atomic<gint64>*>(user)->fetch_add(1); }), &dropped_);
+        gst_object_unref(capture);
+    }
     const auto change = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     if (change == GST_STATE_CHANGE_FAILURE) {
         failure = QStringLiteral("%1 refused to start").arg(encoder);
@@ -291,8 +329,11 @@ RecordingStorage RecordingPipeline::storage() const {
     return {volume.isValid() && volume.isReady() ? volume.bytesAvailable() : -1,
             volume.isValid() ? volume.bytesTotal() : -1, fileBytes()};
 }
+qint64 RecordingPipeline::framesEncoded() const { return video_.passed.load(); }
+qint64 RecordingPipeline::framesDropped() const { return dropped_.load(); }
 QJsonObject RecordingPipeline::status() const {
-    return {{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_}};
+    return {{"durationUs", double(retainedUs())}, {"bytes", double(fileBytes())}, {"paused", timeline_.paused()}, {"encoder", encoder_}, {"audioEncoder", audioEncoder_},
+            {"framesEncoded", double(framesEncoded())}, {"framesDropped", double(framesDropped())}};
 }
 void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
     if (!pipeline_) { done({"recording_state", "Nothing is recording", {}}, 0); return; }
@@ -410,6 +451,7 @@ void RecordingPipeline::tearDown() {
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue").arg(video_.passed.load()).arg(dropped_.load()));
     stopping_ = false;
 }
 }
