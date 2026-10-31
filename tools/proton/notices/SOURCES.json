@@ -32,8 +32,8 @@
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
-      "bytes": 22293578,
-      "sha256": "e3dd444e9a086b998c19d9d340e2fc4e303ca49f4b22949f4a304aa4bf1032b1",
+      "bytes": 22309512,
+      "sha256": "9836f279d2e90fc3bdabf8a9c98494c82eb79172ba5c77d77e33a865eeadb4ac",
       "purpose": "SDK 0.23.0/Crypto 2.2.0 dependency-update controls, tests, source/notice selection, current Bun 1.4.4 native replay recipe and adapter/CMake/audit sources. SOURCES.json and subsequent run receipts accompany the current application source separately to avoid hash cycles."
     },
     {
@@ -78,19 +78,19 @@
   },
   "delivery": {
     "file": "putgd-proton-corresponding-source.tar.gz",
-    "bytes": 2394420423,
-    "sha256": "76bda133e7db22ac5dd3b97ca9c7a92acda7339f47fed22334503615ee135b64",
+    "bytes": 2394441755,
+    "sha256": "d002d29acbdb4a8a7becb0754b8ca63d4e1bdd0ff6bb1ddb276de05cc49e2f5b",
     "parts": [
       {
         "file": "putgd-proton-corresponding-source.tar.gz.part1",
         "bytes": 1300000000,
-        "sha256": "14834877197680344bda799bad68e274858767c8c63f720eb2d83e31a9289e05",
+        "sha256": "b5ff5d79324a57e3d51c573c2f77b68bee0dd1e80b84c885e5c177c0e744f85f",
         "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part1"
       },
       {
         "file": "putgd-proton-corresponding-source.tar.gz.part2",
-        "bytes": 1094420423,
-        "sha256": "bca4ce590c5afc07cc4fc908b278f5c6722fedc48d328588de243758e360f6cc",
+        "bytes": 1094441755,
+        "sha256": "78ac53ae7970d5ef2757801762dd6794bd7d471e0c7022026f63323485a8c361",
         "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.23.0-crypto2.2.0-bun1.4.4/putgd-proton-corresponding-source.tar.gz.part2"
       }
     ]
