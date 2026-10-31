@@ -12,7 +12,7 @@ from .catalog import Catalog, compare, image_modules
 from .critical import armed, critical, entry
 from .target import input_release, qcodes
 from .receipts import Evidence
-from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect, require_host_ocr
+from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect
 
 # Seconds; a cleanup call's own budget may not grow past this.
 CLEANUP_TIMEOUT_CAP = 600
