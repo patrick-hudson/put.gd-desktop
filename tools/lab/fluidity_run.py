@@ -133,10 +133,11 @@ class Driver:
             if not path:
                 raise RunError('--build needs LABEL=PATH')
             if Path(path).is_file() and Path(path).suffix != '.AppImage':
-                # record_run.Build recognises AppImages by their suffix; alias other spellings.
+                # record_run.Build recognises AppImages by their suffix and resolves
+                # symlinks, so other spellings get a private copy under the run.
                 alias = self.run / ('%s.AppImage' % label)
                 if not alias.exists():
-                    alias.symlink_to(Path(path).resolve())
+                    shutil.copy2(path, alias)
                 path = str(alias)
             build = record_run.Build(label, path, self.run)
             if build.identity['kind'] == 'appimage':
