@@ -31,10 +31,10 @@ public:
  bool preparedReady()const;
  // screenshotFirst (#629): the helper reads every monitor after begin, before
  // its selector maps, and cuts the region from those frames.
- Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={},QString outcome={},bool screenshotFirst=false);
+ Ticket prepare(const QJsonObject& frozen,const ResourceLimits&,std::function<void(Error)> earlyTerminal={},std::function<void()> earlyReleased={},QString outcome={},bool screenshotFirst=false,QJsonObject appearance={});
  void begin(const Ticket&,std::function<void(PayloadResult)>);
  void discard(const Ticket&);
- void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>,QString outcome={},bool screenshotFirst=false);
+ void start(const QJsonObject& frozen,const ResourceLimits&,std::function<void(PayloadResult)>,QString outcome={},bool screenshotFirst=false,QJsonObject appearance={});
  void cancel();
  QJsonObject diagnostics()const;
  qint64 processId()const;

@@ -179,7 +179,7 @@ void GnomeAdapter::start(const QString& id,const QString& action,const ResourceL
 }
 void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,const QJsonArray& imageMimes){
  const auto limits=transfer->limits;
- QJsonObject bounds{{"outcome",transfer->outcome},{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
+ QJsonObject bounds{{"appearance",captureAppearance_},{"outcome",transfer->outcome},{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
  // Screenshot first (#629): the Shell freezes the stage before selecting.
  if(transfer->screenshotFirst)bounds["regionMode"]="screenshot_first";
  call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
@@ -218,7 +218,7 @@ void GnomeAdapter::selectRegion(RecordingShell::Reply reply){
  if(!selectsRegions()){reply(recordingShellError(),{});return;}
  const auto id=uuid();recordingSelection_=id;
  // The user drags at their own pace; the extension's request deadline (120 s) ends it first.
- call("SelectArea",{id},[this,id,reply](Error error,QJsonObject result){
+ call("SelectArea",{json(QJsonObject{{"id",id},{"appearance",captureAppearance_}})},[this,id,reply](Error error,QJsonObject result){
   if(recordingSelection_==id)recordingSelection_.clear();
   if(!error&&(result["requestId"].toString()!=id||!result["rect"].isArray()||result["rect"].toArray().size()!=4))error={"bridge_protocol","GNOME helper returned an invalid selection",{}};
   reply(error,error?QJsonObject{}:QJsonObject{{"rect",result["rect"]}});
