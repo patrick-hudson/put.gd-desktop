@@ -200,7 +200,7 @@ private slots:
   // display refresh, each present damaging only the strips that changed, and
   // the outline still lands exactly where the last motion left it.
   motion({100,400});NativeRegionOverlay overlay(frames());overlay.start();PUTGD_TRY_COMPARE(drawables().size(),2);
-  motion({40,40});button(1,true);motion({60,60});PUTGD_TRY_VERIFY(white({44,41}));
+  motion({40,40});button(1,true);const auto releaseButton=qScopeGuard([&]{button(1,false);});motion({60,60});PUTGD_TRY_VERIFY(white({44,41}));
   const auto before=overlay.stats();QVERIFY(before.presents>=1);QVERIFY(before.frameIntervalMs>=4&&before.frameIntervalMs<=33);
   QElapsedTimer clock;clock.start();
   const int burst=400;
@@ -226,7 +226,7 @@ private slots:
   const auto interior=pixels({500,300});QVERIFY(interior.size()==4&&quint8(interior[3])==0);
   const auto oldRight=pixels({58,50});QVERIFY(oldRight.size()==4&&quint8(oldRight[3])==0);
   const auto oldBottom=pixels({50,58});QVERIFY(oldBottom.size()==4&&quint8(oldBottom[3])==0);
-  QVERIFY(white({41,300}));QVERIFY(white({300,41}));
+  QVERIFY(white({41,200}));QVERIFY(white({300,41}));
   button(1,false);PUTGD_TRY_COMPARE(drawables().size(),0);availableGrabs();
  }
  void movingOutlineClearsPreviousPixels(){

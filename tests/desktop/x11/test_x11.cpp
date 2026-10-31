@@ -242,12 +242,13 @@ private slots:
    // The window's initial paint after show may still be pending: let one
    // paint of the unchanged selection consume it before measuring damage.
    QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);paints.painted={};paints.count=0;
+   auto regionText=[&]{QStringList parts;for(const QRect& r:paints.painted)parts<<QStringLiteral("%1,%2 %3x%4").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height());return QStringLiteral("%1 paints: %2").arg(paints.count).arg(parts.join("; ")).toUtf8();};
    QTest::mouseMove(w,QPoint(90,90));PUTGD_TRY_VERIFY(paints.count>0);
-   QVERIFY(!paints.painted.contains(w->rect()));QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
+   QVERIFY2(!paints.painted.contains(w->rect()),regionText());QVERIFY2(!paints.painted.contains(QPoint(30,40)),regionText());QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
    // The paint reaches the X server after Qt flushes it; wait for the frame there.
    QImage grown;PUTGD_TRY_VERIFY(!(grown=backing()).isNull()&&grown.pixelColor(59,40).alpha()==0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::black));QCOMPARE(grown.pixelColor(88,40),QColor(Qt::white));
    paints.painted={};paints.count=0;QTest::mouseMove(w,QPoint(60,70));PUTGD_TRY_VERIFY(paints.count>0);
-   QVERIFY(!paints.painted.contains(w->rect()));QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
+   QVERIFY2(!paints.painted.contains(w->rect()),regionText());QVERIFY2(!paints.painted.contains(QPoint(30,40)),regionText());QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
    // No scrim (#629): the old edge is cleared, and outside stays transparent.
    QImage shrunk;PUTGD_TRY_VERIFY(!(shrunk=backing()).isNull()&&shrunk.pixelColor(89,40).alpha()==0);QCOMPARE(shrunk.pixelColor(200,200).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
    w->removeEventFilter(&paints);xcb_disconnect(connection);
