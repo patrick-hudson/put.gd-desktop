@@ -93,8 +93,8 @@ private slots:
         QSignalSpy failed(&pipeline, &RecordingPipeline::failed);
         QVERIFY2(!pipeline.start(options), qPrintable(pipeline.start(options).message));
         QVERIFY(pipeline.running());
-        putgd::test::settle(3000);
-        QCOMPARE(failed.size(), 0);
+        // Record for three seconds without a pipeline failure.
+        PUTGD_COMPARE_STEADY(failed.size(), 0, 3000);
         bool stopped = false; Error stopError; qint64 retained = 0;
         pipeline.stop([&](Error error, qint64 durationUs) { stopped = true; stopError = error; retained = durationUs; });
         PUTGD_TRY_VERIFY_WITH_TIMEOUT(stopped, RecordingPipeline::stopDrainMs + 2000);
