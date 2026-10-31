@@ -56,6 +56,27 @@ class LiveOutcomes(unittest.TestCase):
         proof=browser._recipient_preview_pixels(client,stream.getvalue())
         self.assertFalse(proof['matches']);self.assertEqual(proof['tolerance'],0)
 
+    def test_download_confirmation_follows_first_list_observation(self):
+        with tempfile.TemporaryDirectory(dir='/dev/shm') as td:
+            directory=Path(td);payload=b'synthetic original PNG';target=directory/'capture.png'
+            events=[];client=Mock()
+            def call(method,params=None):
+                if method=='WebDriver:GetWindowHandle':return 'recipient'
+                if method=='WebDriver:ElementClick':
+                    events.append(params['id'])
+                    if params['id']=='confirm':target.write_bytes(payload)
+            client.call.side_effect=call
+            client.script.side_effect=[{'element-6066-11e4-a52e-4f735466cecf':'toolbar'},
+                                       {'element-6066-11e4-a52e-4f735466cecf':'confirm'}]
+            def observe(*args):
+                events.append('observe')
+                return {'available':True,'entries':[{'succeeded':True,'stopped':True,'error':None,'target':str(target)}] if target.exists() else []}
+            with patch.object(browser,'_recipient_preview_pixels',return_value={'matches':True}),patch.object(browser,'_firefox_downloads',side_effect=observe):
+                result=browser._proton_recipient_download(client,dict(saved_path='/unused/capture.png',filename='capture.png'),directory,payload)
+            self.assertEqual(events[:3],['toolbar','observe','confirm'])
+            self.assertEqual(result['downloadObservations'][0]['entries'],[])
+            self.assertTrue(result['matches']);self.assertEqual(result['sha256'],hashlib.sha256(payload).hexdigest())
+
     def test_scoped_missing_head_requires_404_and_rejects_root_prefix(self):
         class ServiceError(Exception):
             def __init__(self,status):self.response={'ResponseMetadata':{'HTTPStatusCode':status}}
