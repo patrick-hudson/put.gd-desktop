@@ -307,6 +307,9 @@ def analyze_clip(clip, fps=0, strip=None, frames_source=None):
     previous = None
     for counter in counters:
         if counter is None:
+            # An unreadable frame ends the run: deltas and stalls never span it.
+            previous = None
+            stall_run = 0
             continue
         if previous is not None:
             step = (counter - previous) % (2 ** BITS)

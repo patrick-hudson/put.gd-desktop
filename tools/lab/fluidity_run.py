@@ -407,7 +407,7 @@ class Driver:
                         self.kwin_entry(build)
                     try:
                         results['rounds'].append(self.record_round(build, number))
-                    except RunError as error:
+                    except (RunError, subprocess.SubprocessError, OSError, ValueError) as error:
                         log('%s round %d failed: %s' % (build.label, number, error))
                         results['rounds'].append({'build': build.label, 'round': number, 'error': str(error)})
                         self.stop_resident(build)
@@ -504,7 +504,7 @@ class Driver:
                 for build in self.builds:
                     try:
                         results['rounds'].append(self.select_round(build, number, agent))
-                    except RunError as error:
+                    except (RunError, subprocess.SubprocessError, OSError, ValueError) as error:
                         log('%s round %d failed: %s' % (build.label, number, error))
                         results['rounds'].append({'build': build.label, 'round': number, 'error': str(error)})
                         self.stop_resident(build)

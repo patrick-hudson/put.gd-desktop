@@ -195,7 +195,11 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     // microseconds of memcpy against a frame the compositor would drop.
     GstBuffer* copy = gst_buffer_copy_deep(buffer);
     if (copy) { gst_buffer_unref(buffer); buffer = copy; }
-    else buffer = gst_buffer_make_writable(buffer);
+    else {
+        // make_writable consumes the reference and returns null when it cannot copy.
+        buffer = gst_buffer_make_writable(buffer);
+        if (!buffer) { GST_PAD_PROBE_INFO_DATA(info) = nullptr; return GST_PAD_PROBE_DROP; }
+    }
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
     return GST_PAD_PROBE_OK;
