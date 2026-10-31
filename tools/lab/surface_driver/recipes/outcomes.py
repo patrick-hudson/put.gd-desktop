@@ -111,8 +111,8 @@ def _clipboard_bytes(scope, mime):
     # Binary data stays in memory until the synthetic image is retained. Neither
     # failed readers' stderr nor clipboard text enters evidence/command output.
     # Match ctx.clipboard_text's text selector: GNOME advertises only the
-    # UTF-8-qualified MIME, whereas KDE also supplies text/plain aliases.
-    selection = 'text' if mime == 'text/plain' and scope.ctx.profile['session'] == 'wayland' else mime
+    # UTF-8-qualified MIME; X11 managers may retain only UTF8_STRING.
+    selection = ('text' if scope.ctx.profile['session'] == 'wayland' else 'UTF8_STRING') if mime == 'text/plain' else mime
     result = scope.json('''import base64,json,subprocess
 try:
  reply=subprocess.run(READ,capture_output=True,timeout=3)

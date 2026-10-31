@@ -129,7 +129,7 @@ class ClipboardOracles(unittest.TestCase):
 
     def test_wayland_text_reader_accepts_gnome_utf8_qualified_offer(self):
         for session, mime, selected in (('wayland', 'text/plain', 'text'),
-                                        ('x11', 'text/plain', 'text/plain'),
+                                        ('x11', 'text/plain', 'UTF8_STRING'),
                                         ('wayland', 'image/png', 'image/png')):
             scope = SimpleNamespace(ctx=ClipboardContext(session), json=Mock(return_value={'available':False,'data':''}))
             with patch.object(outcomes, '_clipboard_reader', return_value=['reader', '--type']):
