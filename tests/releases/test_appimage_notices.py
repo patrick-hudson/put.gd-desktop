@@ -189,6 +189,25 @@ class NoticesTest(unittest.TestCase):
                                                      "rpath": [], "runpath": ["$ORIGIN", "/opt/x"]})
         self.assertIsNone(notices.elf_dynamic(write(self.root / "script", "#!/bin/sh\n")))
 
+    def test_generated_menu_pngs_are_owned_by_putgd_in_the_real_component_spec(self):
+        production = json.loads((ROOT / "packaging/appimage/components.json").read_text())
+        owner = next(item for item in production["components"] if item["id"] == "putgd")
+        fixture = json.loads(json.dumps(SPEC))
+        fixture["components"][0]["files"] += [pattern for pattern in owner["files"]
+                                             if pattern.startswith("usr/share/icons/") and
+                                             pattern not in fixture["components"][0]["files"]]
+        (self.root / "components.json").write_text(json.dumps(fixture))
+        icons = []
+        for size in (16, 22, 24, 32, 48, 64, 128, 256):
+            name = f"usr/share/icons/hicolor/{size}x{size}/apps/putgd.png"
+            write(self.app / name, f"generated PNG fixture at {size} pixels")
+            icons.append(name)
+        self.finish()
+        notices.audit(self.app)
+        component = next(item for item in self.inventory()["components"] if item["id"] == "putgd")
+        self.assertTrue(set(icons) <= set(component["files"]))
+        self.assertEqual(component["license"], "MIT")
+
     def test_finished_image_passes_its_audit(self):
         summary = self.finish()
         result = notices.audit(self.app)
