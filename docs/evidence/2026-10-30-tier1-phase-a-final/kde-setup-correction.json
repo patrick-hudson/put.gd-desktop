@@ -1,0 +1,1 @@
+{"failure":"Guest package prerequisite command exceeded lab.guest_session default 60-second timeout before recipes","correction":"Keep the same overlay; use an explicit 900-second prerequisite budget after checking package processes/audit","recipeRunsAdded":0}

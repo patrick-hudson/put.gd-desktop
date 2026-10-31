@@ -1,0 +1,9 @@
+{
+  "sandbox": "bx_ng72wuxu",
+  "port": 5992,
+  "wall": "http://127.0.0.1:8765/",
+  "tile": "Tier1 final g2 bx_ng72wuxu",
+  "connected": true,
+  "observer": "CUA AX state and saved RFB desktop",
+  "savedVisual": "gnome-retry-ready.png"
+}
