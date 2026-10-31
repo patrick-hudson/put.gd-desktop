@@ -31,6 +31,7 @@ import argparse
 import glob
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -38,6 +39,15 @@ import time
 FIRMWARE = Path.home() / 'putgd-lab/firmware'
 EDID_PARAM = '/sys/module/drm/parameters/edid_firmware'
 PATH_PARAM = '/sys/module/firmware_class/parameters/path'
+
+
+def hotplug():
+    """Tell the compositor about the connector change; False when udev refused."""
+    udevadm = shutil.which('udevadm') or '/usr/bin/udevadm'
+    result = subprocess.run(['sudo', '-n', udevadm, 'trigger', '--action=change', '--subsystem-match=drm'], capture_output=True, text=True)
+    if result.returncode:
+        print('udevadm trigger failed (%d): %s; the compositor may not have seen the change' % (result.returncode, result.stderr.strip()[-200:]), file=sys.stderr)
+    return result.returncode == 0
 
 
 def sudo_write(path, value):
@@ -52,7 +62,7 @@ def valid_edid(data):
     if len(data) < 128 or data[:8] != bytes.fromhex('00ffffffffffff00'):
         return False
     blocks = 1 + data[126]
-    if len(data) < 128 * blocks:
+    if len(data) != 128 * blocks:
         return False
     return all(sum(data[i * 128:(i + 1) * 128]) % 256 == 0 for i in range(blocks))
 
@@ -124,15 +134,20 @@ def add(args):
         sudo_write(PATH_PARAM, '')
         print('forcing failed (%s); rolled back' % error, file=sys.stderr)
         return 1
-    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
+    triggered = hotplug()
     time.sleep(2)
-    return status(args)
+    return status(args) if triggered else (status(args) or 1)
 
 
 def remove(args):
     # Clear the overrides first: a re-detect while the EDID override is still
     # in place keeps the connector connected. Then the compositor needs a
     # hotplug event to drop the output (udevadm trigger --subsystem-match=drm).
+    known = connectors(args.card)
+    unknown = [c for c in args.connector if c not in known]
+    if unknown:
+        print('unknown connectors: %s (have %s)' % (', '.join(unknown), ', '.join(known)), file=sys.stderr)
+        return 2
     sudo_write(EDID_PARAM, '')
     sudo_write(PATH_PARAM, '')
     # A re-detect keeps the override EDID the connector cached (debugfs
@@ -141,17 +156,22 @@ def remove(args):
     # connectors back to normal probing later (a reboot does too).
     for name in args.connector:
         sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'off')
-    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
+    triggered = hotplug()
     time.sleep(3)
-    return status(args)
+    return status(args) if triggered else (status(args) or 1)
 
 
 def detect(args):
+    known = connectors(args.card)
+    unknown = [c for c in args.connector if c not in known]
+    if unknown:
+        print('unknown connectors: %s (have %s)' % (', '.join(unknown), ', '.join(known)), file=sys.stderr)
+        return 2
     for name in args.connector:
         sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'detect')
-    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
+    triggered = hotplug()
     time.sleep(3)
-    return status(args)
+    return status(args) if triggered else (status(args) or 1)
 
 
 def main(argv=None):

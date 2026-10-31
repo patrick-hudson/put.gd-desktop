@@ -279,11 +279,15 @@ def read_counter(width, stride, data, strip):
     return ungray(code)
 
 
-def analyze_clip(clip, fps=0, strip=None, frames_source=None):
-    """The fluidity report of one clip (a dict); frames_source overrides decoding (tests)."""
+def analyze_clip(clip, fps=0, strip=None, frames_source=None, counters=True):
+    """The fluidity report of one clip (a dict); frames_source overrides decoding (tests).
+    counters=False reports timestamps only (a clip recorded without the fixture)."""
     frames = []
     unreadable = 0
     for pts, width, height, stride, data in (frames_source if frames_source is not None else decode_frames(clip)):
+        if not counters:
+            frames.append((pts, None))
+            continue
         if strip is None:
             strip = find_strip(width, height, stride, data)
             if strip is None:

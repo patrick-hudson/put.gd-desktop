@@ -400,7 +400,7 @@ class Driver:
         for name, path in (('working', working), ('copy', copy)):
             if path.is_file():
                 try:
-                    result['clips'][name] = fluidity.analyze_clip(str(path), a.fps)
+                    result['clips'][name] = fluidity.analyze_clip(str(path), a.fps, counters=not a.static)
                 except Exception as error:  # a clip the host cannot decode
                     result['clips'][name] = {'ok': False, 'error': str(error)}
         result['ticks'] = fluidity.ticks_report(str(ticks), 60, tick_start, tick_end) if ticks.is_file() else None

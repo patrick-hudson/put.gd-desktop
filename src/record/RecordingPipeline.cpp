@@ -168,9 +168,9 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     // and dropping it keeps its slot for the next new frame. The comparison is
     // exact (a small change anywhere counts) and usually stops at the first
     // differing bytes; an identical frame costs one pass over the copy.
+    bool same = false;
     if (clock->lastKept) {
         GstMapInfo map, kept;
-        bool same = false;
         if (gst_buffer_map(buffer, &map, GST_MAP_READ)) {
             if (gst_buffer_map(clock->lastKept, &kept, GST_MAP_READ)) {
                 same = map.size == kept.size && std::memcmp(map.data, kept.data, map.size) == 0;
@@ -180,9 +180,8 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
         }
         // A static screen's keepalive resends pass once per period so the timeline advances.
         if (same && (clock->lastPassed < 0 || running - clock->lastPassed < clock->lock.periodNs)) { ++clock->sameContents; return GST_PAD_PROBE_DROP; }
-        if (!same) ++clock->distinctContents;
-    } else ++clock->distinctContents;
-    clock->lastPassed = running;
+    }
+    if (!same) ++clock->distinctContents;
     auto frame = pipewireFrameTime(headerPts, monotonicNow(), running, clock->previous);
     if (frame.ageNs < 0) ++clock->arrival;
     else clock->age.add(frame.ageNs);
@@ -193,13 +192,18 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     if (!clock->compositorTimes) {
         frame = pipewireFrameTime(-1, 0, running, clock->previous);
         if (clock->locked) {
-            const qint64 locked = lockedFrameTime(running, clock->previous, clock->lock);
+            qint64 locked = lockedFrameTime(running, clock->previous, clock->lock);
+            // A change right after a passed repeat takes the next slot rather
+            // than waiting for the next keepalive (or missing a clip stopped first).
+            if (locked < 0 && clock->lastWasRepeat && !same) { locked = clock->previous + clock->lock.periodNs; ++clock->afterRepeat; }
             if (locked < 0) { ++clock->early; return GST_PAD_PROBE_DROP; }
             if (clock->previous >= 0 && locked != clock->previous + clock->lock.periodNs) ++clock->resyncs;
             frame.running = locked;
         }
     }
     clock->previous = frame.running;
+    clock->lastPassed = running;
+    clock->lastWasRepeat = same;
     // The compositor owns a handful of stream buffers (KWin offers 2-4) and
     // skips a frame whenever none is free. Copy the frame out here, on the
     // source thread, so the stream buffer goes back at once instead of waiting
@@ -515,8 +519,8 @@ void RecordingPipeline::tearDown() {
     // old a compositor frame time was when the frame reached the source pad.
     debugLog(QStringLiteral("timestamps: clock %1, video lateness %2, audio lateness %3, frame age %4, arrival-stamped frames %5, audio re-anchored %6 times")
                  .arg(clockName_, video_.lateness.text(), audio_.lateness.text(), frameClock_.age.text()).arg(frameClock_.arrival).arg(audio_.clock.corrections()));
-    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs")
-                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs));
+    debugLog(QStringLiteral("frames: %1 reached the video encoder, %2 leaked at the capture queue; source arrivals %3 (interval %4), %5 with a repeated compositor time, contents %6 new / %7 same dropped, cadence lock %8 early dropped / %9 resyncs / %10 changes slotted after a repeat")
+                 .arg(video_.passed.load()).arg(dropped_.load()).arg(frameClock_.interval.count + (frameClock_.lastArrival >= 0 ? 1 : 0)).arg(frameClock_.interval.text()).arg(frameClock_.repeatedPts).arg(frameClock_.distinctContents).arg(frameClock_.sameContents).arg(frameClock_.early).arg(frameClock_.resyncs).arg(frameClock_.afterRepeat));
     stopping_ = false;
 }
 }

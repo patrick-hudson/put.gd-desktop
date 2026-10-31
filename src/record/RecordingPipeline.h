@@ -88,7 +88,9 @@ private:
     // pipewiresrc resends the last frame of a static screen (keepalive-time),
     // and those resends keep the clip's timeline and the retained duration
     // advancing through videorate.
-    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0; bool compositorTimes = false, locked = true; Spread age, interval; FrameLock lock; };
+    // A passed repeat must not cost a changed frame its slot: a change arriving
+    // early after a repeat takes the next slot instead of being dropped.
+    struct FrameClock { gint64 previous = -1, arrival = 0, headerPts = -1, repeatedPts = 0, lastArrival = -1, lastPassed = -1; GstBuffer* lastKept = nullptr; gint64 distinctContents = 0, sameContents = 0, early = 0, resyncs = 0, afterRepeat = 0; bool compositorTimes = false, locked = true, lastWasRepeat = false; Spread age, interval; FrameLock lock; };
     static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
     static GstPadProbeReturn stampFrame(GstPad*, GstPadProbeInfo*, gpointer);
     // unthrottled: a PipeWire source asks the compositor for max_framerate 0/1 (see pipewireUnthrottledCaps).
