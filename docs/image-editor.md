@@ -246,7 +246,7 @@ Every editor capability is available through session methods, the production
 | `editor.saveCopy` | `save_editor_copy` | `id`, absolute `.png` `path`, optional `overwrite` |
 | `editor.submit` | `submit_editor` | `id`; same as Upload |
 | `editor.cancel` | `cancel_editor` | `id`; discard without confirmation |
-| `editor.raise` | `raise_editor` | `id`; bring the window to front |
+| `editor.raise` | `raise_editor` | `id`, optional `activationToken`; asks the desktop to bring the window to front and answers what it did: `raised: true` once the window is active, otherwise after 1.5 s `raised: false` with `reason: activation_refused` and a message (#911) |
 
 Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 `crop {rect}`, `resetCrop`, `undo`, `redo`. Rectangles are `[x, y, width, height]`.
