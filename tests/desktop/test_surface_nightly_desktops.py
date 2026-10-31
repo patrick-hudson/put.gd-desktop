@@ -214,6 +214,17 @@ class NightlyTests(unittest.TestCase):
         result['desktops'][0]['cells']['region_upload'].update(status='not_run')
         self.assertEqual(nightly.eligible_desktops(result),2)
 
+    def test_clipboard_columns_are_enabled_and_app_failure_gets_release_blocker(self):
+        self.assertEqual([nightly.FLOWS[name] for name in ('auto_copy', 'upload_clipboard', 'copy_image', 'survives_exit')],
+                         ['Auto-copy', 'Upload clipboard', 'Copy image', 'Survives exit'])
+        self.assertTrue({'auto_copy', 'upload_clipboard', 'copy_image', 'survives_exit'} <= set(nightly.LOCAL))
+        github = FakeGitHub()
+        row = dict(desktop='GNOME',host='d69',evidence='/owned',cells={'auto_copy':nightly.cell('red','wrong link')})
+        with tempfile.TemporaryDirectory() as tmp:
+            nightly.publish(github,dict(release='tag',date='today',build=BUILD,desktops=[row]),Path(tmp))
+        self.assertTrue(any(w[0] == 'POST' and w[1].endswith('/labels') and w[2] == {'labels':['release-blocker']}
+                            for w in github.writes))
+
     def test_secret_file_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'token';path.write_text('synthetic-only');path.chmod(0o644)
