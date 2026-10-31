@@ -132,10 +132,14 @@ def remove(args):
     # hotplug event to drop the output (udevadm trigger --subsystem-match=drm).
     sudo_write(EDID_PARAM, '')
     sudo_write(PATH_PARAM, '')
-    for name in args.connector:
-        sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), 'detect')
-    subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
-    time.sleep(2)
+    # A re-detect alone keeps a forced connector's cached state; force it off
+    # (the compositor drops the output on the hotplug event), then hand it back
+    # to detection so a real monitor plugged in later is seen again.
+    for value in ('off', 'detect'):
+        for name in args.connector:
+            sudo_write('/sys/class/drm/%s-%s/status' % (args.card, name), value)
+        subprocess.run(['sudo', '-n', 'udevadm', 'trigger', '--action=change', '--subsystem-match=drm'], check=False)
+        time.sleep(3)
     return status(args)
 
 
