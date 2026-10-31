@@ -5,9 +5,12 @@ workflow run and are linked with `needs:`. Nightlies can reuse completed source
 checks for their exact commit; an absent or failed lookup runs the tests again.
 No job waits for another workflow to finish.
 
+put.gd is Linux-only: DEB, RPM and AppImage. Native Windows support was
+dropped on 2026-10-31; CI no longer compiles or provisions Windows.
+
 | Workflow | Runs on | Does |
 | --- | --- | --- |
-| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, Windows compile, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
+| `ci.yml` | every pull request, pushes to `nightly`, manual runs; called by nightly and release | contracts, Linux tests, clang ASan/UBSan core tests, packages, the AppImage's pipewiresrc on PipeWire 1.6; on `nightly` pushes, cache pruning |
 | `package.yml` | called by `ci.yml` | four native packages, AppImage, their SBOMs and vulnerability scan, and with a tag the collected `release-assets` |
 | `nightly.yml` | 05:23 UTC daily and manual | skip unchanged source, or tag, test, package and publish a nightly, then notify put.gd-site; re-scan the latest stable release's SBOMs |
 | `release.yml` | pushes to `main` and manual | tag the stable merge commit, test, package and stage a draft |
@@ -23,14 +26,14 @@ job skipped because the change cannot affect it is.
 schedule, manual runs and stable release callers select everything by default.
 The nightly caller sets `reuse_source_ci: true`: `tools/ci/reuse_ci.py` looks for
 a successful `ci.yml` push run on `nightly` at the exact commit. It requires
-contracts, both Linux test jobs, the Windows compile, sanitizers and `CI` to
+contracts, both Linux test jobs, sanitizers and `CI` to
 have succeeded in that run's successful attempt. Only then are source builds
 and sanitizers skipped. Contracts, tagged packages, AppImage checks, source
 delivery and scans still run. Missing, cancelled, incomplete, unrelated or
 unavailable evidence falls back to the full suite. The producer run, attempt,
 commit and job IDs are saved in `source-ci-provenance` for 90 days.
 
-| Changed paths | contracts | linux, portable | packages |
+| Changed paths | contracts | linux | packages |
 | --- | --- | --- | --- |
 | `docs/` (except below), `README.md`, `AGENTS.md`, `CLAUDE.md` | yes | no | no |
 | Lab, MCP and maintenance Python; `tests/ci`, `tests/releases`, `tests/maintenance`; Python and YAML directly under `tests/desktop` and `tests/performance`; `.github/renovate.json`, `.github/dependabot.yml` | yes | no | no |
@@ -52,7 +55,7 @@ platform, storage and packaging changes don't select it.
 
 The **pipewire** job is selected by every packaging row above, by `src/record/` and
 by `tests/desktop/pipewire/`. That directory's scripts are read by this job alone,
-so a change to them doesn't select `linux` and `portable`.
+so a change to them doesn't select `linux`.
 `tests/ci/test_changes.py` pins these rules.
 
 ## Jobs
@@ -126,11 +129,6 @@ version and the recipe's hash, so any of them changing rebuilds QtCore. The
 instrumented QtCore is a CI-only test library: no package, AppImage or release build
 uses it, and release builds stay on distro Qt. `json_ref_lifetime_contract` still
 rejects the #76 pattern in source.
-
-**portable** compiles the shared production code on Windows with tests disabled,
-using the official Qt installation and pinned QtKeychain/AWS SDK builds. The S3
-wire parser links Qt Network there because it uses QHostAddress. macOS is not
-built in CI.
 
 **packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
 Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
@@ -231,8 +229,6 @@ usual acceptance like any other change.
 
 ICU is the build that ships inside Qt's binaries, so it moves with Qt and is not
 watched by itself. The flatpak manifest is a research spike and not watched.
-Windows pins (the `portable` job's Qt, `tools/ci/provision-portable-deps.sh`)
-belong to the Windows rewrite and are not managed here.
 
 **Versions only, then a refresh.** Renovate changes the version fields. Its
 post-upgrade task, `tools/maintenance/refresh_pins.py`, then re-derives
@@ -276,8 +272,7 @@ Dependabot for the workflow pins.
 **Workflow actions.** `.github/dependabot.yml` has Dependabot update the
 `uses: owner/action@<sha> # vX` pins in `.github/workflows` weekly (Mondays
 04:47 UTC), against `nightly`, in one grouped pull request labelled
-`dependencies` and `area: ci`. `ilammy/msvc-dev-cmd` is Windows-only and left
-to the Windows rewrite. Dependabot's pull requests start CI on their own, with a
+`dependencies` and `area: ci`. Dependabot's pull requests start CI on their own, with a
 read-only token; the flaky-test tracker then logs a warning instead of
 updating its issues.
 
@@ -420,7 +415,8 @@ reads the newest one on a ref. Three rules keep the total bounded:
   eviction. `--dry-run` lists the deletions without making them. The job is not
   in the required `CI` summary.
 
-Budget per job, measured 2026-10-19 (compressed archive sizes; the ceiling is
+Historical budget per job, measured 2026-10-19 (before Windows CI was removed;
+compressed archive sizes; the ceiling is
 `CCACHE_MAXSIZE`, which bounds what a working set can grow to):
 
 | Cache | Saved by | Entries kept | Size | Ceiling |
@@ -463,7 +459,7 @@ Run any contract group with `python3 tools/ci/contracts.py GROUP`; the reports
 land in `build/contracts`. Download the per-job artifacts for hosted failures,
 and compare full commit/build identity and test names first. A workflow
 scheduling or cache change requires hosted validation of both Linux
-distributions and the Windows compile before it is reported green.
+distributions and selected package jobs before it is reported green.
 
 ## Tests retained after the audit
 
@@ -942,9 +938,7 @@ Steps that clone or download outside the helper have step limits:
 "Verify pinned SDK source" 20 minutes, "Provision pinned Proton helper" 15,
 "Provision pinned AWS SDK" 30. The actionlint download uses `curl --retry 3
 --connect-timeout 30 --max-time 300`, and `portable_appimage.py` downloads the
-AppImage tools with a 120 s socket timeout. Two gaps remain: the Windows
-`portable` job, which the Windows rewrite owns
-([#501](https://github.com/patrick-hudson/put.gd-desktop/issues/501)), and
+AppImage tools with a 120 s socket timeout. The remaining gap is
 `provision-qt-asan.sh`'s curl
 ([#502](https://github.com/patrick-hudson/put.gd-desktop/issues/502)).
 
@@ -967,13 +961,13 @@ Linux test and package jobs provision the pinned official JS helper before
 configuring with `PUTGD_BUNDLE_PROTON=ON`. Provisioning runs helper tests,
 compiled one-request smoke checks and the large stdout-drain fixture. Native and
 AppImage audits require the exact provisioned manifest and source/notices files;
-collection also verifies the corresponding-source transport. The Linux x86-64
-lock is not used by the Windows compile. Hosted contracts do not replace
+collection also verifies the corresponding-source transport. Hosted contracts do not replace
 authenticated packaged desktop and resource acceptance.
 
 ## Rollout measurements (October 2026)
 
-Hosted runs from the first day of the redesigned pipeline. "Cold" means the
+Historical hosted runs from the first day of the redesigned pipeline, before
+Windows support was dropped on 2026-10-31. "Cold" means the
 cache keys had just changed; "warm" restored the caches the `nightly` push run
 saved. Wall time runs from the trigger to the last job.
 

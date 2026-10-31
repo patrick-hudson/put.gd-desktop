@@ -67,9 +67,10 @@ secret and only warns when the notification fails; see
 a rewritten committer date on `nightly` HEAD could cause that; check the commit
 and its date.
 
-Nightly notes state automated coverage: Linux test suites, Windows portable
-compilation, package audits and the extracted-source production build. They are
-development releases, not new graphical, memory or live-S3 certification.
+Nightly notes state automated coverage: Linux test suites, package audits and
+the extracted-source production build. put.gd ships only Linux DEB, RPM and
+AppImage packages; native Windows support was dropped on 2026-10-31. Nightlies
+are development releases, not new graphical, memory or live-S3 certification.
 
 ### Changes in the release notes
 
@@ -217,9 +218,9 @@ or SDK general availability is not a publication prerequisite; the concrete
 
 Linux x86-64 Build and release jobs provision and test the pinned official JS
 helper, enable its bundle explicitly, and require matching runtime, notices and
-source catalog in native/AppImage audits. Windows/macOS Proton support remains
-outside this release scope. The curated source archive includes Proton build
-inputs and its production rebuild checks the extracted helper.
+source catalog in native/AppImage audits. Proton ships on Linux only. The
+curated source archive includes Proton build inputs and its production rebuild
+checks the extracted helper.
 
 Every Proton-enabled release delivers the current `proton-source-catalog.json`.
 Its permanent URLs point to the unchanged corresponding-source transport parts,
@@ -363,8 +364,8 @@ GNOME capture currently targets Shell 50 and requires the host extension.
 Release collection also emits the matching extension ZIP. Installing files inside
 an AppImage does not install a host extension. See [GNOME setup](desktops/gnome.md).
 Minimum-Qt DEB compatibility compilation is separate from GNOME/KDE compositor
-qualification. Windows CI compilation is future-platform evidence, not a
-native support claim.
+qualification. CI builds Linux only; historical Windows compilation does not
+represent a supported release target.
 
 ## Package repositories
 

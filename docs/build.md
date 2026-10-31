@@ -136,9 +136,8 @@ at configure time to exclude QtTest. `ctest` uses the offscreen Qt platform for 
 contract tests and a disposable Xvfb display for native X11 protocol tests. These
 checks do not certify capture, clipboard ownership, or global hotkeys on a real desktop.
 
-Windows/macOS provision the same Qt/QtKeychain/SDK packages with their normal package
-manager and pass their installation prefix using `CMAKE_PREFIX_PATH`. Native desktop
-adapters are Linux-first. Cross-platform compile results will be recorded by CI.
+put.gd builds and ships for Linux only: DEB, RPM and AppImage. Native Windows
+support was dropped on 2026-10-31; CI has no Windows build or MSVC provisioning.
 
 Local bootstrap evidence (Mint 22.3, GCC 13.3, Qt 6.4.2, QtKeychain 0.14.2):
 the pinned SDK compiled and installed; the Debug app and both contract tests built;
@@ -154,8 +153,9 @@ keychain tests use an isolated D-Bus protocol peer or an unavailable service.
 They do not contact AWS or read the user's secret store. The four hosted jobs
 passed for main `b1ed4ae6c2128ad189889b61c18798994ebf210c` in
 [Build run 38438946727](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727):
-Ubuntu 24.04/26.04 build and test Linux, while Windows/macOS establish shared
-compile success only. These jobs do not certify native desktop behavior.
+That historical run built and tested Ubuntu 24.04/26.04 and established shared
+compile success on Windows/macOS only. It predates the Linux-only CI policy;
+those compile jobs are retired. These results do not certify native desktop behavior.
 
 U1 changes build configuration and introduces the skeleton. No prior implementation or
 tests existed. Replacement evidence is the actual dependency compile/link and runtime
