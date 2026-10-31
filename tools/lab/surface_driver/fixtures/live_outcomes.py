@@ -42,7 +42,7 @@ def admit(ctx):
     if (ctx.destination not in ('s3', 'proton') or ctx.placement != 'guest'
             or ctx.target.physical or not ctx.profile.get('guest') or not ctx._live_admitted):
         raise RecipeBlocked('Tier 1 live requires the admitted builder guest; boat and native are forbidden')
-    allowed = {'mint-cinnamon-x11': ('d69', 'f44'), 'ubuntu-gnome-wayland': ('d69', 'f44'),
+    allowed = {'mint-cinnamon-x11': ('d69', 'f44', 'm74'), 'ubuntu-gnome-wayland': ('d69', 'f44'),
                'kubuntu-kde-wayland': ('f44', 'k72'), 'aurora-kde-wayland': ('f44', 'd69', 'aurora-amd')}
     if ctx.host not in allowed.get(ctx.desktop, ()):
         raise RecipeBlocked('Tier 1 live desktop is not on an authorized builder')
