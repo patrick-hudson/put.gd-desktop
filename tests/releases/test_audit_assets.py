@@ -3,6 +3,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -11,6 +12,7 @@ import io
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import audit_assets
+import quiet_git  # noqa: F401
 
 
 class DownloadChecks(unittest.TestCase):
@@ -123,6 +125,45 @@ class SourceChecks(unittest.TestCase):
             catalog.write_bytes(b'{"source":"substituted"}')
             with self.assertRaisesRegex(ValueError, 'differs from curated source'):
                 audit_assets.verify_source_catalog(export, catalog)
+
+    def test_forged_archive_and_receipt_cannot_substitute_committed_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'git'
+            (root / 'src').mkdir(parents=True)
+            (root / 'src/main.cpp').write_text('// committed source\n')
+            def git(*args):
+                return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
+            git('init', '-q')
+            git('add', 'src/main.cpp')
+            git('-c', 'user.name=Audit fixture', '-c', 'user.email=audit@example.invalid',
+                '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'fixture')
+            identity = {'version': '26.1031.1-nightly', 'baseVersion': '26.1031.1',
+                        'packageVersion': '26.1031.1~nightly', 'gitCommit': git('rev-parse', 'HEAD'),
+                        'gitTree': git('rev-parse', 'HEAD^{tree}'), 'commitCount': 1,
+                        'dirty': False, 'sourceProvenance': 'git'}
+            artifact = Path(temporary) / 'source.tar.gz'
+            receipt = audit_assets.source_archive.create_archive(root, artifact, identity)
+            audit_assets.source_export(artifact, receipt, root)
+            prefix = receipt['archiveRoot'] + '/'
+            with tarfile.open(artifact) as tar:
+                contents = {m.name: tar.extractfile(m).read() for m in tar if m.isfile()}
+            changed = b'// substituted source\n'
+            contents[prefix + 'src/main.cpp'] = changed
+            info = json.loads(contents[prefix + 'source-info.json'])
+            for item in info['files']:
+                if item['path'] == 'src/main.cpp':
+                    item.update(bytes=len(changed), sha256=hashlib.sha256(changed).hexdigest())
+            contents[prefix + 'source-info.json'] = json.dumps(info).encode()
+            receipt['members'] = info['files'] + [{'path': 'source-info.json',
+                'bytes': len(contents[prefix + 'source-info.json']),
+                'sha256': hashlib.sha256(contents[prefix + 'source-info.json']).hexdigest()}]
+            with tarfile.open(artifact, 'w:gz') as tar:
+                for name, body in contents.items():
+                    member = tarfile.TarInfo(name)
+                    member.size = len(body)
+                    tar.addfile(member, io.BytesIO(body))
+            with self.assertRaisesRegex(ValueError, 'differs from committed Git source'):
+                audit_assets.source_export(artifact, receipt, root)
 
 
 class AdvisoryRanges(unittest.TestCase):

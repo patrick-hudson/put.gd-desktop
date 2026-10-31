@@ -102,7 +102,7 @@ def release_identity(root, tag, identity):
     return stamp
 
 
-def source_export(path, receipt):
+def source_export(path, receipt, git_root=None):
     """Verify every curated source member and reject non-production paths."""
     prefix = receipt['archiveRoot'] + '/'
     catalog_sha = None
@@ -112,6 +112,19 @@ def source_export(path, receipt):
         if (not isinstance(members, list) or not members or info['identity'] != receipt['identity']
                 or info['files'] != [item for item in members if item['path'] != 'source-info.json']):
             raise ValueError('Source export identity mismatch')
+        if git_root is not None:
+            entries = source_archive._entries(git_root, info['identity']['gitCommit'])
+            blobs = source_archive._blobs(git_root, entries)
+            committed = {name: (mode, oid) for name, mode, oid in entries}
+            if {item['path'] for item in info['files']} != set(committed) | {'README_SOURCE.md'}:
+                raise ValueError('Source export differs from committed Git inventory')
+            for item in info['files']:
+                if item['path'] == 'README_SOURCE.md':
+                    continue
+                mode, oid = committed[item['path']]
+                if (item.get('gitBlob') != oid or item.get('mode') != f'{int(mode, 8) & 0o777:04o}'
+                        or item['sha256'] != hashlib.sha256(blobs[oid]).hexdigest()):
+                    raise ValueError('Source export differs from committed Git source: ' + item['path'])
         expected = {prefix + item['path']: item for item in info['files']}
         seen = set()
         for member in archive:
@@ -264,7 +277,7 @@ def audit(args):
         if built is not None:
             write(sources / 'source-build-results.json', built)
         archive, _, built = verified_source(sources, release, require_build=built is not None)
-        checks['sourceExport'] = source_export(archive, source_receipt)
+        checks['sourceExport'] = source_export(archive, source_receipt, args.source_root)
         checks['sourceRebuild'] = {'kind': 'separate exact-source rebuild' if args.source_build_result else 'CI receipt', 'receipt': built}
         if built is None:
             result['errors'].append('No exact-source production rebuild receipt')
