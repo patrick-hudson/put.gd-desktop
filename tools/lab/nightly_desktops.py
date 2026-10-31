@@ -94,9 +94,13 @@ class GitHub:
         return json.loads(result.stdout) if result.stdout.strip() else {}
 
     def issues(self):
-        pages = json.loads(self.gh('api', f'repos/{self.repo}/issues?state=all&per_page=100',
-                                   '--paginate', '--slurp'))
-        return [i for page in pages for i in page if 'pull_request' not in i]
+        issues = []
+        for page in range(1, 1001):
+            values = self.api(f'repos/{self.repo}/issues?state=all&per_page=100&page={page}')
+            issues.extend(i for i in values if 'pull_request' not in i)
+            if len(values) < 100:
+                return issues
+        raise RuntimeError('issue pagination limit exceeded')
 
     def issue(self, title, body, existing=None):
         base = f'repos/{self.repo}/issues'
@@ -302,8 +306,9 @@ def worker(config, tag, identity, artifacts, out):
                             name = flow+'-'+str(attempt)
                             target = rowout/name
                             runtime = '/dev/shm/n'+uuid.uuid4().hex[:8]
-                            command([sys.executable, 'tools/diagnostics/check_socket_paths.py', '--ui-output', target,
-                                     '--socket', runtime+'/runtime/putgd/session.sock'], log=rowout/(name+'-sockets.json'))
+                            command([sys.executable, 'tools/diagnostics/check_socket_paths.py', '--socket',
+                                     target/'runtime/putgd/session.sock', runtime+'/runtime/putgd/session.sock'],
+                                    log=rowout/(name+'-sockets.json'))
                             args = [sys.executable, '-m', 'tools.lab.surface_driver.run', '--desktop', row['desktop'],
                                 '--host', host, '--placement', 'guest', '--guest', row['profile'], '--run', str(run),
                                 '--package', row['package'], '--destination', destination, '--recipes', recipe,
