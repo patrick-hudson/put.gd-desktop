@@ -12,8 +12,9 @@
 namespace putgd {
 namespace {
 QDateTime created(const QJsonObject& r){auto d=QDateTime::fromString(r["created"].toString(),Qt::ISODateWithMs);if(!d.isValid())d=QDateTime::fromString(r["created"].toString(),Qt::ISODate);return d.toLocalTime();}
-QString relative(const QJsonObject& r){const auto d=created(r);if(!d.isValid())return {};const auto s=d.secsTo(QDateTime::currentDateTime());if(s<60)return "Just now";if(s<3600)return QString("%1 min ago").arg(s/60);if(d.date()==QDate::currentDate())return d.toString("HH:mm");if(d.date()==QDate::currentDate().addDays(-1))return "Yesterday";return d.toString("MMM d, yyyy");}
-QString day(const QJsonObject& r){const auto date=created(r).date();if(date==QDate::currentDate())return "TODAY";if(date==QDate::currentDate().addDays(-1))return "YESTERDAY";return date.isValid()?date.toString("MMMM d, yyyy").toUpper():QString("EARLIER");}
+QString relative(const QDateTime& d){if(!d.isValid())return {};const auto s=d.secsTo(QDateTime::currentDateTime());if(s<60)return "Just now";if(s<3600)return QString("%1 min ago").arg(s/60);if(d.date()==QDate::currentDate())return d.toString("HH:mm");if(d.date()==QDate::currentDate().addDays(-1))return "Yesterday";return d.toString("MMM d, yyyy");}
+QString relative(const QJsonObject& r){return relative(created(r));}
+QString day(const QDateTime& created){const auto date=created.date();if(date==QDate::currentDate())return "TODAY";if(date==QDate::currentDate().addDays(-1))return "YESTERDAY";return date.isValid()?date.toString("MMMM d, yyyy").toUpper():QString("EARLIER");}
 struct AggregateProgress {
  qint64 sent=0,total=0;bool known=false;
  int percent()const{return total>0?qBound(0,int(100.0*sent/total),100):-1;}
@@ -35,6 +36,18 @@ bool localSaveFailed(const QJsonObject& r){
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
 QString HistoryModel::relativeTime(const QJsonObject& r){return relative(r);}
+QString HistoryModel::dayLabel(int row)const{
+ // Today and Yesterday move at midnight; the labels follow the date.
+ const auto today=QDate::currentDate();
+ if(dayLabelsFor_!=today){dayLabels_.clear();for(const auto& created:createdAt_)dayLabels_.append(day(created));dayLabelsFor_=today;}
+ return dayLabels_.at(row);
+}
+HistoryModel::RowFacts HistoryModel::rowFacts(const QJsonObject& r){
+ RowFacts facts;facts.active=active(r);facts.failed=failed(r);
+ if(facts.active)return facts;
+ if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())facts.primary="Retry deletion";else if(copyLocalResult(r))facts.primary="Copy result";else if(retryUpload(r))facts.primary="Retry upload";else if(retryLocalSave(r))facts.primary="Retry local save";else if(r["linkAvailable"].toBool())facts.primary="Copy link";
+ return facts;
+}
 QString HistoryModel::fileSize(qint64 bytes){return ByteSize::fileSummary(bytes);}
 QString HistoryModel::duration(qint64 ms){if(ms<=0)return {};const qint64 s=(ms+999)/1000;return s>=3600?QString("%1:%2:%3").arg(s/3600).arg(s/60%60,2,10,QChar('0')).arg(s%60,2,10,QChar('0')):QString("%1:%2").arg(s/60).arg(s%60,2,10,QChar('0'));}
 HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListModel(parent),history_(history){}
@@ -43,7 +56,8 @@ QJsonObject HistoryModel::record(int row)const{return row>=0&&row<rows_.size()?r
 QJsonArray HistoryModel::activeOperations()const{QJsonArray result;for(const auto& v:operations_)if(Operation::activeState(v.toObject()["state"].toString()))result.append(v);return result;}
 int HistoryModel::operationProgress(const QJsonObject& operation){return aggregateProgress(operation).percent();}
 bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable"].toBool();}
-bool HistoryModel::multipleDestinations()const{
+bool HistoryModel::multipleDestinations()const{return multipleDestinations_;}
+bool HistoryModel::scanDestinations()const{
  QSet<QString> destinations;
  for(const auto& row:rows_){auto files=row["records"].toArray();if(files.isEmpty())files.append(row);for(const auto& value:files){const auto file=value.toObject(),destination=file["receipt"].toObject()["destination"].toObject();auto id=file["profileId"].toString();if(id.isEmpty())id=destination["profileId"].toString();if(id.isEmpty())id=row["operation"].toObject()["destination"].toObject()["profileId"].toString();id=file["uploadStatus"]=="local_only"?QString("local:"):!id.isEmpty()?"profile:"+id:"receipt:"+QString::fromUtf8(QJsonDocument(destination).toJson(QJsonDocument::Compact));destinations.insert(id);if(destinations.size()>1)return true;}}
  return false;
@@ -137,12 +151,12 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==Qt::DisplayRole){const auto name=r["name"].toString();return r["mime"].toString().startsWith("image/")?QFileInfo(name).completeBaseName():name;}
  if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+statusText(r);
  if(role==Qt::ToolTipRole)return r["name"].toString()+"\n"+statusText(r);
- if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
- if(role==ActiveRole)return active(r);
- if(role==FailedRole)return failed(r);
- if(role==PrimaryActionRole){if(active(r))return QString{};if(r["remoteStatus"]=="failed"&&!r["deleteOperationId"].toString().isEmpty())return "Retry deletion";if(copyLocalResult(r))return "Copy result";if(retryUpload(r))return "Retry upload";if(retryLocalSave(r))return "Retry local save";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==DayRole){const auto currentDay=dayLabel(i.row());return i.row()==0||currentDay!=dayLabel(i.row()-1)?currentDay:QString{};}
+ if(role==ActiveRole)return facts_.at(i.row()).active;
+ if(role==FailedRole)return facts_.at(i.row()).failed;
+ if(role==PrimaryActionRole)return facts_.at(i.row()).primary;
  if(role==ProgressRole)return aggregateProgress(op).percent();
- if(role==CreatedRole)return relative(r);
+ if(role==CreatedRole)return relative(createdAt_.at(i.row()));
  if(role==OutputRole){
   // Where the result went: this device for a local-only result, else the
   // destination's current name (or its provider when it was since removed).
@@ -153,11 +167,11 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
   if(provider=="proton-drive")return QStringLiteral("Proton Drive");if(provider=="backblaze-b2")return QStringLiteral("Backblaze B2");if(provider=="s3")return QStringLiteral("S3 destination");
   return r["local"].toObject()["status"]=="saved"?QStringLiteral("This device"):QString{};
  }
- if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled"||(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)))return statusText(r);const auto remote=remoteStateText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());if(!remote.isEmpty())text+=" · "+remote;else{if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Shared link";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Couldn't copy result":" · Couldn't copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}const auto time=relative(r);if(!time.isEmpty())text+=" · "+time;if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
+ if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled"||(r["uploadStatus"]=="local_only"&&localCopyUnavailable(r)))return statusText(r);const auto remote=remoteStateText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());if(!remote.isEmpty())text+=" · "+remote;else{if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Shared link";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Couldn't copy result":" · Couldn't copy link";else if(op["copyStatus"]=="suppressed")text+=r["uploadStatus"]=="local_only"?" · Result not copied":" · Link not copied";}const auto time=relative(createdAt_.at(i.row()));if(!time.isEmpty())text+=" · "+time;if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}
  return {};
 }
-void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();records_={};total_=0;endResetModel();refresh();}
+void HistoryModel::setQuery(const UiHistoryQuery& query){query_=query;query_.limit=qBound(1,query.limit,200);query_.offset=qMax(0,query.offset);++request_;if(!queryBusy_){queryBusy_=true;emit busyChanged(true);}beginResetModel();rows_.clear();createdAt_.clear();facts_.clear();dayLabelsFor_={};multipleDestinations_=false;records_={};total_=0;endResetModel();refresh();}
 void HistoryModel::setShowCancelled(bool show){if(showCancelled_==show)return;showCancelled_=show;if(!queryBusy_)rebuild();}
 void HistoryModel::refresh(){
  if(loadInFlight_){loadPending_=true;return;}const auto seq=request_;loadInFlight_=true;
@@ -191,9 +205,9 @@ void HistoryModel::rebuild(){
   groups.append(group);
  }
  std::stable_sort(groups.begin(),groups.end(),[](const auto& a,const auto& b){if(active(a)!=active(b))return active(a);return a["created"].toString()>b["created"].toString();});
- beginResetModel();rows_.clear();hiddenCancelled_=0;
- for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hiddenCancelled_;continue;}rows_.append(group);}
- endResetModel();emit loaded();
+ beginResetModel();rows_.clear();createdAt_.clear();facts_.clear();dayLabelsFor_={};hiddenCancelled_=0;
+ for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hiddenCancelled_;continue;}rows_.append(group);createdAt_.append(created(group));facts_.append(rowFacts(group));}
+ multipleDestinations_=scanDestinations();endResetModel();emit loaded();
 }
 void HistoryModel::loadThumbnail(const QString& path)const{if(thumbnailRequested_.contains(path)||thumbnailQueue_.size()>=32)return;thumbnailRequested_.insert(path);thumbnailQueue_.append(path);nextThumbnail();}
 void HistoryModel::nextThumbnail()const{
