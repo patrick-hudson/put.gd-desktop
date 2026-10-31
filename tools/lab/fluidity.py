@@ -89,7 +89,7 @@ def fixture(args):
     window = Gtk.Window(title='put.gd fluidity fixture')
     area = Gtk.DrawingArea()
     window.add(area)
-    state = {'frame': 0, 'ticks': open(args.ticks, 'a') if args.ticks else None, 'started': None, 'covered': False}
+    state = {'frame': 0, 'ticks': open(args.ticks, 'a', buffering=1) if args.ticks else None, 'started': None, 'covered': False}
 
     def draw(_widget, cr):
         width, height = area.get_allocated_width(), area.get_allocated_height()

@@ -165,7 +165,14 @@ GstPadProbeReturn RecordingPipeline::stampFrame(GstPad* pad, GstPadProbeInfo* in
     // it played the sound late (+35..+48 ms) where arrival times matched X11.
     if (!clock->compositorTimes) frame = pipewireFrameTime(-1, 0, running, clock->previous);
     clock->previous = frame.running;
-    buffer = gst_buffer_make_writable(buffer);
+    // The compositor owns a handful of stream buffers (KWin offers 2-4) and
+    // skips a frame whenever none is free. Copy the frame out here, on the
+    // source thread, so the stream buffer goes back at once instead of waiting
+    // in the capture queue and the converter; the copy is a few hundred
+    // microseconds of memcpy against a frame the compositor would drop.
+    GstBuffer* copy = gst_buffer_copy_deep(buffer);
+    if (copy) { gst_buffer_unref(buffer); buffer = copy; }
+    else buffer = gst_buffer_make_writable(buffer);
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
     GST_BUFFER_PTS(buffer) = GST_BUFFER_DTS(buffer) = GstClockTime(frame.running);
     return GST_PAD_PROBE_OK;

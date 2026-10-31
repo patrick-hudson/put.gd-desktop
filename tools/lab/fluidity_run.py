@@ -121,7 +121,16 @@ class Driver:
             label, _, path = spec.partition('=')
             if not path:
                 raise RunError('--build needs LABEL=PATH')
-            self.builds.append(record_run.Build(label, path, self.run))
+            build = record_run.Build(label, path, self.run)
+            if build.identity['kind'] == 'appimage':
+                # Run the extracted image: its helper then has a stable path a
+                # KWin screencast entry can name, unlike a fresh FUSE mount.
+                appdir = self.run / ('appdir-' + label) / 'squashfs-root'
+                build.launcher = [str(appdir / 'AppRun'), '--background']
+                build.helper = appdir / 'usr/bin/putgd-record'
+            else:
+                build.helper = Path(build.path) / 'putgd-record'
+            self.builds.append(build)
 
     # -- resident -----------------------------------------------------------
     def cli(self, build, method, params=None, timeout=60):
@@ -179,9 +188,7 @@ class Driver:
 
     def kwin_entry(self, build):
         """A temporary desktop entry so KWin offers zkde_screencast to this build's helper."""
-        helper = Path(build.path) / 'putgd-record' if build.identity['kind'] == 'installed' else None
-        if helper is None:
-            return
+        helper = build.helper
         directory = Path(os.environ['HOME']) / '.local/share/applications'
         directory.mkdir(parents=True, exist_ok=True)
         entry = directory / ('putgd-record-fluidity-%s.desktop' % build.label)
