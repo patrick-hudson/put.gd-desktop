@@ -102,13 +102,10 @@ missing=''
 for package in python3-pyqt6 python3-pyatspi python3-dbus python3-pillow python3-gobject tesseract xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring; do
  if ! rpm -q "$package" >/dev/null; then missing="$missing $package"; fi
 done
-if [ -n "$missing" ]; then sudo -n rpm-ostree install $missing; echo NIGHTLY_REBOOT_REQUIRED; fi
+if [ -n "$missing" ]; then sudo -n rpm-ostree install --apply-live $missing; echo NIGHTLY_TOOLS_APPLIED; fi
 '''
         preparation = lab.guest_session(run, script, timeout=1200)
         (out/'atomic-overlay.txt').write_text(preparation)
-        if 'NIGHTLY_REBOOT_REQUIRED' in preparation:
-            from tools.lab.guest_reboot import reboot
-            (out/'atomic-reboot.json').write_text(json.dumps(reboot(run), indent=2))
         if lab.ssh(run, 'rpm -q '+components).strip() != before:
             raise RuntimeError('Atomic overlay changed a desktop component; no acceptance run allowed')
     # Record individual missing probe names, never Python tracebacks or inputs.
