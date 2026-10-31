@@ -1,44 +1,47 @@
-# Tier 1 Phase B: follow-up 4
+# Tier 1 Phase B: follow-up 5 closeout attempt
 
-**Cinnamon S3 passes with the default public-read ACL. Proton passes on all three desktops, with GNOME reused as authorized. GNOME and KDE S3 remain F for a recipient-verifier failure.** The ACL correction fixes public serving; no AWS policy, ownership, versioning or Block Public Access setting was changed. No app defect was isolated.
+**KDE S3 now passes. GNOME S3 remains F because a shell-banner obstruction tripped the pattern guard before capture or upload.** Exactly one S3 recipe attempt ran per requested desktop, with the unchanged corrected guest-GET verifier. The other four same-build P results are retained. Full six-cell acceptance is still incomplete; no app upload defect was isolated by these runs.
 
 | Desktop | S3 | Proton |
 | --- | --- | --- |
-| GNOME Wayland / d69 | F | P, reused follow-up 3 |
-| KDE Wayland / f44 | F | P |
-| Cinnamon X11 / d69 | P | P |
+| GNOME Wayland / d69 | F, follow-up 5, pattern guard | P, follow-up 3 |
+| KDE Wayland / f44 | P, follow-up 5 | P, follow-up 4 |
+| Cinnamon X11 / d69 | P, follow-up 4 | P, follow-up 4 |
 
-Exactly one new attempt per requested destination ran: GNOME S3, KDE S3/Proton, Cinnamon S3/Proton. There were no additional uploads or complete reruns. The existing GNOME Proton original-byte proof uses the same exact published app build. No P-preview exception was needed.
-
-| Proof | New this follow-up | Including reused GNOME Proton |
+| Proof | New follow-up 5 | Entire Phase B cumulative |
 | --- | ---: | ---: |
-| Uploads | 5 | 6 |
-| Verified remote hashes | 5 | 6 |
-| S3 public guest GET 200 + matching hash | 1 | 1 |
-| Proton Firefox original-file hashes | 2 | 3 |
-| History deletions | 3 | 3 |
-| History revocations | 2 | 3 |
-| S3 origin GET 404 | 3 | 3 |
-| Fresh Proton unavailable-page proofs | 2 | 3 |
+| Uploads | 1 | 23 |
+| Verified remote hashes | 1 | 13 |
+| S3 public guest GET 200 + matching original hash | 1 | 2 |
+| Proton Firefox original-file hashes | 0 | 3 |
+| History deletions | 1 | 10 |
+| History revocations | 0 | 13 |
+| Authenticated S3 origin GET 404 | 1 | 10 |
+| Fresh unavailable browser observations | 0 | 12 |
+| Missing-key HEAD 404 before S3 import/upload | 2 | 12 |
+| Batons lent / returned | 0 / 0 | 24 / 24 |
+| Retired disposable overlays | 2 | 15 |
 
-Revocation and deletion proof is recorded as counts only. All three S3 post-deletion browser observations were HTTP 200 from CloudFront cache. Those are informational; authenticated origin GET 404 is the deletion proof. Missing-key HEAD returned 404 before each S3 import/upload. All actual uploads were cleaned through History, including failed proof rows.
+Cumulative counts include historical failed proof attempts and cleanup continuations; they do not imply every earlier row passed. Historical unavailable-browser observations include earlier public-serving failures. Revocation and deletion proof is recorded as counts only. Reused results are not added to cumulative counts a second time. The five currently passing cells prove five remote hashes, two S3 public hashes, three Proton original-file hashes, two deletions, three revocations, two origin-404 and three fresh unavailable Proton pages.
 
-The fixture now combines `aclMode=public-read`, the CloudFront public base and a fresh isolated `acceptance/tier1-live/<uuid>/` prefix. The running app profile is read back before capture. All three S3 uploads passed the independent authenticated origin length/hash checks and loaded the copied image in guarded Firefox. GNOME and KDE then failed the older image-document page-script fetch/crypto proof before the new guest GET was reached. They remain F, with public hashes unproven, under driver issue #996; they are not silently promoted based on a different desktop.
+The [GNOME failure receipt](followup-5/gnome/s3a/receipt.json) records zero capture/upload/hash/delete actions. One read-only missing-key HEAD returned 404, and its one-time S3 bridge entry was cleaned during teardown. The [precredential desktop](followup-5/gnome/setup/gno-ready.png) visibly contains a Software Updater banner; it should have been dismissed before launching this attempt. The [failure diagnostic](followup-5/gnome/s3a/pattern-occlusion.json) reports outside-pattern obstruction bounds [376,0,903,113], consistent with a GNOME shell banner. Its window list contains only Desktop Icons 1 (gjs, PID 2414, stack 0) and the owned fullscreen fixture (python3, PID 6890, stack 1), both [0,0,1280,800]; the chosen pattern rectangle is [320,240,640,320]. The exact banner content at failure was not retained unmasked. A masked failure frame is retained beside the diagnostic. No guard was weakened. This distinct failure is #997; no second attempt was made under the explicit one-attempt limit.
 
-The small verifier correction used on Cinnamon performs the requested independent bounded guest HTTP GET alongside the verified Firefox image load. It requires the acceptance URL shape, no redirect, HTTP 200 and exact saved bytes/SHA-256. Its working URL stays in the guest RAM process. Cinnamon's [S3 receipt](followup-4/cinnamon/s3a/receipt.json) records both positive checks, real region input and zero-tolerance pattern-crop equality. The [GNOME](followup-4/gnome/s3a/receipt.json) and [KDE](followup-4/kde/s3a/receipt.json) failure receipts retain the missing-proof context and cleanup. #992's private-object fixture cause is superseded by this public-read result; the separate verifier failure remains explicit.
+The [KDE receipt](followup-5/kde/s3a/receipt.json) proves real mouse region input and a saved PNG matching the independently frozen crop pixel for pixel, with zero tolerance. Authenticated origin HEAD/GET verified length and SHA-256. The exact copied public link rendered in guarded Firefox, and a bounded independent guest GET returned an unredirected HTTP 200 with matching original bytes/SHA-256. The working URL stayed in the guest RAM process. The resolved app profile used `public-read`, the CloudFront host and a fresh isolated `acceptance/tier1-live/<uuid>/` prefix.
 
-[KDE](followup-4/kde/protona/recipient-proof.json) and [Cinnamon](followup-4/cinnamon/protona/recipient-proof.json) retain Firefox's exact Download-list states, real target, completion/error/blocked/partial flags and decoded-preview comparison. The first Download click opens a confirmation; the real confirmation is clicked only after observing the list. Both actual completed originals match the saved PNG in guest RAM. GNOME's [reused proof](followup-3/gnome/protona/recipient-proof.json) already proves the same behavior. Source URLs and arbitrary error messages are excluded. Proton preview comparisons are decoded RGBA at 600×280 with zero tolerance; original-file hashes, rather than preview exceptions, establish these P rows.
+History deleted the exact owned KDE object and authenticated origin GET returned 404. Fresh CloudFront navigation afterward observed cached 200, informational; the subsequent saved-frame focus lookup encountered a title-space normalization mismatch, also informational. The origin-404 proof is decisive. No bucket policy, ownership, versioning, Block Public Access setting or existing user object was changed. #996's guest-GET correction is now verified on KDE and Cinnamon; GNOME did not reach the recipient phase in this attempt.
 
-Every run installed published **v26.1030.3203-nightly**, clean app commit **cc9d9410d6e982dd93d58bcfda82f112c44a82f6**, matching catalog CI **41111404666**. Installation receipts and guest/golden identities are in each desktop's `setup/` directory. [Parameters](followup-4/parameters.json) and [driver source hashes](followup-4/driver-source.json) distinguish executed driver **692df12c** on GNOME/KDE from **49068834** on Cinnamon. The final correction was not rerun on GNOME/KDE, honoring the single-pass budget. No app or broker was compiled.
+The retained proof sources are [Cinnamon S3](followup-4/cinnamon/s3a/receipt.json), [GNOME Proton](followup-3/gnome/protona/recipient-proof.json), [KDE Proton](followup-4/kde/protona/recipient-proof.json) and [Cinnamon Proton](followup-4/cinnamon/protona/recipient-proof.json). All Proton rows prove real completed Firefox original-file hashes, exact Download-list states and zero-tolerance decoded-preview matches, without P-preview. Their History revocations and fresh unavailable recipient pages passed.
 
-The unchanged #726 gate enforced builder-guest placement, exact build identity, pinned secret states/classifier, OCR self-test and full masking. Key set 2 stayed in builder memory and entered only through the bridge. Each Proton lend used its own builder's session under that builder's Proton lock, with source checks before and after. No account was signed in, signed out or created. No working URL, token, credential or session snapshot is in these artifacts.
+All final-table cells use published **v26.1030.3203-nightly**, clean app commit **cc9d9410d6e982dd93d58bcfda82f112c44a82f6**, matching catalog CI **41111404666**. The new Ubuntu 26.04 DEB SHA-256 is **adfe9f221271b936b33dccd32b073da7b791745911a36e609c7abf22ab652aee**. Exact installation, guest and golden identities are retained in each new desktop's `setup/` directory. [Parameters](followup-5/parameters.json) and [driver source hashes](followup-5/driver-source.json) identify executed head **8a7ea94eec76c77a1a7a1da08c3a8eb38de282bc**, unchanged implementation **4906883475816701ba5a697d96c997273eeda884**. No app or broker was compiled.
 
-App metadata, Firefox state, temporary files and download destinations stayed in guest RAM. Guest-only Downloads fallbacks were restored, browser handlers and clipboard leases were restored, and socket paths were checked before launch. Mint Update Manager autostart and exact owned applet PIDs were suppressed only in Cinnamon's overlay; its pre-run desktop was visibly clear. Each guest remained on the wall. Masked visuals remain beside every receipt; fully masked frames are not presented as visible-content proof. Private [preparation corrections](followup-4/preparation-corrections.json) added no live attempt.
+The unchanged #726 gate enforced builder-guest placement, exact build identity, pinned secret states/classifier, OCR self-test and full masking. Key set 2 stayed in builder memory and entered each guest only through the bridge. No Proton session/check/lend/account action was used in follow-up 5 and no Proton lock was taken. Previously returned same-builder batons and passing source checks remain in their original proof directories. No account was signed in, signed out or created.
 
-Both new Proton batons returned with source checks passing and guest entries cleaned. All three S3 bridge entries were cleaned. The desktop setup cleanup receipts, baton receipts, export/member-hash confirmations and guarded retirement manifests are under [followup-4](followup-4/). All three overlays were retired after verified export. The [d69](followup-4/d69-lock-release.json) and [f44](followup-4/f44-lock-release.json) desktop and guest locks were released with zero new host items, Proton locks free, and owned tunnels/tiles removed. Goldens and existing desktop work were preserved. No owned background job remains.
+App metadata, Firefox profiles, temporary files and download fallbacks stayed in guest RAM. Browser handlers and clipboard leases were restored, owned RAM roots removed, empty Downloads fallbacks restored and both S3 bridge entries cleaned. Socket lengths were checked before app launch. Both guests were visibly unlocked and kept on the wall; saved masked visuals remain beside every receipt. Fully masked frames are not presented as visible-content proof.
 
-Validation: [tooling results](followup-4/tests/summary.json) record 84 passed / 6 skipped across 90 builder cases on the initial driver, and 18 passed / 1 skipped across 19 final focused cases. The five Git pin/classifier provenance cases skipped in the isolated builder export passed separately in the clean owned worktree (5/5, 0.22 seconds). The Qt image decoder skip reflects the builder's absent PyQt6 and remains covered by the previous prepared-guest decoder test plus the actual Proton comparisons. These tests do not substitute for desktop proof.
+Both overlays were exported and every member hash verified on the workstation, then retired through guarded completion manifests. Their `lifecycle/` directories retain retirement receipts. [d69](followup-5/d69-lock-release.json) and [f44](followup-5/f44-lock-release.json) desktop/guest locks were released with zero new host items; owned tunnels/tiles removed. Goldens, host evidence and existing desktop work were preserved. No owned background job remains.
 
-The [canonical schema-v2 coverage](../../../tools/lab/surface_map/coverage/2026-10-30-surface-driver-tier1-live.json) and [identical copy](coverage.json) retain 36 guest entries: five new recipe results and the explicitly reused GNOME Proton result. [Summary](summary.json) separates new, reused and cumulative counts. The preceding [report and indices](followup-3-final/README.md), all historical attempts, failure context and cleanup continuations are preserved. No issue was closed.
+The driver did not change in this closeout. Retained [tooling results](followup-4/tests/summary.json) include 84 passed / 6 skipped across 90 builder cases, 18 passed / 1 skipped across 19 focused cases and five separately passing Git pin/classifier provenance cases. The Qt decoder skip is covered by the prepared-guest test and actual Proton comparisons. These unit checks do not substitute for desktop proof.
 
-The combined [scan](scan.json), [mask index](frame-masks.json) and [SHA-256 index](sha256.json) cover all current and historical evidence. Private complete logs and bridge receipts remain on d69/f44 under t1r5e/t1r5export and in the ignored workstation work/tier1b archive. Only disposable overlays were retired.
+The [canonical schema-v2 coverage](../../../tools/lab/surface_map/coverage/2026-10-30-surface-driver-tier1-live.json) and [identical copy](coverage.json) have 36 guest entries: **30 passed, 6 failed**. Only the 12 GNOME/KDE S3 entries were replaced; other same-build P results remain. [Summary](summary.json) separates new and cumulative counts. The previous [follow-up 4 report and indices](followup-4-final/README.md), earlier failures and cleanup continuations are preserved unchanged. No issue was closed.
+
+The combined [scan](scan.json), [mask index](frame-masks.json) and [SHA-256 index](sha256.json) cover current and historical evidence with no working URL, token, credential or session snapshot. Private logs and bridge receipts remain on d69/f44 under t1r6e/t1r6export and in the ignored workstation work/tier1b archive. Only disposable overlays were retired.

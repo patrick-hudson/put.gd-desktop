@@ -1,0 +1,48 @@
+{
+  "windows": [
+    {
+      "id": "2989531036",
+      "title": "Desktop Icons 1",
+      "pid": 2414,
+      "process": "gjs",
+      "owned": false,
+      "rect": [
+        0,
+        0,
+        1280,
+        800
+      ],
+      "stack": 0,
+      "minimized": false
+    },
+    {
+      "id": "2989531037",
+      "title": "putgd synthetic fixture",
+      "pid": 6890,
+      "process": "python3",
+      "owned": true,
+      "rect": [
+        0,
+        0,
+        1280,
+        800
+      ],
+      "stack": 1,
+      "minimized": false
+    }
+  ],
+  "coordinate_space": "logical",
+  "pattern_rect": [
+    320,
+    240,
+    640,
+    320
+  ],
+  "outside_pattern_difference_bounds": [
+    376,
+    0,
+    903,
+    113
+  ],
+  "video_color_count": ">4"
+}

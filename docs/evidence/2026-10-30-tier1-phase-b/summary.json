@@ -1,64 +1,56 @@
 {
   "schemaVersion": 2,
-  "scope": "coordinator-follow-up-4-combined-pass",
+  "scope": "coordinator-follow-up-5-final-s3-cells",
   "release": "v26.1030.3203-nightly",
   "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
   "catalogCiRun": 41111404666,
   "placement": "guest",
-  "completedUploads": 5,
-  "verifiedRemoteHashes": 5,
-  "verifiedBrowserHashes": 2,
+  "completedUploads": 1,
+  "verifiedRemoteHashes": 1,
   "verifiedGuestPublicHashes": 1,
-  "uiRevocations": 2,
-  "uiDeletions": 3,
-  "independentUnavailableLinks": 2,
-  "s3OriginAbsenceProofs": 3,
-  "s3MissingHead404": 3,
-  "batonsLent": 2,
-  "batonsReturned": 2,
-  "overlaysRetired": 3,
-  "reusedGnomeProton": true,
-  "reusedCounts": {
-    "completedUploads": 1,
-    "verifiedRemoteHashes": 1,
-    "verifiedBrowserHashes": 1,
-    "uiRevocations": 1,
-    "independentUnavailableLinks": 1
-  },
-  "rows": {
+  "uiDeletions": 1,
+  "independentUnavailableLinks": 0,
+  "s3OriginAbsenceProofs": 1,
+  "s3MissingHead404": 2,
+  "verifiedBrowserHashes": 0,
+  "uiRevocations": 0,
+  "batonsLent": 0,
+  "batonsReturned": 0,
+  "overlaysRetired": 2,
+  "protonUsed": false,
+  "locksReleased": true,
+  "matrixResults": {
     "gnome": {
-      "s3": "failed"
+      "s3": "F",
+      "proton": "P"
     },
     "kde": {
-      "s3": "failed",
-      "proton": "passed"
+      "s3": "P",
+      "proton": "P"
     },
     "cinnamon": {
-      "s3": "passed",
-      "proton": "passed"
+      "s3": "P",
+      "proton": "P"
     }
   },
-  "locksReleased": true,
-  "coverageSha256": "d924e4129d76fefaf060ceae200cb5fb23580b5386953fb0d1f451fb31f1bf16",
+  "cloudfrontAfterDeletion": {
+    "gnome": {
+      "notRun": true,
+      "reason": "pattern guard stopped before capture and upload"
+    },
+    "kde": {
+      "status": 200,
+      "informational": true
+    }
+  },
+  "coverageSha256": "33770a150c520613d2563fb748f3e94d902c33f0df69d203445664f5b6ecac62",
   "issues": [
     978,
     992,
-    996
+    996,
+    997
   ],
   "previousCumulative": {
-    "independentUnavailableLinks": 10,
-    "s3MissingHead404": 7,
-    "verifiedRemoteHashes": 7,
-    "overlaysRetired": 10,
-    "uiRevocations": 11,
-    "s3OriginAbsenceProofs": 6,
-    "verifiedBrowserHashes": 1,
-    "batonsLent": 22,
-    "uiDeletions": 6,
-    "completedUploads": 17,
-    "batonsReturned": 22
-  },
-  "cumulative": {
     "verifiedRemoteHashes": 12,
     "batonsLent": 24,
     "overlaysRetired": 13,
@@ -72,33 +64,19 @@
     "s3OriginAbsenceProofs": 9,
     "batonsReturned": 24
   },
-  "matrixResults": {
-    "gnome": {
-      "s3": "F",
-      "proton": "P",
-      "protonReused": true
-    },
-    "kde": {
-      "s3": "F",
-      "proton": "P"
-    },
-    "cinnamon": {
-      "s3": "P",
-      "proton": "P"
-    }
+  "cumulative": {
+    "overlaysRetired": 15,
+    "verifiedRemoteHashes": 13,
+    "uiDeletions": 10,
+    "s3MissingHead404": 12,
+    "completedUploads": 23,
+    "independentUnavailableLinks": 12,
+    "verifiedBrowserHashes": 3,
+    "verifiedGuestPublicHashes": 2,
+    "batonsLent": 24,
+    "uiRevocations": 13,
+    "batonsReturned": 24,
+    "s3OriginAbsenceProofs": 10
   },
-  "cloudfrontAfterDeletion": {
-    "gnome": {
-      "status": 200,
-      "informational": true
-    },
-    "kde": {
-      "status": 200,
-      "informational": true
-    },
-    "cinnamon": {
-      "status": 200,
-      "informational": true
-    }
-  }
+  "finalAcceptedMatrix": null
 }

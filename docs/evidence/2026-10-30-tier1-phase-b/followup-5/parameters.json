@@ -1,0 +1,36 @@
+{
+  "session": "codex-tier1b-r6-6801919c",
+  "placement": "guest",
+  "release": "v26.1030.3203-nightly",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "catalogCiRun": 41111404666,
+  "destination": "s3",
+  "recipes": [
+    "outcomes_live.s3_region_upload"
+  ],
+  "attemptsPerDesktop": 1,
+  "protonUsed": false,
+  "rows": [
+    {
+      "desktop": "ubuntu-gnome-wayland",
+      "host": "d69",
+      "run": "/home/patrick/t1b/work/lab-runs/r6g",
+      "sessionRoot": "/dev/shm/ygsa"
+    },
+    {
+      "desktop": "kubuntu-kde-wayland",
+      "host": "f44",
+      "run": "/home/patrick/t1b/work/lab-runs/r6k",
+      "sessionRoot": "/dev/shm/yksa"
+    }
+  ],
+  "s3": {
+    "aclMode": "public-read",
+    "publicUrlHost": "put.gd",
+    "publicUrlScheme": "https",
+    "objectPrefixShape": "acceptance/tier1-live/<uuid>/",
+    "positiveProof": "guarded Firefox image plus bounded independent guest GET 200 and original bytes SHA-256",
+    "deletionProof": "authenticated origin GET 404",
+    "cloudfrontAfterDeletion": "informational"
+  }
+}

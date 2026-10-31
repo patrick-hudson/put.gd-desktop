@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 2,
+  "environment": {
+    "desktop": "kubuntu-kde-wayland",
+    "host": "f44",
+    "placement": "guest",
+    "guest": "kde-wayland",
+    "package": "deb",
+    "destination": "s3",
+    "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+    "placement_details": {
+      "run_id": "d0a17847-d2af-422f-907c-d826ba30e51b",
+      "lab_profile": "kde-wayland",
+      "run_directory": "/home/patrick/t1b/work/lab-runs/r6k",
+      "session_root": "/dev/shm/yksa",
+      "socket": "/dev/shm/yksa/runtime/putgd/session.sock",
+      "input_backend": "qmp",
+      "frame_backend": "vnc-in-memory"
+    },
+    "target": {
+      "hostname": "putgd-kde-lab",
+      "kernel": "7.0.0-38-generic",
+      "machine": "x86_64",
+      "os": {
+        "ID": "ubuntu",
+        "VERSION_ID": "26.04",
+        "VARIANT_ID": null
+      },
+      "session_type": "wayland",
+      "desktop": "KDE",
+      "qt_platform": "wayland"
+    },
+    "kwin_entry_staging": [],
+    "clipboard_preservation": {
+      "restored_and_stopped": true,
+      "reviews": [],
+      "ready": true,
+      "preserved_mimes": [],
+      "transport": "wayland",
+      "pid": 6247,
+      "start": "13651",
+      "boot": "02b6b5fb-b5de-4dc9-a812-b1ae20e1a0bf",
+      "reaped_pids": []
+    },
+    "observed_build": {
+      "baseVersion": "26.1030.3203",
+      "commitCount": 3203,
+      "dirty": false,
+      "gitCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "gitTree": "47d8ee85fb481fde7f557aff8f1c01e378f17ad3",
+      "packageVersion": "26.1030.3203~nightly",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "26.1030.3203-nightly"
+    },
+    "shell_health": {
+      "process": "plasmashell",
+      "pid": 1496,
+      "start": 1590,
+      "cores_readable": true
+    },
+    "operation_ids": [
+      {
+        "operationId": "606e26ac-b738-43ee-84c8-b3acb404f789"
+      }
+    ],
+    "private_cleanup": "resident-log-and-state-root-removed",
+    "coverage_export": {
+      "scanned_before_copy": true,
+      "copy_scan_passed": true,
+      "published": true
+    }
+  },
+  "interactions": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r6e/kde-s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0×\\xa0280 pixels) — Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r6e/kde-s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0×\\xa0280 pixels) — Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "history.copy-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r6e/kde-s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0×\\xa0280 pixels) — Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "history.open-link",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r6e/kde-s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0×\\xa0280 pixels) — Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "history.delete-remote",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r6e/kde-s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0×\\xa0280 pixels) — Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    },
+    {
+      "interaction": "confirm.history-delete",
+      "desktop": "kubuntu-kde-wayland",
+      "package": "deb",
+      "functional": "passed",
+      "visual": "frames",
+      "receipt": "/home/patrick/t1r6e/kde-s3a/receipt.json",
+      "note": "desktop frame before masked by live evidence policy; s3_missing_head_404_count=1; desktop frame independent-frozen-pattern masked by live evidence policy; s3_resolved_cloudfront_base_count=1; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; Capture operation 606e26ac-b738-43ee-84c8-b3acb404f789; operationId=606e26ac-b738-43ee-84c8-b3acb404f789; historyId=44eff48f-c5c3-4ac7-952f-63af89f7fcd9; upload_count=1; Retained synthetic png sha256=0277a39cef61125b677afe35bde6f92022724a6acadf2555683c94fc14332084; remote_hash_match_count=1; {\"url_host\": \"put.gd\", \"title\": \"[redacted]\", \"matched\": true}; cloudfront_positive_status=200; guest_public_hash_match_count=1; guest_cloudfront_positive_status=200; deletion_count=1; s3_origin_absence_count=1; recipient_unavailable_observation={\"complete\": true, \"hostOK\": true, \"httpUnavailable\": false, \"media\": true, \"missing\": false, \"status\": 200, \"unavailable\": false}; cloudfront_after_delete_informational=geometry: RuntimeError: Wayland window cannot be placed on the desktop: [redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox: compositor window for '[redacted] (PNG Image, 600\\xa0×\\xa0280 pixels) — Mozilla Firefox' (pid 10667, 1280x800) is missing or ambiguous (0 matches); compositor has for pid 10667: '[redacted] (PNG Image, 600 × 280 pixels) — Mozilla Firefox' [0, 0, 1280, 800] type 0 (KWin::XdgToplevelWindow); Firefox handler restored; MIME SHA-256 checks passed; desktop frame after masked by live evidence policy",
+      "host": "f44",
+      "placement": "guest",
+      "guest": "kde-wayland",
+      "destination": "s3",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: live-geometry-unknown-fully-masked (RecipeBlocked: showing secret control has no placement); frame has no visible pixels; visual approval withheld; frame fully masked: ocr-sensitive-text-fully-masked; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes_live.s3_region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "independent-frozen-pattern",
+          "path": "frames/outcomes_live.s3_region_upload/01-independent-frozen-pattern.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "browser-content",
+          "path": "frames/outcomes_live.s3_region_upload/02-browser-content.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-before-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/03-history-before-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "delete-exact-owned-object",
+          "path": "frames/outcomes_live.s3_region_upload/04-delete-exact-owned-object.png",
+          "window": "confirmAction",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "history-after-remote-cleanup",
+          "path": "frames/outcomes_live.s3_region_upload/05-history-after-remote-cleanup.png",
+          "window": "history",
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes_live.s3_region_upload/06-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes_live.s3_region_upload",
+      "build": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+      "at": "2026-10-31T12:32:02Z"
+    }
+  ],
+  "secret_scan": {
+    "quarantine": [],
+    "passed": true,
+    "files": 13,
+    "pngs": 7,
+    "image_audit": "ocr-and-known-regions",
+    "findings": []
+  }
+}
