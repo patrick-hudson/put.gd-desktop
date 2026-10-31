@@ -234,7 +234,7 @@ class Driver:
     def outputs(self):
         return json.loads(subprocess.run([sys.executable, str(HERE / 'cover_player.py'), 'outputs'], env=self.env, capture_output=True, text=True, timeout=30).stdout)
 
-    def desktop(self):
+    def desktop_rect(self):
         """The union of every output: the uinput tablet maps its absolute range over all of them."""
         rects = [o['rect'] for o in (self.outputs().get('outputs') or [])]
         left = min(r[0] for r in rects)
@@ -473,7 +473,7 @@ class Driver:
         label = '%s-%d' % (build.label, number)
         result = {'build': build.label, 'round': number, 'started': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
         output = self.chosen_output()['rect']
-        geometry = self.desktop()
+        geometry = self.desktop_rect()
         result['output'] = output
         result['desktop'] = geometry
         try:
