@@ -1,6 +1,9 @@
 """A stalled offline proof command fails within its configured deadline."""
 import json
+import os
 from pathlib import Path
+import select
+import signal
 import sys
 import tempfile
 import unittest
@@ -34,9 +37,43 @@ class Commands(unittest.TestCase):
         result = json.loads((self.proof / 'command-timeout.json').read_text())
         self.assertEqual(result, {'stage': 'synthetic.log', 'reason': 'command_timeout', 'timeoutSeconds': .05})
 
+    def test_stalled_descendant_is_terminated_with_its_parent(self):
+        pid_file = self.root / 'descendant.pid'
+        script = ("import pathlib,subprocess,sys,time; "
+                  "child=subprocess.Popen([sys.executable,'-c','import time; time.sleep(60)']); "
+                  f"pathlib.Path({str(pid_file)!r}).write_text(str(child.pid)); time.sleep(60)")
+        child_fd = None
+        try:
+            with self.assertRaisesRegex(SystemExit, 'timed out: synthetic.log'):
+                self.run_command(script, 2)
+            self.assertTrue(pid_file.is_file(), 'descendant must start before the deadline')
+            try:
+                child_fd = os.pidfd_open(int(pid_file.read_text()))
+            except ProcessLookupError:
+                return
+            self.assertTrue(select.select([child_fd], [], [], 2)[0], 'descendant must have exited')
+        finally:
+            # Cleanup remains bounded even if the regression leaves a live child.
+            if child_fd is not None:
+                try:
+                    signal.pidfd_send_signal(child_fd, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                os.close(child_fd)
+
+    def test_binary_stdout_uses_the_same_deadline_and_keeps_stderr_separate(self):
+        result = proof_command.run([sys.executable, '-c', "import sys; sys.stdout.buffer.write(b'\\x00\\xff')"],
+            'stdout.log', logs=self.logs, proof=self.proof, timeout_seconds=5, capture_stdout=True)
+        self.assertEqual(result.stdout, b'\x00\xff')
+        self.assertEqual(result.stderr, b'')
+        with self.assertRaisesRegex(SystemExit, 'timed out: stdout.log'):
+            proof_command.run([sys.executable, '-c', 'import time; time.sleep(60)'],
+                'stdout.log', logs=self.logs, proof=self.proof, timeout_seconds=.05, capture_stdout=True)
+        self.assertEqual(json.loads((self.proof / 'command-timeout.json').read_text())['stage'], 'stdout.log')
+
     def test_invalid_deadline_cannot_launch_a_command(self):
         for seconds in (0, -1, float('inf'), float('nan')):
-            with self.subTest(seconds=seconds), patch.object(proof_command.subprocess, 'run') as run:
+            with self.subTest(seconds=seconds), patch.object(proof_command.subprocess, 'Popen') as run:
                 with self.assertRaises(ValueError):
                     self.run_command('raise RuntimeError()', seconds)
                 run.assert_not_called()

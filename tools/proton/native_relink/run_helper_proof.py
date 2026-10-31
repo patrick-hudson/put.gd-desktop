@@ -5,8 +5,8 @@ root=Path('/p3');logs=root/'logs';proof=root/'proof';work=root/'helper';work.mkd
 bun=root/'prepared/bun/build/release-local/bun-profile'
 assert bun.is_file(),'native build must finish first'
 command_timeout=float(os.environ.get('PUTGD_PROTON_PROOF_TIMEOUT_SECONDS','300'))
-def run(args,name,cwd=None,env=None):
- return run_command(args,name,logs=logs,proof=proof,timeout_seconds=command_timeout,cwd=cwd,env=env)
+def run(args,name,cwd=None,env=None,capture_stdout=False):
+ return run_command(args,name,logs=logs,proof=proof,timeout_seconds=command_timeout,cwd=cwd,env=env,capture_stdout=capture_stdout)
 revision=run([bun,'--revision'],'native-revision.log')
 for marker in ['putgd-bun-native-proof','putgd-jsc-source-proof','putgd-tinycc-source-proof']:assert marker in revision,marker
 assert run([bun,'--version'],'native-version.log').strip()=='1.4.4'
@@ -31,7 +31,7 @@ for marker in ['putgd-bun-native-proof','putgd-jsc-source-proof','putgd-tinycc-s
 run([helper,'/p3/helper-proof-inputs/ffi.mjs'],'compiled-helper-tinycc-ffi.log',env=embedded_env)
 stdout=work/'stdout-proof'
 run([bun,'build','--compile','--target=bun-linux-x64','--minify','stdout_fixture.ts','--outfile='+str(stdout),'--compile-executable-path='+str(bun)],'native-helper-stdout-build.log',build)
-r=subprocess.run([str(stdout)],capture_output=True,check=True,timeout=30)
+r=run([stdout],'native-helper-stdout.log',capture_stdout=True)
 assert not r.stderr and r.stdout==b'{"synthetic":"'+b'x'*(1024*1024-256)+b'"}\n'
 run([bun,'build','--compile','--target=bun-linux-x64','--minify','openpgp-proof.mjs','--outfile=/p3/helper/native-openpgp-proof','--compile-executable-path='+str(bun)],'native-openpgp-build.log','/p3/argon-proof')
 crypto=json.loads(run(['/p3/helper/native-openpgp-proof'],'native-openpgp-crypto.log','/p3/argon-proof'))

@@ -96,9 +96,14 @@ proof does not substitute that marked native executable for the production Bun.
 Helper proof commands default to a 300-second deadline each, configurable with
 `PUTGD_PROTON_PROOF_TIMEOUT_SECONDS`. A timeout fails with the command stage and
 writes `proof/command-timeout.json`; it cannot produce a successful receipt.
+Each command owns a separate process group, which is killed on timeout so the
+smoke driver's compiled helper exits too. The binary stdout fixture uses the
+same configured deadline and keeps stderr separate for its empty-stderr check.
 The long native source build uses its separate build driver.
 
 The [bounded-command replay](evidence/bounded-replay.json) reruns the current
 proof controls against the retained source-built runtime. It passes the same
-suite and reproduces every primary proof executable hash; the original complete
+suite and reproduces all three recorded primary proof executable hashes; the original complete
 native build and its receipts remain unchanged.
+The [process-group replay](evidence/bounded-process-group-replay.json) verifies
+the final runner, including the binary stdout fixture's configured deadline.
