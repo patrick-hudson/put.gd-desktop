@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a release's "Changes since <previous tag>" section from merged pull requests.
+"""Write release changes and the downloads/sources boundary from merged pull requests.
 
 The changes are the pull request merge commits between the previous release and
 this tag. A nightly is compared with the previous nightly; a stable release
@@ -225,14 +225,13 @@ def render(tag, previous, items, server, repository, *, fold):
         return f'[#{number}]({base}/{kind}/{number})'
 
     if previous:
-        heading = f'## Changes since {previous}'
         compare = f'Full comparison: {base}/compare/{previous}...{tag}'
     else:
-        heading = f'## Changes in {tag}'
         compare = 'This is the first release of its kind, so every merged pull request is listed.'
-    lines = [heading, '']
+    lines = ["## What's changed", '']
+    delivery = ['## Downloads and sources', '', compare]
     if not items:
-        return '\n'.join(lines + ['No pull requests were merged since then.', '', compare]) + '\n'
+        return '\n'.join(lines + ['No pull requests were merged since then.', '', *delivery]) + '\n'
     folded = [item for item in items if fold and item['group'] in FOLDED]
     for key, name in GROUPS:
         listed = sorted((item for item in items if item['group'] == key and item not in folded),
@@ -250,7 +249,7 @@ def render(tag, previous, items, server, repository, *, fold):
         kinds = [word for key, word in FOLDED.items() if any(item['group'] == key for item in folded)]
         refs = ', '.join(link(item['number'], 'pull') for item in sorted(folded, key=lambda item: item['number']))
         lines += [f'Also {len(folded)} {_series(kinds)} changes: {refs}.', '']
-    return '\n'.join(lines + [compare]) + '\n'
+    return '\n'.join(lines + delivery) + '\n'
 
 
 KEEP_A_CHANGELOG_TYPES = ('Added', 'Fixed', 'Changed')
