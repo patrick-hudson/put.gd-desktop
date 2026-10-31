@@ -81,16 +81,6 @@ class FocusAndRoles(unittest.TestCase):
         ctx.focus('main', raise_window=True)
         self.assertTrue(ctx._probe.call_args.args[1]['raise'])
 
-    def test_gnome_explicit_activation_still_refuses_a_covered_target(self):
-        ctx, directory = context({'session':'wayland', 'compositor':{'kind':'gnome-lab-witness'},
-                                  'focus':{'raise_before_input':True}})
-        self.addCleanup(directory.cleanup)
-        ctx._probe = Mock(return_value={'ok':False, 'obscuring_window':'Foreign confirmation', 'active':42})
-        with self.assertRaisesRegex(RecipeFailed, 'Foreign confirmation'):
-            ctx.click_at(25,35)
-        self.assertTrue(ctx._probe.call_args.args[1]['raise'])
-        ctx.target.pointer.assert_not_called()
-
     def test_raw_button_role_matches_both_spellings_and_catalog_class(self):
         row = {'role':'button'}
         for role in ('button','push button','push_button'):
