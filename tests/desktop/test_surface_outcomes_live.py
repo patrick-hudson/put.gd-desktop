@@ -21,6 +21,40 @@ from tools.lab.surface_driver import browser
 
 
 class LiveOutcomes(unittest.TestCase):
+    def test_copy_link_must_replace_sentinel_even_when_auto_copy_already_matched(self):
+        from tools.lab.surface_driver.fixtures import clipboard
+        url = 'https://example.test/synthetic-upload'
+        for clicked in (False, True):
+            with self.subTest(clicked=clicked):
+                selection = [url]
+                files = {}
+                events = []
+                scope = SimpleNamespace(root='/synthetic', write=lambda p, data:files.update({p:data}))
+                def own(scope, path, mime, *, name):
+                    self.assertEqual(mime, 'text/plain')
+                    self.assertEqual(name, 'copy-link-sentinel')
+                    selection[0] = files[path].decode()
+                    self.assertNotEqual(selection[0], url)
+                    events.append('sentinel')
+                def click(*args, **kwargs):
+                    self.assertEqual(args, ('copyHistoryLink',))
+                    self.assertEqual(kwargs, dict(window='history'))
+                    events.append('click')
+                    if clicked:
+                        selection[0] = url
+                def expect(value, message):
+                    if not value:
+                        raise RecipeFailed(message)
+                ctx = SimpleNamespace(click=click, expect=expect, clipboard_text=lambda:selection[0])
+                with patch.object(clipboard, 'owner', side_effect=own), \
+                        patch.object(outcomes_live.outcomes, '_history'):
+                    if clicked:
+                        outcomes_live._copy_history_link(ctx, scope, dict(receipt=dict(directUrl=url)))
+                    else:
+                        with self.assertRaisesRegex(RecipeFailed, 'UI copied exact'):
+                            outcomes_live._copy_history_link(ctx, scope, dict(receipt=dict(directUrl=url)))
+                self.assertEqual(events, ['sentinel', 'click'])
+
     def test_guest_public_get_requires_scoped_unredirected_200_and_original_bytes(self):
         client=Mock();url='https://put.gd/acceptance/tier1-live/'+'a'*32+'/capture.png'
         client.script.return_value=url

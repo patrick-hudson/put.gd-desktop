@@ -10,6 +10,7 @@ ExecStart=/usr/bin/python3 %h/nd/tools/lab/nightly_desktops.py
 Nice=10
 UMask=0077
 TimeoutStartSec=8h
-# Do not interrupt a Proton carry-back during an ordinary service stop.
+# The controller forwards TERM to local workers and waits their 5-minute grace.
+# Keep an additional margin for escalation/reaping before systemd kills the unit.
 TimeoutStopSec=10min
 KillMode=mixed

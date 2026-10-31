@@ -1,5 +1,6 @@
 """Fault-injection checks for Tier 1's independent result oracles."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
+import io
 from pathlib import Path
 import sys
 import unittest
@@ -35,6 +36,34 @@ def annotated():
 
 
 class Outcomes(unittest.TestCase):
+    def test_window_and_desktop_capture_work_without_clipboard_tools(self):
+        expected = original()
+        stream = io.BytesIO()
+        expected.save(stream, format='PNG')
+        for kind in ('window', 'desktop'):
+            with self.subTest(kind=kind):
+                ctx = Mock()
+                ctx.expect = ClipboardContext().expect
+                ctx.call.side_effect = [dict(operations=[]),
+                    dict(document=dict(actions={kind:dict(shortcut='synthetic-hotkey')}))]
+                ctx.wait.side_effect = [True, [dict(id='operation')]]
+                detail = dict(id='row')
+                with patch.object(outcomes, '_clipboard_reader', side_effect=RecipeBlocked('missing reader')) as reader, \
+                        patch.object(outcomes, '_pattern', return_value=(SimpleNamespace(rect=(0, 0, 640, 320)), expected)), \
+                        patch.object(outcomes.selectors, '_portal_scope', return_value=nullcontext()), \
+                        patch.object(outcomes, '_complete', return_value=(detail, stream.getvalue())):
+                    self.assertIs(outcomes._capture(ctx, object(), object(), kind), detail)
+                reader.assert_not_called()
+
+    def test_region_capture_checks_clipboard_tools_before_input(self):
+        ctx = Mock()
+        with patch.object(outcomes, '_clipboard_reader', side_effect=RecipeBlocked('missing reader')), \
+                patch.object(outcomes, '_pattern') as pattern:
+            with self.assertRaisesRegex(RecipeBlocked, 'missing reader'):
+                outcomes._capture(ctx, object(), object(), 'region')
+        pattern.assert_not_called()
+        ctx.drag.assert_not_called()
+
     def test_pattern_oracle_rejects_foreign_ui_and_absent_video(self):
         cover = Image.new('RGB', (1280, 800), (255, 0, 255))
         rect = (320, 240, 640, 320)

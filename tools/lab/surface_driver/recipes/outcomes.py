@@ -230,7 +230,8 @@ def _pattern(ctx):
 
 
 def _capture(ctx, scope, service, kind):
-    _clipboard_reader(scope)  # Missing tools are infrastructure, before capture.
+    if kind == 'region':
+        _clipboard_reader(scope)  # Missing tools are infrastructure, before capture.
     scene, oracle = _pattern(ctx)
     with selectors._portal_scope(ctx):
         if kind == 'region':

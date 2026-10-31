@@ -122,6 +122,17 @@ def _preview_only_eligible(downloaded):
             and bool(observations) and all(o.get('available') is True for o in observations))
 
 
+def _copy_history_link(ctx, scope, detail):
+    """Require the History action to replace a known text-only clipboard value."""
+    from ..fixtures.clipboard import owner
+    sentinel = scope.root + '/copy-link-sentinel'
+    scope.write(sentinel, b'putgd synthetic copy-link sentinel')
+    owner(scope, sentinel, 'text/plain', name='copy-link-sentinel')
+    outcomes._history(ctx, detail)
+    ctx.click('copyHistoryLink', window='history')
+    ctx.expect(ctx.clipboard_text() == detail['receipt']['directUrl'], 'UI copied exact uploaded share link')
+
+
 def _region_upload(ctx):
     ctx.fixture('app-profile')
     scope = ctx._fixture_manager.scope
@@ -168,9 +179,7 @@ def _region_upload(ctx):
             previous = ctx.profile.get('windows', {})
             ctx.profile['windows'] = {**previous, 'outcome-browser': {'title': '.*Firefox.*'}}
             try:
-                outcomes._history(ctx, detail)
-                ctx.click('copyHistoryLink', window='history')
-                ctx.expect(ctx.clipboard_text() == detail['receipt']['directUrl'], 'UI copied exact uploaded share link')
+                _copy_history_link(ctx, scope, detail)
                 ctx.click('windowClose', window='history')
                 def paste():
                     ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')

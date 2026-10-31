@@ -64,7 +64,13 @@ class NightlyTests(unittest.TestCase):
     def test_corrupt_cleanup_receipt_keeps_reservation_for_recovery(self):
         self.worker_timeout_cleanup(corrupt_receipt=True)
 
-    def worker_timeout_cleanup(self, *, corrupt_receipt=False):
+    def test_completed_flows_retire_only_after_cleanup_state_is_checked(self):
+        for environment in ({}, {'cleanup_errors':['synthetic retained process']},
+                            {'private_cleanup':'retained for explicit recovery'}):
+            with self.subTest(environment=environment):
+                self.worker_timeout_cleanup(finished=True, environment=environment)
+
+    def worker_timeout_cleanup(self, *, corrupt_receipt=False, finished=False, environment=None):
         from tools.lab import lab, nightly_desktop_guest as guest
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -81,6 +87,7 @@ class NightlyTests(unittest.TestCase):
                        package='deb', asset='test.deb', desktop='test', golden='/unused/golden')
             clock = [0]
             attempts = []
+            runs = []
             def wait(*args, **kwargs):
                 self.assertEqual(kwargs['worker_deadline'], 100)
                 clock[0] += 40
@@ -96,14 +103,22 @@ class NightlyTests(unittest.TestCase):
                     run.mkdir(parents=True)
                     (run/'state.json').write_text('{}')
                     (run/'disk.qcow2').touch()
+                    runs.append(run)
                 if '-m' in argv:
                     attempts.append(kwargs['timeout'])
+                    if finished:
+                        target = Path(argv[argv.index('--out')+1])
+                        target.mkdir()
+                        (target/'receipt.json').write_text(json.dumps(dict(environment=environment)))
+                        return
                     clock[0] += kwargs['timeout']
                     if corrupt_receipt:
                         target = Path(argv[argv.index('--out')+1])
                         target.mkdir()
                         (target/'receipt.json').write_text('invalid receipt')
                     raise subprocess.TimeoutExpired('synthetic attempt', kwargs['timeout'])
+            verdict_patch = (patch.object(nightly, 'verdict', return_value=nightly.cell('green'))
+                             if finished else patch.object(nightly, 'verdict', wraps=nightly.verdict))
             with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
                     patch.object(nightly.time, 'monotonic', side_effect=lambda:clock[0]), \
                     patch.object(nightly, 'await_host', side_effect=wait), \
@@ -111,22 +126,29 @@ class NightlyTests(unittest.TestCase):
                     patch.object(nightly, 'command', side_effect=command), \
                     patch.object(guest, 'prepare', side_effect=prepare), \
                     patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
-                    patch.object(lab, 'reset') as reset, patch.object(nightly, 'retire') as retire, \
+                    patch.object(lab, 'reset') as reset, \
+                    patch.object(nightly, 'retire', side_effect=lambda run, *_:(run/'disk.qcow2').unlink()) as retire, \
+                    patch.object(nightly, 'LOCAL', ['region_upload'] if finished else nightly.LOCAL), \
+                    verdict_patch, \
                     patch('tools.lab.desktop_lock.Desktop') as lock:
                 lock.return_value.acquire.return_value = {}
                 lock.return_value.release.return_value = {}
+                lock.return_value.heartbeat.return_value = {}
                 records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity,
                                              artifacts, root/'output', 100)
             self.assertEqual(attempts, [40], records[0].get('notRunReason'))
-            self.assertEqual(records[0]['cells']['window_desktop']['status'], 'not_run')
+            if not finished:
+                self.assertEqual(records[0]['cells']['window_desktop']['status'], 'not_run')
             slot = root/'putgd-lab/locks/tier1-guest.lock.d'
-            if corrupt_receipt:
+            if corrupt_receipt or environment:
                 retire.assert_not_called()
                 reset.assert_not_called()
                 lock.return_value.release.assert_not_called()
                 self.assertTrue((slot/'retained.json').exists())
+                self.assertTrue((runs[0]/'disk.qcow2').exists())
             else:
-                self.assertIn('deadline exhausted', records[0]['notRunReason'])
+                if not finished:
+                    self.assertIn('deadline exhausted', records[0]['notRunReason'])
                 retire.assert_called_once()
                 reset.assert_called_once()
                 lock.return_value.release.assert_called_once()
@@ -169,7 +191,7 @@ class NightlyTests(unittest.TestCase):
     def test_outer_timeout_terminates_then_kills_only_after_grace(self):
         for ignores_term in (False, True):
             with self.subTest(ignores_term=ignores_term), patch.object(nightly.subprocess, 'Popen') as popen:
-                process = popen.return_value.__enter__.return_value
+                process = popen.return_value
                 timeout = subprocess.TimeoutExpired('synthetic', 10)
                 process.communicate.side_effect = [timeout, timeout, (None, None)] if ignores_term else [timeout, (None, None)]
                 with self.assertRaises(subprocess.TimeoutExpired):
@@ -186,10 +208,85 @@ class NightlyTests(unittest.TestCase):
             with patch.object(nightly, 'command', side_effect=[None, None, None, '[]']) as command, \
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
-                                 'vtest', root, archive, root)
+                                 'vtest', root, archive, root, local_workers=Mock())
             args = command.call_args_list[2]
             self.assertIn('timeout --foreground --signal=TERM --kill-after=300 18000', args.args[0][-1])
             self.assertEqual(args.kwargs['terminate_grace'], nightly.TERMINATE_GRACE)
+            self.assertIsNone(args.kwargs['local_workers'])
+
+    def test_local_dispatch_registers_worker_for_controller_shutdown(self):
+        workers = nightly.LocalWorkers()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(nightly, 'command') as command:
+                nightly.run_host('d69', dict(root='/repo', config='/private', rows=[]),
+                                 'vtest', root, root/'unused.tar', root, local_workers=workers)
+            self.assertIs(command.call_args.kwargs['local_workers'], workers)
+
+    def test_controller_stop_bounds_grace_and_rejects_late_local_spawns(self):
+        workers = nightly.LocalWorkers()
+        process = Mock()
+        process.wait.side_effect = [subprocess.TimeoutExpired('synthetic', 300), 0]
+        with patch.object(nightly.subprocess, 'Popen', return_value=process):
+            self.assertIs(workers.start(['synthetic']), process)
+            workers.stop()
+            process.terminate.assert_called_once()
+            process.kill.assert_called_once()
+            self.assertLessEqual(process.wait.call_args_list[0].kwargs['timeout'], nightly.TERMINATE_GRACE)
+            with self.assertRaisesRegex(nightly.NotRun, 'controller stopping'):
+                workers.start(['late synthetic'])
+        service = (nightly.ROOT/'tools/lab/putgd-nightly-desktops.service').read_text()
+        self.assertIn('KillMode=mixed', service)
+        stop_seconds = int(next(line.split('=')[1][:-3] for line in service.splitlines()
+                                if line.startswith('TimeoutStopSec=') and line.endswith('min'))) * 60
+        self.assertGreaterEqual(stop_seconds, nightly.TERMINATE_GRACE + 30)
+
+    def test_controller_sigterm_waits_for_real_local_worker_cleanup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            clean = Path(tmp)/'cleaned'
+            worker_code = f'''from tools.lab import nightly_desktops as n
+import os, signal
+from pathlib import Path
+try:
+    with n.worker_deadline():
+        print('READY '+str(os.getpid()), flush=True)
+        signal.pause()
+finally:
+    Path({str(clean)!r}).write_text('cleanup completed')
+'''
+            controller_code = f'''from tools.lab import nightly_desktops as n
+from concurrent.futures import ThreadPoolExecutor
+import sys
+workers = n.LocalWorkers()
+with n.controller_shutdown(workers):
+    with ThreadPoolExecutor() as pool:
+        pool.submit(n.run_command, [sys.executable, '-c', {worker_code!r}],
+                    env=None, stdout=None, stderr=None, timeout=60,
+                    terminate_grace=5, local_workers=workers).result()
+'''
+            with subprocess.Popen([sys.executable, '-c', controller_code], cwd=nightly.ROOT,
+                                  stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True) as process:
+                child_fd = None
+                try:
+                    # Bound the readiness read as well as shutdown if startup regresses.
+                    import select
+                    self.assertTrue(select.select([process.stdout], [], [], 10)[0])
+                    ready = process.stdout.readline().split()
+                    self.assertEqual(ready[0], 'READY')
+                    child_fd = os.pidfd_open(int(ready[1]))
+                    process.terminate()
+                    process.communicate(timeout=10)
+                    self.assertEqual(process.returncode, 128+signal.SIGTERM)
+                    self.assertEqual(clean.read_text(), 'cleanup completed')
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                    if child_fd is not None:
+                        try:
+                            signal.pidfd_send_signal(child_fd, signal.SIGKILL)
+                        except ProcessLookupError:
+                            pass
+                        os.close(child_fd)
 
     def test_fedora_activation_still_refuses_a_covered_target(self):
         from test_surface_input_guards import context

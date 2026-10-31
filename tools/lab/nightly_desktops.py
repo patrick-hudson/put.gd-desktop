@@ -82,38 +82,102 @@ def private_file(path):
     return path
 
 
-def command(argv, *, log=None, timeout=900, env=None, terminate_grace=0):
+def command(argv, *, log=None, timeout=900, env=None, terminate_grace=0, local_workers=None):
     # Never include a command or its output in exceptions/public receipts.
     if log:
         with Path(log).open('xb') as stream:
             result = run_command(argv, env=env, stdout=stream, stderr=stream,
-                                 timeout=timeout, terminate_grace=terminate_grace)
+                                 timeout=timeout, terminate_grace=terminate_grace, local_workers=local_workers)
     else:
         result = run_command(argv, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             timeout=timeout, terminate_grace=terminate_grace)
+                             timeout=timeout, terminate_grace=terminate_grace, local_workers=local_workers)
     if result.returncode:
         step = Path(log).name if log else Path(str(argv[0])).name
         raise RuntimeError(f'{step} failed (exit {result.returncode}); private log retained')
     return result.stdout.decode() if not log else None
 
 
-def run_command(argv, *, env, stdout, stderr, timeout, terminate_grace):
+class LocalWorkers:
+    """Own local worker processes across the controller's dispatch threads."""
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.processes = set()
+        self.stopping = False
+
+    def start(self, args, **kwargs):
+        # Registration and the stop snapshot are atomic: no late child may
+        # appear after the controller has finished waiting for cleanup.
+        with self.lock:
+            if self.stopping:
+                raise NotRun('controller stopping; local worker not started')
+            process = subprocess.Popen(args, **kwargs)
+            self.processes.add(process)
+            return process
+
+    def forget(self, process):
+        with self.lock:
+            self.processes.discard(process)
+
+    def stop(self):
+        """Forward TERM only to owned local workers and wait one shared grace."""
+        with self.lock:
+            self.stopping = True
+            processes = list(self.processes)
+        deadline = time.monotonic() + TERMINATE_GRACE
+        for process in processes:
+            process.terminate()
+        for process in processes:
+            try:
+                process.wait(timeout=max(0, deadline-time.monotonic()))
+            except subprocess.TimeoutExpired:
+                process.kill()
+        # Reap escalated children within the service's additional stop margin.
+        for process in processes:
+            process.wait(timeout=5)
+
+
+@contextmanager
+def controller_shutdown(local_workers):
+    """Keep the service controller alive until local worker cleanup exits."""
+    def stop(signum, _frame):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        try:
+            local_workers.stop()
+        finally:
+            # ThreadPoolExecutor's exit hook otherwise joins the remote SSH
+            # waiters indefinitely. Their watchdogs own remote cleanup; do not
+            # signal those clients. Local workers have already been waited for.
+            os._exit(128+signum)
+    previous = signal.signal(signal.SIGTERM, stop)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
+def run_command(argv, *, env, stdout, stderr, timeout, terminate_grace, local_workers=None):
     """Give an outer worker SIGTERM cleanup time before escalating to SIGKILL."""
     args = [str(a) for a in argv]
     if not terminate_grace:
         return subprocess.run(args, cwd=ROOT, env=env, stdout=stdout, stderr=stderr, timeout=timeout)
-    with subprocess.Popen(args, cwd=ROOT, env=env, stdout=stdout, stderr=stderr) as process:
-        try:
-            output, errors = process.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            process.terminate()
+    start = local_workers.start if local_workers is not None else subprocess.Popen
+    process = start(args, cwd=ROOT, env=env, stdout=stdout, stderr=stderr)
+    try:
+        with process:
             try:
-                process.communicate(timeout=terminate_grace)
+                output, errors = process.communicate(timeout=timeout)
             except subprocess.TimeoutExpired:
-                process.kill()
-                process.communicate()
-            raise
-        return subprocess.CompletedProcess(args, process.returncode, output, errors)
+                process.terminate()
+                try:
+                    process.communicate(timeout=terminate_grace)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.communicate()
+                raise
+            return subprocess.CompletedProcess(args, process.returncode, output, errors)
+    finally:
+        if local_workers is not None:
+            local_workers.forget(process)
 
 
 @contextmanager
@@ -516,7 +580,6 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                             if observed['status'] == 'green':
                                 break
                         cells[flow]['seconds'] = round(time.monotonic()-flow_started, 3)
-                    retire(run, rowout, cells)
                 finally:
                     # Work is over. Do not deliver a budget alarm in retirement.
                     signal.setitimer(signal.ITIMER_REAL, 0)
@@ -692,7 +755,7 @@ def merge_desktops(previous, result):
     return [replacements.get(r['host'], r) for r in previous['desktops']]
 
 
-def run_host(host, builder, tag, artifacts, archive, out):
+def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None):
     """One foreground worker process per host, including d69 itself."""
     started = time.monotonic()
     started_at = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -729,7 +792,7 @@ def run_host(host, builder, tag, artifacts, archive, out):
                   str(HOST_TIMEOUT), *args]
         command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'),
                 timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
-                terminate_grace=TERMINATE_GRACE)
+                terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
         text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
         rows = json.loads(text)
     except Exception as error:
@@ -741,13 +804,14 @@ def run_host(host, builder, tag, artifacts, archive, out):
     return rows
 
 
-def run_hosts(builders, tag, artifacts, out, result, dispatch=run_host):
+def run_hosts(builders, tag, artifacts, out, result, dispatch=run_host, *, local_workers=None):
     archive = out/'inputs.tar'
     with tarfile.open(archive, 'w') as stream:
         stream.add(artifacts, arcname='artifacts')
     by_host = {}
     with ThreadPoolExecutor(max_workers=len(builders)) as pool:
-        futures = {pool.submit(dispatch, host, builder, tag, artifacts, archive, out):host
+        kwargs = dict(local_workers=local_workers) if local_workers is not None else {}
+        futures = {pool.submit(dispatch, host, builder, tag, artifacts, archive, out, **kwargs):host
                    for host,builder in builders.items()}
         for future in as_completed(futures):
             host = futures[future]
@@ -758,7 +822,7 @@ def run_hosts(builders, tag, artifacts, out, result, dispatch=run_host):
     return result
 
 
-def controller(args, config):
+def controller(args, config, *, local_workers=None):
     state = Path(config.get('state', str(Path.home()/'putgd-lab/nightly')))
     state.mkdir(parents=True, mode=0o700, exist_ok=True)
     with (state/'controller.lock').open('a') as lock:
@@ -812,7 +876,7 @@ def controller(args, config):
             result['desktops'] = [row for host,builder in builders.items()
                                   for row in not_run_rows(host,builder,reason,out)]
         else:
-            run_hosts(builders,tag,artifacts,out,result)
+            run_hosts(builders,tag,artifacts,out,result,local_workers=local_workers)
         result['eligibleDesktops'] = eligible_desktops(result)
         publish(github,result,out,previous=previous)
         save(state/'last-run.json',dict(results=str(out/'results.json'),eligibleDesktops=result['eligibleDesktops']))
@@ -847,7 +911,9 @@ def main():
         worker(dict(config['builders'][args.worker], host=args.worker), args.tag,
                json.loads((args.artifacts/'identity.json').read_text()), args.artifacts, args.output)
     else:
-        controller(args, config)
+        local_workers = LocalWorkers()
+        with controller_shutdown(local_workers):
+            controller(args, config, local_workers=local_workers)
 
 
 if __name__ == '__main__':
