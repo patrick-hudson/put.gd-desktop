@@ -1,0 +1,122 @@
+[
+  {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/user/editor/work/lab-runs/c1",
+    "disk": "/home/user/editor/work/lab-runs/c1/disk.qcow2",
+    "diskIdentity": {
+      "device": 64769,
+      "inode": 1430876,
+      "size": 1170866176,
+      "mtimeNs": 1793339180678702481,
+      "ctimeNs": 1793339180678702481,
+      "allocatedBytes": 1170812928
+    },
+    "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+    "stateSha256": "f9f3f697f941abe8420b809cc6f58c260a2beb383baddc1c6938077b78a680c5",
+    "evidence": {
+      "manifest": "/home/user/editor-retire/c1/manifest.json",
+      "sha256": "7e05d44f75ef55a2d31b4227211a265b54c19045b6d1e2f9336444e26901f229",
+      "runId": "0ae12ec5-f99c-4775-95fe-6291766d8ef2",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-30T06:18:39.850005+00:00",
+    "completedUtc": "2026-10-30T06:18:39.906903+00:00"
+  },
+  {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/user/editor/work/lab-runs/c2",
+    "disk": "/home/user/editor/work/lab-runs/c2/disk.qcow2",
+    "diskIdentity": {
+      "device": 64769,
+      "inode": 1431656,
+      "size": 1045233664,
+      "mtimeNs": 1793340288603936509,
+      "ctimeNs": 1793340288603936509,
+      "allocatedBytes": 1045180416
+    },
+    "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+    "stateSha256": "fbe80fe6ef77da2a627bcbaeaf3529b75db119c819df2eed239bd171fd7b7567",
+    "evidence": {
+      "manifest": "/home/user/editor-retire/c2/manifest.json",
+      "sha256": "8a8905a1c8d066a26cd92a5a90aebaa7acf338f748c35a41824c410e8c1eff98",
+      "runId": "0ed53e7d-23ea-4c4f-a194-72127dfde611",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-30T06:18:40.457546+00:00",
+    "completedUtc": "2026-10-30T06:18:40.539848+00:00"
+  },
+  {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/user/editor/work/lab-runs/c3",
+    "disk": "/home/user/editor/work/lab-runs/c3/disk.qcow2",
+    "diskIdentity": {
+      "device": 64769,
+      "inode": 1431977,
+      "size": 48431104,
+      "mtimeNs": 1793340700570196425,
+      "ctimeNs": 1793340700570196425,
+      "allocatedBytes": 48373760
+    },
+    "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+    "stateSha256": "8e647ab76a1341051448ade03dace8d727671808b6a808d1a488f22969de980b",
+    "evidence": {
+      "manifest": "/home/user/editor-retire/c3/manifest.json",
+      "sha256": "d3b1e28a3b8ce95abc4abe2a7aba8a2deec9d10e0fc1e189c3db86281901aea3",
+      "runId": "6d461d63-e7f2-4938-979a-832f6170b348",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-30T06:18:40.983485+00:00",
+    "completedUtc": "2026-10-30T06:18:41.315962+00:00"
+  },
+  {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/user/editor/work/lab-runs/c4",
+    "disk": "/home/user/editor/work/lab-runs/c4/disk.qcow2",
+    "diskIdentity": {
+      "device": 64769,
+      "inode": 1430881,
+      "size": 1073414144,
+      "mtimeNs": 1793340947729364239,
+      "ctimeNs": 1793340947729364239,
+      "allocatedBytes": 1073360896
+    },
+    "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+    "stateSha256": "3ccdea9ef618d929469861eef08f2fd7a6a0bd64b5f5f0c2fa998228d6d16320",
+    "evidence": {
+      "manifest": "/home/user/editor-retire/c4/manifest.json",
+      "sha256": "8de793d3fc7b2b4505b05c70f2aa0e84484a509700a927baa19462f75e133af7",
+      "runId": "82f1b682-7f67-4001-905c-4ab550f4153d",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-30T06:18:41.816465+00:00",
+    "completedUtc": "2026-10-30T06:18:41.881316+00:00"
+  },
+  {
+    "schemaVersion": 1,
+    "status": "completed",
+    "run": "/home/user/editor/work/lab-runs/c5",
+    "disk": "/home/user/editor/work/lab-runs/c5/disk.qcow2",
+    "diskIdentity": {
+      "device": 64769,
+      "inode": 1432025,
+      "size": 1103560704,
+      "mtimeNs": 1793341222602486543,
+      "ctimeNs": 1793341222602486543,
+      "allocatedBytes": 1103503360
+    },
+    "base": "/home/user/work/put.gd/work/lab-images/cinnamon-x11-probes-v2/image.qcow2",
+    "stateSha256": "82351fc279b92c0732855b594a0795958a5def0bcef25265d83f5f8d1ff21515",
+    "evidence": {
+      "manifest": "/home/user/editor-retire/c5/manifest.json",
+      "sha256": "6d367b4ea5034b09868481a5f0cfe589833648a55df7219ee0b67c877de65232",
+      "runId": "d0270029-7c3b-4afe-b89f-d1d37412d12f",
+      "mode": "explicit"
+    },
+    "preparedUtc": "2026-10-30T06:21:49.470541+00:00",
+    "completedUtc": "2026-10-30T06:21:49.514509+00:00"
+  }
+]

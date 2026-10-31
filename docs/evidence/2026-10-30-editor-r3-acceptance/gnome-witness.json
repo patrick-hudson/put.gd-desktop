@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-10-30T06:32:08.272983+00:00",
+  "windows": [
+    {
+      "id": 95722870,
+      "pid": 27006,
+      "frame": [
+        731,
+        465,
+        525,
+        183
+      ],
+      "buffer": [
+        705,
+        442,
+        577,
+        235
+      ],
+      "focus": true,
+      "minimized": false,
+      "client": "wayland",
+      "title": "Ubuntu"
+    }
+  ]
+}
+

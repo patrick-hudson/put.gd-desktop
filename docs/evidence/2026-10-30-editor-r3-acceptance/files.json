@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    "cinnamon-destination.png": "91a0d683edf299aebb7191ebf614c4e4004344ed86c87f102f0ac15bdbdc6b5d",
+    "gnome-environment-error.png": "bd082401f905606d09e2545e4bd6165f7418739ac0bdfd90c9e09d623a637005",
+    "cinnamon-final-recheck-raw.json": "f70e95a731bf384b84d561cb536bc00292ac2061f4885338a9980095fb1d62f8",
+    "cinnamon-deletion.json": "dc3261c2a9d406eac0f7b9d3518885f90dab7d7666fed77189fe4cbbfde72319",
+    "gnome-extensions.txt": "27ecb5768098eb23f6ee7507099e13401630c9f70d45fbdca9332fea3af9fd4d",
+    "gnome-preflight.json": "16901e5d74bcbba252a1cf7310806e65be57be464e04e9a57b327f115502cdad",
+    "README.md": "841aa652a71d9e4ef21100c5ef6b6a04dc20a2bb7507803ef855d7c69ac14f59",
+    "gnome-crop-timeout.png": "700b1425c5d51d3ce947f5772c99edd46b8cb9c0103d97de4d6965660f1378c2",
+    "cinnamon-help.png": "20e2057c94217d7036143f8752054e3865eb69fc988c96c7646f440e2f4f6ef9",
+    "cinnamon-recovery-details.png": "ae8b237316ed977823a7ae614eefff512359eebb65830c668ef5740b92ee6da1",
+    "cinnamon-help-raw.json": "d88c57cb860ae0ae9e7e9f23ecfa2551b820ecb1ceaaf9911adac43ef8d5b4e9",
+    "gnome-active.png": "054d8890b6b85b9e39eaf99f1261d6729b8f84b09f1f80897cb8748857a2ff5e",
+    "gnome-build.json": "1d85efadedd47ce15f47804a6d2f96dbe6ecfd22cb48666f76b8381e9c5cb617",
+    "gnome-deletion.json": "d6d5f89b6891cf6ca1da7fc8b1e8afeaa8d302d3907e5194778bb0044910cbc6",
+    "gnome-diagnostic.txt": "c105b47532213d1160a4ef4a0da892d96553296351d0a65fa3a8d99ffe555807",
+    "cinnamon-full-raw.json": "9784d9224b44b54f5a60ceadda65502c20213708311c30a2870894f4515cd7bc",
+    "gnome-full-raw.json": "788939f739c208fb6f1258f001a425623f605cf7822bad819409fe97edb424b2",
+    "gnome-cleanup-refusal.txt": "0d58ff9abe12769d1dfc889b4a1a08aa1bdd6ce4b3aeefdc2a53027c80a8fdcc",
+    "cinnamon-retirement.json": "ad16ab5db9a397a0dea8ae6e30032a7f11729c2949d1188b12486b8468904869",
+    "gnome-witness.json": "73d870aa4d8f508637f68869a92cce81dfad81e997e44615435ae0abd584303a"
+  }
+}

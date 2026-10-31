@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "version": "26.1030.2516-dev+gb5613bfc3a6c",
+  "baseVersion": "26.1030.2516",
+  "packageVersion": "26.1030.2516~dev+gb5613bfc3a6c",
+  "gitCommit": "b5613bfc3a6c8f85310a698e495ce1c2134f1cf2",
+  "gitTree": "84b21e70d801a7e161e8c63931ac088ef6363bcc",
+  "commitCount": 2516,
+  "dirty": false,
+  "sourceProvenance": "git",
+  "binaryHashes": [
+    "df9098ff25dbbdd18af42d3ea3ecc96f83a8d7b0a4acffca3efa1780a0848858  build/dev/putgd",
+    "eb7014a17d63fc2ec354acb47c66fab2c91be9cf7658b7b84527a73d7a4125f2  build/dev/putgd-cli",
+    "3d49efb149b5733dadbd6a500c09366d744fc9e6abfe16a1b36f4313174ed66e  build/dev/putgd-ui"
+  ],
+  "nativeGuestBuild": {
+    "sdkCommit": "a9f0ffcc276664b475230206fa554841ad5bc3de",
+    "qt": "6.10.2",
+    "preset": "dev",
+    "flags": [
+      "CMAKE_CXX_FLAGS_DEBUG=-g1",
+      "BUILD_TESTING=OFF",
+      "PUTGD_LAB_FIXTURE=ON",
+      "PUTGD_BUNDLE_PROTON=OFF"
+    ],
+    "sourceStatusBefore": "",
+    "sourceStatusAfter": ""
+  }
+}
