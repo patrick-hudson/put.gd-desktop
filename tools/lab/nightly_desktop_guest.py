@@ -1,5 +1,6 @@
 """Existing Tier 1 campaign preparation, applied only to fresh owned overlays."""
 import json
+import fnmatch
 from pathlib import Path
 import re
 import shlex
@@ -11,6 +12,60 @@ from tools.lab import lab
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '
              'xdotool x11-utils x11-xserver-utils xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring')
+
+FEDORA_DESKTOP = ('gnome-shell*', 'mutter*', 'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
+FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesseract '
+                'xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring')
+
+
+def install_rpm(run, package, out):
+    """Install the published RPM through the golden's authorized package manager.
+
+    Runtime dependencies may advance in this disposable overlay; the desktop
+    under test must retain its exact installed packages. Record the full RPM
+    inventory delta as well as verifying the installed application bytes.
+    """
+    lab.verify_owned_guest(run)
+    run, package, out = Path(run), Path(package), Path(out)
+    (run/'package.json').unlink(missing_ok=True)
+
+    def inventory():
+        value = lab.ssh(run, "rpm -qa --qf '%{NAME}.%{ARCH} %{EPOCHNUM}:%{VERSION}-%{RELEASE}\\n'\n")
+        packages = {}
+        for line in value.splitlines():
+            name, version = line.split(maxsplit=1)
+            packages.setdefault(name, []).append(version)
+        return {name: sorted(versions) for name, versions in packages.items()}
+
+    def protected(packages):
+        return {name: version for name, version in packages.items()
+                if any(fnmatch.fnmatchcase(name, pattern) for pattern in FEDORA_DESKTOP)}
+
+    before = inventory()
+    lab.write_json(out/'rpm-before.json', before)
+    lab.put(run, str(package), 'putgd-nightly.rpm')
+    exclude = shlex.quote('--exclude='+','.join(FEDORA_DESKTOP))
+    result = lab.command(lab.ssh_args(run)+['sh', '-s'], check=False, timeout=900,
+        input=f'sudo -n dnf --color=never {exclude} install -y "$HOME/putgd-nightly.rpm" {FEDORA_TOOLS}\n')
+    (out/'rpm-install.txt').write_text(result.stdout+'\n'+result.stderr)
+    after = inventory()
+    lab.write_json(out/'rpm-after.json', after)
+    changes = [dict(package=name, before=before.get(name), after=after.get(name))
+               for name in sorted(before.keys() | after.keys()) if before.get(name) != after.get(name)]
+    report = dict(exitCode=result.returncode, excluded=list(FEDORA_DESKTOP),
+                  desktopUnchanged=protected(before) == protected(after), packagesChanged=changes)
+    lab.write_json(out/'rpm-transaction.json', report)
+    if not report['desktopUnchanged']:
+        raise RuntimeError('Fedora installation changed the protected desktop stack; private transaction retained')
+    if result.returncode:
+        raise RuntimeError('Fedora dnf installation failed; private transaction retained')
+    installed = lab.verify_installed_binaries(run, package)
+    receipt = dict(sha256=lab.hash_file(package), filename=package.name, format='rpm',
+                   installedBinarySha256=installed, rpmTransaction=report)
+    lab.write_json(run/'package.json', receipt)
+    lab.write_json(out/'rpm-install.json', receipt)
+    return receipt
+
 
 QUIET = r'''python3 - <<'NIGHTLY_QUIET'
 from pathlib import Path
@@ -138,8 +193,7 @@ def prepare(run, row, out):
                 raise RuntimeError('desktop-package transaction refused')
         (out/'probe-install.txt').write_text(lab.ssh(run, 'sudo -n apt-get install -y --no-install-recommends '+DEB_TOOLS, timeout=300))
     elif package == 'rpm':
-        # Native Fedora golden already carries the system probes; refuse missing
-        # dependencies instead of allowing dnf to upgrade a desktop stack.
+        # install_rpm provisions the distro probes in its protected transaction.
         pass  # Individual probe diagnostics are recorded below.
     else:
         # Reuse Phase A's Atomic overlay layering; the immutable source stays

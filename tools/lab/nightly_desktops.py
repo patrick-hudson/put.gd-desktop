@@ -324,7 +324,7 @@ def baton_returned(run):
 
 def worker(config, tag, identity, artifacts, out):
     from tools.lab import lab
-    from tools.lab.nightly_desktop_guest import prepare, prepare_live_keyring
+    from tools.lab.nightly_desktop_guest import install_rpm, prepare, prepare_live_keyring
     out.mkdir(mode=0o700, parents=True)
     if command(['git', 'rev-parse', 'HEAD']).strip() != identity['driver']:
         raise NotRun('worker checkout differs from the controller source identity')
@@ -371,8 +371,7 @@ def worker(config, tag, identity, artifacts, out):
                     if digest(package) != identity['packages'][package.name]:
                         raise RuntimeError('worker package checksum mismatch')
                     if row['package'] == 'rpm':
-                        lab.put(run, str(package), 'putgd-nightly.rpm')
-                        lab.ssh(run, 'sudo -n rpm -U --oldpackage ~/putgd-nightly.rpm', timeout=300)
+                        install_rpm(run, package, rowout)
                     else:
                         command([sys.executable, 'tools/lab/lab.py', 'install', '--run', run,
                             '--appimage' if row['package'] == 'appimage' else '--deb', package],
