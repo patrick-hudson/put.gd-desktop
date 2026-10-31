@@ -1,7 +1,17 @@
 """Replay saved P6 numeric evidence; performs no app, desktop or network operations."""
 from pathlib import Path
-import json,hashlib,sys
-root=Path(sys.argv[1]);report=json.loads((root/'result.json').read_text());resident=report['resident'];observed=[]
+import argparse
+import json,hashlib
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('root', type=Path)
+parser.add_argument('--receipt', type=Path,
+                    default=Path(__file__).resolve().parents[1] / 'desktop-resource-current.json')
+args = parser.parse_args()
+root=args.root;report=json.loads((root/'result.json').read_text());resident=report['resident'];observed=[]
+receipt = json.loads(args.receipt.read_text())
+subjects = [item for item in receipt['desktops'] if item['resident'] == resident]
+assert len(subjects) == 1, 'Receipt must describe exactly this resident'
 for n in (1,2):
  data=json.loads((root/f'idle-{n}-results.json').read_text());rows=[json.loads(x) for x in (root/f'idle-{n}-samples.jsonl').read_text().splitlines()];assert data['passed'];assert data['residentIdentity']==resident;assert data['sourceRevision']==report['build']['gitCommit']
  assert data['harnessSha256']==hashlib.sha256((root/'bench_ui_process.py').read_bytes()).hexdigest()
@@ -15,6 +25,10 @@ for n in (1,2):
  ticks=report['clockTicksPerSecond'];assert ticks>0
  cpu=(sum(p['cpuTicks'] for p in rows[-1]['processes'])-sum(p['cpuTicks'] for p in rows[0]['processes']))/ticks/elapsed*100;assert cpu<.5
  claimed=report['windows'][n-1];assert abs(claimed['seconds']-elapsed)<1e-9 and abs(claimed['rssPeakMiB']-rss)<1e-9 and abs(claimed['cpuPercentOneCore']-cpu)<1e-9
+ recorded = subjects[0]['idleWindows'][n-1]
+ assert recorded['window'] == n
+ assert (abs(recorded['seconds']-elapsed)<1e-9 and abs(recorded['rssPeakMiB']-rss)<1e-9
+         and abs(recorded['cpuPercentOneCore']-cpu)<1e-9), 'Receipt window disagrees with replay'
  observed.append({'window':n,'seconds':elapsed,'rssPeakMiB':rss,'cpuPercentOneCore':cpu})
 w=json.loads((root/'continuous-watch.json').read_text());assert w['passed'] and w['resident']==resident
 continuous=[json.loads(line) for line in (root/'continuous-samples.jsonl').read_text().splitlines()]
