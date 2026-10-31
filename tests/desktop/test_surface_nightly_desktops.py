@@ -10,6 +10,15 @@ from tools.lab.surface_driver.collect import mark_terminal
 
 
 class NightlyTests(unittest.TestCase):
+    def test_timer_drains_new_releases_without_repeating_or_skipping_a_tag(self):
+        releases = [dict(tag_name='v26.1031.'+str(i)+'-nightly', draft=False,
+                         published_at=f'2026-10-31T0{i}:00:00Z') for i in (1,2,3)]
+        self.assertEqual(nightly.select_release(releases)['tag_name'], releases[2]['tag_name'])
+        self.assertEqual(nightly.select_release(releases, releases[0]['published_at'])['tag_name'], releases[1]['tag_name'])
+        self.assertEqual(nightly.select_release(releases, releases[0]['published_at'],
+                         [releases[1]['tag_name']])['tag_name'], releases[2]['tag_name'])
+        self.assertIsNone(nightly.select_release(releases, releases[2]['published_at']))
+
     def receipt(self, root, *, functional='passed', review=True, cleanup=None):
         export = dict(published=True, scanned_before_copy=True, copy_scan_passed=True)
         value = dict(environment=dict(coverage_export=export, cleanup_errors=cleanup),

@@ -393,6 +393,15 @@ def table(result):
     return '\n'.join(lines)+'\n'
 
 
+def select_release(releases, cursor=None, completed=(), force=False):
+    published = sorted((r for r in releases if not r['draft'] and TAG.fullmatch(r['tag_name'])),
+                       key=lambda r:r['published_at'])
+    if force or cursor is None:
+        return published[-1]
+    return next((r for r in published if r['published_at'] > cursor
+                 and r['tag_name'] not in completed), None)
+
+
 def publish(github, result, out):
     issues = github.issues()
     title = 'Nightly desktop results'
@@ -443,14 +452,29 @@ def controller(args, config):
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         github = GitHub(config['repository'], args.config.parent/'github-token')
         tag = args.tag
+        cursor_file = state/'release-cursor.json'
+        cursor = json.loads(cursor_file.read_text())['publishedAt'] if cursor_file.exists() else None
         if tag is None:
             releases = github.api(f'repos/{github.repo}/releases?per_page=100')
-            tag = next(r['tag_name'] for r in sorted(releases, key=lambda r:r.get('published_at') or '', reverse=True)
-                       if not r['draft'] and TAG.fullmatch(r['tag_name']))
+            release = select_release(releases, cursor, {p.stem for p in state.glob('v*-nightly.json')}, args.now)
+            if release is None:
+                print('No new published nightly')
+                return
+            tag = release['tag_name']
+        else:
+            release = github.api(f'repos/{github.repo}/releases/tags/{tag}')
         if not TAG.fullmatch(tag):
             raise RuntimeError('expected a published nightly release tag')
+        if release['draft']:
+            raise RuntimeError('draft releases cannot enter nightly checks')
+        def completed():
+            save(done, dict(issueUrl=result['issueUrl'], results=str(out/'results.json')))
+            if cursor is None or (not args.now and args.tag is None):
+                save(cursor_file, dict(publishedAt=release['published_at']))
         done = state/(tag+'.json')
         if done.exists() and not args.now:
+            if cursor is None:
+                save(cursor_file, dict(publishedAt=release['published_at']))
             print('Already published '+tag)
             return
         out = state/(tag+'-'+uuid.uuid4().hex[:8])
@@ -471,7 +495,7 @@ def controller(args, config):
                            for f in LOCAL+(['s3_region_upload','proton_region_upload'] if row.get('live') else [])})
                     for host,builder in config['builders'].items() for row in builder['rows']])
             publish(github, result, out)
-            save(done, dict(issueUrl=result['issueUrl'], results=str(out/'results.json')))
+            completed()
             print(result['issueUrl'])
             return
         save(artifacts/'identity.json', identity)
@@ -505,7 +529,7 @@ def controller(args, config):
                                for f in LOCAL+(['s3_region_upload','proton_region_upload'] if row.get('live') else [])}))
             save(out/'results.json', result)
         publish(github, result, out)
-        save(done, dict(issueUrl=result['issueUrl'], results=str(out/'results.json')))
+        completed()
         print(result['issueUrl'])
 
 
