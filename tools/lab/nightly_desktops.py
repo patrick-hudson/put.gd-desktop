@@ -22,6 +22,7 @@ from pathlib import Path
 import re
 import shlex
 import shutil
+import signal
 import socket
 import stat
 import subprocess
@@ -42,6 +43,12 @@ FLOWS = dict(region_upload='Region', window_desktop='Window / desktop',
 LOCAL = [name for name in FLOWS if not name.startswith(('s3_', 'proton_'))]
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
 HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
+# The worker budget includes checkout verification, await_host and setup. Leave
+# fifteen minutes for retirement/lease cleanup before the controller's limit.
+HOST_TIMEOUT = 18000
+WORKER_SECONDS = HOST_TIMEOUT - 900
+TERMINATE_GRACE = 300
+ATTEMPT_TIMEOUT = 1800  # Recipes allow 300–720s, plus fixture/live setup/cleanup.
 
 
 class NotRun(RuntimeError):
@@ -75,19 +82,68 @@ def private_file(path):
     return path
 
 
-def command(argv, *, log=None, timeout=900, env=None):
+def command(argv, *, log=None, timeout=900, env=None, terminate_grace=0):
     # Never include a command or its output in exceptions/public receipts.
     if log:
         with Path(log).open('xb') as stream:
-            result = subprocess.run([str(a) for a in argv], cwd=ROOT, env=env,
-                                    stdout=stream, stderr=stream, timeout=timeout)
+            result = run_command(argv, env=env, stdout=stream, stderr=stream,
+                                 timeout=timeout, terminate_grace=terminate_grace)
     else:
-        result = subprocess.run([str(a) for a in argv], cwd=ROOT, env=env,
-                                capture_output=True, timeout=timeout)
+        result = run_command(argv, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             timeout=timeout, terminate_grace=terminate_grace)
     if result.returncode:
         step = Path(log).name if log else Path(str(argv[0])).name
         raise RuntimeError(f'{step} failed (exit {result.returncode}); private log retained')
     return result.stdout.decode() if not log else None
+
+
+def run_command(argv, *, env, stdout, stderr, timeout, terminate_grace):
+    """Give an outer worker SIGTERM cleanup time before escalating to SIGKILL."""
+    args = [str(a) for a in argv]
+    if not terminate_grace:
+        return subprocess.run(args, cwd=ROOT, env=env, stdout=stdout, stderr=stderr, timeout=timeout)
+    with subprocess.Popen(args, cwd=ROOT, env=env, stdout=stdout, stderr=stderr) as process:
+        try:
+            output, errors = process.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.communicate(timeout=terminate_grace)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate()
+            raise
+        return subprocess.CompletedProcess(args, process.returncode, output, errors)
+
+
+@contextmanager
+def worker_deadline():
+    """Bound setup and flow work, then disarm the timer while finally blocks run."""
+    deadline = time.monotonic() + WORKER_SECONDS
+    def expired(signum, _frame):
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        # A second termination request must not interrupt retirement.
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        raise NotRun('worker terminated; cleanup required' if signum == signal.SIGTERM
+                     else 'worker deadline exhausted; remaining flows not run')
+    previous_term = signal.signal(signal.SIGTERM, expired)
+    previous_alarm = signal.signal(signal.SIGALRM, expired)
+    previous_timer = signal.setitimer(signal.ITIMER_REAL, WORKER_SECONDS)
+    try:
+        yield deadline
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_alarm)
+        signal.signal(signal.SIGTERM, previous_term)
+        signal.setitimer(signal.ITIMER_REAL, *previous_timer)
+
+
+def remaining_timeout(deadline, maximum=ATTEMPT_TIMEOUT):
+    """Do not begin or retry a flow once the shared worker budget is exhausted."""
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise NotRun('worker deadline exhausted; remaining flows not run')
+    return min(maximum, remaining)
 
 
 class GitHub:
@@ -196,7 +252,7 @@ def verdict(out, recipe):
 
 
 @contextmanager
-def lease(host, session, out):
+def lease(host, session, out, *, reservation=None):
     from tools.lab.desktop_lock import Desktop
     lock = Desktop(Path.home()/'putgd-lab/locks', host)
     save(out/'lock-acquire.json', lock.acquire('nightly-desktops', session, 'automatic Tier 1 nightly; '+str(out), 45))
@@ -221,10 +277,16 @@ def lease(host, session, out):
     finally:
         stop.set()
         thread.join()
-        if acquired:
-            (slot/'session').unlink()
-            slot.rmdir()
-        save(out/'lock-release.json', lock.release(session, verified_clean=True))
+        if acquired and reservation and reservation.get('retained'):
+            # The guest may still hold a credential baton or private publication.
+            # Keep the durable slot until explicit recovery, even after lease expiry.
+            save(slot/'retained.json', dict(reservation, session=session, evidence=str(out)))
+            save(out/'lock-retained.json', lock.heartbeat(session, blocked=reservation['reason']))
+        else:
+            if acquired:
+                (slot/'session').unlink()
+                slot.rmdir()
+            save(out/'lock-release.json', lock.release(session, verified_clean=True))
 
 
 def preflight(config):
@@ -258,13 +320,17 @@ def preflight(config):
                 overlay='sparse qcow2; no preallocation', placement='guest')
 
 
-def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep):
+def await_host(config, out, *, clock=time.monotonic, sleep=time.sleep, worker_deadline=None):
     """Wait outside every desktop/Proton lease; other guests are never touched."""
     from tools.lab.desktop_lock import Desktop
     started = clock()
     deadline = started + config.get('waitSeconds', 1200)
+    if worker_deadline is not None:
+        deadline = min(deadline, worker_deadline)
     attempts = []
     while True:
+        if worker_deadline is not None and clock() >= worker_deadline:
+            raise NotRun('worker deadline exhausted while awaiting host')
         try:
             for resource in ('desktop', 'proton') if config['rows'][0].get('live') else ('desktop',):
                 state = Desktop(Path.home()/'putgd-lab/locks', config['host'], resource=resource).status()
@@ -325,6 +391,13 @@ def baton_returned(run):
 
 
 def worker(config, tag, identity, artifacts, out):
+    """Run a host worker with a cleanup-safe deadline and termination handler."""
+    with worker_deadline() as deadline:
+        return worker_run(config, tag, identity, artifacts, out, deadline)
+
+
+def worker_run(config, tag, identity, artifacts, out, deadline):
+    """Observe one configured desktop and retain ownership of unfinished cleanup."""
     from tools.lab import lab
     from tools.lab.nightly_desktop_guest import install_rpm, prepare, prepare_live_keyring
     out.mkdir(mode=0o700, parents=True)
@@ -347,10 +420,11 @@ def worker(config, tag, identity, artifacts, out):
                       release=tag, build=identity['gitCommit'], driver=identity['driver'],
                       session=session, evidence=str(rowout))
         run = ROOT/'work/lab-runs'/('n'+uuid.uuid4().hex[:8])
+        reservation = dict(run=str(run))
         setup_started = None
         try:
-            record['waitSeconds'] = round(await_host(config, rowout), 3)
-            with lease(host, session, rowout) as lease_errors:
+            record['waitSeconds'] = round(await_host(config, rowout, worker_deadline=deadline), 3)
+            with lease(host, session, rowout, reservation=reservation) as lease_errors:
                 try:
                     setup_started = time.monotonic()
                     command(['uptime'], log=rowout/'uptime.txt')
@@ -391,6 +465,7 @@ def worker(config, tag, identity, artifacts, out):
                             prepare_live_keyring(run, rowout)
                         recipe = ('outcomes.' if destination == 'local' else 'outcomes_live.')+flow
                         for attempt in (1, 2):
+                            remaining_timeout(deadline)
                             if lease_errors:
                                 raise RuntimeError(lease_errors[0])
                             name = flow+'-'+str(attempt)
@@ -421,8 +496,12 @@ def worker(config, tag, identity, artifacts, out):
                             # The driver exits nonzero for functional reds. Collect its
                             # terminal result anyway; never infer success from an exit alone.
                             try:
-                                command(['nice', '-n', '10', *args], log=rowout/(name+'.log'), env=env, timeout=1800)
-                            except RuntimeError:
+                                attempt_timeout = remaining_timeout(deadline)
+                                command(['nice', '-n', '10', *args], log=rowout/(name+'.log'), env=env,
+                                        timeout=attempt_timeout)
+                            except NotRun:
+                                raise
+                            except (RuntimeError, subprocess.TimeoutExpired):
                                 pass
                             observed = verdict(target, recipe)
                             observed['attempt'] = attempt
@@ -439,6 +518,8 @@ def worker(config, tag, identity, artifacts, out):
                         cells[flow]['seconds'] = round(time.monotonic()-flow_started, 3)
                     retire(run, rowout, cells)
                 finally:
+                    # Work is over. Do not deliver a budget alarm in retirement.
+                    signal.setitimer(signal.ITIMER_REAL, 0)
                     # A failed live cleanup may own the only current baton or a
                     # remote publication. Preserve that running guest for recover.
                     proton = Path.home()/'putgd-lab/locks/proton.lock'
@@ -449,12 +530,18 @@ def worker(config, tag, identity, artifacts, out):
                         environment = evidence.get('environment', {})
                         retained |= bool(environment.get('cleanup_errors'))
                         retained |= 'retained' in str(environment.get('private_cleanup', ''))
+                    if outstanding or retained:
+                        reservation.update(retained=True, reason='guest retained; explicit cleanup recovery required')
                     if (run/'state.json').exists() and not outstanding and not retained:
                         try:
-                            if (run/'disk.qcow2').exists():
-                                retire(run, rowout, cells)
-                        finally:
-                            lab.reset(run)
+                            try:
+                                if (run/'disk.qcow2').exists():
+                                    retire(run, rowout, cells)
+                            finally:
+                                lab.reset(run)
+                        except Exception:
+                            reservation.update(retained=True, reason='guest cleanup failed; explicit recovery required')
+                            raise
         except Exception as error:
             # Only our fixed messages are public. Harness/SSH exception payloads stay private.
             reason = str(error) if isinstance(error, NotRun) or type(error) is RuntimeError else 'controller '+type(error).__name__+'; private evidence retained'
@@ -632,7 +719,13 @@ def run_host(host, builder, tag, artifacts, archive, out):
             selected = str(artifacts)
         args = ['nice','-n','10','python3',root+'/tools/lab/nightly_desktops.py', '--worker',host,
                 '--config',builder['config'], '--artifacts',selected, '--output',output, tag]
-        command([*ssh, shlex.join(args)] if ssh else args, log=out/(host+'.log'), timeout=18000)
+        # A remote watchdog survives loss of the SSH client. Signal only the
+        # worker (foreground), allowing its own finally blocks to retire guests.
+        remote = ['timeout', '--foreground', '--signal=TERM', f'--kill-after={TERMINATE_GRACE}',
+                  str(HOST_TIMEOUT), *args]
+        command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'),
+                timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
+                terminate_grace=TERMINATE_GRACE)
         text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
         rows = json.loads(text)
     except Exception as error:

@@ -1,6 +1,9 @@
 """Controller policy tests; these do not claim graphical desktop acceptance."""
 import json
+import os
 from pathlib import Path
+import signal
+import subprocess
 import sys
 import tempfile
 import threading
@@ -38,6 +41,139 @@ class FakeGitHub:
 
 
 class NightlyTests(unittest.TestCase):
+    def test_retained_guest_keeps_durable_reservation_and_blocks_lease(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root/'putgd-lab/locks').mkdir(parents=True)
+            reservation = dict(run='/owned/run', retained=True, reason='cleanup recovery required')
+            with patch.object(nightly.Path, 'home', return_value=root), \
+                    patch('tools.lab.desktop_lock.Desktop') as lock:
+                lock.return_value.acquire.return_value = {}
+                lock.return_value.heartbeat.return_value = {}
+                with nightly.lease('d69', 'owned-session', root, reservation=reservation):
+                    pass
+                lock.return_value.release.assert_not_called()
+                lock.return_value.heartbeat.assert_called_once_with('owned-session', blocked=reservation['reason'])
+            slot = root/'putgd-lab/locks/tier1-guest.lock.d'
+            self.assertEqual((slot/'session').read_text().strip(), 'owned-session')
+            self.assertEqual(json.loads((slot/'retained.json').read_text())['run'], '/owned/run')
+
+    def test_worker_wait_and_setup_consume_budget_and_retry_releases_slot(self):
+        from tools.lab import lab, nightly_desktop_guest as guest
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root/'putgd-lab/locks').mkdir(parents=True)
+            pins = root/'pins'
+            pins.write_text('localhost ssh-ed25519 synthetic-public-pin\n')
+            artifacts = root/'artifacts'
+            (artifacts/'packages').mkdir(parents=True)
+            package = artifacts/'packages/putgd-test-test.deb'
+            package.write_bytes(b'synthetic package')
+            identity = dict(driver=BUILD, gitCommit=BUILD,
+                            packages={package.name:nightly.digest(package)})
+            row = dict(name='Test', profile='test', knownHosts=str(pins), bootstrapKey='unused',
+                       package='deb', asset='test.deb', desktop='test', golden='/unused/golden')
+            clock = [0]
+            attempts = []
+            def wait(*args, **kwargs):
+                self.assertEqual(kwargs['worker_deadline'], 100)
+                clock[0] += 40
+                return 40
+            def prepare(*args):
+                clock[0] += 20
+                return root/'profiles'
+            def command(argv, **kwargs):
+                if argv[:2] == ['git', 'rev-parse']:
+                    return BUILD
+                if 'launch' in argv:
+                    run = Path(argv[argv.index('--run')+1])
+                    run.mkdir(parents=True)
+                    (run/'state.json').write_text('{}')
+                    (run/'disk.qcow2').touch()
+                if '-m' in argv:
+                    attempts.append(kwargs['timeout'])
+                    clock[0] += kwargs['timeout']
+                    raise subprocess.TimeoutExpired('synthetic attempt', kwargs['timeout'])
+            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                    patch.object(nightly.time, 'monotonic', side_effect=lambda:clock[0]), \
+                    patch.object(nightly, 'await_host', side_effect=wait), \
+                    patch.object(nightly, 'preflight', return_value={}), \
+                    patch.object(nightly, 'command', side_effect=command), \
+                    patch.object(guest, 'prepare', side_effect=prepare), \
+                    patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
+                    patch.object(lab, 'reset') as reset, patch.object(nightly, 'retire') as retire, \
+                    patch('tools.lab.desktop_lock.Desktop') as lock:
+                lock.return_value.acquire.return_value = {}
+                lock.return_value.release.return_value = {}
+                records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity,
+                                             artifacts, root/'output', 100)
+            self.assertEqual(attempts, [40], records[0].get('notRunReason'))
+            self.assertIn('deadline exhausted', records[0]['notRunReason'])
+            self.assertEqual(records[0]['cells']['window_desktop']['status'], 'not_run')
+            retire.assert_called_once()
+            reset.assert_called_once()
+            lock.return_value.release.assert_called_once()
+            self.assertFalse((root/'putgd-lab/locks/tier1-guest.lock.d').exists())
+
+    def test_attempt_timeout_caps_remaining_budget_and_refuses_exhaustion(self):
+        with patch.object(nightly.time, 'monotonic', return_value=40):
+            self.assertEqual(nightly.remaining_timeout(100), 60)
+            self.assertEqual(nightly.remaining_timeout(10000), nightly.ATTEMPT_TIMEOUT)
+            with self.assertRaisesRegex(nightly.NotRun, 'deadline exhausted'):
+                nightly.remaining_timeout(40)
+        self.assertGreater(nightly.HOST_TIMEOUT - nightly.WORKER_SECONDS, nightly.TERMINATE_GRACE)
+
+    def test_wait_does_not_outlive_worker_deadline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            clock = [0]
+            def sleep(seconds): clock[0] += seconds
+            with patch.object(nightly.Path, 'home', return_value=Path(tmp)), \
+                    patch('tools.lab.desktop_lock.Desktop') as lock:
+                lock.return_value.status.return_value = dict(state='held')
+                with self.assertRaisesRegex(nightly.NotRun, 'awaiting host'):
+                    nightly.await_host(dict(host='d69', rows=[{}], waitSeconds=1200), Path(tmp),
+                                       clock=lambda:clock[0], sleep=sleep, worker_deadline=45)
+            self.assertEqual(clock[0], 45)
+
+    def test_worker_termination_and_deadline_unwind_and_restore_signal_handlers(self):
+        for signum in (signal.SIGTERM, signal.SIGALRM):
+            previous = {sig:signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGALRM)}
+            cleaned = []
+            with self.subTest(signal=signum), self.assertRaises(nightly.NotRun):
+                with nightly.worker_deadline():
+                    try:
+                        os.kill(os.getpid(), signum)
+                    finally:
+                        self.assertEqual(signal.getitimer(signal.ITIMER_REAL)[0], 0)
+                        cleaned.append(True)
+            self.assertEqual(cleaned, [True])
+            self.assertEqual({sig:signal.getsignal(sig) for sig in previous}, previous)
+
+    def test_outer_timeout_terminates_then_kills_only_after_grace(self):
+        for ignores_term in (False, True):
+            with self.subTest(ignores_term=ignores_term), patch.object(nightly.subprocess, 'Popen') as popen:
+                process = popen.return_value.__enter__.return_value
+                timeout = subprocess.TimeoutExpired('synthetic', 10)
+                process.communicate.side_effect = [timeout, timeout, (None, None)] if ignores_term else [timeout, (None, None)]
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    nightly.run_command(['synthetic'], env=None, stdout=None, stderr=None,
+                                        timeout=10, terminate_grace=30)
+                process.terminate.assert_called_once()
+                self.assertEqual(process.kill.call_count, int(ignores_term))
+                self.assertEqual(process.communicate.call_args_list[1].kwargs['timeout'], 30)
+
+    def test_remote_worker_has_its_own_watchdog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = root/'inputs.tar'; archive.touch()
+            with patch.object(nightly, 'command', side_effect=[None, None, None, '[]']) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
+                                 'vtest', root, archive, root)
+            args = command.call_args_list[2]
+            self.assertIn('timeout --foreground --signal=TERM --kill-after=300 18000', args.args[0][-1])
+            self.assertEqual(args.kwargs['terminate_grace'], nightly.TERMINATE_GRACE)
+
     def test_fedora_activation_still_refuses_a_covered_target(self):
         from test_surface_input_guards import context
         from tools.lab.surface_driver.api import RecipeFailed
