@@ -104,6 +104,7 @@ void NativeRegionOverlay::start(){
  for(auto* screen:QGuiApplication::screens())if(screen->name()==frames_.first().identity){cursorWindow_->setScreen(screen);break;}
  cursorWindow_->setGeometry(QRect(frames_.first().logicalRect.topLeft().toPoint(),QSize(1,1)));
  if(!residentCursor_)cursorWindow_->setCursor(Qt::CrossCursor);
+ cursorWindow_->installEventFilter(this);
  cursorWindow_->create();
  // Monitor changes must cancel while the cursor child and native surfaces initialize.
  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});
@@ -217,7 +218,8 @@ void NativeRegionOverlay::grabInput(){
   QTimer::singleShot(grabRetryMs,this,[guard]{if(guard)guard->grabInput();});
   return;
  }
- QAccessibleEvent focused(this,QAccessible::Focus);QAccessible::updateAccessibility(&focused);
+ QPointer<NativeRegionOverlay> accessibility(this);
+ QTimer::singleShot(accessibilityDelayMs,this,[accessibility]{if(accessibility)accessibility->startAccessibility();});
  if(frozen_)showFrozen();
  hint_.start();
  notifier_=new QSocketNotifier(xcb_get_file_descriptor(connection_),QSocketNotifier::Read,this);
@@ -281,7 +283,19 @@ void NativeRegionOverlay::key(int key,Qt::KeyboardModifiers modifiers,QPoint nat
  case RegionKeyAction::Ignore:break;
  }
 }
-void NativeRegionOverlay::describe(){QAccessibleEvent changed(this,QAccessible::DescriptionChanged);QAccessible::updateAccessibility(&changed);}
+void NativeRegionOverlay::describe(){if(!accessible_)return;QAccessibleEvent changed(this,QAccessible::DescriptionChanged);QAccessible::updateAccessibility(&changed);}
+bool NativeRegionOverlay::eventFilter(QObject* object,QEvent* event){
+ // QWindow's own focus handling would start the bridge at the grab.
+ if(object==cursorWindow_&&!accessible_&&(event->type()==QEvent::FocusIn||event->type()==QEvent::FocusOut))return true;
+ return RegionSelector::eventFilter(object,event);
+}
+void NativeRegionOverlay::startAccessibility(){
+ if(accessible_||finished_)return;
+ accessible_=true;
+ // The activation QWindow raises on FocusIn, which AT-SPI reports as window:activate.
+ if(cursorWindow_&&QGuiApplication::focusWindow()==cursorWindow_){QAccessible::State active;active.active=true;QAccessibleStateChangeEvent activated(cursorWindow_,active);QAccessible::updateAccessibility(&activated);}
+ QAccessibleEvent focused(this,QAccessible::Focus);QAccessible::updateAccessibility(&focused);
+}
 void NativeRegionOverlay::showFrozen(){
  if(frozenShown_||!connection_)return;
  frozenShown_=true;
@@ -413,6 +427,7 @@ void NativeRegionOverlay::present(){
  // The flush can read events that arrived meanwhile into xcb's queue, where
  // no socket notification announces them. Read them on the next turn.
  QTimer::singleShot(0,this,[this]{events();});
+ if(!accessible_&&outlined())QTimer::singleShot(0,this,[this]{startAccessibility();});
  presentClock_.start();
  const double took=work.nsecsElapsed()/1e6;
  ++stats_.presents;stats_.presentSumMs+=took;stats_.presentMaxMs=std::max(stats_.presentMaxMs,took);

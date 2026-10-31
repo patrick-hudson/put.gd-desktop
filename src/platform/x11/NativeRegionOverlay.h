@@ -33,6 +33,10 @@ public:
  // A frozen selection already holds the menu's pixels, so it waits for the
  // menu to close instead of failing; the helper deadline still bounds it.
  static constexpr int frozenGrabWaitMs=60000;
+ // Qt starts its AT-SPI bridge with the first accessibility event: 20-30 ms
+ // of synchronous D-Bus in the capture helper (#1063). It waits for the first
+ // outline frame, or this long after the grab if nothing is drawn.
+ static constexpr int accessibilityDelayMs=100;
  void start() override;
  void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
  // Presentation statistics for lab logs (PUTGD_REGION_DEBUG_LOG) and tests.
@@ -48,7 +52,10 @@ public:
  const Stats& stats()const{return stats_;}
 private:
  friend class NativeRegionAccessible;
+ bool eventFilter(QObject*,QEvent*) override;
  void describe();
+ // Raises the focus events held back until the first outline frame.
+ void startAccessibility();
  void initializeSurfaces();
  void grabInput();
  // Only the compact hint and size pills are client raster images; a frozen
@@ -98,7 +105,7 @@ private:
  QPointF anchor_, pointer_;
  bool dragging_=false,started_=false,finished_=false;
  bool pointerGrabbed_=false,keyboardGrabbed_=false;
- bool initialized_=false;
+ bool initialized_=false,accessible_=false;
  QElapsedTimer grabClock_;
  int grabAttempts_=0,keyboardScreen_=-1,hintScreen_=0;
  bool frozen_=false,frozenShown_=false;
