@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "6852fe21-74d6-4d14-93c3-cd3e49fcc4c5",
+  "profile": "kde-wayland",
+  "pid": 71213,
+  "golden": "/home/user/work/put.gd/work/lab-images/kde-wayland-probes-v1-no-updates/image.qcow2",
+  "golden_sha256": "78a96764e919ec740b61c5abd9615a7500730efd3c8d4c4233fa5c6697554070",
+  "overlay": "/home/user/t1/work/lab-runs/fa1/disk.qcow2",
+  "qemu": null,
+  "createdAt": null,
+  "acceleration": "kvm",
+  "vnc_display": 20,
+  "ssh_port": 22220,
+  "guest_user": "lab",
+  "firmware": null,
+  "heads": null,
+  "head_layout": null
+}

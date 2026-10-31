@@ -91,6 +91,7 @@ XWININFO="""xwininfo: Window id: 0x3a00007 "About put.gd"
   Absolute upper-left Y:  354
   Relative upper-left X:  0
   Relative upper-left Y:  32
+  Map State: IsViewable
   Width: 460
   Height: 292
   Map State: IsViewable
@@ -116,6 +117,30 @@ class X11Geometry(unittest.TestCase):
         self.assertEqual((window['x'],window['y'],window['width'],window['height']),(410,354,460,292))
         self.assertEqual(window['frame'],{'x':410,'y':322,'width':460,'height':324})
         self.assertFalse(window['override_redirect'])
+
+
+    def test_unnamed_native_cover_requires_mapped_owned_pid(self):
+        from types import SimpleNamespace
+        def run(*args):
+            if args == ('xwininfo', '-root', '-children'):
+                return '  0x3a00007 (has no name)'
+            if args[0] == 'xwininfo':
+                return XWININFO % 'yes'
+            if args[1] == 'getwindowpid':
+                return '7'
+            if args[1] == 'getwindowname':
+                raise AssertionError('unnamed native covers do not expose WM_NAME')
+            return ''
+        with patch.object(probe.subprocess, 'run', return_value=SimpleNamespace(stdout='')), \
+             patch.object(probe, 'run', side_effect=run), patch.object(probe, 'owned', return_value=True), \
+             patch.object(probe, 'native_capture_process', return_value=True):
+            query = {'selector_screens': [[410,354,460,292]]}
+            self.assertEqual(probe.x11_windows(query)[0]['name'], '')
+            info = probe.xwininfo('60817415')
+            with patch.object(probe, 'xwininfo', return_value=dict(info, viewable=False)):
+                self.assertEqual(probe.x11_windows(query), [])
+            with patch.object(probe, 'owned', return_value=False):
+                self.assertEqual(probe.x11_windows(query), [])
 
 
 class UnmanagedForeground(unittest.TestCase):

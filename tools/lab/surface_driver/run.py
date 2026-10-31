@@ -821,6 +821,8 @@ def main(argv=None):
         audit=finish_evidence(evidence,args.out,environment,rows,args.campaign,coverage)
         if not audit['passed']:
             exit_code=1
+    from tools.lab.surface_driver.collect import mark_terminal
+    mark_terminal(args.out, exit_code)
     return exit_code
 
 

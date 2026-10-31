@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "a9200c1e-3dc0-4707-921d-0256556fc824",
+  "profile": "gnome-wayland",
+  "pid": 92102,
+  "golden": "/home/user/work/put.gd/work/lab-images/gnome-wayland-probes-v4/image.qcow2",
+  "golden_sha256": "8666b7dd8b98932e2fa794ec7bb4ccf0e82a8195e97a8580997ad70ed593a6c4",
+  "overlay": "/home/user/t1/work/lab-runs/fa1/disk.qcow2",
+  "qemu": null,
+  "createdAt": null,
+  "acceleration": "kvm",
+  "vnc_display": 20,
+  "ssh_port": 22220,
+  "guest_user": "lab",
+  "firmware": null,
+  "heads": null,
+  "head_layout": null
+}

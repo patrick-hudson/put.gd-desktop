@@ -1364,6 +1364,9 @@ class RebootAndScope(unittest.TestCase):
             home = Path(temporary)
             configs = [home / '.config', home / 'isolated/config']
             with contextlib.ExitStack() as stack:
+                stack.enter_context(patch.dict(browser.os.environ, {
+                    'XDG_RUNTIME_DIR': '/tmp/sd-owned/runtime',
+                    'WAYLAND_DISPLAY': '/run/user/1000/wayland-0'}))
                 for item in _real_setup(home, configs, [b'a', b'b']):
                     stack.enter_context(item)
                 stack.enter_context(patch.object(browser, '_terminate'))
@@ -1375,6 +1378,10 @@ class RebootAndScope(unittest.TestCase):
                 handler = next((home / '.local/share/applications').glob('putgdsurface*.desktop')).read_text()
                 self.assertIn('"XDG_CACHE_HOME=%s"' % (directory / 'xdg-cache'), handler)
                 self.assertIn('"XDG_STATE_HOME=%s"' % (directory / 'xdg-state'), handler)
+                self.assertEqual(env['XDG_RUNTIME_DIR'], browser.os.environ['XDG_RUNTIME_DIR'])
+                self.assertIn('"XDG_RUNTIME_DIR=%s"' % env['XDG_RUNTIME_DIR'], handler)
+                self.assertEqual(env['WAYLAND_DISPLAY'], '/run/user/1000/wayland-0')
+                self.assertIn('"WAYLAND_DISPLAY=/run/user/1000/wayland-0"', handler)
                 (directory / 'xdg-cache/mozilla/firefox/startupCache').mkdir(parents=True)
                 browser._restore(state)
             self.assertFalse(directory.exists())

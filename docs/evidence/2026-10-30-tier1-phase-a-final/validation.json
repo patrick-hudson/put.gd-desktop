@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "driverCommit": "6e6c0e2347ea15b0aa6ea8371493ccb344051e3b",
+  "appCommit": "cc9d9410d6e982dd93d58bcfda82f112c44a82f6",
+  "coverageRows": 48,
+  "functionalInteractions": {
+    "passed": 46,
+    "blocked": 2
+  },
+  "functionalOutcomes": {
+    "passed": 23,
+    "blocked": 1
+  },
+  "finalReceipts": 4,
+  "retainedAttempts": 6,
+  "driverFilesMatchPerAttempt": 133,
+  "provisionalAuroraExcluded": true,
+  "allFinalAuditExportAndExitProofs": true,
+  "archiveHashesVerified": true,
+  "allOverlaysRetired": true,
+  "allSandboxesAbsent": true
+}
