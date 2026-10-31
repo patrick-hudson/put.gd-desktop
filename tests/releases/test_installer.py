@@ -35,7 +35,7 @@ class Installer(unittest.TestCase):
         self.env = dict(os.environ, HOME=str(self.home), TMPDIR=str(self.root),
                         PATH=str(self.bin), CALLS=str(self.log), ARCH='x86_64', STABLE='302',
                         NIGHTLY='302', CHECKSUM_MODE='ok', SUFFIX='-ubuntu24.04-x86_64.deb',
-                        CODEC='openh264', CISCO_REPO='enabled')
+                        CODEC='openh264,gstreamer1-plugin-openh264', CISCO_REPO='enabled')
         for name in ('cat', 'mktemp', 'rm', 'awk', 'sha256sum', 'cp', 'chmod', 'mv', 'mkdir', 'sh'):
             (self.bin / name).symlink_to(shutil.which(name))
         self.tool('uname', "import os; print(os.environ['ARCH'])")
@@ -46,7 +46,7 @@ class Installer(unittest.TestCase):
         with (self.bin / 'sudo').open('a') as f:
             f.write("import subprocess\nsys.exit(subprocess.call(sys.argv[1:]))\n")
         with (self.bin / 'rpm').open('a') as f:
-            f.write("sys.exit(0 if sys.argv[2] in os.environ['CODEC'].split(',') else 1)\n")
+            f.write("sys.exit(0 if all(p in os.environ['CODEC'].split(',') for p in sys.argv[2:]) else 1)\n")
         with (self.bin / 'dnf').open('a') as f:
             f.write('''if 'repolist' in sys.argv:
     if os.environ['CISCO_REPO'] == 'error': sys.exit(1)
@@ -202,7 +202,8 @@ else:
 
     def test_fedora_explicit_codec_install_with_one_sudo(self):
         self.fedora()
-        for codec in ('noopenh264', '', 'noopenh264,openh264'):
+        for codec in ('noopenh264', '', 'noopenh264,openh264', 'openh264',
+                      'gstreamer1-plugin-openh264'):
             with self.subTest(codec=codec):
                 self.log.unlink(missing_ok=True)
                 self.env['CODEC'] = codec
@@ -212,6 +213,15 @@ else:
                     ['install', './putgd-26.1031.1-fedora44-x86_64.rpm'],
                     ['install', '-y', 'openh264', 'gstreamer1-plugin-openh264']])
                 self.assertEqual(sum(Path(call[0]).name == 'sudo' for call in self.calls()), 1)
+
+    def test_fedora_complete_codecs_skip_repo_probe_and_extra_transaction(self):
+        self.fedora()
+        self.env['CISCO_REPO'] = 'disabled'
+        out = self.run_script()
+        self.assertNotIn('Installing Cisco', out)
+        self.assertNotIn('config-manager', out)
+        self.assertEqual(len(self.dnf_installs()), 1)
+        self.assertFalse(any('repolist' in call for call in self.calls()))
 
     def test_fedora_disabled_or_unavailable_repo_only_prints_commands(self):
         self.fedora()
