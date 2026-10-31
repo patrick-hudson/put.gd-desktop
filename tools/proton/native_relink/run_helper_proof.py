@@ -1,11 +1,12 @@
 from pathlib import Path
 import hashlib,json,os,re,subprocess,tarfile,time
+from proof_command import run as run_command
 root=Path('/p3');logs=root/'logs';proof=root/'proof';work=root/'helper';work.mkdir(exist_ok=False)
 bun=root/'prepared/bun/build/release-local/bun-profile'
 assert bun.is_file(),'native build must finish first'
+command_timeout=float(os.environ.get('PUTGD_PROTON_PROOF_TIMEOUT_SECONDS','300'))
 def run(args,name,cwd=None,env=None):
- with (logs/name).open('w') as f:subprocess.run([str(x) for x in args],cwd=cwd,env=env,stdout=f,stderr=subprocess.STDOUT,check=True)
- return (logs/name).read_text()
+ return run_command(args,name,logs=logs,proof=proof,timeout_seconds=command_timeout,cwd=cwd,env=env)
 revision=run([bun,'--revision'],'native-revision.log')
 for marker in ['putgd-bun-native-proof','putgd-jsc-source-proof','putgd-tinycc-source-proof']:assert marker in revision,marker
 assert run([bun,'--version'],'native-version.log').strip()=='1.4.4'

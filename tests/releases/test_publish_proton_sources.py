@@ -23,8 +23,9 @@ class Publication(unittest.TestCase):
             data = name.encode()
             (self.root / name).write_bytes(data)
             self.parts.append({'file': name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
-        (self.root / 'SHA256SUMS').write_text('synthetic pinned checksum index\n')
-        self.catalog = {'publication': {'releaseUrl': 'https://github.com/owner/repo/releases/tag/' + self.tag},
+        (self.root / 'SHA256SUMS').write_text(''.join(p['sha256'] + '  ' + p['file'] + '\n' for p in self.parts))
+        self.catalog = {'publication': {'releaseUrl': 'https://github.com/owner/repo/releases/tag/' + self.tag,
+                                        'sourceTagCommit': self.commit},
                         'delivery': {'parts': self.parts}}
         self.metadata = None
         self.repository = 'owner/repo'
@@ -52,9 +53,10 @@ class Publication(unittest.TestCase):
         else:
             self.fail('Unexpected command: ' + repr(command))
 
-    def publish(self):
+    def publish(self, *, tag_present=False, tag_commit=None):
         with patch.object(publisher.subprocess, 'run', side_effect=self.run_command), \
-                patch.object(publisher, 'remote_tag_commit', return_value=self.commit):
+                patch.object(publisher, 'tag_exists', return_value=tag_present), \
+                patch.object(publisher, 'remote_tag_commit', return_value=tag_commit or self.commit):
             return publisher.publish(self, self.catalog, self.root, self.commit, self.root / 'notes.md')
 
     def test_create_and_publication_both_force_prerelease_and_never_latest(self):
@@ -78,6 +80,36 @@ class Publication(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'differs from catalog'):
             self.publish()
         self.assertEqual(self.commands, [])
+
+    def test_wrong_valid_commit_is_rejected_before_mutation(self):
+        self.catalog['publication']['sourceTagCommit'] = 'b' * 40
+        with self.assertRaisesRegex(ValueError, 'commit differs'):
+            self.publish()
+        self.assertEqual(self.commands, [])
+
+    def test_incorrect_checksum_index_is_rejected_before_mutation(self):
+        path = self.root / 'SHA256SUMS'
+        valid = path.read_text()
+        for bad in ('unrelated text\n', valid.replace(self.parts[0]['sha256'], 'b' * 64),
+                    valid.splitlines()[0] + '\n', valid + valid.splitlines()[0] + '\n'):
+            path.write_text(bad)
+            with self.subTest(index=bad), self.assertRaisesRegex(ValueError, 'checksum index'):
+                self.publish()
+            self.assertEqual(self.commands, [])
+
+    def test_existing_wrong_tag_is_rejected_before_any_mutation(self):
+        with self.assertRaisesRegex(ValueError, 'tag targets another commit'):
+            self.publish(tag_present=True, tag_commit='b' * 40)
+        self.assertEqual(self.commands, [])
+
+    def test_tag_race_is_rejected_before_publication(self):
+        with patch.object(publisher.subprocess, 'run', side_effect=self.run_command), \
+                patch.object(publisher, 'tag_exists', side_effect=[False, True]), \
+                patch.object(publisher, 'remote_tag_commit', return_value='b' * 40):
+            with self.assertRaisesRegex(ValueError, 'tag targets another commit'):
+                publisher.publish(self, self.catalog, self.root, self.commit, self.root / 'notes.md')
+        self.assertTrue(self.metadata['draft'])
+        self.assertFalse(any(command[2] == 'edit' for command in self.commands))
 
 
 if __name__ == '__main__':

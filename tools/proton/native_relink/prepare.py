@@ -47,7 +47,7 @@ def prepare(assets, bootstrap, output):
     shutil.copyfile(assets / names[1], stage / 'helper-rebuild.tar.gz')
     shutil.copyfile(PROTON / 'notices/SOURCES.json', stage / 'SOURCES.json')
     shutil.copy2(bootstrap, stage / 'bootstrap-bun')
-    for name in ('apply_proof.py', 'run_build.py', 'run_helper_proof.py', 'resume_build.py'):
+    for name in ('apply_proof.py', 'run_build.py', 'run_helper_proof.py', 'resume_build.py', 'proof_command.py'):
         shutil.copyfile(HERE / name, stage / name)
     shutil.copyfile(HERE / 'preflight.py', stage / 'rebuild_native.py')
     shutil.copyfile(supplement / 'install_std_vendor.py', stage / 'install_std_vendor.py')

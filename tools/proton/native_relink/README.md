@@ -91,3 +91,14 @@ The native executable reports `--version` 1.4.4 and upstream release-local
 `--revision` metadata `1.4.4-canary.1+38afee6c8`, alongside the three executed
 source markers. Its exact source commit is the pinned Bun 1.4.4 commit; this
 proof does not substitute that marked native executable for the production Bun.
+
+
+Helper proof commands default to a 300-second deadline each, configurable with
+`PUTGD_PROTON_PROOF_TIMEOUT_SECONDS`. A timeout fails with the command stage and
+writes `proof/command-timeout.json`; it cannot produce a successful receipt.
+The long native source build uses its separate build driver.
+
+The [bounded-command replay](evidence/bounded-replay.json) reruns the current
+proof controls against the retained source-built runtime. It passes the same
+suite and reproduces every primary proof executable hash; the original complete
+native build and its receipts remain unchanged.

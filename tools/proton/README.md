@@ -176,7 +176,9 @@ python3 tools/releases/publish_proton_sources.py \
   --notes /absolute/path/to/public-source-notes.md
 ```
 
-The publisher verifies pinned local/uploaded bytes, resumes matching drafts and
+Pin the selected source snapshot in `publication.sourceTagCommit` before
+publishing; `--commit` must match it. The publisher validates the checksum index,
+checks existing tags before mutation, verifies pinned local/uploaded bytes, resumes matching drafts and
 passes `--prerelease --latest=false` at creation and publication. It rejects an
 existing full release. Proton source releases must stay out of the stable
 installer channel; installer publication also verifies their prerelease status.
