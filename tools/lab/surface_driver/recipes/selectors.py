@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from pathlib import PurePosixPath
 
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, recipe
+from tools.lab.surface_driver.critical import critical, entry
 from tools.lab.surface_driver.fixtures import consent
 from tools.lab.surface_driver.fixtures.base import Scope
 
@@ -40,8 +41,8 @@ def _result(value):
     return value.get("result", value)
 
 
-def _call(ctx, method, params=None):
-    value = ctx.call(method, params or {})
+def _call(ctx, method, params=None, *, cleanup=False):
+    value = ctx.call(method, params or {}, **({'cleanup': True} if cleanup else {}))
     # Inspect results themselves carry the operation's historical error. Only
     # a wire-envelope error (or a bare command error) rejects the read.
     if "result" in value or "state" not in value:
@@ -319,10 +320,13 @@ def _choose(ctx, rid, rect=None):
     return ready
 
 
+@entry
 def _cancel_record(ctx, rid):
-    # Cleanup is not claimed as an input interaction.
-    if _call(ctx, "recording.capabilities").get("active") == rid:
-        _call(ctx, "recording.cancel", {"id": rid})
+    with critical(review=ctx.review, label='recording cancellation'):
+        # Keep both bounded resident requests together if a deadline or stop
+        # arrives during inspection. Never cancel a different active recording.
+        if _call(ctx, "recording.capabilities", cleanup=True).get("active") == rid:
+            _call(ctx, "recording.cancel", {"id": rid}, cleanup=True)
 
 
 def _ready(ctx, entire=False):

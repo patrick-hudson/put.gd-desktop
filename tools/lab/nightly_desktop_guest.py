@@ -221,7 +221,9 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
 
 def prepare(run, row, out):
     lab.verify_owned_guest(run)
-    package = row['package']
+    # AppImages also run on Debian-derived guests. Their probe dependencies
+    # still come from apt; selecting the probes never changes the app artifact.
+    package = row.get('probePackageManager', row['package'])
     if package == 'deb':
         plan = lab.ssh(run, 'sudo -n apt-get -s install --no-install-recommends '+DEB_TOOLS, timeout=120)
         for line in plan.splitlines():
@@ -265,6 +267,26 @@ PROBES
     if missing:
         raise RuntimeError('guest probe dependencies unavailable: '+', '.join(missing))
     if 'gnome' in row['desktop']:
+        if row['package'] == 'appimage':
+            # The image does not install a host Shell extension. Set up its
+            # exact packaged extension in this disposable account before the
+            # existing witness reboot, as required by GNOME AppImage setup.
+            extension = '''session_data=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n 's/^XDG_DATA_HOME=//p')
+export PUTGD_LAB_SHELL_DATA="${session_data:-$HOME/.local/share}"
+python3 - <<'NIGHTLY_IMAGE_EXTENSION'
+import hashlib,json,os,shutil
+from pathlib import Path
+source=Path.home()/'putgd-lab/appimage/squashfs-root/usr/share/gnome-shell/extensions/putgd@put.gd'
+metadata=json.loads((source/'metadata.json').read_text())
+assert metadata['uuid']=='putgd@put.gd'
+target=Path(os.environ['PUTGD_LAB_SHELL_DATA'])/'gnome-shell/extensions/putgd@put.gd'
+shutil.copytree(source,target,dirs_exist_ok=True)
+files={p.relative_to(source).as_posix():hashlib.file_digest(p.open('rb'),'sha256').hexdigest() for p in source.rglob('*') if p.is_file()}
+assert all(hashlib.file_digest((target/name).open('rb'),'sha256').hexdigest()==digest for name,digest in files.items())
+print(json.dumps(dict(metadata=metadata,files=files,scope='exact AppImage extension installed into owned disposable GNOME account')))
+NIGHTLY_IMAGE_EXTENSION
+'''
+            (out/'appimage-gnome-extension.json').write_text(lab.guest_session(run, extension))
         from tools.lab.surface_driver.compositor.stage_gnome_witness import stage
         from tools.lab.guest_reboot import reboot
         (out/'witness.txt').write_text(stage(run, Path(__file__).parent/'surface_driver/compositor/gnome-witness'))

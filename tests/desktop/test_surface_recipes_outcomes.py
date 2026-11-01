@@ -117,6 +117,74 @@ class Outcomes(unittest.TestCase):
         self.assertTrue(all(r.destinations == ('local',) for r in recipes))
 
 
+class RecordingExports(unittest.TestCase):
+    def clip(self, terminal, export_path=None):
+        ctx = Mock()
+        ctx.expect = ClipboardContext().expect
+        scene = SimpleNamespace(rect=[320, 240, 640, 320], output_dir='/synthetic',
+                                record_helper='/synthetic/helper', command=Mock())
+        requested = []
+        statuses = iter(('exporting', 'exporting', terminal, terminal))
+        observed = []
+
+        def call(method, params):
+            self.assertEqual(method, 'recording.saveCopy')
+            requested.append(params)
+
+        def inspect(context, rid):
+            if not requested:
+                return {'target': {'rect': scene.rect}}
+            status = next(statuses)
+            observed.append(status)
+            path = requested[-1]['path'] if export_path is None else export_path
+            return {'lastExport': {'path': path, 'status': status}}
+
+        def wait(predicate, what, **kwargs):
+            if what == 'four seconds of actual capture':
+                return True
+            for _ in range(4):
+                value = predicate()
+                if value:
+                    return value
+            raise RecipeBlocked('synthetic export did not complete')
+
+        ctx.call.side_effect = call
+        ctx.wait.side_effect = wait
+        with patch.object(outcomes.selectors, '_open_record', return_value='recording'), \
+             patch.object(outcomes.selectors, '_inspect', side_effect=inspect), \
+             patch.object(outcomes.selectors, '_start'), \
+             patch.object(outcomes.selectors, '_bar_click'), \
+             patch.object(outcomes.selectors, '_state', return_value={'durationUs': 5_000_000}), \
+             patch.object(outcomes.selectors, '_cancel_record') as cancel, \
+             patch.object(outcomes.selectors, '_retain'), \
+             patch.object(outcomes, '_measure', return_value=(2.0, 5000)) as measure:
+            if export_path is not None:
+                with self.assertRaisesRegex(RecipeBlocked, 'synthetic export did not complete'):
+                    outcomes._clip(ctx, scene, False)
+                measure.assert_not_called()
+                cancel.assert_called_once_with(ctx, 'recording')
+            elif terminal == 'saved':
+                self.assertEqual(outcomes._clip(ctx, scene, False), ('recording', 2.0))
+                measure.assert_called_once()
+                cancel.assert_not_called()
+            else:
+                with self.assertRaisesRegex(RecipeFailed, 'clip export succeeded'):
+                    outcomes._clip(ctx, scene, False)
+                measure.assert_not_called()
+                cancel.assert_called_once_with(ctx, 'recording')
+        self.assertEqual(observed, ['exporting', 'exporting', terminal] +
+                         ([terminal] if export_path is not None else []))
+
+    def test_waits_for_async_export_before_decoding_saved_copy(self):
+        self.clip('saved')
+
+    def test_saved_export_for_a_different_path_stays_blocked(self):
+        self.clip('saved', '/synthetic/stale.mp4')
+
+    def test_failed_async_export_still_fails_and_cancels_recording(self):
+        self.clip('failed')
+
+
 class ClipboardContext:
     def __init__(self, session='wayland'):
         self.profile = {'session': session}

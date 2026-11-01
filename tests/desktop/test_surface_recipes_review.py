@@ -71,7 +71,7 @@ class FakeContext(Context):
         self.trace.append(('view', method, params))
         return self.call(method, params)
 
-    def call(self, method, params=None):
+    def call(self, method, params=None, *, cleanup=False):
         self.trace.append(('call', method, params))
         params = params or {}
         if method == 'recording.inspect':

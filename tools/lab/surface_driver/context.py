@@ -16,6 +16,7 @@ from .redact import Sensitive, SECRET_FIELD, URL, patterns, rect, require_host_o
 
 # Seconds; a cleanup call's own budget may not grow past this.
 CLEANUP_TIMEOUT_CAP = 600
+RECORDING_CLEANUP_METHODS = frozenset(('recording.capabilities', 'recording.cancel'))
 
 
 from .fixtures import Fixture, FixtureManager
@@ -77,17 +78,24 @@ class DriverContext(Context):
         if time.monotonic() > self._deadline:
             raise RecipeFailed('recipe deadline exceeded')
 
-    def call(self, method, params=None):
-        self._check_time()
+    def call(self, method, params=None, *, cleanup=False):
+        if cleanup:
+            if method not in RECORDING_CLEANUP_METHODS:
+                raise RecipeBlocked('resident cleanup is limited to recording inspection/cancellation')
+        else:
+            self._check_time()
         if method == 'recording.prepare' and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
             # Layer-shell has no caption. Its bar may only be associated with
             # an owned helper surface absent immediately before this prepare.
             self._recording_bar_before = None
             self._recording_bar_before = [w['id'] for w in self._probe(
                 'compositor_windows', {'compositor': self.profile['compositor']})['windows']]
-        deadline=min(self._deadline,time.monotonic()+15)
+        deadline=time.monotonic()+15
+        if not cleanup:
+            deadline=min(self._deadline,deadline)
         while True:
-            response=self.cli(method,json.dumps(params or {}))
+            options = {'cleanup': True, 'timeout': 15} if cleanup else {}
+            response=self.cli(method,json.dumps(params or {}),**options)
             try:
                 envelope=json.loads(response['stdout'])
             except ValueError as error:
@@ -653,10 +661,22 @@ class DriverContext(Context):
                 raise
             self._press_open = False
 
-    def cli(self,*args,timeout=60):
-        self._check_time()
+    def cli(self,*args,timeout=60,cleanup=False):
+        if cleanup and (not args or args[0] not in RECORDING_CLEANUP_METHODS):
+            raise RecipeBlocked('resident cleanup is limited to recording inspection/cancellation')
+        if not cleanup:
+            self._check_time()
         self.evidence.redactor.remember(list(args))
-        result = self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
+        if cleanup:
+            with input_release(self.review, label='a resident cleanup command'):
+                if not self.target.physical:
+                    try:
+                        lab.verify_owned_guest(self.target.run)
+                    except lab.LabError as error:
+                        raise RecipeBlocked('cleanup refused: '+str(error)) from error
+                result = self.target.cli(*args,timeout=min(timeout,30,CLEANUP_TIMEOUT_CAP))
+        else:
+            result = self.target.cli(*args,timeout=min(timeout,max(.1,self._deadline-time.monotonic())))
         self.evidence.command('cli', result)
         self._sensitive_seen = self._sensitive_seen or self.evidence.redactor.has_sensitive_url(result.get('stdout', ''))
         try:
