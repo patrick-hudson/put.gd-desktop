@@ -248,7 +248,7 @@ matrix and release documentation for new work.
 | [Earlier GNOME boundary and Cinnamon regressions](../history/testing-gnome-memory.md) | — | GNOME report |
 | [Earlier native-listener/capture experiments](../history/testing-native-listener.md) | — | Native listener testing |
 | [Release package evidence and acceptance classes](../release.md) | — | Release runbook |
-| [Release package evidence and acceptance classes](../ci.md) | — | CI coverage |
+| [CI coverage and runtime](../ci.md) | — | CI coverage |
 
 ## Retired experiment records
 
