@@ -469,7 +469,10 @@ def _clip(ctx, scene, frozen):
         ctx.expect(4_000_000 <= state['durationUs'] <= 30_000_000, 'recording duration in declared 4–30 second range')
         path = scene.output_dir + '/' + rid + '.mp4'
         ctx.call('recording.saveCopy', {'id': rid, 'path': path, 'overwrite': False})
-        exported = ctx.wait(lambda: (s if (s := selectors._inspect(ctx, rid)).get('lastExport') else None), 'clip exported', timeout=60)
+        exported = ctx.wait(lambda: (s if (s := selectors._inspect(ctx, rid)).get('lastExport')
+                                    and s['lastExport'].get('path') == path
+                                    and s['lastExport'].get('status') in ('saved', 'failed') else None),
+                            'clip exported', timeout=60)
         ctx.expect(exported['lastExport']['status'] == 'saved', 'clip export succeeded')
         score, duration = _measure(ctx, scene.record_helper, path)
         selectors._retain(ctx, path, 'mp4')
