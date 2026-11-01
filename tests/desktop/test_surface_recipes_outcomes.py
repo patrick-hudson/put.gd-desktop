@@ -118,13 +118,13 @@ class Outcomes(unittest.TestCase):
 
 
 class RecordingExports(unittest.TestCase):
-    def clip(self, terminal):
+    def clip(self, terminal, export_path=None):
         ctx = Mock()
         ctx.expect = ClipboardContext().expect
         scene = SimpleNamespace(rect=[320, 240, 640, 320], output_dir='/synthetic',
                                 record_helper='/synthetic/helper', command=Mock())
         requested = []
-        statuses = iter(('exporting', 'exporting', terminal))
+        statuses = iter(('exporting', 'exporting', terminal, terminal))
         observed = []
 
         def call(method, params):
@@ -136,7 +136,8 @@ class RecordingExports(unittest.TestCase):
                 return {'target': {'rect': scene.rect}}
             status = next(statuses)
             observed.append(status)
-            return {'lastExport': {'path': requested[-1]['path'], 'status': status}}
+            path = requested[-1]['path'] if export_path is None else export_path
+            return {'lastExport': {'path': path, 'status': status}}
 
         def wait(predicate, what, **kwargs):
             if what == 'four seconds of actual capture':
@@ -157,7 +158,12 @@ class RecordingExports(unittest.TestCase):
              patch.object(outcomes.selectors, '_cancel_record') as cancel, \
              patch.object(outcomes.selectors, '_retain'), \
              patch.object(outcomes, '_measure', return_value=(2.0, 5000)) as measure:
-            if terminal == 'saved':
+            if export_path is not None:
+                with self.assertRaisesRegex(RecipeBlocked, 'synthetic export did not complete'):
+                    outcomes._clip(ctx, scene, False)
+                measure.assert_not_called()
+                cancel.assert_called_once_with(ctx, 'recording')
+            elif terminal == 'saved':
                 self.assertEqual(outcomes._clip(ctx, scene, False), ('recording', 2.0))
                 measure.assert_called_once()
                 cancel.assert_not_called()
@@ -166,10 +172,14 @@ class RecordingExports(unittest.TestCase):
                     outcomes._clip(ctx, scene, False)
                 measure.assert_not_called()
                 cancel.assert_called_once_with(ctx, 'recording')
-        self.assertEqual(observed, ['exporting', 'exporting', terminal])
+        self.assertEqual(observed, ['exporting', 'exporting', terminal] +
+                         ([terminal] if export_path is not None else []))
 
     def test_waits_for_async_export_before_decoding_saved_copy(self):
         self.clip('saved')
+
+    def test_saved_export_for_a_different_path_stays_blocked(self):
+        self.clip('saved', '/synthetic/stale.mp4')
 
     def test_failed_async_export_still_fails_and_cancels_recording(self):
         self.clip('failed')
