@@ -407,7 +407,9 @@ int NativeTray::notificationTimeoutMs(const QString& server,bool actions) {
  return 0;
 }
 void NativeTrayPrivate::notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions) {
- if (!available_ || notificationsInFlight_ >= 8) return;
+ // Notifications don't need a tray (#1105): GNOME without a StatusNotifier
+ // extension has none, and a file-manager upload's result must still show.
+ if (notificationsInFlight_ >= 8) return;
  auto call = QDBusMessage::createMethodCall(notificationService, notificationPath, notificationService, "Notify");
  QVariantMap hints{{"urgency", QVariant::fromValue(static_cast<uchar>(warning ? 2 : 1))}, {"desktop-entry", "putgd"}};
  QStringList names=link.isEmpty()?QStringList{}:QStringList{"default","Open in browser"};

@@ -70,6 +70,8 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  if(method=="diagnostics.bundle")return diagnosticsBundleReplyMs;
  if(method=="diagnostics.uploadTarget")return diagnosticsUploadTargetReplyMs;
  if(method=="history.preview")return historyPreviewReplyMs;
+ // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
+ if(method=="upload.files")return uploadFilesReplyMs;
  // The checker child has 40 s of its own (#293).
  if(method=="update.check")return UpdateService::childTimeoutMs+base;
  return base;
@@ -126,6 +128,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
+ }
+ // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
+ // client resolves URIs first. A menu entry's client names its installation and
+ // the resident refuses another's; the CLI and MCP name none.
+ if(method=="upload.files") {
+  if(!fields(p,{"paths"},{"installation","profileId"})||!p["paths"].isArray()||p["paths"].toArray().isEmpty()||p["paths"].toArray().size()>10000
+     ||(p.contains("installation")&&!QStringList{"system","appimage"}.contains(p["installation"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  QStringList paths;for(const auto& value:p["paths"].toArray()){if(!value.isString()||value.toString().isEmpty()||value.toString().size()>4096||!QDir::isAbsolutePath(value.toString())){reply(invalid(),{});return;}paths.append(value.toString());}
+  operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply));return;
  }
  if(method=="editor.open") {
   if(!fields(p,{},{"source","path"})||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}

@@ -32,18 +32,24 @@ jobs:
             format: DEB
             image: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
             kde: ''
+            # File-manager menu plugins (#1105), required in each package.
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=ON
           - name: ubuntu26.04
             format: DEB
             image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
             kde: --require-kde
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=ON
           - name: debian13
             format: DEB
             image: debian:13@sha256:913f6706df59a68922d1dd08f78c2476560a8d367897200a6005b00e5f67c2d5
             kde: --require-kde
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=ON
           - name: fedora44
             format: RPM
             image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
             kde: --require-kde
+            # Fedora has no Peony.
+            plugins: -DPUTGD_NAUTILUS_PLUGIN=ON -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
     steps:
       - name: Bootstrap checkout tools
         # tools/ci/install-packages.sh is not checked out yet: the same bounded retry, inline (#368),
@@ -142,11 +148,12 @@ jobs:
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
           KDE_REQUIREMENT: ${{ matrix.kde }}
+          FILE_MANAGER_PLUGINS: ${{ matrix.plugins }}
           # The update check offers this package's own download (#293).
           PACKAGE_TARGET: ${{ matrix.name }}
         run: |
           ccache --zero-stats
-          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$RELEASE_TAG" -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_PACKAGE_TARGET="$PACKAGE_TARGET"
+          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$RELEASE_TAG" -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_PACKAGE_TARGET="$PACKAGE_TARGET" $FILE_MANAGER_PLUGINS
           cmake --build --preset release --parallel "$(nproc)"
           python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" --proton-manifest build/dependencies/proton-runtime/manifest.json --require-proton $KDE_REQUIREMENT --package-target "$PACKAGE_TARGET"
           ccache --show-stats

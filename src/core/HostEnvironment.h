@@ -29,6 +29,13 @@ void keep(const char* name);
 // Whether this process runs from an AppImage mount: AppRun's list, or an
 // executable inside APPDIR.
 bool fromAppImage(const QProcessEnvironment& current,const QString& executable);
+// Which installation this process belongs to (#1105): "appimage" only when its
+// executable lies inside APPDIR, otherwise "system". Neither a saved host
+// environment nor APPIMAGE alone counts: a DEB process can inherit both from an
+// unrelated AppImage app, and must never run that image.
+bool insideAppDir(const QProcessEnvironment& current,const QString& executable);
+QString installationClass(const QProcessEnvironment& current,const QString& executable);
+QString installationClass();
 // The program's absolute path on the environment's PATH, or empty.
 QString findProgram(const QString& program,const QProcessEnvironment& environment);
 // Starts a host program detached with environment(), its standard streams on

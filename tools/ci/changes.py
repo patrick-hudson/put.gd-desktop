@@ -28,8 +28,9 @@ CONTRACT_SUFFIXES = {'tests/desktop': ('.py', '.yaml'), 'tests/performance': ('.
 CONTRACT_FILES = frozenset({'.github/renovate.json', '.github/dependabot.yml', '.gitleaks.toml'})
 
 # Inputs to the package builders, the curated source archive or CI itself.
+# The file-manager plugins are checked only in the package builds (#1105).
 PACKAGING_PREFIXES = ('packaging/', 'tools/releases/', 'tools/proton/', 'tools/ci/',
-                      'cmake/', 'integrations/', '.github/workflows/')
+                      'cmake/', 'integrations/', '.github/workflows/', 'src/filemanager/')
 PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                              'THIRD_PARTY_NOTICES.md', '.gitignore',
                              'tools/verify_dependencies.py',

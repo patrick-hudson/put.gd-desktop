@@ -11,8 +11,10 @@
 #include "app/DiagnosticsBundle.h"
 #include "app/LogService.h"
 #include "app/LoginStartup.h"
+#include "app/FileManagerIntegration.h"
 #include "app/ResidentSession.h"
 #include "app/UiProcessController.h"
+#include "app/UploadClient.h"
 #include "app/RecordingHelperBackend.h"
 #include "app/SetupService.h"
 #include "app/StorageLocations.h"
@@ -142,6 +144,14 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
 }
 }
 int main(int argc,char* argv[]) {
+ // A file manager's "Upload with put.gd" (#1105): a short-lived client that
+ // hands the selection to the resident. It never becomes the resident.
+ if(putgd::UploadClient::requested(argc,argv))return putgd::UploadClient::run(argc,argv);
+ // Started by that client: no Settings window for a missing tray this time.
+ // An environment variable, not a flag: the GNOME and KDE core-session argument
+ // checks would send an unknown flag down the graphical route.
+ const bool startedForUpload=qEnvironmentVariableIsSet("PUTGD_STARTED_FOR_UPLOAD");
+ qunsetenv("PUTGD_STARTED_FOR_UPLOAD");
  if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
   std::printf("%s\n",putgd::buildManifestJson());return 0;
  }
@@ -302,7 +312,7 @@ int main(int argc,char* argv[]) {
    QJsonObject out;b2->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
   },[finished](putgd::Error error,QJsonObject result){finished(result,error);});
  };
- QJsonObject loginStatus;
+ QJsonObject loginStatus,fileManagerStatus;
  putgd::SetupService setup(settings,credentials,tester);
  const auto providerSetup=[&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
   if(kind=="testDestination"&&(destination.providerId=="s3"||destination.providerId=="backblaze-b2")){
@@ -378,6 +388,8 @@ int main(int argc,char* argv[]) {
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);
 #endif
  server.setUiQuit(quitApplication);
+ // A file-manager upload with no destination to go to opens Destinations (#1105).
+ QObject::connect(&operations,&putgd::OperationService::destinationRequired,&app,[&]{startupRecovery.stop();ui.activate("destinations",{});});
  // #490: the resident ends with its login session, whatever the session manager
  // does with its autostart entries: when logind reports the session closing,
  // or when the X server it shortcuts and captures through goes away.
@@ -409,7 +421,7 @@ int main(int argc,char* argv[]) {
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
  server.setLinkOpener([](const QUrl& link,std::function<void(const QJsonObject&)> done){putgd::TrayController::openLink(link,"history-link",std::move(done));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
- const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["update"]=updates.status();return diagnostics;};
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["fileManagerMenu"]=fileManagerStatus;diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["update"]=updates.status();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
  // environment.json's session-side facts: no pixels, only geometry scale.
@@ -448,12 +460,43 @@ int main(int argc,char* argv[]) {
    return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
+ // "Upload with put.gd" in file managers (#1105): the per-user entries, written
+ // at every start (DING or COSMIC may have arrived since) and when the AppImage's
+ // switch changes; the notice once per installation.
+ const auto fileManagerMutex=std::make_shared<std::mutex>();
+ const auto fileManagerGeneration=std::make_shared<std::atomic_ullong>(0);
+ bool fileManagerProblemShown=false;
+ const auto configureFileManagers=[&] {
+  // A development build's DEB/RPM-style run has no system menu files to go with
+  // per-user ones, and its stamp would announce a menu that isn't there.
+  if(putgd::host::installationClass()=="system"&&QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath()!=QStringLiteral("/usr/bin/putgd"))return;
+  const auto ticket=++*fileManagerGeneration;
+  putgd::FileManagerContext context;
+  context.home=QDir::homePath();context.dataHome=QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+  context.configHome=QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);context.dataRoot=dataRoot;
+  context.installation=putgd::host::installationClass();context.enabled=settings.snapshot().fileManagerMenu;context.version=putgd::buildVersion();
+  if(context.installation=="appimage"){context.appImage=qEnvironmentVariable("APPIMAGE");context.iconSource=QDir(qEnvironmentVariable("APPDIR")).filePath("usr/share/icons/hicolor/scalable/apps/putgd.svg");}
+  operations.background([context,fileManagerMutex,fileManagerGeneration,ticket](putgd::Error& error){std::lock_guard lock(*fileManagerMutex);if(ticket!=fileManagerGeneration->load())return QJsonObject{};
+   const auto result=putgd::FileManagerIntegration::apply(context);error=result.error;
+   if(context.installation=="appimage")if(const auto watched=putgd::FileManagerIntegration::monitor(context,context.enabled);!error)error=watched;
+   return result.toJson();},[&,fileManagerGeneration,ticket](putgd::Error error,QJsonObject result){
+    if(ticket!=fileManagerGeneration->load())return;
+    fileManagerStatus=result;if(error)fileManagerStatus["error"]=error.toJson();
+    putgd::logging::write(putgd::logApp(),error?QtWarningMsg:QtInfoMsg,"File manager menu applied",fileManagerStatus);
+    if(result["firstRun"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
+    if(error&&!std::exchange(fileManagerProblemShown,true))tray.notifyFileManagerProblem(error.message);
+    refreshSettingsDiagnostics();
+   });
+ };
+ configureFileManagers();
+ QObject::connect(&settings,&putgd::SettingsService::accepted,&app,[&,menu=std::make_shared<bool>(settings.snapshot().fileManagerMenu)]{if(std::exchange(*menu,settings.snapshot().fileManagerMenu)!=*menu)configureFileManagers();});
+ QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureFileManagers);
  // The login script carries the image's update information; after an install
  // (a channel switch changes it, #344) write it from the new image at once.
  QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureLogin);
  const auto showInitialView=[&]{if(view=="history"||view=="activity")tray.showHistory();else tray.showSettings();};
  if(!parser.isSet("background")||settings.revision().isEmpty())showInitialView();
- else if(!tray.available()) {
+ else if(!tray.available()&&!startedForUpload) {
   // XDG autostart can precede the desktop's tray watcher or host. Give them a
   // bounded startup grace period before exposing the no-tray recovery window.
   QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available())showInitialView();});

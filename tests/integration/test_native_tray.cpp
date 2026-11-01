@@ -622,7 +622,7 @@ private slots:
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).type(), QDBusMessage::ErrorMessage);
   NativeTray replacement; PUTGD_TRY_VERIFY(replacement.available()); QCOMPARE(watcher.registrations.size(), 2);
  }
- void notificationWireAndNoHostSuppression() {
+ void notificationWireWithAndWithoutHost() {
   NativeTray tray; PUTGD_TRY_VERIFY(tray.available());
   tray.notify("put.gd — failed", "Synthetic failure", true); PUTGD_TRY_COMPARE(notifications.values.size(), 1);
   const auto value = notifications.values.first(); QCOMPARE(value["app"].toString(), QString("put.gd"));
@@ -651,7 +651,9 @@ private slots:
   }
   notifications.server.clear();
   QCOMPARE(NativeTray::notificationTimeoutMs("cinnamon", false), 10000); QCOMPARE(NativeTray::notificationTimeoutMs({}, true), 0);
-  changeHost(false); PUTGD_TRY_VERIFY(!tray.available()); tray.notify("Hidden", "Unavailable"); putgd::test::settle(50); PUTGD_TRY_COMPARE(notifications.values.size(), 3 + 3);
+  // #1105: notifications don't need a tray; GNOME without a StatusNotifier host still shows them.
+  changeHost(false); PUTGD_TRY_VERIFY(!tray.available()); tray.notify("Shown", "No tray"); PUTGD_TRY_COMPARE(notifications.values.size(), 3 + 3 + 1);
+  QCOMPARE(notifications.values.last()["summary"].toString(), QString("Shown"));
  }
  void firstNotificationOwnerAppearancePreservesClickTarget() {
   QVERIFY(peer.unregisterService("org.freedesktop.Notifications"));

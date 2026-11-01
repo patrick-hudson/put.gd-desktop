@@ -10,6 +10,8 @@
 #include <malloc.h>
 #endif
 #include "core/UploadNaming.h"
+#include "core/HostEnvironment.h"
+#include "FileUploads.h"
 #include "core/ImageJob.h"
 #include "core/ImageFormat.h"
 #include <QCoreApplication>
@@ -44,12 +46,15 @@ qint64 artifactBytes(const Operation& op) {qint64 total=0;for(const auto& item:o
 QJsonObject itemFields(const Operation& op,const OperationItem& item) {return {{"operationId",op.id},{"itemId",item.artifact.id},{"provider",op.destination.providerId}};}
 // A diagnostics upload (#123) has no action route: it goes to the destination
 // it was accepted for and asks for a link.
+// A file-manager upload (#1105) goes to the destination and publication mode
+// resolved when it was accepted, stored in its own captureDefaults.
 ActionSettings routeOf(const Operation& op) {
  if(op.action==OperationService::diagnosticsAction)return {"upload",op.destination.profileId,{},"share"};
+ if(op.action==OperationService::fileManagerAction)return {"upload",op.destination.profileId,{},op.settings.document["captureDefaults"].toObject()["publicationMode"].toString("default")};
  return op.settings.actions.value(op.action);
 }
 QJsonObject uploadReviewOptions(const Operation& op,const ProviderRegistry& providers) {
- const auto route=op.settings.actions.value(op.action);
+ const auto route=routeOf(op);
  if(route.destination!="upload"||op.destination.profileId.isEmpty())return {{"destination","local"},{"sharingMode","local"},{"summary",op.settings.archive.keepUploads?"Save to the local archive":"No output enabled · Save a copy is available"}};
  const auto profile=op.settings.profiles.value(op.destination.profileId);
  auto mode=route.publicationMode;
@@ -84,7 +89,7 @@ Error sameFile(const Artifact& copy,const std::shared_ptr<std::atomic_bool>& can
 QJsonObject UnavailableSource::capabilities() const {return {{"region",false},{"window",false},{"desktop",false},{"clipboardImport",QJsonArray{}},{"clipboardResult",QJsonArray{}},{"shortcuts",false},{"reason","native_adapter_unavailable"}};}
 void UnavailableSource::acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) {cb({{},unsupported()});}
 void UnavailableSource::copy(const CopyPayload&,std::function<void(Error)> cb) {cb(unsupported());}
-OperationService::OperationService(QString root,SettingsService& settings,ProviderRegistry& providers,SourceAdapter& source,QObject* parent):QObject(parent),root_(std::move(root)),settings_(settings),providers_(providers),source_(source),heapReclamationTimer_(this),observationTimer_(this) {
+OperationService::OperationService(QString root,SettingsService& settings,ProviderRegistry& providers,SourceAdapter& source,QObject* parent):QObject(parent),root_(std::move(root)),settings_(settings),providers_(providers),source_(source),heapReclamationTimer_(this),observationTimer_(this),installation_(host::installationClass()) {
  observationTimer_.setSingleShot(true);observationTimer_.setInterval(250);
  connect(&observationTimer_,&QTimer::timeout,this,[this]{
   QSet<QString> ids;{std::lock_guard lock(observationsMutex_);ids=std::exchange(observationsDirty_,{});observationScheduled_=false;}
@@ -345,6 +350,45 @@ void OperationService::uploadDiagnostics(const QString& path,const QString& prof
   op.state="acquiring";enqueue({op,std::move(payload),true,flag,{}});
  });
 }
+void OperationService::uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply reply) {
+ // The installation identity comes first: one install's menu entry never
+ // uploads through another install's resident, whatever it asks for.
+ if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){reply(error,{});return;}
+ if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ const auto snapshot=settings_.snapshot();const auto revision=settings_.revision();
+ if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
+ const auto route=FileUploads::resolve(snapshot,profileId);
+ Destination destination;
+ if(!route.error){const auto profile=snapshot.profiles.value(route.profileId);destination={profile["provider"].toString(),route.profileId,revision,profile["settings"].toObject(),profile["credentials"].toObject()};}
+ // Paths are checked before the destination is reported, so a bad file is named
+ // even without one; the destination's largest object bounds the files when known.
+ auto selected=std::make_shared<FileUploads::Selection>();const auto artifactsRoot=root_+"/artifacts";
+ background([this,paths,snapshot,destination,selected,artifactsRoot](Error& e){
+  qint64 objectLimit=0;
+  if(!destination.providerId.isEmpty())if(auto provider=providers_.find(destination.providerId))objectLimit=provider->capabilities(destination).maximumObjectBytes;
+  *selected=FileUploads::select(paths,snapshot,fileManagerAction,objectLimit,ArtifactStore::diskBudget(artifactsRoot).available());
+  e=selected->error;return QJsonObject{};
+ },[this,snapshot,revision,route,destination,selected,reply](Error e,QJsonObject) mutable {
+  if(!e)e=route.error;
+  if(e){
+   logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(e)},{"requested",selected->files.size()}});
+   if(e.code=="destination_required")emit destinationRequired();
+   reply(e,{});return;
+  }
+  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
+  Operation op;op.id=uuid();op.action=fileManagerAction;op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));op.settingsRevision=revision;
+  op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
+  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);beginUploadCopies(op,false);
+  ClipboardPayload payload;payload.kind="files";payload.files=selected->files;payload.zipFolders=selected->zipFolders;
+  const auto origins=selected->origins;const auto database=databasePath();
+  background([database,op](Error& e) {HistoryStore store(database);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,payload,origins,reply](Error e,QJsonObject result) mutable {
+   if(e) {abandonUploadCopies(op.id);releaseActive(op.id);reply(e,{});return;}
+   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
+   logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output","upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",payload.files.size()},{"zipFolders",payload.zipFolders}});
+   op.state="acquiring";op.phase="acquiring";enqueue({op,std::move(payload),true,flag,{},origins});
+  });
+ });
+}
 void OperationService::enqueue(Job job) {
 #ifdef __GLIBC__
  if(job.acquire)heapReclamationPending_=true;
@@ -477,13 +521,18 @@ Operation OperationService::run(Job job) {
  if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.state="cancelled";save();return op;}
  if(job.acquire) {op.phase="preparing";if(!save())return op;
   // An upload route rejects files its destination can never store before copying them.
-  qint64 objectLimit=0;{const auto output=op.settings.actions.value(op.action);if(output.destination!="local"&&!output.profileId.isEmpty())if(auto destination=providers_.find(op.destination.providerId))objectLimit=destination->capabilities(op.destination).maximumObjectBytes;}
+  qint64 objectLimit=0;{const auto output=routeOf(op);if(output.destination!="local"&&!output.profileId.isEmpty())if(auto destination=providers_.find(op.destination.providerId))objectLimit=destination->capabilities(op.destination).maximumObjectBytes;}
   // A fixed waiting-uploads budget is checked against bytes already stored, so such
   // imports run one at a time. Without one, free disk is the only bound and its
   // reservation is atomic: a new action's import never waits behind a large copy.
   std::unique_lock acquisitionGuard(acquisitionMutex_,std::defer_lock);if(op.settings.limits.pendingArtifactBytes<ResourceLimits::unlimitedBytes)acquisitionGuard.lock();
   auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs),objectLimit);
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
+  // A file-manager upload names the requested file or folder a late failure came from.
+  if(acquired.error&&!job.origins.isEmpty()){
+   const auto index=acquired.error.details["itemIndex"].toInt(-1);
+   if(index>=0&&index<job.origins.size()){const auto origin=job.origins[index];acquired.error.details["path"]=origin;acquired.error.message=QFileInfo(origin).fileName()+": "+acquired.error.message;}
+  }
   if(acquired.error) {op.error=acquired.error;op.state="failed";save();logging::warning(logOperation(),"Acquisition failed",{{"operationId",op.id},{"error",logging::errorFields(op.error)}});return op;}
   for(const auto& a:acquired.artifacts) {OperationItem item;item.phase="stored";item.artifact=a;item.artifact.previewPath=artifacts.preview(a,op.settings.previewCacheBytes,op.settings.limits.imagePixels);item.publicationId=uuid();op.items.append(item);}op.state="stored";if(!save())return op;
   QJsonArray mimes;for(const auto& item:op.items)if(!mimes.contains(item.artifact.mime))mimes.append(item.artifact.mime);

@@ -914,6 +914,19 @@
           "default": 30,
           "description": "Frames per second for screen recordings that don't ask for a rate. 60 is smoother and takes about twice the conversion and encoding work; while a recording runs, put.gd lowers the rate (60 to 30, 30 to 15) when the computer can't keep up. Omitted means 30."
         },
+        "fileManagerFolders": {
+          "enum": [
+            "zip",
+            "files"
+          ],
+          "default": "zip",
+          "description": "How a folder chosen with Upload with put.gd in a file manager uploads: zip makes one <folder name>.zip and one link; files uploads every file in it (symlinks skipped). In files mode the file limit (limits.maxFiles, up to 10,000) counts the expanded files. Omitted means zip."
+        },
+        "fileManagerMenu": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the AppImage adds Upload with put.gd to your file managers' right-click menus (per-user files it writes and removes). DEB and RPM installs add system-wide entries that are always on. Omitted means true."
+        },
         "unlockCredentialsAtStartup": {
           "type": "boolean",
           "default": true,

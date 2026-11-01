@@ -12,10 +12,16 @@ case "$ID" in
     if [ "$ID:$VERSION_ID" = 'ubuntu:26.04' ] || [ "$ID:$VERSION_ID" = 'debian:13' ]; then
       packages+=(liblayershellqtinterface-dev)
     fi
+    # File-manager plugin headers (#1105, src/filemanager). Peony 4.20 on Ubuntu 26.04 is Qt 6; Peony 4.0 on Ubuntu 24.04 and Debian 13 is Qt 5.
+    packages+=(libglib2.0-dev libnautilus-extension-dev libcaja-extension-dev libgtk-3-dev libpeony-dev)
+    if [ "$ID:$VERSION_ID" = 'ubuntu:24.04' ] || [ "$ID:$VERSION_ID" = 'debian:13' ]; then
+      packages+=(qtbase5-dev qtbase5-dev-tools)
+    fi
     bash "$install" "${packages[@]}"
     ;;
   fedora)
-    bash "$install" gcc-c++ ccache git ca-certificates python3 nodejs npm cmake ninja-build pkgconf-pkg-config tar gzip xz binutils file rpm-build cpio qt6-qtbase-devel qt6-qtsvg-devel qt6-qtbase-private-devel qt6-qtwayland-devel qtkeychain-qt6-devel layer-shell-qt-devel libxcb-devel xcb-util-keysyms-devel xcb-util-devel xcb-util-image-devel libXcursor-devel libxkbcommon-devel libxkbcommon-x11-devel libcurl-devel openssl-devel zlib-devel wayland-devel wayland-protocols-devel gstreamer1-devel gstreamer1-plugins-base-devel ffmpeg-free-devel
+    bash "$install" gcc-c++ ccache git ca-certificates python3 nodejs npm cmake ninja-build pkgconf-pkg-config tar gzip xz binutils file rpm-build cpio qt6-qtbase-devel qt6-qtsvg-devel qt6-qtbase-private-devel qt6-qtwayland-devel qtkeychain-qt6-devel layer-shell-qt-devel libxcb-devel xcb-util-keysyms-devel xcb-util-devel xcb-util-image-devel libXcursor-devel libxkbcommon-devel libxkbcommon-x11-devel libcurl-devel openssl-devel zlib-devel wayland-devel wayland-protocols-devel gstreamer1-devel gstreamer1-plugins-base-devel ffmpeg-free-devel \
+      glib2-devel nautilus-devel caja-devel gtk3-devel
     ;;
   *) echo "Unsupported native release builder: $ID" >&2; exit 1 ;;
 esac
