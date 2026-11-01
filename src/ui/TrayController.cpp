@@ -588,7 +588,16 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
 void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
- const auto fallback=[tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning]{if(tray)tray->showMessage(title,message,warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information);};
+ static constexpr int balloonMs=30000;
+ const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
+  if(!tray)return;
+  const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
+  if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
+  // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
+  const auto clicked=connect(tray,&QSystemTrayIcon::messageClicked,this,[name=actions.first().value]{restartFileManager(name);},Qt::SingleShotConnection);
+  tray->showMessage(title,message+" Click here to restart it.",icon,balloonMs);
+  QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
+ };
  auto bus=QDBusConnection::sessionBus();
  if(!bus.isConnected()){fallback();return;}
  if(trayMessagesInFlight_>=8)return;

@@ -8,6 +8,8 @@
 #include <QElapsedTimer>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QScopeGuard>
+#include <QSystemTrayIcon>
 #include <QThread>
 #include <QTimer>
 #include <QtTest>
@@ -156,6 +158,16 @@ private slots:
   invoke(id, "restart-file-manager-synthetic-file-manager");
   settle(200);
   QCOMPARE(closed(), QList<uint>{id});
+  // No server, as on a plain LXDE: nothing to answer Notify, so Qt's balloon carries it.
+  QVERIFY(bus.unregisterService("org.freedesktop.Notifications"));
+  const auto restore = qScopeGuard([&] { bus.registerService("org.freedesktop.Notifications"); });
+  auto* tray = controller.findChild<QSystemTrayIcon*>();
+  QVERIFY(tray);
+  controller.notifyFileManagerMenu({"synthetic-file-manager"});
+  settle(200);
+  // Its click goes to restartFileManager, which refuses this name; a real desktop proves the rest.
+  emit tray->messageClicked();
+  settle(50);
  }
 };
 
