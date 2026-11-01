@@ -629,9 +629,12 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
    {"peony",{"UKUI"},system&&systemPlugin(c,"peony-extensions")},
    {"pcmanfm",{"LXDE"},actions},
    {"pcmanfm-qt",{"LXQt"},actions}};
-  // At most one: the notice and its button name the session's file manager.
-  for(const auto& manager:managers)
-   if(manager.installed&&onPath(c,manager.name)&&onDesktop(manager.desktops)){result.restartable<<manager.name;break;}
+  // At most one: the notice and its button name the session's file manager. The list
+  // runs from the most specific desktop, so the first one with a match decides.
+  for(const auto& desktop:desktops) {
+   for(const auto& manager:managers)if(manager.installed&&manager.desktops.contains(desktop,Qt::CaseInsensitive)&&onPath(c,manager.name))result.restartable<<manager.name;
+   if(!result.restartable.isEmpty())break;
+  }
  }
  return result;
 }
