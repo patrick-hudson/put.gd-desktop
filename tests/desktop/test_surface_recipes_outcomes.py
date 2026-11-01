@@ -1,13 +1,19 @@
 """Fault-injection checks for Tier 1's independent result oracles."""
+from contextlib import contextmanager, nullcontext
+import io
 from pathlib import Path
 import sys
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tools.lab.lab import FIXTURE_RGB
 from tools.lab.surface_driver.recipes.outcomes import edited_pixels, pattern_visible, pixels_equal
+from tools.lab.surface_driver.recipes import outcomes
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.run import discover, validate_recipes
 
 
@@ -30,6 +36,34 @@ def annotated():
 
 
 class Outcomes(unittest.TestCase):
+    def test_window_and_desktop_capture_work_without_clipboard_tools(self):
+        expected = original()
+        stream = io.BytesIO()
+        expected.save(stream, format='PNG')
+        for kind in ('window', 'desktop'):
+            with self.subTest(kind=kind):
+                ctx = Mock()
+                ctx.expect = ClipboardContext().expect
+                ctx.call.side_effect = [dict(operations=[]),
+                    dict(document=dict(actions={kind:dict(shortcut='synthetic-hotkey')}))]
+                ctx.wait.side_effect = [True, [dict(id='operation')]]
+                detail = dict(id='row')
+                with patch.object(outcomes, '_clipboard_reader', side_effect=RecipeBlocked('missing reader')) as reader, \
+                        patch.object(outcomes, '_pattern', return_value=(SimpleNamespace(rect=(0, 0, 640, 320)), expected)), \
+                        patch.object(outcomes.selectors, '_portal_scope', return_value=nullcontext()), \
+                        patch.object(outcomes, '_complete', return_value=(detail, stream.getvalue())):
+                    self.assertIs(outcomes._capture(ctx, object(), object(), kind), detail)
+                reader.assert_not_called()
+
+    def test_region_capture_checks_clipboard_tools_before_input(self):
+        ctx = Mock()
+        with patch.object(outcomes, '_clipboard_reader', side_effect=RecipeBlocked('missing reader')), \
+                patch.object(outcomes, '_pattern') as pattern:
+            with self.assertRaisesRegex(RecipeBlocked, 'missing reader'):
+                outcomes._capture(ctx, object(), object(), 'region')
+        pattern.assert_not_called()
+        ctx.drag.assert_not_called()
+
     def test_pattern_oracle_rejects_foreign_ui_and_absent_video(self):
         cover = Image.new('RGB', (1280, 800), (255, 0, 255))
         rect = (320, 240, 640, 320)
@@ -76,11 +110,115 @@ class Outcomes(unittest.TestCase):
             image.paste(mark, (box[0] + shift, box[1]))
             self.assertFalse(edited_pixels(image, original()))
 
-    def test_six_recipes_reference_existing_interactions(self):
+    def test_ten_recipes_reference_existing_interactions(self):
         recipes = discover('outcomes')
-        self.assertEqual(len(recipes), 6)
+        self.assertEqual(len(recipes), 10)
         validate_recipes(recipes)
         self.assertTrue(all(r.destinations == ('local',) for r in recipes))
+
+
+class ClipboardContext:
+    def __init__(self, session='wayland'):
+        self.profile = {'session': session}
+        self._fixture_manager = SimpleNamespace(scope=object())
+        self.notes = []
+
+    def expect(self, value, message):
+        if not value:
+            raise RecipeFailed(message)
+
+    def wait(self, predicate, what, **kwargs):
+        if what in ('two seconds after Quit', 'two seconds after restart'):
+            return True
+        value = predicate()
+        self.expect(value, 'timeout: '+what)
+        return value
+
+    def note(self, value):
+        self.notes.append(value)
+
+    def blocked(self, message):
+        raise RecipeBlocked(message)
+
+
+class ClipboardOracles(unittest.TestCase):
+    detail = {'receipt': {'directUrl': 'http://127.0.0.1:1234/exact-object'}}
+
+    def test_text_completion_uses_independent_object_hash_without_media_export(self):
+        ctx = SimpleNamespace(note=Mock(), expect=ClipboardContext().expect,
+            call=Mock(return_value={'id':'row','uploadStatus':'uploaded','local':{'status':'saved'}}))
+        records = [{'id':'row','operationId':'operation'}]
+        ctx.wait = Mock(side_effect=[{'state':'completed'}, records])
+        with patch.object(outcomes, '_frame'), patch.object(outcomes, '_object', return_value='source-sha') as obj, \
+             patch.object(outcomes, '_payload') as payload:
+            detail, digest = outcomes._complete(SimpleNamespace(ctx=ctx), object(), 'operation', None)
+        self.assertEqual(digest, 'source-sha')
+        obj.assert_called_once()
+        payload.assert_not_called()
+
+    def test_wayland_text_reader_accepts_gnome_utf8_qualified_offer(self):
+        for session, mime, selected in (('wayland', 'text/plain', 'text'),
+                                        ('x11', 'text/plain', 'UTF8_STRING'),
+                                        ('wayland', 'image/png', 'image/png')):
+            scope = SimpleNamespace(ctx=ClipboardContext(session), json=Mock(return_value={'available':False,'data':''}))
+            with patch.object(outcomes, '_clipboard_reader', return_value=['reader', '--type']):
+                self.assertIsNone(outcomes._clipboard_bytes(scope, mime))
+            self.assertIn(repr(['reader', '--type', selected]), scope.json.call_args.args[0])
+
+    def test_auto_copy_requires_exact_independent_text_without_copy_action(self):
+        ctx = ClipboardContext()
+        for data in (None, b'', b'old clipboard', b'http://127.0.0.1:1234/wrong-object'):
+            with patch.object(outcomes, '_clipboard_bytes', return_value=data):
+                with self.assertRaises(RecipeFailed):
+                    outcomes._auto_copy(ctx, object(), self.detail)
+        with patch.object(outcomes, '_clipboard_bytes', return_value=self.detail['receipt']['directUrl'].encode()):
+            outcomes._auto_copy(ctx, object(), self.detail)
+        self.assertIn('no copy click', ctx.notes[-1])
+
+    def exit_case(self, session, manager, after, restarted, processes=()):
+        ctx = ClipboardContext(session)
+        resident = SimpleNamespace(quit=Mock(), stopped=lambda: True, launch=Mock())
+        @contextmanager
+        def lane(ctx):
+            yield object(), object()
+        with patch.object(outcomes, '_lane', lane), patch.object(outcomes, '_capture', return_value=self.detail), \
+             patch.object(outcomes, '_frame'), patch.object(outcomes, '_clipboard_handlers', return_value={
+                 'x11ManagerWindow': manager, 'processes': list(processes), 'klipperBusOwner': None}), \
+             patch.object(outcomes, '_clipboard_bytes', side_effect=[after, restarted]), \
+             patch('tools.lab.surface_driver.fixtures.resident.lifecycle', return_value=resident):
+            outcomes.survives_exit(ctx)
+        resident.quit.assert_called_once()
+        resident.launch.assert_called_once()
+        return ctx
+
+    def test_survival_and_restart_accept_exact_link_on_both_protocols(self):
+        url = self.detail['receipt']['directUrl'].encode()
+        for session, manager in (('wayland', None), ('x11', 123)):
+            ctx = self.exit_case(session, manager, url, url)
+            self.assertIn('survives_exit_exact_link_count=1', ctx.notes[-1])
+
+    def test_no_manager_x11_loss_is_explicit_expected_result_with_documentation(self):
+        with self.assertRaisesRegex(RecipeBlocked, 'Expected X11.*docs/desktops/cinnamon.md'):
+            self.exit_case('x11', 0, None, None)
+
+    def test_manager_loss_and_wayland_loss_are_real_oracle_failures(self):
+        for session, manager in (('wayland', None), ('x11', 123)):
+            with self.assertRaisesRegex(RecipeFailed, 'two seconds after Quit'):
+                self.exit_case(session, manager, None, None)
+
+    def test_x11_watcher_without_icccm_registration_still_blocks_expected_loss(self):
+        with self.assertRaises(RecipeFailed):
+            self.exit_case('x11', 0, None, None, [{'name': 'copyq', 'pid': 123}])
+
+    def test_foreign_replacement_is_never_expected_x11_loss(self):
+        with self.assertRaises(RecipeFailed):
+            self.exit_case('x11', 0, b'foreign link', b'foreign link')
+
+    def test_restart_clobbering_is_red_including_no_manager_x11(self):
+        url = self.detail['receipt']['directUrl'].encode()
+        for session, manager, after in (('wayland', None, url), ('x11', 123, url), ('x11', 0, None)):
+            with self.assertRaisesRegex(RecipeFailed, 'restart does not clobber'):
+                self.exit_case(session, manager, after, b'clobbered')
 
 
 if __name__ == '__main__':
