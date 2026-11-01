@@ -78,6 +78,78 @@ class NightlyTests(unittest.TestCase):
             self.assertEqual(ssh.call_count, 1)
             session.assert_not_called()
 
+    def test_controller_ssh_proof_requires_parent_start_exact_argv_and_executable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = Path(tmp)
+            def process(pid, parent, start, argv, executable='ssh'):
+                path = proc/str(pid)
+                path.mkdir()
+                (path/'stat').write_text(f'{pid} (name with spaces) S {parent} '+ '0 '*17 + str(start))
+                (path/'cmdline').write_bytes(os.fsencode('\0'.join(argv)+'\0'))
+                (path/'exe').symlink_to('/usr/bin/'+executable)
+                return path
+            prefix = ['ssh', '-i', '/private/f44-identity', 'other-host']
+            parent = process(10, 1, 90, ['python3', 'nightly_desktops.py'])
+            # SSH clients are spawned in controller dispatch threads, not its main thread.
+            task = parent/'task/11'
+            task.mkdir(parents=True)
+            process(31, 10, 100, prefix+['putgd worker'])
+            process(32, 20, 101, prefix+['putgd worker'])  # Own worker/unrelated parent.
+            process(33, 10, 102, ['ssh', 'unrelated-host', 'putgd'])
+            process(34, 10, 103, prefix+['putgd worker'], executable='putgd-ui')
+            (task/'children').write_text('31 32 33 34 35')  # 35 exited.
+            context = dict(pid=10, start='90', ssh=[prefix])
+            with patch.dict(os.environ, PUTGD_NIGHTLY_CONTROLLER=json.dumps(context)), \
+                    patch.object(nightly.os, 'getppid', return_value=10):
+                self.assertEqual(nightly.controller_ssh_identities(proc=proc), ['process:31:100'])
+                (parent/'stat').write_text('10 (reused) S 1 '+ '0 '*17 + '91')
+                self.assertEqual(nightly.controller_ssh_identities(proc=proc), [])
+            with patch.dict(os.environ, PUTGD_NIGHTLY_CONTROLLER=json.dumps(context)), \
+                    patch.object(nightly.os, 'getppid', return_value=20):
+                self.assertEqual(nightly.controller_ssh_identities(proc=proc), [])
+
+    def test_controller_ssh_churn_releases_only_other_rows_exact_identities(self):
+        from tools.lab import desktop_lock as locks
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            items = []
+            desktop = locks.Desktop(root/'putgd-lab/locks', 'd69', inventory=lambda:(list(items), []))
+            def item(pid, command, start=100):
+                return dict(kind='process', id=str(pid), key=f'process:{pid}:{start}', detail=command)
+            # Controller SSH clients inherit DISPLAY and are consequently inventoried.
+            with patch.object(locks, 'process_start', return_value='100'):
+                observed, _ = locks.collect_inventory(root,
+                    run=lambda argv:(0, '31 ssh -i /private/f44-identity remote putgd')
+                        if argv[0] == 'pgrep' else (None, ''),
+                    environment=lambda pid:{'DISPLAY'}, own=set())
+            self.assertEqual(observed, [item(31, 'ssh -i /private/f44-identity remote putgd')])
+            items.extend(observed)
+            with patch.object(nightly.Path, 'home', return_value=root), \
+                    patch('tools.lab.desktop_lock.Desktop', return_value=desktop), \
+                    patch.object(nightly, 'controller_ssh_identities', return_value=['process:32:100']):
+                with nightly.lease('d69', 'owned-session', root):
+                    items[:] = [item(32, 'ssh -i /private/f44-identity remote putgd')]
+                release = json.loads((root/'lock-release.json').read_text())
+                self.assertEqual([i['key'] for i in release['check']['notMine']], ['process:32:100'])
+                self.assertFalse(desktop.lock.exists())
+                # Own guest, input helper, app, unrelated SSH and a reused PID all block release.
+                for leftover in (item(40, 'qemu-system-x86_64 putgd'), item(41, 'host_input.py'),
+                                 item(42, 'putgd-ui'), item(43, 'ssh unrelated putgd'),
+                                 item(32, 'putgd-ui', start=101)):
+                    with self.subTest(leftover=leftover['detail']):
+                        items.clear()
+                        with self.assertRaises(locks.LockError) as refused:
+                            with nightly.lease('d69', 'owned-session', root):
+                                items[:] = [leftover]
+                        evidence = root/'lock-release-error.json'
+                        error = json.loads(evidence.read_text())
+                        self.assertEqual(error['message'], str(refused.exception))
+                        self.assertEqual(error['details']['check']['left'], [leftover])
+                        self.assertEqual(evidence.stat().st_mode & 0o777, 0o600)
+                        self.assertTrue(desktop.lock.exists())
+                        items.clear()
+                        desktop.release('owned-session', verified_clean=True)
+
     def test_retained_guest_keeps_durable_reservation_and_blocks_lease(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -259,6 +331,16 @@ class NightlyTests(unittest.TestCase):
                 nightly.run_host('d69', dict(root='/repo', config='/private', rows=[]),
                                  'vtest', root, root/'unused.tar', root, local_workers=workers)
             self.assertIs(command.call_args.kwargs['local_workers'], workers)
+
+    def test_only_local_worker_receives_controller_proof(self):
+        context = dict(pid=123, start='456', ssh=[['ssh', 'other-host']])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch.object(nightly, 'command') as command:
+                nightly.run_host('d69', dict(root='/repo', config='/private', rows=[]),
+                                 'vtest', root, root/'unused.tar', root, controller=context)
+            env = command.call_args.kwargs['env']
+            self.assertEqual(json.loads(env['PUTGD_NIGHTLY_CONTROLLER']), context)
 
     def test_controller_stop_bounds_grace_and_rejects_late_local_spawns(self):
         workers = nightly.LocalWorkers()
@@ -522,7 +604,7 @@ with n.controller_shutdown(workers):
     def test_all_five_hosts_are_dispatched_concurrently(self):
         barrier=threading.Barrier(5)
         seen=[]
-        def dispatch(host,builder,*args):
+        def dispatch(host,builder,*args,**kwargs):
             seen.append(host);barrier.wait(timeout=3)
             return [dict(desktop=host,host=host,cells={},totalSeconds=0)]
         with tempfile.TemporaryDirectory() as tmp:

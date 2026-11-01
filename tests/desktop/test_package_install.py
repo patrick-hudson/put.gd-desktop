@@ -47,8 +47,8 @@ from pathlib import Path
 from unittest.mock import patch
 sys.path.insert(0, sys.argv[1])
 import package_install as install
-exec(sys.argv[8])
 commands = [[sys.executable, '-c', sys.argv[3], sys.argv[2]]]
+exec(sys.argv[8])
 queries = []
 def query(args, **kwargs):
     queries.append(args)
@@ -65,6 +65,86 @@ print(json.dumps({'result': result, 'queries': queries}))
             assert (Path(directory) / 'progress.json').is_file()
             assert (Path(directory) / 'result.json').is_file()
             return json.loads(result.stdout), (Path(directory) / 'apt.log').read_text()
+
+    def test_both_apt_commands_have_bounded_lock_wait_inside_shared_budget(self):
+        spec = importlib.util.spec_from_file_location('package_install', ROOT/'tools/lab/package_install.py')
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        with patch.object(sys, 'argv', ['package_install.py', '/private/install-'+'a'*32, '900', '600']), \
+                patch.object(helper, 'enter_directory'), patch.object(helper, 'become_subreaper'), \
+                patch.object(helper, 'verify_scope'), patch.object(helper, 'admit'), \
+                patch.object(helper, 'supervise') as supervise:
+            helper.main()
+        commands, directory, timeout, recovery = supervise.call_args.args
+        self.assertEqual((directory, timeout, recovery), (Path('.'), 900, 600))
+        self.assertEqual(len(commands), 2)
+        for command in commands:
+            self.assertEqual(command[0], 'apt-get')
+            options = [arg for arg in command if arg.startswith('DPkg::Lock::Timeout=')]
+            self.assertEqual(len(options), 1)
+            self.assertGreater(int(options[0].split('=')[1]), 0)
+            self.assertLess(int(options[0].split('=')[1]), timeout)
+        self.assertIn('update', commands[0])
+        self.assertEqual(commands[1][-4:], ['install', '--reinstall', '-y', './package.deb'])
+
+    def run_apt_lock_fixture(self, mode, timeout=3):
+        # Fake apt is a real supervised subprocess. It never touches system apt state.
+        fake = r"""#!/usr/bin/python3
+import os, sys
+from pathlib import Path
+root = Path(os.environ['PUTGD_TEST_APT_DIR'])
+calls = root/'apt-calls'
+previous = calls.read_text() if calls.exists() else ''
+command = sys.argv[-1]
+calls.write_text(previous + command + '\n')
+mode = os.environ['PUTGD_TEST_APT_MODE']
+if (command == 'update' and (mode != 'once' or not previous)) or command == 'install-failure':
+    print('E: Could not get lock /var/lib/apt/lists/lock. It is held by process 999 (unattended-upgr)')
+    print('E: Unable to lock directory /var/lib/apt/lists/')
+    if mode == 'other-error':
+        print('E: unrelated repository failure')
+    sys.exit(100)
+"""
+        setup = f"""
+root = Path(sys.argv[2])
+apt = root/'apt-get'
+apt.write_text({fake!r})
+apt.chmod(0o700)
+install.os.environ['PATH'] = str(root) + install.os.pathsep + install.os.environ['PATH']
+install.os.environ['PUTGD_TEST_APT_DIR'] = str(root)
+install.os.environ['PUTGD_TEST_APT_MODE'] = {mode!r}
+install.APT_LOCK_TIMEOUT = .6
+commands = [['apt-get', '-o', 'DPkg::Lock::Timeout=1', 'update'],
+            ['apt-get', '-o', 'DPkg::Lock::Timeout=1', 'install']]
+if {mode!r} == 'install-failure':
+    commands = [['apt-get', 'install-failure']]
+"""
+        return self.run_supervisor('', timeout, .5, setup=setup)
+
+    def test_update_retries_only_lock_refusal_and_then_installs(self):
+        data, log = self.run_apt_lock_fixture('once')
+        self.assertTrue(data['result']['ok'], data)
+        self.assertEqual(data['result']['exitCodes'], [0, 0])
+        self.assertEqual(data['result']['updateLockRetries'], 1)
+        self.assertIn('unattended-upgr', log)
+
+    def test_update_lock_wait_is_bounded_and_other_errors_or_installs_never_retry(self):
+        for mode in ('busy', 'other-error', 'install-failure'):
+            with self.subTest(mode=mode):
+                data, _ = self.run_apt_lock_fixture(mode)
+                result = data['result']
+                self.assertFalse(result['ok'])
+                self.assertEqual(result['exitCodes'], [100])
+                self.assertFalse(result['aborted'])
+                self.assertEqual(result['remainingPids'], [])
+                self.assertEqual(result.get('updateLockRetries', 0), 1 if mode == 'busy' else 0)
+                self.assertLess(result['elapsedSeconds'], 3)
+
+    def test_update_lock_wait_cannot_extend_shared_supervisor_budget(self):
+        data, _ = self.run_apt_lock_fixture('busy', timeout=.1)
+        self.assertTrue(data['result']['timedOut'])
+        self.assertFalse(data['result']['ok'])
+        self.assertEqual(data['result']['remainingPids'], [])
 
     def test_root_supervisor_scope_check_before_admission(self):
         spec = importlib.util.spec_from_file_location('package_install', ROOT / 'tools/lab/package_install.py')

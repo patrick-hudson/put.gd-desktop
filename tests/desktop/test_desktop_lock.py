@@ -195,6 +195,31 @@ class ReleaseCleanupCheck(LockTest):
         receipt = json.loads(Path(reply['receipt']).read_text())
         self.assertEqual(receipt['check']['notMine'][0]['detail'], 'putgd_unit_tests')
 
+    def test_not_mine_accepts_exact_process_keys_without_excusing_pid_reuse(self):
+        self.acquire()
+        self.items = [process(31)]
+        old_key = self.items[0]['key']
+        self.items[0]['key'] = 'process:31:999'
+        with self.assertRaises(lock.LockError):
+            self.desktop.release('local_a', True, not_mine=[old_key])
+        reply = self.desktop.release('local_a', True, not_mine=['process:31:999'])
+        self.assertEqual(reply['check']['notMine'], self.items)
+        self.assertEqual(reply['check']['unmatchedNotMine'], [])
+
+    def test_dynamic_ownership_is_checked_after_the_release_inventory(self):
+        self.acquire()
+        events = []
+        def inventory():
+            events.append('inventory')
+            return [process(31)], []
+        def ownership():
+            events.append('ownership')
+            return ['process:31:100']
+        self.desktop.inventory = inventory
+        reply = self.desktop.release('local_a', True, not_mine=ownership)
+        self.assertEqual(events, ['inventory', 'ownership'])
+        self.assertEqual(reply['check']['notMine'], [process(31)])
+
     def test_a_lost_baseline_counts_everything_as_left(self):
         self.items = [process(11)]
         self.acquire()
