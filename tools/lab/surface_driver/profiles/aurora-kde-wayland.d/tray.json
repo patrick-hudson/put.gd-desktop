@@ -2,8 +2,9 @@
   "tray": {
     "icon": {
       "name": "put.gd",
-      "role": "label",
-      "application": "plasmashell*"
+      "role": "button",
+      "application": "plasmashell*",
+      "objectName": ""
     },
     "notification_server": "Plasma",
     "resident_notifications": false,
