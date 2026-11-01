@@ -1,5 +1,6 @@
 #include "app/FileUploads.h"
 #include "app/UploadClient.h"
+#include "app/FileManagerIntegration.h"
 #include "core/Log.h"
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/Waits.h"
@@ -173,6 +174,14 @@ private slots:
   operations_->setUploadGate({});
   wait([&](JsonReply reply){operations_->uploadFiles({a},{},"system",std::move(reply));},&error);
   QVERIFY2(!error,qPrintable(error.message));
+ }
+ // The AppImage watches these for a DEB or RPM installed beside it.
+ void systemDirectoriesThatExist() {
+  QTemporaryDir root;QVERIFY(root.isValid());
+  QVERIFY(QDir().mkpath(root.filePath("share/nemo/actions")));QVERIFY(QDir().mkpath(root.filePath("lib/nautilus/extensions-4")));
+  FileManagerContext context;context.dataDirs={root.filePath("share")};context.libraryDirs={root.filePath("lib")};
+  auto directories=FileManagerIntegration::systemDirectories(context);directories.sort();
+  QCOMPARE(directories,(QStringList{root.filePath("lib/nautilus/extensions-4"),root.filePath("share/nemo/actions")}));
  }
  void cgroupLeaf() {
   QVERIFY(UploadClient::leafUnitIsService("0::/user.slice/user-1000.slice/user@1000.service/app.slice/dbus-:1.2-org.gnome.Nautilus@0.service\n"));

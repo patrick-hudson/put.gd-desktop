@@ -31,6 +31,7 @@
 #include <poll.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -49,6 +50,20 @@ constexpr qsizetype requestBudget=1024*1024-4096;
 constexpr int pollIntervalMs=250;
 const char* const scopedVariable="PUTGD_UPLOAD_SCOPED";
 const char* const startedFdVariable="PUTGD_UPLOAD_STARTED_FD";
+// In a forked child before execve: nothing this client holds is passed on.
+// The AppImage runtime's descriptor for its mount (fd 1023) would otherwise
+// keep the client's mount alive for the resident's whole lifetime.
+void closeInherited(int keep=-1){
+ const auto range=[](unsigned first,unsigned last){
+#ifdef SYS_close_range
+  if(::syscall(SYS_close_range,first,last,0)==0)return;
+#endif
+  for(unsigned fd=first;fd<=last&&fd<65536;++fd)::close(int(fd));
+ };
+ if(keep<3){range(3,~0U);return;}
+ if(keep>3)range(3,unsigned(keep)-1);
+ range(unsigned(keep)+1,~0U);
+}
 
 QString executablePath(){return QFileInfo(QStringLiteral("/proc/self/exe")).canonicalFilePath();}
 QString binaryDirectory(){return QFileInfo(executablePath()).absolutePath();}
@@ -71,7 +86,8 @@ void notify(const QString& title,const QString& body,bool failure){
  const auto iconFile=qEnvironmentVariable("PUTGD_UPLOAD_ICON");
  const auto icon=QDir::isAbsolutePath(iconFile)&&QFileInfo(iconFile).isFile()?iconFile:QStringLiteral("putgd");
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
- const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"}};
+ // Resident: Cinnamon otherwise removes put.gd's notices at once while a put.gd window has focus.
+ const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"},{"resident",true}};
  call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{},hints,failure?0:10000});
  bus.call(call,QDBus::Block,5000);
 }
@@ -96,7 +112,7 @@ int leaveServiceCgroup(int argc,char** argv){
  CStrings childArguments(argumentBytes),childEnvironment(environmentList(environment));
  const pid_t child=::fork();
  if(child<0){::close(started[0]);::close(started[1]);return -1;}
- if(child==0){::fcntl(started[1],F_SETFD,0);::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);}
+ if(child==0){closeInherited(started[1]);::fcntl(started[1],F_SETFD,0);::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);}
  ::close(started[1]);
  char byte=0;ssize_t count;do count=::read(started[0],&byte,1);while(count<0&&errno==EINTR);
  ::close(started[0]);
@@ -124,7 +140,7 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  if(pid<0){for(int fd:{out[0],out[1],err[0],err[1]})::close(fd);return result;}
  if(pid==0){
   const int null=::open("/dev/null",O_RDONLY);if(null>=0)::dup2(null,0);
-  ::dup2(out[1],1);::dup2(err[1],2);
+  ::dup2(out[1],1);::dup2(err[1],2);closeInherited();
   ::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);
  }
  ::close(out[1]);::close(err[1]);
@@ -227,6 +243,7 @@ Start startResident(bool appImage,const QString& appImagePath,bool scoped){
  if(pid==0){
   ::setsid();if(::chdir(home.constData())!=0&&::chdir("/")!=0)::_exit(127);
   const int null=::open("/dev/null",O_RDWR);if(null>=0){::dup2(null,0);::dup2(null,1);::dup2(null,2);}
+  closeInherited();
   ::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);
  }
  return {pid,!runner.isEmpty()};

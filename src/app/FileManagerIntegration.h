@@ -45,6 +45,9 @@ public:
  static Error cleanupIfMissing(const FileManagerContext&);
  // The menu label and the per-user file paths, for tests and diagnostics.
  static QString label();
+ // The existing system directories whose put.gd files (menu files, plugins) make
+ // per-user ones duplicates; a DEB or RPM installed beside the AppImage lands there.
+ static QStringList systemDirectories(const FileManagerContext&);
  static QString launcherPath(const FileManagerContext&);
  static QString cosmicPath(const FileManagerContext&);
 };
