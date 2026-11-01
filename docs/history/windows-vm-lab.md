@@ -1,5 +1,7 @@
 # Windows desktop lab
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [vm-lab](../vm-lab.md). Do not use it as a work list.
+
 This is infrastructure for future Windows acceptance. The approved Linux plan
 currently defers native Windows capture adapters and distributables. An installed
 Windows desktop or a passing host isolation test does not establish app acceptance.
@@ -36,7 +38,7 @@ Instant Retrieval; its `sha256` metadata is the uncompressed disk hash), `bundle
 `files.txt` (`mode size sha256 path` for every bundle file). Receipts are in the
 workstation's `work/verification/windows-base-transfer-<id>/` and
 `work/housekeeping/golden-offload-20261017/`. The
-[golden-image storage rules](remote-golden-images.md) apply: never delete a copy
+[golden-image storage rules](../remote-golden-images.md) apply: never delete a copy
 without Patrick's approval and two other verified copies.
 
 For a workstation fallback, restore the whole bundle into a fresh staging
@@ -226,7 +228,7 @@ Repeat with another fresh run path. Retain the overlay while investigation is
 active; once the campaign is complete, export and verify its evidence and retire
 the stopped overlay with `windows.py cleanup --vm RUN --evidence-manifest MANIFEST`.
 The completion manifest and refusal rules are in
-[the Linux lab lifecycle guide](vm-lab.md#retire-completed-overlays). Cleanup keeps
+[the Linux lab lifecycle guide](../vm-lab.md#retire-completed-overlays). Cleanup keeps
 all witnesses, results, firmware/TPM metadata and sealed bases, removing only the
 unreferenced test disk. Use `--dry-run` before applying retirement.
 Stock Windows power settings can blank an idle console. Wake it with the helper

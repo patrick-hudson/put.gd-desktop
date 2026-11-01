@@ -179,7 +179,9 @@ Network remains a build dependency for the CLI, compatibility tests and lazy S3
 module; non-Linux builds retain Qt local sockets. The native IPC contracts join
 the ordinary `ctest --preset dev` run and its existing CI JUnit artifact. Physical
 Cinnamon RSS measurements use the separate procedure in
-[testing-memory.md](testing-memory.md), not a headless CI substitute.
+[memory strategy](memory-strategy.md), with the
+[earlier measurement record](history/testing-memory.md) retained for context.
+Headless CI is not a physical memory measurement.
 
 Proton-enabled Linux x86-64 builds additionally provision the private runtime:
 

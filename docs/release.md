@@ -2,8 +2,7 @@
 
 Release builds use C++20, Qt 6, the pinned official AWS SDK, CMake presets, Ninja
 and native packaging tools. The application is MIT licensed. The first public
-track is a prerelease. Flatpak is separate work in GitHub issue [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83) and needs no host
-helper; only Plasma Wayland loses direct screenshots (see `docs/flatpak.md`).
+track is a prerelease. Supported packages are DEB, RPM and AppImage.
 
 ## Branches and channels
 
@@ -14,8 +13,6 @@ hotfix pull request. Rulesets on both branches require a pull request and the
 `CI` check, and block force-pushes and deletion. Nobody pushes to either branch
 directly, and published tags are never moved or deleted.
 
-| Channel | Tag | Cut by | Publication |
-| --- | --- | --- | --- |
 | Channel | Tag | Cut by | Publication |
 | --- | --- | --- | --- |
 | Nightly | `vYY.MDD.N-nightly` | daily schedule on changed `nightly` | automated, build-tested prerelease |
@@ -107,7 +104,7 @@ Preview a section from a local checkout with
 (add `--offline` to skip the GitHub query). The fixture history in
 `tests/releases/test_changelog.py` covers the ranges, grouping and folding.
 
-![The changes section for the range v0.1.1-nightly.588 to the current nightly: grouped entries with PR and closing-issue links; on the right, the same range as candidate notes with documentation, lab and test changes folded into one line](evidence/release-changelog-188/changes-section-annotated.png)
+![The changes section for the range v0.1.1-nightly.588 to the current nightly: grouped entries with PR and closing-issue links; on the right, the same range as historical release notes with documentation, lab and test changes folded into one line](evidence/release-changelog-188/changes-section-annotated.png)
 
 ### CHANGELOG.md
 
@@ -214,7 +211,7 @@ source of truth after Actions artifacts expire.
 The user approved shipping and maintaining Proton on 2026-10-15. Its
 experimental designation records compatibility maturity. Upstream endorsement
 or SDK general availability is not a publication prerequisite; the concrete
-[evidence and release gates](proton-drive-release-gates.md) remain applicable.
+[evidence and release gates](history/proton-drive-release-gates.md) remain applicable.
 
 Linux x86-64 Build and release jobs provision and test the pinned official JS
 helper, enable its bundle explicitly, and require matching runtime, notices and
@@ -256,7 +253,7 @@ compatibility checks remain in the maintenance procedure.
 For each subsequent release carrying Proton, the release maintainer retains the
 integration maintainer's dated compatibility/migration check, pinned SDK/Crypto/
 Bun versions, runtime/manifest/notices hashes, supported asset list and current
-acceptance evidence. Follow the [maintenance procedure](proton-drive-release-gates.md#maintenance-procedure).
+acceptance evidence. Follow the [maintenance procedure](history/proton-drive-release-gates.md#maintenance-procedure).
 An upstream required update or observed service incompatibility requires a
 compatible put.gd release and preserved recovery state. Existing stable
 and nightly coverage classes continue to apply.
@@ -721,10 +718,11 @@ artifacts, logs or review material.
 
 ## Acceptance boundary
 
-Hosted packaging/ELF checks and saved source114 evidence replay establish their
+Hosted packaging/ELF checks and saved historical live-S3 evidence replay establish their
 stated contracts. They do not prove the new packages' compositor integration.
-Cinnamon functionality and memory come first for a new stable draft; after passing,
-GNOME/KDE checks may proceed independently on the exact package. Keep graphical
+Run Cinnamon, GNOME and KDE checks in parallel for a new stable draft, each
+with its own functional and memory gates on the exact package. A failure blocks
+acceptance until fixed or shown to predate the build; retest a fix on every desktop. Keep graphical
 interactions visible through the VNC wall and use immutable-base overlays.
 
 AppImage format overhead is accepted as a documented exception to the native
@@ -737,7 +735,8 @@ prove GTK dialogs/fonts, persistent-image autostart, KDE permission registration
 and cleanup (both the ScreenShot2 and the recorder's screencast entries), all
 capture/clipboard actions, screen recording with the bundled runtime, local
 archives, live S3/history and production CLI/MCP behavior. Native packages need install/upgrade/removal and
-host integration checks appropriate to the target distro. Full U9/U10 release
-certification remains separate; [verification.md](verification.md) and the
-implementation contract list remaining gates. A prerelease must describe its
-observed coverage honestly, without relabeling historical source114 tests.
+host integration checks appropriate to the target distro. Release certification
+requires the current [acceptance matrix](acceptance-matrix.md),
+[release runbook](release-runbook.md) and [verification](verification.md) gates.
+A prerelease must describe its observed coverage honestly, without relabeling
+historical tests.

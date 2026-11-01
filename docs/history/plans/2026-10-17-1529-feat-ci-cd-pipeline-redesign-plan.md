@@ -9,6 +9,8 @@ status: phase 1 implemented
 
 # CI/CD pipeline redesign
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [ci](../../ci.md). Do not use it as a work list.
+
 ## Goal
 
 One run per event, jobs chosen by what changed, `nightly` as the trunk every

@@ -1,5 +1,7 @@
 # GNOME Core resident
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [architecture](../architecture.md). Do not use it as a work list.
+
 On a native GNOME Wayland session, `putgd` can use QCoreApplication for the
 listener, session-bus bridge and existing native tray. Settings, Activity,
 History and About still run in the on-demand QApplication helper with native
@@ -35,7 +37,7 @@ platform check. Calls to QGuiApplication are reached only on graphical paths.
 
 ## Reproduce the automated checks
 
-Use the normal dependency setup from [Build](build.md), then:
+Use the normal dependency setup from [Build](../build.md), then:
 
 ```sh
 cmake --preset dev
@@ -70,7 +72,7 @@ hashes, native fixture/oracle checks and normal helper teardown. Verify the nati
 tray/menu and notifications as well as all capture, clipboard and view actions.
 Keep native fonts and dialogs in `putgd-ui` views. The graphical fallback
 resident starts on Qt's generic theme because it draws no desktop-themed UI
-of its own; see [memory strategy](memory-strategy.md#keep-the-listener-small-end-graphical-work).
+of its own; see [memory strategy](../memory-strategy.md#keep-the-event-loop-release-temporary-processes).
 
 Follow [Memory testing](testing-memory.md) with the frozen 5-second warmup,
 300-second duration, 5-second interval and 61 samples. Retain cold and post-native

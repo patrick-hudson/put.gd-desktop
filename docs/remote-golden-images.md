@@ -1,13 +1,13 @@
 # Find, copy and restore lab golden images
 
-The workstation no longer keeps Linux goldens or Windows bases. On 2026-10-17,
+The workstation no longer keeps Linux goldens. On 2026-10-17,
 with Patrick's approval, they were moved off the workstation to three verified copies:
 
 | Location | Role | Root |
 | --- | --- | --- |
 | Fedora 44 (`192.168.68.70`, pin `f44`) | Primary copy; most free space | `/home/patrick/work/put.gd/work/` |
 | Debian 13 (`192.168.68.69`, pin `d69`) | Second LAN copy | `/home/patrick/work/put.gd/work/` |
-| S3 `putgd-lab-images-<account-id>` (us-west-2) | Off-site copy | `linux/<name>/` and `windows/<name>/` |
+| S3 `putgd-lab-images-<account-id>` (us-west-2) | Off-site copy | `linux/<name>/` |
 
 `<account-id>` is the AWS account of Patrick's `aws login` session; commands
 derive it with `aws sts get-caller-identity`. The bucket is private: all Block
@@ -80,7 +80,8 @@ and the source inventory digest were checked. The older
 path and is superseded for new runs. See [Boat candidate builds](boat-candidates.md#lab-snapshots)
 for placement, receipts and the guarded cleanup root.
 
-The sealed Windows bundles are listed in [Windows lab](windows-vm-lab.md#base-storage-and-restore).
+Leftover Windows base images remain under `work/windows/bases/` on d69 and m74;
+do not delete them without Patrick's approval.
 
 The Aurora goldens are named directories rather than `transfer-<id>/`, and each
 holds `source.manifest.json`, `image-info.json`, the pinned guest `known_hosts`
@@ -413,7 +414,6 @@ through an administrative guest channel, and verify login visibly on its own wal
 tile. Send setup input in memory over the authenticated channel, without process
 arguments or logs. Shut down and create a new standalone golden at a new path,
 with its own hash/manifest. Preserve both original and copied immutable sources.
-Windows candidates also retain the complete [base bundle lifecycle](windows-vm-lab.md).
 
 For the first login to an older Linux source, agents use the protected local input
 listed in [VM lab](vm-lab.md#protected-login-inputs), read only in memory, and the

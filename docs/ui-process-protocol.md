@@ -25,7 +25,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 
 | Method | Parameters | Successful result |
 | --- | --- | --- |
-| `ui.show` | `view`: settings/updates/history/activity/about/editFile (`updates` is Settings scrolled to Updates, as the rail's Update available link opens it; `activity` is the same as `history`, kept for older callers) | `shown` only after helper acknowledgement |
+| `ui.show` | `view`: settings/updates/history/activity/destinations/about/editFile (`updates` is Settings scrolled to Updates, as the rail's Update available link opens it; `activity` is the same as `history`, kept for older callers) | `shown` only after helper acknowledgement |
 | `ui.quit` | `{}` | `quitting:true`, then explicit resident shutdown |
 | `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata and diagnostics |
 | `ui.moveDestination` | `direction` up/down, optional `profileId` | the open Settings window's new `order`, `selected` ID and `saving`, after the helper's `commandResult` |
@@ -77,7 +77,7 @@ clears it afterwards, so the token never reaches a later window or a child
 process. Activations without a token still coalesce per view; each one with a
 token is delivered.
 
-The lifecycle/state rules are in [resident-ui-process.md](resident-ui-process.md)
+The lifecycle/state rules are in [resident-ui-process.md](history/resident-ui-process.md)
 and U11 of the requirements plan. Ordinary last-window close must retain safe
 unsaved state before exit; minimized windows and native dialogs remain alive.
 The helper uses desktop/application ID `putgd-ui`. The resident registers its PID

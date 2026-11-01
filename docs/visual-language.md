@@ -40,14 +40,14 @@ states.
 
 | Token | Dark | Light |
 | --- | --- | --- |
-| Background | `#191919` | `#EEEEEB` |
-| Navigation / inspector surface | `#222222` | `#F8F8F5` |
+| Background | `#191919` | `#FFFFFF` |
+| Navigation / inspector surface | `#202020` | `#F5F5F2` |
 | Raised control | `#2A2A2A` | `#FFFFFF` |
-| Selected row / segment | `#353535` | `#DEDEDA` |
-| Border | `#343434` | `#D1D1CC` |
-| Strong border | `#515151` | `#AAAAA3` |
+| Selected row / segment | `#333230` | `#ECEBE6` |
+| Border | white at alpha 18/255 | black at alpha 20/255 |
+| Strong border | `#737373` | `#8E8E87` |
 | Main text | `#F0F0EC` | `#292926` |
-| Secondary text | `#D2D2CF` | `#484844` |
+| Secondary text | `#C4C4BF` | `#484844` |
 | Muted readable text | `#AAAAA6` | `#62625B` |
 | Accent | `#E8B66D` | `#8F5B20` |
 | Confirmed success | `#91BCA2` | `#386A4B` |
@@ -59,8 +59,8 @@ trim affordances. Success and error colors accompany words; color alone never
 communicates an outcome. Ordinary settings do not need colored cards.
 
 Use IBM Plex Sans for interface text and IBM Plex Mono for technical values that
-benefit from it. Default logical sizes are 14 px body, 12 px metadata, 11 px
-micro-labels, 17 px section headings and 23 px page headings. Weights are normal
+benefit from it. Default logical sizes are 14 px body, 12 px metadata and
+micro-labels, 16 px section headings and 22 px page headings (20 px compact headings). Weights are normal
 and semibold. Reserve micro-labels for secondary context, not instructions or
 errors that a user must read to continue.
 
@@ -82,12 +82,13 @@ font. `PUTGD_TEXT_SCALE` is a test override, not a saved appearance preference.
 
 The baseline grid is 4 logical pixels. Prefer deliberate 8, 12, 16, 20 and 24 px
 gaps. Controls start at 36 px high and grow when text requires it. Action icons
-are normally 18 px, with 32–36 px pointer targets. The normal control radius is
-7 px; selected segments use 6 px inside an 8 px track. A split button gives its
-arrow a separate 26 px zone.
+are normally 20 px, with 32–36 px pointer targets. The normal control radius is
+6 px; compact controls use 5 px, selected segments use 6 px inside a 10 px
+track, and swatches and small details use 4 px. A split button gives its arrow a
+separate 32 px target; combo-box and menu chevrons use a 26 px zone.
 
 The main header starts at 56 px, the command band at about 60 px including
-padding, and the status band at 26 px. These are component baselines, not reasons
+padding, and the status band at 40 px. These are component baselines, not reasons
 to break a supported small-screen or large-text layout. History uses 76 px base
 rows with 80 × 50 thumbnails, expanding for complete failure text when needed.
 Reserve space for row actions before laying out text. When an inline action
@@ -238,8 +239,8 @@ The separate [production review](evidence/2026-10-26-graphite-production/README.
 records the implemented screens, package identities, desktop workflows, memory
 measurements and remaining limitations for code PR #596.
 
-The previous blue design notes remain in [design.md](design.md); the earlier
-redesign experiment remains [a historical record](ui-redesign-experiment.md).
+The previous blue design notes remain in [design.md](history/design.md); the earlier
+redesign experiment remains [a historical record](history/ui-redesign-experiment.md).
 Those records, the 2026-10-26 receipts and other dated evidence keep the names
 they were written with: Graphite, `Graphite.h`, `VisualStyle`, `RedesignTheme`
 and `putgd-redesign-preview` became `putgd::Ui` (`Ui.h`), `Ui::styleWindow` and

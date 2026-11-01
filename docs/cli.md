@@ -208,14 +208,14 @@ configuration separately to diagnose a settings error.
 
 `diagnostics.result.build` is the compiled build identity, and
 `diagnostics.result.release` is the GitHub release the main window's rail links its
-version to: `version` (the full `build.version`), `kind` and `url`. Stable, candidate
-and nightly versions (`stable`, `candidate`, `nightly`) give
+version to: `version` (the full `build.version`), `kind` and `url`. Stable
+and nightly versions (`stable`, `nightly`) give
 `https://github.com/patrick-hudson/put.gd-desktop/releases/tag/vVERSION`, the tag
 `tools/releases` cuts; the build system gives those versions only to clean builds of
 that exact tag. Every other build, including local and CI development builds, gives
 `none` and an empty `url`, and the rail shows its version as plain text. The mapping
-reads only the compiled identity and never the network, so a candidate's link opens
-only after its draft release is published.
+reads only the compiled identity and never the network, so a stable draft's link opens
+only after its release is published.
 
 `diagnostics.result.logging` reports the persistent log without reading it: its
 `directory`, `files`, `bytes`, `oldestRecord`, `degraded` and `degradedReason`,
@@ -230,7 +230,7 @@ resident's running marker, with the last and recent records. See
 `lastAllocatorReclamationUsec`. On glibc Linux the count records one-shot attempts
 to return free heap pages after successful startup or payload work and background workers drain, followed
 by two seconds of quiet. An attempt need not reclaim any pages. These fields carry
-no payloads or addresses; measure RSS separately using [testing-memory.md](testing-memory.md).
+no payloads or addresses; measure RSS separately using [testing-memory.md](history/testing-memory.md).
 Other allocators report unsupported and keep the existing cleanup behavior.
 
 `setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint.

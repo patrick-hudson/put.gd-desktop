@@ -3,7 +3,7 @@
 Issue #51 adds a small editing workflow, **Capture region & edit** (the `edit` action): choose what to share, remove
 private information or add a few marks, review it, then send only the finished
 image through the normal archive/upload/history pipeline. This document is the
-implementation contract and records what has been verified. It does not claim
+feature contract and records what has been verified. It does not claim
 desktop acceptance beyond the evidence listed at the end.
 
 ## User workflow
@@ -211,11 +211,10 @@ inspected source, license and packaging documentation, and on the custom canvas
 meeting every redaction and memory gate in the
 [acceptance receipt](evidence/2026-10-17-issue51-edit-and-upload.md).
 
-- **Licensing.** kImageAnnotator and kColorPicker are LGPL-3.0, and their
-  Windows builds are documented as static only. Statically linking LGPL code
-  into this MIT-licensed app would add relinking obligations to the Windows
-  package. ShareX.ImageEditor, Greenshot and Flameshot are GPL-3.0, which this
-  project cannot adopt without relicensing.
+- **Licensing.** kImageAnnotator and kColorPicker are LGPL-3.0. The original
+  cross-platform evaluation also considered static-linking obligations; that
+  packaging concern was historical. ShareX.ImageEditor, Greenshot and Flameshot
+  are GPL-3.0, which this project cannot adopt without relicensing.
 - **Memory.** kImageAnnotator's export renders a full ARGB image, crop undo
   keeps both the original and the cropped pixmap, and its undo stack has no byte
   accounting. Here the document holds one immutable base raster, undo is
@@ -291,7 +290,7 @@ process family. It has not been measured yet; see verification below.
 Editing, export, commands and the resident integration are portable C++20/Qt
 Widgets. The helper transport uses Unix file descriptors; on other platforms
 `EditorJob` reports `editor_unavailable` and capabilities report the editor as
-unavailable. No Windows support is claimed. On GNOME the extension binds the
+unavailable. On GNOME the extension binds the
 `edit` shortcut and prepares a native region selection; KDE and Cinnamon use
 their existing generic shortcut and region routes. KDE Wayland has no window
 capture, so `source: window` fails there as it does for ordinary captures.

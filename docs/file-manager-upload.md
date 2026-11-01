@@ -28,7 +28,7 @@ The design, its council review and the decisions behind it are in
 | UKUI | Peony | top level, folders and desktop | plugin `libputgd-peony.so` | not supported (use the DEB) |
 
 Not supported: Deepin, COSMIC Files before epoch-1.0.10, the AppImage on UKUI
-and on Plasma 5.27, Enlightenment's EFM and Trinity. Flatpak is not a target.
+and on Plasma 5.27, Enlightenment's EFM and Trinity. Supported package formats are DEB, RPM and AppImage.
 
 **Thunar** shows the entry under Send To for every file and folder; the Send
 To file has no `MimeType` key because Thunar matches types exactly. **Pantheon

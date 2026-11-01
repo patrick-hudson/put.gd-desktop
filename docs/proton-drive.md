@@ -4,11 +4,11 @@ Proton Drive is a provider in the shared upload, retry and history pipeline. The
 Qt app in a Proton-enabled build uses a privately packaged executable built
 from the official Drive SDK and pinned official account/CLI sources. Users of
 that build do not install a CLI, Bun or Node.js. This is a third-party integration, not officially supported by Proton.
-put.gd intends to ship and maintain it as an experimental production integration.
+put.gd ships and maintains it as an experimental production integration.
 The 2026-10-15 product decision accepts upstream's readiness position; ongoing
-compatibility, packaging and user recovery are put.gd responsibilities. See
-[the evidence and release gates](proton-drive-release-gates.md) for current status
-and the SDK update/migration procedure.
+compatibility, packaging and user recovery are put.gd responsibilities. See [building and verification](#building-and-verification) for current checks
+and SDK maintenance, and the [2026-10-15 audit](history/proton-drive-release-gates.md)
+for the earlier integration decisions.
 
 The unmodified official CLI cannot supply the upload receipt this application
 needs: its pinned upload command discards completion node/revision IDs and
@@ -176,13 +176,13 @@ carry refreshed state back under the production account lock. Remove only the
 local lab keychain entry; signing out would invalidate the shared remote session.
 The builders' lab sessions below do this for any test. See the
 [tray-progress replay](testing-tray-progress.md) for the isolated live
-test path. Release acceptance requires Cinnamon functional/memory evidence
-before expanding to GNOME/KDE.
-Recovery, authenticated helper memory, redistribution notices, Proton-enabled
-shipping assets and final-candidate acceptance remain open in
-[the release-gate register](proton-drive-release-gates.md#open-release-gates).
-Upstream approval is not required for the intended production shipment.
-See [integration verification](proton-drive-verification.md) for the historical
+test path. Release acceptance requires parallel Cinnamon, GNOME and KDE
+functional/memory checks, authenticated helper memory, recovery, redistribution
+notices and exact shipping-asset evidence under the
+[acceptance matrix](acceptance-matrix.md) and [release runbook](release-runbook.md).
+The [2026-10-15 register](history/proton-drive-release-gates.md) records the earlier audit.
+Upstream approval is not required for production shipment.
+See [integration verification](history/proton-drive-verification.md) for the historical
 build, test and review checkpoints.
 
 ## Lab sessions on the builders

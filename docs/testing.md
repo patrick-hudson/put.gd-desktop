@@ -20,9 +20,10 @@ and independent native paste, plus external QMP witnesses. Never call a profile 
 from portal discovery, offscreen mocks or uploader-window screenshots.
 
 Physical Cinnamon acceptance and the GNOME/Plasma native Wayland/helper matrix are still
-required. Full U6 completion additionally needs two independent golden-image runs,
+required. Lab acceptance additionally needs two independent golden-image runs,
 wrong-result and timeout cleanup witness evidence, and the required multihead layout
-cases. U9 requires a fresh-agent walkthrough; U10 owns release-package lifecycle proof.
+cases. Agent acceptance requires a fresh-agent walkthrough; release acceptance
+requires package lifecycle proof.
 Keep credentials out of commands, evidence and golden images. Public service tests use
 synthetic objects in an isolated destination and never alter bucket controls or user
 objects. Record actual operation/history IDs and deletion effects before confirmation.
@@ -103,9 +104,10 @@ do not substitute a shorter run or a hosted CI measurement. Raw local logs remai
 in the private per-run directory and optimization journal. These empty-history
 records do not certify populated-history or upload memory usage.
 
-Use the owned-window observer and repeatable view/payload protocols in
-[testing-memory.md](testing-memory.md) for new comparisons. Each reference and
-candidate must use the same observer version. Preserve complete controlled JSON
+Use the current [memory strategy](memory-strategy.md) for new comparisons. The
+[earlier observer/view/payload record](history/testing-memory.md) explains the
+historical experiments; its three-window view workload does not describe today's
+main window. Each reference and tested build must use the same observer version. Preserve complete controlled JSON
 and JUnit reports with their source/binary hashes; keep private configuration,
 resident logs and payload directories out of CI artifact uploads.
 

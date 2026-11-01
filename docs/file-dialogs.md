@@ -28,7 +28,6 @@ The desktop's own chooser then runs in its portal backend's process:
 - `xdg-desktop-portal-kde` on Plasma;
 - `xdg-desktop-portal-gnome` (Nautilus) on GNOME.
 
-This also works unchanged inside a Flatpak sandbox (#83).
 
 The helper handles the request asynchronously:
 - It subscribes to the request's `Response` signal at the handle derived from
@@ -98,8 +97,6 @@ fallback was that theme's native chooser: GTK's through `libqgtk3` on GNOME
 stand-in), and KDE's on Plasma, in neither case styled.
 `PUTGD_FILE_DIALOG=fallback` skips the portal; the lab and the tests use it.
 
-On Windows the helper opens Qt's dialog directly. With the Windows platform
-plugin that is the native Windows dialog.
 
 ## Driving the dialogs
 

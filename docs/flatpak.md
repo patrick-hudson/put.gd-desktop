@@ -1,5 +1,7 @@
 # Flatpak feasibility spike (#14)
 
+> **Historical record.** Flatpak is out of scope. This experiment is retained at its original path because packaging and release code still reference it. The current design is in [overview](overview.md); see [release](release.md). Do not use it as a work list.
+
 Status: research, 2026-10-18. Nothing here changes the DEB, RPM or AppImage, and
 nothing here is a release input. The experimental manifest is
 [`packaging/flatpak/gd.put.Putgd.yml`](../packaging/flatpak/gd.put.Putgd.yml).

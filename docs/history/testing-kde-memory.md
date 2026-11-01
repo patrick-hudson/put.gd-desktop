@@ -1,5 +1,7 @@
 # KDE resident memory checks
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+
 KDE follows the retained Cinnamon and GNOME checkpoints. Its baseline must use
 the same frozen product revision as those checkpoints; older VM binaries and
 dashboard peaks are historical evidence, not the new baseline. The initial
@@ -9,7 +11,7 @@ revision is source57, `2a02118ffc7bcf3f4643b83f83d5dd7594a8207f`, tree
 139.42 MiB peak/final RSS, 33.96 MiB PSS and 21.15 MiB private memory, with
 0.0667% CPU of one core. All 61 samples passed identity and coverage checks;
 RSS was constant. The RSS target is not met. Current cold memory was not measured.
-See the [bounded evidence record](evidence/2026-10-10-kde-source57-memory-baseline.json).
+See the [bounded evidence record](../evidence/2026-10-10-kde-source57-memory-baseline.json).
 
 ## Build and session identity
 
@@ -255,7 +257,7 @@ The user subsequently approved a windowless mode in the existing Qt view helper
 and a six-hour extension for one combined candidate. The resulting candidate
 is recorded below; source60 remains a separate diagnostic.
 
-The [bounded source60 export](evidence/2026-10-10-kde-source60-diagnostic/summary.json)
+The [bounded source60 export](../evidence/2026-10-10-kde-source60-diagnostic/summary.json)
 contains actual attribution, dependency results and reproducible probe sources.
 Its README explains what the probe establishes and which outcomes are
 inconclusive. Source60 is unaccepted: full50 guest tests, full12 native cases,
@@ -269,7 +271,7 @@ Version `0.1.1-dev.62+ga7a3aa02d3ea` moves generic image-format discovery,
 decoding and previews into a temporary windowless `putgd-ui` process. PNG
 remains an explicit resident path. An exact complete KDE output can share its
 image buffer rather than allocating a second frame. See
-[`image-worker.md`](image-worker.md) for transport limits, cancellation,
+[`image-worker.md`](../image-worker.md) for transport limits, cancellation,
 ownership checks and reproduction commands.
 
 The clean host build passed all 51 registered tests. The host lacks the SVG
@@ -303,21 +305,21 @@ memory is attributed. A read-only mapping diagnostic found three live threads
 and growth within existing anonymous mappings; it does not prove which
 allocations remain live.
 
-The [source62 interim evidence](evidence/2026-10-10-kde-source62-interim.json)
+The [source62 interim evidence](../evidence/2026-10-10-kde-source62-interim.json)
 saves build identities, installed binary hashes, test parameters, actual result
 references, retained failures and pending gates. It explicitly grants no keeper,
 full native, memory, remote-storage or current-version sibling acceptance.
 The user changed KDE's power settings during this run. Preserve those settings;
-the later environment-maintenance task is recorded in [vm-lab.md](vm-lab.md).
+the later environment-maintenance task is recorded in [vm-lab.md](../vm-lab.md).
 
 
 ## Reproducing allocator attribution
 
-The standalone [allocator sequence probe](../tests/performance/allocator_sequence/README.md)
+The standalone [allocator sequence probe](../../tests/performance/allocator_sequence/README.md)
 uses the same C++20, CMake/Ninja and distro Qt libraries as the app. Its checked-in
 source, exact buffer sizes, chunk growth, thread lifecycle and result contract
 allow another agent to repeat the locating measurement without a Node fixture.
-The [original host and KDE results](evidence/2026-10-10-allocator-sequence.json)
+The [original host and KDE results](../evidence/2026-10-10-allocator-sequence.json)
 retain every repeat and distinguish the standalone process from product gates.
 
 On KDE's Qt 6.10.2/glibc 2.43, the fixed-threshold mode retained 4,096,000 fewer
@@ -357,6 +359,6 @@ same resident. This promising point is below the target; full twelve-case/UI
 checks, repeated 300-second RSS/CPU observations and current-candidate sibling
 regressions remain pending. The target applies to the cumulative changes,
 measured against source57; a single lever need not reach 40 MiB by itself.
-[Interim evidence](evidence/2026-10-11-kde-source63-candidate4.json) and
-[fresh-campaign reproduction](evidence/kde-source63/reproduction.md) distinguish
+[Interim evidence](../evidence/2026-10-11-kde-source63-candidate4.json) and
+[fresh-campaign reproduction](../evidence/kde-source63/reproduction.md) distinguish
 private archival recipes from tracked tools usable by another agent.

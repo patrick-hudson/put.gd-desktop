@@ -1,5 +1,7 @@
 # Cumulative code review — 2026-10-11
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [memory-strategy](../../memory-strategy.md). Do not use it as a work list.
+
 The review completed with ten confirmed P2 findings. No fixes were applied. This is a draft publication checkpoint; live-S3 and full release acceptance remain pending.
 
 Reviewed source: `050b702c6a6da5c945ea8b4e138dee50e6fdbd83` (`0.1.1-dev.63+g050b702c6a6d`), against bootstrap `cfb29542ffc28486cb876442373f1d40a20ce0c6`. Ten lenses reviewed the cumulative source packet; historical evidence logs were inspected selectively. The [machine-readable report](2026-10-11-cumulative-review.json) preserves evidence, validation and proposed tests.
@@ -8,16 +10,16 @@ Reviewed source: `050b702c6a6da5c945ea8b4e138dee50e6fdbd83` (`0.1.1-dev.63+g050b
 
 | ID | Finding | Location |
 | --- | --- | --- |
-| 1 | Stale Cinnamon helper passes package identity verification | [cmake/CheckBuildIdentity.cmake.in:10](../../cmake/CheckBuildIdentity.cmake.in#L10) |
-| 2 | Recent operations return stale remote outcomes | [src/core/HistoryStore.cpp:138](../../src/core/HistoryStore.cpp#L138) |
-| 3 | Preserve remote outcomes when clearing history | [src/core/HistoryStore.cpp:154](../../src/core/HistoryStore.cpp#L154) |
-| 4 | Notify open views when history mutations commit | [src/app/HistoryService.cpp:82](../../src/app/HistoryService.cpp#L82) |
-| 5 | Reserve artifacts against retries during cleanup | [src/app/OperationService.cpp:351](../../src/app/OperationService.cpp#L351) |
-| 6 | CWE-214: CLI accepts raw credential setup in argv | [src/cli/main.cpp:20](../../src/cli/main.cpp#L20) |
-| 7 | Recover accepted deletions after resident restart | [src/core/HistoryStore.cpp:116](../../src/core/HistoryStore.cpp#L116) |
-| 8 | Per-item checkpoints rewrite every history row in the batch | [src/core/HistoryStore.cpp:58](../../src/core/HistoryStore.cpp#L58) |
-| 9 | Reject corrupted images outside the sampled red pixels | [tools/lab/lab.py:707](../../tools/lab/lab.py#L707) |
-| 10 | Preserve all generated witnesses in each attempt bundle | [tools/lab/lab.py:830](../../tools/lab/lab.py#L830) |
+| 1 | Stale Cinnamon helper passes package identity verification | [cmake/CheckBuildIdentity.cmake.in:10](../../../cmake/CheckBuildIdentity.cmake.in#L10) |
+| 2 | Recent operations return stale remote outcomes | [src/core/HistoryStore.cpp:138](../../../src/core/HistoryStore.cpp#L138) |
+| 3 | Preserve remote outcomes when clearing history | [src/core/HistoryStore.cpp:154](../../../src/core/HistoryStore.cpp#L154) |
+| 4 | Notify open views when history mutations commit | [src/app/HistoryService.cpp:82](../../../src/app/HistoryService.cpp#L82) |
+| 5 | Reserve artifacts against retries during cleanup | [src/app/OperationService.cpp:351](../../../src/app/OperationService.cpp#L351) |
+| 6 | CWE-214: CLI accepts raw credential setup in argv | [src/cli/main.cpp:20](../../../src/cli/main.cpp#L20) |
+| 7 | Recover accepted deletions after resident restart | [src/core/HistoryStore.cpp:116](../../../src/core/HistoryStore.cpp#L116) |
+| 8 | Per-item checkpoints rewrite every history row in the batch | [src/core/HistoryStore.cpp:58](../../../src/core/HistoryStore.cpp#L58) |
+| 9 | Reject corrupted images outside the sampled red pixels | [tools/lab/lab.py:707](../../../tools/lab/lab.py#L707) |
+| 10 | Preserve all generated witnesses in each attempt bundle | [tools/lab/lab.py:830](../../../tools/lab/lab.py#L830) |
 
 ### 1. Stale Cinnamon helper passes package identity verification
 
@@ -101,7 +103,7 @@ Validation: When fixture_run is repeated in one run directory, lab.py:383-389 re
 
 ## Acceptance and review limits
 
-The [memory strategy](../memory-strategy.md) retains the measured local source63 results and exact workloads. Those results do not close these defects or the current guest live-S3, remote History copy/delete, post-S3 memory, full fresh-agent walkthrough, package lifecycle and broader compositor release gates. The image-oracle finding limits the strength of existing graphical image assertions. Existing attempts and measurements are preserved.
+The [memory strategy](../../memory-strategy.md) retains the measured local source63 results and exact workloads. Those results do not close these defects or the current guest live-S3, remote History copy/delete, post-S3 memory, full fresh-agent walkthrough, package lifecycle and broader compositor release gates. The image-oracle finding limits the strength of existing graphical image assertions. Existing attempts and measurements are preserved.
 
 Claude’s review adapter failed with a concurrent OAuth refresh conflict. A subsequent installed-CLI authenticated request succeeded. The adversarial review was completed locally; independent cross-model corroboration is absent. The validator confirmed all ten findings in one batch; the normal eight-item cap overage is recorded in the original report. Some findings were confirmed from reachable code paths without executing their crash or concurrency schedules.
 

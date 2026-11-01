@@ -1,6 +1,6 @@
 # GNOME 50 / native Wayland
 
-This profile uses the resident Qt Wayland process and the `putgd@put.gd` Shell extension. It never calls the restricted `org.gnome.Shell.Screenshot` service as a spoofed caller, enables unsafe mode, or substitutes a portal picker. The extension owns capture, Shell key bindings, and CLIPBOARD MIME transfer; storage, PNG decoding/composition, artifact files, secrets, and networking remain in the native shared pipeline.
+This profile uses the resident `QCoreApplication` process with a native session-bus bridge and the `putgd@put.gd` Shell extension. It never calls the restricted `org.gnome.Shell.Screenshot` service as a spoofed caller, enables unsafe mode, or substitutes a portal picker. The extension owns capture, Shell key bindings, and CLIPBOARD MIME transfer; storage, PNG decoding/composition, artifact files, secrets, and networking remain in the native shared pipeline.
 
 ## Native API evidence
 
@@ -51,7 +51,7 @@ For a standalone helper installation, install the release's matching GNOME ZIP
 with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, log out
 and back in so Shell discovers it, then run
 `gnome-extensions enable putgd@put.gd`. Keep its identity aligned with the
-application. Run the resident application with `QT_QPA_PLATFORM=wayland`. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+application. The native resident does not initialize Qt Wayland; the on-demand graphical helper uses the session's Wayland platform. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
 
 Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
 through the package manager; remove only its owned user directory for a manual
@@ -86,7 +86,7 @@ or replacement-icon fallback is used.
 request metadata validation. It does not run GNOME, prove global shortcuts,
 capture real Wayland pixels, or paste into another application. Real GNOME 50
 single-display capture, native paste, live upload and post-upload memory evidence
-is recorded in [source114](../evidence/live-s3-memory/source114/README.md), with a
+was recorded in [the historical live-S3 campaign](../evidence/live-s3-memory/source114/README.md), with a
 later bounded current-main check in
 [issue #4](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663).
 Those receipts identify the actual tested versions and cases; they do not mark
@@ -117,9 +117,7 @@ authenticated resident's, the views helper's registered through
 editor (`putgd-ui --edit-image`) and the recording helper, which never register
 (#103). The resident starts no external application: links and folders are
 opened by the views helper through the desktop, so they are never the
-resident's direct children. A sandboxed resident needs the app-ID
-rule described in [Flatpak](../flatpak.md), change 2, because its PIDs are not
-host PIDs; these native PID rules stay for native callers. The
+resident's direct children. The
 [editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
 records the physical Fedora 44 runs from the RPM and the AppImage.
 

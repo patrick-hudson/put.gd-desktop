@@ -46,8 +46,7 @@ install a host Shell extension.
 package matrix above, because Aurora installs no DEB or RPM, and it doesn't
 replace the Kubuntu or Debian KDE/Wayland evidence. It is a required VM desktop,
 alongside the Ubuntu GNOME VM, in the
-[AppImage full-acceptance profile](#appimage-full-acceptance-profile) below. The
-Flatpak's acceptance will use it too. The profile has two goldens on `f44`, one
+[AppImage full-acceptance profile](#appimage-full-acceptance-profile) below. The profile has two goldens on `f44`, one
 per Fedora base, and the runner takes either through `--golden`:
 
 | Aurora base | Golden | Plasma / KWin | Role |
@@ -217,8 +216,8 @@ The passes so far are listed in the evidence folders named `*-linux-update-accep
 **Inputs:**
 - **N and N+1:** the published GitHub releases, each checked against its `SHA256SUMS`. Both must contain
   every change the pass accepts, and N+1 must be the newest nightly while the desktops run.
-- **Lab stable, until the first stable release exists:** U6's populated-stable leg, U10 and U14's stable
-  half need a stable channel. Real nightlies trust only the real stable key, so this leg uses lab-key
+- **Lab stable, until the first stable release exists:** the populated-stable repository leg, AppImage channel switch and download
+  permalink stable half need a stable channel. Real nightlies trust only the real stable key, so this leg uses lab-key
   builds of N+1's commit:
   - one local commit puts a lab-only stable key in `packaging/linux/repo/keys/`, and empty commits give
     the versions;
@@ -237,10 +236,10 @@ The passes so far are listed in the evidence folders named `*-linux-update-accep
 | --- | --- | --- | --- | --- | --- | --- |
 | U2–U5 package updates | RPM, dnf | DEB `debian13`, apt | DEB `ubuntu26.04`, apt | DEB `ubuntu24.04`, apt | DEB `ubuntu26.04`, apt | n/a (no DEB or RPM) |
 | U3 GUI updater | GNOME Software | GNOME Software (the installed updater; Discover isn't installed) | Discover | Update Manager | whatever **Open software updates** finds, or its message | n/a |
-| U6 DEB/RPM channel | live + lab | live + lab | live + lab | live + lab | live | n/a |
+| DEB/RPM channel | live + lab | live + lab | live + lab | live + lab | live | n/a |
 | U7, U8, U11 AppImage updates | yes | yes | yes | yes | yes | yes |
-| U9 Gear Lever, AppImageLauncher | | | | | both | Gear Lever |
-| U10 AppImage channel | lab | | | lab | | |
+| Gear Lever, AppImageLauncher | | | | | both | Gear Lever |
+| AppImage channel | lab | | | lab | | |
 | U12 refusals | all | restart pending, folder not writable | restart pending, folder not writable | all | | |
 | U13 discovery | GNOME Software | GNOME Software | Discover | Software Manager | | |
 | U14 notifications | nightly, stable | nightly | nightly | nightly, stable | nightly | nightly |
@@ -301,7 +300,7 @@ Each resident runs with private `XDG_CONFIG_HOME`,
   - A real click on the uploaded entry's link opens it in the desktop's real default browser, as in
     profile item F above.
   - The object is then removed with **Delete from destination**, and the prefix is listed empty.
-- **U6. DEB/RPM channel switch** ([package-repositories.md](package-repositories.md#switching-channels)).
+- **DEB/RPM channel switch** ([package-repositories.md](package-repositories.md#switching-channels)).
   Use the commands Settings → **Other channel** copies, run as given (`apt-get -y` only in place of the
   prompt):
   - **Live:** move N+1 to stable. While stable has no release, the stable suite is empty: the last
@@ -325,12 +324,12 @@ Each resident runs with private `XDG_CONFIG_HOME`,
   the update writes N+1 beside N, which matches `SHA256SUMS`. On Fedora this needs
   `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)).
   Run put.gd from N's path afterwards: login (U11) picks N+1.
-- **U9. Gear Lever and AppImageLauncher** (as in [#412](evidence/2026-10-22-appimage-integrators-412/README.md)):
+- **Gear Lever and AppImageLauncher** (as in [#412](evidence/2026-10-22-appimage-integrators-412/README.md)):
   - Each integrates N. Then put.gd's in-app update N → N+1 runs from the integrator's menu entry.
   - The entry and the record still start N+1, with no second entry and no adopted backup.
   - Each tool's own check then reports no update. Gear Lever's own **Update** on a second copy of N goes
     to N+1 too.
-- **U10. AppImage channel switch.** Before the first stable, on the lab builds:
+- **AppImage channel switch.** Before the first stable, on the lab builds:
   - L1 watching Stable while lab `stable.json` has `release: null` says "no stable release yet", with
     no button. The same check against the live `app.put.gd` stable feed does too.
   - L1 → S1 (older: refused without `allowOlder`, then confirmed). S1 → S2 is an ordinary update.
@@ -427,7 +426,7 @@ Nothing is skipped silently. The passes are in the evidence folders named
 
 **Overlap with the [Linux update profile](#linux-update-profile-u1u16):** the
 update pass covers N → N+1 through apt and dnf (U2), the GUI updaters (U3), the
-repository channel switch (U6), software-centre discovery (U13), notifications
+repository channel switch, software-centre discovery (U13), notifications
 (U14) and idle RSS (U15). This profile doesn't repeat them. An item here cites
 an update-pass cell only when that cell's build is this pass's accepted nightly,
 on the same desktop and with the same check, and names its build, host and run.
@@ -481,7 +480,7 @@ On the accepted nightly, installed by item L.
 - **H. Settings:**
   - A theme switch (System, Dark, Light) repaints the open window live.
   - **Updates** shows **Channel** *Nightly*, read-only, "set by the repository file", with no **Download and install** ([#428](https://github.com/patrick-hudson/put.gd-desktop/pull/428)).
-  - The **Other channel** commands, copied with a real click, match [package-repositories.md](package-repositories.md#switching-channels) for this distro. They're compared as clipboard text, and not run; U6 runs them.
+  - The **Other channel** commands, copied with a real click, match [package-repositories.md](package-repositories.md#switching-channels) for this distro. They're compared as clipboard text, and not run; the repository channel-switch check runs them.
   - **Check now** gives a status from the live feed, and there's no notification.
   - **Open software updates**, with a real click, opens this desktop's updater: Update Manager on m74, Discover on k72, GNOME Software on f44 and d69, and on the VM whatever it finds, or its message with the command.
 - **I. Start at login:** turn on **Launch at login** on the default profile.

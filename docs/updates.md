@@ -1,9 +1,8 @@
 # Updates
 
-How put.gd finds out about a newer version. This page covers phases 0 and 1 of the
-design in [issue #293](https://github.com/patrick-hudson/put.gd-desktop/issues/293). The
-later phases are listed at the end: the signed apt and dnf repositories, the AppImage's
-own **Install update**, and Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)).
+put.gd checks for newer versions, uses the signed apt/dnf repositories for native
+packages, and offers **Download and install** for an AppImage. See
+[package repositories](package-repositories.md) for system-updater integration.
 
 Each install format updates the way that format normally does. put.gd's part is a small,
 private check that tells you, and nothing is installed without you.
@@ -34,11 +33,9 @@ Once a day the resident asks app.put.gd for the newest version on its channel:
 | --- | --- | --- | --- | --- |
 | Stable release | stable | once per new version | **Update available: X.Y.Z** | yes |
 | DEB/RPM that updates from put.gd's repository | its repository's channel ([switching](package-repositories.md#switching-channels)) | never: the system updater tells you | yes, while that repository has a newer version | yes, with **Open software updates** |
-| Pre-#373 release candidate (`0.1.1-rc.1`, never published) | stable | once per new version | yes | yes |
 | Nightly | nightly | never | no | yes |
 | Nightly AppImage watching Stable | stable | once per new stable version, so you hear about the first one; never for the first result after you change the channel | yes, while the stable version is newer | yes, with **Switch to stable X** ([switching](#switching-channels)) |
 | Development or source build | none | no check | no | says why |
-| Flatpak | none: Flatpak updates itself | no check | no | says why |
 
 A version you already saw after **Check now** isn't announced again. put.gd remembers this per
 channel, so changing the channel neither repeats an announcement nor hides one. The notification
@@ -161,8 +158,7 @@ installs on its own: not on the daily check, not from a notification.
 It refuses, with the reason in Settings, while a recording or an upload runs, when the AppImage's
 folder isn't writable or has no room for another copy, when the file isn't yours, or when an
 installed update still waits for its restart. While you watch the other channel, the same
-button switches channels instead ([below](#switching-channels)). DEB and RPM installs update through their repository instead; Flatpak
-updates itself.
+button switches channels instead ([below](#switching-channels)). DEB and RPM installs update through their repository.
 
 Accepted on Fedora 44 GNOME, Linux Mint 22.3 Cinnamon, Kubuntu 26.04 Plasma, Debian 13 Plasma and
 Aurora (Fedora Atomic) through all three paths, with tampered files refused and the resident's idle
@@ -289,7 +285,7 @@ start at login after a switch, and the resident's idle memory unchanged
 Tagged AppImages also update through the usual AppImage tools; untagged builds can't
 ([how it works](release.md#appimage-updates)):
 
-- **Gear Lever** (Flatpak): **Update** downloads the new image and replaces the file in
+- **Gear Lever** (an independently packaged AppImage manager): **Update** downloads the new image and replaces the file in
   place.
 - **AppImageLauncher**: **Integrate and run** moves the image to `~/Applications` and adds a
   menu entry with **Update this AppImage**. The update is a delta (only the changed parts are
@@ -331,8 +327,7 @@ need no redirect, so `SSL_CERT_FILE` alone is then enough:
 SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem appimageupdatetool ~/Applications/putgd-….AppImage
 ```
 
-For older releases, either use **Gear Lever**, which isn't affected (it runs in its own Flatpak
-runtime), or show appimageupdatetool Fedora's bundle at the expected path, without root:
+For older releases, either use **Gear Lever**, which isn't affected (it carries its own TLS runtime), or show appimageupdatetool Fedora's bundle at the expected path, without root:
 
 ```sh
 APPIMAGE_EXTRACT_AND_RUN=1 bwrap --dev-bind / / --tmpfs /etc/pki/tls/certs \
@@ -419,7 +414,6 @@ Two CMake cache variables decide whether a build checks:
   - `ubuntu24.04`, `ubuntu26.04`, `debian13` or `fedora44`, set by `package.yml` from the
     matrix name;
   - `appimage`, set by `tools/releases/build-appimage.sh`;
-  - `flatpak`, set in `packaging/flatpak/gd.put.Putgd.yml`;
   - empty for development and source builds, which never check.
 
   `native.py --package-target` makes the native audit compare it with
@@ -430,17 +424,15 @@ Two CMake cache variables decide whether a build checks:
   builds add this repository, and the app recognises it in the repository file. Lab builds
   set `https://pkg.put.gd/lab`.
 
-Only clean tagged builds (stable or nightly, and the pre-#373 candidate) have a channel. Every other
+Only clean tagged builds (stable or nightly) have a channel. Every other
 build reports `development_build` or `no_package` and never checks.
 
-## Later phases (#293)
+## Implemented update paths
 
-- **Phase 2 (done):** signed apt and dnf repositories at `pkg.put.gd`, which the DEB and
+- **Signed repositories:** signed apt and dnf repositories at `pkg.put.gd`, which the DEB and
   RPM add when installed; see [package-repositories.md](package-repositories.md).
   AppStream catalog data in the repositories, so software centres can find put.gd before
   it's installed, is [#314](https://github.com/patrick-hudson/put.gd-desktop/issues/314).
-- **Phase 3 (done):** the AppImage's own **Download and install**
+- **AppImage installation:** the AppImage's own **Download and install**
   ([above](#download-and-install-from-putgd)), with the signer's AppImage mirror on
   `pkg.put.gd`.
-- **Phase 4:** Flatpak, from its own signed repository, in [#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83).
-- **Windows:** waits for a published Windows build.

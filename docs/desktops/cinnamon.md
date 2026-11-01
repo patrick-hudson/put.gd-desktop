@@ -17,7 +17,7 @@ can only get its own window refused. The [X11 editor refusal
 receipt](../evidence/2026-10-19-x11-editor-refusal.md) records the physical
 Kubuntu Plasma X11 run.
 
-Region selection appears over the live desktop. Windows, animation and video keep
+Region selection appears over the live desktop. Application windows, animation and video keep
 updating before and during the drag. Drag with the left button; Escape or the right
 button cancels. Monitor identity, geometry, scale and rotation are fixed when the
 action starts; a changed layout invalidates the selection. Each monitor has a
@@ -46,7 +46,7 @@ highest participating native density, rounds global pixel-grid boundaries outwar
 and leaves layout gaps transparent. Already displayed rotated frames are not
 rotated a second time.
 
-Clipboard import requests supported X11 selection targets without waiting synchronously on the owner. It prefers local files, images supported by the installed QImageReader plugins (PNG first), and UTF-8 plain text, using the existing payload contract; plain-text URLs remain text. A remote URI list falls through to the owner’s actual image or text representation when available. Each selection transfer has a five-second deadline and resource bounds, and owner changes invalidate acquisition. Imports are queued in frozen-revision order within the accepted operation limit; cancelling a capture leaves independent clipboard imports active. PNG decoding and capture composition run on workers. Results use Qt clipboard ownership, with local image results supplied as previously encoded PNG bytes by the shared copy worker so paste does not encode screenshots on the session thread. The resident application must continue running to serve clipboard results. The transfer protocol follows [ICCCM selections](https://xorg.freedesktop.org/archive/X11R7.7/doc/xorg-docs/icccm/icccm.html).
+Clipboard import requests supported X11 selection targets without waiting synchronously on the owner. It prefers local files, images supported by the installed QImageReader plugins (PNG first), and UTF-8 plain text, using the existing payload contract; plain-text URLs remain text. A remote URI list falls through to the owner’s actual image or text representation when available. Each selection transfer has a five-second deadline and resource bounds, and owner changes invalidate acquisition. Imports are queued in frozen-revision order within the accepted operation limit; cancelling a capture leaves independent clipboard imports active. PNG decoding and capture composition run on workers. Results use `X11Clipboard` selection ownership through XCB, with local image results supplied as previously encoded PNG bytes by the shared copy worker so paste does not encode screenshots on the session thread. The resident application must continue running to serve clipboard results. The transfer protocol follows [ICCCM selections](https://xorg.freedesktop.org/archive/X11R7.7/doc/xorg-docs/icccm/icccm.html).
 
 Shortcut setup uses checked XCB passive grabs and reports disabled, unmapped, unsupported, or conflicting bindings individually. Successful grabs include the active Caps Lock, Num Lock, and Scroll Lock modifier combinations. Keyboard mapping changes refresh requested bindings and update actual status. ASCII letter shortcuts do not require an implicit Shift; shifted printable symbols use their actual keymap modifier. Missing modifiers and unsupported symbol levels report explicit binding failures. Conflicting grabs are released without stealing another client's shortcut.
 

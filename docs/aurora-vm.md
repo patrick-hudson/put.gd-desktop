@@ -1,4 +1,4 @@
-# Aurora (Universal Blue) VM layer for AppImage and Flatpak testing
+# Aurora (Universal Blue) VM layer for AppImage testing
 
 The new visibility-helper provisioning below requires the companion
 [code PR #584](https://github.com/patrick-hudson/put.gd-desktop/pull/584).
@@ -9,9 +9,8 @@ nightly script does not install the new helper. Existing golden bytes are unchan
 
 Aurora is Universal Blue's KDE Plasma desktop, an image-based (bootc) Fedora
 Atomic variant: `ghcr.io/ublue-os/aurora:stable`. It installs nothing through a
-package manager, ships Flathub as its only Flatpak remote, and represents the
-user population that will run put.gd as an AppImage or a Flatpak rather than a
-DEB or RPM. It has no row in the package matrix, but the Fedora 45 guest below
+traditional package manager, and represents the user population that runs put.gd
+as an AppImage rather than a DEB or RPM. It has no row in the package matrix, but the Fedora 45 guest below
 is a required desktop of the
 [AppImage full-acceptance profile](acceptance-matrix.md#appimage-full-acceptance-profile).
 
@@ -59,8 +58,7 @@ Guest facts recorded from v1: Aurora 44.20260908.1 (`OSTREE_VERSION`), bootc
 booted image `ghcr.io/ublue-os/aurora:stable` built 2026-09-08, kernel-side
 Fedora 44 userland with glibc 2.43, Qt 6.11.2 (`qt6-qtbase`, `qt6-qtwayland`),
 Plasma 6.7.4 and KWin 6.7.4 on Wayland, `plasma-login-manager` 6.7.4 (no SDDM),
-flatpak 1.18.2 with the `flathub` system remote and Universal Blue's curated
-system Flatpaks preinstalled, fuse 2.9.9 and fuse3 3.18.2 libraries present,
+fuse 2.9.9 and fuse3 3.18.2 libraries present,
 `libappimage` absent. `/` is a read-only composefs; writable state is under
 `/var` (`/var/home/lab` is the home directory).
 
@@ -69,8 +67,9 @@ Guest login is the [standard remote lab login](remote-golden-images.md#standard-
 key is the builder-private `~/work/put.gd/work/lab-bootstrap-f44/aurora/identity`
 (its public key sits in each golden directory); the guest's Ed25519 host key
 (`SHA256:yeRsgHkd8AI0lIuNZ4H6YE2i4d1D7cxeFI86/uKoWiA`) was compared against the
-console before pinning. The sudo rule grants `lab` only `rpm-ostree`, `bootc`,
-`flatpak`, `systemctl`, `loginctl` and `journalctl` without a password.
+console before pinning. The provisioning sudo rule grants `lab` `rpm-ostree`, `bootc`, `systemctl`,
+`loginctl` and `journalctl` without a password. Its retained sandbox-package
+manager allowance is outside put.gd's supported test scope.
 
 ### How they were made
 
@@ -128,7 +127,7 @@ golden directory holds `provisioning-verify.log`.
 | Item | Value |
 | --- | --- |
 | Image | `ghcr.io/ublue-os/aurora:testing`, version `testing-45.20261022.1`, digest `sha256:969e4f6f164742b9f3f85e74b958faf88e357b65620e7c2f1cc28723948a9930`, built 2026-10-22T03:21:25Z. The `testing` tag is unsigned (`bootc status` shows no `containerPolicy` signature, unlike `stable`). |
-| Guest | `VERSION_ID=45`, kernel `7.2.11-300.fc45`, `plasma-workspace-6.7.5-2.fc45`, `kwin-6.7.5-1.fc45`, `plasma-login-manager-6.7.5-1.fc45`, `qt6-qtbase-6.11.2-3.fc45`, `qt6-qtwayland-6.11.2-1.fc45`, glibc 2.44, flatpak 1.18.4 with the `flathub` system remote. |
+| Guest | `VERSION_ID=45`, kernel `7.2.11-300.fc45`, `plasma-workspace-6.7.5-2.fc45`, `kwin-6.7.5-1.fc45`, `plasma-login-manager-6.7.5-1.fc45`, `qt6-qtbase-6.11.2-3.fc45`, `qt6-qtwayland-6.11.2-1.fc45`, glibc 2.44. |
 | Session | plasmalogin autologin as `lab` (`Service=plasmalogin-autologin`, `Type=wayland`, `Desktop=KDE`, `Class=user`), `kwin_wayland` with Xwayland, `plasmashell`. |
 | Lab settings | The v3 idle settings survived the rebase (`kscreenlockerrc` `Autolock=false`, `LockOnResume=false`; `powerdevilrc` no dimming, DPMS or auto-suspend for AC, Battery and LowBattery). `uupd.timer` disabled and masked. |
 | Deployments | Single: the Fedora 44 rollback deployment was removed with `rpm-ostree cleanup -r` (5.7 GB freed) before the poweroff. |
@@ -333,9 +332,8 @@ local-only (no destination, no credentials).
 The AppImage registers its `putgd-appimage-*.desktop` permission entry under
 `~/.local/share/applications` and KWin accepts it on Plasma 6.7. The recording
 feature reports `recording_helper_missing` in this build, which is expected for
-the AppImage. Flatpak was not exercised; when the put.gd Flatpak exists, the same
-overlay can install it from a local bundle with `flatpak install --user`, and
-Flathub is already configured for its runtime.
+that historical AppImage. Shipping AppImages now include recording; this old
+smoke result does not establish current recording acceptance.
 
 One observed failure mode is not an app defect: a region capture requested
 while the Plasma session was idle-locked (the default 5-minute lock in v1 and
@@ -346,7 +344,7 @@ or v2, unlock the session on the wall before capture tests.
 
 - Provide `putgd-desktop-fixture` for this guest (a Fedora 44 userland build
   or a bundled copy) so the `run` scenarios, not only smoke/CLI checks, can
-  execute on Aurora; add a Flatpak install path beside `--appimage`.
+  execute on Aurora.
 - Decide with Patrick whether the Fedora 44 goldens stay `f44`-only
   rebuildable evaluation images. Fedora 45 cloud restore now uses the separately
   verified EC2 golden; the older disk's byte-copy upload was cancelled
@@ -355,4 +353,3 @@ or v2, unlock the session on the wall before capture tests.
   next flatten; rebuild the Aurora golden from the signed `stable` tag once it
   moves to Fedora 45, following [How it was made](#how-it-was-made)
   ([#483](https://github.com/patrick-hudson/put.gd-desktop/issues/483)).
-- Exercise the Flatpak on this guest once it is implemented.

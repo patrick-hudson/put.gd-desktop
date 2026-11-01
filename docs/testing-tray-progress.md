@@ -18,8 +18,8 @@ cannot replace this inspection.
 ## Candidate and guest preparation
 
 Run Cinnamon/X11, GNOME/Wayland and KDE/Wayland functional **and memory** checks
-in parallel on one candidate. Use [VM memory evidence](testing-vm-memory-audit.md)
-and [the frozen memory protocols](testing-memory.md); this functional runner
+in parallel on one candidate. Use [memory measurement guidance](memory-strategy.md)
+and [the frozen memory protocols](history/testing-memory.md); this functional runner
 does not invent a replacement memory budget. Wait for build/GUI work to stop
 before quiet memory sampling.
 
@@ -424,11 +424,9 @@ services, then records each actual outcome. Proton `delete.prepare` must return
 folder because safe revision-guarded deletion is unavailable. Link revocation
 is a separate mutation and does not remove those files.
 
-Windows S3 acceptance uses independent overlays and the native Windows route in
-[windows-vm-lab.md](windows-vm-lab.md). This Linux SNI/QMP runner is not Windows
-tray proof. The currently pinned Proton runtime supports Linux x86-64 only;
-Windows Proton acceptance is blocked until a supported runtime/package exists.
-Neither those platform routes nor a service-session exporter is added here.
+This procedure covers Linux SNI/QMP behavior. The pinned Proton runtime
+supports Linux x86-64. Use the [acceptance matrix](acceptance-matrix.md) for
+current package and desktop requirements.
 
 Pure host contracts can be run independently without builds, guests or service
 access:

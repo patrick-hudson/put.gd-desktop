@@ -1,12 +1,14 @@
 # VM memory, current builds and replay
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+
 The memory dashboard is <http://127.0.0.1:8767/>. The VNC display wall is
 <http://127.0.0.1:8765/>. Keep VNC available throughout graphical interaction.
 SSH metadata collection is not graphical acceptance.
 
 ## What the original audit established
 
-The [structured audit](evidence/2026-10-08-vm-memory-audit.json) records the old
+The [structured audit](../evidence/2026-10-08-vm-memory-audit.json) records the old
 residents sampled on 2026-10-08, before the current-build functional wave.
 
 | Guest | RSS MiB | PSS MiB | Private MiB | Process age hours |
@@ -73,13 +75,13 @@ CI host contracts are not compositor acceptance.
 
 ## Replay the read-only audit
 
-The [raw manifest](evidence/2026-10-08-vm-memory-audit-raw/manifest.json) maps the
+The [raw manifest](../evidence/2026-10-08-vm-memory-audit-raw/manifest.json) maps the
 original temporary paths to committed copies and retains their exact hashes.
 The guest collector and supplemental scripts were executed for the saved audit.
 `dashboard-readonly.py` was prepared from the executed inline GET protocol and
 syntax-checked; it is not a second historical measurement.
 
-First verify the chosen existing run directories with [the lab instructions](vm-lab.md).
+First verify the chosen existing run directories with [the lab instructions](../vm-lab.md).
 Use current forwarded ports and pinned host keys from their manifests. Do not
 boot a base, restart an app, change settings or weaken SSH host-key checking to
 collect a snapshot. If the old run was retired, select a current running overlay
@@ -198,7 +200,7 @@ a sandbox's restricted `/proc` to infer that a host VM exited.
 ### Replay
 
 The current-source wave is recorded separately in
-[evidence/2026-10-08-current-desktop-matrix.json](evidence/2026-10-08-current-desktop-matrix.json).
+[evidence/2026-10-08-current-desktop-matrix.json](../evidence/2026-10-08-current-desktop-matrix.json).
 Use its archive/source identity, build recipes and per-case parameters to prepare
 a new wave. Do not reuse an old passing test ID after changing the package.
 Run all 12 scenarios and the visible view smoke on each profile first; inspect

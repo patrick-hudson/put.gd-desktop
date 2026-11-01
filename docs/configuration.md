@@ -8,10 +8,10 @@ absolute paths, shortcut syntax, and cross-profile references.
 
 ## Locations
 
-| Folder | Linux | Windows |
-| --- | --- | --- |
-| Configuration: `config.json` and its `config.json.lock` | `$XDG_CONFIG_HOME/putgd`, normally `~/.config/putgd` | `%LOCALAPPDATA%\putgd` |
-| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` | `%LOCALAPPDATA%\putgd` |
+| Folder | Linux |
+| --- | --- |
+| Configuration: `config.json` and its `config.json.lock` | `$XDG_CONFIG_HOME/putgd`, normally `~/.config/putgd` |
+| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` |
 
 These are Qt's `GenericConfigLocation` and `GenericDataLocation` plus `putgd`, so they
 do not depend on Qt's organization or application name. The screen-recording helper
@@ -157,7 +157,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `preferences.fileManagerFolders` | Optional, `zip` (default, also when absent) or `files`: how a folder chosen with Upload with put.gd in a file manager, or passed to `upload.files` (CLI, MCP `upload_files`), uploads, as one `<folder>.zip` or file by file (`limits.maxFiles` counts the expanded files). Settings → General → File manager → Folders. See [file-manager-upload.md](file-manager-upload.md#folders) |
 | `preferences.fileManagerMenu` | Optional boolean, default `true`: the AppImage's per-user Upload with put.gd entries; `false` removes the files it wrote. DEB/RPM entries are system files and always on. See [file-manager-upload.md](file-manager-upload.md#turning-it-on) |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
-| `preferences.updates` | Optional, default `{"check": true, "channel": "build"}`, both keys optional. `check`: look for a newer version once a day (one request to app.put.gd with nothing identifying). `channel`: `build` follows this installation's channel (Settings stores it when you pick the build's own), or `stable` or `nightly` to watch that one; an AppImage then offers to switch to it ([updates.md](updates.md#switching-channels)). Stable notifies once per new version, remembered per channel; nightly only shows it in Settings. Development, source and Flatpak builds never check ([updates.md](updates.md)) |
+| `preferences.updates` | Optional, default `{"check": true, "channel": "build"}`, both keys optional. `check`: look for a newer version once a day (one request to app.put.gd with nothing identifying). `channel`: `build` follows this installation's channel (Settings stores it when you pick the build's own), or `stable` or `nightly` to watch that one; an AppImage then offers to switch to it ([updates.md](updates.md#switching-channels)). Stable notifies once per new version, remembered per channel; nightly only shows it in Settings. Development and source builds never check ([updates.md](updates.md)) |
 | `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
 | `preferences.appearance` | Optional. `theme`: `system` (default, also when absent) follows the desktop's light or dark preference, `dark` or `light`. `accent` (null) and `overrides` (`{"dark": {}, "light": {}}`) are reserved for custom colours (#197) and must keep those values. See [appearance](appearance.md) |
 | `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |

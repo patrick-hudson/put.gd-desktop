@@ -36,9 +36,11 @@ and a hashed corresponding-source catalog and rebuild instructions. Deliver
 the catalogued source assets with the binary packages; notices alone are
 insufficient. Consult SOURCES.json for the current native Bun and Argon2 WASM proof scope. The user-approved 2026-10-15
 decision is to ship and maintain this experimental integration; upstream
-endorsement is not a release gate. Complete redistribution review, authenticated
+endorsement is not a release gate. Current redistribution review, authenticated
 recovery/resources, shipping-pipeline integration and final-package acceptance
-remain open in [the release-gate register](../../docs/proton-drive-release-gates.md).
+follow [Proton verification](../../docs/proton-drive.md#building-and-verification)
+and the [release runbook](../../docs/release-runbook.md). The
+[2026-10-15 register](../../docs/history/proton-drive-release-gates.md) preserves the earlier audit.
 Building or protocol testing alone does not establish those gates.
 
 Sources:
