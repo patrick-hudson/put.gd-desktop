@@ -836,8 +836,10 @@ def follow_nightly(argv):
 def sync_checkout(builder, driver):
     """Workers refuse any commit but the controller's, so bring each one to it."""
     git = ['git', '-C', builder['root']]
-    update = shlex.join([*git, 'fetch', '-q', '--no-tags', 'origin', driver])
-    update += ' && '+shlex.join([*git, 'merge', '-q', '--ff-only', driver])
+    # A commit copied here by hand may not be on origin; being on it is enough.
+    update = '[ "$('+shlex.join([*git, 'rev-parse', 'HEAD'])+')" = '+shlex.quote(driver)+' ] || { '
+    update += shlex.join([*git, 'fetch', '-q', '--no-tags', 'origin', driver])
+    update += ' && '+shlex.join([*git, 'merge', '-q', '--ff-only', driver])+'; }'
     try:
         command([*builder['ssh'], update], timeout=300)
     except (RuntimeError, subprocess.TimeoutExpired):

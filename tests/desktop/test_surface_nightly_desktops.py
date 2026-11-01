@@ -329,7 +329,8 @@ class NightlyTests(unittest.TestCase):
                 nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
                                  'vtest', root, archive, root, local_workers=Mock())
             sync = command.call_args_list[1].args[0][-1]
-            self.assertEqual(sync, f'git -C /repo fetch -q --no-tags origin {BUILD} && git -C /repo merge -q --ff-only {BUILD}')
+            self.assertEqual(sync, f'[ "$(git -C /repo rev-parse HEAD)" = {BUILD} ] || '
+                                   f'{{ git -C /repo fetch -q --no-tags origin {BUILD} && git -C /repo merge -q --ff-only {BUILD}; }}')
             self.assertLess(1, [i for i, c in enumerate(command.call_args_list) if '--worker' in c.args[0][-1]][0])
 
     def test_unreachable_driver_is_grey_and_launches_no_worker(self):
