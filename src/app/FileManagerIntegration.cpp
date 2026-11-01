@@ -482,7 +482,8 @@ QString FileManagerIntegration::restartScript(const QString& name) {
  // don't bring back a clean exit. One that draws the desktop or runs as a daemon
  // comes back with its own arguments ($1 names the process; another session's stays).
  if(name=="pcmanfm"||name=="pcmanfm-qt")return QStringLiteral(
-  "p=; for q in $(pgrep -u \"$(id -u)\" -x \"$1\"); do [ \"$(tr '\\0' '\\n' </proc/$q/environ | sed -n 's/^DISPLAY=//p')\" = \"$DISPLAY\" ] && p=$q; done; [ -n \"$p\" ] || exit 0; "
+  "v(){ tr '\\0' '\\n' </proc/$1/environ | sed -n \"s/^$2=//p\"; }; "
+  "p=; for q in $(pgrep -u \"$(id -u)\" -x \"$1\"); do [ \"$(v $q DISPLAY)\" = \"$DISPLAY\" ] && [ \"$(v $q WAYLAND_DISPLAY)\" = \"$WAYLAND_DISPLAY\" ] && p=$q; done; [ -n \"$p\" ] || exit 0; "
   "a=$(tr '\\0' '\\n' </proc/$p/cmdline); kill \"$p\"; "
   "i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; "
   "printf '%s\\n' \"$a\" | grep -qx -e --desktop -e --daemon-mode -e -d || exit 0; "

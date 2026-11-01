@@ -218,10 +218,10 @@ private slots:
    QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
    QCOMPARE(lines(),QStringList{"1 /some/folder"});
   }
-  QFile::remove(starts);
-  {
+  for(const auto* variable:{"DISPLAY","WAYLAND_DISPLAY"}) {
    // Another session's, on another display: left alone, and nothing starts here.
-   QProcess other;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("DISPLAY",":putgd-other");
+   QFile::remove(starts);
+   QProcess other;auto environment=QProcessEnvironment::systemEnvironment();environment.insert(variable,"putgd-other");
    other.setProcessEnvironment(environment);other.start(stub,{"--desktop"});
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
