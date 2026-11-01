@@ -105,7 +105,7 @@ class Guard(unittest.TestCase):
         with patch('tools.lab.surface_driver.context.time.sleep'):
             self.assertTrue(ctx._guard()['ok'])
         self.assertEqual([query['obscuring'] for name, query in calls if name == 'clear_screen'], [3])
-        self.assertIn('cleared screen: banners closed; windows closed: old window (kate)', ctx.notes)
+        self.assertIn('cleared screen: banners close requested; windows closed: old window (kate)', ctx.notes)
 
     def test_a_failed_clear_keeps_the_obstruction_verdict(self):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3}])
@@ -119,7 +119,7 @@ class Guard(unittest.TestCase):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'kate', 'obscuring_window_id': 3}, {'ok': True}])
         with patch('tools.lab.surface_driver.context.time.sleep'):
             ctx._guard()
-        self.assertIn('cleared screen: banners not closed; windows closed: old window (kate)', ctx.notes)
+        self.assertIn('cleared screen: banners close failed; windows closed: old window (kate)', ctx.notes)
 
     def test_a_cover_that_stays_still_fails_and_is_named(self):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3} for _ in range(4)])
