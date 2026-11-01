@@ -10,7 +10,7 @@ no candidate channel. This is phase 2 of
 
 ## What the packages add
 
-Only tagged builds (nightly and stable) add a repository, and each trusts only
+Only tagged builds add a repository: current calendar-tagged nightly and stable builds, plus the legacy pre-#373 `0.Y.Z-rc.N` candidates, which use the stable repository, and each trusts only
 its own channel's key. Development and source builds add
 nothing.
 
