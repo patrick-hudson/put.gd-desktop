@@ -47,7 +47,8 @@ DESKTOPS = {
     # UKUI session has no window manager and no panel. Its synaptics driver also satisfies Xorg's
     # input dependency, leaving the tablet with no driver. ukui-session's own environment has no
     # XDG_CURRENT_DESKTOP; the panel's does.
-    'ukui': dict(profile='ukui-x11', packages='ukui-desktop-environment ukwm xserver-xorg-input-libinput', session='ukui', env_process='ukui-panel'),
+    'ukui': dict(profile='ukui-x11', packages='ukui-desktop-environment ukwm xserver-xorg-input-libinput', session='ukui', env_process='ukui-panel',
+                 grow_gib=8),  # Installed, it leaves the golden under put.gd's 5% disk reserve, which refuses uploads.
     # Ubuntu 26.04 ships no Pantheon at all (no gala, pantheon-files, wingpanel or contractor), so
     # `up` refuses. A row needs elementary OS 8.1 unpacked to a disposable disk, then these commands.
     # gala's own environment has no WAYLAND_DISPLAY or DISPLAY; wingpanel's (comm truncated) does.
@@ -110,6 +111,10 @@ done
 '''
 
 
+# Goldens grant apt-get alone; this overlay is thrown away (see lab.stage_install_helper).
+APT_GRANT = 'printf "lab ALL=(ALL) NOPASSWD: ALL\\n" > /etc/sudoers.d/zz-fm; chmod 440 /etc/sudoers.d/zz-fm'
+
+
 def install_script(desktop):
     spec = DESKTOPS[desktop]
     if spec.get('dnf'):
@@ -144,8 +149,7 @@ mkdir -p "$HOME/.config/autostart"
 printf '[Desktop Entry]\\nHidden=true\\n' > "$HOME/.config/autostart/cosmic-initial-setup.desktop"
 touch "$HOME/.config/gnome-initial-setup-done"
 '''
-    # Goldens grant apt-get alone; this overlay is thrown away (see lab.stage_install_helper).
-    grant = 'printf "lab ALL=(ALL) NOPASSWD: ALL\\n" > /etc/sudoers.d/zz-fm; chmod 440 /etc/sudoers.d/zz-fm'
+    grant = APT_GRANT
     prepare = f'''set -eu
 export DEBIAN_FRONTEND=noninteractive
 sudo -n apt-get -o 'APT::Update::Pre-Invoke::={grant}' update -qq
@@ -165,6 +169,21 @@ sudo -n systemctl disable gdm3 2>/dev/null || true
 echo /usr/sbin/lightdm | sudo -n tee /etc/X11/default-display-manager >/dev/null
 sudo -n systemctl enable --force lightdm
 '''+(GDM_LOGIN.format(session=spec['session']) if spec.get('gdm') else '')
+
+
+def grow_disk(run, gib):
+    """The overlay's virtual size only; it costs nothing until written."""
+    with lab.QMP(run/'qmp.sock') as qmp:
+        disk = next(b for b in qmp.execute('query-block') if b['device'].startswith('virtio'))
+        qmp.execute('block_resize', {'device': disk['device'], 'size': disk['inserted']['image']['virtual-size']+gib*2**30})
+    lab.ssh(run, f"""set -eu
+export DEBIAN_FRONTEND=noninteractive
+sudo -n apt-get -o 'APT::Update::Pre-Invoke::={APT_GRANT}' update -qq
+sudo -n -E apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends cloud-guest-utils >/dev/null
+root=$(findmnt -no SOURCE /)
+sudo -n growpart "${{root%[0-9]*}}" "${{root##*[!0-9]}}" >/dev/null
+sudo -n resize2fs "$root" >/dev/null 2>&1
+""", timeout=600)
 
 
 def up(args):
@@ -193,6 +212,8 @@ def up(args):
                  '--run', run, '--bootstrap-key', args.key, '--known-hosts', known, '--ssh-port', args.ssh_port,
                  '--vnc-display', args.vnc, '--timeout', 420], timeout=600)
     record(name, desktop=args.desktop, host=args.host, session=session, imagesRoot=str(Path(args.golden).resolve().parents[1]))
+    if spec.get('grow_gib'):
+        grow_disk(run, spec['grow_gib'])
     started = time.monotonic()
     lab.ssh(run, install_script(args.desktop), timeout=1800)
     record(name, installSeconds=round(time.monotonic()-started))
