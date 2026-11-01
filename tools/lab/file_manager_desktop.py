@@ -134,6 +134,10 @@ sudo -n dnf remove -y --setopt=clean_requirements_on_remove=False putgd >/dev/nu
 sudo -n mkdir -p /etc/gdm /var/lib/AccountsService/users
 printf '[User]\\nSession={spec['session']}\\nSystemAccount=false\\n' | sudo -n tee /var/lib/AccountsService/users/lab >/dev/null
 printf '[daemon]\\nAutomaticLoginEnable=True\\nAutomaticLogin=lab\\n' | sudo -n tee /etc/gdm/custom.conf >/dev/null
+# COSMIC's first-login wizard would cover the desktop under test.
+mkdir -p "$HOME/.config/autostart"
+printf '[Desktop Entry]\\nHidden=true\\n' > "$HOME/.config/autostart/cosmic-initial-setup.desktop"
+touch "$HOME/.config/gnome-initial-setup-done"
 '''
     # Goldens grant apt-get alone; this overlay is thrown away (see lab.stage_install_helper).
     grant = 'printf "lab ALL=(ALL) NOPASSWD: ALL\\n" > /etc/sudoers.d/zz-fm; chmod 440 /etc/sudoers.d/zz-fm'
