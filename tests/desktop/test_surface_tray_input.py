@@ -53,7 +53,9 @@ class DesktopGestures(unittest.TestCase):
         self.assertEqual(ctx._probe.call_count,2)
 
     def test_wheel_stops_when_an_obstruction_arrives(self):
-        ctx=self.ctx();ctx._probe.side_effect=[{'ok':True},{'ok':False,'obscuring_window':'foreign window'}]
+        ctx=self.ctx()
+        # After the first check, the cover stays through every clear and retry.
+        ctx._probe.side_effect=[{'ok':True}]+[{'ok':False,'obscuring_window':'foreign window'}]*7
         with self.assertRaisesRegex(RecipeFailed,'foreign window'):
             ctx.scroll_accessible({'pid':70,'name':'put.gd'},2)
         self.assertEqual(ctx.target.pointer.call_count,1)
