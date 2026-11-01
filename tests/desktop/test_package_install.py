@@ -113,7 +113,7 @@ apt.chmod(0o700)
 install.os.environ['PATH'] = str(root) + install.os.pathsep + install.os.environ['PATH']
 install.os.environ['PUTGD_TEST_APT_DIR'] = str(root)
 install.os.environ['PUTGD_TEST_APT_MODE'] = {mode!r}
-install.APT_LOCK_TIMEOUT = .6
+install.APT_LOCK_TIMEOUT = 1.5
 commands = [['apt-get', '-o', 'DPkg::Lock::Timeout=1', 'update'],
             ['apt-get', '-o', 'DPkg::Lock::Timeout=1', 'install']]
 if {mode!r} == 'install-failure':
