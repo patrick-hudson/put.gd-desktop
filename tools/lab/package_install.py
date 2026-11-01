@@ -282,7 +282,9 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
                     remaining = update_lock_deadline - time.monotonic()
                     if lock_error and only_lock_errors and remaining > 0:
                         time.sleep(min(1, remaining))
-                        if time.monotonic() < update_lock_deadline:
+                        now = time.monotonic()
+                        report['timedOut'] = now - started >= timeout
+                        if now < update_lock_deadline:
                             report['updateLockRetries'] = report.get('updateLockRetries', 0) + 1
                             continue
                 report['exitCodes'].append(process.poll())
