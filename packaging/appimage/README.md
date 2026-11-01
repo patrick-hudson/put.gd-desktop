@@ -68,6 +68,14 @@ cmake --build build/qtkeychain --parallel 2
 cmake --install build/qtkeychain
 ```
 
+Install `libsecret-1-dev` from the Ubuntu 24.04 builder's normal repositories.
+QtKeychain loads libsecret dynamically, so ordinary ELF dependency discovery
+misses it. Assembly explicitly bundles that backend with the builder's matching
+GLib libraries and records their distro notices and source versions. The load
+audit requires the backend and its GLib dependencies to resolve inside the
+image. This keeps the Ubuntu 24.04 compatibility baseline coherent on newer
+hosts. The desktop supplies the running Secret Service/keyring daemon.
+
 The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
 `tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
 the same dependency prefix with FFmpeg's own `configure`, using exactly the
