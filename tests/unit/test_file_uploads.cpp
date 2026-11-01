@@ -1,4 +1,5 @@
 #include "app/FileUploads.h"
+#include "core/ArtifactStore.h"
 #include "app/UploadClient.h"
 #include "app/FileManagerIntegration.h"
 #include "core/Log.h"
@@ -101,6 +102,16 @@ private slots:
   // Sizes: the destination's largest object, the file limit, the batch limit and the disk.
   selection=FileUploads::select({good},settings,"files",3,-1);QCOMPARE(selection.error.code,QString("destination_object_too_large"));
   selection=FileUploads::select({good},settings,"files",0,2);QCOMPARE(selection.error.code,QString("disk_space_insufficient"));
+  // Out of room only because of the reserve: the message says so, in true sizes.
+  ArtifactStore::DiskBudget disk;disk.freeBytes=700*1024*1024;disk.reserveBytes=1024*1024*1024;
+  selection=FileUploads::select({good},settings,"files",0,disk);QCOMPARE(selection.error.code,QString("disk_space_insufficient"));
+  const auto needs=QFileInfo(good).size();QVERIFY(needs<1024);
+  QCOMPARE(selection.error.message,QStringLiteral("Not enough free disk space: this needs %1 B. The disk with put.gd's data folder has 700 MB free, and put.gd keeps 1 GB free for the system. Free up at least 325 MB and try again.").arg(needs));
+  // Bytes other uploads hold aren't the system's, and the advice rounds up, so it is always enough.
+  disk.reservedBytes=20*1024*1024;
+  selection=FileUploads::select({good},settings,"files",0,disk);
+  QCOMPARE(selection.error.message,QStringLiteral("Not enough free disk space: this needs %1 B. The disk with put.gd's data folder has 700 MB free, and put.gd keeps 1 GB free for the system and 20 MB for uploads in progress. Free up at least 345 MB and try again.").arg(needs));
+  QCOMPARE(selection.error.details["requiredBytes"].toInteger(),needs);QCOMPARE(selection.error.details["availableBytes"].toInteger(),0LL);
   // Spaces, quotes, Unicode and a leading '-' upload.
   for(const auto& name:{QStringLiteral("a b.txt"),QStringLiteral("it's \"q\".txt"),QStringLiteral("é ü.txt"),QStringLiteral("-rf.txt"),QStringLiteral("${USER}.txt")}){
    const auto path=write(files(name),"x");QVERIFY(!FileUploads::select({path},settings,"files",0,-1).error);

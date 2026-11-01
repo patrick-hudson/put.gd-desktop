@@ -492,7 +492,7 @@ int main(int argc,char* argv[]) {
     if(ticket!=fileManagerGeneration->load())return;
     fileManagerStatus=result;if(error)fileManagerStatus["error"]=error.toJson();
     putgd::logging::write(putgd::logApp(),error?QtWarningMsg:QtInfoMsg,"File manager menu applied",fileManagerStatus);
-    if(result["firstRun"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
+    if(result["announce"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
     // After the generation check: a superseded pass must not record a failure nobody was told about.
     if(putgd::FileManagerIntegration::announceOnce(context,error))tray.notifyFileManagerProblem(error.message);
     refreshSettingsDiagnostics();

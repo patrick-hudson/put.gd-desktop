@@ -14,6 +14,7 @@
 #include <QSaveFile>
 #include <QStringDecoder>
 #include <unistd.h>
+#include <algorithm>
 namespace putgd {
 namespace {
 const QString marker=QStringLiteral("X-putgd-Managed=true");
@@ -471,11 +472,29 @@ QStringList FileManagerIntegration::systemDirectories(const FileManagerContext& 
  directories.removeIf([](const QString& directory){return !QFileInfo(directory).isDir();});
  return directories;
 }
+QString FileManagerIntegration::restartScript(const QString& name) {
+ // Files comes back in the background so its desktop services keep running;
+ // Caja and Peony are restarted by their desktop sessions.
+ if(name=="nautilus")return QStringLiteral("nautilus -q; i=0; while pgrep -u \"$(id -u)\" -x nautilus >/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; exec nautilus --gapplication-service");
+ if(name=="caja")return QStringLiteral("caja -q; sleep 2; pgrep -u \"$(id -u)\" -x caja >/dev/null || exec caja --no-default-window");
+ if(name=="peony")return QStringLiteral("peony -q");
+ // PCManFM has no quit option; both quit cleanly on SIGTERM and their sessions
+ // don't bring back a clean exit. One that draws the desktop or runs as a daemon
+ // comes back with its own arguments and display ($1 names the process; another session's stays).
+ if(name=="pcmanfm"||name=="pcmanfm-qt")return QStringLiteral(
+  "v(){ tr '\\0' '\\n' </proc/$1/environ | sed -n \"s/^$2=//p\"; }; "
+  "p=; for q in $(pgrep -u \"$(id -u)\" -x \"$1\"); do w=$(v $q WAYLAND_DISPLAY); [ \"$(v $q DISPLAY)\" = \"$DISPLAY\" ] && [ \"${w:-wayland-0}\" = \"${WAYLAND_DISPLAY:-wayland-0}\" ] && p=$q; done; [ -n \"$p\" ] || exit 0; "
+  "a=$(tr '\\0' '\\n' </proc/$p/cmdline); for n in WAYLAND_DISPLAY XDG_SESSION_TYPE QT_QPA_PLATFORM; do x=$(v $p $n); unset \"$n\"; [ -z \"$x\" ] || export \"$n=$x\"; done; kill \"$p\"; "
+  "i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; "
+  "printf '%s\\n' \"$a\" | grep -qx -e --desktop -e --daemon-mode -e -d || exit 0; "
+  "set -f; IFS='\n'; set -- $a; exec \"$@\"");
+ return {};
+}
 QString FileManagerIntegration::launcherPath(const FileManagerContext& c) {return QDir(ownDirectory(c)).filePath("putgd-upload");}
 QString FileManagerIntegration::cosmicPath(const FileManagerContext& c) {return QDir(c.configHome).filePath("cosmic/com.system76.CosmicFiles/v1/context_actions");}
 
 QJsonObject FileManagerResult::toJson() const {
- QJsonObject json{{"firstRun",firstRun},{"written",QJsonArray::fromStringList(written)},{"removed",QJsonArray::fromStringList(removed)},
+ QJsonObject json{{"firstRun",firstRun},{"announce",announce},{"written",QJsonArray::fromStringList(written)},{"removed",QJsonArray::fromStringList(removed)},
   {"skipped",QJsonArray::fromStringList(skipped)},{"restartable",QJsonArray::fromStringList(restartable)}};
  if(!launcher.isEmpty())json["launcher"]=launcher;
  if(error)json["error"]=error.toJson();
@@ -593,9 +612,31 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   result.firstRun=!stamp.exists();
   if(commit(stampPath,(c.version+'\n').toUtf8(),dataMode,false)==Write::Failed)fail(ioError("Cannot write the file manager version stamp",stampPath));
  }
- if(system&&result.firstRun) {
-  const std::pair<const char*,const char*> plugins[]={{"nautilus","nautilus/extensions-4"},{"caja","caja/extensions-2.0"},{"peony","peony-extensions"}};
-  for(const auto& [name,relative]:plugins)if(systemPlugin(c,relative)&&onPath(c,name))result.restartable<<name;
+ if(result.firstRun) {
+  // The session's own file manager only: Files on PATH says nothing on LXDE.
+  const auto desktops=(c.desktop.isEmpty()?qEnvironmentVariable("XDG_CURRENT_DESKTOP"):c.desktop).split(':');
+  const auto onDesktop=[&](const QStringList& names){return std::any_of(desktops.begin(),desktops.end(),[&](const QString& desktop){return names.contains(desktop,Qt::CaseInsensitive);});};
+  // docs/file-manager-upload.md's unsupported list: no entry there, so no notice claiming one.
+  const auto plasma5=onDesktop({"KDE"})&&(c.kdeVersion.isEmpty()?qEnvironmentVariable("KDE_SESSION_VERSION"):c.kdeVersion)=="5";
+  result.announce=!onDesktop({"Deepin","DDE","Enlightenment","TDE","Trinity"})&&!(appImage&&(onDesktop({"UKUI"})||plasma5))&&(cosmicFiles||!onDesktop({"COSMIC"}));
+  // libfm and libfm-qt load FileManager-Actions at a process's first file menu. One whose
+  // actions folder didn't exist then doesn't see a new entry (LXDE and LXQt guests, #1105).
+  const QString actionsFile="file-manager/actions/putgd-upload.desktop";
+  const auto actions=system?inDataDirectories(dataDirectories(c),actionsFile):next.files.contains(QDir(c.dataHome).filePath(actionsFile));
+  const struct {const char* name;QStringList desktops;bool installed;} managers[]={
+   {"nautilus",{"GNOME","Unity"},system&&systemPlugin(c,"nautilus/extensions-4")},
+   {"caja",{"MATE"},system&&systemPlugin(c,"caja/extensions-2.0")},
+   {"peony",{"UKUI"},system&&systemPlugin(c,"peony-extensions")},
+   {"pcmanfm",{"LXDE"},actions},
+   {"pcmanfm-qt",{"LXQt"},actions}};
+  // At most one: the notice and its button name the session's file manager. The list
+  // runs from the most specific desktop, so the first one with a match decides.
+  for(const auto& desktop:desktops) {
+   // Budgie:GNOME: Budgie usually runs Nemo, so GNOME's entry says nothing about its file manager.
+   if(desktop.compare("Budgie",Qt::CaseInsensitive)==0)break;
+   for(const auto& manager:managers)if(manager.installed&&manager.desktops.contains(desktop,Qt::CaseInsensitive)&&onPath(c,manager.name))result.restartable<<manager.name;
+   if(!result.restartable.isEmpty())break;
+  }
  }
  return result;
 }
