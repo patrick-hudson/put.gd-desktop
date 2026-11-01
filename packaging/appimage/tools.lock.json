@@ -52,13 +52,13 @@
     "qt": "6.12.0",
     "layerShellQt": {
       "repository": "https://github.com/KDE/layer-shell-qt.git",
-      "release": "6.4.6",
-      "commit": "b1317ba122420dd0542ad12f4780b02ba7b6288f"
+      "release": "6.8.1",
+      "commit": "7103418a91fd5f756ef281a5c59555c2a86d9c0c"
     },
     "extraCmakeModules": {
       "repository": "https://github.com/KDE/extra-cmake-modules.git",
-      "release": "6.14.0",
-      "commit": "a5f0366eb92baa2a31b24e65f754fe4bc48ca28e"
+      "release": "6.31.0",
+      "commit": "2958379fb49c71129f119ec17f88df0b5ea21550"
     },
     "qtLicenseSources": [
       {
@@ -94,8 +94,8 @@
     },
     "qtKeychain": {
       "repository": "https://github.com/frankosterfeld/qtkeychain.git",
-      "release": "0.14.2",
-      "commit": "8eac9889775ca45c106d077bb0d3744754a1570a"
+      "release": "0.17.0",
+      "commit": "875f77d9f61bd97fd84cca47ce3bc71186dfbd09"
     },
     "ffmpeg": {
       "repository": "https://github.com/FFmpeg/FFmpeg.git",

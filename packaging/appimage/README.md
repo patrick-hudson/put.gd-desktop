@@ -1,7 +1,7 @@
 # AppImage prerelease assembly
 
 Build x86_64 on Ubuntu 24.04 (glibc 2.39) with the official Qt 6.12.0 gcc_64
-installation, normal distro GCC/CMake/Ninja, and the pinned official AWS SDK.
+installation, normal distro GCC/Ninja, CMake 3.30 or newer, and the pinned official AWS SDK.
 This matches the oldest current Cinnamon lab. A build on Ubuntu 26.04/Fedora 44
 is not a compatible substitute: AppImage does not replace glibc.
 Qt remains dynamically linked; this format bundles Qt instead of using distro Qt.
@@ -36,11 +36,13 @@ deployment paths select only the SQLite SQL driver, preserving all other plugin
 directories and leaving the original official SDK untouched. MySQL/Mimer and
 other unused database clients are not application dependencies.
 
-Build `extra-cmake-modules` at `a5f0366eb92baa2a31b24e65f754fe4bc48ca28e`
-(version 6.14.0), and `layer-shell-qt` at
-`b1317ba122420dd0542ad12f4780b02ba7b6288f` (version 6.4.6), using their own
-CMake projects and a private install prefix. LayerShellQt requires Qt >=6.8 and
-ECM >=6.14. This is a dependency build, not a replacement toolchain.
+Build `extra-cmake-modules` and `layer-shell-qt` at the immutable commits in
+`tools.lock.json`, using their own CMake projects and a private install prefix.
+The locked ECM 6.31.0 requires CMake >=3.30; check `cmake --version` before
+provisioning. Ubuntu 24.04's distro CMake 3.28 is too old for this dependency.
+Use a supported builder with CMake >=3.30 already provisioned; do not assemble
+a replacement toolchain. LayerShellQt 6.8.1 requires Qt >=6.11 and ECM >=6.30;
+the locked Qt 6.12.0 and ECM 6.31.0 satisfy those requirements.
 
 ```sh
 cmake -S extra-cmake-modules -B build/ecm -G Ninja -DCMAKE_INSTALL_PREFIX="$DEPENDENCY_PREFIX"
@@ -57,13 +59,22 @@ and the `icu` root without building them; these are the matching 6.12.0
 license/source notices for the official binaries and their ICU 73.2. Pass all
 source roots matching the modules actually bundled.
 
-Build QtKeychain at `8eac9889775ca45c106d077bb0d3744754a1570a`:
+Build QtKeychain at the immutable `qtKeychain` commit in `tools.lock.json`
+(currently 0.17.0, `875f77d9f61bd97fd84cca47ce3bc71186dfbd09`):
 
 ```sh
 cmake -S qtkeychain -B build/qtkeychain -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT" -DCMAKE_INSTALL_PREFIX="$DEPENDENCY_PREFIX" -DBUILD_WITH_QT6=ON -DBUILD_TEST_APPLICATION=OFF -DBUILD_TRANSLATIONS=OFF
 cmake --build build/qtkeychain --parallel 2
 cmake --install build/qtkeychain
 ```
+
+Install `libsecret-1-dev` from the Ubuntu 24.04 builder's normal repositories.
+QtKeychain loads libsecret dynamically, so ordinary ELF dependency discovery
+misses it. Assembly explicitly bundles that backend with the builder's matching
+GLib libraries and records their distro notices and source versions. The load
+audit requires the backend and its GLib dependencies to resolve inside the
+image. This keeps the Ubuntu 24.04 compatibility baseline coherent on newer
+hosts. The desktop supplies the running Secret Service/keyring daemon.
 
 The screen recorder `putgd-record` links a pinned upstream FFmpeg (`ffmpeg` in
 `tools.lock.json`, 7.1.5) that `tools/releases/provision-appimage.py` builds into
