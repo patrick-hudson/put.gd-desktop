@@ -19,6 +19,10 @@ In **Settings → General → Local copies**, **Keep a local copy** controls loc
 
 Local image results copy image MIME, text results copy text, and file results use local file URIs. Private uploads create no share link and do not change the clipboard. An upload failure does not turn an upload-only action into local saving; local-save and upload recovery remain separate. Existing files, accepted operations, and historical receipts are preserved when outputs change.
 
+## Upload from your file manager
+
+Right-click files or folders in your file manager and choose **Upload with put.gd** (in Thunar it is under **Send To**; with the AppImage, Files and Caja list it under **Scripts**). They upload to your capture destination right away and the link is copied, as for a capture. Folders upload as one `.zip` by default; **Settings → General → File manager → Folders** can upload each file instead. The AppImage's entries switch off under **File manager menu**. After installing the DEB or RPM, Files, Caja and Peony show the entry after a restart; put.gd's first notice offers one. See [file-manager-upload.md](file-manager-upload.md).
+
 ## Edit before uploading
 
 Choose **Capture region & edit** from the rail or tray, or assign it a key in **Settings → Shortcuts** (it has no default key). Drag the region to edit; Escape cancels. To edit something you already have, use **Edit image** at the top of History (the clipboard image or a PNG/JPEG file), right-click the rail button, or drop a PNG or JPEG on it. **Edit again** on a History item reopens its local copy when **Keep a local copy** was on; the edited result is uploaded as a new item. In the editor:

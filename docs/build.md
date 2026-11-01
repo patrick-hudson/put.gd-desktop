@@ -27,6 +27,19 @@ quietly; a build without it reports KDE region selection as unavailable.
 
 X11 global shortcuts also listen to XInput2 raw key events, so they work while another client's menu holds the keyboard (#341); they need the distro XCB XInput library (`libxcb-xinput-dev`; part of `libxcb-devel` on Fedora). Generic composited X11 region capture follows root repaints through the distro XCB Damage library (`libxcb-damage0-dev`; part of `libxcb-devel` on Fedora). Linux capture helpers use the distro Xcursor development library. On Fedora, install `libXcursor-devel` alongside the normal Qt/X11 development packages. Runtime package dependencies remain distro-resolved; do not vendor Xcursor or build a replacement toolchain.
 
+The file manager's `putgd --upload` client resolves network URIs through GIO
+(`libglib2.0-dev`, `glib2-devel` on Fedora), and folder uploads deflate through
+zlib (`zlib1g-dev`, `zlib-devel`). The native packages also carry the Upload
+with put.gd menu plugins (#1105): Nautilus (`libnautilus-extension-dev` /
+`nautilus-devel`), Caja (`libcaja-extension-dev` / `caja-devel`, plus GTK 3
+headers) and Peony (`libpeony-dev`; Qt 6 on Ubuntu 26.04, while Ubuntu 24.04 and
+Debian 13 also need `qtbase5-dev qtbase5-dev-tools`).
+`PUTGD_NAUTILUS_PLUGIN`, `PUTGD_CAJA_PLUGIN` and `PUTGD_PEONY_PLUGIN` are `AUTO`
+by default (built when pkg-config finds the headers); package builds set `ON`
+(Peony `OFF` on Fedora) and the AppImage sets all three `OFF`. The plugins link
+neither the file manager's library nor Qt; their symbols resolve in the file
+manager. `tools/releases/install-native-deps.sh` installs all of these.
+
 Linux packaging renders menu PNG sizes from `packaging/linux/putgd.svg` at build time with Qt SVG (`qt6-svg-dev`, or `qt6-qtsvg-devel` on Fedora). The small headless renderer is a build tool and is not installed. Native packages refresh the hicolor icon cache after installation and removal.
 
 Build the pinned AWS SDK with its own official CMake project. The app configuration

@@ -56,6 +56,7 @@ Methods and parameters:
 | Method | Parameters |
 |---|---|
 | `action.invoke` | `action`: region, window, desktop, clipboard, edit, record; `edit` also accepts `source` and `path` as `editor.open`; only `record` accepts `mode`: `open` (default) or `toggle` ([recording](recording.md#tray-and-shortcut)) |
+| `upload.files` | `paths` (absolute, 1–10,000), optional `profileId`, optional `installation` (`system` or `appimage`; a file manager's client sends it and another installation's resident refuses with `installation_mismatch`). Answers within 120 s after checking every file ([file-manager-upload.md](file-manager-upload.md)) |
 | `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
 | `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
 | `editor.apply` | `id`, `commands` array (1–100); atomic |
