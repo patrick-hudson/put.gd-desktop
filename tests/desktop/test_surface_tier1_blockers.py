@@ -91,6 +91,15 @@ class SelectorMapping(unittest.TestCase):
              patch.object(probe, 'owned', return_value=True), \
              patch.object(probe, 'native_capture_process', return_value=True):
             self.assertEqual(probe.geometry(query), cover)
+            for application in ('putgd*', 'putgd-capture'):
+                self.assertEqual(probe.geometry(dict(query, accessible={
+                    'name': 'Capture region', 'application': application})), cover)
+            # A missing node may mean its caller-supplied constraint rejected
+            # it. Only the independently proved native application is allowed.
+            for constraint in ({'pid': 8}, {'pid': 7}, {'role': 'panel'},
+                               {'states': {'focused': True}}, {'application': 'foreign*'}):
+                with self.subTest(constraint=constraint), self.assertRaisesRegex(RuntimeError, '0 matches'):
+                    probe.geometry(dict(query, accessible={'name': 'Capture region', **constraint}))
             for changed in (dict(cover, override_redirect=False), dict(cover, name='foreign'),
                             dict(cover, width=1), dict(cover, x=20)):
                 with patch.object(probe, 'x11_windows', return_value=[changed]):
