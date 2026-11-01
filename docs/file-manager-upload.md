@@ -61,7 +61,8 @@ only way into DING's menu.
   entries once, at the first file menu they show, so one that is already
   running needs a restart. On LXDE and LXQt the notice says so and, the same
   way, offers **Restart PCManFM** (or PCManFM-Qt). It closes all of their
-  windows; the desktop comes back.
+  windows; the desktop comes back. With no notification server, as on a plain
+  LXDE, the notice is a balloon and a click on it restarts.
 
 Per-user files:
 
