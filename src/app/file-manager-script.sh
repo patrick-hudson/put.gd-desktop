@@ -43,6 +43,18 @@ if [ "$#" -eq 0 ] && [ "$kind" = caja ] && [ -n "${CAJA_SCRIPT_SELECTED_URIS-}" 
     IFS=$old_ifs
     [ "$#" -eq 0 ] || exec "$launcher" --upload -- "$@"
 fi
+# Nautilus's Recent and Starred views pass item names that are not files, with
+# no file paths, but list each item's URI; the launcher resolves its target.
+if [ "$kind" = nautilus ] && [ -z "${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS-}" ] && [ -n "${NAUTILUS_SCRIPT_SELECTED_URIS-}" ]; then
+    old_ifs=$IFS
+    IFS='
+'
+    set -f
+    set -- $NAUTILUS_SCRIPT_SELECTED_URIS
+    set +f
+    IFS=$old_ifs
+    [ "$#" -eq 0 ] || exec "$launcher" --upload -- "$@"
+fi
 # Nautilus passes no arguments when any selected item has no local path.
 if [ "$#" -eq 0 ]; then
     notify 'These items have no local path'

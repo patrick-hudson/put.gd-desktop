@@ -181,6 +181,32 @@ private slots:
   QCOMPARE(f.run(f.caja(),{"local.txt"},f.path("home")),0);
   QCOMPARE(f.received(),QStringList({"--upload","--",QFileInfo(f.path("home")).canonicalFilePath()+"/local.txt"}));
  }
+ void nautilusScriptPassesUrisFromRecentAndStarred() {
+  // Nautilus's Recent view passes an item name that is no file, no file paths, and the item's URI (#1105).
+  Fixture f;auto& c=f.context;c.installation="appimage";
+  auto result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  f.launcher(result.launcher);
+  QCOMPARE(f.run(f.nautilus(),{"0c78a927"},f.path("home"),{{"NAUTILUS_SCRIPT_SELECTED_URIS","recent:///0c78a927\n"},{"NAUTILUS_SCRIPT_SELECTED_FILE_PATHS",""}}),0);
+  QCOMPARE(f.received(),QStringList({"--upload","--","recent:///0c78a927"}));
+  // With file paths, the arguments stay what they were.
+  QFile::remove(f.receipt);
+  QCOMPARE(f.run(f.nautilus(),{"local.txt"},f.path("home"),{{"NAUTILUS_SCRIPT_SELECTED_URIS","file:///x/local.txt\n"},{"NAUTILUS_SCRIPT_SELECTED_FILE_PATHS","/x/local.txt\n"}}),0);
+  QCOMPARE(f.received(),QStringList({"--upload","--",QFileInfo(f.path("home")).canonicalFilePath()+"/local.txt"}));
+ }
+ void staleSystemRecordSharesNothing() {
+  // A removed DEB leaves its record naming the DING script; the AppImage then owns its own copy.
+  Fixture f;auto& c=f.context;f.installDing();
+  auto system=c;system.installation="system";
+  QVERIFY(!FileManagerIntegration::apply(system).error);
+  QVERIFY(QFile::remove(c.systemLauncher));QVERIFY(QFile::remove(f.ding()));
+  c.installation="appimage";
+  auto result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(QFileInfo::exists(f.ding()));QVERIFY(!result.skipped.contains(f.ding()));
+  c.enabled=false;result=FileManagerIntegration::apply(c);
+  QVERIFY(!result.error);QVERIFY(!QFileInfo::exists(f.ding()));
+ }
  void appImageWritesEveryPerUserFile() {
   Fixture f;auto& c=f.context;c.installation="appimage";f.installCosmic();
   auto result=FileManagerIntegration::apply(c);

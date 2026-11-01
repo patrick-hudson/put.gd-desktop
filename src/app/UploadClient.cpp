@@ -168,12 +168,12 @@ QHash<QString,QString> hostGioInfo(const QStringList& uris){
  // C.UTF-8 comes from distribution packaging; trust gio's output only in a UTF-8 charset.
  const auto locale=host::findProgram("locale",environment);
  if(locale.isEmpty()||runBounded(locale,{"charmap"},environment,deadline).out.trimmed()!="UTF-8")return found;
- QStringList arguments{"info","-a","standard::type"};arguments<<uris;
+ QStringList arguments{"info","-a","standard::type,standard::target-uri"};arguments<<uris;
  const auto batch=runBounded(gio,arguments,environment,deadline);
  if(batch.complete)found=parseGioInfo(batch.out);
  for(const auto& uri:uris){
   if(found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
-  const auto single=runBounded(gio,{"info","-a","standard::type",uri},environment,deadline);
+  const auto single=runBounded(gio,{"info","-a","standard::type,standard::target-uri",uri},environment,deadline);
   if(single.complete)found.insert(parseGioInfo(single.out));
  }
  return found;
@@ -319,15 +319,21 @@ bool decodedNewline(const QString& uri){
  return decoded.contains('\n')||decoded.contains('\r')||uri.contains('\n')||uri.contains('\r');
 }
 QHash<QString,QString> parseGioInfo(const QByteArray& output){
- QHash<QString,QString> found;QString current;
+ QHash<QString,QString> found;QString current,path;QByteArray target;
+ // A record's local path, else the local file its target URI names: Recent and
+ // Starred items (recent://, starred://) have only a target (#1105).
+ const auto settle=[&]{
+  if(!current.isEmpty()&&path.isEmpty()&&target.startsWith("file:"))
+   if(char* local=g_filename_from_uri(target.constData(),nullptr,nullptr)){path=QFile::decodeName(local);g_free(local);}
+  if(!current.isEmpty()&&QDir::isAbsolutePath(path))found.insert(current,path);
+  current.clear();path.clear();target.clear();
+ };
  for(const auto& line:output.split('\n')){
-  if(line.startsWith("uri: ")){current=normalizedUri(QString::fromUtf8(line.mid(5)));continue;}
-  if(line.startsWith("local path: ")&&!current.isEmpty()){
-   const auto path=QFile::decodeName(line.mid(12));
-   if(QDir::isAbsolutePath(path))found.insert(current,path);
-   current.clear();
-  }
+  if(line.startsWith("uri: ")){settle();current=normalizedUri(QString::fromUtf8(line.mid(5)));continue;}
+  if(line.startsWith("local path: "))path=QFile::decodeName(line.mid(12));
+  else if(line.trimmed().startsWith("standard::target-uri: "))target=line.trimmed().mid(22);
  }
+ settle();
  return found;
 }
 Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gioInfo){
@@ -349,7 +355,13 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   }
   // DEB/RPM: the host's GIO with its own modules, GVfs's FUSE paths included.
   GFile* file=g_file_new_for_uri(bytes.constData());
-  if(char* path=g_file_get_path(file)){paths[i]=QFile::decodeName(path);g_free(path);resolved[i]=QDir::isAbsolutePath(paths[i]);}
+  char* path=g_file_get_path(file);
+  // Recent and Starred items have no path of their own, only a target URI.
+  if(!path)if(GFileInfo* info=g_file_query_info(file,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI,G_FILE_QUERY_INFO_NONE,nullptr,nullptr)){
+   if(const char* target=g_file_info_get_attribute_string(info,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI)){GFile* resolvedFile=g_file_new_for_uri(target);path=g_file_get_path(resolvedFile);g_object_unref(resolvedFile);}
+   g_object_unref(info);
+  }
+  if(path){paths[i]=QFile::decodeName(path);g_free(path);resolved[i]=QDir::isAbsolutePath(paths[i]);}
   g_object_unref(file);
  }
  if(!remote.isEmpty()&&gioInfo){

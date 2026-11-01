@@ -217,7 +217,7 @@ screen recordings. put.gd uploads them to your own S3-compatible bucket or to
 Proton Drive and puts the public link on the clipboard. It runs on GNOME, KDE
 Plasma and Cinnamon, on Wayland and X11.
 
-\"Upload with put.gd\" in the file manager's right-click menu uploads the
+Upload with put.gd, in the file manager's right-click menu, uploads the
 selected files and folders. Files (Nautilus), Caja and Peony show it after
 they restart.
 
