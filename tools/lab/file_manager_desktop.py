@@ -14,6 +14,7 @@ outlives `down`. Run on the builder, one desktop per builder.
   file_manager_desktop.py verify NAME
   file_manager_desktop.py sh NAME < script
   file_manager_desktop.py down NAME
+  file_manager_desktop.py objects NAME [--delete]
 """
 import argparse
 import hashlib
@@ -59,11 +60,16 @@ DESKTOPS = {
     # never puts WAYLAND_DISPLAY in cosmic-session's own environment, so read a child's.
     'cosmic': dict(profile='cosmic-wayland', packages='cosmic-session wl-clipboard wayland-utils firefox gnome-keyring', session='cosmic',
                    dnf=True, env_process='cosmic-panel'),
+    # Kubuntu 24.04's Plasma 5.27 on the Ubuntu 24.04 golden, which has the lab's login (the bare cloud
+    # image has neither user nor key). Nautilus and DING would change put.gd's first-run notice.
+    'plasma5': dict(profile='plasma5-x11', session='plasma',
+                    purge='nautilus nautilus-data gnome-shell-extension-desktop-icons-ng gnome-shell ubuntu-desktop ubuntu-desktop-minimal',
+                    packages='kde-plasma-desktop plasma-workspace plasma-desktop kwin-x11 dolphin konsole kio kio-extras breeze breeze-icon-theme kde-cli-tools systemsettings'),
     # Ubuntu 24.04's own desktop, Nautilus and DING are already in the golden.
     'gnome': dict(profile='gnome-x11', preinstalled=True),
 }
 FILE_MANAGERS = dict(xfce='thunar', mate='caja', lxqt='pcmanfm-qt', lxde='pcmanfm', budgie='nemo', ukui='peony',
-                     pantheon='io.elementary.files', cosmic='cosmic-files', gnome='nautilus')
+                     pantheon='io.elementary.files', cosmic='cosmic-files', gnome='nautilus', plasma5='dolphin')
 
 
 def run_path(name):
@@ -161,6 +167,9 @@ sudo -n systemctl stop apt-daily.service apt-daily-upgrade.service 2>/dev/null |
 '''
     if spec.get('preinstalled'):
         return prepare+'''sudo -n -E apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends xclip >/dev/null
+'''
+    if spec.get('purge'):
+        prepare += f'''sudo -n -E apt-get -o DPkg::Lock::Timeout=600 purge -y {spec['purge']} >/dev/null
 '''
     return prepare+f'''echo lightdm shared/default-x-display-manager select lightdm | sudo -n debconf-set-selections
 sudo -n -E apt-get -o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confnew install -y --no-install-recommends {UBUNTU_GREETER} xserver-xorg xclip dbus-x11 gnome-keyring firefox {spec['packages']} >/dev/null
@@ -349,7 +358,8 @@ def s3(args):
     old = call(name, 'settings.get')
     call(name, 'settings.patch', {'patch': {'profiles': [profile]}, 'expectedRevision': old['metadata']['acceptedRevision']})
     call(name, 'ui.quit')
-    record(name, prefix=prefix, reference=reference)
+    known = json.loads((run/'fm.json').read_text()).get('prefixes', [])
+    record(name, prefix=prefix, prefixes=known+[prefix], reference=reference)
     print(json.dumps(dict(s3='configured', prefix=prefix)))
 
 
@@ -487,6 +497,34 @@ def down(args):
     print('down')
 
 
+def objects(args):
+    """What every prefix of this run left in the bucket, from the run or its evidence once down.
+    Credentials stay in this process; only keys and counts are printed."""
+    import boto3
+    live = run_path(args.run)/'fm.json'
+    value = json.loads((live if live.exists() else Path.home()/'fm-evidence'/args.run/'fm.json').read_text())
+    selected = key_set_two(bridge.read_private_credentials(Path.home()/'Documents/creds.txt'))
+    keys, settings = selected['credentials'], selected['settings']
+    region = settings['region']
+    client = boto3.client('s3', region_name=region, endpoint_url='https://s3.'+region+'.amazonaws.com',
+                          aws_access_key_id=keys['accessKey'], aws_secret_access_key=keys['secretKey'])
+    prefixes = value.get('prefixes') or ([value['prefix']] if value.get('prefix') else [])
+    left, removed = [], []
+    for prefix in prefixes:
+        if not re.fullmatch(r'acceptance/i1105/[\w-]+/[0-9a-f]{32}/', prefix):
+            raise SystemExit('not this tool\'s prefix: '+prefix)
+        found = []
+        for page in client.get_paginator('list_objects_v2').paginate(Bucket=settings['bucket'], Prefix=prefix):
+            found += [item['Key'] for item in page.get('Contents', [])]
+        for key in found:
+            if args.delete:
+                client.delete_object(Bucket=settings['bucket'], Key=key)
+                removed.append(key)
+            else:
+                left.append(key)
+    print(json.dumps(dict(prefixes=prefixes, left=left, deleted=removed)))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='action', required=True)
@@ -512,8 +550,10 @@ def main():
     p.set_defaults(function=click)
     p = commands.add_parser('verify'); p.add_argument('run'); p.set_defaults(function=verify)
     p = commands.add_parser('down'); p.add_argument('run'); p.set_defaults(function=down)
+    p = commands.add_parser('objects'); p.add_argument('run'); p.add_argument('--delete', action='store_true', help='delete what is left, by exact key')
+    p.set_defaults(function=objects)
     args = parser.parse_args()
-    if args.action != 'up':
+    if args.action not in ('up', 'objects'):
         value = json.loads((run_path(args.run)/'fm.json').read_text())
         Desktop(Path.home()/'putgd-lab/locks', value['host']).extend(value['session'], 45)
     args.function(args)
