@@ -80,6 +80,34 @@ class SelectorMapping(unittest.TestCase):
             with patch.object(probe,'owned',return_value=owned),patch.object(probe,'selector_process',return_value=helper):
                 with self.assertRaisesRegex(RuntimeError,'0 matches'):placement.toplevel(7,'Capture region',[0,0,1280,800])
 
+    def test_native_pointer_cover_can_precede_accessibility_but_never_relaxes_keyboard(self):
+        cover = dict(x=0, y=0, width=1280, height=800, pid=7, override_redirect=True, name='')
+        query = dict(title='.*', selector=True, accessible={'name':'Capture region'})
+        monitor = 'Monitors: 1\n 0: +*Virtual-1 1280/320x800/200+0+0 Virtual-1\n'
+        with patch.dict('os.environ', XDG_SESSION_TYPE='x11'), \
+             patch.object(probe, 'run', return_value=monitor), \
+             patch.object(probe, 'x11_windows', return_value=[cover]), \
+             patch.object(probe, 'accessible', return_value=[]), \
+             patch.object(probe, 'owned', return_value=True), \
+             patch.object(probe, 'native_capture_process', return_value=True):
+            self.assertEqual(probe.geometry(query), cover)
+            for changed in (dict(cover, override_redirect=False), dict(cover, name='foreign'),
+                            dict(cover, width=1), dict(cover, x=20)):
+                with patch.object(probe, 'x11_windows', return_value=[changed]):
+                    with self.assertRaisesRegex(RuntimeError, '0 matches'):probe.geometry(query)
+            for check in ('owned', 'native_capture_process'):
+                with patch.object(probe, check, return_value=False):
+                    with self.assertRaisesRegex(RuntimeError, '0 matches'):probe.geometry(query)
+            with patch.object(probe, 'accessible', return_value=[dict(pid=8, name='Capture region', rect=[0,0,1280,800])]):
+                with self.assertRaisesRegex(RuntimeError, '0 matches'):probe.geometry(query)
+            with patch.object(probe, 'x11_windows', return_value=[cover, dict(cover, pid=8)]):
+                with self.assertRaisesRegex(RuntimeError, '2 matches'):probe.geometry(query)
+            with self.assertRaisesRegex(RuntimeError, '0 matches'):
+                probe.geometry(dict(query, accessible={'name':'Recording region'}))
+        # Empty/stale accessibility cannot authorize a keyboard grab: the
+        # NativeGrab negative cases in test_surface_tray_input stay unchanged.
+
+
 
 class LocalFrames(Base):
     destination='local'
