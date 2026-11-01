@@ -56,10 +56,11 @@ only way into DING's menu.
   once per installation. **Settings → General → File manager → File manager
   menu** turns them off (removing only the files this AppImage wrote) and on
   again; `preferences.fileManagerMenu` holds the switch.
-- **PCManFM and PCManFM-Qt**, with either: they read their entries once, at
-  the first file menu they show, so one that is already running needs a
-  restart. On LXDE and LXQt the notice says so and offers **Restart PCManFM**
-  (or PCManFM-Qt). It closes all of their windows; the desktop comes back.
+- **PCManFM and PCManFM-Qt**, with the DEB, RPM or AppImage: they read their
+  entries once, at the first file menu they show, so one that is already
+  running needs a restart. On LXDE and LXQt the notice says so and offers
+  **Restart PCManFM** (or PCManFM-Qt). It closes all of their windows; the
+  desktop comes back.
 
 Per-user files:
 
