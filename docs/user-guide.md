@@ -21,7 +21,7 @@ Local image results copy image MIME, text results copy text, and file results us
 
 ## Upload from your file manager
 
-Right-click files or folders in your file manager and choose **Upload with put.gd** (in Thunar it is under **Send To**; with the AppImage, Files and Caja list it under **Scripts**). They upload to your capture destination right away and the link is copied, as for a capture. Folders upload as one `.zip` by default; **Settings → General → File manager → Folders** can upload each file instead. The AppImage's entries switch off under **File manager menu**. After installing the DEB or RPM, Files, Caja and Peony show the entry after a restart; put.gd's first notice offers one. See [file-manager-upload.md](file-manager-upload.md).
+Right-click files or folders in your file manager and choose **Upload with put.gd** (in Thunar it is under **Send To**; with the AppImage, Files and Caja list it under **Scripts**). They upload right away to your capture destination (or your only destination; with neither, Settings opens on Destinations), shared and copied as a capture is. Folders upload as one `.zip` by default; **Settings → General → File manager → Folders** can upload each file instead. The AppImage's entries switch off under **File manager menu**. After installing the DEB or RPM, Files, Caja and Peony show the entry after a restart; put.gd's first notice offers one. See [file-manager-upload.md](file-manager-upload.md).
 
 ## Edit before uploading
 

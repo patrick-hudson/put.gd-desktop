@@ -1,9 +1,11 @@
 # Upload with put.gd from a file manager
 
 Right-click one or more files or folders in a file manager and choose
-**Upload with put.gd**. They upload to the default destination right away,
-the link is copied, and the usual finished or failure notification appears,
-exactly as for a capture (#1105). History manages the uploads afterwards.
+**Upload with put.gd**. They upload to the default destination right away
+and are shared and copied exactly as a capture is (#1105): with a share link,
+the link is copied; a private upload makes no link and leaves the clipboard
+alone. The usual finished or failure notification appears unless **Show
+desktop notifications** is off. History manages the uploads afterwards.
 There is no confirmation step and no extra "uploading" notice.
 
 The design, its council review and the decisions behind it are in
@@ -153,8 +155,11 @@ capture.
   depending on whether its first MiB compresses, and every source file is
   read once. Archives always use ZIP64, so folders over 4 GiB or with more
   than 65,535 entries work, and memory stays at a few MiB whatever the size.
-  The size limits check the folder's total uncompressed size, so a folder
-  whose zip would fit can still be refused. Free disk must hold the archive
+  Before anything is written, the size limits check the most the folder's
+  archive could take (its files' total plus zip overhead), so a folder whose
+  zip would fit can still be refused. A folder or file whose name contains a
+  backslash or isn't valid UTF-8 is refused by name: a zip can't carry it
+  portably. Free disk must hold the archive
   plus a temporary copy of its central directory. If a file grows while it is
   zipped past the size it was checked against, the upload fails, names the
   file and asks you to try again.
