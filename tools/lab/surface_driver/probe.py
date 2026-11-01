@@ -1607,12 +1607,28 @@ def x11_unmanaged_foreground(query):
 
 
 def native_capture_process(pid):
+    """Bind an owned native selector to installed or verified AppImage bytes."""
+    import hashlib
     import shutil
+    from pathlib import Path
+    if not owned(pid):
+        return False
     try:
         expected = shutil.which('putgd-capture')
-        return bool(expected) and os.path.samefile('/proc/'+str(pid)+'/exe',expected)
+        if expected and os.path.samefile('/proc/'+str(pid)+'/exe',expected):
+            return True
     except OSError:
-        return False
+        pass
+    # The AppImage mount and the installer's hash-verified extracted copy
+    # have different inodes. Require the helper's bytes, never its name.
+    bundled = Path.home()/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-capture'
+    try:
+        if bundled.is_file() and not bundled.is_symlink():
+            with bundled.open('rb') as expected, open('/proc/'+str(pid)+'/exe', 'rb') as actual:
+                return hashlib.file_digest(expected, 'sha256').digest() == hashlib.file_digest(actual, 'sha256').digest()
+    except OSError:
+        pass
+    return False
 
 
 def selector_process(pid):

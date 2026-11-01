@@ -20,6 +20,30 @@ from tests.desktop.test_surface_live_evidence import Base
 
 
 class SelectorMapping(unittest.TestCase):
+    def test_native_appimage_capture_matches_verified_bytes_without_path_entry(self):
+        """An owned mounted helper matches its independently extracted copy."""
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-capture'
+            binary.parent.mkdir(parents=True);binary.write_bytes(b'synthetic trusted capture binary')
+            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=None), \
+                 patch.object(probe,'owned',return_value=True), \
+                 patch('builtins.open',return_value=io.BytesIO(binary.read_bytes())):
+                self.assertTrue(probe.native_capture_process(7))
+
+    def test_native_appimage_capture_rejects_lookalike_and_unowned_binary(self):
+        """A matching name, foreign bytes or an unowned copy cannot authorize input."""
+        with tempfile.TemporaryDirectory() as td:
+            home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-capture'
+            binary.parent.mkdir(parents=True);binary.write_bytes(b'synthetic trusted capture binary')
+            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=str(binary)), \
+                 patch('os.path.samefile',return_value=False):
+                for data,owned in ((b'lookalike putgd-capture binary',True),(binary.read_bytes(),False)):
+                    with self.subTest(owned=owned),patch.object(probe,'owned',return_value=owned), \
+                         patch('builtins.open',return_value=io.BytesIO(data)):
+                        self.assertFalse(probe.native_capture_process(7))
+                with patch.object(probe,'owned',return_value=False),patch('os.path.samefile',return_value=True):
+                    self.assertFalse(probe.native_capture_process(7))
+
     def test_appimage_helper_needs_the_verified_extracted_binary_bytes(self):
         with tempfile.TemporaryDirectory() as td:
             home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-kde-region'
