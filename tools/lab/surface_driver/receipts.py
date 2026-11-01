@@ -10,13 +10,11 @@ from .redact import Redactor, Sensitive, scan_run, save_frame
 
 
 class Evidence:
-    """One run's in-memory salt, masking provenance and safe persistence sinks."""
-    def __init__(self, out, *, require_ocr=False, local=False):
+    """One run's in-memory salt, frame hashes and safe persistence sinks."""
+    def __init__(self, out):
         self.out = Path(out)
         self.redactor = Redactor()
         self.frames = {}
-        self.require_ocr = require_ocr
-        self.audit_images = not local
         self.failed_scan = None
 
     def command(self, kind, result):
@@ -30,24 +28,18 @@ class Evidence:
         with (self.out/'commands.jsonl').open('a') as stream:
             stream.write(json.dumps(self.redactor.safe(event))+'\n')
 
-    def frame(self, image, path, regions, *, crop=None, fallback=False, annotations=None):
+    def frame(self, image, path, *, crop=None):
         path = Path(path)
-        # A frame is registered only after the first (already redacted) write.
         self.out.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.out.chmod(0o700)
-        metadata = save_frame(image, path, regions, crop=crop, fallback=fallback, literals=self.redactor.audit_literals,
-                              hosts=self.redactor.link_hosts, audit_images=self.audit_images)
-        metadata.update(annotations or {})
+        metadata = save_frame(image, path, crop=crop)
         self.frames[str(path.relative_to(self.out))] = metadata
         write_json(self.out/'frame-masks.json', {'frames': self.frames}, redactor=self.redactor)
         return metadata
 
     def scan(self):
         result = scan_run(self.out, frames=self.frames, literals=self.redactor.audit_literals,
-                          require_ocr=self.require_ocr, quarantine=True, hosts=self.redactor.link_hosts, audit_images=self.audit_images)
-        if any(v.get('guard') == 'ocr-unavailable-fully-masked' for v in self.frames.values()):
-            result['passed'] = False
-            result['findings'].append({'kind': 'frame-ocr-unavailable', 'blocked': 'tesseract is required before saving visible pixels'})
+                          quarantine=True, hosts=self.redactor.link_hosts)
         if not result['passed']:
             if self.failed_scan:
                 result['findings'] = self.failed_scan['findings'] + result['findings']

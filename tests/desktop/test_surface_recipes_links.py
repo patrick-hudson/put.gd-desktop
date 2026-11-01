@@ -124,7 +124,7 @@ class BrowserContracts(unittest.TestCase):
             browser._failure_frame(self.context, {}, {}, frames)
         remote.assert_not_called()  # about:blank would discard the recipient.
         self.assertEqual(len(frames), 1)
-        self.assertIn(('frame', 'browser-failure-fully-masked', None), self.context.events)
+        self.assertIn(('frame', 'browser-failure-live', None), self.context.events)
         self.assertEqual(self.context.declarations, [None])  # Full live mask.
 
     def test_trigger_exception_restores_and_saves_safe_failure(self):
@@ -136,9 +136,6 @@ class BrowserContracts(unittest.TestCase):
                     browser.open_and_verify(self.context, fail, self.context.upload['expect'])
         self.assertEqual(sum(event == ('remote', 'blank') for event in self.context.events), 2)
         self.assertIn(('frame', 'browser-failure-safe-desktop', None), self.context.events)
-        # Live evidence keeps a full-desktop frame only with the kiosk declaration.
-        from tools.lab.surface_driver.browser import KIOSK_SAFE
-        self.assertEqual(set(self.context.declarations), {KIOSK_SAFE})
         self.assertIn(('remote', 'restore'), self.context.events)
 
     def test_failure_frame_withheld_when_another_browser_owns_foreground(self):

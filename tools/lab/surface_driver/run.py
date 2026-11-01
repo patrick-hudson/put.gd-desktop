@@ -35,7 +35,7 @@ from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.critical import armed, critical, entry
 from tools.lab.surface_driver.profiles import load_profile
 from tools.lab.surface_driver.receipts import Evidence, stamp, write_receipts, write_json, fail_coverage
-from tools.lab.surface_driver.redact import scan_run, detected, require_host_ocr
+from tools.lab.surface_driver.redact import scan_run, detected
 from tools.lab.surface_driver.target import Target
 from tools.lab import lab
 
@@ -601,7 +601,7 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
             result['invalidated_coverage_rows'] = fail_coverage(coverage, [row.to_json() for row in rows], redactor=evidence.redactor)
     write_receipts(out, environment, rows, campaign, local, evidence=evidence, scan=result)
     final = scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
-                     hosts=evidence.redactor.link_hosts, quarantine=True, audit_images=evidence.audit_images)
+                     hosts=evidence.redactor.link_hosts, quarantine=True)
     if not final['passed']:
         # The rewritten receipt itself carried a value. Replace both with
         # constant failure stubs (no run data) and scan those final bytes.
@@ -612,7 +612,7 @@ def finish_evidence(evidence, out, environment, rows, campaign, coverage):
             (out/name).write_text(json.dumps(value, indent=2)+'\n')
             (out/name).chmod(0o600)
         scan_run(out, paths=('receipt.json', 'coverage.json'), literals=evidence.redactor.audit_literals,
-                 hosts=evidence.redactor.link_hosts, audit_images=evidence.audit_images)
+                 hosts=evidence.redactor.link_hosts)
         evidence.failed_scan = result = stub
         for row in rows:
             row.functional = 'failed'
@@ -641,7 +641,7 @@ def export_coverage(evidence, out, rows, campaign, destination):
     own, merged = out/'coverage-export.json', out/'.coverage-merged.json'
     write_json(own, {'schemaVersion': SCHEMA_VERSION, 'campaign': campaign, 'entries': entries}, redactor=redactor)
     audit = lambda name, **kw: scan_run(out, paths=(name,), literals=redactor.audit_literals,
-                                        hosts=redactor.link_hosts, audit_images=evidence.audit_images, **kw)
+                                        hosts=redactor.link_hosts, **kw)
     scan = audit(own.name, quarantine=True)
     if not scan['passed']:
         return refuse([dict(f, kind='coverage-export-'+f['kind']) for f in scan['findings']], scan['quarantine'])
@@ -734,7 +734,7 @@ def main(argv=None):
     rows=[]
     recipes=[]
     exit_code=2
-    evidence=Evidence(args.out, require_ocr=args.destination!='local', local=args.destination=='local')
+    evidence=Evidence(args.out)
     try:
         profile=load_profile(args.desktop,args.profiles)
         recipes=discover(args.recipes);validate_recipes(recipes)
@@ -791,7 +791,7 @@ def main(argv=None):
         if target and authorized:
             try:
                 image=target.capture_image()
-                evidence.frame(image,args.out/'startup-failed.png',[[0,0,image.width,image.height]],fallback=True)
+                evidence.frame(image,args.out/'startup-failed.png')
                 environment['failure_frames']=['startup-failed.png']
             except Exception:
                 environment['failure_frames_unavailable']=True

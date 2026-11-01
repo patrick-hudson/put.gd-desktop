@@ -104,13 +104,6 @@ class FakeTarget:
 
 class Running(unittest.TestCase):
     def setUp(self):
-        self.ocr_patch = patch('tools.lab.surface_driver.redact.ocr_text', return_value='')
-        self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
-        self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
-        self.which_patch.start(); self.addCleanup(self.which_patch.stop)
-        # The real self-test needs tesseract; LiveEvidence tests cover it directly.
-        self.selftest_patch = patch('tools.lab.surface_driver.redact.ocr_self_test', return_value=True)
-        self.selftest_patch.start(); self.addCleanup(self.selftest_patch.stop)
         self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
         profile=load_profile(self.env['desktop'])
@@ -275,8 +268,8 @@ class Running(unittest.TestCase):
         write_catalog(self.path)
         pin = pinned(self.path); pin.start(); self.addCleanup(pin.stop)
         self.assertEqual(runner.secret_safe_evidence_blockers('boat', self.path, 'abcdef012345'), [])
-        failures = ((redact.shutil, 'which'), (receipts, 'Redactor'), (receipts, 'save_frame'),
-                    (receipts, 'scan_run'), (redact, 'ocr_text'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
+        failures = ((receipts, 'Redactor'), (receipts, 'save_frame'),
+                    (receipts, 'scan_run'), (runner, 'finish_evidence'), (runner, 'run_recipes'), (context, 'Evidence'))
         for destination in ('s3','b2','proton'):
             for module, name in failures:
                 with self.subTest(destination=destination, missing=name):
@@ -323,15 +316,6 @@ class Running(unittest.TestCase):
                 self.assertTrue(receipt['secret_scan']['passed'])
                 self.assertEqual(receipt['environment']['shell_health'],{'process':'cinnamon','pid':5,'start':1,'cores_readable':True})
 
-    @unittest.skipUnless(Image,'requires python3-pil')
-    def test_live_gate_refuses_a_present_but_nonworking_ocr_executable(self):
-        from tools.lab.surface_driver import run as runner, redact
-        self.ocr_patch.stop();self.selftest_patch.stop()
-        with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],1,b'',b'')):
-            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef012345'))
-        # Exits 0 but reads nothing: still refused (blind OCR).
-        with patch.object(redact.subprocess,'run',return_value=subprocess.CompletedProcess([],0,b'',b'')):
-            self.assertIn('ocr-self-test-failed',runner.secret_safe_evidence_blockers('boat',write_catalog(self.path),'abcdef012345'))
 
     @unittest.skipUnless(Image,'requires python3-pil')
     def test_main_checks_identity_and_configures_local_output(self):
@@ -653,7 +637,8 @@ class InputFoundations(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed,'Other client'):
             self.ctx.keys('T','R')
         self.assertEqual(sent,[['t']])
-        self.assertEqual(len(probes),2)
+        # One check per chord, then three more after clearing the screen.
+        self.assertEqual(sum('geometry' in query for query in probes),5)
 
     def test_held_keys_release_on_exception(self):
         self.ctx._probe=lambda *a:{'ok':True}

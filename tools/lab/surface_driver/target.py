@@ -122,7 +122,8 @@ namespace['VERIFIED_HELPER_SHA256'] = HELPER_DIGESTS
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
              'foreground':'foreground', 'windows':'windows', 'tray':'tray', 'layout':'layout',
              'notification_read':'notification_read', 'server_pid':'server_pid', 'resize':'resize_witness',
-             'shell_state':'shell_state', 'compositor_windows':'compositor_windows_probe'}
+             'shell_state':'shell_state', 'compositor_windows':'compositor_windows_probe',
+             'clear_screen':'clear_screen'}
 while True:
     line = sys.stdin.buffer.readline(1024 * 1024 + 1)
     if not line:
@@ -740,11 +741,8 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
                     client.close()
 
     def screenshot(self, path, head=0):
-        # Legacy direct callers have no sensitivity geometry: fail closed with
-        # a full mask. DriverContext uses capture_image and registers its masks.
         from .redact import save_frame
-        image = self.capture_image(head)
-        return save_frame(image, path, [(0,0,image.width,image.height)], fallback=True)
+        return save_frame(self.capture_image(head), path)
 
     @desktop_transport
     def scroll_vnc(self, x, y, clicks):

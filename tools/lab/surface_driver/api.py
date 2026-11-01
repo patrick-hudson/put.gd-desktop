@@ -421,14 +421,8 @@ class Context:
         raise NotImplementedError
 
     # Evidence and verdicts
-    def frame(self, label: str, window: Optional[str] = None, reference: Optional[str] = None, *,
-              desktop_safe: Optional[str] = None) -> Frame:
-        """Save a frame. With `reference`, the runner compares it with that catalog capture.
-
-        Live destinations (and local runs once a link was seen) keep only the
-        owned `window`'s pixels; a desktop frame is fully masked unless
-        `desktop_safe` states why everything on the desktop is safe to keep.
-        """
+    def frame(self, label: str, window: Optional[str] = None, reference: Optional[str] = None) -> Frame:
+        """Save a frame. With `reference`, the runner compares it with that catalog capture."""
         raise NotImplementedError
 
     def sensitive(self, value: Any) -> Any:
@@ -444,14 +438,6 @@ class Context:
         host/path into notes or messages; the runner redacts link-shaped text
         by pattern as a backstop, but registered values are the contract.
         """
-        raise NotImplementedError
-
-    def sensitive_region(self, region: Iterable[float], *, head: int = 0) -> None:
-        """Persistently guard a framebuffer x/y/width/height before exposing a secret."""
-        raise NotImplementedError
-
-    def sensitive_control(self, control: str, window: str) -> None:
-        """Persistently guard a catalog control with current live/AT-SPI geometry."""
         raise NotImplementedError
 
     def expect(self, condition: Any, what: str) -> None:

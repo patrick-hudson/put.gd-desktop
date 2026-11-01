@@ -30,8 +30,6 @@ FIXTURE_TITLE = 'put.gd independent synthetic paint / paste fixture'
 
 
 def _frame(ctx, label, **options):
-    if ctx.destination == 'local' and ctx.placement in ('boat', 'guest') and ctx.profile.get('guest'):
-        options['desktop_safe'] = 'Disposable guest; only synthetic fixture content and loopback publications; no live account or credentials'
     return ctx.frame(label, **options)
 
 

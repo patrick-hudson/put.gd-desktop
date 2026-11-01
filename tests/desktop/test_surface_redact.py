@@ -55,10 +55,6 @@ class MemoryTarget:
 
 class Secrets(unittest.TestCase):
     def setUp(self):
-        self.ocr_patch = patch('tools.lab.surface_driver.redact.ocr_text', return_value='')
-        self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
-        self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
-        self.which_patch.start(); self.addCleanup(self.which_patch.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.path = Path(self.temp.name)
         self.catalog = self.path/'catalog'; self.catalog.mkdir()
@@ -150,14 +146,14 @@ class Secrets(unittest.TestCase):
         self.assertNotIn('☃', self.ctx.evidence.redactor.exception(error.exception))
         self.out.mkdir()
         (self.out/'outside').symlink_to(self.catalog, target_is_directory=True)
-        self.assertFalse(scan_run(self.out, ocr='')['passed'])
+        self.assertFalse(scan_run(self.out)['passed'])
 
     def test_sanitized_session_derivatives_pass_but_proton_password_fails(self):
         self.out.mkdir()
         write_json(self.out/'safe.json', {'accessToken': Sensitive(SESSION), 'sessionId': None})
         self.assertTrue(scan_run(self.out)['passed'])
         (self.out/'leak.log').write_text('userKeyPassword: '+SESSION)
-        self.assertFalse(scan_run(self.out, ocr='')['passed'])
+        self.assertFalse(scan_run(self.out)['passed'])
 
     def test_explicit_distinctive_secret_is_audited_only_in_memory(self):
         self.ctx.sensitive(SESSION)
@@ -173,10 +169,7 @@ class Secrets(unittest.TestCase):
     def test_mcp_link_and_explicit_url_paths_activate_frame_guard(self):
         self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': json.dumps({'link': LINK}), 'stderr': ''}
         self.ctx.mcp('synthetic_session')
-        self.assertTrue(self.ctx._sensitive_seen)
-        self.ctx._sensitive_seen = False
         self.ctx.url_evidence('synthetic-opaque-url-input')
-        self.assertTrue(self.ctx._sensitive_seen)
 
     def test_log_call_shell_clipboard_mcp_notes_receipts_and_exceptions(self):
         ctx = self.ctx
@@ -226,7 +219,6 @@ class Secrets(unittest.TestCase):
         reply = json.dumps({'ok': True, 'result': {'alive': True, 'text': raw}})
         self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': reply, 'stderr': ''}
         self.assertEqual(self.ctx.notifications()[0]['body'], body)
-        self.assertTrue(self.ctx._sensitive_seen)
         self.ctx.note('notification body '+SESSION)
         self.assertNotIn(SESSION, '\n'.join(self.ctx.notes))
         self.assert_safe(self.out)
@@ -254,91 +246,15 @@ class Secrets(unittest.TestCase):
         self.assert_safe(self.out)
         self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
 
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_masks_before_first_write_and_strips_png_metadata(self):
-        self.live()
-        image = Image.new('RGB', (120, 80), 'white')
-        image.info['secret'] = LINK
-        original = Image.Image.save
-        writes = []
-        def checked_save(im, path, *args, **kwargs):
-            # All encoding is to memory, and pixels are already masked then.
-            self.assertIsInstance(path, io.BytesIO)
-            self.assertEqual(im.getpixel((115, 5)), (0, 0, 0))  # profile notification area
-            self.assertEqual(im.getpixel((35, 35)), (0, 0, 0))
-            writes.append(True)
-            return original(im, path, *args, **kwargs)
-        self.ctx.target.capture_image = lambda head=0: image
-        self.ctx._probe = FakeDesktop()
-        self.ctx.sensitive_region([30, 30, 40, 20])
-        with patch.object(Image.Image, 'save', checked_save):
-            full = self.ctx.frame('full', desktop_safe='synthetic fixture desktop')
-        self.assertTrue(writes)
-        self.ctx.geometry = lambda role: {'x': 20, 'y': 20, 'width': 80, 'height': 50, 'scale': 1, 'window_id': '10'}
-        self.ctx._captures['history'] = '01-history-list'
-        cropped = self.ctx.frame('window', window='history')
-        with Image.open(self.out/full.path) as saved:
-            self.assertEqual(saved.getpixel((100, 60)), (255, 255, 255))
-            self.assertEqual(saved.info, {})
-        with Image.open(self.out/cropped.path) as saved:
-            self.assertEqual(saved.size, (80, 50))
-            self.assertEqual(saved.getpixel((15, 15)), (0, 0, 0))
-        self.assertTrue(scan_run(self.out)['passed'])
-        self.assertFalse(list(self.out.glob('*.ppm')))
 
     @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_live_catalog_geometry_masks_link_with_hidpi_and_head_origin(self):
-        self.live()
-        inventory = {'width': 100, 'height': 50, 'controls': [{'name': 'historyLink', 'class': 'QLineEdit', 'rect': [5, 5, 20, 5]}]}
-        (self.catalog/'history.controls.json').write_text(json.dumps(inventory))
-        self.ctx.catalog = Catalog(self.catalog, {})
-        self.ctx.target.capture_image = lambda head=0: Image.new('RGB', (240, 160), 'white')
-        self.ctx.geometry = lambda role: {'x': -100, 'y': 0, 'width': 120, 'height': 80, 'scale': 2, 'screen_x': -100,
-                                          'window_id': '10', 'pid': 7}
-        # The secret control's live accessible geometry, not a catalog estimate.
-        self.ctx._probe = FakeDesktop([owned_window((-100, 0, 120, 80))], [control('historyLink', [-85, 15, 20, 5])])
-        frame = self.ctx.frame('catalog', window='history')
-        with Image.open(self.out/frame.path) as image:
-            self.assertEqual(image.getpixel((35, 35)), (0, 0, 0))
-            self.assertEqual(image.getpixel((100, 60)), (255, 255, 255))
-
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_missing_geometry_fails_closed_and_dimensions_do_not_save_raw_frame(self):
-        self.live()
-        self.ctx.profile.pop('evidence')
-        self.ctx.sensitive(LINK)
-        self.assertEqual(self.ctx._dimensions(), (120, 80))
-        self.assertFalse(self.out.exists())
-        frame = self.ctx.frame('fallback')
-        with Image.open(self.out/frame.path) as image:
-            self.assertEqual(image.getbbox(), None)
-        self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
-
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_desktop_frames_need_a_declaration_and_known_geometry(self):
-        self.live()
-        self.ctx.sensitive(LINK)
-        frame = self.ctx.frame('undeclared')
-        self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
-        self.assertEqual(self.ctx.evidence.frames[frame.path]['policy'], 'live-desktop-masked')
-        def unknown(name, query):
-            raise RecipeBlocked('no compositor witness')
-        self.ctx._probe = unknown
-        frame = self.ctx.frame('declared-unknown-layout', desktop_safe='synthetic')
-        self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
-        self.ctx._probe = FakeDesktop()
-        self.ctx.profile['evidence'].pop('notification_areas')
-        frame = self.ctx.frame('declared-no-notification-areas', desktop_safe='synthetic')
-        self.assertTrue(self.ctx.evidence.frames[frame.path]['fallback'])
-
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_scan_catches_planted_json_logs_png_metadata_ocr_and_missing_masks(self):
+    def test_scan_catches_planted_json_logs_png_metadata_and_changed_frames(self):
         self.out.mkdir()
         for filename, content, kind in [('leak.json', json.dumps({'url': LINK}).replace('/', '\\/'), 'url'),
             ('leak.log', AWS_KEY, 'aws-key'), ('session.log', 'X-PM-UID: '+SESSION, 'session-or-authorization')]:
             with self.subTest(filename=filename):
                 path = self.out/filename; path.write_text(content)
-                result = scan_run(self.out, ocr='')
+                result = scan_run(self.out)
                 self.assertFalse(result['passed'])
                 self.assertIn(kind, {finding['kind'] for finding in result['findings']})
                 self.assertNotIn(SESSION, json.dumps(result))
@@ -346,17 +262,12 @@ class Secrets(unittest.TestCase):
         meta = PngImagePlugin.PngInfo(); meta.add_text('comment', LINK)
         path = self.out/'planted.png'
         Image.new('RGB', (10, 10), 'white').save(path, pnginfo=meta)
-        self.assertFalse(scan_run(self.out, ocr='')['passed'])
+        self.assertFalse(scan_run(self.out)['passed'])
         path.unlink()
-        self.ctx.evidence.frame(Image.new('RGB', (10, 10), 'white'), path, [[0, 0, 5, 5]])
-        self.ocr_patch.stop()
-        redact._OCR_CACHE.clear()
-        with patch('tools.lab.surface_driver.redact.subprocess.run', return_value=subprocess.CompletedProcess([], 0, LINK.encode(), b'')) as ocr:
-            result = scan_run(self.out, ocr='tesseract')
-        self.assertEqual(ocr.call_args.kwargs['env']['OMP_THREAD_LIMIT'], '1')
-        self.assertIn('png-text-url', {row['kind'] for row in result['findings']})
-        Image.new('RGB', (10, 10), 'white').save(path)
-        self.assertFalse(scan_run(self.out, ocr='')['passed'])
+        self.ctx.evidence.frame(Image.new('RGB', (10, 10), 'white'), path)
+        self.assertTrue(scan_run(self.out, frames=self.ctx.evidence.frames)['passed'])
+        Image.new('RGB', (10, 10), 'black').save(path)
+        self.assertFalse(scan_run(self.out, frames=self.ctx.evidence.frames)['passed'])
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_planted_leak_fails_run_receipt_coverage_and_cli(self):
@@ -396,7 +307,7 @@ class Secrets(unittest.TestCase):
             target.screenshot(self.path/'legacy.png')
         client.close.assert_called()
         with Image.open(self.path/'legacy.png') as image:
-            self.assertIsNone(image.getbbox())
+            self.assertIsNotNone(image.getbbox())
 
 
 if __name__ == '__main__':

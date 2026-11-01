@@ -262,13 +262,22 @@ def _region_upload(ctx):
                     raise
 
 
+def _live_flow(ctx):
+    try:
+        _region_upload(ctx)
+    except BaseException:
+        outcomes.note_app_error_banners(ctx)
+        raise
+    outcomes.no_app_error_banner(ctx)
+
+
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',
         'history.delete-remote', 'confirm.history-delete', destinations=('s3',), desktop_drawn=True, timeout=720)
 def s3_region_upload(ctx):
-    _region_upload(ctx)
+    _live_flow(ctx)
 
 
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',
         'history.proton-sharing', 'confirm.revoke-link', destinations=('proton',), desktop_drawn=True, timeout=720)
 def proton_region_upload(ctx):
-    _region_upload(ctx)
+    _live_flow(ctx)

@@ -532,8 +532,6 @@ print(json.dumps(value))
 def _enter_credentials(ctx):
     fixture, profiles = _open(ctx)
     values = _synthetic_credentials(ctx, fixture)
-    for control in ('credentialAccessKey', 'credentialSecretKey', 'credentialSessionToken'):
-        ctx.sensitive_control(control, 'destinations')
     ctx.use_catalog('destinations', '09-stored-credential-hint')
     for control, key in (('credentialAccessKey', 'accessKey'), ('credentialSecretKey', 'secretKey'),
                          ('credentialSessionToken', 'sessionToken')):
@@ -580,7 +578,6 @@ def store_credentials(ctx):
 @_failure_frame
 def show_secret(ctx):
     _open(ctx, saved_credentials=True)
-    ctx.sensitive_control('credentialSecretKey', 'destinations')
     ctx.use_catalog('destinations', '09-stored-credential-hint')
     _click(ctx, 'text:Show secret access key')
     ctx.wait(lambda: ctx.accessible({'owned': True, 'name': 'Hide secret access key',

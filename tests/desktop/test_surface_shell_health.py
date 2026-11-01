@@ -28,7 +28,7 @@ class FakeTarget:
     def screenshot(self,path,head=0):
         Image.new('RGB',(20,10),'white').save(path)
     def capture_image(self,head=0):
-        # Frames read pixels in memory (redact.save_frame writes them masked).
+        # Frames read pixels in memory.
         return Image.new('RGB',(20,10),'white')
     def cli(self,*args,timeout=60):
         return {'returncode':0,'stdout':'{"ok":true,"result":{"ready":true}}','stderr':''}
@@ -155,11 +155,6 @@ def shell(pid,start=500,windows=(),cores=(),dumping=False):
 
 class ShellCrashDetector(unittest.TestCase):
     def setUp(self):
-        # As the other surface suites: no tesseract here, and a run whose
-        # visible frames had no OCR audit fails its evidence scan by design.
-        for patcher in (patch('tools.lab.surface_driver.redact.ocr_text',return_value=''),
-                        patch('tools.lab.surface_driver.redact.shutil.which',return_value='unit-ocr')):
-            patcher.start();self.addCleanup(patcher.stop)
         self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)
         self.env=dict(desktop='mint-cinnamon-x11',host='boat',placement='boat',guest='cinnamon-x11',package='deb',destination='local',build='abcdef')
         self.ctx=DriverContext(FakeTarget(),self.env,load_profile(self.env['desktop']),self.path,self.path)
