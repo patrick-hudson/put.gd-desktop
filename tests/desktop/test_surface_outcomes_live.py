@@ -215,6 +215,19 @@ class LiveOutcomes(unittest.TestCase):
                         lock.assert_called_once()
                         self.assertEqual(lock.call_args.args[1], host)
 
+    def test_fedora_live_is_the_rpm_guest_on_f44_only(self):
+        for host, package, reason in (('f44', 'rpm', 'synthetic lock denied'),
+                                      ('f44', 'deb', 'requires an approved guest package/profile'),
+                                      ('d69', 'rpm', 'not on an authorized builder')):
+            with self.subTest(host=host, package=package):
+                ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop='fedora-gnome-wayland',
+                                      package=package, target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
+                                      profile={'guest':'fedora-gnome-wayland'}, _live_admitted=True)
+                with patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                     patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')):
+                    with self.assertRaisesRegex(RecipeBlocked, reason):
+                        admit(ctx)
+
     def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
         """Reject unsupported or misidentified AppImages before any lease or credential access."""
         for host, desktop, guest, actual in (
