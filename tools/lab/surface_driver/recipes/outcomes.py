@@ -209,9 +209,9 @@ def _pattern(ctx):
         return current if same else None
     image = ctx.wait(stable, 'frozen independent pattern frame', interval=.5)
     if not pattern_visible(image, scene.rect):
-        ctx.clear_screen(above=ctx.geometry('outcome-pattern').get('window_id'))
-        last[0] = None
-        image = ctx.wait(stable, 'frozen pattern frame after clearing the screen', interval=.5)
+        if ctx._try_clear_screen(above=ctx.geometry('outcome-pattern').get('window_id')):
+            last[0] = None
+            image = ctx.wait(stable, 'frozen pattern frame after clearing the screen', interval=.5)
     if not pattern_visible(image, scene.rect):
         from ..receipts import write_json
         layout = ctx._probe('layout', {'compositor': ctx.profile.get('compositor')})

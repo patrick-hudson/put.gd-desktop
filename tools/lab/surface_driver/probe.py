@@ -14,6 +14,7 @@ import fnmatch
 import json
 import os
 import re
+import contextlib
 import signal
 import subprocess
 import sys
@@ -2073,30 +2074,38 @@ def layout(query):
     return {'windows': rows, 'coordinate_space': 'logical'}
 
 
-def close_notifications():
+def close_notifications(deadline):
     """Close every open banner: post one to learn the newest ID, then close back from it."""
     bus = 'org.freedesktop.Notifications'
     call = ['gdbus', 'call', '--session', '--dest', bus, '--object-path', '/org/freedesktop/Notifications', '--method']
     reply = run(*call, bus+'.Notify', 'put.gd lab', '0', '', 'put.gd lab', 'clearing the screen', '[]', '{}', '1000')
     newest = int(re.search(r'uint32 (\d+)', reply)[1])
     for identity in range(newest, max(0, newest-64), -1):
-        subprocess.run([*call, bus+'.CloseNotification', str(identity)], stdout=subprocess.DEVNULL,
-                       stderr=subprocess.DEVNULL, timeout=5)
+        left = deadline - time.monotonic()
+        if left <= 0:
+            break
+        try:
+            subprocess.run([*call, bus+'.CloseNotification', str(identity)], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=left)
+        except subprocess.TimeoutExpired:
+            break
     return newest
 
 
-def stop_window(row):
-    """Stop a window's process: TERM, then KILL after two seconds."""
-    pid = row['pid']
-    try:
-        os.kill(pid, signal.SIGTERM)
-        deadline = time.monotonic() + 2
-        while time.monotonic() < deadline and process_start(pid):
-            time.sleep(.1)
-        if process_start(pid):
-            os.kill(pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
+def signal_processes(pids, number):
+    for pid in pids:
+        with contextlib.suppress(ProcessLookupError):
+            os.kill(pid, number)
+
+
+def stop_windows(rows, deadline):
+    """Stop these windows' processes: TERM all, wait once, then KILL what's left."""
+    pids = {row['pid'] for row in rows}
+    signal_processes(pids, signal.SIGTERM)
+    deadline = min(deadline, time.monotonic() + 2)
+    while time.monotonic() < deadline and any(process_start(pid) for pid in pids):
+        time.sleep(.1)
+    signal_processes([pid for pid in pids if process_start(pid)], signal.SIGKILL)
 
 
 def clear_screen(query):
@@ -2104,20 +2113,22 @@ def clear_screen(query):
 
     `obscuring` names one window to close and `above` closes every window over
     the named one. Neither closes only banners, so desktop icons and helpers
-    below the test's windows are left alone.
+    below the test's windows are left alone. One deadline bounds the pass: the
+    persistent probe must answer within its reply limit.
     """
-    closed = close_notifications() if query.get('notifications', True) else None
+    deadline = time.monotonic() + 8
+    closed = close_notifications(deadline) if query.get('notifications', True) else None
     rows = layout({'compositor': query.get('compositor')})['windows']
     above = next((row for row in rows if str(row['id']) == str(query.get('above'))), None)
-    stopped = []
+    targets = []
     for row in rows:
         if row['owned'] or not row['pid'] or row['process'] in query.get('shell', []):
             continue
         over = above is not None and (row['stack'] is None or above['stack'] is None or row['stack'] > above['stack'])
         if over or str(row['id']) == str(query.get('obscuring')):
-            stop_window(row)
-            stopped.append({'title': row['title'], 'process': row['process']})
-    return {'newest_notification': closed, 'stopped': stopped}
+            targets.append(row)
+    stop_windows(targets, deadline)
+    return {'newest_notification': closed, 'stopped': [{'title': row['title'], 'process': row['process']} for row in targets]}
 
 
 def windows(query):

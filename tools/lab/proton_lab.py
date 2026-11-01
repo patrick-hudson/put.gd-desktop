@@ -582,16 +582,16 @@ def brokers(directory):
     return endpoint
 
 
-# Quit each resident through its own socket: a surface-driver resident has a
-# private runtime folder that a plain ui.quit can't reach.
+# Quit each resident through its own socket and libraries: a surface-driver
+# resident has a private runtime folder that a plain ui.quit can't reach.
 QUIT_RESIDENTS = r'''for pid in $(pgrep -x -u "$(id -u)" putgd); do
     (
         while IFS= read -r line; do
-            case $line in XDG_RUNTIME_DIR=*|XDG_STATE_HOME=*|XDG_CONFIG_HOME=*|XDG_DATA_HOME=*) export "$line" ;; esac
+            case $line in XDG_RUNTIME_DIR=*|XDG_STATE_HOME=*|XDG_CONFIG_HOME=*|XDG_DATA_HOME=*|LD_LIBRARY_PATH=*) export "$line" ;; esac
         done <<ENVIRONMENT
 $(tr '\0' '\n' </proc/$pid/environ)
 ENVIRONMENT
-        env -u LD_LIBRARY_PATH "$(dirname "$(readlink /proc/$pid/exe)")/putgd-cli" ui.quit >/dev/null 2>&1 || true
+        "$(dirname "$(readlink /proc/$pid/exe)")/putgd-cli" ui.quit >/dev/null 2>&1 || true
     )
 done
 '''

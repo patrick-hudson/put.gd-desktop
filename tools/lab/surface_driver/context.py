@@ -383,7 +383,8 @@ class DriverContext(Context):
         for _ in range(3):
             if witness.get('ok'):
                 break
-            self.clear_screen(obscuring=witness.get('obscuring_window_id'))
+            if not self._try_clear_screen(obscuring=witness.get('obscuring_window_id')):
+                break
             time.sleep(.5)
             witness = self._probe('foreground', query)
         if role.startswith('bar') and self.profile.get('compositor', {}).get('kind') == 'kwin-script':
@@ -806,6 +807,15 @@ asyncio.run(main())
         self.note('cleared screen: banners '+('closed' if notifications else 'kept')+'; windows closed: '+(', '.join(stopped) or 'none'))
         return reply
 
+    def _try_clear_screen(self, **options):
+        """False if clearing failed: the caller keeps its own, more useful verdict."""
+        try:
+            self.clear_screen(**options)
+            return True
+        except RecipeBlocked as error:
+            self.note('screen clearing unavailable: '+str(error))
+            return False
+
     def app_error_banners(self):
         """put.gd's own failure banners this run, as text: never expected in an outcome flow."""
         return [row['summary']+': '+row['body'] for row in self.notifications() if row['hints'].get('urgency') == 2]
@@ -838,12 +848,12 @@ asyncio.run(main())
                               'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
         if not witness.get('ok') and witness.get('obscuring_window_id'):
             # The target may itself be a banner, so only the covering window goes.
-            self.clear_screen(obscuring=witness['obscuring_window_id'], notifications=False)
-            time.sleep(.5)
-            witness = self._probe('foreground', {'desktop_node':node,'point':point,
-                                  'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
-                                  'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
-                                  'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
+            if self._try_clear_screen(obscuring=witness['obscuring_window_id'], notifications=False):
+                time.sleep(.5)
+                witness = self._probe('foreground', {'desktop_node':node,'point':point,
+                                      'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
+                                      'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
+                                      'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
         if not witness.get('ok'):
             raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
 

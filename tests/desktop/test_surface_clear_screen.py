@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
-from tools.lab.surface_driver.api import RecipeFailed
+from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.recipes import outcomes
 
@@ -21,9 +21,9 @@ class ClearScreen(unittest.TestCase):
     def clear(self, **query):
         with patch.object(probe, 'close_notifications', return_value=7) as banners, \
              patch.object(probe, 'layout', return_value={'windows': ROWS}), \
-             patch.object(probe, 'stop_window') as stop:
+             patch.object(probe, 'stop_windows') as stop:
             reply = probe.clear_screen(dict(query, shell=['plasmashell']))
-        return reply, banners, [call.args[0]['id'] for call in stop.call_args_list]
+        return reply, banners, [row['id'] for row in stop.call_args.args[0]]
 
     def test_the_obscuring_window_goes_and_nothing_else(self):
         reply, banners, stopped = self.clear(obscuring=3)
@@ -45,10 +45,24 @@ class ClearScreen(unittest.TestCase):
 
     def test_banners_close_back_from_the_newest_id(self):
         with patch.object(probe, 'run', return_value='(uint32 70,)') as notify, patch.object(probe.subprocess, 'run') as close:
-            self.assertEqual(probe.close_notifications(), 70)
+            self.assertEqual(probe.close_notifications(probe.time.monotonic()+60), 70)
         self.assertIn('org.freedesktop.Notifications.Notify', notify.call_args.args)
         identities = [call.args[0][-1] for call in close.call_args_list]
         self.assertEqual(identities, [str(value) for value in range(70, 6, -1)])
+
+
+class Budget(unittest.TestCase):
+    def test_closing_stops_at_the_deadline(self):
+        with patch.object(probe, 'run', return_value='(uint32 70,)'), patch.object(probe.subprocess, 'run') as close:
+            probe.close_notifications(probe.time.monotonic()-1)
+        close.assert_not_called()
+
+    def test_every_window_gets_term_before_the_one_wait(self):
+        calls = []
+        with patch.object(probe.os, 'kill', side_effect=lambda pid, number: calls.append((pid, number))), \
+             patch.object(probe, 'process_start', return_value=None):
+            probe.stop_windows([{'pid': 1}, {'pid': 2}, {'pid': 1}], probe.time.monotonic()+5)
+        self.assertEqual(sorted(calls), [(1, probe.signal.SIGTERM), (2, probe.signal.SIGTERM)])
 
 
 class Dispatch(unittest.TestCase):
@@ -82,6 +96,13 @@ class Guard(unittest.TestCase):
             self.assertTrue(ctx._guard()['ok'])
         self.assertEqual([query['obscuring'] for name, query in calls if name == 'clear_screen'], [3])
         self.assertIn('cleared screen: banners closed; windows closed: old window (kate)', ctx.notes)
+
+    def test_a_failed_clear_keeps_the_obstruction_verdict(self):
+        ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3}])
+        ctx.clear_screen = lambda **options: (_ for _ in ()).throw(RecipeBlocked('no notification server'))
+        with self.assertRaisesRegex(RecipeFailed, 'stuck'):
+            ctx._guard()
+        self.assertIn('screen clearing unavailable: no notification server', ctx.notes)
 
     def test_a_cover_that_stays_still_fails_and_is_named(self):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3} for _ in range(4)])
