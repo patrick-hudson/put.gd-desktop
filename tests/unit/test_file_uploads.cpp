@@ -201,6 +201,9 @@ private slots:
                                                "type: regular\nuri: smb://srv/share/x\nattributes:\n");
   QCOMPARE(parsed.value(UploadClient::normalizedUri("sftp://host/%C3%A9.txt")),QString("/run/user/1000/gvfs/sftp:host=host/é.txt"));
   QVERIFY(!parsed.contains(UploadClient::normalizedUri("smb://srv/share/x")));
+  // Recent and Starred items: no local path, a file:// target (#1105).
+  const auto recent=UploadClient::parseGioInfo("type: shortcut\nuri: recent:///0c78a927\nattributes:\n  standard::type: 6\n  standard::target-uri: file:///home/lab/a%20b.png\n");
+  QCOMPARE(recent.value(UploadClient::normalizedUri("recent:///0c78a927")),QString("/home/lab/a b.png"));
   // AppImage: file:// is decoded in-process; other schemes go to the host gio, newlines never do.
   QStringList asked;
   const auto result=UploadClient::resolve({"/abs/a.txt","file:///tmp/b%20c.txt","sftp://host/%C3%A9.txt","sftp://host/a%0Ab.txt","relative","-platform"},true,[&](const QStringList& uris){

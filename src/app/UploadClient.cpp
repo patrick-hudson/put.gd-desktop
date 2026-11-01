@@ -23,6 +23,11 @@
 #include <QThread>
 #include <QTimer>
 #include <QUrl>
+#include <condition_variable>
+#include <mutex>
+#include <optional>
+#include <thread>
+#include <chrono>
 #include <cerrno>
 #include <csignal>
 #include <cstdio>
@@ -200,6 +205,18 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  if(!result.complete)result.out.clear();
  return result;
 }
+// The in-process GIO queries share the URI deadline: a timer thread cancels them
+// when it passes, so a stalled GVfs backend can't keep the client from reporting.
+class QueryDeadline {
+public:
+ explicit QueryDeadline(int ms):timer_([this,ms]{std::unique_lock lock(mutex_);if(!wake_.wait_for(lock,std::chrono::milliseconds(ms),[this]{return done_;}))g_cancellable_cancel(cancellable_);}) {}
+ ~QueryDeadline(){{std::lock_guard lock(mutex_);done_=true;}wake_.notify_one();timer_.join();g_object_unref(cancellable_);}
+ GCancellable* cancellable() const {return cancellable_;}
+private:
+ GCancellable* cancellable_=g_cancellable_new();
+ std::mutex mutex_;std::condition_variable wake_;bool done_=false;
+ std::thread timer_;
+};
 QHash<QString,QString> hostGioInfo(const QStringList& uris){
  QHash<QString,QString> found;if(uris.isEmpty())return found;
  const QDeadlineTimer deadline(resolveDeadlineMs);
@@ -210,12 +227,12 @@ QHash<QString,QString> hostGioInfo(const QStringList& uris){
  // C.UTF-8 comes from distribution packaging; trust gio's output only in a UTF-8 charset.
  const auto locale=host::findProgram("locale",environment);
  if(locale.isEmpty()||runBounded(locale,{"charmap"},environment,deadline).out.trimmed()!="UTF-8")return found;
- QStringList arguments{"info","-a","standard::type"};arguments<<uris;
+ QStringList arguments{"info","-a","standard::type,standard::target-uri"};arguments<<uris;
  const auto batch=runBounded(gio,arguments,environment,deadline);
  if(batch.complete)found=parseGioInfo(batch.out);
  for(const auto& uri:uris){
   if(found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
-  const auto single=runBounded(gio,{"info","-a","standard::type",uri},environment,deadline);
+  const auto single=runBounded(gio,{"info","-a","standard::type,standard::target-uri",uri},environment,deadline);
   if(single.complete)found.insert(parseGioInfo(single.out));
  }
  return found;
@@ -362,21 +379,28 @@ bool decodedNewline(const QString& uri){
  return decoded.contains('\n')||decoded.contains('\r')||uri.contains('\n')||uri.contains('\r');
 }
 QHash<QString,QString> parseGioInfo(const QByteArray& output){
- QHash<QString,QString> found;QString current;
+ QHash<QString,QString> found;QString current,path;QByteArray target;
+ // A record's local path, else the local file its target URI names: Recent and
+ // Starred items (recent://, starred://) have only a target (#1105).
+ const auto settle=[&]{
+  if(!current.isEmpty()&&path.isEmpty()&&target.startsWith("file:"))
+   if(char* local=g_filename_from_uri(target.constData(),nullptr,nullptr)){path=QFile::decodeName(local);g_free(local);}
+  if(!current.isEmpty()&&QDir::isAbsolutePath(path))found.insert(current,path);
+  current.clear();path.clear();target.clear();
+ };
  for(const auto& line:output.split('\n')){
-  if(line.startsWith("uri: ")){current=normalizedUri(QString::fromUtf8(line.mid(5)));continue;}
-  if(line.startsWith("local path: ")&&!current.isEmpty()){
-   const auto path=QFile::decodeName(line.mid(12));
-   if(QDir::isAbsolutePath(path))found.insert(current,path);
-   current.clear();
-  }
+  if(line.startsWith("uri: ")){settle();current=normalizedUri(QString::fromUtf8(line.mid(5)));continue;}
+  if(line.startsWith("local path: "))path=QFile::decodeName(line.mid(12));
+  else if(line.trimmed().startsWith("standard::target-uri: "))target=line.trimmed().mid(22);
  }
+ settle();
  return found;
 }
 Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gioInfo){
  Resolution result;QStringList remote;QList<int> remoteIndexes;
  QStringList paths(arguments.size());QList<bool> resolved(arguments.size(),false);
  static const QRegularExpression scheme(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]*:"));
+ std::optional<QueryDeadline> deadline;
  for(int i=0;i<arguments.size();++i){
   const auto& argument=arguments[i];
   if(argument.startsWith('/')){paths[i]=argument;resolved[i]=true;continue;}
@@ -392,7 +416,17 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   }
   // DEB/RPM: the host's GIO with its own modules, GVfs's FUSE paths included.
   GFile* file=g_file_new_for_uri(bytes.constData());
-  if(char* path=g_file_get_path(file)){paths[i]=QFile::decodeName(path);g_free(path);resolved[i]=QDir::isAbsolutePath(paths[i]);}
+  char* path=g_file_get_path(file);
+  // Recent and Starred items have no path of their own, only a target URI.
+  // Recent, Starred and Trash items name a local file through their target; remote schemes aren't queried.
+  const bool shortcut=argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive)||argument.startsWith(QLatin1String("starred:"),Qt::CaseInsensitive)||argument.startsWith(QLatin1String("trash:"),Qt::CaseInsensitive);
+  if(!path&&shortcut&&!deadline)deadline.emplace(resolveDeadlineMs);
+  if(!path&&shortcut)if(GFileInfo* info=g_file_query_info(file,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI,G_FILE_QUERY_INFO_NONE,deadline->cancellable(),nullptr)){
+   // Only a file:// target: decoding it needs no GVfs call that could stall.
+   if(const char* target=g_file_info_get_attribute_string(info,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI);target&&g_str_has_prefix(target,"file:"))path=g_filename_from_uri(target,nullptr,nullptr);
+   g_object_unref(info);
+  }
+  if(path){paths[i]=QFile::decodeName(path);g_free(path);resolved[i]=QDir::isAbsolutePath(paths[i]);}
   g_object_unref(file);
  }
  if(!remote.isEmpty()&&gioInfo){

@@ -490,7 +490,8 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   if(!QFileInfo(root).isAbsolute()||!singleLine(root)) {result.error={"file_manager_io","File manager integration needs absolute XDG directories",{}};return result;}
  const auto previous=readRecord(ownedPath);
  // The system install's per-user files are not the AppImage's to write or remove.
- const auto systemRecord=appImage?readRecord(recordPath(c,"system")):Record{};
+ // A removed DEB/RPM leaves its record behind; it no longer shares anything then.
+ const auto systemRecord=appImage&&QFileInfo(c.systemLauncher).isExecutable()?readRecord(recordPath(c,"system")):Record{};
  Record next;
  const auto fail=[&](const Error& error){if(!result.error)result.error=error;};
  const auto keep=[&](const QString& path,const QByteArray& bytes,QFile::Permissions mode) {
