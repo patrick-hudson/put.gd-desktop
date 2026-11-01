@@ -6,6 +6,7 @@ import json
 import sys
 import re
 from pathlib import Path
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -156,6 +157,55 @@ while :; do sleep 0.05; done
             if process.poll() is None:
                 process.kill()
                 process.wait()
+
+    def plasma_without_kbuildsycoca6(self, *tools):
+        """A PATH holding only what AppRun itself needs, plus the given fake host tools."""
+        bin_dir = self.root / "host-bin"
+        bin_dir.mkdir()
+        for name in ("awk", "cat", "dirname", "mkdir", "mktemp", "rm", "sed"):
+            (bin_dir / name).symlink_to(shutil.which(name))
+        for name, script in tools:
+            self.write(bin_dir / name, script)
+        self.env.update(PATH=str(bin_dir), LD_LIBRARY_PATH="/ambient/libraries", QT_PLUGIN_PATH="/ambient/plugins",
+                        WAYLAND_DISPLAY="wayland-0")
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\ntouch \"$PG_TEST_RECEIPT\"\n")
+
+    RECORD_TOOL = "#!/bin/sh\nprintf '%s\\n' \"$LD_LIBRARY_PATH\" \"$QT_PLUGIN_PATH\" \"$@\" >> \"$PG_HOST_RECEIPT\"\nexit {}\n"
+
+    def test_plasma_5_refusal_reaches_the_screen_through_host_tools(self):
+        """Plasma 5.27 is refused; started from a file manager, stderr alone shows nothing."""
+        calls = self.root / "tool-calls"
+        self.plasma_without_kbuildsycoca6(("dbus-send", self.RECORD_TOOL.format(0)), ("kdialog", self.RECORD_TOOL.format(0)))
+        self.env["PG_HOST_RECEIPT"] = str(calls)
+        result = subprocess.run([str(APP_RUN)], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertFalse(self.receipt.exists())
+        self.assertIn("needs Plasma 6", result.stderr)
+        self.assertIn("DEB", result.stderr)
+        lines = calls.read_text().splitlines()
+        # The host's libraries, not the image's, and one notice only.
+        self.assertEqual(lines[:2], ["/ambient/libraries", "/ambient/plugins"])
+        self.assertIn("org.freedesktop.Notifications.Notify", lines)
+        self.assertNotIn("--error", lines)
+        body = next(line for line in lines if line.startswith("string:The put.gd AppImage"))
+        self.assertIn("needs Plasma 6", body)
+        self.assertIn("DEB", body)
+        self.assertEqual(self.entries(), [])
+
+    def test_plasma_5_refusal_falls_back_to_a_dialog(self):
+        calls = self.root / "tool-calls"
+        self.plasma_without_kbuildsycoca6(("dbus-send", self.RECORD_TOOL.format(1)), ("kdialog", self.RECORD_TOOL.format(0)))
+        self.env["PG_HOST_RECEIPT"] = str(calls)
+        self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env, capture_output=True).returncode, 1)
+        lines = calls.read_text().splitlines()
+        self.assertIn("--error", lines)
+        self.assertEqual(lines[lines.index("--error") - 4:lines.index("--error") - 2], ["/ambient/libraries", "/ambient/plugins"])
+
+    def test_plasma_5_refusal_still_exits_with_no_host_tool(self):
+        self.plasma_without_kbuildsycoca6()
+        result = subprocess.run([str(APP_RUN)], env=self.env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("needs Plasma 6", result.stderr)
 
     def test_host_tool_uses_original_environment_and_child_keeps_umask(self):
         host_receipt = self.root / "host-receipt"

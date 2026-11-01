@@ -1,6 +1,7 @@
 #pragma once
 #include <QByteArray>
 #include <QHash>
+#include <QJsonArray>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -32,11 +33,26 @@ QString normalizedUri(const QString& uri);
 bool decodedNewline(const QString& uri);
 // uri → local path from the complete output of `gio info` (one record per uri: line).
 QHash<QString,QString> parseGioInfo(const QByteArray& output);
-struct Resolution { QStringList paths,unresolved; };
+struct Resolution { QStringList paths,unresolved; bool gioUnavailable=false; };
+// What the host's gio found; `unavailable` when it couldn't run at all, as opposed
+// to running and finding no local path.
+struct GioAnswer { QHash<QString,QString> found; bool unavailable=false; };
 // Each argument after `--upload --`: an absolute path stays as given; a URI is
 // resolved to a filesystem path (GVfs FUSE, KIOFuse) or left unresolved;
 // anything else is unresolved. `gioInfo` runs the AppImage's host gio for the
 // URIs it can't decode itself; DEB/RPM builds resolve through GIO in-process.
-using GioInfo=std::function<QHash<QString,QString>(const QStringList& uris)>;
+using GioInfo=std::function<GioAnswer(const QStringList& uris)>;
 Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gioInfo);
+// How a refusal names an unresolved argument: its file name, or the whole URI
+// for a Recent item, whose last segment is a hash rather than a name.
+QString noticeName(const QString& argument);
+// Whether the resident predates upload.files. A current one can answer
+// invalid_request too, so that code is settled by asking again with no
+// parameters: a resident that doesn't know the method then says unknown_method,
+// and one that does repeats invalid_request. `codeWithoutParameters` makes that call.
+bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters);
+// The names of the files the resident reported missing (`details.files` of its
+// refusal) whose whole GVfs FUSE mount can't be seen: gvfsd-fuse stopped, and the
+// files themselves may be fine. A missing file on a mount that answers isn't one.
+QStringList unreachableOverFuse(const QJsonArray& files,const QString& runtimeDirectory);
 }

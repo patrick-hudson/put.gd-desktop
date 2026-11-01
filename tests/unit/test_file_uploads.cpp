@@ -207,12 +207,48 @@ private slots:
   // AppImage: file:// is decoded in-process; other schemes go to the host gio, newlines never do.
   QStringList asked;
   const auto result=UploadClient::resolve({"/abs/a.txt","file:///tmp/b%20c.txt","sftp://host/%C3%A9.txt","sftp://host/a%0Ab.txt","relative","-platform"},true,[&](const QStringList& uris){
-   asked=uris;return QHash<QString,QString>{{UploadClient::normalizedUri("sftp://host/%C3%A9.txt"),"/run/user/1000/gvfs/sftp:host=host/é.txt"}};});
+   asked=uris;UploadClient::GioAnswer answer;answer.found.insert(UploadClient::normalizedUri("sftp://host/%C3%A9.txt"),"/run/user/1000/gvfs/sftp:host=host/é.txt");return answer;});
   QCOMPARE(asked,QStringList{"sftp://host/%C3%A9.txt"});
   QCOMPARE(result.paths,(QStringList{"/abs/a.txt","/tmp/b c.txt","/run/user/1000/gvfs/sftp:host=host/é.txt"}));
   QCOMPARE(result.unresolved,(QStringList{"sftp://host/a%0Ab.txt","relative","-platform"}));
+  QVERIFY(!result.gioUnavailable);
+  // A gio that couldn't run is told apart from one that found no local path.
+  const auto noGio=UploadClient::resolve({"recent:///43a92608","/abs/a.txt"},true,[](const QStringList&){UploadClient::GioAnswer answer;answer.unavailable=true;return answer;});
+  QVERIFY(noGio.gioUnavailable);QCOMPARE(noGio.unresolved,QStringList{"recent:///43a92608"});
+  QVERIFY(!UploadClient::resolve({"file:///tmp/x"},true,[](const QStringList&){UploadClient::GioAnswer answer;answer.unavailable=true;return answer;}).gioUnavailable);
+  QVERIFY(!UploadClient::resolve({"recent:///43a92608"},true,[](const QStringList&){return UploadClient::GioAnswer{};}).gioUnavailable);
   // DEB/RPM: GIO in-process.
   QCOMPARE(UploadClient::resolve({"file:///tmp/x%20y"},false,{}).paths,QStringList{"/tmp/x y"});
+ }
+ void refusalNames() {
+  QCOMPARE(UploadClient::noticeName("smb://srv/share/a%20b.png"),QString("a b.png"));
+  // Recent's last segment is a hash of the item, not its name.
+  QCOMPARE(UploadClient::noticeName("recent:///43a926080238a02829512b7d6ae7ba8b"),QString("recent:///43a926080238a02829512b7d6ae7ba8b"));
+  QCOMPARE(UploadClient::noticeName("relative.txt"),QString("relative.txt"));
+ }
+ // A build before upload.files answers invalid_request to any unknown method
+ // with parameters; without them, unknown_method. A current resident's
+ // invalid_request stays that resident's own refusal.
+ void residentBeforeTheFeature() {
+  int asked=0;
+  const auto answering=[&](const QString& code){return [&asked,code]{++asked;return code;};};
+  QVERIFY(UploadClient::residentLacksUpload("unknown_method",answering("")));QCOMPARE(asked,0);
+  QVERIFY(UploadClient::residentLacksUpload("invalid_request",answering("unknown_method")));QCOMPARE(asked,1);
+  QVERIFY(!UploadClient::residentLacksUpload("invalid_request",answering("invalid_request")));QCOMPARE(asked,2);
+  QVERIFY(!UploadClient::residentLacksUpload("invalid_request",answering("client_unavailable")));QCOMPARE(asked,3);
+  QVERIFY(!UploadClient::residentLacksUpload("files_rejected",answering("unknown_method")));QCOMPARE(asked,3);
+ }
+ void fuseMountThatStopped() {
+  QTemporaryDir runtime;QVERIFY(QDir(runtime.path()).mkpath("gvfs/smb-share:server=live"));
+  const auto gvfs=runtime.filePath("gvfs/");
+  const auto missing=[](const QString& path,const QString& code="source_missing"){return QJsonObject{{"path",path},{"code",code},{"message","no longer exists"}};};
+  // The mount answers: that file really is gone.
+  QVERIFY(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=live/a.png")},runtime.path()).isEmpty());
+  QCOMPARE(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=gone/d/a.png"),missing(gvfs+"smb-share:server=live/b.png"),missing(gvfs+"smb-share:server=gone/c.png")},runtime.path()),(QStringList{"a.png","c.png"}));
+  // Not GVfs's folder, or not this problem.
+  QVERIFY(UploadClient::unreachableOverFuse({missing("/home/lab/a.png")},runtime.path()).isEmpty());
+  QVERIFY(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=gone/a.png","source_empty")},runtime.path()).isEmpty());
+  QVERIFY(UploadClient::unreachableOverFuse({missing("gvfs/smb-share:server=gone/a.png")},QString()).isEmpty());
  }
  // The real client refuses what it can't resolve before anything else, with no resident needed.
  void clientRefusesWithoutLocalPaths() {

@@ -20,6 +20,19 @@ host_cache() {
     LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
         kbuildsycoca6 --noincremental >/dev/null 2>&1
 }
+# A refusal with no terminal attached, started from a file manager: stderr alone
+# shows nothing. Nothing from the image loads here. Every Plasma session has a
+# notification server and dbus-send; kdialog covers one where that call fails.
+host_refusal() {
+    printf '%s\n' "$2" >&2
+    LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
+        dbus-send --session --print-reply --reply-timeout=5000 --dest=org.freedesktop.Notifications \
+        /org/freedesktop/Notifications org.freedesktop.Notifications.Notify \
+        string:put.gd uint32:0 string:dialog-error "string:$1" "string:$2" \
+        array:string:default,Dismiss dict:string:variant:urgency,byte,2 int32:0 >/dev/null 2>&1 ||
+        LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
+            kdialog --title put.gd --error "$1: $2" >/dev/null 2>&1 || :
+}
 export LD_LIBRARY_PATH="$appdir/usr/lib:$appdir/usr/lib/putgd${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$appdir/usr/plugins:$appdir/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
 # The bundled OpenSSL, libcurl and Qt look for CA certificates where Debian keeps
@@ -175,7 +188,7 @@ fi
 # Register only the current mount; never overwrite an existing desktop entry.
 if [ -n "$kde" ]; then
     if ! command -v kbuildsycoca6 >/dev/null 2>&1; then
-        printf '%s\n' 'put.gd requires kbuildsycoca6 for native KDE capture.' >&2
+        host_refusal "put.gd can't start" 'The put.gd AppImage needs Plasma 6: native KDE capture uses kbuildsycoca6, which this desktop lacks. Use Plasma 6, or install the put.gd DEB package.'
         exit 1
     fi
     permission_entry=$(umask 077; mktemp "$applications/putgd-appimage-XXXXXXXX.desktop")

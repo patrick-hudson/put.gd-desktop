@@ -162,7 +162,7 @@ void reportScoped(){
 // `gio info` for the AppImage: the host's gio, with the host's own GIO modules
 // (the image bundles GLib without them), in an English UTF-8 output locale.
 // Plain C would print é as ?, matching a different real file.
-struct Child { QByteArray out; bool complete=false; };
+struct Child { QByteArray out; bool complete=false; bool notRun=false; };
 Child runBounded(const QString& program,const QStringList& arguments,const QProcessEnvironment& environment,const QDeadlineTimer& deadline){
  Child result;
  int out[2],err[2];if(::pipe2(out,O_CLOEXEC)!=0)return result;if(::pipe2(err,O_CLOEXEC)!=0){::close(out[0]);::close(out[1]);return result;}
@@ -202,6 +202,8 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  while(!deadline.hasExpired()){const auto done=::waitpid(pid,&status,WNOHANG);if(done==pid)break;if(done<0&&errno!=EINTR)break;::usleep(10000);}
  if(::waitpid(pid,&status,WNOHANG)==0){::kill(pid,SIGKILL);while(::waitpid(pid,&status,0)<0&&errno==EINTR){}result.out.clear();return result;}
  result.complete=WIFEXITED(status);
+ // Our failed execve above, or the dynamic loader or shell: the program never ran.
+ result.notRun=result.complete&&(WEXITSTATUS(status)==126||WEXITSTATUS(status)==127);
  if(!result.complete)result.out.clear();
  return result;
 }
@@ -217,25 +219,26 @@ private:
  std::mutex mutex_;std::condition_variable wake_;bool done_=false;
  std::thread timer_;
 };
-QHash<QString,QString> hostGioInfo(const QStringList& uris){
- QHash<QString,QString> found;if(uris.isEmpty())return found;
+GioAnswer hostGioInfo(const QStringList& uris){
+ GioAnswer answer;if(uris.isEmpty())return answer;
  const QDeadlineTimer deadline(resolveDeadlineMs);
  auto environment=host::environment();
- const auto gio=host::findProgram("gio",environment);if(gio.isEmpty())return found;
+ const auto gio=host::findProgram("gio",environment);if(gio.isEmpty()){answer.unavailable=true;return answer;}
  environment.insert("LC_ALL","C.UTF-8");
  for(const char* name:{"LANGUAGE","CHARSET","G_FILENAME_ENCODING","G_BROKEN_FILENAMES"})environment.remove(QString::fromLatin1(name));
  // C.UTF-8 comes from distribution packaging; trust gio's output only in a UTF-8 charset.
  const auto locale=host::findProgram("locale",environment);
- if(locale.isEmpty()||runBounded(locale,{"charmap"},environment,deadline).out.trimmed()!="UTF-8")return found;
+ if(locale.isEmpty()||runBounded(locale,{"charmap"},environment,deadline).out.trimmed()!="UTF-8"){answer.unavailable=true;return answer;}
  QStringList arguments{"info","-a","standard::type,standard::target-uri"};arguments<<uris;
  const auto batch=runBounded(gio,arguments,environment,deadline);
- if(batch.complete)found=parseGioInfo(batch.out);
+ if(batch.notRun){answer.unavailable=true;return answer;}
+ if(batch.complete)answer.found=parseGioInfo(batch.out);
  for(const auto& uri:uris){
-  if(found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
+  if(answer.found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
   const auto single=runBounded(gio,{"info","-a","standard::type,standard::target-uri",uri},environment,deadline);
-  if(single.complete)found.insert(parseGioInfo(single.out));
+  if(single.complete)answer.found.insert(parseGioInfo(single.out));
  }
- return found;
+ return answer;
 }
 
 QJsonObject request(const QString& method,const QJsonObject& params,Error& error){
@@ -430,11 +433,29 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   g_object_unref(file);
  }
  if(!remote.isEmpty()&&gioInfo){
-  const auto found=gioInfo(remote);
-  for(int n=0;n<remote.size();++n){const auto path=found.value(normalizedUri(remote[n]));if(QDir::isAbsolutePath(path)){paths[remoteIndexes[n]]=path;resolved[remoteIndexes[n]]=true;}}
+  const auto answer=gioInfo(remote);result.gioUnavailable=answer.unavailable;
+  for(int n=0;n<remote.size();++n){const auto path=answer.found.value(normalizedUri(remote[n]));if(QDir::isAbsolutePath(path)){paths[remoteIndexes[n]]=path;resolved[remoteIndexes[n]]=true;}}
  }
  for(int i=0;i<arguments.size();++i)(resolved[i]?result.paths:result.unresolved).append(resolved[i]?paths[i]:arguments[i]);
  return result;
+}
+QString noticeName(const QString& argument){
+ const QUrl url(argument);
+ return url.isValid()&&!url.fileName().isEmpty()&&!argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive)?url.fileName():argument.left(120);
+}
+bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters){
+ if(code=="unknown_method")return true;
+ return code=="invalid_request"&&codeWithoutParameters()=="unknown_method";
+}
+QStringList unreachableOverFuse(const QJsonArray& files,const QString& runtimeDirectory){
+ QStringList names;const auto root=QDir(runtimeDirectory).filePath("gvfs")+'/';
+ for(const auto& value:files){
+  const auto file=value.toObject();const auto path=file["path"].toString();
+  if(file["code"].toString()!="source_missing"||!path.startsWith(root))continue;
+  // The resident's own check just returned, so this can't stall on a live mount.
+  if(!QFileInfo::exists(root+path.mid(root.size()).section('/',0,0)))names.append(QFileInfo(path).fileName());
+ }
+ return names;
 }
 
 int run(int argc,char** argv){
@@ -455,8 +476,10 @@ int run(int argc,char** argv){
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");
  if(arguments.isEmpty()){refuse(QStringLiteral("No files were selected."));return 2;}
  if(!resolution.unresolved.isEmpty()){
-  QStringList names;for(const auto& item:resolution.unresolved.mid(0,8)){const QUrl url(item);names.append(url.isValid()&&!url.fileName().isEmpty()?url.fileName():item.left(120));}
-  refuse(QStringLiteral("These items have no local path, so put.gd can't read them: %1%2").arg(names.join(", "),resolution.unresolved.size()>8?QStringLiteral(" and %1 more").arg(resolution.unresolved.size()-8):QString()));
+  QStringList names;for(const auto& item:resolution.unresolved.mid(0,8))names.append(noticeName(item));
+  const auto listed=names.join(", ")+(resolution.unresolved.size()>8?QStringLiteral(" and %1 more").arg(resolution.unresolved.size()-8):QString());
+  if(resolution.gioUnavailable)refuse(QStringLiteral("put.gd couldn't resolve these locations because gio is unavailable on this system: %1. Install gio, or upload from the file's own folder.").arg(listed));
+  else refuse(QStringLiteral("These items have no local path, so put.gd can't read them: %1").arg(listed));
   return 1;
  }
  QJsonObject params{{"paths",QJsonArray::fromStringList(resolution.paths)},{"installation",installation}};
@@ -474,7 +497,9 @@ int run(int argc,char** argv){
   sleepMs(pollIntervalMs);
  }
  if(error){
-  if(error.code=="unknown_method")refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
+  const auto fuseGone=unreachableOverFuse(error.details["files"].toArray(),qEnvironmentVariable("XDG_RUNTIME_DIR"));
+  if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
+  else if(!fuseGone.isEmpty())refuse(QStringLiteral("These network items can't be read through their local path; gvfsd-fuse may have stopped: %1. Log out and in, then try again.").arg(fuseGone.mid(0,8).join(", ")));
   else if(error.details["outcomeUnknown"].toBool())notify(QStringLiteral("put.gd — upload uncertain"),QStringLiteral("put.gd didn't confirm the upload. Check put.gd's History before trying again."),true);
   else if(error.code=="client_unavailable"||error.code=="client_timeout")refuse(QStringLiteral("put.gd isn't answering. Try again in a moment."));
   else if(error.code=="initializing")refuse(QStringLiteral("put.gd is still starting. Try again in a moment."));
