@@ -196,7 +196,8 @@ private slots:
   const auto name=QStringLiteral("putgdfm%1").arg(QCoreApplication::applicationPid());
   const auto stub=QDir(f.context.searchPath).filePath(name),starts=f.path("starts"),displays=f.path("displays");
   auto quoted=starts,quotedDisplays=displays;quoted.replace("'","'\\''");quotedDisplays.replace("'","'\\''");
-  write(stub,("#!/bin/sh\nprintf '%s %s\\n' \"$#\" \"$*\" >> '"+quoted+"'\nprintf '%s\\n' \"$WAYLAND_DISPLAY\" >> '"+quotedDisplays+"'\ntrap 'exit 0' TERM\nwhile :; do sleep 0.05; done\n").toUtf8(),programMode);
+  // The start line comes last: once it's there, the stub is ready for SIGTERM.
+  write(stub,("#!/bin/sh\ntrap 'exit 0' TERM\nprintf '%s\\n' \"$WAYLAND_DISPLAY\" >> '"+quotedDisplays+"'\nprintf '%s %s\\n' \"$#\" \"$*\" >> '"+quoted+"'\nwhile :; do sleep 0.05; done\n").toUtf8(),programMode);
   const auto lines=[&]{return QString::fromUtf8(readAll(starts)).split('\n',Qt::SkipEmptyParts);};
   const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted());};
   {
