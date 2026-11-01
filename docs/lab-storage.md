@@ -138,10 +138,10 @@ superseded candidate trees, merged worktree build directories, duplicate evidenc
 bytes (by hard link) and stale scratch reclaimed 59.0 GB. The active `dd05194`
 candidate and every final `.deb` were kept.
 
-The historical offload copied all seven Linux goldens and the retired base bundles to
+All seven Linux goldens and both sealed Windows bundles were then copied to
 Fedora and Debian, following [golden storage and restore](remote-golden-images.md).
 Each workstation original was removed only after both LAN copies verified against
-it: SHA-256 for disks, and per-file mode/size/SHA-256 for complete bundles. That
+it: SHA-256 for disks, and per-file mode/size/SHA-256 for Windows bundles. That
 reclaimed 109.7 GB and left 171.6 GB available. The first S3 object
 (`fedora-gnome-wayland`) was uploaded from the workstation file. At Patrick's
 request, the rest stream from the verified Fedora copies. Each object is zstd

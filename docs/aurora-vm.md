@@ -68,8 +68,8 @@ key is the builder-private `~/work/put.gd/work/lab-bootstrap-f44/aurora/identity
 (its public key sits in each golden directory); the guest's Ed25519 host key
 (`SHA256:yeRsgHkd8AI0lIuNZ4H6YE2i4d1D7cxeFI86/uKoWiA`) was compared against the
 console before pinning. The provisioning sudo rule grants `lab` `rpm-ostree`, `bootc`, `systemctl`,
-`loginctl` and `journalctl` without a password. Its retained sandbox-package
-manager allowance is outside put.gd's supported test scope.
+`loginctl` and `journalctl` without a password. Its retained `/usr/bin/flatpak`
+allowance is outside put.gd's supported test scope.
 
 ### How they were made
 

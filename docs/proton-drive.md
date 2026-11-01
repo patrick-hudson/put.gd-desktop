@@ -6,9 +6,12 @@ from the official Drive SDK and pinned official account/CLI sources. Users of
 that build do not install a CLI, Bun or Node.js. This is a third-party integration, not officially supported by Proton.
 put.gd ships and maintains it as an experimental production integration.
 The 2026-10-15 product decision accepts upstream's readiness position; ongoing
-compatibility, packaging and user recovery are put.gd responsibilities. See [building and verification](#building-and-verification) for current checks
-and SDK maintenance, and the [2026-10-15 audit](history/proton-drive-release-gates.md)
-for the earlier integration decisions.
+compatibility, packaging and user recovery are put.gd responsibilities.
+See [building and verification](#building-and-verification) for build checks,
+[release gates](#release-gates) for ongoing acceptance requirements and the
+[maintenance procedure](#maintenance-procedure) for SDK updates and migrations.
+The [2026-10-15 audit](history/proton-drive-release-gates.md) preserves the earlier
+integration decisions and source-specific receipts.
 
 The unmodified official CLI cannot supply the upload receipt this application
 needs: its pinned upload command discards completion node/revision IDs and
@@ -184,6 +187,63 @@ The [2026-10-15 register](history/proton-drive-release-gates.md) records the ear
 Upstream approval is not required for production shipment.
 See [integration verification](history/proton-drive-verification.md) for the historical
 build, test and review checkpoints.
+
+## Release gates
+
+The integration maintainer owns P1, P2 and P5; the release maintainer owns P3, P4
+and P6. The same person may perform both roles. For each affected release, retain
+a dated pass, failure or blocker with the exact source, runtime and package
+identity. An observed live incompatibility blocks affected publication. Upstream
+endorsement or SDK general availability is not a gate.
+
+| Gate | Current requirement |
+| --- | --- |
+| P1 — Recovery and recipient evidence | Verify authentication/refresh/reconnect, interruption/reconciliation/retry and sharing protection on isolated synthetic items. Preserve accepted operation and receipt identities. Verify unsigned-in protected/unprotected recipient bytes, expiry and revocation. Distinguish controlled service failures from observed live behavior; do not induce service-wide limits. |
+| P2 — Authenticated process-family resources | Measure first use, small/large upload/share, cancellation/retry, repeated use and post-upload idle across the resident, UI and all Proton descendants. Retain RSS/PSS/private bytes, CPU, swap and helper lifetimes. Keep the separate 40 MiB post-use idle and applicable desktop memory gates; there is no approved hard active-memory ceiling. Confirm local-only/S3 work does not launch Proton. |
+| P3 — Redistribution and rebuild materials | Review notices, pinned source provenance and corresponding-source/relink materials for changed runtime inputs. Preserve the source catalog and verify an extracted-source rebuild; fixture-only install checks do not prove shipping-package contents. |
+| P4 — Shipping pipeline and supported assets | Provision and test the pinned Linux x86-64 helper explicitly. Audit the bundled runtime/manifest/hash, notices, redistribution files and source catalog in native packages and AppImage, and verify the corresponding-source delivery against its hashes. Packaged users need no separate runtime. |
+| P5 — SDK and service compatibility | Perform the [maintenance procedure](#maintenance-procedure), including upstream migration checks, pinned updates, compatibility verification and recovery/rollback limits. Do not fabricate an extra SDK update as evidence. |
+| P6 — Exact candidate and package acceptance | Freeze source/runtime identities, run the applicable app/helper/protocol checks, install actual shipping packages and retain hashes and visible native functional/memory evidence on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Run desktop checks in parallel as required by the current acceptance matrix. |
+
+The [acceptance matrix](acceptance-matrix.md) and
+[release runbook](release-runbook.md) define the complete package/desktop gates;
+[verification](verification.md) records observed results and remaining application
+work. The [2026-10-15 audit](history/proton-drive-release-gates.md) credits its
+completed feature gates only to their dated sources and workloads. Its old
+issue-closure and local-merge notes are historical, not an open work list for the
+shipping integration.
+
+## Maintenance procedure
+
+1. **Ownership and cadence.** The integration maintainer reviews upstream SDK,
+   account foundation, Crypto and Bun releases/security and migration notes
+   before each stable release, when a nightly changes Proton runtime
+   inputs, and whenever an announced required update or observed incompatibility
+   occurs. Record the check date,
+   references, pinned versions, compatibility result and next action in the
+   release receipt. This is a manual responsibility; no monitor was created.
+2. **Pinned updates.** Change the upstream commit, runtime/dependency locks and
+   any guarded source patches together. Reprovision explicitly, review notices
+   and source fingerprints, and verify the helper protocol, version/hash mismatch
+   failures, clean install and extracted-source rebuild. Do not float dependencies
+   or replace a public release artifact in place.
+3. **Compatibility checks.** Test browser authentication and refresh, private
+   upload, anonymous protected/unprotected download equality, sharing history,
+   interruption/reconciliation and old journal/config/receipt compatibility.
+   Confirm fresh account/folder/node/revision proof with the upgraded SDK.
+   Preserve credential references and accepted operation identities; record any
+   explicit reauthentication needed. Apply the P2/P6 [release gates](#release-gates)
+   to the changed candidate.
+4. **Migration or incident.** A required-update response or newly incompatible
+   service stops affected publication with a useful update/reconnect result.
+   Preserve local archives, journals, unknown outcomes and offline history for
+   explicit inspection/retry after the compatible release. Verify this behavior
+   rather than assuming the current generic error proves it. Do not automatically
+   replay mutations or redirect work to S3. Publish a new tested put.gd version.
+5. **Rollback.** Retain the prior verified package/runtime and test compatibility
+   of its journals/configuration before offering downgrade. After a server crypto
+   migration an old SDK may be unusable; do not promise rollback restores service.
+   Keep user data and recovery identities intact while preparing a forward fix.
 
 ## Lab sessions on the builders
 

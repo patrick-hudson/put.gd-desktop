@@ -9,7 +9,7 @@ Update Manager, Discover and GNOME Software install new versions. This is phase 
 ## What the packages add
 
 Only tagged builds (nightly and stable) add a repository, and each trusts only
-its own channel's key. Candidates follow stable. Development and source builds add
+its own channel's key. Development and source builds add
 nothing.
 
 | Package | File | Notes |

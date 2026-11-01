@@ -1,13 +1,13 @@
 # Proton Drive integration verification
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [proton-drive](../proton-drive.md). Do not use it as a work list.
+> **Historical record.** This is a dated verification ledger for a shipping integration, kept for its source-specific build, test and review receipts. Use the current [Proton Drive guide](../proton-drive.md), [release gates](../proton-drive.md#release-gates) and [maintenance procedure](../proton-drive.md#maintenance-procedure) for ongoing work.
 
 ## Current disposition — 2026-10-15
 
 Proton is a retained experimental integration intended for production shipment
 and ongoing support. Upstream endorsement/general availability is not a release
 gate under the user-approved decision. The [evidence and release-gate register](proton-drive-release-gates.md)
-is the current reconciliation: it credits the merged local and native campaigns,
+is the dated reconciliation: it credits the merged local and native campaigns,
 links the P1 recipient/service and native recovery receipts and the completed
 notice, shipping, maintenance and source-specific package acceptance records.
 The [service campaign](../evidence/2026-10-15-proton-p1-recovery.md) and

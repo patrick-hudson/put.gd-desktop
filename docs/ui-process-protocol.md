@@ -77,9 +77,9 @@ clears it afterwards, so the token never reaches a later window or a child
 process. Activations without a token still coalesce per view; each one with a
 token is delivered.
 
-The lifecycle/state rules are in [resident-ui-process.md](history/resident-ui-process.md)
-and U11 of the requirements plan. Ordinary last-window close must retain safe
-unsaved state before exit; minimized windows and native dialogs remain alive.
+The current rules are in [Process and close lifecycle](#process-and-close-lifecycle)
+and the [UI state contract](ui-process-state.md). Ordinary last-window close must
+retain safe unsaved state before exit; minimized windows and native dialogs remain alive.
 The helper uses desktop/application ID `putgd-ui`. The resident registers its PID
 with the source adapter before sending bootstrap; windows appear only after a
 matching resident snapshot. X11 excludes that PID. GNOME authenticates the PID

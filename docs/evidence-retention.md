@@ -26,7 +26,7 @@ or relabel old measurements with a newer documentation commit.
 Start at [the evidence index](evidence/README.md), [verification](verification.md)
 and [memory strategy](memory-strategy.md). Historical experiment documents remain
 available, but their unmerged/open-gate statements describe their own revision.
-The historical live-S3 record includes replayable, sanitized archives and production
+The later source114 record includes replayable, sanitized archives and production
 cleanup. Keep that curated record independent of private scratch directories.
 
 ## Archive cold local files
@@ -120,5 +120,5 @@ were immediately restored byte-for-byte and excluded from the final archive inde
 
 All archives passed decompression/hash checks, and the screenshot ZIP was
 independently read back after consolidation. Seven archive-helper safety tests
-passed, as did the preserved historical live-S3 saved-evidence replay. No fresh desktop
+passed, as did the preserved source114 saved-evidence replay. No fresh desktop
 or live-S3 tests were needed or claimed for this housekeeping change.

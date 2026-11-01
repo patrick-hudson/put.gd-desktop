@@ -211,7 +211,8 @@ source of truth after Actions artifacts expire.
 The user approved shipping and maintaining Proton on 2026-10-15. Its
 experimental designation records compatibility maturity. Upstream endorsement
 or SDK general availability is not a publication prerequisite; the concrete
-[evidence and release gates](history/proton-drive-release-gates.md) remain applicable.
+[current Proton release gates](proton-drive.md#release-gates) and
+[SDK maintenance procedure](proton-drive.md#maintenance-procedure) remain applicable.
 
 Linux x86-64 Build and release jobs provision and test the pinned official JS
 helper, enable its bundle explicitly, and require matching runtime, notices and

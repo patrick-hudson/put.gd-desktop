@@ -72,7 +72,7 @@ hashes, native fixture/oracle checks and normal helper teardown. Verify the nati
 tray/menu and notifications as well as all capture, clipboard and view actions.
 Keep native fonts and dialogs in `putgd-ui` views. The graphical fallback
 resident starts on Qt's generic theme because it draws no desktop-themed UI
-of its own; see [memory strategy](../memory-strategy.md#keep-the-event-loop-release-temporary-processes).
+of its own; see [current architecture](../architecture.md#process-boundaries).
 
 Follow [Memory testing](testing-memory.md) with the frozen 5-second warmup,
 300-second duration, 5-second interval and 61 samples. Retain cold and post-native

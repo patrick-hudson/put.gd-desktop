@@ -80,7 +80,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | [2026-10-24-ci-mirror-journal](2026-10-24-ci-mirror-journal/README.md) | #500, #536 | CI mirror and journal retry contracts — 2026-10-24 |
 | [2026-10-24-capture-copy](2026-10-24-capture-copy/README.md) | #534 | Install, capture and copied-link recovery — scoped evidence |
 | [late-link-copy-478](late-link-copy-478/README.md) | #478, #479 | #478: each_link copies a link that arrives after its file settled |
-| [2026-10-23-suppressed-link-copy-473](2026-10-23-suppressed-link-copy-473/README.md) | #473, #477 | Nightly 1019 before vs the #477 merge's CI AppImage after on an Aurora Fedora 45 Plasma Wayland VM: another app copies during a throttled upload, both end suppressed; notification and Activity before/after (annotated), one-click Copy link recovery, the putgd.clipboard record naming… |
+| [2026-10-23-suppressed-link-copy-473](2026-10-23-suppressed-link-copy-473/README.md) | #473, #477 | Nightly 1019 before vs the #477 merge's CI AppImage after on an Aurora Fedora 45 Plasma Wayland VM: another app copies during a throttled upload, both end `suppressed`; notification and Activity before/after (annotated), one-click **Copy link** recovery, the `putgd.clipboard` record naming `clipboard_changed` with revisions 1 and 2, both uploads in a diagnostics package preview |
 | [2026-10-23-resident-session-490](2026-10-23-resident-session-490/README.md) | #490, #499 | Resident ends with its login session (#490), 2026-10-23 |
 | [2026-10-23-proton-lab-sessions](2026-10-23-proton-lab-sessions/README.md) | #517 | Proton lab sessions: one sign-in per builder, lent to VMs (#517) |
 | [2026-10-23-proton-helper-host-env-518](2026-10-23-proton-helper-host-env-518/README.md) | #326, #517, #518, #519 | The AppImage's Proton helper and the host keychain (#518, #519) |
@@ -97,9 +97,9 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | [2026-10-22-tray-drop-recent-activity-374](2026-10-22-tray-drop-recent-activity-374/README.md) | #303, #374 | Tray "Recent activity" removed; "activity" stays a History alias (#374) |
 | [2026-10-22-stress-weekly](2026-10-22-stress-weekly/README.md) | #360, #398 | Weekly builder stress lane on k72 (#360) |
 | [2026-10-22-shortcuts-menu-grab-341](2026-10-22-shortcuts-menu-grab-341/README.md) | #341, #357 | Capture shortcuts with a menu open (#341): acceptance, 2026-10-22 |
-| [2026-10-22-rail-391-notify-415](2026-10-22-rail-391-notify-415/README.md) | #391, #415, #423 | 968 before vs PR #423's AppImage after, at 1280×800 on an Aurora VM and m74 (physical) in both themes: no overlap, compact rail, the version's whole line; #415 not reproducible on 968 (38 of 38 first clicks on k72 Plasma 6.6 and m74 Cinnamon), first clicks on the PR build open the stand-in… |
+| [2026-10-22-rail-391-notify-415](2026-10-22-rail-391-notify-415/README.md) | #391, #415, #423 | 968 before vs PR #423's AppImage after, at 1280×800 on an Aurora VM and m74 (physical) in both themes: no overlap, compact rail, the version's whole line; #415 not reproducible on 968 (38 of 38 first clicks on k72 Plasma 6.6 and m74 Cinnamon), first clicks on the PR build open the stand-in recorder; idle RSS unchanged (32.80 vs 32.86, 32.27 vs 32.25 MiB) |
 | [2026-10-22-package-installs-368](2026-10-22-package-installs-368/README.md) | #357, #368, #388 | Package install retries and snapshot (#368) — 2026-10-22 |
-| [2026-10-22-native-license-audit](2026-10-22-native-license-audit/README.md) | #383, #384, #424, #428 | The four native packages of v26.1022.1017-nightly: receipts, minisig, apt/dnf repo copies and signatures with the shipped keys, AppStream, --version-json on each distribution; lintian/rpmlint triage; AWS SDK NOTICE and embedded-code notices missing (fixed in #468); licence expression (#469)… |
+| [2026-10-22-native-license-audit](2026-10-22-native-license-audit/README.md) | #383, #384, #424, #428 | The four native packages of v26.1022.1017-nightly: receipts, minisig, apt/dnf repo copies and signatures with the shipped keys, AppStream, `--version-json` on each distribution; lintian/rpmlint triage; AWS SDK NOTICE and embedded-code notices missing (fixed in #468); licence expression (#469), Debian copyright/RPM %license (#470), non-PIE Fedora programs (#475), hygiene (#471); Proton npm lock clean; no bundled codecs |
 | [2026-10-22-linux-update-acceptance](2026-10-22-linux-update-acceptance/README.md) | #428 | Linux update acceptance: nightly 1017 → 1019 on six desktops |
 | [2026-10-22-kde-region-size-333](2026-10-22-kde-region-size-333/README.md) | #333, #356 | Plasma region capture one pixel too large (#333) |
 | [2026-10-22-flaky-tests](2026-10-22-flaky-tests/) | — | CI failure history, k72 CPU profile, parallelism charts and stress evidence |
@@ -120,11 +120,11 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | [2026-10-21-pkg-repos-293](2026-10-21-pkg-repos-293/README.md) | #293, #308, #309 | #293 phase 2: package repository acceptance (2026-10-21) |
 | [2026-10-21-file-dialogs-259](2026-10-21-file-dialogs-259/README.md) | #259, #321 | Save copy… opening the GTK, KDE and GNOME choosers on m74 Cinnamon X11, d69 Plasma Wayland and f44 GNOME Wayland in dark mode, the themed fallback in Dark and Light; resident unchanged, putgd-record +0.12 MiB with the portal chooser open against +5.4 MiB for Qt's dialog |
 | [2026-10-21-checkbox-channel-300-305](2026-10-21-checkbox-channel-300-305/README.md) | #300, #305, #316 | Specimen card before/after in light and dark; Settings → Updates on a stable- and a nightly-tagged build before/after; new gui_theme and gui_settings tests on d69 |
-| [2026-10-21-appimage-updater-293](2026-10-21-appimage-updater-293/README.md) | #4, #293, #342, #343 | Download and install through zsync (host appimageupdatetool), with no zsync tool, and after a forced zsync crash on f44 GNOME, m74 Cinnamon, k72 Plasma 6.6, d69 Plasma and an Aurora VM: SHA-256 against the signed SHA256SUMS, hidden backup removed at first start, restart into 887, "Updated from 886… |
+| [2026-10-21-appimage-updater-293](2026-10-21-appimage-updater-293/README.md) | #4, #293, #342, #343 | Download and install through zsync (host appimageupdatetool), with no zsync tool, and after a forced zsync crash on f44 GNOME, m74 Cinnamon, k72 Plasma 6.6, d69 Plasma and an Aurora VM: SHA-256 against the signed SHA256SUMS, hidden backup removed at first start, restart into 887, "Updated from 886 to 887"; tampered download, unsigned and rewritten SHA256SUMS refused; real logout/login start 887 on m74 and d69; idle RSS +0.11/+0.20 MiB, no TLS library in the resident; the signer mirror's lab publish, retention and dry run; the first mirrored nightly; annotated full-desktop pictures |
 | [2026-10-21-appimage-login-306-307](2026-10-21-appimage-login-306-307/README.md) | #297, #306, #307, #318 | AppImageLauncher integrates the one-entry image; after appimageupdatetool --remove-old, Gear Lever and AppImageLauncher updates, real logins start N+1 in a Mint 22.3 guest; Fedora 44: SSL_CERT_FILE isn't enough, bundle-at-Ubuntu-path workaround, Gear Lever unaffected; live 801 to 816 delta pre-check |
 | [2026-10-21-appimage-live-294-296](2026-10-21-appimage-live-294-296/README.md) | #294, #296, #307, #318, #322, #325 | appimageupdatetool --remove-old, Gear Lever and AppImageLauncher each moved 842 to 847 through the site permalink and GitHub's CDN in a Mint 22.3 guest, and a real login started 847 each time; nightly.json zsync field, permalink 302, stable 404 |
 | [2026-10-21-appimage-host-env-326](2026-10-21-appimage-host-env-326/README.md) | #326, #330 | #326: host programs start with the host's environment (2026-10-21) |
-| [2026-10-21-appimage-full-acceptance](2026-10-21-appimage-full-acceptance/README.md) | #318, #321 | f44 GNOME 50, d69 Plasma 6.3, k72 Plasma 6.6, m74 Cinnamon X11, Ubuntu 26.04 GNOME VM, Aurora VM: memory 28.9–29.8 MiB, recording motion vs a 0.0 control, native portal Save a copy… everywhere, real logout/login start; fails: notification link (#326) on all but m74, f44 update check TLS (#329)… |
+| [2026-10-21-appimage-full-acceptance](2026-10-21-appimage-full-acceptance/README.md) | #318, #321 | f44 GNOME 50, d69 Plasma 6.3, k72 Plasma 6.6, m74 Cinnamon X11, Ubuntu 26.04 GNOME VM, Aurora VM: memory 28.9–29.8 MiB, recording motion vs a 0.0 control, native portal **Save a copy…** everywhere, real logout/login start; fails: notification link (#326) on all but m74, f44 update check TLS (#329), f44 appimageupdatetool (#297); annotated full-desktop pictures |
 | [2026-10-21-appimage-ca-bundle-329](2026-10-21-appimage-ca-bundle-329/README.md) | #329, #334 | Nightly 847 on f44: Check now, S3 (curl 77) and B2 (TLS error 6) fail; Qt loads zero CAs (strace); PR #334 CI AppImage and nightly 874: live AWS S3 and B2 uploads and deletes and Settings → Check now (annotated) on f44, Aurora VM, m74, k72 and d69 |
 | [ui-followups-r8](ui-followups-r8/) | — | UI diagnostics upload, failure banners, limits and tooltip screenshots |
 | [tray-batch-207](tray-batch-207/) | #207 | Tray batch rows, native observations and panel tint evidence |
@@ -148,24 +148,24 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | [2026-10-20-round11-s3-compat](2026-10-20-round11-s3-compat/README.md) | #145, #150, #267 | Round 11: live multipart acceptance on Cloudflare R2 and Backblaze B2 (#145) |
 | [2026-10-20-round11-proton](2026-10-20-round11-proton/README.md) | #252, #253, #266 | Round 11: Proton keychain save and link expiry (#252, #253) |
 | [2026-10-20-round10-proton](2026-10-20-round10-proton/README.md) | #154, #176, #201 | Round 10: live Proton Drive checks (#201, #154, #176) |
-| [2026-10-20-review-window-283](2026-10-20-review-window-283/README.md) | #283, #290 | d69 Plasma Wayland and m74 Cinnamon X11 before/after in both schemes (video 28.9 % → 70.0 % of the window), MCP end to end with drive_recording_review, upload to the S3 fixture, motion 18.3 vs 0.875 |
+| [2026-10-20-review-window-283](2026-10-20-review-window-283/README.md) | #283, #290 | d69 Plasma Wayland and m74 Cinnamon X11 before/after in both schemes (video 28.9 % → 70.0 % of the window), MCP end to end with `drive_recording_review`, upload to the S3 fixture, motion 18.3 vs 0.875 |
 | [2026-10-20-recording-reliability.md](2026-10-20-recording-reliability.md) | #127, #129, #130, #131, #143 | Headless Stop reproducer and Kubuntu/GNOME guests, f44 Mutter and d69 KWin pause A/V before/after, d69 bar-over-dim frames |
 | [2026-10-20-recording-reliability-d69-quiet.md](2026-10-20-recording-reliability-d69-quiet.md) | #143 | Recording reliability: d69 quiet re-run and k72 Plasma 6.6 (PR #143) |
 | [2026-10-20-recording-closeout.md](2026-10-20-recording-closeout.md) | #87, #89, #164, #165, #166, #183 | Mint 24.04 DEB on physical Cinnamon, two-output Ubuntu 26.04 GNOME guest, k72 Plasma 6.6 DEB and AppImage, portal pause A/V before/after, the pinned lab cover, d69 wall watchdog, GPU hang table |
-| [2026-10-20-quick-knockouts-264-261-251](2026-10-20-quick-knockouts-264-261-251/README.md) | #251, #261, #264, #265 | Cinnamon panel button before/after with and without a desktop entry, _NET_WM_ICON added; rail fresh vs switched (2 px → identical); gui tests under a light-portal bus before/after |
+| [2026-10-20-quick-knockouts-264-261-251](2026-10-20-quick-knockouts-264-261-251/README.md) | #251, #261, #264, #265 | Cinnamon panel button before/after with and without a desktop entry, `_NET_WM_ICON` added; rail fresh vs switched (2 px → identical); gui tests under a light-portal bus before/after |
 | [2026-10-20-queued-uploads-test-order](2026-10-20-queued-uploads-test-order/README.md) | #275 | queuedUploadsCopyEveryLink: queued uploads may start in any order (2026-10-20) |
 | [2026-10-20-proton-flood-236](2026-10-20-proton-flood-236/README.md) | #236 | proton_transport flood row stress loop (#236), 2026-10-20 |
 | [2026-10-20-operations-test-race](2026-10-20-operations-test-race/README.md) | #272 | operations_contract race in retiredUploadJournalsAreAbortedBestEffort (2026-10-20) |
-| [2026-10-20-logging-fedora-191.md](2026-10-20-logging-fedora-191.md) | #191, #194 | f44 before/after under *.debug=false, Debian runs with the suite's simulated rule |
+| [2026-10-20-logging-fedora-191.md](2026-10-20-logging-fedora-191.md) | #191, #194 | f44 before/after under `*.debug=false`, Debian runs with the suite's simulated rule |
 | [2026-10-20-logging-fedora-191](2026-10-20-logging-fedora-191/) | #191 | Fedora debug-logging before/after screenshot |
 | [2026-10-20-logging-250-lab-env-243](2026-10-20-logging-250-lab-env-243/) | #243, #250 | Encoder log banners, kill reasons and guest session test environment screenshots |
 | [2026-10-20-history-posters-112](2026-10-20-history-posters-112/README.md) | #112, #192 | History poster frames (#112): lab evidence |
-| [2026-10-20-ci-reliability-round8.md](2026-10-20-ci-reliability-round8.md) | #144, #156, #162, #205 | f44 container before/after for the pipewire job, f44 worker overflow before/after, size of each packing option and a symbolized release record |
+| [2026-10-20-ci-reliability-round8.md](2026-10-20-ci-reliability-round8.md) | #144, #156, #162, #205 | f44 container before/after for the `pipewire` job, f44 worker overflow before/after, size of each packing option and a symbolized release record |
 | [2026-10-20-ci-reliability-round8](2026-10-20-ci-reliability-round8/) | — | PipeWire CI, worker overflow, debug-size and symbolized-stack visuals |
 | [2026-10-20-changelog-md-217](2026-10-20-changelog-md-217/) | #217 | Changelog Markdown excerpt screenshot for issue #217 |
 | [2026-10-20-b2-native](2026-10-20-b2-native/README.md) | #282, #287 | Backblaze B2 native destination: live acceptance (#282) |
-| [2026-10-20-appimage-zsync-293](2026-10-20-appimage-zsync-293/README.md) | #293 | Three CI-equivalent AppImage builds on f44; appimageupdatetool moves build A to the next commit's B through a local Range server on Fedora 44 and Ubuntu 24.04 (95.5 % reused, 5.6 of 109.5 MiB fetched, B's exact bytes); tagged nightly readback and collect.py binding |
-| [2026-10-20-appimage-plasma66-137.md](2026-10-20-appimage-plasma66-137.md) | #137, #140 | Cause (pipewiresrc min-buffers vs KWin's 2-4 buffers on PipeWire 1.5.81+), headless reproducer matrix, k72 Plasma 6.6 Wayland kde-screencast/portal, d69/f44/m74 and DEB/RPM regressions with A/V and motion |
+| [2026-10-20-appimage-zsync-293](2026-10-20-appimage-zsync-293/README.md) | #293 | Three CI-equivalent AppImage builds on f44; `appimageupdatetool` moves build A to the next commit's B through a local Range server on Fedora 44 and Ubuntu 24.04 (95.5 % reused, 5.6 of 109.5 MiB fetched, B's exact bytes); tagged nightly readback and `collect.py` binding |
+| [2026-10-20-appimage-plasma66-137.md](2026-10-20-appimage-plasma66-137.md) | #137, #140 | Cause (pipewiresrc `min-buffers` vs KWin's 2-4 buffers on PipeWire 1.5.81+), headless reproducer matrix, k72 Plasma 6.6 Wayland `kde-screencast`/portal, d69/f44/m74 and DEB/RPM regressions with A/V and motion |
 | [2026-10-20-appearance-overlays-198-214](2026-10-20-appearance-overlays-198-214/README.md) | #198, #214, #224 | Recording overlays follow the appearance (#198), and the missing Settings frames (#214) |
 | [2026-10-20-appearance-60](2026-10-20-appearance-60/README.md) | #60, #112 | System, Dark and Light appearance (#60): lab evidence |
 | [x11-editor-refusal](x11-editor-refusal/) | — | Plasma X11 refuses own editor, Settings and History captures, with external-window controls |
@@ -187,7 +187,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | [2026-10-19-recording-bar-placement.md](2026-10-19-recording-bar-placement.md) | #108, #109 | k72 X11, d69 KWin 6.3, f44 GNOME and a two-monitor Cinnamon guest: placement, frame checks, motion |
 | [2026-10-19-recording-acceptance-87.md](2026-10-19-recording-acceptance-87.md) | #87, #118, #119, #121 | AppImage A/V on k72/d69/f44 incl. pause/resume, #81 native windows, packaged GNOME extension, MCP on three desktops, Ubuntu 26.04 GNOME/Plasma guests, two-head Wayland guests, physical Plasma 6.6 Wayland on k72, share URLs in Firefox/Chromium |
 | [2026-10-19-gnome-editor-refusal.md](2026-10-19-gnome-editor-refusal.md) | #101, #103, #104 | f44 RPM and AppImage: editor, Settings and History refused, external captured |
-| [2026-10-19-destination-reorder.md](2026-10-19-destination-reorder.md) | #59, #126 | Suites and Cinnamon X11 guest: native drag, drop line, Alt+Down, ⋯ menu, ui.moveDestination, settings.reorderProfiles, restart |
+| [2026-10-19-destination-reorder.md](2026-10-19-destination-reorder.md) | #59, #126 | Suites and Cinnamon X11 guest: native drag, drop line, Alt+Down, ⋯ menu, `ui.moveDestination`, `settings.reorderProfiles`, restart |
 | [2026-10-19-debian13-deb.md](2026-10-19-debian13-deb.md) | #75, #85, #100 | CI build and audit, unchanged Ubuntu/Fedora packages, d69 install, recording and uninstall |
 | [2026-10-19-appimage-wayland-icons.md](2026-10-19-appimage-wayland-icons.md) | #81, #88, #101 | d69 KWin and f44 GNOME icons, entry cleanup, Settings/History refusal |
 | [2026-10-19-appimage-recording-wayland.md](2026-10-19-appimage-recording-wayland.md) | #75, #77, #79, #81 | d69/f44 Wayland and k72 X11 runs, placement, native windows, motion vs frozen controls |
@@ -233,6 +233,23 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 | [2026-10-13-issue5-acceptance.md](2026-10-13-issue5-acceptance.md) | #5 | Issue #5: Linux release acceptance audit |
 | [releases](releases/) | — | Release prototype metadata |
 
+## Related reports
+
+These links preserve the earlier index's curated starting points. Reports under
+`history/` describe dated experiments; use the current memory strategy, acceptance
+matrix and release documentation for new work.
+
+| Record | Issue / PR | Summary |
+| --- | --- | --- |
+| [Proton experimental integration recovery and resources](../proton-drive.md#release-gates) | — | Release gates |
+| [Integrated process split and memory strategy](../memory-strategy.md) | — | Memory strategy |
+| [S3 transport failure diagnosis and corrected regression](../history/testing-live-s3-transport.md) | — | Transport report |
+| [Earlier KDE optimization and cumulative local-memory changes](../history/testing-kde-memory.md) | — | KDE report |
+| [Earlier GNOME boundary and Cinnamon regressions](../history/testing-gnome-memory.md) | — | GNOME report |
+| [Earlier native-listener/capture experiments](../history/testing-native-listener.md) | — | Native listener testing |
+| [Release package evidence and acceptance classes](../release.md) | — | Release runbook |
+| [Release package evidence and acceptance classes](../ci.md) | — | CI coverage |
+
 ## Retired experiment records
 
 These records describe app versions that no longer exist and are kept per
@@ -242,8 +259,8 @@ These records describe app versions that no longer exist and are kept per
 | --- | --- | --- |
 | [2026-10-18-issue56-storage-locations-raw](2026-10-18-issue56-storage-locations-raw/) | #56 | Storage-location migration screenshots, filesystem checks and legacy-config evidence |
 | [live-s3-transport](live-s3-transport/) | — | Live S3 transport failure investigation and corrected regression evidence |
-| [live-s3-memory](live-s3-memory/README.md) | — | Later cross-desktop live-S3 fix and memory checkpoint: Source114 replay, identities and cleanup |
-| [kde-source63](kde-source63/) | — | Earlier KDE optimization and cumulative local-memory changes: KDE reproduction |
+| [live-s3-memory](live-s3-memory/README.md) | — | Later cross-desktop live-S3 fix and memory checkpoint: [Source114 replay, identities and cleanup](live-s3-memory/source114/README.md) |
+| [kde-source63](kde-source63/) | — | Earlier KDE optimization and cumulative local-memory changes: [KDE reproduction](kde-source63/reproduction.md) |
 | [2026-10-10-kde-source60-diagnostic](2026-10-10-kde-source60-diagnostic/README.md) | — | KDE source60 diagnostic checkpoint |
 | [source53-cinnamon](source53-cinnamon/README.md) | — | Historical Cinnamon memory checkpoint: transformed numerical archive and original fingerprints |
 | [cold-family-metadata-race](cold-family-metadata-race/) | — | Cold-process-family metadata race, churn controls and permission failures |

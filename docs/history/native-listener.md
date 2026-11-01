@@ -108,7 +108,9 @@ must be measured and fixed before keeping a memory win.
 
 Only after the native gate passes, run two serial physical cold five-minute and two
 closed-view measurements with the frozen tests/performance scripts. Follow the
-[complete current listener recipe and evaluator](../memory-strategy.md#measure-the-complete-workload). Preflight
+[current whole-workload measurement guidance](../memory-strategy.md#measure-the-complete-workload)
+and the [cold-family observer](../../tests/performance/observe_cold_family.py) /
+[UI-process observer and evaluator](../../tests/performance/bench_ui_process.py). Preflight
 every complete Unix socket pathname with tools/diagnostics/check_socket_paths.py.
 Use fresh short private /tmp roots. Save commands, timestamps, parameters, failed
 attempts and structured raw samples before reporting them. RSS, PSS and private

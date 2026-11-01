@@ -424,8 +424,16 @@ Two CMake cache variables decide whether a build checks:
   builds add this repository, and the app recognises it in the repository file. Lab builds
   set `https://pkg.put.gd/lab`.
 
-Only clean tagged builds (stable or nightly) have a channel. Every other
-build reports `development_build` or `no_package` and never checks.
+Clean stable and nightly tags map to their respective channels. As a legacy
+pre-#373 leftover, clean `0.Y.Z-rc.N` tags still map to kind `candidate` and the
+`stable` channel; there is no candidate channel. A build without a recognized
+package target reports `no_package`; an untagged/development build with a known
+target reports `development_build`. Flatpak is not a shipped target, but a build
+stamped `flatpak` still never checks (reason `flatpak`). Checks disabled at build
+time (`PUTGD_UPDATE_CHECK=OFF` or absent check support) report `disabled_at_build`.
+These reasons are evaluated in this order: `disabled_at_build`, `flatpak`,
+`no_package`, then `development_build`; any reason makes the build unsupported
+for checks, even if its version maps to a channel.
 
 ## Implemented update paths
 

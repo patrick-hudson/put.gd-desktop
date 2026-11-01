@@ -96,5 +96,7 @@ the fix. They distinguish source changes from a re-run of an old binary.
 This proves an input-loss window and its correction on an isolated X server.
 The first intermittent Qt 6.10.2 VM failure did not record its event scheduling,
 so its exact cause remains unproven. Xvfb does not establish real Cinnamon,
-GNOME, or KDE graphical acceptance. The retained-window memory experiment was separate from this correction;
-current native package and integration evidence must identify the exact build.
+GNOME, or KDE graphical acceptance. This correction is separate from the frozen,
+unintegrated retained-window memory candidate; do not confuse that candidate
+with this X11 fix. Native package and integration evidence must identify which
+combination of changes was actually built.

@@ -460,8 +460,8 @@ Processes and agents started over SSH aren't part of the desktop session. A GNOM
 or Plasma logout doesn't stop them, and neither does ending your agent session.
 Before you release:
 
-1. Stop everything you started on the host: residents, any leftover sandbox instances,
-   input agents (`sudo -n systemctl stop putgd-lab-input`), pattern windows and
+1. Stop everything you started on the host: residents, any leftover `flatpak ps`
+   instances, input agents (`sudo -n systemctl stop putgd-lab-input`), pattern windows and
    recordings, plus the workstation-side SSH forwards. Kill only the exact PIDs
    you started.
 2. Remove anything temporary you added: desktop entries (then run
@@ -469,7 +469,8 @@ Before you release:
    again, and check that the packaged extension loaded), installed packages, and
    `~/.local/share/putgd`, `~/.cache/putgd` or `~/.config/putgd` if your runs
    created them.
-3. Run `release HOST --session ID`. On the host it inventories leftover sandbox instances and runs
+3. Run `release HOST --session ID`. On the host it inventories `flatpak ps`
+   instances and runs
    `pgrep -u patrick -af 'putgd|host_input|videotestsrc'`, and checks for user
    putgd desktop entries, extension copies and data, and an installed `putgd`
    package. It lists anything that appeared since you acquired the lock and

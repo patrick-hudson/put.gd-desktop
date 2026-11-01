@@ -1,6 +1,6 @@
 # Proton Drive: evidence and release gates
 
-> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [proton-drive](../proton-drive.md). Do not use it as a work list.
+> **Historical record.** This is a dated audit of a shipping integration, kept for its source-specific decisions and receipts. Use the current [Proton Drive guide](../proton-drive.md), [release gates](../proton-drive.md#release-gates) and [maintenance procedure](../proton-drive.md#maintenance-procedure) for ongoing work.
 
 Reconciled: 2026-10-15. Initial audit source: main
 `50fd37cafafcc4611925642b93dccb9d9f0949ab`. Subsequent tested candidates
@@ -235,8 +235,8 @@ receipt; wiring alone does not establish hosted or desktop acceptance.
 
 The user approved crediting the maintenance already performed rather than
 requiring an artificial additional SDK-version change. P5 is satisfied by the
-maintenance procedure below and the actual P3 transition from the unresolved
-Crypto 2.0.0 bootstrap to the explicit GPL Crypto 2.0.1 source snapshot. That
+[current maintenance procedure](../proton-drive.md#maintenance-procedure) and the
+actual P3 transition from the unresolved Crypto 2.0.0 bootstrap to the explicit GPL Crypto 2.0.1 source snapshot. That
 transition exercised source/lock selection, guarded source patches, notices,
 corresponding sources, exact helper rebuild, modified-source relinking,
 protocol/smoke tests and install integrity. P1 supplies the normal-use recovery
@@ -267,34 +267,7 @@ remaining general release requirements in [release.md](../release.md) and
 
 ## Maintenance procedure
 
-1. **Ownership and cadence.** The integration maintainer reviews upstream SDK,
-   account foundation, Crypto and Bun releases/security and migration notes
-   before each candidate/stable release, when a nightly changes Proton runtime
-   inputs, and whenever an announced required update or observed incompatibility
-   occurs. Record the check date,
-   references, pinned versions, compatibility result and next action in the
-   release receipt. This is a manual responsibility; no monitor was created.
-2. **Pinned updates.** Change the upstream commit, runtime/dependency locks and
-   any guarded source patches together. Reprovision explicitly, review notices
-   and source fingerprints, and verify the helper protocol, version/hash mismatch
-   failures, clean install and extracted-source rebuild. Do not float dependencies
-   or replace a public release artifact in place.
-3. **Compatibility checks.** Test browser authentication and refresh, private
-   upload, anonymous protected/unprotected download equality, sharing history,
-   interruption/reconciliation and old journal/config/receipt compatibility.
-   Confirm fresh account/folder/node/revision proof with the upgraded SDK.
-   Preserve credential references and accepted operation identities; record any
-   explicit reauthentication needed. Apply P2/P6 to the changed candidate.
-4. **Migration or incident.** A required-update response or newly incompatible
-   service stops affected publication with a useful update/reconnect result.
-   Preserve local archives, journals, unknown outcomes and offline history for
-   explicit inspection/retry after the compatible release. Verify this behavior
-   rather than assuming the current generic error proves it. Do not automatically
-   replay mutations or redirect work to S3. Publish a new tested put.gd version.
-5. **Rollback.** Retain the prior verified package/runtime and test compatibility
-   of its journals/configuration before offering downgrade. After a server crypto
-   migration an old SDK may be unusable; do not promise rollback restores service.
-   Keep user data and recovery identities intact while preparing a forward fix.
+Follow the current [maintenance procedure](../proton-drive.md#maintenance-procedure).
 
 ## Issue closure and next work
 

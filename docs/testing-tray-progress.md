@@ -18,8 +18,9 @@ cannot replace this inspection.
 ## Candidate and guest preparation
 
 Run Cinnamon/X11, GNOME/Wayland and KDE/Wayland functional **and memory** checks
-in parallel on one candidate. Use [memory measurement guidance](memory-strategy.md)
-and [the frozen memory protocols](history/testing-memory.md); this functional runner
+in parallel on one candidate. Use [whole-workload measurement guidance](memory-strategy.md#measure-the-complete-workload),
+the [performance observers](../tests/performance/) and the applicable
+[acceptance-matrix memory gates](acceptance-matrix.md); this functional runner
 does not invent a replacement memory budget. Wait for build/GUI work to stop
 before quiet memory sampling.
 
