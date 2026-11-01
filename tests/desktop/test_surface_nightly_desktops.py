@@ -706,7 +706,7 @@ with n.controller_shutdown(workers):
                 waited=nightly.await_host(dict(host='d69',rows=[{}]),Path(tmp),clock=lambda:clock[0],sleep=sleep)
                 self.assertEqual(waited,30)
 
-    def test_one_grouped_failure_issue_per_desktop_and_grey_does_not_close(self):
+    def test_one_grouped_failure_issue_per_desktop_grey_keeps_it_and_full_green_closes(self):
         failure=dict(number=2,title='nightly: Cinnamon failing',state='open')
         github=FakeGitHub(failure)
         row=dict(desktop='Cinnamon',host='m74',evidence='/owned/run',cells={
@@ -727,7 +727,7 @@ with n.controller_shutdown(workers):
             github.writes.clear()
             for v in row['cells'].values():v.update(status='green')
             nightly.publish(github,result,Path(tmp))
-            self.assertFalse(any(w[0]=='PATCH' and w[1].endswith('/2') for w in github.writes))
+            self.assertIn(('PATCH','repos/owner/repo/issues/2',dict(state='closed')),github.writes)
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()

@@ -764,6 +764,9 @@ def publish(github, result, out, *, previous=None):
         elif existing and existing['state'] == 'open' and all(v['status'] == 'green' for v in row['cells'].values()):
             github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
                 dict(body=f'All enabled flows recovered on `{result["release"]}`. [Receipt]({comment["html_url"]}).'))
+            # A filtered recheck is one row's second look; only a full run closes. Red reopens it.
+            if previous is None:
+                github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed'))
     if previous is not None:
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
