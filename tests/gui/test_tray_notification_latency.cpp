@@ -150,14 +150,12 @@ private slots:
   settle(100);
   invoke(id + 100, "restart-file-manager-synthetic-file-manager");
   invoke(id, "something-else");
-  settle(200);
-  QVERIFY(closed().isEmpty());
+  PUTGD_VERIFY_STEADY(closed().isEmpty(), 200);
   invoke(id, "restart-file-manager-synthetic-file-manager");
   PUTGD_TRY_COMPARE(closed(), QList<uint>{id});
   // Once used, the button is gone.
   invoke(id, "restart-file-manager-synthetic-file-manager");
-  settle(200);
-  QCOMPARE(closed(), QList<uint>{id});
+  PUTGD_COMPARE_STEADY(closed(), QList<uint>{id}, 200);
   // No server, as on a plain LXDE: nothing to answer Notify, so Qt's balloon carries it.
   QVERIFY(bus.unregisterService("org.freedesktop.Notifications"));
   const auto restore = qScopeGuard([&] { bus.registerService("org.freedesktop.Notifications"); });

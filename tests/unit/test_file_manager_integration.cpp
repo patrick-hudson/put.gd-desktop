@@ -194,9 +194,9 @@ private slots:
   Fixture f;
   // A unique process name, so a real PCManFM on this machine stays out of it.
   const auto name=QStringLiteral("putgdfm%1").arg(QCoreApplication::applicationPid());
-  const auto stub=QDir(f.context.searchPath).filePath(name),starts=f.path("starts");
-  auto quoted=starts;quoted.replace("'","'\\''");
-  write(stub,("#!/bin/sh\nprintf '%s %s\\n' \"$#\" \"$*\" >> '"+quoted+"'\ntrap 'exit 0' TERM\nwhile :; do sleep 0.05; done\n").toUtf8(),programMode);
+  const auto stub=QDir(f.context.searchPath).filePath(name),starts=f.path("starts"),displays=f.path("displays");
+  auto quoted=starts,quotedDisplays=displays;quoted.replace("'","'\\''");quotedDisplays.replace("'","'\\''");
+  write(stub,("#!/bin/sh\nprintf '%s %s\\n' \"$#\" \"$*\" >> '"+quoted+"'\nprintf '%s\\n' \"$WAYLAND_DISPLAY\" >> '"+quotedDisplays+"'\ntrap 'exit 0' TERM\nwhile :; do sleep 0.05; done\n").toUtf8(),programMode);
   const auto lines=[&]{return QString::fromUtf8(readAll(starts)).split('\n',Qt::SkipEmptyParts);};
   const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted());};
   {
@@ -238,6 +238,8 @@ private slots:
    QProcess second;environment.remove("WAYLAND_DISPLAY");second.setProcessEnvironment(environment);restart(second);
    QVERIFY(desktop.waitForFinished(5000));
    PUTGD_TRY_COMPARE(lines().size(),2);
+   // It comes back on the display it had, not put.gd's lack of one.
+   QCOMPARE(QString::fromUtf8(readAll(displays)).split('\n',Qt::SkipEmptyParts).last(),QString("wayland-0"));
    second.terminate();QVERIFY(second.waitForFinished(5000));
   }
   // Not running: nothing to do, and nothing starts.
