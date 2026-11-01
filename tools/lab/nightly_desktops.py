@@ -7,6 +7,8 @@ Private configuration: ~/.config/putgd-nightly/config.json and github-token
 (owned, mode 0600). config.json supplies repository, builders (ssh argv, root,
 rows), and each row's golden, bootstrapKey, knownHosts, profile and package.
 The user service calls this without --now: already published tags are skipped.
+It first fast-forwards d69's checkout to origin/nightly, and the controller brings
+every builder to that commit, so merged driver fixes need no deployment step.
 The worker uses only existing lab launch/install/recipes/collection/retirement.
 No compilation, map updates, per-night commits, or visual approval step.
 """
@@ -762,6 +764,9 @@ def publish(github, result, out, *, previous=None):
         elif existing and existing['state'] == 'open' and all(v['status'] == 'green' for v in row['cells'].values()):
             github.api(f'repos/{github.repo}/issues/{existing["number"]}/comments', 'POST',
                 dict(body=f'All enabled flows recovered on `{result["release"]}`. [Receipt]({comment["html_url"]}).'))
+            # A filtered recheck is one row's second look; only a full run closes. Red reopens it.
+            if previous is None:
+                github.api(f'repos/{github.repo}/issues/{existing["number"]}', 'PATCH', dict(state='closed'))
     if previous is not None:
         result['desktops'] = merge_desktops(previous, result)
     markdown = f'Release: **{result["release"]}** · {result["date"]}\n\n'+table(result)
@@ -810,6 +815,47 @@ def merge_desktops(previous, result):
     return [replacements.get(r['host'], r) for r in previous['desktops']]
 
 
+def follow_nightly(argv):
+    """The timer tests with the newest merged driver, not whatever was last deployed.
+
+    A failed update keeps the current checkout: an older driver still gives a result.
+    """
+    root = str(ROOT)
+    try:
+        before = command(['git', '-C', root, 'rev-parse', 'HEAD']).strip()
+        command(['git', '-C', root, 'fetch', '-q', '--no-tags', 'origin', 'nightly'])
+        command(['git', '-C', root, 'merge', '-q', '--ff-only', 'FETCH_HEAD'])
+        after = command(['git', '-C', root, 'rev-parse', 'HEAD']).strip()
+    except (RuntimeError, subprocess.TimeoutExpired) as error:
+        print(json.dumps(dict(followNightly='kept current checkout', reason=str(error))), flush=True)
+        return
+    if after != before:
+        os.execv(sys.executable, [sys.executable, *argv])
+
+
+def sync_checkout(builder, driver):
+    """Workers refuse any commit but the controller's, so bring each one to it."""
+    git = ['git', '-C', builder['root']]
+    # A commit copied here by hand may not be on origin; being on it is enough.
+    update = '[ "$('+shlex.join([*git, 'rev-parse', 'HEAD'])+')" = '+shlex.quote(driver)+' ] || { '
+    update += shlex.join([*git, 'fetch', '-q', '--no-tags', 'origin', driver])
+    update += ' && '+shlex.join([*git, 'merge', '-q', '--ff-only', driver])+'; }'
+    try:
+        command([*builder['ssh'], update], timeout=300)
+    except (RuntimeError, subprocess.TimeoutExpired):
+        raise NotRun('builder checkout cannot reach the controller driver') from None
+
+
+def remove_inputs(ssh, inputs, archive):
+    """Delete only what this run unpacked; each night's packages would fill the builder."""
+    with tarfile.open(archive) as stream:
+        members = stream.getmembers()
+    names = [shlex.quote(inputs+'/'+m.name) for m in members if not m.isdir()]
+    folders = [m.name for m in members if m.isdir()]
+    folders = [shlex.quote(inputs+'/'+name) for name in sorted(folders, key=len, reverse=True)]
+    command([*ssh, ' && '.join(['rm -f -- '+' '.join(names), 'rmdir -- '+' '.join([*folders, shlex.quote(inputs)])])])
+
+
 def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None, controller=None):
     """One foreground worker process per host, including d69 itself."""
     started = time.monotonic()
@@ -830,6 +876,7 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
                         raise NotRun('SSH unreachable after 20-minute wait') from None
                     time.sleep(min(30, max(0, deadline-time.monotonic())))
             waited = time.monotonic()-started
+            sync_checkout(builder, json.loads((artifacts/'identity.json').read_text())['driver'])
             inputs = root+'/inputs/'+out.name
             command([*ssh, 'mkdir -p '+shlex.quote(inputs)])
             with archive.open('rb') as data:
@@ -851,6 +898,11 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None,
                 terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
         text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
         rows = json.loads(text)
+        if ssh:
+            try:
+                remove_inputs(ssh, inputs, archive)
+            except (RuntimeError, subprocess.TimeoutExpired) as error:
+                print(json.dumps(dict(host=host, inputsKept=str(error))), flush=True)
     except Exception as error:
         reason = str(error) if isinstance(error, NotRun) else 'worker infrastructure failed: '+type(error).__name__
         rows = not_run_rows(host, builder, reason, out/host)
@@ -888,6 +940,8 @@ def controller(args, config, *, local_workers=None):
     state.mkdir(parents=True, mode=0o700, exist_ok=True)
     with (state/'controller.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if not args.now and not args.tag:
+            follow_nightly(sys.argv)
         github = GitHub(config['repository'], args.config.parent/'github-token')
         if args.tag:
             if not TAG.fullmatch(args.tag):

@@ -310,15 +310,87 @@ class NightlyTests(unittest.TestCase):
                 self.assertEqual(process.kill.call_count, int(ignores_term))
                 self.assertEqual(process.communicate.call_args_list[1].kwargs['timeout'], 30)
 
-    def test_remote_worker_has_its_own_watchdog(self):
+    @staticmethod
+    def remote_inputs(root):
+        (root/'identity.json').write_text(json.dumps(dict(driver=BUILD)))
+        artifacts = root/'stage/artifacts'
+        (artifacts/'packages').mkdir(parents=True)
+        (artifacts/'packages/put gd.deb').touch()
+        with nightly.tarfile.open(root/'inputs.tar', 'w') as stream:
+            stream.add(artifacts, arcname='artifacts')
+        return root/'inputs.tar'
+
+    def test_remote_checkout_reaches_the_controller_driver_before_the_worker_checks_it(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            archive = root/'inputs.tar'; archive.touch()
-            with patch.object(nightly, 'command', side_effect=[None, None, None, '[]']) as command, \
+            archive = self.remote_inputs(root)
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', None]) as command, \
                     patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
                 nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
                                  'vtest', root, archive, root, local_workers=Mock())
-            args = command.call_args_list[2]
+            sync = command.call_args_list[1].args[0][-1]
+            self.assertEqual(sync, f'[ "$(git -C /repo rev-parse HEAD)" = {BUILD} ] || '
+                                   f'{{ git -C /repo fetch -q --no-tags origin {BUILD} && git -C /repo merge -q --ff-only {BUILD}; }}')
+            self.assertLess(1, [i for i, c in enumerate(command.call_args_list) if '--worker' in c.args[0][-1]][0])
+
+    def test_unreachable_driver_is_grey_and_launches_no_worker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            builder = dict(ssh=['ssh', 'builder'], root='/repo', config='/private',
+                           rows=[dict(name='Row', live=False)])
+            with patch.object(nightly, 'command', side_effect=[None, RuntimeError('git failed')]) as command:
+                rows = nightly.run_host('d69', builder, 'vtest', root, archive, root, local_workers=Mock())
+            self.assertEqual(command.call_count, 2)
+            self.assertEqual({c['assertion'] for c in rows[0]['cells'].values()},
+                             {'builder checkout cannot reach the controller driver'})
+
+    def test_finished_run_deletes_exactly_what_it_unpacked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', None]) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
+                                 'vtest', root, archive, root, local_workers=Mock())
+            cleanup = command.call_args_list[-1].args[0][-1]
+            inputs = '/repo/inputs/'+root.name
+            self.assertEqual(cleanup, f"rm -f -- '{inputs}/artifacts/packages/put gd.deb' && "
+                                      f'rmdir -- {inputs}/artifacts/packages {inputs}/artifacts {inputs}')
+            self.assertNotIn('-r', cleanup.split())
+
+    def test_failed_cleanup_keeps_the_result(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', RuntimeError('rm failed')]), \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                self.assertEqual(nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
+                                                  'vtest', root, archive, root, local_workers=Mock()), [])
+
+    def test_timer_restarts_itself_on_a_newer_driver(self):
+        replies = ['old\n', '', '', 'new\n']
+        with patch.object(nightly, 'command', side_effect=replies), \
+                patch.object(nightly.os, 'execv') as execv:
+            nightly.follow_nightly(['nightly_desktops.py'])
+        execv.assert_called_once_with(sys.executable, [sys.executable, 'nightly_desktops.py'])
+
+    def test_timer_keeps_going_when_the_checkout_is_current_or_cannot_update(self):
+        for replies in (['same\n', '', '', 'same\n'], ['same\n', RuntimeError('offline')]):
+            with patch.object(nightly, 'command', side_effect=replies), \
+                    patch.object(nightly.os, 'execv') as execv:
+                nightly.follow_nightly(['nightly_desktops.py'])
+            execv.assert_not_called()
+
+    def test_remote_worker_has_its_own_watchdog(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = self.remote_inputs(root)
+            with patch.object(nightly, 'command', side_effect=[None, None, None, None, '[]', None]) as command, \
+                    patch.object(nightly.subprocess, 'run', return_value=SimpleNamespace(returncode=0)):
+                nightly.run_host('d69', dict(ssh=['ssh', 'builder'], root='/repo', config='/private'),
+                                 'vtest', root, archive, root, local_workers=Mock())
+            args = command.call_args_list[3]
             self.assertIn('timeout --foreground --signal=TERM --kill-after=300 18000', args.args[0][-1])
             self.assertEqual(args.kwargs['terminate_grace'], nightly.TERMINATE_GRACE)
             self.assertIsNone(args.kwargs['local_workers'])
@@ -635,7 +707,7 @@ with n.controller_shutdown(workers):
                 waited=nightly.await_host(dict(host='d69',rows=[{}]),Path(tmp),clock=lambda:clock[0],sleep=sleep)
                 self.assertEqual(waited,30)
 
-    def test_one_grouped_failure_issue_per_desktop_and_grey_does_not_close(self):
+    def test_one_grouped_failure_issue_per_desktop_grey_keeps_it_and_full_green_closes(self):
         failure=dict(number=2,title='nightly: Cinnamon failing',state='open')
         github=FakeGitHub(failure)
         row=dict(desktop='Cinnamon',host='m74',evidence='/owned/run',cells={
@@ -656,7 +728,7 @@ with n.controller_shutdown(workers):
             github.writes.clear()
             for v in row['cells'].values():v.update(status='green')
             nightly.publish(github,result,Path(tmp))
-            self.assertFalse(any(w[0]=='PATCH' and w[1].endswith('/2') for w in github.writes))
+            self.assertIn(('PATCH','repos/owner/repo/issues/2',dict(state='closed')),github.writes)
 
     def test_grey_infrastructure_creates_no_failure_issue(self):
         github=FakeGitHub()
