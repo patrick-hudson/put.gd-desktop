@@ -6,6 +6,10 @@
 #include <QScopeGuard>
 #include <QTest>
 #include <QtEndian>
+#include <cstring>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 using namespace putgd;
 namespace {
 // A little-endian ELF64 file with the AppImage magic and a .upd_info section,
@@ -53,12 +57,22 @@ private slots:
   const auto bin=dir.filePath("manager"),receipt=dir.filePath("manager-calls");QVERIFY(QDir().mkpath(bin));
   auto quoted=receipt;quoted.replace("'","'\\''");
   writeImage(QDir(bin).filePath("systemctl"),("#!/bin/sh\nprintf 'called\\n' >> '"+quoted+"'\nprintf 'not-found\\n'\n").toUtf8());
+  // A user manager to reach, whatever the machine running this test has (#1112).
+  const auto runtime=dir.filePath("rt");QVERIFY(QDir().mkpath(runtime+"/systemd"));
+  {
+   const int fd=::socket(AF_UNIX,SOCK_STREAM,0);QVERIFY(fd>=0);
+   sockaddr_un address{};address.sun_family=AF_UNIX;const auto bytes=QFile::encodeName(runtime+"/systemd/private");
+   QVERIFY(size_t(bytes.size())<sizeof(address.sun_path));std::memcpy(address.sun_path,bytes.constData(),size_t(bytes.size()));
+   QCOMPARE(::bind(fd,reinterpret_cast<const sockaddr*>(&address),sizeof(address)),0);::close(fd);
+  }
+  const auto oldRuntime=qgetenv("XDG_RUNTIME_DIR");qputenv("XDG_RUNTIME_DIR",QFile::encodeName(runtime));
   const auto oldPath=qgetenv("PATH");qputenv("PATH",bin.toUtf8()+':'+oldPath);
   const auto unchanged=LoginStartup::prepareMonitor(dir.path(),data,native,true);
   const auto unchangedTouchedManager=QFile::exists(receipt);
   const auto changed=LoginStartup::prepareMonitor(dir.path(),data,next,true);
   const auto changedTouchedManager=QFile::exists(receipt);
   if(oldPath.isNull())qunsetenv("PATH");else qputenv("PATH",oldPath);
+  if(oldRuntime.isNull())qunsetenv("XDG_RUNTIME_DIR");else qputenv("XDG_RUNTIME_DIR",oldRuntime);
   QVERIFY(!unchanged);QVERIFY(!unchangedTouchedManager);
   QVERIFY(!changed);QVERIFY(changedTouchedManager);
  }
