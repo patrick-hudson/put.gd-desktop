@@ -1,7 +1,8 @@
 # Upload with put.gd from a file manager
 
 Right-click one or more files or folders in a file manager and choose
-**Upload with put.gd**. They upload to the default destination right away
+**Upload with put.gd**. They upload right away to the capture destination,
+or the only destination when there is no capture one ([Destination](#destination)),
 and are shared and copied exactly as a capture is (#1105): with a share link,
 the link is copied; a private upload makes no link and leaves the clipboard
 alone. The usual finished or failure notification appears unless **Show
