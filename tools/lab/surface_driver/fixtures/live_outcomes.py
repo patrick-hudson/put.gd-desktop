@@ -39,6 +39,7 @@ def key_set_two(text):
 
 
 def admit(ctx):
+    """Require an approved disposable guest, held leases and private storage before live setup."""
     if (ctx.destination not in ('s3', 'proton') or ctx.placement != 'guest'
             or ctx.target.physical or not ctx.profile.get('guest') or not ctx._live_admitted):
         raise RecipeBlocked('Tier 1 live requires the admitted builder guest; boat and native are forbidden')

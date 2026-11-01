@@ -194,6 +194,7 @@ class LiveOutcomes(unittest.TestCase):
             with self.assertRaises(RecipeBlocked):admit(ctx)
 
     def test_named_appimage_guests_still_require_the_desktop_lock(self):
+        """Approved package/profile pairs reach the lease guard for both live providers."""
         for host, desktop, guest in (('m74', 'mint-cinnamon-x11', 'cinnamon-x11-appimage'),
                                      ('d69', 'ubuntu-gnome-wayland', 'gnome-wayland-appimage'),
                                      ('aurora-amd', 'aurora-kde-wayland', 'aurora-kde-wayland'),
@@ -215,6 +216,7 @@ class LiveOutcomes(unittest.TestCase):
                         self.assertEqual(lock.call_args.args[1], host)
 
     def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
+        """Reject unsupported or misidentified AppImages before any lease or credential access."""
         for host, desktop, guest, actual in (
                 ('m74', 'mint-cinnamon-x11', 'cinnamon-x11', 'cinnamon-x11'),
                 ('m74', 'mint-cinnamon-x11', 'cinnamon-x11-appimage', 'cinnamon-x11'),
