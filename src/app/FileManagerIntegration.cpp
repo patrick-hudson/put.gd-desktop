@@ -480,9 +480,10 @@ QString FileManagerIntegration::restartScript(const QString& name) {
  if(name=="peony")return QStringLiteral("peony -q");
  // PCManFM has no quit option; both quit cleanly on SIGTERM and their sessions
  // don't bring back a clean exit. One that draws the desktop or runs as a daemon
- // comes back with its own arguments ($1 names the process).
+ // comes back with its own arguments ($1 names the process; another session's stays).
  if(name=="pcmanfm"||name=="pcmanfm-qt")return QStringLiteral(
-  "p=$(pgrep -u \"$(id -u)\" -n -x \"$1\") || exit 0; a=$(tr '\\0' '\\n' </proc/$p/cmdline); kill \"$p\"; "
+  "p=; for q in $(pgrep -u \"$(id -u)\" -x \"$1\"); do [ \"$(tr '\\0' '\\n' </proc/$q/environ | sed -n 's/^DISPLAY=//p')\" = \"$DISPLAY\" ] && p=$q; done; [ -n \"$p\" ] || exit 0; "
+  "a=$(tr '\\0' '\\n' </proc/$p/cmdline); kill \"$p\"; "
   "i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; "
   "printf '%s\\n' \"$a\" | grep -qx -e --desktop -e --daemon-mode -e -d || exit 0; "
   "set -f; IFS='\n'; set -- $a; exec \"$@\"");

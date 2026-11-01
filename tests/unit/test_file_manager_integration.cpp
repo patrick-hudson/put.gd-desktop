@@ -1,4 +1,5 @@
 #include "app/FileManagerIntegration.h"
+#include "fixtures/Waits.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
@@ -200,22 +201,33 @@ private slots:
   const auto restart=[&](QProcess& process){process.start("/bin/sh",{"-c",FileManagerIntegration::restartScript("pcmanfm"),"putgd-restart",name});QVERIFY(process.waitForStarted());};
   {
    QProcess desktop;desktop.start(stub,{"--desktop","--profile","the LXDE"});
-   QTRY_COMPARE(lines().size(),1);
+   PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
    // The first exits cleanly on SIGTERM; its arguments, spaces included, come back.
    QVERIFY(desktop.waitForFinished(5000));QCOMPARE(desktop.exitCode(),0);
-   QTRY_COMPARE(lines(),QStringList({"3 --desktop --profile the LXDE","3 --desktop --profile the LXDE"}));
+   PUTGD_TRY_COMPARE(lines(),QStringList({"3 --desktop --profile the LXDE","3 --desktop --profile the LXDE"}));
    second.terminate();QVERIFY(second.waitForFinished(5000));
   }
   QFile::remove(starts);
   {
    // Just a window: it closes and nothing reopens it.
    QProcess window;window.start(stub,{"/some/folder"});
-   QTRY_COMPARE(lines().size(),1);
+   PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
    QVERIFY(window.waitForFinished(5000));
    QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
    QCOMPARE(lines(),QStringList{"1 /some/folder"});
+  }
+  QFile::remove(starts);
+  {
+   // Another session's, on another display: left alone, and nothing starts here.
+   QProcess other;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("DISPLAY",":putgd-other");
+   other.setProcessEnvironment(environment);other.start(stub,{"--desktop"});
+   PUTGD_TRY_COMPARE(lines().size(),1);
+   QProcess second;restart(second);
+   QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
+   QCOMPARE(other.state(),QProcess::Running);QCOMPARE(lines().size(),1);
+   other.terminate();QVERIFY(other.waitForFinished(5000));
   }
   // Not running: nothing to do, and nothing starts.
   QFile::remove(starts);
