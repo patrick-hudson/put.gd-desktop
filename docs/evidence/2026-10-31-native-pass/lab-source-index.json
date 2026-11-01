@@ -121,8 +121,8 @@
   },
   {
     "path": "lab/checksum_chain_checks.py",
-    "sha256": "1464593c5318c50e01608655fa7ff1610a0d750c3b7182c83e52f62f65e4af8c",
-    "bytes": 8019
+    "sha256": "050eeb0c40f29eaa0f8023eb46d82f614c2b46bb26fabcd6662933dc90a0e9e9",
+    "bytes": 9933
   },
   {
     "path": "lab/native-local.patch",

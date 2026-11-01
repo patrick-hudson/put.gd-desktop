@@ -26,6 +26,7 @@
         "2026-10-30-tier1-blockers-299e4b29/files.sha256.json",
         "2026-10-30-tier1-phase-a-final/files.sha256.json",
         "2026-10-30-tier1-phase-b/cinnamon/sha256.json",
+        "2026-10-30-tier1-phase-b/driver-source-sha256.json",
         "2026-10-30-tier1-phase-b/gnome/sha256.json",
         "2026-10-30-tier1-phase-b/gnome-executed-driver-sha256.json",
         "2026-10-30-tier1-phase-b/initial-campaign/sha256.json",
@@ -53,7 +54,7 @@
         "surface-core-r3-2026-10-30/image-sha256.json"
       ],
       "verifiedEntries": 2156,
-      "unavailableEntries": 897
+      "unavailableEntries": 902
     },
     "text-digest-to-path": {
       "indexes": [
@@ -101,7 +102,7 @@
         "catalog-tray-confirm/2026-10-29/SHA256SUMS",
         "catalog-tray-confirm/2026-10-29/binary-sha256.txt"
       ],
-      "verifiedEntries": 2159,
+      "verifiedEntries": 1826,
       "unavailableEntries": 97
     }
   },
@@ -137,5 +138,8 @@
   "scope": "Current published path-map indexes and the current phase-B checksum chain. Unavailable files are counted, not claimed verified; historical followup-* snapshots and original inventories retain their recorded identities.",
   "previousCoverage": "Earlier checks covered exact-name SHA256SUMS files, the lab source index, native terminal publication maps and selected structured manifests. They missed flat JSON path-to-digest indexes and alternate text checksum names.",
   "structuredFormats": "Structured files maps and path/sha256/bytes records also occur in manifests, source indexes, frame metadata and recorded run observations. Current completion files maps are checked by production overlay_cleanup._evidence; the lab-source and terminal maps have separate publication checks. Historical source/package observations are not reinterpreted as current-repository checksums.",
-  "namespace": "Original cohort lifecycle records were relocated under lifecycle/. Verification copies existing published members into the original export namespace in a temporary directory, then calls overlay_cleanup._evidence. This does not run a guest, retire an overlay, or recreate historical observations."
+  "namespace": "Original cohort lifecycle records were relocated under lifecycle/. Verification copies existing published members into the original export namespace in a temporary directory, then calls overlay_cleanup._evidence. This does not run a guest, retire an overlay, or recreate historical observations.",
+  "emptyIndexes": [
+    "2026-10-30-boat-candidate-752-live/interrupted/SHA256SUMS"
+  ]
 }

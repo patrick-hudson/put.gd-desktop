@@ -16,6 +16,7 @@ from tools.lab import overlay_cleanup
 
 HEX = re.compile(r'[0-9a-f]{64}$')
 TEXT = re.compile(r'([0-9a-f]{64})\s+\*?(.+)$')
+INDEX_NAME = re.compile(r'(.*[-_.])?(sha256sums(\.txt)?|sha256\.json|checksums?\.json|sha256)', re.I)
 EVIDENCE = Path(__file__).resolve().parents[2]
 
 
@@ -30,6 +31,10 @@ def entries(path):
         value = json.loads(text)
         if isinstance(value, dict) and value and all(isinstance(v, str) and HEX.fullmatch(v) for v in value.values()):
             return value
+        # Source inventories nest the map under "files" beside their commit.
+        files = value.get('files') if isinstance(value, dict) and INDEX_NAME.fullmatch(path.name) else None
+        if isinstance(files, dict) and files and all(isinstance(v, str) and HEX.fullmatch(v) for v in files.values()):
+            return files
         return None
     matches = [TEXT.fullmatch(line) for line in text.splitlines() if line and not line.startswith('#')]
     if matches and all(matches):
@@ -96,25 +101,35 @@ def check_phase_b(root):
 
 def audit_formats(root):
     """Discover path-map index formats by content; report private/snapshot scopes."""
-    result = dict(formats={}, historicalSnapshots=[], originalInventories=[], mismatches=[])
+    result = dict(formats={}, historicalSnapshots=[], originalInventories=[], emptyIndexes=[], mismatches=[])
     for path in sorted(root.rglob('*')):
         if not path.is_file() or path.suffix.lower() in ('.png', '.ppm', '.jpg', '.webp', '.gz'):
             continue
         # Logs/commands contain historical hash observations, not current indexes.
         if path.suffix.lower() != '.json' and not re.search('sha256|checksum', path.name, re.I):
             continue
+        # Conventionally named indexes must parse, or the audit fails. Other files
+        # (verify logs, scope notes, nested inventories) count only when their
+        # content is a flat digest map.
+        candidate = bool(INDEX_NAME.fullmatch(path.name))
+        name = str(path.relative_to(root))
         try:
             rows = entries(path)
         except (UnicodeError, ValueError):
+            rows = None
+        if rows is None and not candidate:
             continue
-        if rows is None:
-            continue
-        name = str(path.relative_to(root))
         if any(part.startswith('followup-') for part in path.relative_to(root).parts):
             result['historicalSnapshots'].append(name)
             continue
         if path.name.endswith('.original'):
             result['originalInventories'].append(name)
+            continue
+        if rows is None:
+            if not path.read_bytes().strip():
+                result['emptyIndexes'].append(name)  # e.g. an interrupted run
+            else:
+                result['mismatches'].append(name)
             continue
         family = 'json-path-to-digest' if path.suffix.lower() == '.json' else 'text-digest-to-path'
         summary = result['formats'].setdefault(family, dict(indexes=[], verifiedEntries=0, unavailableEntries=0))
@@ -163,6 +178,20 @@ class FormatRegression(unittest.TestCase):
             self.assertEqual(check_index(index, require_all=False), (1, 1))
             with self.assertRaisesRegex(ValueError, 'unavailable'):
                 check_index(index)
+
+    def test_malformed_candidate_index_is_a_mismatch_and_unrelated_json_is_ignored(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            member = root/'published.json'; member.write_text('{}')
+            (root/'sha256.json').write_text(json.dumps({'published.json':digest(member), 'other.json':'not-a-digest'}))
+            (root/'SHA256SUMS').write_text(digest(member)+'  published.json\nmalformed row\n')
+            (root/'receipt.json').write_text('{"status":"green"}')
+            (root/'sha256-verify.txt').write_text('published.json: OK\n')
+            (root/'empty').mkdir(); (root/'empty'/'SHA256SUMS').write_text('\n')
+            report = audit_formats(root)
+            self.assertEqual(sorted(report['mismatches']), ['SHA256SUMS', 'sha256.json'])
+            self.assertEqual(report['emptyIndexes'], ['empty/SHA256SUMS'])
+            self.assertEqual(report['formats'], {})
 
 
 if __name__ == '__main__':
