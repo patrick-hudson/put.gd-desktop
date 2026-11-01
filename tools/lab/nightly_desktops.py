@@ -315,6 +315,44 @@ def verdict(out, recipe):
         return cell(assertion='terminal audited receipt missing or invalid', receipt=str(Path(out)/'receipt.json'))
 
 
+def controller_ssh_identities(*, proc=Path('/proc')):
+    """Excuse only live SSH clients forked by our controller for other rows.
+
+    The local worker receives its controller's PID/start time and exact configured
+    SSH argv prefixes. Never excuse descendants, command substrings, or bare PIDs:
+    the release inventory must still match the process's start time.
+    """
+    try:
+        controller = json.loads(os.environ.get('PUTGD_NIGHTLY_CONTROLLER', '{}'))
+        parent = controller['pid']
+        if parent != os.getppid():
+            return []
+        def identity(pid):
+            fields = (proc/str(pid)/'stat').read_text().rsplit(')', 1)[1].split()
+            return int(fields[1]), fields[19]
+        if identity(parent)[1] != controller['start']:
+            return []
+        prefixes = [argv for argv in controller['ssh'] if argv and Path(argv[0]).name == 'ssh']
+        children = {pid for task in (proc/str(parent)/'task').iterdir()
+                    for pid in (task/'children').read_text().split()}
+        result = []
+        for pid in children:
+            try:
+                path = proc/pid
+                before = identity(pid)
+                argv = os.fsdecode((path/'cmdline').read_bytes()).rstrip('\0').split('\0')
+                if (before[0] == parent and path.stat().st_uid == os.getuid()
+                        and (path/'exe').readlink().name == 'ssh'
+                        and any(argv[:-1] == prefix for prefix in prefixes)
+                        and identity(pid) == before):
+                    result.append(f'process:{pid}:{before[1]}')
+            except (OSError, ValueError, IndexError):
+                continue  # Exited or unreadable processes are never excused.
+        return result if identity(parent)[1] == controller['start'] else []
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
+        return []
+
+
 @contextmanager
 def lease(host, session, out, *, reservation=None):
     from tools.lab.desktop_lock import Desktop
@@ -350,7 +388,13 @@ def lease(host, session, out, *, reservation=None):
             if acquired:
                 (slot/'session').unlink()
                 slot.rmdir()
-            save(out/'lock-release.json', lock.release(session, verified_clean=True))
+            try:
+                not_mine = controller_ssh_identities if host == 'd69' else []
+                save(out/'lock-release.json', lock.release(session, verified_clean=True, not_mine=not_mine))
+            except Exception as error:
+                save(out/'lock-release-error.json', dict(type=type(error).__name__, message=str(error),
+                                                        details=getattr(error, 'details', {})))
+                raise
 
 
 def preflight(config):
@@ -766,7 +810,7 @@ def merge_desktops(previous, result):
     return [replacements.get(r['host'], r) for r in previous['desktops']]
 
 
-def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None):
+def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None, controller=None):
     """One foreground worker process per host, including d69 itself."""
     started = time.monotonic()
     started_at = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -801,7 +845,8 @@ def run_host(host, builder, tag, artifacts, archive, out, *, local_workers=None)
         # worker (foreground), allowing its own finally blocks to retire guests.
         remote = ['timeout', '--foreground', '--signal=TERM', f'--kill-after={TERMINATE_GRACE}',
                   str(HOST_TIMEOUT), *args]
-        command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'),
+        env = dict(os.environ, PUTGD_NIGHTLY_CONTROLLER=json.dumps(controller)) if controller and not ssh else None
+        command([*ssh, shlex.join(remote)] if ssh else args, log=out/(host+'.log'), env=env,
                 timeout=HOST_TIMEOUT + TERMINATE_GRACE + 30 if ssh else HOST_TIMEOUT,
                 terminate_grace=TERMINATE_GRACE, local_workers=local_workers if not ssh else None)
         text = command([*ssh, 'cat '+shlex.quote(output+'/results.json')]) if ssh else Path(output+'/results.json').read_text()
@@ -819,9 +864,14 @@ def run_hosts(builders, tag, artifacts, out, result, dispatch=run_host, *, local
     archive = out/'inputs.tar'
     with tarfile.open(archive, 'w') as stream:
         stream.add(artifacts, arcname='artifacts')
+    from tools.lab.desktop_lock import process_start
+    controller = dict(pid=os.getpid(), start=process_start(os.getpid()),
+                      ssh=[b['ssh'] for host, b in builders.items() if host != 'd69' and b.get('ssh')])
     by_host = {}
     with ThreadPoolExecutor(max_workers=len(builders)) as pool:
-        kwargs = dict(local_workers=local_workers) if local_workers is not None else {}
+        kwargs = dict(controller=controller)
+        if local_workers is not None:
+            kwargs['local_workers'] = local_workers
         futures = {pool.submit(dispatch, host, builder, tag, artifacts, archive, out, **kwargs):host
                    for host,builder in builders.items()}
         for future in as_completed(futures):

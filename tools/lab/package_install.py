@@ -14,6 +14,9 @@ import subprocess
 import time
 
 
+APT_LOCK_TIMEOUT = 120
+
+
 def output_file(path):
     # Never truncate before checking: the lab user can plant links or special
     # files in this directory while the supervisor runs as root.
@@ -217,13 +220,17 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
         become_subreaper()
         save(directory / 'progress.json', report)
         with output_file(directory / 'apt.log') as log:
-            for arguments in commands:
+            pending = iter(commands)
+            arguments = next(pending, None)
+            update_lock_deadline = min(started + timeout, time.monotonic() + APT_LOCK_TIMEOUT)
+            while arguments is not None:
                 # Never start the next apt command after the initial budget expires.
                 if report['timedOut'] or time.monotonic() - started >= timeout:
                     report['timedOut'] = True
                     break
+                log_start = log.tell()
                 process = subprocess.Popen(arguments, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
-                                           env={**os.environ, 'DEBIAN_FRONTEND': 'noninteractive'})
+                                           env={**os.environ, 'DEBIAN_FRONTEND': 'noninteractive', 'LC_ALL': 'C'})
                 while True:
                     owned.discover()
                     if time.monotonic() - started >= timeout:
@@ -256,9 +263,34 @@ def supervise(commands, directory, timeout, recovery, package='putgd'):
                             time.sleep(.1)
                         break
                     time.sleep(.2)
+                # DPkg::Lock::Timeout does not cover update's lists lock. Retry
+                # only its early lock refusal, never a partial install or other
+                # apt failure, within both the lock wait and shared apt budget.
+                if (not report['aborted'] and not report['timedOut'] and process.returncode == 100
+                        and arguments[0] == 'apt-get' and arguments[-1] == 'update'):
+                    # Read our pinned log inode, never a caller-replaced path/link.
+                    with open(f'/proc/self/fd/{log.fileno()}', 'rb') as output:
+                        output.seek(log_start)
+                        errors = [line for line in output.read().decode(errors='replace').splitlines()
+                                  if line.startswith('E: ')]
+                    lock_error = any(line.startswith('E: Could not get lock /var/lib/apt/lists/lock')
+                                     and ('held by process ' in line or
+                                          'Resource temporarily unavailable' in line) for line in errors)
+                    only_lock_errors = all(line.startswith(('E: Could not get lock /var/lib/apt/lists/lock',
+                                                           'E: Unable to lock directory /var/lib/apt/lists/'))
+                                           for line in errors)
+                    remaining = update_lock_deadline - time.monotonic()
+                    if lock_error and only_lock_errors and remaining > 0:
+                        time.sleep(min(1, remaining))
+                        now = time.monotonic()
+                        report['timedOut'] = now - started >= timeout
+                        if now < update_lock_deadline:
+                            report['updateLockRetries'] = report.get('updateLockRetries', 0) + 1
+                            continue
                 report['exitCodes'].append(process.poll())
                 if report['aborted'] or process.returncode:
                     break
+                arguments = next(pending, None)
     except BaseException as error:
         report['error'] = type(error).__name__
         report['aborted'] = True
@@ -317,7 +349,8 @@ def main():
     directory = Path('.')
     # This fixed helper is the only newly privileged entrypoint; it cannot execute
     # caller-selected commands. The guest already permits arbitrary DEB installs.
-    supervise([['apt-get', 'update'], ['apt-get', 'install', '--reinstall', '-y',
+    supervise([['apt-get', '-o', f'DPkg::Lock::Timeout={APT_LOCK_TIMEOUT}', 'update'],
+               ['apt-get', '-o', f'DPkg::Lock::Timeout={APT_LOCK_TIMEOUT}', 'install', '--reinstall', '-y',
                './package.deb']], directory, args.timeout, args.recovery)
 
 

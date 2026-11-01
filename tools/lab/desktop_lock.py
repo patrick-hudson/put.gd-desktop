@@ -124,10 +124,11 @@ def compare(baseline, current, not_mine=()):
     known = {item['key'] for item in baseline}
     new = [item for item in current if item['key'] not in known]
     claimed = set(not_mine)
-    return {'left': [item for item in new if item['id'] not in claimed],
-            'notMine': [item for item in new if item['id'] in claimed],
+    excused = {item['key'] for item in new if claimed & {item['id'], item['key']}}
+    return {'left': [item for item in new if item['key'] not in excused],
+            'notMine': [item for item in new if item['key'] in excused],
             'preexisting': [item for item in current if item['key'] in known],
-            'unmatchedNotMine': sorted(claimed - {item['id'] for item in new})}
+            'unmatchedNotMine': sorted(claimed - {identity for item in new for identity in (item['id'], item['key'])})}
 
 
 def execute(argv):
@@ -376,7 +377,10 @@ class Desktop:
         with self.mutex():
             now = self.clock()
             record = self.held_by(session, now)
-            check = compare(self.read_baseline(), items, not_mine)
+            # Resolve dynamic ownership after inventory so concurrent spawns in
+            # the inventory cannot fall between the proof and cleanup snapshots.
+            claimed = not_mine() if callable(not_mine) else not_mine
+            check = compare(self.read_baseline(), items, claimed)
             if check['left']:
                 raise LockError(f'Not released: {len(check["left"])} item(s) appeared on {self.host} since you '
                                 'acquired it. Stop or remove yours (exact PIDs only) and check again; name '
