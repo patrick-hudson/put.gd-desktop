@@ -8,7 +8,7 @@ outlives `down`. Run on the builder, one desktop per builder.
   file_manager_desktop.py up xfce --run NAME --golden G --key K --known-hosts H
   file_manager_desktop.py package NAME FILE
   file_manager_desktop.py s3 NAME
-  file_manager_desktop.py open NAME [--folder]
+  file_manager_desktop.py open NAME [--folder DIR] [--no-file-manager]
   file_manager_desktop.py shot NAME LABEL
   file_manager_desktop.py click NAME X Y [--right]
   file_manager_desktop.py verify NAME
@@ -44,8 +44,15 @@ DESKTOPS = {
     'budgie': dict(profile='budgie-wayland', packages='budgie-desktop nemo labwc', session='budgie-desktop', gdm=True),
     'ukui': dict(profile='ukui-x11', packages='ukui-session-manager ukui-panel peony ukui-notification-daemon', session='ukui'),
     'pantheon': dict(profile='pantheon-x11', packages='pantheon-files gala', session='pantheon'),
-    'cosmic': dict(profile='cosmic-wayland', packages='@cosmic-desktop-environment', session='cosmic', dnf=True),
+    # cosmic-session requires the whole desktop (comp, panel, files, notifications); start-cosmic
+    # never puts WAYLAND_DISPLAY in cosmic-session's own environment, so read a child's.
+    'cosmic': dict(profile='cosmic-wayland', packages='cosmic-session wl-clipboard firefox gnome-keyring', session='cosmic',
+                   dnf=True, env_process='cosmic-panel'),
+    # Ubuntu 24.04's own desktop, Nautilus and DING are already in the golden.
+    'gnome': dict(profile='gnome-x11', preinstalled=True),
 }
+FILE_MANAGERS = dict(xfce='thunar', mate='caja', lxqt='pcmanfm-qt', lxde='pcmanfm', budgie='nemo', ukui='peony',
+                     pantheon='io.elementary.files', cosmic='cosmic-files', gnome='nautilus')
 
 
 def run_path(name):
@@ -64,6 +71,7 @@ def session_shell(name, body, timeout=120):
     """The real session's environment and real config: no private XDG directories."""
     run = run_path(name)
     process = lab.load_profile(lab.state(run)['profile'])['session_process']
+    process = DESKTOPS[json.loads((run/'fm.json').read_text())['desktop']].get('env_process', process)
     return lab.ssh(run, f'''set -eu
 pid=$(pgrep -u "$(id -u)" -x {shlex.quote(process)} | head -n 1)
 [ -n "$pid" ]
@@ -86,28 +94,57 @@ printf '[User]\\nSession={session}\\nSystemAccount=false\\n' | sudo -n tee /var/
 '''
 
 
+# Config of a golden's old put.gd, removed with its package.
+OLD_STATE = '''for dir in "$HOME/.config/putgd" "$HOME/.local/share/putgd" "$HOME/.local/state/putgd" "$HOME/.cache/putgd"; do
+ [ ! -d "$dir" ] || {{ find "$dir" ! -type d -delete; find "$dir" -depth -type d -empty -delete; }}
+done
+'''
+
+
 def install_script(desktop):
     spec = DESKTOPS[desktop]
     if spec.get('dnf'):
+        # Fedora goldens grant dnf alone. A local package's scriptlet is the same
+        # overlay-only use of that authority as the apt hook below.
         return f'''set -eu
-sudo -n dnf install -y --setopt=install_weak_deps=False {spec['packages']} >/dev/null
+sudo -n dnf install -y --setopt=install_weak_deps=False rpm-build >/dev/null
+mkdir -p "$HOME/fm-grant"
+cat > "$HOME/fm-grant/grant.spec" <<'SPEC'
+Name: zz-fm-grant
+Version: 1
+Release: 1
+Summary: Disposable overlay sudo grant
+License: None
+BuildArch: noarch
+%description
+Disposable overlay sudo grant.
+%post
+printf 'lab ALL=(ALL) NOPASSWD: ALL\\n' > /etc/sudoers.d/zz-fm
+chmod 440 /etc/sudoers.d/zz-fm
+%files
+SPEC
+rpmbuild -bb --define "_rpmdir $HOME/fm-grant" "$HOME/fm-grant/grant.spec" >/dev/null 2>&1
+sudo -n dnf install -y "$HOME/fm-grant/noarch/zz-fm-grant-1-1.noarch.rpm" >/dev/null
+sudo -n dnf remove -y --setopt=clean_requirements_on_remove=False putgd >/dev/null 2>&1 || true
+'''+OLD_STATE.format()+f'''sudo -n dnf install -y --setopt=install_weak_deps=False {spec['packages']} >/dev/null
 sudo -n mkdir -p /etc/gdm /var/lib/AccountsService/users
 printf '[User]\\nSession={spec['session']}\\nSystemAccount=false\\n' | sudo -n tee /var/lib/AccountsService/users/lab >/dev/null
 printf '[daemon]\\nAutomaticLoginEnable=True\\nAutomaticLogin=lab\\n' | sudo -n tee /etc/gdm/custom.conf >/dev/null
 '''
     # Goldens grant apt-get alone; this overlay is thrown away (see lab.stage_install_helper).
     grant = 'printf "lab ALL=(ALL) NOPASSWD: ALL\\n" > /etc/sudoers.d/zz-fm; chmod 440 /etc/sudoers.d/zz-fm'
-    return f'''set -eu
+    prepare = f'''set -eu
 export DEBIAN_FRONTEND=noninteractive
 sudo -n apt-get -o 'APT::Update::Pre-Invoke::={grant}' update -qq
 # The golden's preinstalled put.gd must not run, or leave state, before the build under test.
 sudo -n -E apt-get -o DPkg::Lock::Timeout=600 purge -y putgd >/dev/null 2>&1 || true
-for dir in "$HOME/.config/putgd" "$HOME/.local/share/putgd" "$HOME/.local/state/putgd" "$HOME/.cache/putgd"; do
- [ ! -d "$dir" ] || {{ find "$dir" ! -type d -delete; find "$dir" -depth -type d -empty -delete; }}
-done
-sudo -n systemctl disable --now apt-daily.timer apt-daily-upgrade.timer unattended-upgrades.service 2>/dev/null || true
+'''+OLD_STATE.format()+'''sudo -n systemctl disable --now apt-daily.timer apt-daily-upgrade.timer unattended-upgrades.service 2>/dev/null || true
 sudo -n systemctl stop apt-daily.service apt-daily-upgrade.service 2>/dev/null || true
-echo lightdm shared/default-x-display-manager select lightdm | sudo -n debconf-set-selections
+'''
+    if spec.get('preinstalled'):
+        return prepare+'''sudo -n -E apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends xclip >/dev/null
+'''
+    return prepare+f'''echo lightdm shared/default-x-display-manager select lightdm | sudo -n debconf-set-selections
 sudo -n -E apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends {UBUNTU_GREETER} xserver-xorg xclip dbus-x11 gnome-keyring firefox {spec['packages']} >/dev/null
 sudo -n mkdir -p /etc/lightdm/lightdm.conf.d
 printf '[Seat:*]\\nautologin-user=lab\\nautologin-session={spec['session']}\\n' | sudo -n tee /etc/lightdm/lightdm.conf.d/50-lab.conf >/dev/null
@@ -216,7 +253,11 @@ def package(args):
         # The extracted tree only supplies putgd-cli for checks; the app runs from the image.
         lab.ssh(run, f'''set -eu
 chmod +x {shlex.quote(target)}
-sudo -n DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends fuse3 >/dev/null 2>&1 || true
+if command -v apt-get >/dev/null; then
+ sudo -n DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends fuse3 >/dev/null 2>&1 || true
+else
+ sudo -n dnf install -y --setopt=install_weak_deps=False fuse3 fuse-libs >/dev/null 2>&1 || true
+fi
 mkdir -p "$HOME/fm-cli"
 cd "$HOME/fm-cli"
 {shlex.quote(target)} --appimage-extract >/dev/null
@@ -279,19 +320,20 @@ def value_host(name):
 def open_files(args):
     stamp = uuid.uuid4().hex[:8]
     files = f'i1105-{stamp}.png'
-    session_shell(args.run, f'''mkdir -p "$HOME/i1105"
+    folder = args.folder
+    session_shell(args.run, f'''mkdir -p "$HOME/i1105" "$HOME/{folder}"
 python3 -c "import zlib,struct,sys,os
 w,h=64,64
 raw=b''.join(b'\\\\0'+os.urandom(3)*w for _ in range(h))
 c=lambda t,d:struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d))
-open(os.path.expanduser('~/i1105/{files}'),'wb').write(b'\\\\x89PNG\\\\r\\\\n\\\\x1a\\\\n'+c(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+c(b'IDAT',zlib.compress(raw))+c(b'IEND',b''))"
+open(os.path.expanduser('~/{folder}/{files}'),'wb').write(b'\\\\x89PNG\\\\r\\\\n\\\\x1a\\\\n'+c(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+c(b'IDAT',zlib.compress(raw))+c(b'IEND',b''))"
 : > "$HOME/i1105/.notify.log"
 pgrep -u "$(id -u)" -x dbus-monitor >/dev/null || nohup dbus-monitor "interface='org.freedesktop.Notifications',member='Notify'" >> "$HOME/i1105/.notify.log" 2>&1 &
 ''')
-    fm = dict(xfce='thunar', mate='caja', lxqt='pcmanfm-qt', lxde='pcmanfm', budgie='nemo', ukui='peony',
-              pantheon='io.elementary.files', cosmic='cosmic-files')[json.loads((run_path(args.run)/'fm.json').read_text())['desktop']]
-    session_shell(args.run, f'nohup {fm} "$HOME/i1105" >/dev/null 2>&1 &\nsleep 4')
-    print(json.dumps(record(args.run, file=files, fileManager=fm)))
+    fm = FILE_MANAGERS[json.loads((run_path(args.run)/'fm.json').read_text())['desktop']]
+    if not args.no_file_manager:
+        session_shell(args.run, f'nohup {fm} "$HOME/{folder}" >/dev/null 2>&1 &\nsleep 4')
+    print(json.dumps(record(args.run, file=files, folder=folder, fileManager=fm)))
 
 
 def shot(args):
@@ -334,7 +376,8 @@ def verify(args):
     if not row:
         raise SystemExit('no finished history row for '+value['file'])
     link = row['receipt']['directUrl']
-    local = hashlib.sha256(bytes.fromhex(lab.ssh(run_path(name), f'xxd -p -c0 "$HOME/i1105/{value["file"]}" || od -An -tx1 -v "$HOME/i1105/{value["file"]}" | tr -d " \\n"').strip())).hexdigest()
+    path = f'"$HOME/{value.get("folder", "i1105")}/{value["file"]}"'
+    local = hashlib.sha256(bytes.fromhex(lab.ssh(run_path(name), f'od -An -tx1 -v {path} | tr -d " \\n"').strip())).hexdigest()
     remote = hashlib.sha256(urllib.request.urlopen(link, timeout=30).read()).hexdigest()
     clip = session_shell(name, 'if [ "${XDG_SESSION_TYPE:-}" = wayland ]; then wl-paste -n; else xclip -selection clipboard -o; fi').strip()
     notify = lab.ssh(run_path(name), 'cat "$HOME/i1105/.notify.log"')
@@ -343,7 +386,7 @@ def verify(args):
                   notifySenders=sorted({line.split('sender=')[1].split()[0] for line in notify.splitlines() if 'member=Notify' in line}),
                   resident=lab.ssh(run_path(name), 'pgrep -c "^putgd" || true').strip())
     session_shell(name, f'nohup firefox {shlex.quote(link)} >/dev/null 2>&1 &\nsleep 12')
-    record(name, link=link, historyId=row['id'], verify=result)
+    record(name, link=link, historyId=row['id'], verify=result, verifications=value.get('verifications', [])+[result])
     print(json.dumps(result))
     if not (result['hashMatch'] and result['clipboardIsLink'] and result['notified']):
         raise SystemExit('verify failed')
@@ -412,7 +455,9 @@ def main():
     p = commands.add_parser('sh'); p.add_argument('run'); p.add_argument('--timeout', type=int, default=300); p.set_defaults(function=shell)
     p = commands.add_parser('status'); p.add_argument('run'); p.set_defaults(function=status)
     p = commands.add_parser('s3'); p.add_argument('run'); p.set_defaults(function=s3)
-    p = commands.add_parser('open'); p.add_argument('run'); p.set_defaults(function=open_files)
+    p = commands.add_parser('open'); p.add_argument('run'); p.add_argument('--folder', default='i1105')
+    p.add_argument('--no-file-manager', action='store_true', help='make the file only (a file for the desktop icons)')
+    p.set_defaults(function=open_files)
     p = commands.add_parser('shot'); p.add_argument('run'); p.add_argument('label'); p.set_defaults(function=shot)
     p = commands.add_parser('click'); p.add_argument('run'); p.add_argument('x', type=int); p.add_argument('y', type=int)
     p.add_argument('--right', action='store_true'); p.add_argument('--width', type=int, default=1280); p.add_argument('--height', type=int, default=800)
