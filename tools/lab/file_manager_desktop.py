@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import socket
 import sys
@@ -260,7 +261,9 @@ def require_build(name):
     """A golden's preinstalled put.gd must never pass for the build under test."""
     state = build_state(name)
     value = json.loads((run_path(name)/'fm.json').read_text())
-    version = value.get('package', '').split('putgd-')[-1].split('-nightly')[0]
+    # A nightly asset names only the version; a CI package (putgd_26.1101.3719~dev+gabc_amd64.deb) also its commit.
+    found = re.search(r'\d+\.\d+\.\d+(?:~dev\+g[0-9a-f]+)?', value.get('package', ''))
+    version = found.group(0) if found else ''
     if value.get('appimage'):
         # Purged at `up`, so no distro package can answer for the image.
         if any(line.startswith('installed') for line in state.splitlines()) or (
