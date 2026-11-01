@@ -611,7 +611,8 @@ Error FileManagerIntegration::monitor(const FileManagerContext& c,bool enabled) 
  QProcess process;process.start("/bin/sh",{path,enabled?"--install-watch":"--stop-watch"});
  const bool started=process.waitForStarted(3000);
  if(!started||!process.waitForFinished(10000)) {
-  process.kill();process.waitForFinished();return failed({{"stage",started?"timeout":"start"},{"enabled",enabled}});
+  const auto reason=process.errorString();process.kill();process.waitForFinished();
+  return failed({{"stage",started?"timeout":"start"},{"enabled",enabled},{"reason",reason}});
  }
  const auto reason=QString::fromUtf8(process.readAllStandardError().left(1024)).trimmed();
  if(process.exitStatus()!=QProcess::NormalExit)return failed({{"stage","crash"},{"enabled",enabled},{"reason",reason}});

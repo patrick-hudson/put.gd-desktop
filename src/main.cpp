@@ -483,13 +483,13 @@ int main(int argc,char* argv[]) {
   operations.background([context,fileManagerMutex,fileManagerGeneration,ticket](putgd::Error& error){std::lock_guard lock(*fileManagerMutex);if(ticket!=fileManagerGeneration->load())return QJsonObject{};
    const auto result=putgd::FileManagerIntegration::apply(context);error=result.error;
    if(context.installation=="appimage")if(const auto watched=putgd::FileManagerIntegration::monitor(context,context.enabled);!error)error=watched;
-   auto status=result.toJson();status["announceProblem"]=putgd::FileManagerIntegration::announceOnce(context,error);
-   return status;},[&,fileManagerGeneration,ticket](putgd::Error error,QJsonObject result){
+   return result.toJson();},[&,context,fileManagerGeneration,ticket](putgd::Error error,QJsonObject result){
     if(ticket!=fileManagerGeneration->load())return;
     fileManagerStatus=result;if(error)fileManagerStatus["error"]=error.toJson();
     putgd::logging::write(putgd::logApp(),error?QtWarningMsg:QtInfoMsg,"File manager menu applied",fileManagerStatus);
     if(result["firstRun"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
-    if(error&&result["announceProblem"].toBool())tray.notifyFileManagerProblem(error.message);
+    // After the generation check: a superseded pass must not record a failure nobody was told about.
+    if(putgd::FileManagerIntegration::announceOnce(context,error))tray.notifyFileManagerProblem(error.message);
     refreshSettingsDiagnostics();
    });
  };

@@ -193,9 +193,6 @@ done
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual((self.root / "fixture-receipt").read_text(), str(newer) + " --upload -- /a b\n")
 
-    @unittest.skipUnless(shutil.which("systemd-run") and subprocess.run(
-        ["systemd-run", "--user", "--scope", "--quiet", "--expand-environment=no", "true"],
-        capture_output=True).returncode == 0, "needs a user manager with systemd-run 254+")
     def manager_socket(self, runtime):
         """A runtime directory where a user manager listens; nothing answers it."""
         (runtime / "systemd").mkdir(parents=True, exist_ok=True)
@@ -260,6 +257,9 @@ exit {run_status}
         self.assertEqual(completed.returncode, 1)
         self.assertIn("systemd-run: Unit already exists", completed.stderr)
 
+    @unittest.skipUnless(shutil.which("systemd-run") and subprocess.run(
+        ["systemd-run", "--user", "--scope", "--quiet", "--expand-environment=no", "true"],
+        capture_output=True).returncode == 0, "needs a user manager with systemd-run 254+")
     def test_the_real_user_manager_keeps_dollar_names_and_leaves_the_service(self):
         # The image reports the cgroup it runs in; the launcher sees a service leaf.
         self.cgroup.write_text(SERVICE)
