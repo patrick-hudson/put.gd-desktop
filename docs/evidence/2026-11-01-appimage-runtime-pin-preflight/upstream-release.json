@@ -1,0 +1,30 @@
+{
+  "id": 417724209,
+  "tag_name": "continuous",
+  "target_commitish": "fedfad51acc2860b2916a1eef32ba4a500ff31ef",
+  "created_at": "2026-10-19T20:35:22Z",
+  "published_at": "2026-10-19T20:37:20Z",
+  "immutable": false,
+  "html_url": "https://github.com/AppImage/type2-runtime/releases/tag/continuous",
+  "body": "Build log: https://github.com/AppImage/type2-runtime/actions/runs/39320578745",
+  "assets": [
+    {
+      "id": 657374641,
+      "name": "runtime-x86_64",
+      "size": 944632,
+      "digest": "sha256:617aa77314d57c8b8e4fae9c3f0b35af7b30d5529cb69e98f64f92510ed98a46",
+      "created_at": "2026-10-19T20:37:12Z",
+      "updated_at": "2026-10-19T20:37:12Z",
+      "browser_download_url": "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
+    },
+    {
+      "id": 657374685,
+      "name": "runtime-x86_64.debug",
+      "size": 1361136,
+      "digest": "sha256:193dd7abf4af95a5cb930ff9b7989524bf625049b1274ad03c702aba77326cc3",
+      "created_at": "2026-10-19T20:37:14Z",
+      "updated_at": "2026-10-19T20:37:14Z",
+      "browser_download_url": "https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64.debug"
+    }
+  ]
+}

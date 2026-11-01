@@ -1,0 +1,26 @@
+[
+  {
+    "id": 12220205914,
+    "name": "artifacts armhf",
+    "expired": false,
+    "expires_at": "2027-01-17T20:35:29Z"
+  },
+  {
+    "id": 12218723981,
+    "name": "artifacts x86_64",
+    "expired": false,
+    "expires_at": "2027-01-17T20:35:29Z"
+  },
+  {
+    "id": 12218694052,
+    "name": "artifacts aarch64",
+    "expired": false,
+    "expires_at": "2027-01-17T20:35:29Z"
+  },
+  {
+    "id": 12218109857,
+    "name": "artifacts i686",
+    "expired": false,
+    "expires_at": "2027-01-17T20:35:29Z"
+  }
+]

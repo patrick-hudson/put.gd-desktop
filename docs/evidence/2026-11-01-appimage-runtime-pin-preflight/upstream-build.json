@@ -1,0 +1,10 @@
+{
+  "id": 39320578745,
+  "head_sha": "fedfad51acc2860b2916a1eef32ba4a500ff31ef",
+  "event": "push",
+  "conclusion": "success",
+  "run_started_at": "2026-10-19T20:35:29Z",
+  "updated_at": "2026-10-19T20:37:23Z",
+  "html_url": "https://github.com/AppImage/type2-runtime/actions/runs/39320578745",
+  "path": ".github/workflows/build.yaml"
+}
