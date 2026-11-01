@@ -632,6 +632,8 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   // At most one: the notice and its button name the session's file manager. The list
   // runs from the most specific desktop, so the first one with a match decides.
   for(const auto& desktop:desktops) {
+   // Budgie:GNOME: Budgie usually runs Nemo, so GNOME's entry says nothing about its file manager.
+   if(desktop.compare("Budgie",Qt::CaseInsensitive)==0)break;
    for(const auto& manager:managers)if(manager.installed&&manager.desktops.contains(desktop,Qt::CaseInsensitive)&&onPath(c,manager.name))result.restartable<<manager.name;
    if(!result.restartable.isEmpty())break;
   }
