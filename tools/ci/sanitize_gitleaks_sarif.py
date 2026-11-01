@@ -37,6 +37,9 @@ def sanitize(report):
                         or not isinstance(physical['artifactLocation'].get('uri'), str)
                         or not isinstance(physical.get('region'), dict)):
                     raise ValueError('Invalid SARIF physical location')
+                uri = physical['artifactLocation']['uri']
+                if not uri or re.search(r'%(?![0-9A-Fa-f]{2})', uri):
+                    raise ValueError('Invalid SARIF artifact URI')
                 region = {key: physical['region'][key] for key in
                           ('startLine', 'endLine', 'startColumn', 'endColumn')
                           if key in physical['region']}
@@ -44,7 +47,7 @@ def sanitize(report):
                         or any(type(value) is not int or value < 1 for value in region.values())):
                     raise ValueError('Invalid SARIF region coordinates')
                 result['locations'].append({'physicalLocation': {
-                    'artifactLocation': {'uri': physical['artifactLocation']['uri']},
+                    'artifactLocation': {'uri': uri},
                     'region': region,
                 }})
             fingerprints = finding.get('partialFingerprints', {})

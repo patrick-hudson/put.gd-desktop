@@ -73,7 +73,10 @@ class Sanitization(unittest.TestCase):
                             (('locations', 0, 'physicalLocation', 'region', 'endLine'), 0),
                             (('locations', 0, 'physicalLocation', 'region'), {}),
                             (('locations', 0, 'physicalLocation', 'region'), {'startColumn': 2}),
-                            (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), {})):
+                            (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), {}),
+                            (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), ''),
+                            (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), 'bad%2'),
+                            (('locations', 0, 'physicalLocation', 'artifactLocation', 'uri'), 'bad%zzfile')):
             report = raw_report()
             target = report['runs'][0]['results'][0]
             for key in path[:-1]:
@@ -88,7 +91,7 @@ class Sanitization(unittest.TestCase):
         # Exercise the actual workflow commands after binary provisioning.
         script = '\n'.join(line[10:] for line in scan.splitlines())
         script = script[script.index('mkdir -p build/contracts'):].strip()
-        for status, malformed in ((0, False), (1, False), (2, False), (1, True)):
+        for status, malformed in ((0, False), (1, False), (2, False), (0, True), (1, True), (2, True)):
             with self.subTest(status=status, malformed=malformed), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 (root / 'tools').symlink_to(ROOT / 'tools', target_is_directory=True)
@@ -102,7 +105,8 @@ class Sanitization(unittest.TestCase):
                 scanner.chmod(0o700)
                 result = subprocess.run(['bash', '-eo', 'pipefail', '-c', script], cwd=root,
                                         env=dict(os.environ, RUNNER_TEMP=str(runtime)), capture_output=True, text=True)
-                self.assertEqual(result.returncode, 1 if malformed else status, result.stderr)
+                # The scanner's failure wins; a sanitizer failure alone still fails the step.
+                self.assertEqual(result.returncode, status or (1 if malformed else 0), result.stderr)
                 output = root / 'build/contracts/gitleaks.sarif'
                 if malformed:
                     self.assertFalse(output.exists())
