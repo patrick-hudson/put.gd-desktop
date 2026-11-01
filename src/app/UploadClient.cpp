@@ -375,8 +375,8 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   GFile* file=g_file_new_for_uri(bytes.constData());
   char* path=g_file_get_path(file);
   // Recent and Starred items have no path of their own, only a target URI.
-  // Only Recent and Starred items are shortcuts to a file; other schemes keep no target worth a remote query.
-  const bool shortcut=argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive)||argument.startsWith(QLatin1String("starred:"),Qt::CaseInsensitive);
+  // Recent, Starred and Trash items name a local file through their target; remote schemes aren't queried.
+  const bool shortcut=argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive)||argument.startsWith(QLatin1String("starred:"),Qt::CaseInsensitive)||argument.startsWith(QLatin1String("trash:"),Qt::CaseInsensitive);
   if(!path&&shortcut&&!deadline)deadline.emplace(resolveDeadlineMs);
   if(!path&&shortcut)if(GFileInfo* info=g_file_query_info(file,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI,G_FILE_QUERY_INFO_NONE,deadline->cancellable(),nullptr)){
    // Only a file:// target: decoding it needs no GVfs call that could stall.
