@@ -22,7 +22,7 @@ Aurora was optional and was not run. Recording was not added to these failing re
 
 Revocation leaves the synthetic Proton files private in their isolated test folders. No working link, token, credential, or session snapshot is included in this evidence. Deletion and revocation proof is reported as counts.
 
-The canonical schema-v2 coverage is [the guest coverage file](../../../../tools/lab/surface_map/coverage/2026-10-30-surface-driver-tier1-live.json). Its audited byte-identical copy is [coverage.json](coverage.json). The first Cinnamon S3 attempt recorded a generic SDK failure; consolidated coverage reports the identified credential prerequisite as B. Original attempt receipts remain unchanged.
+The canonical schema-v2 coverage is [the guest coverage file](../../../../tools/lab/surface_map/coverage/2026-10-30-surface-driver-tier1-live.json). The saved initial-campaign snapshot is [coverage.json](coverage.json); the canonical file has since been updated by the follow-ups and differs from it (verified by SHA-256). The first Cinnamon S3 attempt recorded a generic SDK failure; consolidated coverage reports the identified credential prerequisite as B. Original attempt receipts remain unchanged.
 
 Every guest installed **v26.1030.3203-nightly**, exact clean app commit **cc9d9410d6e982dd93d58bcfda82f112c44a82f6**. The matching ui-catalog came from CI run **41111404666**. No app or broker was compiled. Native DEBs and their release digests:
 
