@@ -92,7 +92,34 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('restart_after_update', {'confirm': True, 'version': '0.1.2'}),
         ]:
             result = await server.call_tool(name, args)
-            self.assertIn('invalid_request', str(result), name)
+            envelope = result.structured_content or json.loads(result.content[0].text)
+            self.assertEqual(envelope['error']['code'], 'invalid_request', name)
+
+    async def test_schema_rejects_coercion_before_calling_adapter(self):
+        from unittest.mock import AsyncMock
+        adapter = CliAdapter('/does/not/exist')
+        adapter.call = AsyncMock()
+        server = create_server(adapter)
+        for name, args in [
+            ('perform_action', {'action': 17}),
+            ('perform_action', {}),
+            ('perform_action', {'action': 'clipboard', 'extra': True}),
+            ('list_history', {'limit': '10'}),
+            ('list_history', {'limit': True}),
+            ('list_history', {'limit': 1.5}),
+            ('make_history_preview', {'id': 'synthetic-entry', 'retry': 'true'}),
+            ('make_history_preview', {'id': 'synthetic-entry', 'retry': 1}),
+            ('delete_history_uploads', {'ids': '["synthetic-entry"]'}),
+            ('delete_history_uploads', {'ids': [17]}),
+            ('patch_configuration', {'patch': '{}', 'expected_revision': 'r'}),
+            ('select_recording_region', {'id': 'synthetic-operation', 'rect': '[0, 0, 10, 10]'}),
+            ('select_recording_region', {'id': 'synthetic-operation', 'rect': [0, '0', 10, 10]}),
+        ]:
+            with self.subTest(name=name, args=args):
+                result = await server.call_tool(name, args)
+                self.assertFalse(result.is_error)
+                self.assertEqual(result.structured_content['error']['code'], 'invalid_request')
+                adapter.call.assert_not_awaited()
 
     async def test_parameters_use_stdin_without_process_argument_exposure(self):
         from unittest.mock import AsyncMock, patch
@@ -200,12 +227,16 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn('Use Redact', review.description)
                 self.assertIn('serialized kind stays solid', review.description)
                 for tool in discovered:
-                    self.assertEqual(tool.inputSchema['type'], 'object')
-                    self.assertFalse(tool.inputSchema['additionalProperties'])
+                    self.assertEqual(tool.input_schema['type'], 'object')
+                    self.assertFalse(tool.input_schema['additionalProperties'])
+                inspection = next(tool for tool in discovered if tool.name == 'inspect')
+                self.assertTrue(inspection.annotations.read_only_hint)
+                self.assertFalse(inspection.annotations.destructive_hint)
+                self.assertFalse(inspection.annotations.open_world_hint)
                 async def call(name, args):
                     reply = await session.call_tool(name, args)
-                    self.assertFalse(reply.isError, reply)
-                    return reply.structuredContent
+                    self.assertFalse(reply.is_error, reply)
+                    return reply.structured_content
                 for name, args in [
                     ('perform_action', {'action': 'clipboard', 'shell': 'extra'}),
                     ('perform_action', {'action': 17}),
@@ -216,6 +247,13 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('create_diagnostics_bundle', {'upload': 'yes'}),
                     ('create_diagnostics_bundle', {'preview': True, 'upload': True}),
                     ('list_history', {'limit': True}),
+                    ('list_history', {'limit': '10'}),
+                    ('list_history', {'limit': 1.5}),
+                    ('delete_history_uploads', {'ids': '["synthetic-entry"]'}),
+                    ('delete_history_uploads', {'ids': [17]}),
+                    ('patch_configuration', {'patch': '{}', 'expected_revision': 'r'}),
+                    ('select_recording_region', {'id': 'synthetic-operation', 'rect': '[0, 0, 10, 10]'}),
+                    ('make_history_preview', {'id': 'synthetic-entry', 'retry': 'true'}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': False}),
                     ('cancel_operation', {'id': 'synthetic-delete', 'kind': 'delete', 'item_id': 'synthetic-item'}),
                     ('cancel_operation', {'id': 'synthetic-operation', 'item_id': ''}),
@@ -229,9 +267,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 10001}),
                 ]:
                     rejected = await session.call_tool(name, args)
-                    self.assertTrue(rejected.isError or (
-                        rejected.structuredContent and
-                        rejected.structuredContent['error']['code'] == 'invalid_request'), rejected)
+                    self.assertFalse(rejected.is_error, rejected)
+                    self.assertIsNotNone(rejected.structured_content, rejected)
+                    self.assertEqual(rejected.structured_content['error']['code'], 'invalid_request', rejected)
                     self.assertEqual(self.calls, [], 'Invalid wire arguments must issue no IPC')
                 inspected = await call('inspect', {})
                 self.assertTrue(inspected['ok'])
@@ -428,23 +466,23 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(self.calls[-1]['method'], method)
                     self.assertEqual(self.calls[-1]['params'], params)
                 preview = await session.call_tool('preview_editor', {'id': 'synthetic-operation', 'max_edge': 800})
-                self.assertFalse(preview.isError, preview)
+                self.assertFalse(preview.is_error, preview)
                 self.assertEqual(self.calls[-1]['method'], 'editor.preview')
                 self.assertEqual(self.calls[-1]['params'], {'id': 'synthetic-operation', 'maxEdge': 800})
                 image, envelope = preview.content
                 self.assertEqual(image.type, 'image')
-                self.assertEqual(image.mimeType, 'image/png')
+                self.assertEqual(image.mime_type, 'image/png')
                 self.assertEqual(base64.b64decode(image.data), synthetic_png())
                 metadata = json.loads(envelope.text)
                 self.assertTrue(metadata['ok'])
                 self.assertNotIn('png', metadata['result'])
                 self.assertEqual(metadata['result']['sourceWidth'], 2)
                 clip = await session.call_tool('preview_recording', {'id': 'synthetic-operation', 'time_us': 4000000, 'max_edge': 640})
-                self.assertFalse(clip.isError, clip)
+                self.assertFalse(clip.is_error, clip)
                 self.assertEqual(self.calls[-1]['method'], 'recording.preview')
                 self.assertEqual(self.calls[-1]['params'], {'id': 'synthetic-operation', 'time': 4000000, 'maxEdge': 640})
                 frame, clip_envelope = clip.content
-                self.assertEqual(frame.mimeType, 'image/png')
+                self.assertEqual(frame.mime_type, 'image/png')
                 self.assertEqual(base64.b64decode(frame.data), synthetic_png())
                 clip_metadata = json.loads(clip_envelope.text)
                 self.assertNotIn('png', clip_metadata['result'])
