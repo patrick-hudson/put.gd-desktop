@@ -8,7 +8,6 @@
 #include <QStorageInfo>
 #include <QThread>
 #include <algorithm>
-#include <initializer_list>
 #include <gst/base/gstbasesrc.h>
 #include <ctime>
 #include <cstring>
@@ -407,10 +406,13 @@ Error RecordingPipeline::start(const Options& options) {
     QStringList failures;
     QString audioEncoder = options.audio && !options.audioEncoders.isEmpty() ? options.audioEncoders.first() : QString();
     if (options.audio && audioEncoder.isEmpty()) return {"recording_unsupported", "No AAC encoder is available for system audio", {}};
+    // A PipeWire stream first asks for max_framerate 0/1; a compositor that
+    // refuses it (Mutter's range starts at 1/1) gets the plain request. Owned
+    // here: a conditional between two braced lists leaves the loop reading arrays
+    // that ended with the condition, and GCC never stores their values (#1115).
+    const QList<bool> requests = options.pipewireNode ? QList<bool>{true, false} : QList<bool>{false};
     for (const auto& encoder : options.encoders) {
-        // A PipeWire stream first asks for max_framerate 0/1; a compositor
-        // that refuses it (its range starts above zero) gets the plain request.
-        for (const bool unthrottled : options.pipewireNode ? std::initializer_list<bool>{true, false} : std::initializer_list<bool>{false}) {
+        for (const bool unthrottled : requests) {
             QString failure;
             if (launch(options, encoder, audioEncoder, unthrottled, failure)) { encoder_ = encoder; audioEncoder_ = audioEncoder; bus_.start(); return {}; }
             failures.append(failure);
