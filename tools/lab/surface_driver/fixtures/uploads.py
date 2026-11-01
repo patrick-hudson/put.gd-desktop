@@ -64,7 +64,8 @@ def submit(scope, *, remote=False, local_failure=False, active=False, failure=Fa
     else:
         state=ctx.wait(lambda:(s if (s:=ctx.call('operation.inspect',{'id':operation}))['state'] in TERMINAL else None),'fixture terminal operation',timeout=40)
         if not (local_failure or failure) and state['state']!='completed':
-            errors=[state.get('error'),*(i.get('error') for i in state.get('items',[]))]
+            items=state.get('items')
+            errors=[state.get('error'),*(i.get('error') for i in items if isinstance(i,dict))] if isinstance(items,list) else [state.get('error')]
             codes=sorted({e['code'] for e in errors if isinstance(e,dict) and e.get('code')})
             raise RecipeFailed('synthetic fixture operation ended '+state['state']+''.join(': '+c for c in codes))
     rows=ctx.call('history.list',{'limit':100}).get('records',[])
