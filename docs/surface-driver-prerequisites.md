@@ -261,6 +261,33 @@ focus event. On GNOME it is the put.gd Shell extension's St actor in
 gnome-shell's tree. The release's `putgd@put.gd` extension must be enabled in
 the GNOME golden overlay.
 
+## Frames and clearing the screen
+
+**Frames aren't masked.** They stay on the builders in `attachments.tgz`, and only
+text receipts get posted to the repo. Text keeps its redaction and its end-of-run
+audit. An unmasked frame can show a real link or key ID, so look at a frame before
+attaching it to a PR.
+
+**The driver clears what's in the way.** When something covers the input target or
+the test pattern, it closes it, notes that in the receipt and retries up to three
+times. If it's still covered, the cell fails and names the window.
+
+| On screen | What the driver does |
+|---|---|
+| Any banner | Closes it, by posting one to learn the newest ID and closing back from it |
+| A foreign window covering the target or pattern | Stops its process: TERM, then KILL after two seconds |
+| The desktop shell, or this run's own windows | Leaves them |
+| Any banner, when the click target is itself a banner (`notification_action`) | Leaves them open and closes only a covering window |
+
+**An app failure stays visible.** Closing banners must not hide a bug like #1112, so
+every Tier 1 outcome flow fails and names any put.gd failure banner (urgency 2) it
+saw, whether or not that banner covered anything. Add an exception to
+`no_app_error_banner` only for a flow that provokes a failure on purpose.
+
+**A stranded Proton session.** If a lend fails while put.gd is running in the guest,
+`proton_lab.py recover` quits each resident through its own environment, including
+one in a private runtime folder, then carries the session back.
+
 ## Recording fixture: consent, retained media and the GTK sink
 
 **ScreenCast consent (#791).** Each profile declares `recording.consent`:
