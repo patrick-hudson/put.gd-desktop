@@ -30,7 +30,8 @@ The design, its council review and the decisions behind it are in
 Not supported: Deepin, COSMIC Files before epoch-1.0.10, the AppImage on UKUI
 and on Plasma 5.27, Enlightenment's EFM and Trinity. Flatpak is not a target.
 On Plasma 5.27 the whole AppImage doesn't run, not only its menu entry: started
-there, it shows a notification saying it needs Plasma 6 or the DEB, then exits.
+there, it shows a notification (a dialog with no notification server) saying it
+needs Plasma 6 or the DEB, then exits.
 
 **Thunar** shows the entry under Send To for every file and folder; the Send
 To file has no `MimeType` key because Thunar matches types exactly. **Pantheon
@@ -120,10 +121,12 @@ AppRun's `--upload` fast path). That short-lived client:
    local path is refused with one "These items have no local path"
    notification. If the host's `gio` can't run, the AppImage's refusal says
    instead that the location couldn't be resolved because `gio` is unavailable.
-   A Recent item shows as its whole `recent:///` URI, since all but its target
-   is a hash. Network locations through GVfs need `gvfs-fuse` (a recommended
-   package of the DEB and RPM). If `gvfsd-fuse` stops while a mount stays up,
-   the refusal says it may have stopped and to log out and in.
+   A refused Recent item shows as its whole `recent:///` URI, since its last
+   segment is a hash, not a file name. Network locations through GVfs need
+   `gvfs-fuse` (a recommended package of the DEB and RPM). If a file's whole
+   mount can't be seen at its local path, the refusal says the share was
+   disconnected or `gvfsd-fuse` stopped, instead of that the file no longer
+   exists.
 2. **Leaves the file manager's cgroup** when it was started from a
    D-Bus-activated file manager's transient `.service`, by re-running under
    `systemd-run --user --scope`, so closing the file manager can't stop it.
@@ -214,7 +217,8 @@ StatusNotifier tray exists, so tray-less GNOME shows the finished banner (with
 its Open in browser button) and failures. The urgency is a D-Bus byte: 1 for
 success, 2 for failure. Turn notifications off with **Show desktop
 notifications**; the client's own refusal notices still appear, since nothing
-else would report them.
+else would report them. With no notification server, those refusals show in a
+dialog from the host's `zenity`, `kdialog` or `xmessage`, whichever comes first.
 
 ## Agents and the CLI
 
