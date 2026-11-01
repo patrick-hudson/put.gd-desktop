@@ -645,7 +645,7 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   QStringList names;for(const auto& name:restartable)names.append(fileManagerName(name));
-  message+=QStringLiteral(" %1 shows it after a restart. Restarting closes all of its open windows.").arg(names.join(QStringLiteral(" and ")));
+  message+=(names.size()==1?QStringLiteral(" %1 shows it after a restart. Restarting closes all of its open windows."):QStringLiteral(" %1 show it after a restart. Restarting closes all of their open windows.")).arg(names.join(QStringLiteral(" and ")));
  }
  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","file_manager_menu"},{"title","put.gd"},{"notificationText",message},{"warning",false}});
 #ifdef Q_OS_LINUX
