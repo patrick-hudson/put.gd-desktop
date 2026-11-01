@@ -801,7 +801,7 @@ private slots:
             QCOMPARE(shot.pixelColor(0, h / 2).rgb(), p.bg.rgb());
             QCOMPARE(shot.pixelColor(w - 1, h / 2).rgb(), p.bg.rgb());
             QCOMPARE(shot.pixelColor(w / 2, h - 1).rgb(), p.bg.rgb());
-            QVERIFY(shot.pixelColor(w / 2, 0).rgb() != p.borderStrong.rgb());
+            QCOMPARE(shot.pixelColor(w / 2, 0).rgb(), p.bg.rgb());
         }
     }
     // A locked value (Ui::setLocked) reads as information: its text is
