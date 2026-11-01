@@ -229,6 +229,17 @@ private slots:
    QCOMPARE(other.state(),QProcess::Running);QCOMPARE(lines().size(),1);
    other.terminate();QVERIFY(other.waitForFinished(5000));
   }
+  {
+   // Wayland's default display, named by one side only, is the same display.
+   QFile::remove(starts);
+   QProcess desktop;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("WAYLAND_DISPLAY","wayland-0");
+   desktop.setProcessEnvironment(environment);desktop.start(stub,{"--desktop"});
+   PUTGD_TRY_COMPARE(lines().size(),1);
+   QProcess second;environment.remove("WAYLAND_DISPLAY");second.setProcessEnvironment(environment);restart(second);
+   QVERIFY(desktop.waitForFinished(5000));
+   PUTGD_TRY_COMPARE(lines().size(),2);
+   second.terminate();QVERIFY(second.waitForFinished(5000));
+  }
   // Not running: nothing to do, and nothing starts.
   QFile::remove(starts);
   QProcess none;restart(none);QVERIFY(none.waitForFinished(5000));QCOMPARE(none.exitCode(),0);
