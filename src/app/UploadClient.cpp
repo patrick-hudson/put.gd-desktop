@@ -105,7 +105,8 @@ void notify(const QString& title,const QString& body,bool failure){
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
  // Resident: Cinnamon otherwise removes put.gd's notices at once while a put.gd window has focus.
  const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"},{"resident",true}};
- call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{},hints,failure?0:10000});
+ // A default action: clicking the notice then reports ActionInvoked, which ends the client's wait.
+ call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{"default","Dismiss"},hints,failure?0:10000});
  // Subscribed before Notify: a close that comes at once is delivered once the loop runs.
  QEventLoop loop;NotificationWait held(loop);
  bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",&held,SLOT(closed(uint,uint)));
