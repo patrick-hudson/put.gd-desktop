@@ -266,7 +266,8 @@ chmod +x {shlex.quote(target)}
 if command -v apt-get >/dev/null; then
  sudo -n DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends fuse3 >/dev/null 2>&1 || true
 else
- sudo -n dnf install -y --setopt=install_weak_deps=False fuse3 fuse-libs >/dev/null 2>&1 || true
+ # qtkeychain-qt6 is for the lab's secret bridge (the RPM path gets it as a dependency); the image brings its own.
+ sudo -n dnf install -y --setopt=install_weak_deps=False fuse3 fuse-libs qtkeychain-qt6 >/dev/null 2>&1 || true
 fi
 mkdir -p "$HOME/fm-cli"
 cd "$HOME/fm-cli"
