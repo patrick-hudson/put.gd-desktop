@@ -691,8 +691,7 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.
   // "If it's missing": a file manager that hasn't shown a menu yet needs no restart.
-  QStringList names;for(const auto& name:restartable)names.append(fileManagerName(name));
-  message=QStringLiteral("Upload with put.gd is in your right-click menu. Restart %1 if it's missing; that closes %2 windows.").arg(names.join(QStringLiteral(" and ")),names.size()==1?QStringLiteral("its"):QStringLiteral("their"));
+  message=QStringLiteral("Upload with put.gd is in your right-click menu. Restart %1 if it's missing; that closes its windows.").arg(fileManagerName(restartable.first()));
  }
  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","file_manager_menu"},{"title","put.gd"},{"notificationText",message},{"warning",false}});
 #ifdef Q_OS_LINUX

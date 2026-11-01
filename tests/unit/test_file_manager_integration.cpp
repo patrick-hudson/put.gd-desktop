@@ -161,6 +161,7 @@ private slots:
   QTest::newRow("XFCE")<<"XFCE"<<"system"<<QStringList{};
   QTest::newRow("Cinnamon")<<"X-Cinnamon"<<"system"<<QStringList{};
   QTest::newRow("KDE")<<"KDE"<<"system"<<QStringList{};
+  QTest::newRow("Two desktops name one file manager")<<"MATE:LXDE"<<"system"<<QStringList{"caja"};
   QTest::newRow("COSMIC")<<"COSMIC"<<"system"<<QStringList{};
  }
  void firstRunNamesOnlyTheSessionsFileManager() {

@@ -55,8 +55,8 @@ public:
  // "Diagnostics package saved" with a Show in folder button.
  void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
  // "Upload with put.gd" in file managers (#1105): the notice once per install,
- // naming each file manager that loads put.gd's plugin only when it starts, with
- // a button that restarts it (closing its windows, which the notice says first).
+ // naming the session's file manager if it may need a restart, with a button that
+ // restarts it (closing its windows, which the notice says first).
  void notifyFileManagerMenu(const QStringList& restartable);
  // A problem setting the menu up, e.g. COSMIC's action list could not be read.
  void notifyFileManagerProblem(const QString& message);

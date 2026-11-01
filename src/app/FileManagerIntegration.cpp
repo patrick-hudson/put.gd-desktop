@@ -619,7 +619,8 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   // docs/file-manager-upload.md's unsupported list: no entry there, so no notice claiming one.
   const auto plasma5=onDesktop({"KDE"})&&(c.kdeVersion.isEmpty()?qEnvironmentVariable("KDE_SESSION_VERSION"):c.kdeVersion)=="5";
   result.announce=!onDesktop({"Deepin","DDE","Enlightenment","TDE","Trinity"})&&!(appImage&&(onDesktop({"UKUI"})||plasma5))&&(cosmicFiles||!onDesktop({"COSMIC"}));
-  // libfm and libfm-qt read FileManager-Actions once, at a process's first file menu.
+  // libfm and libfm-qt load FileManager-Actions at a process's first file menu. One whose
+  // actions folder didn't exist then doesn't see a new entry (LXDE and LXQt guests, #1105).
   const QString actionsFile="file-manager/actions/putgd-upload.desktop";
   const auto actions=system?inDataDirectories(dataDirectories(c),actionsFile):next.files.contains(QDir(c.dataHome).filePath(actionsFile));
   const struct {const char* name;QStringList desktops;bool installed;} managers[]={
@@ -628,9 +629,9 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
    {"peony",{"UKUI"},system&&systemPlugin(c,"peony-extensions")},
    {"pcmanfm",{"LXDE"},actions},
    {"pcmanfm-qt",{"LXQt"},actions}};
+  // At most one: the notice and its button name the session's file manager.
   for(const auto& manager:managers)
-   if(manager.installed&&onPath(c,manager.name)&&onDesktop(manager.desktops))
-    result.restartable<<manager.name;
+   if(manager.installed&&onPath(c,manager.name)&&onDesktop(manager.desktops)){result.restartable<<manager.name;break;}
  }
  return result;
 }

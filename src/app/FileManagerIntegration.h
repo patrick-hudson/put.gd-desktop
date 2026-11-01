@@ -32,7 +32,7 @@ struct FileManagerResult {
  bool firstRun=false;       // no version stamp existed for this installation identity; stamp now written
  bool announce=false;       // firstRun, on a desktop where this installation has an entry: say so
  QStringList written,removed,skipped; // absolute paths: changed now; removed; not written (a duplicate, or a file put.gd does not manage)
- QStringList restartable;   // firstRun only: the session's own file manager when it needs a restart. "nautilus"/"caja"/"peony" with a system plugin; "pcmanfm"/"pcmanfm-qt" with a FileManager-Actions entry
+ QStringList restartable;   // firstRun only: the session's own file manager, at most one, when it may need a restart. "nautilus"/"caja"/"peony" with a system plugin; "pcmanfm"/"pcmanfm-qt" with a FileManager-Actions entry
  QString launcher;          // the stable launcher script (AppImage)
  QJsonObject toJson() const;
 };
