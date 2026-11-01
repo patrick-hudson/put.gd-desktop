@@ -175,7 +175,9 @@ python3 -B tools/lab/tray_progress.py \
 ```
 
 Repeat with `--provider proton-drive` and that provider's new folder/profile
-patch, then with GNOME/KDE only after the Cinnamon functional/memory gates pass.
+patch, and run the GNOME and KDE legs in parallel with Cinnamon on the same
+candidate; a failure on any desktop blocks acceptance until it is fixed or
+shown to predate the build.
 Every declared desktop/provider combination needs current-source evidence.
 All CLI source imports come from the guest fixture's actual native clipboard.
 The host clipboard is never used or shared.

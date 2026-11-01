@@ -254,7 +254,7 @@ compatibility checks remain in the maintenance procedure.
 For each subsequent release carrying Proton, the release maintainer retains the
 integration maintainer's dated compatibility/migration check, pinned SDK/Crypto/
 Bun versions, runtime/manifest/notices hashes, supported asset list and current
-acceptance evidence. Follow the [maintenance procedure](history/proton-drive-release-gates.md#maintenance-procedure).
+acceptance evidence. Follow the [maintenance procedure](proton-drive.md#maintenance-procedure).
 An upstream required update or observed service incompatibility requires a
 compatible put.gd release and preserved recovery state. Existing stable
 and nightly coverage classes continue to apply.
