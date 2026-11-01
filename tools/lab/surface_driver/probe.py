@@ -2098,11 +2098,11 @@ def signal_processes(pids, number):
             os.kill(pid, number)
 
 
-def stop_windows(rows, deadline):
-    """Stop these windows' processes: TERM all, wait once, then KILL what's left."""
+def stop_windows(rows):
+    """Stop these windows' processes: TERM all, wait two seconds once, then KILL what's left."""
     pids = {row['pid'] for row in rows}
     signal_processes(pids, signal.SIGTERM)
-    deadline = min(deadline, time.monotonic() + 2)
+    deadline = time.monotonic() + (2 if pids else 0)
     while time.monotonic() < deadline and any(process_start(pid) for pid in pids):
         time.sleep(.1)
     signal_processes([pid for pid in pids if process_start(pid)], signal.SIGKILL)
@@ -2113,8 +2113,8 @@ def clear_screen(query):
 
     `obscuring` names one window to close and `above` closes every window over
     the named one. Neither closes only banners, so desktop icons and helpers
-    below the test's windows are left alone. One deadline bounds the pass: the
-    persistent probe must answer within its reply limit.
+    below the test's windows are left alone. Eight seconds for banners plus two
+    for windows keeps the pass within the persistent probe's 15-second reply limit.
     """
     deadline = time.monotonic() + 8
     closed = close_notifications(deadline) if query.get('notifications', True) else None
@@ -2127,7 +2127,7 @@ def clear_screen(query):
         over = above is not None and (row['stack'] is None or above['stack'] is None or row['stack'] > above['stack'])
         if over or str(row['id']) == str(query.get('obscuring')):
             targets.append(row)
-    stop_windows(targets, deadline)
+    stop_windows(targets)
     return {'newest_notification': closed, 'stopped': [{'title': row['title'], 'process': row['process']} for row in targets]}
 
 

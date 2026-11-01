@@ -61,7 +61,7 @@ class Budget(unittest.TestCase):
         calls = []
         with patch.object(probe.os, 'kill', side_effect=lambda pid, number: calls.append((pid, number))), \
              patch.object(probe, 'process_start', return_value=None):
-            probe.stop_windows([{'pid': 1}, {'pid': 2}, {'pid': 1}], probe.time.monotonic()+5)
+            probe.stop_windows([{'pid': 1}, {'pid': 2}, {'pid': 1}])
         self.assertEqual(sorted(calls), [(1, probe.signal.SIGTERM), (2, probe.signal.SIGTERM)])
 
 
@@ -108,6 +108,26 @@ class Guard(unittest.TestCase):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3} for _ in range(4)])
         with patch('tools.lab.surface_driver.context.time.sleep'), self.assertRaisesRegex(RecipeFailed, 'stuck'):
             ctx._guard()
+
+
+class DesktopGuard(Guard):
+    def guarded(self, replies, **options):
+        ctx, calls = self.context(replies)
+        with patch('tools.lab.surface_driver.context.time.sleep'):
+            ctx._desktop_guard({'pid': 1}, [1, 1], **options)
+        return [query for name, query in calls if name == 'clear_screen']
+
+    def test_a_banner_without_a_window_id_is_cleared_for_a_tray_click(self):
+        cleared = self.guarded([{'ok': False, 'obscuring_window': 'shell banner'}, {'ok': True}])
+        self.assertEqual([query['notifications'] for query in cleared], [True])
+
+    def test_a_banner_being_clicked_stays_open(self):
+        with self.assertRaisesRegex(RecipeFailed, 'shell banner'):
+            self.guarded([{'ok': False, 'obscuring_window': 'shell banner'}], keep_banners=True)
+
+    def test_a_window_over_a_banner_goes_but_the_banner_stays(self):
+        cleared = self.guarded([{'ok': False, 'obscuring_window': 'kate', 'obscuring_window_id': 3}, {'ok': True}], keep_banners=True)
+        self.assertEqual([query['notifications'] for query in cleared], [False])
 
 
 class AppErrorBanner(unittest.TestCase):

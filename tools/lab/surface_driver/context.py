@@ -838,22 +838,23 @@ asyncio.run(main())
     def hover_accessible(self, query):
         return self._accessible_pointer(query,None)
 
-    def _desktop_guard(self, node, point):
+    def _desktop_guard(self, node, point, *, keep_banners=False):
         failure = self.shell_failure(full=False)
         if failure:
             raise RecipeBlocked(failure, issue=814)
-        witness = self._probe('foreground', {'desktop_node':node,'point':point,
-                              'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
-                              'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
-                              'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
-        if not witness.get('ok') and witness.get('obscuring_window_id'):
-            # The target may itself be a banner, so only the covering window goes.
-            if self._try_clear_screen(obscuring=witness['obscuring_window_id'], notifications=False):
-                time.sleep(.5)
-                witness = self._probe('foreground', {'desktop_node':node,'point':point,
-                                      'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
-                                      'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
-                                      'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
+        def probe():
+            return self._probe('foreground', {'desktop_node':node,'point':point,
+                               'compositor_script':self.profile.get('focus',{}).get('compositor_script'),
+                               'desktop_hit_test':self.profile.get('focus',{}).get('desktop_hit_test'),
+                               'shell_application':self.profile.get('notifications',{}).get('accessible',{}).get('application','')})
+        witness = probe()
+        for _ in range(3):
+            if witness.get('ok') or (keep_banners and not witness.get('obscuring_window_id')):
+                break
+            if not self._try_clear_screen(obscuring=witness.get('obscuring_window_id'), notifications=not keep_banners):
+                break
+            time.sleep(.5)
+            witness = probe()
         if not witness.get('ok'):
             raise RecipeFailed('desktop input is obscured by '+repr(witness.get('obscuring_window','unknown window')))
 
@@ -868,6 +869,8 @@ asyncio.run(main())
         """
         if self._input_poisoned or self._press_open:
             raise RecipeBlocked('input release was not confirmed; further input is withheld for this run')
+        # Only notification_action passes a resolved node, and its target is a banner.
+        keep_banners = node is not None
         if node is None:
             if not any(k in query for k in ('pid','application','owned')):
                 raise RecipeBlocked('desktop input query requires pid, application, or owned')
@@ -879,7 +882,7 @@ asyncio.run(main())
             node = nodes[0]
         x,y,w,h = node['rect']
         point = (x+w/2,y+h/2)
-        self._desktop_guard(node,point)
+        self._desktop_guard(node,point,keep_banners=keep_banners)
         mapped = self._map_geometry({'x':point[0],'y':point[1], 'coordinate_space':
                                       'framebuffer' if self.profile['session']=='x11' else 'logical'})
         scale = mapped.get('scale',1)
@@ -887,7 +890,7 @@ asyncio.run(main())
         if wheel is not None:
             for index in range(abs(wheel)):
                 if index:
-                    self._desktop_guard(node,point)
+                    self._desktop_guard(node,point,keep_banners=keep_banners)
                 self._pointer_click(px,py,'wheel-up' if wheel>0 else 'wheel-down',mapped['head'],guarded=True)
         elif button is None:
             w,h = self._dimensions(mapped['head'])
