@@ -114,8 +114,8 @@ class Context:
         """Open a surface in a known state through a resident view command (ui.history, editor.view, ...)."""
         raise NotImplementedError
 
-    def call(self, method: str, params: Optional[dict] = None) -> dict:
-        """Call any resident method (inspect, view-state, operation.inspect, share.inspect, ...)."""
+    def call(self, method: str, params: Optional[dict] = None, *, cleanup: bool = False) -> dict:
+        """Call a resident method. Cleanup permits bounded recording inspection/cancellation after the recipe deadline."""
         raise NotImplementedError
 
     def geometry(self, window: str) -> dict:
@@ -158,8 +158,8 @@ class Context:
         raise NotImplementedError
 
     # Commands that are themselves the interaction (cli.*, mcp.*)
-    def cli(self, *args: str, timeout: float = 60.0) -> dict:
-        """Run `putgd ARGS` on the target; returns {returncode, stdout, stderr}."""
+    def cli(self, *args: str, timeout: float = 60.0, cleanup: bool = False) -> dict:
+        """Run `putgd ARGS`; returns {returncode, stdout, stderr}. Cleanup is restricted to bounded recording inspection/cancellation."""
         raise NotImplementedError
 
     def mcp(self, tool: str, arguments: Optional[dict] = None) -> dict:

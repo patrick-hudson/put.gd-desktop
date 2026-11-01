@@ -100,7 +100,7 @@ class FakeContext(Context):
         self.target = params['view'].title()
         return {'shown': params['view']}
 
-    def call(self, method, params=None):
+    def call(self, method, params=None, *, cleanup=False):
         self.events.append(('call', method, params))
         if method == 'action.invoke':
             self._invoke(params['action'])
@@ -612,8 +612,8 @@ class TrayRecipesTest(unittest.TestCase):
         ctx = FakeContext()
         original = ctx.call
         ready = iter((False, True, False, True))
-        def call(method, params=None):
-            result = original(method, params)
+        def call(method, params=None, *, cleanup=False):
+            result = original(method, params, cleanup=cleanup)
             if method == 'ui.snapshot':
                 result['operationsReady'] = next(ready)
             return result

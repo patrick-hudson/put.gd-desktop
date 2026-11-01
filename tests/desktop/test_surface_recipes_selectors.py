@@ -89,7 +89,7 @@ class FakeContext(Context):
         self.surface = "history"
         return {"shown": "history"}
 
-    def call(self, method, params=None):
+    def call(self, method, params=None, *, cleanup=False):
         self.calls.append((method, copy.deepcopy(params)))
         params = params or {}
         if method == "settings.get":
@@ -642,8 +642,8 @@ class SelectorRecipes(unittest.TestCase):
     def test_unsaved_export_cannot_pass_motion_gate(self):
         ctx = FakeContext()
         real_call = ctx.call
-        def failed_export(method, params=None):
-            value = real_call(method, params)
+        def failed_export(method, params=None, *, cleanup=False):
+            value = real_call(method, params, cleanup=cleanup)
             if method == "recording.saveCopy":
                 ctx._record()["lastExport"]["status"] = "failed"
             return value
@@ -719,8 +719,8 @@ class SelectorRecipes(unittest.TestCase):
     def test_bar_drag_maps_second_head_and_refuses_cross_head_endpoint(self):
         ctx = FakeContext(2)
         original_call, original_drag = ctx.call, ctx.drag
-        def call(method, params=None):
-            value = original_call(method, params)
+        def call(method, params=None, *, cleanup=False):
+            value = original_call(method, params, cleanup=cleanup)
             if method == "recording.prepare":
                 ctx.bar.update(x=1367, y=100, screen_x=1280, screen_y=0, head=1)
             return value

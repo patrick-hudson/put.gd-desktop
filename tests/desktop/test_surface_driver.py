@@ -477,6 +477,70 @@ class CleanupShell(unittest.TestCase):
         owned.assert_not_called()
         self.assertEqual(len(self.calls),1)
 
+    def resident(self, active='recording', delay=0):
+        calls=[]
+        def cli(method, payload, timeout=60):
+            calls.append((method,json.loads(payload),timeout))
+            if method=='recording.capabilities':
+                if delay:time.sleep(delay)
+                result={'active':active}
+            else:
+                self.assertEqual((method,json.loads(payload)),('recording.cancel',{'id':'recording'}))
+                result={'cancelled':True}
+            return {'returncode':0,'stdout':json.dumps({'ok':True,'result':result}),'stderr':''}
+        self.target.cli=cli
+        return calls
+
+    def test_resident_cleanup_survives_deadline_without_shell_or_foreign_cancel(self):
+        from tools.lab.surface_driver.recipes import selectors
+        calls=self.resident()
+        with patch.object(lab,'verify_owned_guest') as owned:
+            selectors._cancel_record(self.ctx,'recording')
+        self.assertEqual([c[0] for c in calls],['recording.capabilities','recording.cancel'])
+        self.assertTrue(all(0<c[2]<=30 for c in calls))
+        self.assertEqual(owned.call_count,2)
+        self.assertFalse(self.calls)  # Target.cli, never a cleanup shell shortcut.
+        with self.assertRaisesRegex(RecipeFailed,'recipe deadline exceeded'):
+            self.ctx.call('recording.capabilities')
+        calls=self.resident(active='another-recording')
+        with patch.object(lab,'verify_owned_guest'):
+            selectors._cancel_record(self.ctx,'recording')
+        self.assertEqual([c[0] for c in calls],['recording.capabilities'])
+
+    def test_resident_cleanup_keeps_ownership_and_method_boundaries(self):
+        self.target.cli=Mock()
+        with patch.object(lab,'verify_owned_guest',side_effect=lab.LabError('foreign overlay')):
+            with self.assertRaisesRegex(RecipeBlocked,'foreign overlay'):
+                self.ctx.call('recording.capabilities',cleanup=True)
+        for method in ('settings.patch','history.delete','recording.prepare'):
+            with self.subTest(method=method):
+                with self.assertRaisesRegex(RecipeBlocked,'limited to recording'):
+                    self.ctx.call(method,cleanup=True)
+                with self.assertRaisesRegex(RecipeBlocked,'limited to recording'):
+                    self.ctx.cli(method,'{}',cleanup=True)
+        self.target.cli.assert_not_called()
+
+    def test_recording_cleanup_defers_alarm_until_cancel_and_preserves_primary_error(self):
+        from tools.lab.surface_driver.critical import armed
+        from tools.lab.surface_driver.recipes import selectors
+        calls=self.resident(delay=.1)
+        def alarm(*_):raise RecipeFailed('late recipe alarm')
+        previous=signal.signal(signal.SIGALRM,alarm)
+        try:
+            with patch.object(lab,'verify_owned_guest'), self.assertRaisesRegex(RecipeFailed,'original export timeout'):
+                try:
+                    raise RecipeFailed('original export timeout')
+                except RecipeFailed:
+                    with armed():
+                        signal.setitimer(signal.ITIMER_REAL,.02)
+                        selectors._cancel_record(self.ctx,'recording')
+                    raise
+        finally:
+            signal.setitimer(signal.ITIMER_REAL,0)
+            signal.signal(signal.SIGALRM,previous)
+        self.assertEqual([c[0] for c in calls],['recording.capabilities','recording.cancel'])
+        self.assertTrue(any('late recipe alarm' in note for note in self.ctx.reviews))
+
 
 class CleanupShellBounds(unittest.TestCase):
     """Validator B2, N1 and N3 on #680: the cleanup hook's own boundaries."""
