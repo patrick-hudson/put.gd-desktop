@@ -43,7 +43,10 @@ DESKTOPS = {
     'lxde': dict(profile='lxde-x11', packages='lxde-core pcmanfm notification-daemon', session='LXDE'),
     'budgie': dict(profile='budgie-wayland', packages='budgie-desktop nemo labwc', session='budgie-desktop', gdm=True),
     # The session aborts on a missing GSettings schema from smaller sets; the metapackage is 673 MB.
-    'ukui': dict(profile='ukui-x11', packages='ukui-desktop-environment', session='ukui'),
+    # Its X11 window manager is only an alternative to the Wayland compositor, so name it, or the
+    # UKUI session has no window manager and no panel. ukui-session's own environment has no
+    # XDG_CURRENT_DESKTOP; the panel's does.
+    'ukui': dict(profile='ukui-x11', packages='ukui-desktop-environment ukwm', session='ukui', env_process='ukui-panel'),
     # Ubuntu 26.04 ships no Pantheon at all (no gala, pantheon-files, wingpanel or contractor), so
     # `up` refuses. A row needs elementary OS 8.1 unpacked to a disposable disk, then these commands.
     # gala's own environment has no WAYLAND_DISPLAY or DISPLAY; wingpanel's (comm truncated) does.
