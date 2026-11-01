@@ -126,6 +126,9 @@ private slots:
   {const auto name=QFile::encodeName(latin)+"/a\xff.txt";const int fd=::open(name.constData(),O_WRONLY|O_CREAT|O_TRUNC,0600);QVERIFY(fd>=0);QCOMPARE(::write(fd,"x",1),ssize_t(1));::close(fd);}
   selection=FileUploads::select({latin},settingsWith(QJsonArray{profile("a")}),"files",0,-1);
   QCOMPARE(selection.error.code,QString("files_rejected"));QVERIFY(selection.error.message.contains("UTF-8"));
+  // A valid name may start with U+FEFF, which a QString round trip would drop.
+  const auto bom=dir_.filePath(QStringLiteral("tree/\uFEFFphotos"));write(bom+"/a.jpg","a");
+  QVERIFY2(!FileUploads::select({bom},settingsWith(QJsonArray{profile("a")}),"files",0,-1).error,"a U+FEFF folder name is valid UTF-8");
   // Over the file limit in files mode: the folder is named.
   auto document=settingsWith(QJsonArray{profile("a")},{},{{"fileManagerFolders","files"}}).document;auto limits=document["limits"].toObject();limits["maxFiles"]=2;document["limits"]=limits;
   selection=FileUploads::select({root},Settings::fromValidated(document),"files",0,-1);
