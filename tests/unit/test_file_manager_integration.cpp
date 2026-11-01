@@ -170,6 +170,7 @@ private slots:
   f.installPlugin("peony-extensions","libputgd-peony.so");
   if(installation=="system")write(QDir(c.dataDirs[0]).filePath("file-manager/actions/putgd-upload.desktop"),"[Desktop Entry]\n");
   for(const auto* name:{"nautilus","caja","peony","pcmanfm","pcmanfm-qt"})write(QDir(c.searchPath).filePath(name),"#!/bin/sh\n",programMode);
+  if(desktop=="COSMIC")f.installCosmic();
   const auto result=FileManagerIntegration::apply(c);
   QVERIFY2(!result.error,qPrintable(result.error.message));
   QVERIFY(result.firstRun);QVERIFY(result.announce);QCOMPARE(result.restartable,restartable);
@@ -185,7 +186,12 @@ private slots:
   QTest::newRow("Trinity")<<"TDE"<<""<<"appimage"<<false;
   QTest::newRow("Enlightenment")<<"Enlightenment"<<""<<"system"<<false;
   QTest::newRow("LXDE AppImage")<<"LXDE"<<""<<"appimage"<<true;
-  QTest::newRow("COSMIC")<<"COSMIC"<<""<<"system"<<true;
+  QTest::newRow("COSMIC without COSMIC Files")<<"COSMIC"<<""<<"system"<<false;
+  QTest::newRow("Cinnamon")<<"X-Cinnamon"<<""<<"appimage"<<true;
+ }
+ void firstRunAnnouncesCosmicWithCosmicFiles() {
+  Fixture f;auto& c=f.context;c.installation="system";c.desktop="COSMIC";f.installCosmic();
+  QVERIFY(FileManagerIntegration::apply(c).announce);
  }
  void firstRunAnnouncesOnlyAnEntryThatExists() {
   QFETCH(QString,desktop);QFETCH(QString,kdeVersion);QFETCH(QString,installation);QFETCH(bool,announce);

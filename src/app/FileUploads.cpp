@@ -103,9 +103,14 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
  result.sourceBytes=batch;
  if(problems.isEmpty()&&result.files.isEmpty())reject(QStringLiteral("selection"),"input_excessive","contains no files to upload");
  if(problems.isEmpty()&&batch>limits.maxBatchBytes)reject(QStringLiteral("selection"),"input_excessive",QStringLiteral("totals %1; the Largest batch limit is %2").arg(size(batch),size(limits.maxBatchBytes)));
- if(problems.isEmpty()&&diskAvailable>=0&&result.diskBytes>diskAvailable)
+ if(problems.isEmpty()&&diskAvailable>=0&&result.diskBytes>diskAvailable) {
   // The cause is usually the reserve, not this file: say what's free, what's kept and what to do.
-  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space: this needs %1. The disk with put.gd's data folder has %2 free, and put.gd keeps %3 free for the system. Free up at least %4 and try again.").arg(ByteSize::fileSummary(result.diskBytes),ByteSize::fileSummary(disk.freeBytes),ByteSize::fileSummary(disk.reserveBytes+disk.reservedBytes),ByteSize::fileSummary(result.diskBytes+disk.reserveBytes+disk.reservedBytes-disk.freeBytes)),{{"requiredBytes",double(result.diskBytes)},{"availableBytes",double(diskAvailable)}}};
+  const auto kept=QStringLiteral("%1 free for the system").arg(ByteSize::fileSummary(disk.reserveBytes))+(disk.reservedBytes>0?QStringLiteral(" and %1 for uploads in progress").arg(ByteSize::fileSummary(disk.reservedBytes)):QString());
+  // Up, so freeing this much is always enough.
+  const auto shortfall=result.diskBytes+disk.reserveBytes+disk.reservedBytes-disk.freeBytes;
+  const qint64 step=shortfall>=ByteSize::GiB?ByteSize::GiB/100:ByteSize::MiB;
+  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space: this needs %1. The disk with put.gd's data folder has %2 free, and put.gd keeps %3. Free up at least %4 and try again.").arg(ByteSize::fileSummary(result.diskBytes),ByteSize::fileSummary(disk.freeBytes),kept,ByteSize::summary((shortfall+step-1)/step*step)),{{"requiredBytes",double(result.diskBytes)},{"availableBytes",double(diskAvailable)},{"freeBytes",double(disk.freeBytes)},{"reserveBytes",double(disk.reserveBytes)},{"reservedBytes",double(disk.reservedBytes)}}};
+ }
  if(!problems.isEmpty()){
   const auto more=problems.size()>listed.size()?QStringLiteral("\n… and %1 more").arg(problems.size()-listed.size()):QString();
   // Size refusals keep their own code when every problem is one; anything else is files_rejected.
