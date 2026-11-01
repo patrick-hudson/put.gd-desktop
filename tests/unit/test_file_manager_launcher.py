@@ -253,6 +253,35 @@ exit {run_status}
         completed, _ = self.run_launcher("--stop-watch", env={"XDG_RUNTIME_DIR": str(private)})
         self.assertEqual((completed.returncode, self.calls_made()), (0, []))
 
+    def test_a_stop_failure_says_why(self):
+        self.manager_socket(self.user_runtime)
+        self.write(self.bin / "systemctl", """#!/bin/sh
+case "$*" in
+ *--property=LoadState*) echo loaded ;;
+ *--property=Description*) echo "put.gd file manager integration fixture" ;;
+ *stop*) echo "Access denied" >&2; exit 1 ;;
+esac
+""")
+        self.render()
+        completed, _ = self.run_launcher("--stop-watch")
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("Access denied", completed.stderr)
+
+    def test_a_foreign_unit_is_named_and_left_alone(self):
+        self.manager_socket(self.user_runtime)
+        self.write(self.bin / "systemctl", """#!/bin/sh
+printf '%s\\n' "$*" >> "$PG_CALLS"
+case "$*" in
+ *--property=LoadState*) echo loaded ;;
+ *--property=Description*) echo "someone else's unit" ;;
+esac
+""")
+        self.render()
+        completed, _ = self.run_launcher("--stop-watch")
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("belongs to something else", completed.stderr)
+        self.assertFalse([call for call in self.calls_made() if call.startswith("stop ")], self.calls_made())
+
     def test_a_watch_failure_says_why(self):
         self.manager_socket(self.user_runtime)
         self.stand_in_manager(run_status=1, run_message="Unit already exists")

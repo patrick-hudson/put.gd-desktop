@@ -55,9 +55,13 @@ stop_watch() {
         description=$(manager show --property=Description --value "$watch_unit.$suffix" 2>/dev/null) || continue
         case $description in
             'put.gd file manager integration '*) ;;
-            *) return 1 ;;
+            *)
+                say "$watch_unit.$suffix belongs to something else: $description"
+                return 1
+                ;;
         esac
-        manager stop "$watch_unit.$suffix" >/dev/null 2>&1 || return 1
+        # Its stderr stays: the resident logs why a watch could not be stopped.
+        manager stop "$watch_unit.$suffix" >/dev/null || return 1
     done
 }
 
@@ -70,7 +74,7 @@ install_watch() {
         return 3
     }
     if unit_exists "$watch_unit.path"; then
-        description=$(manager show --property=Description --value "$watch_unit.path" 2>/dev/null) || {
+        description=$(manager show --property=Description --value "$watch_unit.path") || {
             say "cannot read $watch_unit.path from the user manager"
             return 1
         }
