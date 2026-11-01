@@ -78,7 +78,24 @@ struct CStrings {
 };
 QList<QByteArray> encoded(const QStringList& values){QList<QByteArray> list;for(const auto& value:values)list.append(QFile::encodeName(value));return list;}
 
+// Ends a wait when the server closes or uses one notification.
+class NotificationWait final:public QObject {
+ Q_OBJECT
+public:
+ explicit NotificationWait(QEventLoop& loop):loop_(loop) {}
+ void track(uint id) {id_=id;}
+public Q_SLOTS:
+ void closed(uint id,uint) {if(id_&&id==id_)loop_.quit();}
+ void invoked(uint id,const QString&) {if(id_&&id==id_)loop_.quit();}
+private:
+ uint id_=0;QEventLoop& loop_;
+};
+// How long the client stays to keep a notice on screen (see notify()).
+constexpr int noticeHoldMs=120000;
 // What the user sees: put.gd's own notification, the same server the resident uses.
+// The client stays on the session bus until the notice is closed or used, for at
+// most noticeHoldMs: Cinnamon ties a notice named "put.gd" to an open put.gd
+// window and removes it the moment its sender leaves the bus.
 void notify(const QString& title,const QString& body,bool failure){
  const auto bytes=(title+": "+body).toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);
  auto bus=QDBusConnection::sessionBus();if(!bus.isConnected())return;
@@ -89,7 +106,15 @@ void notify(const QString& title,const QString& body,bool failure){
  // Resident: Cinnamon otherwise removes put.gd's notices at once while a put.gd window has focus.
  const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"},{"resident",true}};
  call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{},hints,failure?0:10000});
- bus.call(call,QDBus::Block,5000);
+ // Subscribed before Notify: a close that comes at once is delivered once the loop runs.
+ QEventLoop loop;NotificationWait held(loop);
+ bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",&held,SLOT(closed(uint,uint)));
+ bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",&held,SLOT(invoked(uint,QString)));
+ const auto reply=bus.call(call,QDBus::Block,5000);
+ if(reply.type()!=QDBusMessage::ReplyMessage||reply.arguments().isEmpty())return;
+ held.track(reply.arguments().first().toUInt());
+ QTimer::singleShot(noticeHoldMs,&loop,&QEventLoop::quit);
+ loop.exec();
 }
 void refuse(const QString& body){notify(QStringLiteral("put.gd — nothing uploaded"),body,true);}
 
@@ -440,3 +465,4 @@ int run(int argc,char** argv){
  }
 }
 }
+#include "UploadClient.moc"
