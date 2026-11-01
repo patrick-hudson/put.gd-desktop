@@ -484,7 +484,7 @@ QString FileManagerIntegration::restartScript(const QString& name) {
  if(name=="pcmanfm"||name=="pcmanfm-qt")return QStringLiteral(
   "v(){ tr '\\0' '\\n' </proc/$1/environ | sed -n \"s/^$2=//p\"; }; "
   "p=; for q in $(pgrep -u \"$(id -u)\" -x \"$1\"); do w=$(v $q WAYLAND_DISPLAY); [ \"$(v $q DISPLAY)\" = \"$DISPLAY\" ] && [ \"${w:-wayland-0}\" = \"${WAYLAND_DISPLAY:-wayland-0}\" ] && p=$q; done; [ -n \"$p\" ] || exit 0; "
-  "a=$(tr '\\0' '\\n' </proc/$p/cmdline); for n in WAYLAND_DISPLAY XDG_SESSION_TYPE QT_QPA_PLATFORM; do x=$(v $p $n); [ -z \"$x\" ] || export \"$n=$x\"; done; kill \"$p\"; "
+  "a=$(tr '\\0' '\\n' </proc/$p/cmdline); for n in WAYLAND_DISPLAY XDG_SESSION_TYPE QT_QPA_PLATFORM; do x=$(v $p $n); unset \"$n\"; [ -z \"$x\" ] || export \"$n=$x\"; done; kill \"$p\"; "
   "i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; "
   "printf '%s\\n' \"$a\" | grep -qx -e --desktop -e --daemon-mode -e -d || exit 0; "
   "set -f; IFS='\n'; set -- $a; exec \"$@\"");

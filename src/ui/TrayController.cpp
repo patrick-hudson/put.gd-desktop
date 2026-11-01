@@ -591,10 +591,11 @@ void TrayController::showTrayMessage(const QString& title, const QString& messag
  static constexpr int balloonMs=30000;
  const auto fallback=[this,tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning,actions]{
   if(!tray)return;
+  disconnect(trayRestartClick_);
   const auto icon=warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information;
   if(actions.isEmpty()){tray->showMessage(title,message,icon);return;}
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
-  const auto clicked=connect(tray,&QSystemTrayIcon::messageClicked,this,[name=actions.first().value]{restartFileManager(name);},Qt::SingleShotConnection);
+  const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[name=actions.first().value]{restartFileManager(name);},Qt::SingleShotConnection);
   tray->showMessage(title,message+" Click here to restart it.",icon,balloonMs);
   QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
  };

@@ -91,6 +91,7 @@ private:
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
  bool trayActionsConnected_ = false;
+ QMetaObject::Connection trayRestartClick_; // Qt's balloon has one click signal, whichever balloon is showing
  Q_SLOT void trayNotificationAction(uint id, const QString& key);
 #endif
  QString lastShortcutError_;

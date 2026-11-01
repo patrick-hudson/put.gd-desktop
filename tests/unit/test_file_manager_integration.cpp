@@ -231,7 +231,7 @@ private slots:
   }
   {
    // Wayland's default display, named by one side only, is the same display.
-   QFile::remove(starts);
+   QFile::remove(starts);QFile::remove(displays);
    QProcess desktop;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("WAYLAND_DISPLAY","wayland-0");
    desktop.setProcessEnvironment(environment);desktop.start(stub,{"--desktop"});
    PUTGD_TRY_COMPARE(lines().size(),1);
@@ -239,7 +239,7 @@ private slots:
    QVERIFY(desktop.waitForFinished(5000));
    PUTGD_TRY_COMPARE(lines().size(),2);
    // It comes back on the display it had, not put.gd's lack of one.
-   QCOMPARE(QString::fromUtf8(readAll(displays)).split('\n',Qt::SkipEmptyParts).last(),QString("wayland-0"));
+   PUTGD_TRY_COMPARE(QString::fromUtf8(readAll(displays)),QString("wayland-0\nwayland-0\n"));
    second.terminate();QVERIFY(second.waitForFinished(5000));
   }
   // Not running: nothing to do, and nothing starts.
