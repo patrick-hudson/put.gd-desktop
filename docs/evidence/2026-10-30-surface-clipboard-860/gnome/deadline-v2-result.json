@@ -13,7 +13,7 @@
   "keeper": {
     "pid": 73654,
     "start": "234832",
-    "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+    "boot": "[REDACTED]",
     "uid": 1000,
     "state": "R",
     "parent": 73653,
@@ -46,7 +46,7 @@
     "transport": "x11-selection-bridge",
     "pid": 73654,
     "start": "234832",
-    "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+    "boot": "[REDACTED]",
     "reaped_pids": []
   },
   "cleanupErrors": []

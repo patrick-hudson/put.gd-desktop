@@ -1,0 +1,22 @@
+{
+  "frames": {
+    "startup-failed.png": {
+      "sha256": "51e457f4207c6361d8d22571976947233d81f61b45221f4e79f79d25d0d56cf1",
+      "size": [
+        1920,
+        1080
+      ],
+      "regions": [
+        [
+          0,
+          0,
+          1920,
+          1080
+        ]
+      ],
+      "fallback": true,
+      "guard": "fully-masked",
+      "visible_pixels": false
+    }
+  }
+}

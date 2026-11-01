@@ -17,12 +17,12 @@
   },
   "restart": {
     "scope": "owned disposable guest restart to verify login autostart, not a physical host reboot",
-    "beforeBootId": "d8dbf2be-99a8-4017-9d27-61083461e432",
+    "beforeBootId": "[REDACTED]",
     "guestSync": "completed",
     "method": "QMP system_reset",
     "priorRequests": "SSH systemctl required interactive auth; visible terminal/session client attempts did not change uptime; no password entered"
   },
-  "afterBootId": "3b340520-5b27-4293-9058-6c62990d7aad",
+  "afterBootId": "[REDACTED]",
   "startup": {
     "ok": true,
     "desktop": "Cinnamon",
@@ -788,5 +788,7 @@
     "Cinnamon screensaver is demand-activated; GetActive verifies it even when NameHasOwner is initially false.",
     "Deliberate idle-delay600 drift was refused by check-only preflight. SSH reboot required interactive authorization; visible terminal/session requests did not change uptime. No password entered. Synced owned guest then QMP system_reset; new boot ID and startup readback prove fresh boot restoration.",
     "Final complete QMP frame was reviewed, native X11 unlocked active session and policy rechecked; overlay retired after export verification."
-  ]
+  ],
+  "bootChanged": true,
+  "bootComparisonSource": "Comparison of original before/after observations before identifier redaction; identifiers omitted from publication."
 }

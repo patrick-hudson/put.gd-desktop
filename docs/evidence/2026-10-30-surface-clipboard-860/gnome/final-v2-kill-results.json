@@ -6,7 +6,7 @@
     "keeper": {
       "pid": 69918,
       "start": "230728",
-      "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+      "boot": "[REDACTED]",
       "argv": [
         "python3",
         "/tmp/sd-7caef812/clipboard-keeper.py",
@@ -38,7 +38,7 @@
     "keeper": {
       "pid": 71833,
       "start": "232523",
-      "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+      "boot": "[REDACTED]",
       "argv": [
         "python3",
         "/tmp/sd-b7ccbfc7/clipboard-keeper.py",

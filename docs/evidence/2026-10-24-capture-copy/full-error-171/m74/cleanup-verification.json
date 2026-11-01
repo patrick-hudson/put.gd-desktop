@@ -2,7 +2,7 @@
   "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
   "host": "m74",
   "utc": "2026-10-24T03:32:41.823479+00:00",
-  "bootId": "4ba460ee-1af9-4ae8-b832-d1c54cdb642f",
+  "bootId": "[REDACTED]",
   "kernel": "6.14.0-37-generic",
   "unchangedBaselineRuntimePackages": {
     "cinnamon": "cinnamon 6.6.9+zena installed",

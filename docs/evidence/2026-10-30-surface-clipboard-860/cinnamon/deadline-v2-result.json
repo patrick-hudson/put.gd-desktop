@@ -17,7 +17,7 @@
   "keeper": {
     "pid": 73099,
     "start": "307251",
-    "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+    "boot": "[REDACTED]",
     "uid": 1000,
     "state": "R",
     "parent": 73098,
@@ -54,7 +54,7 @@
     "transport": "xcb",
     "pid": 73099,
     "start": "307251",
-    "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+    "boot": "[REDACTED]",
     "reaped_pids": []
   },
   "cleanupErrors": []

@@ -1,0 +1,115 @@
+{
+  "capture-empty": {
+    "status": "complete",
+    "error": null,
+    "gates": {
+      "overlayPaint": {
+        "status": "fail",
+        "limitMs": 150
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  },
+  "capture-10k": {
+    "status": "complete",
+    "error": null,
+    "gates": {
+      "overlayPaint": {
+        "status": "fail",
+        "limitMs": 150
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  },
+  "links": {
+    "status": "complete",
+    "error": null,
+    "gates": {
+      "overlayPaint": {
+        "status": "fail",
+        "limitMs": 150
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  },
+  "native-burst": {
+    "status": "failed-or-interrupted",
+    "error": {
+      "type": "EvidenceError",
+      "reason": "owned_overlay_paint_not_observed:[]",
+      "traceback": "Traceback (most recent call last):\n  File \"/tmp/np31/b_campaign.py\", line 32, in phase\n    elif name=='native-burst':b_native.burst(run)\n                              ^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/b_native.py\", line 182, in burst\n    r=n.capture(submit=True);ids.append(r['operationId']);ops=n.rpc('operation.recent')['operations'];queued=sum(o['state']=='queued' for o in ops);active=sum(o['state']=='uploading' for o in ops);queued_peak=max(queued_peak,queued);active_peak=max(active_peak,active)\n      ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/b_native.py\", line 104, in capture\n    require(paint is not None and present is not None,'owned_overlay_paint_not_observed:'+repr(observed))\n  File \"/tmp/np31/frozen-src/tests/performance/physical_campaign.py\", line 53, in require\n    raise EvidenceError(code)\nbench_ui_process.EvidenceError: owned_overlay_paint_not_observed:[]\n"
+    },
+    "gates": {
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  },
+  "history-10k": {
+    "status": "failed-or-interrupted",
+    "error": {
+      "type": "EvidenceError",
+      "reason": "accessible_control_missing_or_ambiguous",
+      "traceback": "Traceback (most recent call last):\n  File \"/tmp/np31/b_campaign.py\", line 37, in phase\n    b_history.run(run)\n  File \"/tmp/np31/b_history.py\", line 172, in run\n    functionals(run,ui)\n  File \"/tmp/np31/b_history.py\", line 191, in functionals\n    measured=ui.preview(path,started);previews.append({'milliseconds':measured,'category':chosen['category'],'historyId':chosen['id']})\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_workloads.py\", line 154, in preview\n    rectangle = self.rectangle('Selected capture preview')\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_workloads.py\", line 142, in rectangle\n    node = self.accessible.find(name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/b_history.py\", line 17, in find\n    return super().find('History items and upload activity' if name=='Captures and upload activity' else name)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/np31/frozen-src/tests/performance/campaign_ui.py\", line 364, in find\n    raise EvidenceError('accessible_control_missing_or_ambiguous')\nbench_ui_process.EvidenceError: accessible_control_missing_or_ambiguous\n"
+    },
+    "gates": {
+      "historyOpenUpperBoundMs": {
+        "status": "pass",
+        "maximum": 1000,
+        "approvalReference": "Current integrated acceptance thread explicit user response: Approve these limits, 2026-10-25"
+      },
+      "historySearchP95UpperBoundMs": {
+        "status": "pass",
+        "maximum": 250,
+        "approvalReference": "Current integrated acceptance thread explicit user response: Approve these limits, 2026-10-25"
+      },
+      "historyScrollP95UpperBoundMs": {
+        "status": "fail",
+        "maximum": 100,
+        "approvalReference": "Current integrated acceptance thread explicit user response: Approve these limits, 2026-10-25"
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  },
+  "slow100": {
+    "status": "complete",
+    "error": null,
+    "gates": {
+      "historyOpenUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "slowInputUpperBoundMs": {
+        "status": "unassessed",
+        "reason": "content_endpoint_not_witnessed"
+      },
+      "cancelTerminalMs": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settleGrowthBytes": {
+        "status": "unassessed",
+        "reason": "no_explicit_approved_threshold"
+      },
+      "settled-rssBytes": {
+        "status": "pass",
+        "limitBytes": 41943040
+      },
+      "settled-pssBytes": {
+        "status": "pass",
+        "limitBytes": 30408704
+      },
+      "cleanup": {
+        "status": "pass"
+      }
+    }
+  }
+}

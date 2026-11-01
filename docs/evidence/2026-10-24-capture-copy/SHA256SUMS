@@ -35,11 +35,11 @@ d5b8e9e8578dfd29bc61194dfe8ca9f943ac9fe89957f12d9bdb1e5c6afdb367  f44/postC/resu
 9438d916c93fa25ed14c869439e4be3f79446b65b0b539b2c80f3f17b498b8c6  f44/socket-preflight.json
 37b2b1d3538c0e1da54017de7de053ce30bd6a8f9decb1146d5f4d812d9cc5fe  f44/stored-link-independent-paste.json
 df1ebdd2bf19f6e07f2f6eabbc3b76b93a9145197a1ea823917b92b8b5d76516  f44/synthetic-link-seed.json
-7e53269ba16739cab09fa5e115ce85f995035a3daba26a1e57814a152193de79  f44-native-50.6/README.md
+c030baa6b9127a79d8f2e6ccc483a83e9b163ad8cb1635932d8113765c79d930  f44-native-50.6/README.md
 a6f7044973d3931ff13d3cf57426956d5f9d7053aed06af33fa65a87734041f0  f44-native-50.6/baseline-unregistered.txt
-ddd2556db18400cc9d0126373595c647e7af58aa61a5283615f49c75d1315155  f44-native-50.6/baseline.json
+d1c50f9c7f902ab746175940cdedb240ae5ad65f06eeedfc49929b8f42feced4  f44-native-50.6/baseline.json
 53b443cdf3cbc850d360714728a98897f6a25196b45f5c4e2b766aafaefec6d1  f44-native-50.6/cleanup-first.log
-0d35f33475a3353171bf440797bfb313f13138f311a1c4f069dc24648d793121  f44-native-50.6/cleanup-verification.json
+9ffcd1ccb3b3dee6b05bcffc785db2fd00d7852add098b8dd76c38b945873f00  f44-native-50.6/cleanup-verification.json
 eac010e1cd3f6f551eda436f3773231b1e20ba62fb47a6b7d837867e0ac63082  f44-native-50.6/cold/fixture-drain.json
 8a5c3913e70810b82978d2483a38c8ca8a4ff706a2439d71e1b2fb7cf0b91404  f44-native-50.6/cold/numeric-gate.json
 b255ac48280118d15212f0282996cd2fa940eb22c9c3175515c8d697097d6d4e  f44-native-50.6/cold/results.json
@@ -56,7 +56,7 @@ af9f30170ea2a064561914452f341dea9cff5fd173ae60ee4d769d67da7a95cc  f44-native-50.
 b3aba842344b9e1a39acc44d651162108bc1b7812ed1523bf8f0e8be92adb92d  f44-native-50.6/enabled-before-functional.txt
 5d278f3d885cbf08c130e546b41c9022b8f13a35f6f20d3e821b01ba2b407290  f44-native-50.6/enabled-captures-final.png
 9cb8ee515839350fa95aa5b40c22ce02b005b1a8dae348495ea7b31f41fc3f81  f44-native-50.6/functional-manifest.json
-ac82e34dbb7323d0bca1c1fa2caba4f1e82b70d109de5d35febbcf35c4c06633  f44-native-50.6/host-identity-before.json
+56bdd460c4d4dc80973b595fd345c90147f3dc74508498ec18bf86eb9087bb1b  f44-native-50.6/host-identity-before.json
 68a697cf9ace651874030a69f5b3e5055c81663fda6b7f738f6221ceaef2009c  f44-native-50.6/install-simulation.log
 96eb4647d615aecbb8e22ccd8a21b289d76ec371ba1ebcb028f1b84a75603168  f44-native-50.6/install-transaction.log
 e56688ec4f9b4ef67f5cbc8cca39378ccad4a16478828989e4542acaf15040f2  f44-native-50.6/installed-before-login-guidance-annotated.png
@@ -91,7 +91,7 @@ f41c643896788b4c6a6267a1e087fd9f29db069c1a46e5240fdc3538d1cfc969  f44-native-50.
 5fb0e292c829c850682ae31e5b0f696fb53880fdb33bc9141cfeabb3ad49517e  f44-native-50.6/postlogin-discovered.txt
 b3aba842344b9e1a39acc44d651162108bc1b7812ed1523bf8f0e8be92adb92d  f44-native-50.6/postlogin-enabled.txt
 9035dfb2325ec7023d4e69c5a23df5f30766ab235866d6f31dbc61b114216422  f44-native-50.6/postlogin-shell.pid
-e03f96531e694aecb588a654bfd45bca8bd05cfddaee9eeed73b86656cfe36f5  f44-native-50.6/pre-cleanup-relogin-app-check.json
+a14aeca3b09143e790d1455c33802f511c77ef6b952ec9fff1055ed3c691965b  f44-native-50.6/pre-cleanup-relogin-app-check.json
 84c1a3314e35d327254c45d49ecd6ce53f92b92cdb302f432728110bf050f5c2  f44-native-50.6/pre-install-relogin-app-check.json
 ae56ae1afe089753a889dc2d5af825f93433ec836f1e1f0a46148d09a13f5909  f44-native-50.6/quiet-conditions.txt
 13ed3f168becbf2071703eb2a8afa3e129eec35c9a7db85f8fdaf21b1da5a446  f44-native-50.6/remove-simulation.log
@@ -128,10 +128,10 @@ fbb1170043d435efa4e8aba121de2988c159c52e6ac9bd2627f304737d251979  full-error-171
 b24dcfe933a989c71eae34d91e2196cc49d06fe6baf2e5ca888e505cee808b5d  full-error-171/builder/waitfix-flake-contracts.log
 c2afcf0c8be7969fa7c21e4975d5d2c58f19398b347fa77051379d569b8a92e7  full-error-171/builder/waitfix-lint.log
 813b7fbd931253bfad4bcedcb702a4c5d8c319c641764d8c65de82bf7d68e30d  full-error-171/f44/README.md
-26b5b16e6e18734bafdc6312b8b25250cf71deea1cf66e5768e93456e01dbddf  full-error-171/f44/before-final-login-app-check.json
-d2f65db6fccadc03a5a9f679b2253d05853351a7eb6df85c018a2e6944beb67b  full-error-171/f44/before-first-login-app-check.json
+42a70c6d59f977797f0cc5a05b816a709e66665e273d5abc373d8066283f972e  full-error-171/f44/before-final-login-app-check.json
+e459322c3b43c43c995af86dfd79720c38a5b8905a96c91415e3ae7024f846e8  full-error-171/f44/before-first-login-app-check.json
 8b9e99bf2d08f4e80adf54919897f0a9dbbbd9e4f6edd8b5bbb60686058bf128  full-error-171/f44/cleanup-first.log
-f586e0dd104ecb14ecfe24e95ce86db1adbc86158ff33a447191892ef7a86f30  full-error-171/f44/cleanup-verification.json
+239cbc59f952abcd4fc1b5a9418946c761601f8ff9425a127a393841ad163460  full-error-171/f44/cleanup-verification.json
 55d4511435ae9684a3520d5df97b26da0daf627fcba6724770794424d6a776c8  full-error-171/f44/cli-before-operation.json
 37b2b1d3538c0e1da54017de7de053ce30bd6a8f9decb1146d5f4d812d9cc5fe  full-error-171/f44/cli-copy-native-paste.json
 eac010e1cd3f6f551eda436f3773231b1e20ba62fb47a6b7d837867e0ac63082  full-error-171/f44/cold/fixture-drain.json
@@ -163,11 +163,11 @@ c38a3ccdb1efabd5881e338631ab18584d754a8f1d51eb9a1533f27bce88ae9c  full-error-171
 6f3ff1cd97c27f657949f81231e9690dfb60c5b677ad2323eda297f02b0e5218  full-error-171/f44/f44-functional-start.log
 07fccd4f962d92b06883cda98cd32165e1cd4ea358a521c7b41119e0baf0adc0  full-error-171/f44/f44-guide-resume.log
 be6abda6f572848668207dd8a778093c53abab9a23cf4d152e72393730b5b2a6  full-error-171/f44/final-idle-key-context.json
-077c32b7f2c0977bd271336a186bb753ce6f1103ffce3f65c32e2b099fea3eea  full-error-171/f44/final-login-restored-app-check.json
+6c7c476d31512711cad8dd5457ab1356ecb64113bb3c1f18113572baa43761cc  full-error-171/f44/final-login-restored-app-check.json
 2707d7a1ae326ce36669b1ca84e9dae6fa7184421f8cd60bf9e67d46f7a0b2aa  full-error-171/f44/functional-manifest.json
 407f1b22d2c331ce8607cdaac765bbe13557b2ae18346075543303f337457583  full-error-171/f44/functional-socket-preflight.json
-828b042483305d2129b865101f82f58cf10fb89e93174a1e53833bee669c68da  full-error-171/f44/host-identity-before.json
-381a64fef29748571a9905d8a6acdb38eabe2860a4ca0873b4ff3aa077009579  full-error-171/f44/immediately-before-final-login-app-check.json
+3170a9a61f7afa4f9b0d2935bb8c7d99f5d1ef274a1d167408cc5069ddeb3fe7  full-error-171/f44/host-identity-before.json
+9d6238752fe9ddfcfdea31a9528905d1d33ed5c5868f79613013fb143fc6ce43  full-error-171/f44/immediately-before-final-login-app-check.json
 4275238f65e2503a20206b97506aba4786268907dd4c93084ef1c4f33ff839ef  full-error-171/f44/install-simulation.log
 9911dbf52c12403a68f3ec8436f5a181b58fda5015051c20a94cc2ea3efee4df  full-error-171/f44/install-transaction.log
 958f1b111a283aeeb494822e58cb36e3b38eb392abce781d3fd4bcd91eefee62  full-error-171/f44/installed-before-login-gallery-visual.json
@@ -225,7 +225,7 @@ afed1ecbd8c75ca89125c12b09532ede96b7bb818e6596d3ca3f317e751aa326  full-error-171
 6ea183e5e6051b7d70270b45601507eb07af92edc56ef65552e4b5ac1950a24d  full-error-171/f44/view-6-history.png
 471cfd67b5b33ca0b15534dbb44d001a9f432568d6d28c19c509254ee1f2e316  full-error-171/k72/README.md
 a016fad604708a10153bedb308d940dc65d7deab513a4263ed6c4e84b08523a3  full-error-171/k72/cleanup-first.log
-bbc064985b8f76b07c14765620470b50a62c0bf1dd754b1cde126b2c4e9a8eff  full-error-171/k72/cleanup-verification.json
+f272c1d7ada69b47a7548425200e467b50eb55198648080535f7a9813897e30a  full-error-171/k72/cleanup-verification.json
 1359ebfcc9b5f6fbc525764f1e75ab71e7f956a391d66da22d71e8208f264da0  full-error-171/k72/cli-before-operation.json
 ebb4cd10b03dea7fffb1c6464ffc9bedee34ee8c463a866f5dea9b957426fd33  full-error-171/k72/cli-copy-native-paste.json
 eac010e1cd3f6f551eda436f3773231b1e20ba62fb47a6b7d837867e0ac63082  full-error-171/k72/cold/fixture-drain.json
@@ -244,7 +244,7 @@ aef56838b02677a6b97ddf89db6635ee3efeaa5ab1629b929f0ecec30c152d82  full-error-171
 38203dc41c8ba788d0370ce47028cf7d3b2c617d34ee3359138090cccdc5aebd  full-error-171/k72/functional-manifest.json
 30780ae2052fe869fc726e3c810f7b4f4d45c4072b8059cd946d690a52488e14  full-error-171/k72/functional-socket-preflight.json
 35ad436b2724086e3d0c507692cdd38f831c3bdc29cc4a8914b22bcf1948bb90  full-error-171/k72/functional-start.log
-9bd3d28bec45d849d4b4f3859501088727fc5b8ac2f447841ceeb185526332f4  full-error-171/k72/host-identity-before.json
+19ab1bb7864986b2f234c0a15e464793250b0c6a0e08f36ca6beab64d8211abd  full-error-171/k72/host-identity-before.json
 cb664b5569e1423a7aeaeffaa8d308a3e71b5e195be7aaf0f320ff31d541ae37  full-error-171/k72/install-simulation.log
 8363ad7959853f3c900712553988c9e9348ab44a2834a497ee65876d0bc6c659  full-error-171/k72/install-transaction.log
 50fbae094fed78afaf2644267a98b17c851b233b0a4fc401d0779c639f2aa5d4  full-error-171/k72/installed-identity.json
@@ -299,7 +299,7 @@ ca3aafc457c924b0f6dc34a5234945dae6b876b2658158f4219e3aae81b46462  full-error-171
 c6c20bf0a08a226eae2fc1efc8f6e7280182d13c363ddf149c9a67820c257370  full-error-171/k72/view-6-history.png
 009b62a01cff10fb8572a2057c19470e2a2092384d9598f1dfc8c87998a83d2f  full-error-171/m74/README.md
 304b8b01950626b20eb47c5039aa8355c4d1988d775e1e1fc9f770e70571384c  full-error-171/m74/cleanup-first.log
-a18677ac442daa8159f133bc846624c7ba7ca993b31afeb29ea997f6b4768ee9  full-error-171/m74/cleanup-verification.json
+5e47412d92902e3fb5b2a6eac7797a5709ab4c0d2f7809f28ade848dd182c46c  full-error-171/m74/cleanup-verification.json
 1ddd8fa77c4002ae1ab9d110ac08c379559befe98c29160826c8d12a1779a639  full-error-171/m74/cli-before-operation.json
 5fdd63d0f36ed74744ab8bbd17439f303cb776dddd8e007419a90b586f6c233a  full-error-171/m74/cli-copy-native-paste.json
 eac010e1cd3f6f551eda436f3773231b1e20ba62fb47a6b7d837867e0ac63082  full-error-171/m74/cold/fixture-drain.json
@@ -318,7 +318,7 @@ d645208e69f16fb4749a5515fc2baa8e784fe515743bb6567759eb3deaf5e674  full-error-171
 de0f59e214b6b4b797260198606df12e6d319dd63b59c9c41be6ea8c822b61de  full-error-171/m74/functional-manifest.json
 29d133886db9387015a6956e7290cda9678a2d0df5b6c738fee8fdaf82c64473  full-error-171/m74/functional-socket-preflight.json
 381d935e76d46f1eecb6b9a43676d389727c818d2a74f3b8c211896a9edea4e3  full-error-171/m74/functional-start.log
-99e01d032876624c9bed601e5fde6c465dbd4b0cb2496b5ffd9a116047b5cc59  full-error-171/m74/host-identity-before.json
+f668958852a509ef4db9267d4a10c50c397a2aaedce3b64011aac6ebb2f4a792  full-error-171/m74/host-identity-before.json
 0ba076a1d92f560c939b798e90b77c3ffe72d61644e8363fb3be6045bdb7c671  full-error-171/m74/install-simulation.log
 a9accdb9e56fcb8963510443c3c82faabec2f311ac2bf07182a49020d1108c3a  full-error-171/m74/install-transaction.log
 b132cd4976e513629b7314baba0cd0422702e2f4a3841bfd2e64d10905372c3f  full-error-171/m74/installed-identity.json

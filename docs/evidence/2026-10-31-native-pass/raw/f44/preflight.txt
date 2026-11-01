@@ -1,0 +1,26 @@
+ 10:34:52 up 7 days, 13:09,  6 users,  load average: 0.00, 0.00, 0.21
+4
+    2 1000 patrick -     1063    manager -    no -
+    3 1000 patrick -     1207    user    -    no -
+30340 1000 patrick -     2261354 user    -    no -
+30666 1000 patrick seat0 3278816 user    tty2 no -
+30716 1000 patrick -     3287649 user    -    no -
+    4 1000 patrick -     1208    user    -    no -
+    5 1000 patrick -     1209    user    -    no -
+    PID COMMAND         %CPU
+3287649 sshd-session     8.3
+   1271 python3          0.9
+3279316 gnome-software   0.6
+   1234 python3          0.4
+      1 systemd          0.2
+3278901 gnome-shell      0.1
+3279173 ibus-extension-  0.1
+/sys/class/drm/card0-DP-1/status disconnected
+/sys/class/drm/card0-DP-2/status disconnected
+/sys/class/drm/card0-DP-3/status disconnected
+/sys/class/drm/card0-HDMI-A-1/status connected
+/sys/class/drm/card0-HDMI-A-2/status disconnected
+/sys/class/drm/card0-HDMI-A-3/status disconnected
+/usr/bin/firefox
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                  
+LISTEN 0      5          127.0.0.1:5901      0.0.0.0:*    users:(("w0vncserver",pid=3279320,fd=3))

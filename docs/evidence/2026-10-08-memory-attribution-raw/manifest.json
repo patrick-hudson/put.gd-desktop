@@ -17,8 +17,8 @@
     {
       "path": "gnome/resident-attribution.json",
       "originalPath": "work/memory-next/gnome/resident-attribution.json",
-      "bytes": 74802,
-      "sha256": "63357eb62dac250a19a12a7a43b94627b5381db57b5be5155be21d1e5d50e9e6"
+      "bytes": 74776,
+      "sha256": "5fad05ac2f85460c8abaaa1d6e20de9266fda8c86d0736c381517337ef77d85e"
     },
     {
       "path": "gnome/resident-attribution.stderr.log",

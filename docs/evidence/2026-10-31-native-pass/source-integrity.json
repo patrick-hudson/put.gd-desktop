@@ -1,0 +1,146 @@
+{
+  "unchangedFrozenSourceFiles": {
+    "tests/performance/physical_campaign.py": "3cb511e0f0e7e4de63afa68d0ae66a56a8f6abcc028aa0f2df426e27d21a6676",
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/campaign_fixture.py": "330632490f68fb3621f19261f35e64643849b26190de256c969cdc89e79d41d9",
+    "tests/performance/campaign_ui.py": "86dd179d7ee6c4c0cae9728270dca133dbaf9b15975f05fb13965231669937dc",
+    "tests/performance/campaign_workloads.py": "179e837eab64ebc7f82c3a6237067070d208a75cf255b7cd4d5d970492337bf9",
+    "tests/performance/campaign_proxy.py": "39973a4603cedf82ae89250c222ae5f508f36aa127be4d501f2ee3c3eae0e98b",
+    "tests/performance/campaign_lifecycle.py": "e86141e204105fe6834d90933dd065377df0b444786eec5cc1340c11eabe6668",
+    "tests/performance/build_current_capture.py": "dfab0d0aefc471cd13eb3ec6e1bb6b0c57614ac424d2067eca4c5846de0f95bd",
+    "tests/performance/campaign_frames.py": "6c013f4cbce53b96ce6c2dd1b0b1d396f449d5017621654ae2e291a6c5cb6a97",
+    "tools/diagnostics/check_socket_paths.py": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+  },
+  "unmatchedSupplementalSources": [],
+  "notes": "A later prototype is not relabelled as an earlier attempt. Private input archives retain exact A and supplemental source versions.",
+  "supplementalSourceMapping": [
+    {
+      "receipt": "raw/m74/b4/native-burst/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "ab5381d3145e055305e015fed52b620511ff974653d24458d67048d0bf9f95f2",
+      "source": "lab/b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b4/history-functionals/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "ab5381d3145e055305e015fed52b620511ff974653d24458d67048d0bf9f95f2",
+      "source": "lab/b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b1/slow/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "c048ca988888528657c1b9566d32797f1d24c452546fc9fc2f4575cd9f2a469c",
+      "source": "lab/attempts/b1-hash-restored-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b1/seed/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "c048ca988888528657c1b9566d32797f1d24c452546fc9fc2f4575cd9f2a469c",
+      "source": "lab/attempts/b1-hash-restored-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b1/links/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "c048ca988888528657c1b9566d32797f1d24c452546fc9fc2f4575cd9f2a469c",
+      "source": "lab/attempts/b1-hash-restored-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b1/capture-empty/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "c048ca988888528657c1b9566d32797f1d24c452546fc9fc2f4575cd9f2a469c",
+      "source": "lab/attempts/b1-hash-restored-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b1/native-burst/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "c048ca988888528657c1b9566d32797f1d24c452546fc9fc2f4575cd9f2a469c",
+      "source": "lab/attempts/b1-hash-restored-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b2/slow/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+      "source": "lab/attempts/b2-exact-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b2/seed/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+      "source": "lab/attempts/b2-exact-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b2/capture-empty/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+      "source": "lab/attempts/b2-exact-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b2/history-10k/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+      "source": "lab/attempts/b2-exact-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b2/history-10k/results.json",
+      "observer": "contentObserver",
+      "sha256": "0e973047db9d312022f31a83ea1d2c11c31afd7ae1713d61e6de5b833762c1ad",
+      "source": "lab/attempts/b2-exact-b_history.py"
+    },
+    {
+      "receipt": "raw/m74/b2/slow100/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+      "source": "lab/attempts/b2-exact-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b2/memory-10k/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "3c8a4633f73464c998fe065736b0baa2b9f0428802f3ceab6392029a139a36f9",
+      "source": "lab/attempts/b2-exact-b_native.py"
+    },
+    {
+      "receipt": "raw/m74/b3/links/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+      "source": "lab/attempts/b_native-third-attempt.py"
+    },
+    {
+      "receipt": "raw/m74/b3/capture-empty/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+      "source": "lab/attempts/b_native-third-attempt.py"
+    },
+    {
+      "receipt": "raw/m74/b3/history-10k/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+      "source": "lab/attempts/b_native-third-attempt.py"
+    },
+    {
+      "receipt": "raw/m74/b3/history-10k/results.json",
+      "observer": "contentObserver",
+      "sha256": "875a6f230aa346d60bb3dc7cbaf07b25b3c2d51191ec1dca9f9b0ad4d6a84117",
+      "source": "lab/attempts/b_history-third-attempt.py"
+    },
+    {
+      "receipt": "raw/m74/b3/native-burst/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+      "source": "lab/attempts/b_native-third-attempt.py"
+    },
+    {
+      "receipt": "raw/m74/b3/slow100/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+      "source": "lab/attempts/b_native-third-attempt.py"
+    },
+    {
+      "receipt": "raw/m74/b3/capture-10k/results.json",
+      "observer": "supplementalObserver",
+      "sha256": "0cf3b2eb366c4158892f34242c4f513952fafeff24d5066440ecae1a790092b7",
+      "source": "lab/attempts/b_native-third-attempt.py"
+    }
+  ],
+  "hashRestorationNote": "B1 source bytes restored from retained source plus the transfer-added terminal newline; the resulting SHA-256 exactly matches every B1 receipt. B2 exact pre-overwrite source files were retrieved from retained b3-sources/*.previous."
+}

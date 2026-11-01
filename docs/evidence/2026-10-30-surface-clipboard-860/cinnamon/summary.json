@@ -191,7 +191,7 @@
         "transport": "xcb",
         "pid": 58531,
         "start": "234785",
-        "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+        "boot": "[REDACTED]",
         "reaped_pids": []
       }
     },
@@ -260,7 +260,7 @@
         "transport": "xcb",
         "pid": 66266,
         "start": "292575",
-        "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9",
+        "boot": "[REDACTED]",
         "reaped_pids": []
       }
     },
@@ -345,7 +345,7 @@
         "transport": "xcb",
         "pid": 15945,
         "start": "150972",
-        "boot": "cd1d40aa-6aff-4adf-81cf-f20e4f76b4f9"
+        "boot": "[REDACTED]"
       }
     }
   },

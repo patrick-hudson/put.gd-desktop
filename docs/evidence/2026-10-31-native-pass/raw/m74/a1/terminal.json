@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "exit_code": 1,
+  "secret_scan": true,
+  "coverage_export": true,
+  "files": {
+    "receipt.json": "e02a3847906d891b6917756cf5cdba8d06af2475c69cf8d49c3a0255ff24b927",
+    "coverage.json": "bb801880c0e6dc530665f8faa673f64f0a1eee72d8a2ab9d82cc514cee6c9ab9"
+  },
+  "fileDigestScope": "files identifies the original private run bytes before publication sanitization; publishedFiles identifies this repository copy.",
+  "originalTerminalSha256": "d862281da5a1ce65bd5dd512c68afa4eea0de894e8c6712d56aee004f6c5d1d1",
+  "publishedFiles": {
+    "receipt.json": "07ca668e759da92cf16032856eda3000c0e0e54ba45a4e89e22fc8a89171831d"
+  }
+}

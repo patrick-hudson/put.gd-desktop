@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 2,
+  "campaign": "native-pass",
+  "entries": [
+    {
+      "interaction": "region.to-upload",
+      "desktop": "fedora-gnome-wayland",
+      "package": "rpm",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "geometry: RuntimeError: Wayland window cannot be placed on the desktop: putgd synthetic fixture: no compositor window witness for this Wayland profile",
+      "host": "f44",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.region_upload/01-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:43:08Z"
+    },
+    {
+      "interaction": "region.drag",
+      "desktop": "fedora-gnome-wayland",
+      "package": "rpm",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "geometry: RuntimeError: Wayland window cannot be placed on the desktop: putgd synthetic fixture: no compositor window witness for this Wayland profile",
+      "host": "f44",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.region_upload/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.region_upload/01-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.region_upload/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.region_upload",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:43:08Z"
+    },
+    {
+      "interaction": "shell.command-capture-window",
+      "desktop": "fedora-gnome-wayland",
+      "package": "rpm",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "geometry: RuntimeError: Wayland window cannot be placed on the desktop: putgd synthetic fixture: no compositor window witness for this Wayland profile",
+      "host": "f44",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; SIGTERM fell due during fixture cleanup; the earlier failure stays the result (RecipeFailed: runner interrupted by SIGTERM); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.window_desktop/01-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:45:10Z"
+    },
+    {
+      "interaction": "shell.command-capture-desktop",
+      "desktop": "fedora-gnome-wayland",
+      "package": "rpm",
+      "functional": "blocked",
+      "visual": "frames",
+      "receipt": "/tmp/np31/a1/receipt.json",
+      "note": "geometry: RuntimeError: Wayland window cannot be placed on the desktop: putgd synthetic fixture: no compositor window witness for this Wayland profile",
+      "host": "f44",
+      "placement": "native",
+      "destination": "local",
+      "review": true,
+      "review_reason": "frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; frame has no visible pixels; visual approval withheld; frame fully masked: native-cover-not-yet-verified; SIGTERM fell due during fixture cleanup; the earlier failure stays the result (RecipeFailed: runner interrupted by SIGTERM); desktop-drawn frames need visual judgement",
+      "frames": [
+        {
+          "label": "before",
+          "path": "frames/outcomes.window_desktop/00-before.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "outcome-failed-before-cleanup",
+          "path": "frames/outcomes.window_desktop/01-outcome-failed-before-cleanup.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        },
+        {
+          "label": "after",
+          "path": "frames/outcomes.window_desktop/02-after.png",
+          "window": null,
+          "reference": null,
+          "distance": null,
+          "tolerance": null
+        }
+      ],
+      "recipe": "outcomes.window_desktop",
+      "build": "4d3840c6108c22546d83c43a1b7d4c77b1df9d6d",
+      "at": "2026-10-31T15:45:10Z"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "approvedBy": "Patrick",
+  "approvalReference": "Current integrated acceptance thread explicit user response: Approve these limits, 2026-10-25",
+  "maximums": {
+    "historyOpenUpperBoundMs": 1000,
+    "historyScrollP95UpperBoundMs": 100,
+    "historySearchP95UpperBoundMs": 250,
+    "historyPreviewP95UpperBoundMs": 1000
+  }
+}

@@ -123,7 +123,7 @@
     },
     "x11": null
   },
-  "bootId": "b423067f-b271-4189-88c2-ef02686d547c",
+  "bootId": "[REDACTED]",
   "module": {
     "path": "/var/home/lab/work/ia25/appimage-root/squashfs-root/usr/lib/putgd/libputgd-s3.so",
     "sha256": "a9d52ed7197b8bd3c06c95428de3c4fcc9c3e4417bceafd5f7dd5c199b620120"

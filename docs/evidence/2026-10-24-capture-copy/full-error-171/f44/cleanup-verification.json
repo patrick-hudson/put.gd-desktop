@@ -2,7 +2,7 @@
   "source": "171b506e02ca37ba75b27dbbbe859502380926ef",
   "host": "f44",
   "utc": "2026-10-24T03:37:32.851288+00:00",
-  "bootId": "6fa33c97-6c65-46ff-abfe-f5db7d3825b8",
+  "bootId": "[REDACTED]",
   "kernel": "7.2.11-200.fc44.x86_64",
   "unchangedBaselineRuntimePackages": {
     "gnome-shell": "gnome-shell-50.6-1.fc44.x86_64",

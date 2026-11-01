@@ -39,7 +39,7 @@
       "transport": "wayland",
       "pid": 2956,
       "start": "13040",
-      "boot": "4290c5b4-359a-4a39-8308-d2b2d8908e8a",
+      "boot": "[REDACTED]",
       "reaped_pids": []
     },
     "observed_build": {

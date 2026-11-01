@@ -1159,7 +1159,7 @@
       "bytes": 588
     },
     "native-current/gnome/selected-evidence/export-manifest.json": {
-      "sha256": "83e20d0dbb7ae217b2619a0249b3f1efc5bd96a9cc1f0f6882e36db3ff65cd95",
+      "sha256": "d5fb0c56f7f379a17098a6ea64b132dc733d6db9f8f0d5c0bc50acc989cd8fad",
       "bytes": 22462
     },
     "native-current/gnome/selected-evidence/final-state.json": {
@@ -1343,8 +1343,8 @@
       "bytes": 219
     },
     "native-current/gnome/selected-evidence/reboot-request.json": {
-      "sha256": "a9af450dcc495d6459176ec598f43003b404654cbfedc9998a8698afc002176b",
-      "bytes": 213
+      "sha256": "38c8edcf20c9c648145468b9a7947447e631631ba82f534cdb11180c41999728",
+      "bytes": 187
     },
     "native-current/gnome/selected-evidence/receipt.json": {
       "sha256": "36682ace9beb525103521ee7c71977844588886841e0ef7e46134198e2d8cb78",
@@ -1359,8 +1359,8 @@
       "bytes": 5885
     },
     "native-current/gnome/selected-evidence/session-reload.json": {
-      "sha256": "73829e21937ab773b0879957884380ffbdef564180f14fd501486abdaabfb42b",
-      "bytes": 639
+      "sha256": "ec2d25d766d5c2571316a923c06230a66d5c1eff069f77324ec905238a3dcd02",
+      "bytes": 755
     },
     "native-current/gnome/selected-evidence/session-restore-after-refresh-failure.json": {
       "sha256": "c79c52086d9f00a1d9f44ea8591cb4fc87572da4ed844c2fb95fd8171886afeb",
