@@ -170,7 +170,7 @@ need no hashing in a diagnostics package. The worker sends them in batches of at
 rather than slowing the upload.
 
 Each native clipboard write then also ends in a `Native copy finished` record
-(`putgd.clipboard`) with the `writer` (`data-control` on Plasma Wayland, `x11`,
+(`putgd.clipboard`) with the `writer` (`data-control` on Plasma Wayland and [other Wayland desktops](file-manager-upload.md#copying-the-link), `x11`,
 `gnome-helper`), `ok` and the error `code`, nothing else.
 
 ## Redaction

@@ -37,6 +37,26 @@ current folder. On a DEB/RPM GNOME desktop with DING, Nautilus shows the
 top-level plugin entry plus the same action under Scripts; the script is the
 only way into DING's menu.
 
+## Copying the link
+
+X11, GNOME and KDE copy the link through their own adapters. Any other Wayland
+desktop has no capture or shortcuts, and copies through the compositor's
+data-control protocol (`ext-data-control-v1`, or `wlr-data-control` where ext is
+missing), so no put.gd window needs focus. Clipboard text, images and files, and
+**Upload clipboard**, use the same route.
+
+| Session | Compositor | Data-control | Result |
+|---|---|---|---|
+| COSMIC 1.11 (Fedora 44) | cosmic-comp | yes | "Upload complete", link copied |
+| Budgie 10.10 (Ubuntu 26.04) | labwc | yes | "Upload complete", link copied |
+| Pantheon Secure Session (elementary OS 8.1) | Gala 8.4.1, Mutter 46 | no | "Completed with a problem: Uploaded. Could not copy the link." |
+
+On a compositor without data-control the upload still succeeds and the link is
+in History. `copyStatus` is `failed` with code `source_unsupported`, and
+`capabilities` reports the adapter as `wayland-data-control` with
+`clipboard.available` false. Pantheon's Classic Session runs on X11, where the
+link was copied on the `v26.1101.3698-nightly` DEB and AppImage.
+
 ## Turning it on
 
 - **DEB and RPM:** installed with the package, always on. Files, Caja and
