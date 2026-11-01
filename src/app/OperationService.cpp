@@ -353,7 +353,7 @@ void OperationService::uploadDiagnostics(const QString& path,const QString& prof
 void OperationService::uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply reply) {
  // The installation identity comes first: one install's menu entry never
  // uploads through another install's resident, whatever it asks for.
- if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){reply(error,{});return;}
+ if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(error)}});reply(error,{});return;}
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  if(uploadGate_)if(auto error=uploadGate_()){reply(error,{});return;}
  const auto snapshot=settings_.snapshot();const auto revision=settings_.revision();
