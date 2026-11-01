@@ -83,6 +83,9 @@ QStringList SetupService::unlockSavedCredentials() {
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
  for(const auto& id:started)if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
+ // An unlock someone already started for a profile holds the gate as well.
+ for(auto job=jobs_.cbegin();job!=jobs_.cend();++job)
+  if((*job)["kind"]=="unlockCredentials"&&(*job)["state"]=="running"&&snapshot.profiles.contains((*job)["profileId"].toString()))startupUnlocks_.insert(job.key());
  return started;
 }
 void SetupService::credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
