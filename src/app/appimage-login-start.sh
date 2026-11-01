@@ -19,6 +19,7 @@ entry=__PUTGD_ENTRY__
 script=__PUTGD_SCRIPT__
 startup_id='__PUTGD_ID__'
 watch_unit=__PUTGD_WATCH_UNIT__
+user_runtime=__PUTGD_USER_RUNTIME__
 watch_description="put.gd managed login startup $startup_id"
 cleanup_only=false
 
@@ -26,10 +27,25 @@ say() {
     printf 'put.gd login start: %s\n' "$*" >&2
 }
 
+# The user manager listens in the login's runtime directory, and systemctl and
+# systemd-run look for it only in XDG_RUNTIME_DIR (systemd 259 no longer falls
+# back to the session bus). A process given a private XDG_RUNTIME_DIR still
+# belongs to that manager, and the unit outlives the process anyway.
+manager_runtime() {
+    for directory in ${XDG_RUNTIME_DIR:+"$XDG_RUNTIME_DIR"} "$user_runtime"; do
+        if [ -S "$directory/systemd/private" ]; then
+            printf '%s' "$directory"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # The user manager owns the watch, independently of the resident. No package
 # hook visits home directories, and no extra process polls while the app is off.
 manager() {
-    env -u LD_LIBRARY_PATH -u LD_PRELOAD systemctl --user "$@"
+    runtime=$(manager_runtime) || return 1
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD XDG_RUNTIME_DIR="$runtime" systemctl --user "$@"
 }
 
 unit_exists() {
@@ -58,7 +74,8 @@ install_watch() {
     fi
     watched=$configured
     [ "$kind" != appimage ] || watched=${configured%/*}
-    env -u LD_LIBRARY_PATH -u LD_PRELOAD systemd-run --user --quiet --collect \
+    runtime=$(manager_runtime) || return 1
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD XDG_RUNTIME_DIR="$runtime" systemd-run --user --quiet --collect \
         --expand-environment=no --unit="$watch_unit" --description="$watch_description" \
         --path-property="PathChanged=$watched" --property=Type=oneshot \
         --property=SuccessExitStatus=SIGTERM \

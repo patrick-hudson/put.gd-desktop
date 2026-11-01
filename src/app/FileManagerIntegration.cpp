@@ -2,6 +2,7 @@
 #include "FileManagerTemplates.h"
 #include "LoginStartScript.h"
 #include "LoginStartup.h"
+#include "core/Log.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
@@ -537,7 +538,7 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   if(!singleLine(next.updateInformation))next.updateInformation.clear();
   const auto source=QString::fromUtf8(putgdFileManagerLauncher).replace("# __PUTGD_DISCOVERY__",discovery);
   const auto text=substitute(source,{{"CONFIGURED",shellQuoted(configured)},{"UPDATE_INFORMATION",shellQuoted(next.updateInformation)},
-   {"SCRIPT",shellQuoted(launcher)},{"RECORD",shellQuoted(ownedPath)},{"DIRECTORY",shellQuoted(own)},{"CGROUP",shellQuoted(c.cgroupFile)},
+   {"SCRIPT",shellQuoted(launcher)},{"RECORD",shellQuoted(ownedPath)},{"DIRECTORY",shellQuoted(own)},{"CGROUP",shellQuoted(c.cgroupFile)},{"USER_RUNTIME",shellQuoted(c.userRuntime.isEmpty()?QStringLiteral("/run/user/%1").arg(::getuid()):c.userRuntime)},
    {"ID",next.id},{"WATCH_UNIT",shellQuoted("putgd-file-manager-"+hash(launcher))}});
   keep(launcher,text.toUtf8(),programMode);
   if(!next.files.contains(launcher)) {fail(ioError("Cannot write the file manager launcher",launcher));return result;}
@@ -605,16 +606,39 @@ Error FileManagerIntegration::monitor(const FileManagerContext& c,bool enabled) 
  const auto path=launcherPath(c);
  if(!QFileInfo::exists(path))return enabled?Error{"file_manager_monitor","The file manager launcher is missing",{}}:Error{};
  if(!managedFile(path))return {"file_manager_conflict","The file manager launcher is not managed by put.gd",{}};
+ // What the user can do about it; the details are for the log and diagnostics.
+ const auto failed=[](const QJsonObject& details){return Error{"file_manager_monitor",QStringLiteral("put.gd can't watch for this AppImage being deleted, so its file manager entries may stay behind if you delete it. Using one then removes them."),details};};
  QProcess process;process.start("/bin/sh",{path,enabled?"--install-watch":"--stop-watch"});
- if(!process.waitForStarted(3000)||!process.waitForFinished(10000)) {
-  process.kill();process.waitForFinished();return {"file_manager_monitor","Cannot configure the file manager integration monitor",{}};
+ const bool started=process.waitForStarted(3000);
+ if(!started||!process.waitForFinished(10000)) {
+  const auto reason=process.errorString();process.kill();process.waitForFinished();
+  return failed({{"stage",started?"timeout":"start"},{"enabled",enabled},{"reason",reason}});
  }
- if(process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0)
-  return {"file_manager_monitor","Cannot configure the file manager integration monitor",{}};
+ const auto reason=QString::fromUtf8(process.readAllStandardError().left(1024)).trimmed();
+ if(process.exitStatus()!=QProcess::NormalExit)return failed({{"stage","crash"},{"enabled",enabled},{"reason",reason}});
+ if(process.exitCode()==3&&enabled) {
+  logging::info(logApp(),"No file manager removal watch: no user service manager",{{"reason",reason}});
+  return {};
+ }
+ if(process.exitCode()!=0)return failed({{"stage","exit"},{"enabled",enabled},{"exitCode",process.exitCode()},{"reason",reason}});
 #else
  Q_UNUSED(c);Q_UNUSED(enabled);
 #endif
  return {};
+}
+
+bool FileManagerIntegration::announceOnce(const FileManagerContext& c,const Error& error) {
+ const auto path=QDir(ownDirectory(c)).filePath(c.installation+".problem");
+ if(!error) {QFile::remove(path);return false;}
+ const auto text=(error.code+'\n'+error.message+'\n').toUtf8();
+ QFile previous(path);
+ if(previous.open(QIODevice::ReadOnly)&&previous.read(64*1024)==text)return false;
+ previous.close();
+ if(!QDir().mkpath(ownDirectory(c)))return true;
+ QSaveFile file(path);file.setDirectWriteFallback(false);
+ // An unrecorded failure is announced again next time rather than never.
+ if(file.open(QIODevice::WriteOnly)&&file.write(text)==text.size())file.commit();
+ return true;
 }
 
 Error FileManagerIntegration::cleanupIfMissing(const FileManagerContext& c) {

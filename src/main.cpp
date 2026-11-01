@@ -470,7 +470,6 @@ int main(int argc,char* argv[]) {
  // switch changes; the notice once per installation.
  const auto fileManagerMutex=std::make_shared<std::mutex>();
  const auto fileManagerGeneration=std::make_shared<std::atomic_ullong>(0);
- bool fileManagerProblemShown=false;
  const auto configureFileManagers=[&] {
   // A development build's DEB/RPM-style run has no system menu files to go with
   // per-user ones, and its stamp would announce a menu that isn't there.
@@ -484,12 +483,13 @@ int main(int argc,char* argv[]) {
   operations.background([context,fileManagerMutex,fileManagerGeneration,ticket](putgd::Error& error){std::lock_guard lock(*fileManagerMutex);if(ticket!=fileManagerGeneration->load())return QJsonObject{};
    const auto result=putgd::FileManagerIntegration::apply(context);error=result.error;
    if(context.installation=="appimage")if(const auto watched=putgd::FileManagerIntegration::monitor(context,context.enabled);!error)error=watched;
-   return result.toJson();},[&,fileManagerGeneration,ticket](putgd::Error error,QJsonObject result){
+   return result.toJson();},[&,context,fileManagerGeneration,ticket](putgd::Error error,QJsonObject result){
     if(ticket!=fileManagerGeneration->load())return;
     fileManagerStatus=result;if(error)fileManagerStatus["error"]=error.toJson();
     putgd::logging::write(putgd::logApp(),error?QtWarningMsg:QtInfoMsg,"File manager menu applied",fileManagerStatus);
     if(result["firstRun"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
-    if(error&&!std::exchange(fileManagerProblemShown,true))tray.notifyFileManagerProblem(error.message);
+    // After the generation check: a superseded pass must not record a failure nobody was told about.
+    if(putgd::FileManagerIntegration::announceOnce(context,error))tray.notifyFileManagerProblem(error.message);
     refreshSettingsDiagnostics();
    });
  };
