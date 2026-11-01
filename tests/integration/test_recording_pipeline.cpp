@@ -18,6 +18,7 @@ class RecordingPipelineThroughput : public QObject {
     Q_OBJECT
     QProcess display_;
     GstElement* pattern_ = nullptr;
+    QTemporaryDir logs_;
     struct Clip { int frames = 0; qint64 durationNs = 0; qint64 maxGapNs = 0, minGapNs = 0; int irregular = 0; };
     // Parses the clip's access units and measures their timestamps; no decoder
     // is needed (and none may be installed where the tests run).
@@ -60,6 +61,9 @@ class RecordingPipelineThroughput : public QObject {
     }
 private slots:
     void initTestCase() {
+        // Read once, by the first log line of the process.
+        QVERIFY(logs_.isValid());
+        qputenv("PUTGD_RECORD_DEBUG_LOG", logs_.filePath("record.log").toUtf8());
         gst_init(nullptr, nullptr);
         display_.start("Xvfb", {"-displayfd", "1", "-screen", "0", "960x600x24", "-nolisten", "tcp", "-ac"});
         QVERIFY2(display_.waitForStarted(), qPrintable(display_.errorString()));
@@ -166,6 +170,37 @@ private slots:
         QVERIFY2(double(clip.frames) / (double(clip.durationNs) / GST_SECOND) >= 50, qPrintable(summary));
         QVERIFY2(clip.irregular <= std::max(2, clip.frames / 20), qPrintable(summary));
         QVERIFY2(std::llabs(retained * 1000 - clip.durationNs) <= 2 * GST_SECOND / 60, qPrintable(summary));
+    }
+    // #1115: a compositor that refuses max_framerate 0/1 gets the plain request
+    // for the same encoder. No daemon answers here, so both attempts fail and the
+    // log keeps what each one asked for.
+    void aRefusedPipeWireRequestIsRetriedWithThePlainOne() {
+        GstElementFactory* source = gst_element_factory_find("pipewiresrc");
+        if (!source) QSKIP("No pipewiresrc is installed");
+        gst_object_unref(source);
+        QString encoder;
+        for (const char* name : {"x264enc", "openh264enc"}) if (GstElementFactory* factory = gst_element_factory_find(name)) { if (encoder.isEmpty()) encoder = name; gst_object_unref(factory); }
+        if (encoder.isEmpty()) QSKIP("No CPU H.264 encoder is installed");
+        QTemporaryDir dir;
+        qputenv("PIPEWIRE_RUNTIME_DIR", dir.path().toUtf8());
+        qputenv("PIPEWIRE_REMOTE", "no-daemon");
+        const QString log = logs_.filePath("record.log");
+        QFile::remove(log);
+        RecordingPipeline pipeline;
+        RecordingPipeline::Options options;
+        options.rect = QRect(0, 0, 640, 480);
+        options.pipewireNode = 42;
+        options.fps = 15;
+        options.output = dir.filePath("working.mkv");
+        options.encoders = {encoder};
+        QCOMPARE(pipeline.start(options).code, QStringLiteral("recording_start_failed"));
+        QFile written(log);
+        QVERIFY(written.open(QIODevice::ReadOnly | QIODevice::Text));
+        QStringList requests;
+        for (const auto& line : QString::fromUtf8(written.readAll()).split('\n')) if (line.contains("pipeline: ")) requests << line;
+        QCOMPARE(requests.size(), 2);
+        QVERIFY2(requests[0].contains("max-framerate=0/1"), qPrintable(requests[0]));
+        QVERIFY2(!requests[1].contains("max-framerate"), qPrintable(requests[1]));
     }
 };
 }
