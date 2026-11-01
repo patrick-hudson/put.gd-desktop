@@ -34,7 +34,7 @@ QJsonObject routedDocument(const Settings& settings,const Route& route){
 Error matchInstallation(const QString& requested,const QString& resident){
  if(requested==resident)return {};
  const auto name=[](const QString& value){return value=="appimage"?QStringLiteral("the AppImage"):QStringLiteral("the installed package");};
- return {"installation_mismatch",QStringLiteral("put.gd from %1 is running. Quit it from its tray menu, or use the menu entry of that installation.").arg(name(resident)),{{"resident",resident},{"requested",requested}}};
+ return {"installation_mismatch",QStringLiteral("put.gd from %1 is running. Quit that put.gd first (from its tray menu or its window's Quit), or use the menu entry of that installation.").arg(name(resident)),{{"resident",resident},{"requested",requested}}};
 }
 Selection select(const QStringList& paths,const Settings& settings,const QString& action,qint64 objectLimit,qint64 diskAvailable){
  Selection result;result.zipFolders=settings.fileManagerFolders!="files";

@@ -474,7 +474,7 @@ int run(int argc,char** argv){
   sleepMs(pollIntervalMs);
  }
  if(error){
-  if(error.code=="unknown_method")refuse(QStringLiteral("put.gd was just updated. Quit put.gd from its tray menu or log out and in, then try again."));
+  if(error.code=="unknown_method")refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
   else if(error.details["outcomeUnknown"].toBool())notify(QStringLiteral("put.gd — upload uncertain"),QStringLiteral("put.gd didn't confirm the upload. Check put.gd's History before trying again."),true);
   else if(error.code=="client_unavailable"||error.code=="client_timeout")refuse(QStringLiteral("put.gd isn't answering. Try again in a moment."));
   else if(error.code=="initializing")refuse(QStringLiteral("put.gd is still starting. Try again in a moment."));
