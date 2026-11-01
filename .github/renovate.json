@@ -144,6 +144,13 @@
       "enabled": false
     },
     {
+      "description": "mimalloc records the version statically linked into the prebuilt AppImage runtime; changing this source/notices pin does not change the shipped binary. Re-identify it when updating the runtime.",
+      "matchManagers": ["custom.regex"],
+      "matchFileNames": ["packaging/appimage/tools.lock.json"],
+      "matchPackageNames": ["microsoft/mimalloc"],
+      "enabled": false
+    },
+    {
       "matchPackageNames": ["aws/aws-sdk-cpp"],
       "groupName": "AWS SDK for C++",
       "labels": ["dependencies", "area: packaging"],
