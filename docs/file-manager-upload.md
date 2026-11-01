@@ -49,8 +49,9 @@ only way into DING's menu.
   Peony load their plugins only when they start, and Files keeps running after
   its last window closes, so the entry may appear only after a restart. The
   first time put.gd runs after installing, its notice names the desktop's own
-  file manager if it needs one and offers **Restart Files** (or Caja, Peony),
-  which closes all of that file manager's windows.
+  file manager if it needs one. If the desktop's notifications can show buttons,
+  it offers **Restart Files** (or Caja, Peony), which closes all of that file
+  manager's windows.
 - **AppImage:** the first time it runs, put.gd writes per-user entries and
   shows "Upload with put.gd is now in your file manager's right-click menu",
   once per installation. **Settings → General → File manager → File manager
@@ -58,9 +59,9 @@ only way into DING's menu.
   again; `preferences.fileManagerMenu` holds the switch.
 - **PCManFM and PCManFM-Qt**, with the DEB, RPM or AppImage: they read their
   entries once, at the first file menu they show, so one that is already
-  running needs a restart. On LXDE and LXQt the notice says so and offers
-  **Restart PCManFM** (or PCManFM-Qt). It closes all of their windows; the
-  desktop comes back.
+  running needs a restart. On LXDE and LXQt the notice says so and, the same
+  way, offers **Restart PCManFM** (or PCManFM-Qt). It closes all of their
+  windows; the desktop comes back.
 
 Per-user files:
 
