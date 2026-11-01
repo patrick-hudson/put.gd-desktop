@@ -14,6 +14,7 @@
 #include <QDBusError>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
 #endif
 #include <QApplication>
 #include <QCoreApplication>
@@ -573,7 +574,7 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
   if(!revealPath.isEmpty())actions.append({"show-in-folder","Show in folder",revealPath});
   native_->notify(title, message, warning,link,actions);
  }
- else if (tray_) showTrayMessage(title, message, warning);
+ else if (tray_) showTrayMessage(title, message, warning, {});
 #else
  if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
 #endif
@@ -586,20 +587,37 @@ void TrayController::notifyMessage(const QString& code, const QString& title, co
 // request without waiting; only a bus with no notification server falls back to
 // Qt, whose tray then shows the message itself.
 // The urgency is a D-Bus byte: GNOME Shell shows no banner for an int or for 0 (#1105).
-void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning) {
+void TrayController::showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions) {
  const auto fallback=[tray=QPointer<QSystemTrayIcon>(tray_),title,message,warning]{if(tray)tray->showMessage(title,message,warning?QSystemTrayIcon::Warning:QSystemTrayIcon::Information);};
  auto bus=QDBusConnection::sessionBus();
  if(!bus.isConnected()){fallback();return;}
  if(trayMessagesInFlight_>=8)return;
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
- call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,QStringList{},QVariantMap{{"urgency",QVariant::fromValue(static_cast<uchar>(warning?2:1))}},10000});
+ QStringList names;QHash<QString,QString> values;QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(warning?2:1))}};
+ for(const auto& action:actions){names<<action.key<<action.label;values.insert(action.key,action.value);}
+ // Buttons stay until used, as NativeTray's do where the server has no list to keep them in.
+ if(!values.isEmpty()){
+  hints.insert("resident",true);
+  if(!trayActionsConnected_)trayActionsConnected_=bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",this,SLOT(trayNotificationAction(uint,QString)));
+ }
+ call.setArguments({QCoreApplication::applicationName(),uint(0),QString(warning?"dialog-warning":"dialog-information"),title,message,names,hints,values.isEmpty()?10000:0});
  ++trayMessagesInFlight_;
  auto* pending=new QDBusPendingCallWatcher(bus.asyncCall(call),this);
- connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback](QDBusPendingCallWatcher* p) {
+ connect(pending,&QDBusPendingCallWatcher::finished,this,[this,fallback,values](QDBusPendingCallWatcher* p) {
   --trayMessagesInFlight_;p->deleteLater();
+  const QDBusPendingReply<uint> reply=*p;
+  if(reply.isValid()&&!values.isEmpty())trayActions_.insert(reply.value(),values);
   const auto error=p->error().type();
   if(error==QDBusError::ServiceUnknown||error==QDBusError::UnknownObject||error==QDBusError::UnknownInterface||error==QDBusError::UnknownMethod)fallback();
  });
+}
+void TrayController::trayNotificationAction(uint id,const QString& key) {
+ if(!trayActions_.value(id).contains(key))return;
+ const auto value=trayActions_.take(id).value(key);
+ // A resident notification isn't removed by its server when used; put.gd closes it.
+ auto close=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","CloseNotification");
+ close<<id;QDBusConnection::sessionBus().asyncCall(close);
+ if(key.startsWith("restart-file-manager-"))restartFileManager(value);
 }
 #endif
 void TrayController::setUpdateStatus(const QJsonObject& status) {
@@ -653,12 +671,10 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  }
  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","file_manager_menu"},{"title","put.gd"},{"notificationText",message},{"warning",false}});
 #ifdef Q_OS_LINUX
- if(native_){
-  // One button per file manager; each key is unique, its value names the file manager.
-  QList<NotificationAction> actions;for(const auto& name:restartable)actions.append({"restart-file-manager-"+name,"Restart "+fileManagerName(name),name});
-  native_->notify("put.gd",message,false,{},actions);return;
- }
- if(tray_)showTrayMessage("put.gd",message,false);
+ // One button per file manager; each key is unique, its value names the file manager.
+ QList<NotificationAction> actions;for(const auto& name:restartable)actions.append({"restart-file-manager-"+name,"Restart "+fileManagerName(name),name});
+ if(native_){native_->notify("put.gd",message,false,{},actions);return;}
+ if(tray_)showTrayMessage("put.gd",message,false,actions);
 #else
  if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
 #endif

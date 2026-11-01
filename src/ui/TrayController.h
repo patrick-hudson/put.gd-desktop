@@ -17,6 +17,7 @@ class QSystemTrayIcon;
 namespace putgd {
 #ifdef Q_OS_LINUX
 class NativeTray;
+struct NotificationAction;
 #endif
 class TrayController final : public QObject {
  Q_OBJECT
@@ -59,7 +60,8 @@ public:
  void notifyFileManagerMenu(const QStringList& restartable);
  // A problem setting the menu up, e.g. COSMIC's action list could not be read.
  void notifyFileManagerProblem(const QString& message);
- // Quits nautilus, caja or peony; Files starts again in the background. False for other names.
+ // Quits a file manager FileManagerIntegration::restartScript knows; Files, and a
+ // PCManFM drawing the desktop, start again in the background. False for other names.
  static bool restartFileManager(const QString& name);
  // The update check's state (#293): a stable update shows a menu entry that
  // opens Settings; nightly updates show only in Settings.
@@ -84,8 +86,12 @@ private:
 #ifdef Q_OS_LINUX
  void openNotificationLink(const QUrl&);
  // The graphical resident's toast, sent without waiting for the server (#597).
- void showTrayMessage(const QString& title, const QString& message, bool warning);
+ void showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
  int trayMessagesInFlight_ = 0;
+ // Its buttons, by notification id: the server shows them and reports the click.
+ QHash<uint,QHash<QString,QString>> trayActions_;
+ bool trayActionsConnected_ = false;
+ Q_SLOT void trayNotificationAction(uint id, const QString& key);
 #endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;

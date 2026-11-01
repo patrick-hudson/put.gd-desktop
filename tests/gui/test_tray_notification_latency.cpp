@@ -42,17 +42,19 @@ class NotificationPeer final : public QObject, protected QDBusContext {
 public:
  QMutex mutex;
  QList<QVariantMap> received;
+ QList<uint> closed;
  std::atomic_int answered{0};
 public slots:
  uint Notify(const QString& app, uint, const QString& icon, const QString& summary, const QString& body,
-             const QStringList&, const QVariantMap&, int) {
+             const QStringList& actions, const QVariantMap& hints, int timeout) {
   int id = 0;
-  {QMutexLocker lock(&mutex);received.append({{"app",app},{"icon",icon},{"summary",summary},{"body",body}});id=received.size();}
+  {QMutexLocker lock(&mutex);received.append({{"app",app},{"icon",icon},{"summary",summary},{"body",body},{"actions",actions},{"hints",hints},{"timeout",timeout}});id=received.size();}
   setDelayedReply(true);
   // Like Klipper waiting for the copied link: the resident's thread must run first.
   QMetaObject::invokeMethod(qApp,[this,reply=message().createReply(uint(id)),bus=connection()]{bus.send(reply);++answered;},Qt::QueuedConnection);
   return 0;
  }
+ void CloseNotification(uint id) {QMutexLocker lock(&mutex);closed.append(id);}
  QStringList GetCapabilities() { return {"body"}; }
  QString GetServerInformation(QString& vendor, QString& version, QString& spec) { vendor="Synthetic";version="1";spec="1.2";return "Synthetic"; }
 signals:
@@ -114,6 +116,46 @@ private slots:
    QCOMPARE(toast["icon"].toString(), QString("dialog-information"));
   }
   QVERIFY2(longest < scaled(1000), qPrintable(QString("The resident's event loop stalled for %1 ms during the first upload").arg(longest)));
+ }
+ // LXQt, MATE and UKUI run this resident too, so the notice's button must reach them.
+ void fileManagerNoticeHasAWorkingButton() {
+  QTemporaryDir directory; QVERIFY(directory.isValid());
+  ProviderRegistry providers; providers.add("opaque", std::make_shared<OpaqueProvider>());
+  SettingsService settings(directory.filePath("config.json"), [&](auto id, auto value) { return providers.validate(id, value); });
+  QVERIFY(settings.save(configuration(directory.path()), {}));
+  Source source; source.payload = textPayload();
+  OperationService operations(directory.filePath("data"), settings, providers, source); PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations, [](const QString&) {}, [] {});
+  PUTGD_TRY_VERIFY(controller.available());
+  const auto before = notifications->answered.load();
+  // A name restartFileManager refuses: this test must never restart anything real.
+  controller.notifyFileManagerMenu({"synthetic-file-manager"});
+  PUTGD_TRY_COMPARE(notifications->answered.load(), before + 1);
+  uint id = 0;
+  {
+   QMutexLocker lock(&notifications->mutex);
+   id = notifications->received.size();
+   const auto notice = notifications->received.last();
+   QCOMPARE(notice["actions"].toStringList(), QStringList({"restart-file-manager-synthetic-file-manager", "Restart synthetic-file-manager"}));
+   QCOMPARE(notice["timeout"].toInt(), 0);
+   QVERIFY(notice["hints"].toMap()["resident"].toBool());
+  }
+  const auto invoke = [&](uint target, const QString& key) {
+   QMetaObject::invokeMethod(notifications, [peer = notifications, target, key] { emit peer->ActionInvoked(target, key); });
+  };
+  const auto closed = [&] { QMutexLocker lock(&notifications->mutex); return notifications->closed; };
+  // PUTGD_TRY settles the reply first: the id is known once Notify has answered.
+  settle(100);
+  invoke(id + 100, "restart-file-manager-synthetic-file-manager");
+  invoke(id, "something-else");
+  settle(200);
+  QVERIFY(closed().isEmpty());
+  invoke(id, "restart-file-manager-synthetic-file-manager");
+  PUTGD_TRY_COMPARE(closed(), QList<uint>{id});
+  // Once used, the button is gone.
+  invoke(id, "restart-file-manager-synthetic-file-manager");
+  settle(200);
+  QCOMPARE(closed(), QList<uint>{id});
  }
 };
 
