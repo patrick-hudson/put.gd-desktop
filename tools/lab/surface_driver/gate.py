@@ -172,8 +172,7 @@ def secret_safe_evidence_blockers(placement=None, catalog=None, build=None, phys
     """Check the loaded persistence path, not a global live-upload switch.
 
     Live destinations also need a disposable placement (boat sandbox or owned
-    guest), an exact-build pinned catalog and an OCR that reads a fresh random
-    token at small text sizes. Physical desktops are refused: clipboard
+    guest) and an exact-build pinned catalog. Physical desktops are refused: clipboard
     managers and browser history keep working links outside the run (#828).
 
     With a target (DriverContext always passes one) the placement label is
@@ -189,9 +188,7 @@ def secret_safe_evidence_blockers(placement=None, catalog=None, build=None, phys
             or receipts.save_frame is not redact.save_frame or not callable(receipts.save_frame)
             or getattr(receipts.save_frame, 'evidence_revision', None) != 2
             or getattr(getattr(run.Evidence, 'frame', None), 'prewrite_gate', None) is not receipts.save_frame
-            or getattr(context.DriverContext.frame, 'live_policy', None) is not context.DriverContext._frame_regions
-            or getattr(context.DriverContext, 'live_gate', None) is not secret_safe_evidence_blockers
-            or not callable(redact.ocr_text)):
+            or getattr(context.DriverContext, 'live_gate', None) is not secret_safe_evidence_blockers):
         blockers.append('prewrite-frame-gate-not-loaded')
     if (run.scan_run is not redact.scan_run or receipts.scan_run is not run.scan_run or not callable(run.scan_run)
             or getattr(run.scan_run, 'evidence_revision', None) != 2
@@ -199,14 +196,6 @@ def secret_safe_evidence_blockers(placement=None, catalog=None, build=None, phys
             or not callable(run.finish_evidence)
             or getattr(run.run_recipes, 'final_audit', None) is not run.finish_evidence):
         blockers.append('end-run-scan-not-wired')
-    if not (ocr := shutil.which('tesseract')):
-        blockers.append('ocr-unavailable-install-tesseract-ocr-on-driver-host-not-only-guest')
-    else:
-        try:
-            if not redact.ocr_self_test(ocr):
-                blockers.append('ocr-self-test-failed')
-        except Exception:
-            blockers.append('ocr-self-test-failed')
     if placement not in ('boat', 'guest'):
         blockers.append('placement-not-disposable')
     elif physical and placement != 'boat':

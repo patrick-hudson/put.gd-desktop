@@ -130,9 +130,6 @@ class FakeContext(Context):
         from tools.lab.surface_driver.redact import Sensitive
         return Sensitive(value)
 
-    def sensitive_control(self, control, window):
-        self.assert_event('sensitive_control', control, window)
-
     def geometry(self, window):
         return {'x': 0, 'y': 0, 'width': 1320, 'height': 880, 'scale': 1}
 
@@ -395,14 +392,12 @@ class DestinationsContracts(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'bucket autosaved'):
             lane.s3_fields(ctx)
 
-    def test_synthetic_entry_uses_sensitive_wrappers_and_masks_before_typing(self):
+    def test_synthetic_entry_uses_sensitive_wrappers(self):
         ctx = self.context()
         lane.credential_fields(ctx)
         typed = [e[1] for e in ctx.events if e[0] == 'type_text']
         self.assertEqual(len(typed), 3)
         self.assertTrue(all(str(value) == '[redacted]' for value in typed))
-        first_type = next(i for i,e in enumerate(ctx.events) if e[0] == 'type_text')
-        self.assertEqual(len([e for e in ctx.events[:first_type] if e[0] == 'sensitive_control']), 3)
 
     def test_explicit_unlock_uses_uncached_fixture_and_real_button(self):
         ctx = self.context()
@@ -462,7 +457,6 @@ class DestinationsContracts(unittest.TestCase):
                    side_effect=RecipeBlocked('focus not verified', issue=856)):
             with self.assertRaises(RecipeBlocked):
                 lane.credential_fields(ctx)
-        self.assertEqual(len([e for e in ctx.events if e[0] == 'sensitive_control']), 3)
         self.assertFalse(any(e[0] == 'type_text' for e in ctx.events))
 
     def test_native_add_uses_the_core_guard_for_the_fixed_rail(self):

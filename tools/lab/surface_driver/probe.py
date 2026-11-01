@@ -14,6 +14,7 @@ import fnmatch
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -2042,8 +2043,7 @@ def process_name(pid):
 def layout(query):
     """Every visible desktop window: frame rectangle, pid, ownership, title, stacking.
 
-    Evidence masking reads this to find non-owned windows over an owned
-    window; a larger stack is higher, None is unknown (treated as above).
+    A larger stack is higher; None is unknown (treated as above).
     X11: the server's root-child order. Wayland: the compositor witness's own
     stacking; without one this raises (fail closed).
     """
@@ -2071,6 +2071,53 @@ def layout(query):
                      'owned': bool(w.get('pid') and owned(w['pid'])), 'rect': list(w['frame']),
                      'stack': w.get('stack'), 'minimized': bool(w.get('minimized') or w.get('hidden'))})
     return {'windows': rows, 'coordinate_space': 'logical'}
+
+
+def close_notifications():
+    """Close every open banner: post one to learn the newest ID, then close back from it."""
+    bus = 'org.freedesktop.Notifications'
+    call = ['gdbus', 'call', '--session', '--dest', bus, '--object-path', '/org/freedesktop/Notifications', '--method']
+    reply = run(*call, bus+'.Notify', 'put.gd lab', '0', '', 'put.gd lab', 'clearing the screen', '[]', '{}', '1000')
+    newest = int(re.search(r'uint32 (\d+)', reply)[1])
+    for identity in range(newest, max(0, newest-64), -1):
+        subprocess.run([*call, bus+'.CloseNotification', str(identity)], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=5)
+    return newest
+
+
+def stop_window(row):
+    """Stop a window's process: TERM, then KILL after two seconds."""
+    pid = row['pid']
+    try:
+        os.kill(pid, signal.SIGTERM)
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline and process_start(pid):
+            time.sleep(.1)
+        if process_start(pid):
+            os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+
+def clear_screen(query):
+    """Close what isn't under test. Windows of this run and the desktop shell always stay.
+
+    `obscuring` names one window to close and `above` closes every window over
+    the named one. Neither closes only banners, so desktop icons and helpers
+    below the test's windows are left alone.
+    """
+    closed = close_notifications() if query.get('notifications', True) else None
+    rows = layout({'compositor': query.get('compositor')})['windows']
+    above = next((row for row in rows if str(row['id']) == str(query.get('above'))), None)
+    stopped = []
+    for row in rows:
+        if row['owned'] or not row['pid'] or row['process'] in query.get('shell', []):
+            continue
+        over = above is not None and (row['stack'] is None or above['stack'] is None or row['stack'] > above['stack'])
+        if over or str(row['id']) == str(query.get('obscuring')):
+            stop_window(row)
+            stopped.append({'title': row['title'], 'process': row['process']})
+    return {'newest_notification': closed, 'stopped': stopped}
 
 
 def windows(query):
@@ -2504,7 +2551,8 @@ def main():
                     'foreground': foreground, 'windows': windows, 'tray':tray, 'layout': layout, 'resize':resize_witness,
                     'notification_monitor': notification_monitor, 'notification_read': notification_read,
                     'popup_watch': popup_watch, 'portal_monitor': portal_monitor, 'server_pid': server_pid,
-                    'shell_state': shell_state, 'compositor_windows': compositor_windows_probe}[request['probe']]
+                    'shell_state': shell_state, 'compositor_windows': compositor_windows_probe,
+                    'clear_screen': clear_screen}[request['probe']]
         print(json.dumps({'ok': True, 'result': function(request['query'])}))
     except Exception as error:
         print(json.dumps({'ok': False, 'error': type(error).__name__ + ': ' + str(error)}))

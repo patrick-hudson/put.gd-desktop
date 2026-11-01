@@ -1,6 +1,6 @@
 """Live-destination evidence rules (PR 726 validation F1-F7, N-a..N-d). Synthetic only.
 
-Every value here is fake. Tests marked real_ocr need tesseract (boat/guest);
+Every value here is fake;
 everything else runs anywhere in seconds.
 """
 import hashlib
@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import nullcontext
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,7 +24,7 @@ from tools.lab.surface_driver import redact, run as runner
 from tools.lab.surface_driver.api import Recipe, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
 from tools.lab.surface_driver.profiles import load_profile
-from tools.lab.surface_driver.redact import Redactor, Sensitive, detected, ocr_detected, save_frame
+from tools.lab.surface_driver.redact import Redactor, Sensitive, detected, save_frame
 try:
     from PIL import Image, ImageDraw, ImageFont
 except ImportError:
@@ -38,9 +39,6 @@ PRESIGNED = ('https://sd-fixture-bkt.s3.us-west-004.backblazeb2.com/Ps7Lk2Jd9Rf4
              '&X-Amz-Security-Token=FwoGZXIvYXdzEFixtureSessionToken&X-Amz-Signature=0a1b2c3d4e5f60718293a4b5c6d7e8f9')
 CUSTOM = 'https://objects.sd-fixture.internal:9000/bkt/Cu5Tm0Ep4Nt8Kz1W.png'
 CUSTOM_TOKEN = 'Cu5Tm0Ep4Nt8Kz1W'
-REAL_OCR = redact.ocr_text
-TESSERACT = shutil.which('tesseract')
-real_ocr = unittest.skipUnless(shutil.which('tesseract') and Image, 'needs tesseract and python3-pil')
 
 
 class Target:
@@ -73,10 +71,6 @@ class Base(unittest.TestCase):
     def setUp(self):
         if Image is None:
             self.skipTest('requires python3-pil')
-        patcher = patch.object(redact, 'ocr_text', return_value='')
-        patcher.start(); self.addCleanup(patcher.stop)
-        patcher = patch.object(redact.shutil, 'which', return_value='unit-ocr')
-        patcher.start(); self.addCleanup(patcher.stop)
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name)
         self.catalog = write_catalog(self.path/'catalog')
@@ -116,82 +110,7 @@ class Base(unittest.TestCase):
 
 
 class F1OwnedWindowOnly(Base):
-    def test_live_window_frame_crops_and_masks_foreign_windows_and_notification_area(self):
-        # A browser window stacked over the right half of the owned window, and
-        # the notification area in the head's top-right corner (110..120, 0..10).
-        ctx = self.context()
-        self.window(ctx, rect=(20, 0, 100, 80))
-        ctx._probe = FakeDesktop([owned_window((20, 0, 100, 80), stack=0),
-                                  {'id': '30', 'title': 'Shared link - Firefox', 'pid': 99, 'owned': False,
-                                   'rect': [70, 20, 50, 30], 'stack': 1}], [control('historyLink', [25, 70, 10, 4])])
-        frame = ctx.frame('history', window='history')
-        meta = ctx.evidence.frames[frame.path]
-        self.assertFalse(meta['fallback'])
-        image = self.pixels(ctx, frame)
-        self.assertEqual(image.size, (100, 80))
-        self.assertEqual(image.getpixel((10, 40)), (255, 255, 255))      # owned pixels kept
-        self.assertEqual(image.getpixel((60, 30)), (0, 0, 0))            # foreign window above masked
-        self.assertEqual(image.getpixel((95, 5)), (0, 0, 0))             # notification area masked
 
-    def test_window_below_the_owned_window_is_not_masked(self):
-        ctx = self.context()
-        self.window(ctx, rect=(20, 0, 100, 80))
-        ctx._probe = FakeDesktop([{'id': '30', 'title': 'Firefox', 'pid': 99, 'owned': False, 'rect': [0, 0, 120, 80], 'stack': 0},
-                                  owned_window((20, 0, 100, 80), stack=1)], [control('historyLink', [25, 70, 10, 4])])
-        frame = ctx.frame('history', window='history')
-        self.assertEqual(self.pixels(ctx, frame).getpixel((60, 30)), (255, 255, 255))
-
-    def test_live_desktop_frame_is_fully_masked_without_a_declaration(self):
-        ctx = self.context()
-        ctx._probe = FakeDesktop()
-        frame = ctx.frame('desktop')
-        self.assertIsNone(self.pixels(ctx, frame).getbbox())
-        self.assertEqual(ctx.evidence.frames[frame.path]['policy'], 'live-desktop-masked')
-        self.assertEqual(ctx.reviews, [])  # policy, not a failure
-
-    def test_declared_desktop_still_masks_notifications_browser_chrome_and_leaking_titles(self):
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        ctx._probe = FakeDesktop([owned_window((0, 20, 40, 40)),
-                                  {'id': '30', 'title': SHARE_TOKEN+'.png - Firefox', 'pid': 99, 'owned': False,
-                                   'rect': [50, 30, 60, 40], 'stack': 1}])
-        frame = ctx.frame('desktop', desktop_safe='synthetic desktop')
-        image = self.pixels(ctx, frame)
-        self.assertEqual(image.getpixel((115, 5)), (0, 0, 0))     # notification area
-        self.assertEqual(image.getpixel((60, 35)), (0, 0, 0))     # browser chrome (top 12 px)
-        self.assertEqual(image.getpixel((60, 60)), (255, 255, 255))  # browser page body kept
-        self.assertEqual(image.getpixel((5, 78)), (0, 0, 0))      # window list shows a leaking title
-        self.assertEqual(image.getpixel((5, 5)), (255, 255, 255))
-
-    def test_declared_desktop_masks_foreign_windows_except_under_allowed_ones(self):
-        # A foreign app window carrying links (the GNOME live case), partly
-        # under an owned window; the shell's own window and the desktop stay.
-        ctx = self.context(evidence=dict(EVIDENCE, shell_processes=['gnome-shell'], shell_areas=[{'anchor': 'left', 'width': 8}]))
-        ctx.sensitive(SHARE)
-        ctx._probe = FakeDesktop([
-            {'id': '5', 'title': '', 'pid': 3, 'process': 'gnome-shell', 'owned': False, 'rect': [0, 0, 120, 8], 'stack': 9},
-            {'id': '20', 'title': 'sd726 foreign window', 'pid': 99, 'process': 'python3', 'owned': False,
-             'rect': [10, 20, 80, 40], 'stack': 1},
-            owned_window((50, 30, 60, 40), stack=2)])
-        frame = ctx.frame('desktop', desktop_safe='synthetic desktop')
-        image = self.pixels(ctx, frame)
-        self.assertEqual(image.getpixel((20, 30)), (0, 0, 0))          # foreign window masked
-        self.assertEqual(image.getpixel((60, 50)), (255, 255, 255))    # owned window above it kept
-        self.assertEqual(image.getpixel((40, 4)), (255, 255, 255))     # shell-drawn top bar kept
-        self.assertEqual(image.getpixel((5, 70)), (255, 255, 255))     # desktop background kept
-
-    def test_declared_desktop_keeps_shell_chrome_over_a_foreign_background(self):
-        # GNOME's desktop-icons window covers the screen; the top bar and dock
-        # the shell draws over it stay, the rest of that window is masked.
-        ctx = self.context(evidence=dict(EVIDENCE, shell_areas=[{'anchor': 'top', 'height': 8}, {'anchor': 'left', 'width': 8}]))
-        ctx.sensitive(SHARE)
-        ctx._probe = FakeDesktop([{'id': '2', 'title': 'Desktop Icons', 'pid': 40, 'process': 'gjs', 'owned': False,
-                                   'rect': [0, 0, 120, 80], 'stack': 0}, owned_window((60, 30, 40, 30), stack=1)])
-        image = self.pixels(ctx, ctx.frame('desktop', desktop_safe='synthetic desktop'))
-        self.assertEqual(image.getpixel((50, 4)), (255, 255, 255))    # top bar
-        self.assertEqual(image.getpixel((4, 50)), (255, 255, 255))    # dock
-        self.assertEqual(image.getpixel((30, 50)), (0, 0, 0))         # foreign background window
-        self.assertEqual(image.getpixel((80, 45)), (255, 255, 255))   # owned window above it
 
     def test_rectangle_subtraction(self):
         from tools.lab.surface_driver.context import subtract
@@ -201,47 +120,13 @@ class F1OwnedWindowOnly(Base):
         self.assertEqual(subtract([0, 0, 10, 10], [[-5, -5, 30, 30]]), [])
         self.assertEqual(area(subtract([0, 0, 10, 10], [[5, 0, 10, 10], [0, 5, 10, 10]])), 25)
 
-    def test_ocr_matching_normalizes_whitespace_and_glyphs(self):
-        # Tesseract split the link and read 5 as S and 0 as O (validator frames).
-        self.assertIn('url', ocr_detected('Link copied https: //put.gd/ Fk4Rw8Lq2Zn7Hc5T.png'))
-        self.assertIn('url', ocr_detected('f005.backblazeb2.com/ file/sd-fixture-bkt/x.png'))
-        self.assertIn('registered-secret', ocr_detected('Secret: wJalrXUtnFEMl/K7MDENG/bPxRfiCYVAL72GKEY1',
-                                                        ('wJalrXUtnFEMI/K7MDENG/bPxRfiCYVAL726KEY1',)))
-        self.assertIn('registered-secret', ocr_detected('see Fk4Rw8 Lq2Zn7HcST', (SHARE_TOKEN,)))
-        self.assertNotIn('registered-secret', ocr_detected('History Destinations Settings Copy link', (SHARE_TOKEN,)))
-
-    @real_ocr
-    def test_real_ocr_reads_small_banner_text(self):
-        # The validator's banner case with the text inside the 40 px canvas.
-        path = next(p for p in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-                                '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf',
-                                '/usr/share/fonts/TTF/DejaVuSans.ttf',
-                                '/usr/share/fonts/liberation-sans-fonts/LiberationSans-Regular.ttf',
-                                '/usr/share/fonts/adwaita-sans-fonts/AdwaitaSans-Regular.ttf',
-                                '/usr/share/fonts/google-noto-vf/NotoSans[wght].ttf',
-                                '/usr/share/fonts/google-noto/NotoSans-Regular.ttf',
-                                '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
-                                '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf') if Path(p).is_file())
-        results = {}
-        for link, literals in ((SHARE, ()), (B2.split('://')[1], ()), (B2, (B2_TOKEN,))):
-            for size in (11, 12, 13):
-                for foreground, background in (('white', '#2b2b2b'), ('black', 'white')):
-                    image = Image.new('RGB', (560, 40), background)
-                    ImageDraw.Draw(image).text((10, 12), 'Link copied: '+link, font=ImageFont.truetype(path, size), fill=foreground)
-                    with patch.object(redact, 'ocr_text', REAL_OCR):
-                        meta = save_frame(image, self.path/'banner.png', [], literals=literals, ocr=TESSERACT)
-                    results[(link[:12], size, foreground)] = meta['guard']
-        self.assertEqual(set(results.values()), {'ocr-sensitive-text-fully-masked'}, results)
-
 
 class F2ProbeRegistration(Base):
     destination = 'local'
 
     def test_persistent_probe_text_is_registered_and_marks_sensitive(self):
         ctx = self.context(Target(probe=[{'name': B2.split('://')[1], 'text': B2.split('://')[1], 'role': 'label'}]))
-        self.assertFalse(ctx._sensitive_seen)
         ctx.accessible({'name': 'historyLink'})
-        self.assertTrue(ctx._sensitive_seen)
         self.assertIn(B2.split('://')[1], ctx.evidence.redactor.audit_literals)
 
     def test_secret_field_value_from_the_desktop_is_registered_opaque(self):
@@ -295,24 +180,14 @@ class F4F7Gate(Base):
 
     def setUp(self):
         super().setUp()
-        patcher = patch.object(redact.shutil, 'which', return_value='unit-ocr')
-        patcher.start(); self.addCleanup(patcher.stop)
 
-    def blockers(self, placement='boat', catalog=None, build='abcdef012345', physical=False, selftest=True):
-        with patch.object(redact, 'ocr_self_test', return_value=selftest):
-            return runner.secret_safe_evidence_blockers(placement, self.catalog if catalog is None else catalog, build, physical)
+    def blockers(self, placement='boat', catalog=None, build='abcdef012345', physical=False):
+        return runner.secret_safe_evidence_blockers(placement, self.catalog if catalog is None else catalog, build, physical)
 
     def test_complete_disposable_placement_is_admitted(self):
         self.assertEqual(self.blockers('boat'), [])
         self.assertEqual(self.blockers('guest'), [])
 
-    def test_blind_ocr_is_refused(self):
-        self.assertIn('ocr-self-test-failed', self.blockers(selftest=False))
-        # The real self-test against an OCR that exits 0 and reads nothing.
-        with patch.object(redact, 'ocr_text', return_value=''):
-            self.assertFalse(redact.ocr_self_test('unit-ocr'))
-        with patch.object(redact.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'')):
-            self.assertFalse(redact.ocr_self_test('unit-ocr'))
 
     def test_catalog_must_be_complete_for_this_build_with_secret_inventories(self):
         self.assertIn('catalog-missing', self.blockers(catalog=self.path/'absent'))
@@ -338,17 +213,12 @@ class F4F7Gate(Base):
         args = ['--desktop', 'mint-cinnamon-x11', '--host', 'm74', '--placement', 'native', '--host-profile', str(self.path/'h.json'),
                 '--lock-session', 's', '--package', 'deb', '--destination', 'b2', '--recipes', 'core_demo',
                 '--catalog', str(self.catalog), '--build','abcdef012345', '--out', str(out)]
-        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(runner, 'Target') as target:
+        with patch.object(runner, 'Target') as target:
             with self.assertRaises(SystemExit) as raised:
                 runner.main(args)
             target.assert_not_called()
         self.assertIn('placement-not-disposable', str(raised.exception))
         self.assertFalse(out.exists())
-
-    @real_ocr
-    def test_real_ocr_self_test_reads_eleven_pixel_text(self):
-        with patch.object(redact, 'ocr_text', REAL_OCR):
-            self.assertTrue(redact.ocr_self_test(TESSERACT))
 
 
 class GateBuildIdentity(Base):
@@ -364,7 +234,7 @@ class GateBuildIdentity(Base):
             self.assertFalse(build_matches(expected, commit), (expected, commit))
 
     def test_catalog_needs_the_exact_commit_never_a_short_prefix_or_version(self):
-        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(redact.shutil, 'which', return_value='unit-ocr'):
+        with nullcontext():
             for build in ('a', 'abcdef01', '26.1030.1-nightly'):
                 self.assertIn('catalog-build-mismatch', runner.catalog_blockers(self.catalog, build), build)
             other = write_catalog(self.path/'other', build='f'*40)
@@ -445,68 +315,17 @@ class GateCatalogPin(Base):
         self.assertEqual(gate.main(['check-catalog', str(self.catalog)]), 1)
 
 
-class GateOcrSelfTest(unittest.TestCase):
-    """Gate item 3: a fresh random token per polarity, read exactly."""
-    def setUp(self):
-        if Image is None:
-            self.skipTest('requires python3-pil')
-
-    def drawn(self):
-        tokens = []
-        original = ImageDraw.ImageDraw.text
-        def text(draw, xy, value, *args, **kwargs):
-            tokens.append(value)
-            return original(draw, xy, value, *args, **kwargs)
-        return tokens, patch.object(ImageDraw.ImageDraw, 'text', text)
-
-    def test_replaying_a_fixed_token_fails(self):
-        for fixed in ('Link copied: https://put.gd/Kq7Zp3Wx9Ty.png', 'Link copied: https://put.gd/ACEFHKMNPRUV.png'):
-            with patch.object(redact, 'ocr_text', return_value=fixed):
-                self.assertFalse(redact.ocr_self_test('unit-ocr'))
-
-    def test_each_polarity_and_run_has_a_fresh_token_read_exactly(self):
-        tokens, drawing = self.drawn()
-        with drawing, patch.object(redact, 'ocr_text', side_effect=lambda image, ocr=None: tokens[-1]):
-            self.assertTrue(redact.ocr_self_test('unit-ocr'))
-            self.assertTrue(redact.ocr_self_test('unit-ocr'))
-        self.assertEqual(len(tokens), 4)
-        self.assertEqual(len(set(tokens)), 4)
-        self.assertTrue(all(re.fullmatch(r'Link copied: https://put\.gd/[ACEFHKMNPRUVWXY]{12}\.png', t) for t in tokens))
-        # One misread glyph in every attempt is a failure, not a fuzzy match;
-        # a single misread followed by an exact read of a new token passes.
-        tokens.clear()
-        def misread(image, ocr=None):
-            text = tokens[-1]
-            token = text.rsplit('/', 1)[1][:-4]
-            return text.replace(token, token[:-1] + ('A' if token[-1] != 'A' else 'C'))
-        with drawing, patch.object(redact, 'ocr_text', side_effect=misread):
-            self.assertFalse(redact.ocr_self_test('unit-ocr'))
-        self.assertEqual(len(tokens), redact.OCR_PROBE_ATTEMPTS)  # first polarity exhausted its new tokens
-        tokens.clear()
-        answers = iter([False, True, True])
-        with drawing, patch.object(redact, 'ocr_text', side_effect=lambda image, ocr=None: tokens[-1] if next(answers) else misread(image)):
-            self.assertTrue(redact.ocr_self_test('unit-ocr'))
-        self.assertEqual(len(set(tokens)), 3)
-
-
 class GateEnforcement(Base):
     """Gate item 4: live evidence only through an admitted context."""
     admit = False
 
-    def test_live_context_is_refused_at_construction_before_any_write(self):
-        from tools.lab.surface_driver.gate import LiveEvidenceRefused
-        with patch.object(redact.shutil, 'which', return_value=None), self.assertRaises(LiveEvidenceRefused) as raised:
-            self.context()
-        self.assertIn('ocr-unavailable', str(raised.exception))
-        self.assertFalse(self.out.exists())
-
     def test_admitted_live_context_needs_the_complete_gate(self):
-        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(runner, 'prove_disposable'):
+        with patch.object(runner, 'prove_disposable'):
             ctx = self.context()
         self.assertTrue(ctx._live_admitted)
         self.env['build'] = 'abcdef01'
         from tools.lab.surface_driver.gate import LiveEvidenceRefused
-        with patch.object(redact, 'ocr_self_test', return_value=True), patch.object(runner, 'prove_disposable'), \
+        with patch.object(runner, 'prove_disposable'), \
                 self.assertRaises(LiveEvidenceRefused):
             self.context()
 
@@ -528,7 +347,7 @@ class GateEnforcement(Base):
             DriverContext(Target(), local, {'session': 'x11', 'at_spi': {'available': True}}, self.catalog, self.out)
 
     def test_the_gate_requires_construction_to_still_run_it(self):
-        with patch.object(redact, 'ocr_self_test', return_value=True), \
+        with \
              patch.object(DriverContext, 'live_gate', staticmethod(lambda *a, **k: [])):
             blockers = runner.secret_safe_evidence_blockers('boat', self.catalog, BUILD)
         self.assertIn('prewrite-frame-gate-not-loaded', blockers)
@@ -541,21 +360,6 @@ class SmallTrackedFixes(Base):
                                          'name': 'Secret access key', 'text': 'Zx9Qw8Er7Ty6Ui5Op4As', 'rect': [1, 1, 5, 5]}))
         ctx._probe('control', {})
         self.assertIn('Zx9Qw8Er7Ty6Ui5Op4As', ctx.evidence.redactor.audit_literals)
-
-    def test_a_label_showing_an_unregistered_key_id_or_marker_is_masked(self):
-        ctx = self.context()
-        for name in ('Access key AKIAV3VALIDATOR0000X', 'Authorization: Bearer v3tokenvalue'):
-            ctx._probe = FakeDesktop([owned_window()], [dict(control('', [10, 10, 60, 10], role='label'), name=name)])
-            self.assertTrue(ctx._secret_regions(0), name)
-
-    def test_frame_manifest_records_desktop_safe_and_policy(self):
-        ctx = self.context()
-        ctx._probe = FakeDesktop()
-        declared = ctx.frame('desktop', desktop_safe='reviewer-visible declaration')
-        undeclared = ctx.frame('desktop-undeclared')
-        frames = json.loads((self.out/'frame-masks.json').read_text())['frames']
-        self.assertEqual(frames[declared.path]['desktop_safe'], 'reviewer-visible declaration')
-        self.assertEqual(frames[undeclared.path]['policy'], 'live-desktop-masked')
 
 
 def head_commit():
@@ -628,7 +432,7 @@ class GatePlacementProof(Base):
     admit = False
 
     def admitted_otherwise(self):
-        return patch.object(redact, 'ocr_self_test', return_value=True)
+        return nullcontext()
 
     def test_a_boat_or_guest_label_on_an_unproven_target_is_refused(self):
         from tools.lab.surface_driver.gate import LiveEvidenceRefused
@@ -680,130 +484,6 @@ class ResidentMustReportClean(Base):
                 patch.object(runner, 'discover', return_value=[Recipe(('editor.undo',), lambda c: ran.append(1))]):
             self.assertEqual(runner.main(args), 2)
         self.assertEqual((calls, ran), (['ui.snapshot'], []))
-
-
-class F6VisiblePageOnly(Base):
-    def test_other_pages_secret_controls_do_not_black_out_the_frame(self):
-        # Destinations' credentialSecretKey is not showing on the History page.
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx, page=0)
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [control('historyLink', [30, 20, 30, 6], SHARE)])
-        frame = ctx.frame('history', window='history')
-        meta = ctx.evidence.frames[frame.path]
-        self.assertFalse(meta['fallback'], meta)
-        image = self.pixels(ctx, frame)
-        self.assertEqual(image.getpixel((20, 13)), (0, 0, 0))          # historyLink masked
-        self.assertEqual(image.getpixel((5, 50)), (255, 255, 255))     # rest of the page kept
-
-    def test_main_window_page_comes_from_the_selected_navigation_tab(self):
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx, page=None)
-        tab = lambda name, selected: {'window': 'put.gd', 'role': 'page tab', 'name': name, 'objectName': '',
-                                      'rect': [30+len(name), 12, 20, 6], 'states': {'selected': selected}}
-        rows = [tab('History', False), tab('Destinations', True), tab('Settings', False),
-                control('credentialSecretKey', [30, 20, 30, 6])]
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], rows)
-        self.assertFalse(ctx.evidence.frames[ctx.frame('destinations', window='history').path]['fallback'])
-        rows[0], rows[1] = tab('History', True), tab('Destinations', False)
-        self.assertTrue(ctx.evidence.frames[ctx.frame('history', window='history').path]['fallback'])
-        # Unknown page: no page requirement, every showing editable field masked.
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [control('credentialSecretKey', [30, 20, 30, 6])])
-        frame = ctx.frame('unknown-page', window='history')
-        self.assertFalse(ctx.evidence.frames[frame.path]['fallback'])
-        self.assertEqual(self.pixels(ctx, frame).getpixel((20, 13)), (0, 0, 0))
-
-    def test_qt64_rows_without_object_names_still_mask_every_editable_field(self):
-        # Qt 6.4 exports neither objectNames nor a selected tab (Mint guest).
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx, page=None)
-        unnamed = lambda rect, role='text', name='': dict(control('', rect, role=role), name=name)
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [
-            unnamed([30, 20, 30, 6]), unnamed([30, 40, 30, 6], 'password text'),
-            unnamed([30, 60, 30, 6], 'label', 'All items'), unnamed([60, 60, 30, 6], 'list item', SHARE_TOKEN+'.png')])
-        frame = ctx.frame('history', window='history')
-        image = self.pixels(ctx, frame)
-        self.assertFalse(ctx.evidence.frames[frame.path]['fallback'])
-        self.assertEqual(image.getpixel((20, 13)), (0, 0, 0))      # editable field
-        self.assertEqual(image.getpixel((20, 33)), (0, 0, 0))      # password field
-        self.assertEqual(image.getpixel((15, 53)), (255, 255, 255))  # plain label kept
-        self.assertEqual(image.getpixel((45, 53)), (0, 0, 0))      # item naming a registered value
-
-    def test_declared_state_requires_as_many_showing_fields_without_object_names(self):
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx)
-        ctx._captures['history'] = '01-history-list'   # requires historyLink
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [dict(control('', [30, 20, 30, 6]), name='Link')])
-        self.assertFalse(ctx.evidence.frames[ctx.frame('one-field', window='history').path]['fallback'])
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [dict(control('', [30, 20, 30, 6], role='label'), name='Link')])
-        self.assertTrue(ctx.evidence.frames[ctx.frame('no-field', window='history').path]['fallback'])
-
-    def test_page_witness_from_catalog_only_labels(self):
-        ctx = self.context()
-        rows = [{'role': 'label', 'name': 'pageAnchordestinations'}]  # fixture: label only on the destinations capture
-        ctx.call = lambda method, params=None: {}
-        for inventory in ctx.catalog.inventories.values():
-            for c in inventory['controls']:
-                c.setdefault('text', c['name'])
-        self.assertEqual(ctx._visible_page(rows), 'destinations')
-        self.assertIsNone(ctx._visible_page([{'role': 'label', 'name': 'shared'}]))
-
-    def test_main_window_roles_follow_the_view_state_page(self):
-        # The fixture's destinations page always shows credentialSecretKey and
-        # its history page always shows historyLink; only the visible one counts.
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [control('credentialSecretKey', [30, 20, 30, 6])])
-        self.window(ctx, page=1)  # destinations is showing, although the role says history
-        self.assertFalse(ctx.evidence.frames[ctx.frame('destinations', window='history').path]['fallback'])
-        self.window(ctx, page=0)
-        self.assertTrue(ctx.evidence.frames[ctx.frame('history', window='history').path]['fallback'])
-
-    def test_declared_catalog_state_requires_its_secret_controls(self):
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx)
-        ctx.use_catalog = lambda window, reference: ctx._captures.__setitem__(window, reference)
-        ctx.use_catalog('history', '01-history-list')
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))])  # historyLink not readable
-        frame = ctx.frame('history', window='history')
-        self.assertTrue(ctx.evidence.frames[frame.path]['fallback'])
-        self.assertIsNone(self.pixels(ctx, frame).getbbox())
-
-    def test_secret_field_scrolled_past_the_window_edge_is_masked_where_drawn(self):
-        # Wayland: a field straddling the viewport edge has no in-frame rect,
-        # but the probe keeps its placed rectangle; the crop clips the mask.
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx, page=None)
-        row = dict(control('', [0, 0, 1, 1]), rect=None, unclipped_rect=[30, 60, 40, 20], coordinate_error='outside')
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))], [row])
-        frame = ctx.frame('destinations', window='history')
-        self.assertFalse(ctx.evidence.frames[frame.path]['fallback'])
-        self.assertEqual(self.pixels(ctx, frame).getpixel((15, 55)), (0, 0, 0))
-
-    def test_unreadable_window_tree_and_unplaced_secret_fail_closed(self):
-        ctx = self.context()
-        ctx.sensitive(SHARE)
-        self.window(ctx)
-        desktop = FakeDesktop([owned_window((20, 10, 80, 60))], [dict(control('historyLink', [0, 0, 1, 1]), rect=None)])
-        ctx._probe = desktop
-        self.assertTrue(ctx.evidence.frames[ctx.frame('a', window='history').path]['fallback'])
-        ctx._probe = lambda name, query: {'windows': [owned_window((20, 10, 80, 60))]} if name == 'layout' else []
-        self.assertTrue(ctx.evidence.frames[ctx.frame('b', window='history').path]['fallback'])
-
-    def test_local_frames_before_anything_sensitive_stay_unmasked(self):
-        self.env['destination'] = 'local'
-        ctx = self.context()
-        self.window(ctx)
-        ctx._probe = FakeDesktop([owned_window((20, 10, 80, 60))])
-        frame = ctx.frame('editor', window='history')
-        self.assertEqual(self.pixels(ctx, frame).getpixel((75, 5)), (255, 255, 255))
-        desktop = ctx.frame('desktop')
-        self.assertIsNotNone(self.pixels(ctx, desktop).getbbox())
 
 
 class LayoutProbe(unittest.TestCase):
@@ -928,20 +608,6 @@ class NbSharedCoverage(Base):
         kinds = {f['kind'] for f in json.loads((self.out/'receipt.json').read_text())['secret_scan']['findings']}
         self.assertIn('shared-coverage-has-findings', kinds)
         self.assertFalse((self.out/'.coverage-merged.json').exists())
-
-
-class NcProfiles(unittest.TestCase):
-    def test_no_blanket_address_bar_masks_and_every_profile_declares_areas(self):
-        for path in sorted((ROOT/'tools/lab/surface_driver/profiles').glob('*.json')):
-            if path.name == 'control-names.json':
-                continue
-            profile = load_profile(path.stem)
-            evidence = profile['evidence']
-            self.assertNotIn('browser_address_bars', evidence, path.name)
-            self.assertTrue(evidence['notification_areas'], path.name)
-            self.assertTrue(evidence['browser']['title'], path.name)
-            for area in evidence['notification_areas']:
-                self.assertLess(area.get('width', 1), 1000, path.name)
 
 
 class NdFailureMessages(Base):

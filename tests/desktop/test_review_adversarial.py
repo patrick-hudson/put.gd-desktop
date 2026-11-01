@@ -24,10 +24,6 @@ TOKEN = 'Zq9xK2mLpW4vR7tY'
 
 class Adv(unittest.TestCase):
     def setUp(self):
-        self.ocr_patch = patch('tools.lab.surface_driver.redact.ocr_text', return_value='')
-        self.ocr_patch.start(); self.addCleanup(self.ocr_patch.stop)
-        self.which_patch = patch('tools.lab.surface_driver.redact.shutil.which', return_value='unit-ocr')
-        self.which_patch.start(); self.addCleanup(self.which_patch.stop)
         self.t = tempfile.TemporaryDirectory(); p = Path(self.t.name)
         (p/'catalog').mkdir(); self.out = p/'run'
         self.env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='g', package='source',
@@ -119,17 +115,6 @@ class Adv(unittest.TestCase):
         self.assertEqual(typed, [[c] for c in 'abcdefghijkl'])
 
     # 7: PNG with visible link outside any mask, no OCR -> does scan pass?
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_prevents_png_visible_text_no_ocr(self):
-        img = Image.new('RGB', (900, 100), 'white')
-        ImageDraw.Draw(img).text((10, 40), PUTGD, fill='black')
-        ev = Evidence(self.out)
-        self.ocr_patch.stop()
-        with patch('tools.lab.surface_driver.redact.shutil.which', return_value=None):
-            ev.frame(img, self.out/'frames'/'x.png', [])
-            res = ev.scan()
-        self.assertTrue(Image.open(self.out/'frames'/'x.png').getbbox() is None)
-        self.assertFalse(res['passed'])
 
     # 8: secret in a STRUCTURAL field value (replace_secrets=False)
     def test_prevents_structural_field(self):
@@ -189,7 +174,7 @@ class Adv(unittest.TestCase):
         (self.out/'c.log').write_text('line put.gd/'+TOKEN+'\n')
         (self.out/'d.log').write_text('line '+base64.b64encode(PUTGD.encode()).decode()+'\n')
         (self.out/'e.log').write_text('hxxps://put.gd/'+TOKEN+'\n')
-        res = scan_run(self.out, frames={}, ocr='')
+        res = scan_run(self.out, frames={})
         self.assertFalse(res['passed'])
         self.assertEqual({f['file_index'] for f in res['findings']}, set(range(5)))
 
@@ -235,27 +220,7 @@ class Adv(unittest.TestCase):
         self.assertEqual(r.text('tolerance=0.025 rv726 text-tool'), 'tolerance=0.025 rv726 text-tool')
         self.ctx.target.cli = lambda *a, **kw: {'returncode':0, 'stdout':json.dumps({'ok':True,'result':{'docsUrl':url}}),'stderr':''}
         self.ctx.call('ui.snapshot')
-        self.assertFalse(self.ctx._sensitive_seen)
 
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_live_unknown_link_pixels_masked_before_first_disk_write(self):
-        img = Image.new('RGB', (600,200), 'white')
-        path = self.out/'frames'/'unknown.png'
-        evidence = Evidence(self.out, require_ocr=True)
-        with patch('tools.lab.surface_driver.redact.ocr_text', return_value=PUTGD):
-            meta=evidence.frame(img, path, [])
-        self.assertIsNone(Image.open(path).getbbox())
-        self.assertEqual(meta['guard'], 'ocr-sensitive-text-fully-masked')
-
-    def test_remote_or_registered_secret_requires_ocr(self):
-        from tools.lab.surface_driver.receipts import Evidence
-        for remote, secret in ((True, False), (False, True)):
-            ev=Evidence(self.out, require_ocr=remote)
-            if secret: ev.redactor.remember(Sensitive(PUTGD))
-            with patch('tools.lab.surface_driver.redact.shutil.which', return_value=None):
-                result=ev.scan()
-            self.assertFalse(result['passed'])
-            self.assertIn('ocr-required-unavailable', {v['kind'] for v in result['findings']})
 
     @unittest.skipUnless(Image, 'requires python3-pil')
     def test_quarantine_and_external_coverage_gate(self):
@@ -350,17 +315,6 @@ class Adv(unittest.TestCase):
         self.assertNotIn(TOKEN,result.stdout+result.stderr)
         self.assertFalse((self.out/'leak.log').exists())
 
-
-    @unittest.skipUnless(Image, 'requires python3-pil')
-    def test_mask_geometry_preserves_the_input_head(self):
-        self.ctx._input_head=0
-        self.ctx._sensitive_controls=[('tokenField','history')]
-        def geometry(role):
-            self.ctx._input_head=1
-            return {'head':1}
-        self.ctx.geometry=geometry
-        self.ctx._frame_regions(Image.new('RGB',(120,80),'white'),0)
-        self.assertEqual(self.ctx._input_head,0)
 
     def test_explicit_secret_overrides_the_public_documentation_allowlist(self):
         link = 'https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/package-repositories.md#SyntheticPrivateFragment726'

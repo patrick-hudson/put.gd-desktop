@@ -90,6 +90,7 @@ def _lane(ctx):
                  'preferences': {'uploadClipboardBehavior': 'each_link'}})
     try:
         yield scope, service
+        no_app_error_banner(ctx)
     except BaseException:
         try:
             _frame(ctx, 'outcome-failed-before-cleanup')
@@ -98,6 +99,12 @@ def _lane(ctx):
         raise
     finally:
         ctx.expect(not scope.close(), 'outcome scope cleanup succeeded')
+
+
+def no_app_error_banner(ctx):
+    """Clearing the screen must not hide an app failure: name any banner and fail the cell."""
+    banners = ctx.app_error_banners()
+    ctx.expect(not banners, 'put.gd error banner in this flow: ' + ' | '.join(banners))
 
 
 def _clipboard_reader(scope):
@@ -202,6 +209,10 @@ def _pattern(ctx):
         return current if same else None
     image = ctx.wait(stable, 'frozen independent pattern frame', interval=.5)
     if not pattern_visible(image, scene.rect):
+        ctx.clear_screen(above=ctx.geometry('outcome-pattern').get('window_id'))
+        last[0] = None
+        image = ctx.wait(stable, 'frozen pattern frame after clearing the screen', interval=.5)
+    if not pattern_visible(image, scene.rect):
         from ..receipts import write_json
         layout = ctx._probe('layout', {'compositor': ctx.profile.get('compositor')})
         if ctx.profile.get('session') == 'x11':
@@ -222,8 +233,7 @@ def _pattern(ctx):
         colors = image.crop((x, y, x+w, y+h)).convert('RGB').getcolors(4)
         layout['video_color_count'] = len(colors) if colors is not None else '>4'
         write_json(ctx.out/'pattern-occlusion.json', layout, redactor=ctx.evidence.redactor)
-        ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png',
-                           [[0, 0, image.width, image.height]], fallback=True)
+        ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png')
     ctx.expect(pattern_visible(image, scene.rect), 'known fullscreen pattern covers the chosen monitor without foreign UI')
     _frame(ctx, 'independent-frozen-pattern')
     return scene, image

@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from tools.lab.surface_driver import redact, run as runner
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed, ReceiptRow
 from tools.lab.surface_driver.context import DriverContext
-from tools.lab.surface_driver.redact import Redactor, credential_tokens, ocr_detected
+from tools.lab.surface_driver.redact import Redactor, credential_tokens
 from surface_live_fixture import EVIDENCE, FakeDesktop, admitted, control, owned_window
 from test_surface_redact import MemoryTarget
 from PIL import Image
@@ -52,10 +52,6 @@ class Observations(unittest.TestCase):
         self.env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', guest='g',
                         package='source', destination='local', build='abcdef012345')
         self.profile = {'session': 'x11', 'at_spi': {'available': True}, 'evidence': dict(EVIDENCE)}
-        for item in (patch.object(redact.shutil, 'which', return_value='unit-ocr'),
-                     patch.object(redact, 'ocr_text', return_value='\n'.join(UI_TEXT))):
-            item.start()
-            self.addCleanup(item.stop)
         self.ctx = DriverContext(MemoryTarget(), self.env, self.profile, self.root, self.out)
 
     def mcp(self, value):
@@ -76,8 +72,7 @@ class Observations(unittest.TestCase):
     def test_mixed_editor_and_notifications_keep_earlier_frames(self):
         # This scene contains no credential controls. MemoryTarget's default
         # probe tree otherwise includes unrelated synthetic secret fixtures.
-        with patch.object(self.ctx, '_secret_regions', return_value=[]):
-            frame = self.ctx.frame('before-mcp-and-notifications')
+        frame = self.ctx.frame('before-mcp-and-notifications')
         self.assertEqual(self.mcp(EDITOR_VIEW), EDITOR_VIEW)
         # Legacy MCP text-only responses must be inspected recursively too.
         self.mcp({'content': [{'type': 'text', 'text': json.dumps(EDITOR_VIEW)}]})
@@ -85,9 +80,6 @@ class Observations(unittest.TestCase):
                                   ('capture', UI_TEXT[1], 'save-diagnostics', UI_TEXT[3], 'show-in-folder', UI_TEXT[4]))
         self.assertEqual(rows[0]['summary'], 'Shared link')
         self.assertEqual(self.ctx.evidence.redactor.audit_literals, frozenset())
-        self.assertFalse(self.ctx._sensitive_seen)
-        for text in UI_TEXT:
-            self.assertEqual(ocr_detected(text, self.ctx.evidence.redactor.audit_literals), [])
         result = self.ctx.evidence.scan()
         self.assertTrue(result['passed'], result)
         self.assertEqual(result['quarantine'], [])
@@ -124,38 +116,8 @@ class Observations(unittest.TestCase):
                     self.assertNotIn(body, literals)
                     self.assertNotIn('Shared link', literals)
                     self.assertNotIn('Capture region', literals)
-                    self.assertIn('registered-secret', ocr_detected(value, literals))
+                    self.assertIn('registered-secret', redact.detected(value, literals))
 
-    def test_live_late_link_still_quarantines_registered_token_anywhere(self):
-        for channel in ('mcp', 'notifications'):
-            with self.subTest(channel=channel), admitted():
-                ctx = DriverContext(MemoryTarget(), dict(self.env, destination='s3'), self.profile,
-                                    self.root, self.root/channel)
-                self.ctx = ctx
-                path = ctx.out/'frames/before.png'
-                with patch.object(redact, 'ocr_text', return_value='Image being edited '+TOKEN):
-                    ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
-                if channel == 'mcp':
-                    self.mcp({'view': {'message': {'text': LINK}}})
-                else:
-                    self.notifications('Shared link', LINK)
-                result = ctx.evidence.scan()
-                self.assertFalse(result['passed'])
-                self.assertIn('png-text-registered-secret', {f['kind'] for f in result['findings']})
-                self.assertFalse(path.exists())
-                self.assertTrue(result['quarantine'])
-
-    def test_local_secret_controls_masked_without_masking_synthetic_links(self):
-        self.ctx._probe = FakeDesktop([owned_window()], [
-            control('credentialSecretKey', [10, 10, 40, 10], SECRET),
-            control('historyLink', [10, 30, 40, 10], LINK, role='label')])
-        self.ctx._observed({'role': 'password text', 'protected': True, 'text': SECRET})
-        regions = self.ctx._secret_regions(0)
-        self.assertIn([8, 8, 44, 14], regions)
-        self.assertNotIn([8, 28, 44, 14], regions)
-        self.assertIn(SECRET, self.ctx.evidence.redactor.audit_literals)
-        self.mcp({'content': [{'type': 'text', 'text': json.dumps({'sessionToken': SECRET})}]})
-        self.assertNotIn(SECRET, self.ctx.evidence.redactor.text('error '+SECRET))
 
     def test_nested_mcp_secret_controls_register_values_without_their_ui_labels(self):
         view = {'view': {'controls': [{'role': 'password text', 'protected': True,
@@ -171,18 +133,6 @@ class Observations(unittest.TestCase):
         self.mcp({'view': {'message': {'text': 'Bearer '+token}}})
         self.assertIn(token, self.ctx.evidence.redactor.audit_literals)
 
-    def test_late_credential_marker_quarantines_bare_token_pixels(self):
-        with admitted():
-            self.ctx = DriverContext(MemoryTarget(), dict(self.env, destination='s3'), self.profile,
-                                     self.root, self.root/'live-credential')
-        path = self.ctx.out/'frames/before-credential.png'
-        with patch.object(redact, 'ocr_text', return_value='Image being edited '+SECRET):
-            self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
-        self.notifications('Shared link', 'Authorization: Bearer '+SECRET)
-        result = self.ctx.evidence.scan()
-        self.assertFalse(result['passed'])
-        self.assertIn('png-text-registered-secret', {f['kind'] for f in result['findings']})
-        self.assertFalse(path.exists())
 
     def clipboard(self, value, **kwargs):
         self.ctx.target.execute = lambda *a, **kw: {'returncode': 0, 'stdout': value, 'stderr': ''}
@@ -204,10 +154,8 @@ class Observations(unittest.TestCase):
         legacy = Redactor()
         legacy.remember(json.dumps(PREPARATION), opaque=True)
         self.assertIn(CACHE_NOTICE, legacy.audit_literals)
-        self.assertEqual(ocr_detected(CACHE_NOTICE, legacy.audit_literals), ['registered-secret'])
         path = self.out/'frames/question.png'
-        with patch.object(redact, 'ocr_text', return_value=CACHE_NOTICE):
-            self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
+        self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path)
         # Whitespace/key order can differ from production without changing JSON.
         copied = json.dumps(PREPARATION, sort_keys=True, indent=2)
         self.assertEqual(self.clipboard(copied, expected_json=PREPARATION), copied)
@@ -244,8 +192,7 @@ class Observations(unittest.TestCase):
 
     def test_verified_local_json_still_registers_links_secret_fields_and_credentials(self):
         path = self.out/'frames/before-verified-link.png'
-        with patch.object(redact, 'ocr_text', return_value='Image being edited ' + TOKEN):
-            self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
+        self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path)
         observation = {'name': HISTORY_NAME, 'receipt': {'directUrl': LINK},
                        'password': 'synthetic private phrase', 'message': SECRET}
         self.clipboard(json.dumps(observation), expected_json=observation)
@@ -256,62 +203,6 @@ class Observations(unittest.TestCase):
         result = self.ctx.evidence.scan()
         self.assertTrue(result['passed'])
         self.assertTrue(path.exists())
-        self.assertEqual(result['image_audit'], 'known-regions')
-
-    def test_live_verified_json_keeps_opaque_registration_and_late_quarantine(self):
-        with admitted():
-            self.ctx = DriverContext(MemoryTarget(), dict(self.env, destination='s3'), self.profile,
-                                     self.root, self.root/'live')
-        path = self.ctx.out/'frames/before.png'
-        # A bare public-object slug is link-equivalent in a live destination,
-        # even if the copied receipt does not include its complete share URL.
-        slug = 'synthetic-live-object-945.png'
-        observation = {'id': HISTORY_ID, 'name': slug, 'receipt': {'directUrl': LINK}}
-        with patch.object(redact, 'ocr_text', return_value=slug):
-            self.ctx.evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
-        self.clipboard(json.dumps(observation), expected_json=observation)
-        literals = self.ctx.evidence.redactor.audit_literals
-        self.assertIn(slug, literals)
-        self.assertIn(TOKEN, literals)
-        result = self.ctx.evidence.scan()
-        self.assertFalse(result['passed'])
-        self.assertFalse(path.exists())
-        self.assertIn('png-text-registered-secret', {f['kind'] for f in result['findings']})
-
-
-class HostOcrPreflight(unittest.TestCase):
-    def test_local_context_needs_no_ocr_or_target_access(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            out = Path(temporary)/'new'
-            env = dict(desktop='mint-cinnamon-x11', host='boat', placement='boat', package='source', destination='local')
-            with patch.object(redact.shutil, 'which', return_value=None):
-                ctx = DriverContext(object(), env, {}, temporary, out)
-            self.assertFalse(ctx.evidence.audit_images)
-            self.assertFalse(out.exists())
-
-    def test_local_run_reaches_target_without_host_ocr(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            out = Path(temporary)/'new'
-            args = ['--desktop', 'mint-cinnamon-x11', '--host', 'boat', '--placement', 'guest',
-                    '--run', 'unused', '--package', 'source', '--destination', 'local', '--recipes', 'core_demo',
-                    '--catalog', temporary, '--build', 'abcdef012345', '--out', str(out), '--coverage', str(out/'coverage.json')]
-            with patch.object(redact.shutil, 'which', return_value=None), \
-                    patch.object(runner, 'Target', side_effect=RecipeBlocked('test target boundary')) as target:
-                self.assertEqual(runner.main(args), 2)
-            target.assert_called_once()
-            self.assertTrue(out.exists())
-
-    def test_missing_ocr_after_preflight_still_masks_and_fails_closed(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            from tools.lab.surface_driver.receipts import Evidence
-            evidence = Evidence(temporary)
-            path = Path(temporary)/'frame.png'
-            with patch.object(redact.shutil, 'which', return_value=None):
-                metadata = evidence.frame(Image.new('RGB', (120, 80), 'white'), path, [])
-                result = evidence.scan()
-            self.assertEqual(metadata['guard'], 'ocr-unavailable-fully-masked')
-            self.assertFalse(metadata['visible_pixels'])
-            self.assertFalse(result['passed'])
 
 
 if __name__ == '__main__':

@@ -280,7 +280,7 @@ def open_and_verify(ctx, trigger, expect):
                    'external dispatch reached the private Marionette Firefox, '
                    'not a Firefox started outside its profile')
         ctx.expect(result.get('matched'), 'real Firefox URL, title and page content match')
-        frames.append(asdict(ctx.frame('browser-content', window=None, desktop_safe=KIOSK_SAFE)))
+        frames.append(asdict(ctx.frame('browser-content', window=None)))
         receipt = {key: result[key] for key in ('url_host', 'title', 'matched')}
         receipt['frames'] = frames
         ctx.note(json.dumps({key: receipt[key] for key in ('url_host', 'title', 'matched')}))
@@ -296,7 +296,6 @@ def open_and_verify(ctx, trigger, expect):
 # Marionette kiosk has no address bar and was proven to own the foreground
 # (blanked first for failures). Notification areas, other browser chrome,
 # leaking titles and owned secret fields stay masked; OCR still audits.
-KIOSK_SAFE = 'private Firefox kiosk without address bar owns the verified foreground'
 
 
 def live_download_digest(ctx, kind, saved_path, filename=None):
@@ -315,7 +314,7 @@ def live_link_unavailable(ctx, kind):
     label = 'browser-cloudfront-status-'+str(result.get('status', 0)) if kind == 's3' else (
         'browser-link-unavailable' if result.get('unavailable') else 'browser-link-unavailable-failed')
     ctx.frame(label,
-              window=None, desktop_safe=KIOSK_SAFE)
+              window=None)
     return result
 
 
@@ -327,9 +326,9 @@ def _failure_frame(ctx, state, timeouts, frames):
     """
     if getattr(ctx, '_live_admitted', False):
         # Keep the recipient URL only in Firefox memory for the mandatory
-        # post-cleanup navigation. The live default masks the whole desktop.
+        # post-cleanup navigation.
         try:
-            frames.append(asdict(ctx.frame('browser-failure-fully-masked', window=None)))
+            frames.append(asdict(ctx.frame('browser-failure-live', window=None)))
         except Exception as error:
             ctx.review('Failure frame unavailable (' + str(error)[:200] + ')')
         return
@@ -345,7 +344,7 @@ def _failure_frame(ctx, state, timeouts, frames):
                    'or another Firefox was started; core needs a redacted full-desktop failure frame')
         return
     try:
-        frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None, desktop_safe=KIOSK_SAFE)))
+        frames.append(asdict(ctx.frame('browser-failure-safe-desktop', window=None)))
     except Exception as error:
         ctx.review('Failure frame unavailable (' + str(error)[:200] + ')')
 

@@ -31,8 +31,6 @@ BAR = "33-record-ready-bar"
 
 
 def _frame(ctx, label, **options):
-    if ctx.destination == "local" and ctx.placement in ("boat", "guest") and ctx.profile.get("guest"):
-        options["desktop_safe"] = "Disposable guest: synthetic moving pattern, selectors and recording controls; isolated loopback publications only; no live account or credentials"
     return ctx.frame(label, **options)
 
 

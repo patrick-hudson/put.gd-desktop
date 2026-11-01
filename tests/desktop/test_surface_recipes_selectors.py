@@ -422,19 +422,6 @@ class SelectorRecipes(unittest.TestCase):
             selectors._retain(ctx, "/tmp/selectors-unit/synthetic.png", "png")
         self.assertEqual(caught.exception.issue, 717)
 
-    def test_desktop_declaration_is_limited_to_local_disposable_guests(self):
-        for placement, destination, guest, allowed in (("boat", "local", "unit", True),
-                                                     ("guest", "local", "unit", True),
-                                                     ("native", "local", "unit", False),
-                                                     ("boat", "s3", "unit", False),
-                                                     ("boat", "local", None, False)):
-            with self.subTest(placement=placement, destination=destination, guest=guest):
-                ctx = FakeContext()
-                ctx.placement, ctx.destination, ctx.profile = placement, destination, {"guest": guest}
-                frames = []
-                ctx.frame = lambda label, **options: frames.append(options)
-                selectors._frame(ctx, "synthetic")
-                self.assertEqual(bool(frames[0].get("desktop_safe")), allowed)
 
     def test_wayland_preparation_uses_core_consent_and_closes_monitor(self):
         ctx = FakeContext()

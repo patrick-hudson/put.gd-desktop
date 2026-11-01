@@ -582,6 +582,21 @@ def brokers(directory):
     return endpoint
 
 
+# Quit each resident through its own socket: a surface-driver resident has a
+# private runtime folder that a plain ui.quit can't reach.
+QUIT_RESIDENTS = r'''for pid in $(pgrep -x -u "$(id -u)" putgd); do
+    (
+        while IFS= read -r line; do
+            case $line in XDG_RUNTIME_DIR=*|XDG_STATE_HOME=*|XDG_CONFIG_HOME=*|XDG_DATA_HOME=*) export "$line" ;; esac
+        done <<ENVIRONMENT
+$(tr '\0' '\n' </proc/$pid/environ)
+ENVIRONMENT
+        env -u LD_LIBRARY_PATH "$(dirname "$(readlink /proc/$pid/exe)")/putgd-cli" ui.quit >/dev/null 2>&1 || true
+    )
+done
+'''
+
+
 class Guest:
     """The disposable VM run on this builder that borrows the session."""
 
@@ -624,6 +639,8 @@ class Guest:
         """Quit the guest's put.gd so nothing refreshes the borrowed copy after collection."""
         with contextlib.suppress(lab.LabError, ValueError, subprocess.TimeoutExpired):
             lab.cli(self.run, 'ui.quit')
+        with contextlib.suppress(lab.LabError, ValueError, subprocess.TimeoutExpired):
+            lab.ssh(self.run, QUIT_RESIDENTS)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             left = lab.ssh(self.run, 'pgrep -u "$(id -u)" "^putgd" || true').split()

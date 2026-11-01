@@ -1,9 +1,7 @@
-"""Secret-safe evidence primitives. Raw values and pixels live only in memory.
+"""Secret-safe text evidence. Raw values live only in memory.
 
 Audit a completed run with ``python3 -m tools.lab.surface_driver.redact RUN``.
-OCR is a mandatory pre-write guard for visible pixels and an evidence audit,
-never a product feature. Local runs also need host tesseract: disposable/local
-placement does not prove that observed or typed content contains no secrets.
+Frames aren't masked: they stay on the builders, and text is what gets published.
 """
 from __future__ import annotations
 
@@ -428,53 +426,14 @@ def rect(value):
     return [math.floor(x), math.floor(y), math.ceil(x+w)-math.floor(x), math.ceil(y+h)-math.floor(y)]
 
 
-_OCR_CACHE = {}
-
-
-def require_host_ocr():
-    """Fail before a run touches its target or writes evidence; no raw data."""
-    if not (ocr := shutil.which('tesseract')):
-        from .api import RecipeBlocked
-        raise RecipeBlocked('host OCR unavailable: install tesseract-ocr (tesseract on Fedora) '
-                            'on the surface-driver host, not only in the guest; '
-                            'local and live graphical evidence both require it')
-    return ocr
-
-
-def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), ocr=None, hosts=(), audit_images=True):
-    """Mask/crop in memory, strip metadata, then perform the first pixel write."""
+def save_frame(image, path, *, crop=None):
+    """Crop in memory and strip metadata before the first pixel write."""
     image = image.convert('RGB')
-    masks = []
-    for region in regions:
-        x, y, w, h = rect(region)
-        left, top, right, bottom = max(0, x), max(0, y), min(image.width, x+w), min(image.height, y+h)
-        if left < right and top < bottom:
-            image.paste((0, 0, 0), (left, top, right, bottom))
-            masks.append([left, top, right-left, bottom-top])
     if crop:
         x, y, w, h = rect(crop)
         if x < 0 or y < 0 or x+w > image.width or y+h > image.height:
             raise ValueError('window crop extends outside captured head')
         image = image.crop((x, y, x+w, y+h))
-        masks = [[max(0, mx-x), max(0, my-y), min(x+w, mx+mw)-max(x, mx), min(y+h, my+mh)-max(y, my)]
-                 for mx, my, mw, mh in masks if mx < x+w and my < y+h and mx+mw > x and my+mh > y]
-    guard, text = 'fully-masked', None
-    if image.getbbox() and not audit_images:
-        guard = 'local-secret-fields-only'
-    if image.getbbox() and audit_images:
-        try:
-            text = ocr_text(image, ocr=ocr)
-        except Exception:
-            text, guard = '', 'ocr-unavailable-fully-masked'
-            fallback = True
-        else:
-            guard = 'ocr-checked'
-            if ocr_detected(text, literals, hosts):
-                guard, fallback = 'ocr-sensitive-text-fully-masked', True
-        if fallback and guard != 'ocr-checked':
-            image.paste((0, 0, 0), (0, 0, image.width, image.height))
-            masks = [[0, 0, image.width, image.height]]
-            text = None
     # Copy pixels into a fresh object: PNG text/EXIF/ICC metadata is discarded.
     from PIL import Image
     clean = Image.frombytes('RGB', image.size, image.tobytes())
@@ -485,15 +444,7 @@ def save_frame(image, path, regions, *, crop=None, fallback=False, literals=(), 
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.write_bytes(encoded)
     path.chmod(0o600)
-    digest = hashlib.sha256(encoded).hexdigest()
-    if text is not None:
-        # RAM only: the end-of-run audit re-matches this frame's text against
-        # literals registered later, without reading the pixels twice.
-        _OCR_CACHE[digest] = text
-        while len(_OCR_CACHE) > 512:
-            _OCR_CACHE.pop(next(iter(_OCR_CACHE)))
-    return {'sha256': digest, 'size': list(clean.size),
-            'regions': masks, 'fallback': fallback, 'guard': guard, 'visible_pixels': bool(clean.getbbox())}
+    return {'sha256': hashlib.sha256(encoded).hexdigest(), 'size': list(clean.size), 'visible_pixels': bool(clean.getbbox())}
 
 
 def patterns(text, extra=None):
@@ -536,127 +487,8 @@ def detected(text, literals=(), hosts=()):
     return sorted(kinds)
 
 
-# OCR reads l/I/1, O/0, S/5 ... interchangeably and splits or joins words.
-CONFUSABLES = str.maketrans('0oqd1ijt|!5$8z2g96', 'ooooolllllssbzzggg')
-
-
-def ocr_normal(text):
-    return re.sub(r'[^a-z0-9]', '', text.lower().translate(CONFUSABLES))
-
-
-def fuzzy_contains(text, literal):
-    """literal occurs in normalized OCR text with at most len/8 edits.
-
-    Pigeonhole: with e edits, one of e+1 literal chunks survives exactly;
-    each exact chunk anchors a bounded semi-global edit-distance check.
-    """
-    m = len(literal)
-    errors = m // 8
-    if literal in text:
-        return True
-    if not errors:
-        return False
-    size = m // (errors + 1)
-    for index in range(errors + 1):
-        chunk = literal[index*size:(index+1)*size]
-        offset = text.find(chunk)
-        while offset >= 0:
-            start = max(0, offset - index*size - errors)
-            window = text[start:offset - index*size + m + errors]
-            previous = [0] * (len(window) + 1)
-            for i, character in enumerate(literal, 1):
-                current = [i] + [0] * len(window)
-                for j, other in enumerate(window, 1):
-                    current[j] = min(previous[j]+1, current[j-1]+1, previous[j-1]+(character != other))
-                previous = current
-            if min(previous) <= errors:
-                return True
-            offset = text.find(chunk, offset+1)
-    return False
-
-
-def ocr_detected(text, literals=(), hosts=()):
-    """Audit OCR text: OCR inserts spaces and confuses glyphs, so match loosely.
-
-    Patterns are checked as read and with whitespace removed; registered
-    literals are compared after whitespace/punctuation removal and glyph
-    folding, with a small edit budget. A false positive only masks a frame.
-    """
-    kinds = set(detected(text, literals, hosts)) | set(detected(re.sub(r'\s+', '', text), (), hosts))
-    normalized = ocr_normal(text)
-    for literal in literals:
-        folded = ocr_normal(literal)
-        if len(folded) >= 10 and fuzzy_contains(normalized, folded):
-            kinds.add('registered-secret')
-            break
-    return sorted(kinds)
-
-
-def ocr_text(image, *, ocr=None):
-    """Tesseract over an upscaled grayscale copy, read as drawn and inverted.
-
-    UI and notification text is often 11-13 px and light-on-dark; Tesseract
-    misses it at native size, so the audit reads a 3x (large frames: 2x) copy.
-    """
-    from PIL import Image, ImageOps
-    tesseract = shutil.which('tesseract') if ocr is None else ocr
-    if not tesseract:
-        raise RuntimeError('OCR required: tesseract is unavailable')
-    gray = image.convert('L')
-    scale = 3 if gray.width * gray.height <= 1_200_000 else 2
-    gray = gray.resize((gray.width*scale, gray.height*scale), Image.Resampling.LANCZOS)
-    texts = []
-    for variant in (gray, ImageOps.invert(gray)):
-        stream = io.BytesIO()
-        variant.save(stream, format='PNG')
-        result = subprocess.run([tesseract, 'stdin', 'stdout', '--psm', '11'], input=stream.getvalue(), capture_output=True,
-                                timeout=120, check=False, env=dict(os.environ, OMP_THREAD_LIMIT='1'))
-        if result.returncode:
-            raise RuntimeError('OCR failed')
-        texts.append(result.stdout.decode('utf-8', errors='replace'))
-    return '\n'.join(texts)
-
-
-# Self-test tokens use letters OCR does not confuse with one another (see
-# CONFUSABLES); digits are left out because tesseract reads 11 px 3/4/7 as
-# S/A or drops them. An exact read is required, never a fuzzy one.
-OCR_PROBE_ALPHABET = 'ACEFHKMNPRUVWXY'
-OCR_PROBE_ATTEMPTS = 3
-
-
-def ocr_self_test(ocr=None, size=11):
-    """Render a fresh random link at the smallest UI text size; OCR must read it.
-
-    Both polarities (dark on light, light on a dark notification banner) must
-    yield the link pattern and exactly a freshly drawn random token, through
-    the frame guard's own reader. Each polarity gets up to three new tokens
-    (real tesseract misreads one at 11 px about 1 in 25 times); a blind,
-    broken or replaying OCR fails every attempt.
-    """
-    import secrets
-    from PIL import Image, ImageDraw, ImageFont
-    font = None
-    for candidate in ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf',
-                      '/usr/share/fonts/TTF/DejaVuSans.ttf', '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
-                      '/usr/share/fonts/google-noto/NotoSans-Regular.ttf', '/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf'):
-        if Path(candidate).is_file():
-            font = ImageFont.truetype(candidate, size)
-            break
-    if font is None:
-        font = ImageFont.load_default(size=size)
-    def reads(foreground, background):
-        # A new token for every image: no earlier answer fits it.
-        token = ''.join(secrets.choice(OCR_PROBE_ALPHABET) for _ in range(12))
-        image = Image.new('RGB', (520, 40), background)
-        ImageDraw.Draw(image).text((10, 12), 'Link copied: https://put.gd/' + token + '.png', font=font, fill=foreground)
-        text = ocr_text(image, ocr=ocr)
-        return 'url' in ocr_detected(text) and token in re.sub(r'\s+', '', text)
-    return all(any(reads(foreground, background) for _ in range(OCR_PROBE_ATTEMPTS))
-               for foreground, background in (('black', 'white'), ('#f0f0f0', '#2b2b2b')))
-
-
-def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False, quarantine=False, hosts=(), paths=None, audit_images=True):
-    """Never include a matched value, OCR text or an unsafe filename in findings.
+def scan_run(directory, *, frames=None, literals=(), quarantine=False, hosts=(), paths=None):
+    """Never include a matched value or an unsafe filename in findings.
 
     paths limits the audit to those files (relative to directory), for bytes
     rewritten after the full audit: the last write is always the last scan.
@@ -667,11 +499,8 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
             frames = json.loads((root/'frame-masks.json').read_text())['frames']
         except (OSError, ValueError, KeyError, TypeError):
             frames = {}
-    tesseract = shutil.which('tesseract') if ocr is None else ocr
     check = lambda text: detected(text, literals, hosts)
     findings, count, pngs = [], 0, 0
-    if audit_images and not tesseract and (require_ocr or literals):
-        findings.append({'kind': 'ocr-required-unavailable', 'blocked': 'tesseract must be staged in the run sandbox/guest'})
     quarantined = []
     selected = sorted(root.rglob('*')) if paths is None else sorted(root/p for p in paths if (root/p).exists())
     for index, path in enumerate(selected):
@@ -698,7 +527,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
                     if kind not in check(data.decode('utf-8', errors='replace')):
                         report(kind)
             if path.suffix.lower() == '.png':
-                from PIL import Image, ImageStat
+                from PIL import Image
                 pngs += 1
                 with Image.open(io.BytesIO(data)) as image:
                     image.load()
@@ -710,23 +539,6 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
                     else:
                         if manifest.get('size') != list(image.size):
                             report('frame-size-mismatch')
-                        for region in manifest.get('regions', []):
-                            x, y, w, h = rect(region)
-                            if x < 0 or y < 0 or x+w > image.width or y+h > image.height:
-                                report('mask-outside-frame')
-                            elif any(ImageStat.Stat(image.crop((x, y, x+w, y+h)).convert('RGB')).extrema[c][1] for c in range(3)):
-                                report('unmasked-sensitive-region')
-                    if audit_images and not tesseract and image.convert('RGB').getbbox():
-                        report('png-ocr-unavailable')
-                    if audit_images and tesseract and image.convert('RGB').getbbox():
-                        try:
-                            text = _OCR_CACHE.get(hashlib.sha256(data).hexdigest()) or ocr_text(image, ocr=tesseract)
-                        except Exception:
-                            report('ocr-failed')
-                        else:
-                            # Re-checked against literals registered after the frame was saved.
-                            for kind in ocr_detected(text, literals, hosts):
-                                report('png-text-'+kind)
         except Exception as error:
             findings.append({'file_index': index, 'kind': 'unreadable-or-invalid-artifact',
                              'exception_type': type(error).__name__})
@@ -734,7 +546,7 @@ def scan_run(directory, *, frames=None, ocr=None, literals=(), require_ocr=False
             quarantined.append((index, path))
     actions = quarantine_files(root, quarantined) if quarantined else []
     return {'quarantine': actions, 'passed': not findings, 'files': count, 'pngs': pngs,
-            'image_audit': 'ocr-and-known-regions' if tesseract and audit_images else 'known-regions', 'findings': findings}
+            'findings': findings}
 
 
 def quarantine_files(root, files):
@@ -788,9 +600,7 @@ def main(argv=None):
         value = json.loads(receipt.read_text()) if receipt.exists() else None
     except (OSError, ValueError):
         value = None
-    local = bool(value and value.get('environment', {}).get('destination') == 'local')
-    result = scan_run(args.run, literals=literals, require_ocr=bool(value and not local),
-                      quarantine=True, audit_images=not local)
+    result = scan_run(args.run, literals=literals, quarantine=True)
     if value and not value.get('secret_scan', {'passed': True}).get('passed', True):
         previous = value['secret_scan']
         result['passed'] = False

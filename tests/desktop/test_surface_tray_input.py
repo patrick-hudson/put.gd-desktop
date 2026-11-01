@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 import unittest
+from contextlib import nullcontext
 from unittest.mock import Mock, patch
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
@@ -119,7 +120,7 @@ class ShellActorPick(unittest.TestCase):
 
 class NotificationTarget(unittest.TestCase):
     def test_named_action_is_hovered_and_rechecked_before_its_press(self):
-        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+        with nullcontext():
             ctx, directory = context({'session': 'x11', 'notifications': {
                 'accessible': {'application': 'cinnamon*'}}})
         self.addCleanup(directory.cleanup)
@@ -147,7 +148,7 @@ class NotificationTarget(unittest.TestCase):
             ctx.notification_action(5, 'open')
 
     def test_hover_layout_change_requires_a_fresh_stable_action_rectangle(self):
-        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+        with nullcontext():
             ctx, directory = context({'session': 'x11', 'notifications': {
                 'accessible': {'application': 'cinnamon*'}}})
         self.addCleanup(directory.cleanup)
@@ -177,7 +178,7 @@ class NotificationTarget(unittest.TestCase):
         self.assertEqual(clicked, [[100, 130, 100, 30]])
 
     def test_notification_closed_during_hover_never_receives_a_click(self):
-        with patch('tools.lab.surface_driver.context.require_host_ocr'):
+        with nullcontext():
             ctx, directory = context({'session': 'x11', 'notifications': {
                 'accessible': {'application': 'cinnamon*'}}})
         self.addCleanup(directory.cleanup)

@@ -4,8 +4,11 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -487,6 +490,28 @@ class SmokeCheck(unittest.TestCase):
         test = self.smoke('account')
         with mock.patch('sys.stdout'), self.assertRaises(smoke.lab.LabError):
             test.check()
+
+
+class QuitResidents(unittest.TestCase):
+    def test_a_private_resident_is_quit_with_its_own_environment(self):
+        with tempfile.TemporaryDirectory(prefix='pg-q-') as temp:
+            root = Path(temp)
+            (root/'bin').mkdir()
+            shutil.copy(shutil.which('sleep'), root/'bin/putgd')
+            (root/'bin/putgd-cli').write_text('#!/bin/sh\necho "$XDG_RUNTIME_DIR $1" > "$MARK"\n')
+            (root/'bin/putgd-cli').chmod(0o755)
+            resident = subprocess.Popen([str(root/'bin/putgd'), '30'], env={'XDG_RUNTIME_DIR': str(root/'private dir')})
+            self.addCleanup(resident.wait)
+            self.addCleanup(resident.kill)
+            # A stand-in pgrep: only this test's process, never a real resident on this machine.
+            (root/'pgrep').write_text(f'#!/bin/sh\necho {resident.pid}\n')
+            (root/'pgrep').chmod(0o755)
+            deadline = time.monotonic() + 5
+            while Path(f'/proc/{resident.pid}/exe').resolve() != (root/'bin/putgd').resolve() and time.monotonic() < deadline:
+                time.sleep(.01)
+            subprocess.run(['sh', '-c', proton.QUIT_RESIDENTS], check=True,
+                           env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", MARK=str(root/'mark')))
+            self.assertEqual((root/'mark').read_text().strip(), f"{root/'private dir'} ui.quit")
 
 
 if __name__ == '__main__':

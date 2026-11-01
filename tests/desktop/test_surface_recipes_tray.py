@@ -317,20 +317,6 @@ class TrayRecipesTest(unittest.TestCase):
     def recipes(self):
         return [r for r in REGISTRY if r.function.__module__ == tray.__name__]
 
-    def test_desktop_safe_frames_require_a_disposable_local_guest(self):
-        for placement, destination, guest, safe in [('boat', 'local', 'cinnamon-x11', True),
-                                                   ('guest', 'local', 'gnome-wayland', True),
-                                                   ('boat', 'local', None, False),
-                                                   ('physical', 'local', 'cinnamon-x11', False),
-                                                   ('boat', 'proton', 'gnome-wayland', False)]:
-            with self.subTest(placement=placement, destination=destination, guest=guest):
-                ctx = FakeContext()
-                ctx.placement, ctx.destination = placement, destination
-                ctx.profile['guest'] = guest
-                frames = []
-                ctx.frame = lambda label, **options: frames.append(options)
-                tray._frame(ctx, 'proof')
-                self.assertEqual(bool(frames[0].get('desktop_safe')), safe)
 
     def test_wayland_focus_preserves_the_read_only_witness(self):
         for session, raises in [('wayland', False), ('x11', True)]:

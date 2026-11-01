@@ -175,7 +175,7 @@ class ShellNotificationCover(unittest.TestCase):
         ctx,directory=context({'session':'x11','focus':{'desktop_hit_test':'shell-at-spi'},
                                'notifications':{'accessible':{'application':'cinnamon*'}}})
         self.addCleanup(directory.cleanup)
-        ctx._probe=lambda name,query: probe.x11_foreground(query)
+        ctx._probe=lambda name,query: probe.x11_foreground(query) if name=='foreground' else {'stopped':[]}
         with patch.object(probe,'shell_cover',return_value="cinnamon notification 'Upload failed' at [1420, 10, 480, 140]"):
             with self.assertRaisesRegex(RecipeFailed,"Upload failed"):
                 ctx.click_at(1580,70)

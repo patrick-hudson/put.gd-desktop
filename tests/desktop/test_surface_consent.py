@@ -244,6 +244,8 @@ class Drive(unittest.TestCase):
                 if self.on_pick:
                     self.on_pick()
                 return self.pick
+            if name == 'clear_screen':
+                return {'stopped': []}
             raise AssertionError(name)
         self.ctx._probe = probe
         press = self.target.pointer

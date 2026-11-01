@@ -266,9 +266,11 @@ def _region_upload(ctx):
         'history.delete-remote', 'confirm.history-delete', destinations=('s3',), desktop_drawn=True, timeout=720)
 def s3_region_upload(ctx):
     _region_upload(ctx)
+    outcomes.no_app_error_banner(ctx)
 
 
 @recipe('region.to-upload', 'region.drag', 'history.copy-link', 'history.open-link',
         'history.proton-sharing', 'confirm.revoke-link', destinations=('proton',), desktop_drawn=True, timeout=720)
 def proton_region_upload(ctx):
     _region_upload(ctx)
+    outcomes.no_app_error_banner(ctx)

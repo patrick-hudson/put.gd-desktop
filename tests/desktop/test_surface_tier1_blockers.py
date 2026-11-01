@@ -162,7 +162,6 @@ class SelectorMapping(unittest.TestCase):
         # NativeGrab negative cases in test_surface_tray_input stay unchanged.
 
 
-
 class LocalFrames(Base):
     destination='local'
 
@@ -173,39 +172,6 @@ class LocalFrames(Base):
         self.assertEqual(ctx._secret_names(),{'credentialSecretKey'})
         ctx.destination='s3'
         self.assertEqual(ctx._secret_names(),{'publicUrl','credentialSecretKey'})
-
-    def test_observed_loopback_link_does_not_mask_browser_content(self):
-        ctx=self.context();ctx.sensitive('http://127.0.0.1:1234/synthetic.png')
-        ctx._secret_regions=Mock(return_value=[[1,2,3,4]])
-        ctx._layout=Mock(side_effect=AssertionError('local does not use live layout policy'))
-        frame=ctx.frame('content')
-        metadata=ctx.evidence.frames[frame.path]
-        self.assertTrue(metadata['visible_pixels'])
-        self.assertEqual(metadata['regions'],[[1,2,3,4]])
-        self.assertEqual(metadata['guard'],'local-secret-fields-only')
-        ctx._secret_regions.assert_called_once()
-
-    def test_final_local_receipt_and_coverage_need_no_ocr_even_after_a_link(self):
-        ctx=self.context();ctx.sensitive('http://127.0.0.1:1234/synthetic.png')
-        ctx._secret_regions=Mock(return_value=[])
-        rows=[ReceiptRow('region.drag',self.env['desktop'],'deb','passed')]
-        with patch('tools.lab.surface_driver.redact.shutil.which',return_value=None):
-            ctx.frame('content')
-            result=runner.finish_evidence(ctx.evidence,self.out,self.env,rows,'local',self.path/'coverage.json')
-        self.assertTrue(result['passed'],result)
-        self.assertEqual(rows[0].functional,'passed')
-        self.assertTrue(json.loads((self.out/'receipt.json').read_text())['secret_scan']['passed'])
-
-    def test_independent_cli_reaudit_preserves_local_frames_but_requires_live_ocr(self):
-        ctx=self.context();ctx._secret_regions=Mock(return_value=[])
-        ctx.frame('content')
-        rows=[ReceiptRow('region.drag',self.env['desktop'],'deb','passed')]
-        with patch('tools.lab.surface_driver.redact.shutil.which',return_value=None),redirect_stdout(io.StringIO()):
-            runner.finish_evidence(ctx.evidence,self.out,self.env,rows,'local',self.path/'coverage.json')
-            self.assertEqual(redact.main([str(self.out),'--coverage',str(self.path/'coverage.json')]),0)
-            receipt=self.out/'receipt.json';value=json.loads(receipt.read_text())
-            value['environment']['destination']='s3';receipt.write_text(json.dumps(value))
-            self.assertEqual(redact.main([str(self.out),'--coverage',str(self.path/'coverage.json')]),1)
 
 
 class PlasmaProperties(unittest.TestCase):
@@ -249,7 +215,6 @@ class PlasmaProperties(unittest.TestCase):
                                  dict(owner=':1.100',pid=100,provider='gnome-keyring-d'))
         self.assertEqual(keyring.isolated_service(scope),{'pid':100,'start':'22'})
         scope.restart.assert_called_once_with({'QTKEYCHAIN_BACKEND':'libsecret','KDE_SESSION_VERSION':''})
-
 
 
 if __name__=='__main__':unittest.main()
