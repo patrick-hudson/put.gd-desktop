@@ -430,8 +430,15 @@ def down(args):
             session_shell(name, f'pgrep -u "$(id -u)" "^putgd" >/dev/null || {{ nohup {start_command(name)} >/dev/null 2>&1 & sleep 8; }}')
             ids = [r['id'] for r in call(name, 'history.list', {'limit': 100}).get('records', []) if (r.get('receipt') or {}).get('directUrl')]
             prepared = call(name, 'delete.prepare', {'ids': ids})
-            call(name, 'delete.confirm', {'ids': ids, 'acknowledgement': prepared['acknowledgement']})
-            print(json.dumps(dict(deleted=len(ids))), flush=True)
+            started = call(name, 'delete.confirm', {'ids': ids, 'acknowledgement': prepared['acknowledgement']})
+            # The reply comes before the deletes run: stopping the guest now would leave the objects behind.
+            deadline = time.monotonic()+120
+            deletion = started['deletion']
+            while deletion.get('state') not in ('completed', 'cancelled') and time.monotonic() < deadline:
+                time.sleep(1)
+                deletion = call(name, 'delete.inspect', {'id': started['deleteOperationId']})
+            statuses = [item.get('status') for item in deletion.get('items', [])]
+            print(json.dumps(dict(deleted=len(ids), state=deletion.get('state'), statuses=sorted(set(statuses)))), flush=True)
         except (SystemExit, lab.LabError, ValueError, KeyError) as error:
             print(json.dumps(dict(deleteFailed=str(error))), flush=True)
     for path in [run/'fm.json', *run.glob('shot-*.png')]:
