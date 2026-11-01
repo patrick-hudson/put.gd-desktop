@@ -1,6 +1,7 @@
 #include "TrayController.h"
 #include <QScopeGuard>
 #include <QJsonDocument>
+#include "app/FileManagerIntegration.h"
 #include "Ui.h"
 #include "Theme.h"
 #include "ByteSize.h"
@@ -639,7 +640,10 @@ void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
  notifyMessage("diagnostics_saved","put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
 }
 namespace {
-QString fileManagerName(const QString& name){return name=="nautilus"?QStringLiteral("Files"):name=="caja"?QStringLiteral("Caja"):name=="peony"?QStringLiteral("Peony"):name;}
+QString fileManagerName(const QString& name){
+ static const QHash<QString,QString> names{{"nautilus","Files"},{"caja","Caja"},{"peony","Peony"},{"pcmanfm","PCManFM"},{"pcmanfm-qt","PCManFM-Qt"}};
+ return names.value(name,name);
+}
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
@@ -661,15 +665,10 @@ void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
 }
 void TrayController::notifyFileManagerProblem(const QString& message) {notifyMessage("file_manager_menu_problem","put.gd — file manager menu",message,true);}
 bool TrayController::restartFileManager(const QString& name) {
- // Files comes back in the background so its desktop services keep running;
- // Caja and Peony are restarted by their desktop sessions.
- static const QHash<QString,QString> scripts{
-  {"nautilus","nautilus -q; i=0; while pgrep -u \"$(id -u)\" -x nautilus >/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; exec nautilus --gapplication-service"},
-  {"caja","caja -q; sleep 2; pgrep -u \"$(id -u)\" -x caja >/dev/null || exec caja --no-default-window"},
-  {"peony","peony -q"}};
- if(!scripts.contains(name))return false;
+ const auto script=FileManagerIntegration::restartScript(name);
+ if(script.isEmpty())return false;
  logging::info(logUi(),"File manager restart",{{"fileManager",name}});
- return host::startDetached("/bin/sh",{"-c",scripts.value(name),"putgd-restart"});
+ return host::startDetached("/bin/sh",{"-c",script,"putgd-restart",name});
 }
 // The button carries the path put.gd itself just saved, whatever its name (#223).
 void TrayController::showSavedPackage(const QString& path) {

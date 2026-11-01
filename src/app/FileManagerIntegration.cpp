@@ -14,6 +14,7 @@
 #include <QSaveFile>
 #include <QStringDecoder>
 #include <unistd.h>
+#include <algorithm>
 namespace putgd {
 namespace {
 const QString marker=QStringLiteral("X-putgd-Managed=true");
@@ -471,6 +472,22 @@ QStringList FileManagerIntegration::systemDirectories(const FileManagerContext& 
  directories.removeIf([](const QString& directory){return !QFileInfo(directory).isDir();});
  return directories;
 }
+QString FileManagerIntegration::restartScript(const QString& name) {
+ // Files comes back in the background so its desktop services keep running;
+ // Caja and Peony are restarted by their desktop sessions.
+ if(name=="nautilus")return QStringLiteral("nautilus -q; i=0; while pgrep -u \"$(id -u)\" -x nautilus >/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; exec nautilus --gapplication-service");
+ if(name=="caja")return QStringLiteral("caja -q; sleep 2; pgrep -u \"$(id -u)\" -x caja >/dev/null || exec caja --no-default-window");
+ if(name=="peony")return QStringLiteral("peony -q");
+ // PCManFM has no quit option; both quit cleanly on SIGTERM and their sessions
+ // don't bring back a clean exit. One that draws the desktop or runs as a daemon
+ // comes back with its own arguments ($1 names the process).
+ if(name=="pcmanfm"||name=="pcmanfm-qt")return QStringLiteral(
+  "p=$(pgrep -u \"$(id -u)\" -n -x \"$1\") || exit 0; a=$(tr '\\0' '\\n' </proc/$p/cmdline); kill \"$p\"; "
+  "i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt 50 ]; do sleep 0.1; i=$((i+1)); done; "
+  "printf '%s\\n' \"$a\" | grep -qx -e --desktop -e --daemon-mode -e -d || exit 0; "
+  "set -f; IFS='\n'; set -- $a; exec \"$@\"");
+ return {};
+}
 QString FileManagerIntegration::launcherPath(const FileManagerContext& c) {return QDir(ownDirectory(c)).filePath("putgd-upload");}
 QString FileManagerIntegration::cosmicPath(const FileManagerContext& c) {return QDir(c.configHome).filePath("cosmic/com.system76.CosmicFiles/v1/context_actions");}
 
@@ -593,9 +610,21 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   result.firstRun=!stamp.exists();
   if(commit(stampPath,(c.version+'\n').toUtf8(),dataMode,false)==Write::Failed)fail(ioError("Cannot write the file manager version stamp",stampPath));
  }
- if(system&&result.firstRun) {
-  const std::pair<const char*,const char*> plugins[]={{"nautilus","nautilus/extensions-4"},{"caja","caja/extensions-2.0"},{"peony","peony-extensions"}};
-  for(const auto& [name,relative]:plugins)if(systemPlugin(c,relative)&&onPath(c,name))result.restartable<<name;
+ if(result.firstRun) {
+  // The session's own file manager only: Files on PATH says nothing on LXDE.
+  const auto desktops=(c.desktop.isEmpty()?qEnvironmentVariable("XDG_CURRENT_DESKTOP"):c.desktop).split(':');
+  // libfm and libfm-qt read FileManager-Actions once, at a process's first file menu.
+  const QString actionsFile="file-manager/actions/putgd-upload.desktop";
+  const auto actions=system?inDataDirectories(dataDirectories(c),actionsFile):next.files.contains(QDir(c.dataHome).filePath(actionsFile));
+  const struct {const char* name;QStringList desktops;bool installed;} managers[]={
+   {"nautilus",{"GNOME","Unity"},system&&systemPlugin(c,"nautilus/extensions-4")},
+   {"caja",{"MATE"},system&&systemPlugin(c,"caja/extensions-2.0")},
+   {"peony",{"UKUI"},system&&systemPlugin(c,"peony-extensions")},
+   {"pcmanfm",{"LXDE"},actions},
+   {"pcmanfm-qt",{"LXQt"},actions}};
+  for(const auto& manager:managers)
+   if(manager.installed&&onPath(c,manager.name)&&std::any_of(desktops.begin(),desktops.end(),[&](const QString& desktop){return manager.desktops.contains(desktop,Qt::CaseInsensitive);}))
+    result.restartable<<manager.name;
  }
  return result;
 }
