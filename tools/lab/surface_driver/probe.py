@@ -31,6 +31,7 @@ QUERY_KEYS = {'name', 'text', 'description', 'role', 'pid', 'application', 'wind
 CALL_TIMEOUT_MS = 3000
 WALK_SECONDS = 7.5
 PROCESS_STARTED = None  # set at a fresh child's start (main() or the server's child): the walk budget counts from there
+VERIFIED_HELPER_SHA256 = {}  # Supplied over stdin from the controller-side installation receipt.
 
 
 def bound_calls():
@@ -1606,53 +1607,30 @@ def x11_unmanaged_foreground(query):
             'obscuring_window_id': None if ok else focus}
 
 
-def native_capture_process(pid):
-    """Bind an owned native selector to installed or verified AppImage bytes."""
+def verified_helper_process(pid, names):
+    """Match an owned process against installation digests supplied by the controller."""
     import hashlib
-    import shutil
-    from pathlib import Path
     if not owned(pid):
         return False
+    expected = {value for name in names if isinstance(value := VERIFIED_HELPER_SHA256.get(name), str)
+                and re.fullmatch(r'[0-9a-f]{64}', value)}
+    if not expected:
+        return False
     try:
-        expected = shutil.which('putgd-capture')
-        if expected and os.path.samefile('/proc/'+str(pid)+'/exe',expected):
-            return True
+        with open('/proc/'+str(pid)+'/exe', 'rb') as actual:
+            return hashlib.file_digest(actual, 'sha256').hexdigest() in expected
     except OSError:
-        pass
-    # The AppImage mount and the installer's hash-verified extracted copy
-    # have different inodes. Require the helper's bytes, never its name.
-    bundled = Path.home()/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-capture'
-    try:
-        if bundled.is_file() and not bundled.is_symlink():
-            with bundled.open('rb') as expected, open('/proc/'+str(pid)+'/exe', 'rb') as actual:
-                return hashlib.file_digest(expected, 'sha256').digest() == hashlib.file_digest(actual, 'sha256').digest()
-    except OSError:
-        pass
-    return False
+        return False
+
+
+def native_capture_process(pid):
+    """Bind a native selector only to the installed capture helper's trusted digest."""
+    return verified_helper_process(pid, ('putgd-capture',))
 
 
 def selector_process(pid):
-    import shutil
-    import hashlib
-    from pathlib import Path
-    for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
-        try:
-            expected = shutil.which(name)
-            if expected and os.path.samefile('/proc/'+str(pid)+'/exe', expected):
-                return True
-        except OSError:
-            pass
-        # The mounted AppImage and the lab's hash-verified extracted copy
-        # have different inodes. Match executable bytes, never just a name.
-        bundled = Path.home()/'putgd-lab/appimage/squashfs-root/usr/bin'/name
-        try:
-            if bundled.is_file() and not bundled.is_symlink():
-                with bundled.open('rb') as expected, open('/proc/'+str(pid)+'/exe', 'rb') as actual:
-                    if hashlib.file_digest(expected, 'sha256').digest() == hashlib.file_digest(actual, 'sha256').digest():
-                        return True
-        except OSError:
-            pass
-    return False
+    """Bind anonymous selector covers to the controller-verified helper inventory."""
+    return verified_helper_process(pid, ('putgd-capture', 'putgd-kde-region', 'putgd-ui'))
 
 
 SHELL_PICKS = ('shell-at-spi', 'gnome-shell-at-spi', 'kwin-shell-at-spi')

@@ -3,6 +3,7 @@ from pathlib import Path
 from contextlib import redirect_stdout
 import json
 import io
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -22,36 +23,56 @@ from tests.desktop.test_surface_live_evidence import Base
 class SelectorMapping(unittest.TestCase):
     def test_native_appimage_capture_matches_verified_bytes_without_path_entry(self):
         """An owned mounted helper matches its independently extracted copy."""
-        with tempfile.TemporaryDirectory() as td:
-            home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-capture'
-            binary.parent.mkdir(parents=True);binary.write_bytes(b'synthetic trusted capture binary')
-            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=None), \
-                 patch.object(probe,'owned',return_value=True), \
-                 patch('builtins.open',return_value=io.BytesIO(binary.read_bytes())):
-                self.assertTrue(probe.native_capture_process(7))
+        data=b'synthetic trusted capture binary'
+        digests={'putgd-capture':hashlib.sha256(data).hexdigest()}
+        with patch.object(probe,'VERIFIED_HELPER_SHA256',digests),patch('shutil.which',return_value=None), \
+             patch.object(probe,'owned',return_value=True),patch('builtins.open',return_value=io.BytesIO(data)):
+            self.assertTrue(probe.native_capture_process(7))
 
     def test_native_appimage_capture_rejects_lookalike_and_unowned_binary(self):
         """A matching name, foreign bytes or an unowned copy cannot authorize input."""
-        with tempfile.TemporaryDirectory() as td:
-            home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-capture'
-            binary.parent.mkdir(parents=True);binary.write_bytes(b'synthetic trusted capture binary')
-            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=str(binary)), \
-                 patch('os.path.samefile',return_value=False):
-                for data,owned in ((b'lookalike putgd-capture binary',True),(binary.read_bytes(),False)):
-                    with self.subTest(owned=owned),patch.object(probe,'owned',return_value=owned), \
-                         patch('builtins.open',return_value=io.BytesIO(data)):
-                        self.assertFalse(probe.native_capture_process(7))
-                with patch.object(probe,'owned',return_value=False),patch('os.path.samefile',return_value=True):
+        trusted=b'synthetic trusted capture binary'
+        digests={'putgd-capture':hashlib.sha256(trusted).hexdigest()}
+        with patch.object(probe,'VERIFIED_HELPER_SHA256',digests):
+            for data,owned in ((b'lookalike putgd-capture binary',True),(trusted,False)):
+                with self.subTest(owned=owned),patch.object(probe,'owned',return_value=owned), \
+                     patch('builtins.open',return_value=io.BytesIO(data)):
                     self.assertFalse(probe.native_capture_process(7))
 
-    def test_appimage_helper_needs_the_verified_extracted_binary_bytes(self):
+    def test_swapped_extracted_helpers_cannot_replace_the_installed_digest(self):
+        """Replacing both a guest file and its running copy cannot change the host receipt."""
         with tempfile.TemporaryDirectory() as td:
-            home=Path(td);binary=home/'putgd-lab/appimage/squashfs-root/usr/bin/putgd-kde-region'
-            binary.parent.mkdir(parents=True);binary.write_bytes(b'synthetic trusted binary')
-            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=None):
-                for data,expected in ((b'foreign same-name binary',False),(b'synthetic trusted binary',True)):
-                    with patch('builtins.open',return_value=io.BytesIO(data)):
-                        self.assertEqual(probe.selector_process(7),expected)
+            home=Path(td);directory=home/'putgd-lab/appimage/squashfs-root/usr/bin';directory.mkdir(parents=True)
+            original=b'synthetic installed helper';replacement=b'swapped same-name helper'
+            digests={name:hashlib.sha256(original).hexdigest() for name in ('putgd-capture','putgd-kde-region','putgd-ui')}
+            for name in digests:
+                binary=directory/name;binary.write_bytes(original);binary.write_bytes(replacement)
+            with patch('pathlib.Path.home',return_value=home),patch('shutil.which',return_value=None), \
+                 patch.object(probe,'VERIFIED_HELPER_SHA256',digests,create=True),patch.object(probe,'owned',return_value=True):
+                for check in (probe.native_capture_process,probe.selector_process):
+                    with self.subTest(check=check.__name__),patch('builtins.open',return_value=io.BytesIO(replacement)):
+                        self.assertFalse(check(7))
+
+    def test_helper_roles_and_missing_receipts_cannot_authorize_a_capture(self):
+        """A trusted UI helper is not a capture helper, and a pathname supplies no authority."""
+        data=b'synthetic UI helper';digests={'putgd-ui':hashlib.sha256(data).hexdigest()}
+        with patch.object(probe,'VERIFIED_HELPER_SHA256',digests),patch.object(probe,'owned',return_value=True):
+            with patch('builtins.open',return_value=io.BytesIO(data)):
+                self.assertTrue(probe.selector_process(7))
+            with patch('builtins.open',return_value=io.BytesIO(data)):
+                self.assertFalse(probe.native_capture_process(7))
+        with patch.object(probe,'VERIFIED_HELPER_SHA256',{}),patch.object(probe,'owned',return_value=True), \
+             patch('os.path.samefile',return_value=True),patch('shutil.which',return_value='/installed/putgd-capture'):
+            self.assertFalse(probe.native_capture_process(7))
+            self.assertFalse(probe.selector_process(7))
+
+    def test_appimage_helper_needs_the_verified_extracted_binary_bytes(self):
+        """The controller-provided inventory distinguishes installed bytes from a lookalike."""
+        trusted=b'synthetic trusted binary';digests={'putgd-kde-region':hashlib.sha256(trusted).hexdigest()}
+        with patch.object(probe,'VERIFIED_HELPER_SHA256',digests),patch.object(probe,'owned',return_value=True):
+            for data,expected in ((b'foreign same-name binary',False),(trusted,True)):
+                with patch('builtins.open',return_value=io.BytesIO(data)):
+                    self.assertEqual(probe.selector_process(7),expected)
 
     def test_wayland_selector_checks_the_next_drag_point_before_motion(self):
         ctx=DriverContext.__new__(DriverContext)

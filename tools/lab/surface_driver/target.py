@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shlex
 import selectors
+import stat
 import subprocess
 import time
 import uuid
@@ -117,6 +118,7 @@ def stalled(stderr):
     return ' in ' + ' <- '.join(name + ':' + line for line, name in frames[:4])
 namespace = {'__name__': 'surface_driver_probe'}
 exec(compile(SOURCE, 'surface_driver_probe.py', 'exec'), namespace)
+namespace['VERIFIED_HELPER_SHA256'] = HELPER_DIGESTS
 functions = {'accessible':'accessible', 'geometry':'geometry', 'control':'control_geometry',
              'foreground':'foreground', 'windows':'windows', 'tray':'tray', 'layout':'layout',
              'notification_read':'notification_read', 'server_pid':'server_pid', 'resize':'resize_witness',
@@ -146,6 +148,7 @@ while True:
                 # the 12 s kill, and the probe's own error reaches the caller
                 # verbatim instead of a bare non-zero exit (#805).
                 child_source = ("__name__ = 'surface_driver_probe'\n" + SOURCE +
+                                "\nVERIFIED_HELPER_SHA256 = " + repr(HELPER_DIGESTS) + "\n" +
                                 "\nimport faulthandler as _fh, json as _json, time as _time\n"
                                 "_fh.dump_traceback_later(11, exit=False)\n"
                                 "PROCESS_STARTED = _time.monotonic()\n"
@@ -173,6 +176,38 @@ while True:
 
 # The server answers every request within its 12 s fresh-child bound.
 PROBE_REPLY_SECONDS = 15
+
+
+def installed_helper_digests(run):
+    """Read helper identities from the controller's receipt, never a guest pathname."""
+    path = Path(run)/'package.json'
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except FileNotFoundError:
+        return {}
+    except OSError:
+        raise RecipeBlocked('installation receipt cannot provide trusted helper identities') from None
+    try:
+        with os.fdopen(fd) as stream:
+            metadata = os.fstat(stream.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != os.getuid():
+                raise ValueError('unowned receipt')
+            data = stream.read(1024*1024+1)
+        if len(data) > 1024*1024:
+            raise ValueError('oversized receipt')
+        receipt = json.loads(data)
+        if not isinstance(receipt, dict) or not isinstance(receipt.get('installedBinarySha256'), dict):
+            raise ValueError('missing installed identities')
+        result = {}
+        for name in ('putgd-capture', 'putgd-kde-region', 'putgd-ui'):
+            digest = receipt['installedBinarySha256'].get('/usr/bin/'+name)
+            if digest is not None:
+                if not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
+                    raise ValueError('invalid installed identity')
+                result[name] = digest
+        return result
+    except (ValueError, OSError, UnicodeError):
+        raise RecipeBlocked('installation receipt cannot provide trusted helper identities') from None
 
 
 class ProbeDeadline(Exception):
@@ -448,6 +483,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             raise RecipeBlocked('persistent desktop probe failed; '+(detail+'; ' if detail else '')+
                                 'start a new run before further input')
         if self._probe_process is None:
+            digests = installed_helper_digests(self.run)
             # Discover through the same native-session adapter as one-shot
             # probes. Only desktop connection variables cross this boundary.
             keys = ('DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','XDG_SESSION_TYPE',
@@ -464,7 +500,7 @@ print(json.dumps({'hostname':platform.node(),'kernel':platform.release(),'machin
             self._probe_process = subprocess.Popen(args+[command], stdin=subprocess.PIPE,
                                                    stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
             self._probe_source = source
-            self._probe_bootstrap = (json.dumps('SOURCE='+repr(source)+chr(10)+PROBE_SERVER)+'\n').encode()
+            self._probe_bootstrap = (json.dumps('SOURCE='+repr(source)+'\nHELPER_DIGESTS='+repr(digests)+'\n'+PROBE_SERVER)+'\n').encode()
         elif source != self._probe_source:
             self._probe_failed = True
             raise RecipeBlocked('desktop probe source changed during the run; start a new identified run')
