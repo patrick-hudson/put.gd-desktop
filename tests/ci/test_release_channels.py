@@ -166,11 +166,13 @@ class Workflows(unittest.TestCase):
         self.assertRegex(scan, r'gitleaks/releases/download/v8\.\d+\.\d+/gitleaks_8\.\d+\.\d+_linux_x64\.tar\.gz')
         self.assertRegex(scan, r'echo "[0-9a-f]{64}  \$archive" \| sha256sum --check --strict')
         for text in ('--config .gitleaks.toml', '--log-opts=--all', '--redact', '--exit-code 1',
-                     '--report-path build/contracts/gitleaks.sarif'):
+                     '--report-path "$report_dir/raw.sarif"', '|| status=$?',
+                     'python3 tools/ci/sanitize_gitleaks_sarif.py "$report_dir/raw.sarif" build/contracts/gitleaks.sarif',
+                     'exit "$status"'):
             self.assertIn(text, scan)
         config = (ROOT / '.gitleaks.toml').read_text()
         self.assertIn('useDefault = true', config)
-        self.assertNotRegex(config, r'(?m)^paths\s*=')
+        self.assertNotIn('regexTarget = "line"', config)
 
     def test_linux_tests_keep_their_isolation_and_skip_the_duplicate_release_compile(self):
         linux = job(workflow('ci.yml'), 'linux')

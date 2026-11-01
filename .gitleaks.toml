@@ -1,21 +1,46 @@
 # gitleaks configuration for the CI secret scan (contracts job in
 # .github/workflows/ci.yml). The default rules apply; the allowlists below name
 # the values this repository legitimately records that look like secrets.
-# Keep every entry narrow: a hash shape, a public key shape or a test fixture
-# marker, never a directory.
+# Digest/UUID exceptions require both a false-positive rule ID and a verified path.
+# Fixture exceptions match the extracted secret exactly, never adjacent text.
 title = "put.gd secret scan"
+minVersion = "v8.30.1"
 
 [extend]
 useDefault = true
 
+# Package receipts, evidence checksums/build IDs and source inventories.
+# Neither Sourcegraph nor Squarespace credentials are exempted by this list.
 [[allowlists]]
-description = "Digests, fingerprints, build ids and object keys named by UUID"
-regexTarget = "secret"
-regexes = [
-  '''^[0-9a-fA-F]{40}$''',
-  '''^[0-9a-fA-F]{64}$''',
-  '''^[A-Za-z0-9._-]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[A-Za-z0-9._-]*$''',
+description = "Recorded digests and public signing fingerprints"
+targetRules = ["generic-api-key", "sentry-access-token"]
+condition = "AND"
+paths = [
+  '''^docs/evidence/''',
+  '''^tools/proton/notices/THIRD-PARTY-NOTICES\.txt$''',
+  '''^tools/lab/surface_map/coverage/2026-10-30-surface-driver-history\.json$''',
 ]
+regexTarget = "secret"
+regexes = ['''^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$''']
+
+[[allowlists]]
+description = "Git revisions in the audited SBOM disposition provenance"
+targetRules = ["sourcegraph-access-token"]
+condition = "AND"
+paths = ['''^packaging/sbom/dispositions/511\.json$''']
+regexTarget = "secret"
+regexes = ['''^[0-9a-f]{40}$''']
+
+[[allowlists]]
+description = "UUID-named object keys in publication receipts and storage visual evidence"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/evidence/[^/]+/(?:.*/)?receipt[^/]*\.json$''',
+         '''^docs/evidence/[^/]+/(?:.*/)?receipts/(?:.*/)?[^/]+\.json$''',
+         '''^docs/evidence/2026-10-14-storage-tray-native/(?:cinnamon|gnome|kde)/visual-results\.json$''',
+         '''^docs/evidence/2026-10-14-storage-tray-native/kde-fresh/visual\.json$''']
+regexTarget = "secret"
+regexes = ['''^[A-Za-z0-9._-]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[A-Za-z0-9._-]*$''']
 
 [[allowlists]]
 description = "Public verification keys, CMake cache entries and error-code names"
@@ -25,15 +50,6 @@ regexes = [
   '''^INTERNAL=''',
   '''^libxcb-keysyms''',
   '''^b2_bucket_private$''',
-]
-
-[[allowlists]]
-description = "Visibly synthetic fixtures and redaction tests"
-regexTarget = "line"
-regexes = [
-  '''(?i)synthetic''',
-  '''redact::text\(''',
-  '''Quarterly Secret Plan\.png''',
 ]
 
 [[allowlists]]
@@ -53,3 +69,29 @@ regexes = [
   '''^grype-db-v6-[0-9a-f]{64}$''',
   '''^foreground/occlusion$''',
 ]
+
+[[allowlists]]
+description = "Exact synthetic AppImage TLS-check access key"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^docs/evidence/2026-10-21-appimage-ca-bundle-329/lab/i329\.py$''']
+regexTarget = "secret"
+regexes = ['''^AKIAPUTGDI329SYNTHETIC$''']
+
+[[allowlists]]
+description = "Extracted filename fixture in historical Windows diagnostics tests"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^src/windows/tests/test_diagnostics\.cpp$''']
+regexTarget = "secret"
+regexes = ['''^shots/Quarterly$''']
+
+# The default private-key regex spans the two deliberately incomplete C++ PEM
+# literals. Match that exact extracted fixture, including the intervening CHECK.
+[[allowlists]]
+description = "Exact incomplete PEM redaction fixture in historical Windows diagnostics tests"
+targetRules = ["private-key"]
+condition = "AND"
+paths = ['''^src/windows/tests/test_diagnostics\.cpp$''']
+regexTarget = "secret"
+regexes = ['''^-----BEGIN RSA PRIVATE KEY-----\\nMIIEpA\\n-----END RSA PRIVATE KEY----- after"\) == "<redacted-private-key> after"\);\n    CHECK\(redact::text\("-----BEGIN PRIVATE KEY-----$''']

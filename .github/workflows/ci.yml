@@ -97,8 +97,8 @@ jobs:
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
           "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
       - name: Scan every branch and tag for leaked secrets
-        # Allowlisted shapes live in .gitleaks.toml. The redacted SARIF report
-        # joins the contract reports; a finding fails the job.
+        # Scoped exceptions live in .gitleaks.toml. Only sanitized SARIF enters
+        # the artifact directory, even when a finding fails the scan.
         if: always()
         run: |
           archive="$RUNNER_TEMP/gitleaks.tar.gz"
@@ -106,9 +106,18 @@ jobs:
             https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $archive" | sha256sum --check --strict
           tar -xzf "$archive" -C "$RUNNER_TEMP" gitleaks
+          GITLEAKS_BIN="$RUNNER_TEMP/gitleaks" python3 -m unittest discover -s tests/ci -p test_gitleaks.py -v
           mkdir -p build/contracts
+          report_dir=$(mktemp -d "$RUNNER_TEMP/gitleaks-report.XXXXXX")
+          trap 'rm -rf "$report_dir"' EXIT
+          status=0
           "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --log-opts=--all --redact --no-banner \
-            --exit-code 1 --report-format sarif --report-path build/contracts/gitleaks.sarif
+            --exit-code 1 --report-format sarif --report-path "$report_dir/raw.sarif" || status=$?
+          # A sanitizer failure must not hide the scanner's own result.
+          sanitized=0
+          python3 tools/ci/sanitize_gitleaks_sarif.py "$report_dir/raw.sarif" build/contracts/gitleaks.sarif || sanitized=$?
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          exit "$sanitized"
       - name: Preserve contract reports
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
