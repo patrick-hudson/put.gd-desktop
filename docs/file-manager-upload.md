@@ -30,6 +30,14 @@ The design, its council review and the decisions behind it are in
 Not supported: Deepin, COSMIC Files before epoch-1.0.10, the AppImage on UKUI
 and on Plasma 5.27, Enlightenment's EFM and Trinity. Flatpak is not a target.
 
+The entry reaches desktops the rest of the app doesn't list as supported. The
+[README](../README.md) lists Cinnamon on X11, GNOME 50 on Wayland, KDE Plasma on
+Wayland or X11, and Aurora on the AppImage. On XFCE, MATE, LXQt, LXDE, Budgie,
+Pantheon, COSMIC and UKUI, only right-click upload, its banner and the link are
+covered. Pantheon's Secure Session is the exception: the upload and banner work,
+but the link isn't copied, because Gala offers no data-control
+([Copying the link](#copying-the-link)). Pantheon's Classic Session copies it.
+
 **Thunar** shows the entry under Send To for every file and folder; the Send
 To file has no `MimeType` key because Thunar matches types exactly. **Pantheon
 Files** may also show it on a background right-click, which uploads the
@@ -62,14 +70,25 @@ link was copied on the `v26.1101.3698-nightly` DEB and AppImage.
 - **DEB and RPM:** installed with the package, always on. Files, Caja and
   Peony load their plugins only when they start, and Files keeps running after
   its last window closes, so the entry may appear only after a restart. The
-  first time put.gd runs after installing, its notice names each file manager
-  that needs one and offers **Restart Files** (or Caja, Peony), which closes
-  all of that file manager's windows.
+  first time put.gd runs after installing, its notice names the desktop's own
+  file manager if it needs one. If the desktop's notifications can show buttons,
+  it offers **Restart Files** (or Caja, Peony), which closes all of that file
+  manager's windows.
 - **AppImage:** the first time it runs, put.gd writes per-user entries and
   shows "Upload with put.gd is now in your file manager's right-click menu",
   once per installation. **Settings → General → File manager → File manager
   menu** turns them off (removing only the files this AppImage wrote) and on
   again; `preferences.fileManagerMenu` holds the switch.
+- **PCManFM and PCManFM-Qt**, with the DEB, RPM or AppImage: they load their
+  entries at the first file menu they show, so one that has already shown a
+  menu may not show the new entry until it restarts. On LXDE and LXQt the notice
+  says to restart it if the entry is missing and, the same way, offers
+  **Restart PCManFM** (or PCManFM-Qt). It closes all of their windows; the
+  desktop comes back. With no notification server, as on a plain LXDE, the
+  notice is a balloon and a click on it restarts.
+
+Where the entry isn't supported ([the list above](#where-the-entry-appears)),
+there is no notice.
 
 Per-user files:
 
