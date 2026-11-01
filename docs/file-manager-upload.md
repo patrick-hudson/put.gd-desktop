@@ -34,7 +34,9 @@ The entry reaches desktops the rest of the app doesn't list as supported. The
 [README](../README.md) lists Cinnamon on X11, GNOME 50 on Wayland, KDE Plasma on
 Wayland or X11, and Aurora on the AppImage. On XFCE, MATE, LXQt, LXDE, Budgie,
 Pantheon, COSMIC and UKUI, only right-click upload, its banner and the link are
-covered.
+covered. Pantheon's Secure Session is the exception: the upload and banner work,
+but the link isn't copied, because Gala offers no data-control
+([Copying the link](#copying-the-link)). Pantheon's Classic Session copies it.
 
 **Thunar** shows the entry under Send To for every file and folder; the Send
 To file has no `MimeType` key because Thunar matches types exactly. **Pantheon
