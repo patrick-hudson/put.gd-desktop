@@ -200,11 +200,12 @@ class FileManagerUpload(unittest.TestCase):
         ctx.call = Mock(return_value=dict(operations=[]))
         ctx.notifications = Mock(return_value=[dict(summary='Upload complete')] * notices)
         detail = dict(id='row', name=name, receipt=dict(directUrl='http://127.0.0.1:1/fm.txt'))
+        scope = Mock()
         @contextmanager
         def lane(ctx):
-            yield object(), object()
+            yield scope, object()
         with patch.object(outcomes, '_lane', lane), patch.object(outcomes, '_clipboard_reader'), \
-             patch.object(outcomes, '_file_manager_window', return_value=('role', 'fm.txt', 'digest')), \
+             patch.object(outcomes, '_file_manager_window', return_value=('role', 'fm.txt', 'digest', 'window')), \
              patch.object(outcomes, '_right_click_file'), patch.object(outcomes, '_click_menu_entry'), \
              patch.object(outcomes.history, '_new_operation', return_value=dict(id='operation')), \
              patch.object(outcomes.tray, '_notice', return_value=dict(summary='Upload complete')), \
@@ -214,6 +215,8 @@ class FileManagerUpload(unittest.TestCase):
              patch.object(outcomes, '_frame'):
             outcomes.file_manager_upload(ctx)
         history.assert_called_once_with(ctx, detail)
+        # Closed first, so the History frame shows the row.
+        scope.stop.assert_called_once_with('window')
 
     def test_upload_oracles(self):
         self.upload_case()
@@ -236,7 +239,7 @@ class FileManagerUpload(unittest.TestCase):
         ctx.keys = Mock()
         scope = SimpleNamespace(root='/synthetic', token='a'*32, write=Mock(), launch=Mock(), defer=Mock())
         with patch.object(outcomes.history, '_wait_window'):
-            role, name, _ = outcomes._file_manager_window(ctx, scope, dict(process='nemo', command=['nemo'], quit=['nemo', '--quit'], view_keys=['Ctrl+2']))
+            role, name, _, _ = outcomes._file_manager_window(ctx, scope, dict(process='nemo', command=['nemo'], quit=['nemo', '--quit'], view_keys=['Ctrl+2']))
         self.assertEqual(ctx.shell.call_args_list[0].args[0], 'nemo --quit')
         self.assertEqual(ctx.shell.call_count, 3)
         scope.launch.assert_called_once_with(['nemo', '/synthetic/fm-aaaaaaaa'], name='file-manager')

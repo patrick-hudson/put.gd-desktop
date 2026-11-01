@@ -573,7 +573,7 @@ def _file_manager_window(ctx, scope, manager):
         ctx.shell(shlex.join(manager['quit']))  # Fails when none is running; the wait decides.
         running = 'pgrep -u "$(id -u)" -x ' + shlex.quote(manager['process'])
         ctx.wait(lambda: ctx.shell(running)['returncode'] == 1, manager['process'] + ' is gone before the restart', timeout=15)
-    scope.launch(manager['command'] + [scope.root + '/' + label], name='file-manager')
+    window = scope.launch(manager['command'] + [scope.root + '/' + label], name='file-manager')
     role = 'outcome-file-manager'
     previous = ctx.profile.get('windows', {})
     ctx.profile['windows'] = {**previous, role: {'title': re.escape(label), **manager.get('window', {})}}
@@ -583,7 +583,7 @@ def _file_manager_window(ctx, scope, manager):
     # Some icon views export no file bounds; their list views do.
     if manager.get('view_keys'):
         ctx.keys(*manager['view_keys'])
-    return role, name, hashlib.sha256(data).hexdigest()
+    return role, name, hashlib.sha256(data).hexdigest(), window
 
 
 def _show_banners(ctx, scope):
@@ -701,7 +701,7 @@ def file_manager_upload(ctx):
         _clipboard_reader(scope)
         if manager.get('show_banners'):
             _show_banners(ctx, scope)
-        role, name, digest = _file_manager_window(ctx, scope, manager)
+        role, name, digest, window = _file_manager_window(ctx, scope, manager)
         ctx.frame('file-manager-open')
         before = {o['id'] for o in ctx.call('operation.recent')['operations']}
         _right_click_file(ctx, role, name, manager)
@@ -715,6 +715,9 @@ def file_manager_upload(ctx):
         _auto_copy(ctx, scope, detail)
         ctx.expect(len([n for n in ctx.notifications() if n.get('summary') == 'Upload complete']) == 1, 'one upload banner')
         ctx.expect(detail['name'] == name, 'History row names the right-clicked file')
+        # GNOME keeps a window opened from elsewhere behind the focused one, so the
+        # file manager goes first: the frame must show the row, not cover it.
+        scope.stop(window)
         _history(ctx, detail)
         _frame(ctx, 'file-manager-history-row')
 
