@@ -1250,7 +1250,18 @@ def geometry(query):
                     # the output union), not any individual cover window.
                     return box in query['selector_screens'] and n.get('name') == 'Capture region'
                 return n.get('rect') == box
-            found = [w for w in found if any(bound(w, n) for n in nodes)]
+            if (not nodes and query.get('selector') and
+                    query.get('accessible', {}).get('name') == 'Capture region'):
+                # The native XCB cover maps before Qt's accessibility bridge.
+                # Pointer input can bind it independently: exact owned helper,
+                # anonymous override-redirect window and measured output bounds.
+                # The existing hit-test still guards every pointer gesture;
+                # keyboard input keeps its separate focus/grab witness.
+                found = [w for w in found if owned(w.get('pid')) and native_capture_process(w.get('pid'))
+                         and w.get('override_redirect') and not w.get('name')
+                         and [w[k] for k in ('x', 'y', 'width', 'height')] in query['selector_screens']]
+            else:
+                found = [w for w in found if any(bound(w, n) for n in nodes)]
         # Native selector overlays can have one visible window per head. The
         # focused head (or explicitly selected head) disambiguates, never order.
         if query.get('point'):
