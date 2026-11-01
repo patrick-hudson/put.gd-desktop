@@ -23,6 +23,11 @@
 #include <QThread>
 #include <QTimer>
 #include <QUrl>
+#include <condition_variable>
+#include <mutex>
+#include <optional>
+#include <thread>
+#include <chrono>
 #include <cerrno>
 #include <csignal>
 #include <cstdio>
@@ -158,6 +163,18 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  if(!result.complete)result.out.clear();
  return result;
 }
+// The in-process GIO queries share the URI deadline: a timer thread cancels them
+// when it passes, so a stalled GVfs backend can't keep the client from reporting.
+class QueryDeadline {
+public:
+ explicit QueryDeadline(int ms):timer_([this,ms]{std::unique_lock lock(mutex_);if(!wake_.wait_for(lock,std::chrono::milliseconds(ms),[this]{return done_;}))g_cancellable_cancel(cancellable_);}) {}
+ ~QueryDeadline(){{std::lock_guard lock(mutex_);done_=true;}wake_.notify_one();timer_.join();g_object_unref(cancellable_);}
+ GCancellable* cancellable() const {return cancellable_;}
+private:
+ GCancellable* cancellable_=g_cancellable_new();
+ std::mutex mutex_;std::condition_variable wake_;bool done_=false;
+ std::thread timer_;
+};
 QHash<QString,QString> hostGioInfo(const QStringList& uris){
  QHash<QString,QString> found;if(uris.isEmpty())return found;
  const QDeadlineTimer deadline(resolveDeadlineMs);
@@ -340,6 +357,7 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
  Resolution result;QStringList remote;QList<int> remoteIndexes;
  QStringList paths(arguments.size());QList<bool> resolved(arguments.size(),false);
  static const QRegularExpression scheme(QStringLiteral("^[A-Za-z][A-Za-z0-9+.-]*:"));
+ std::optional<QueryDeadline> deadline;
  for(int i=0;i<arguments.size();++i){
   const auto& argument=arguments[i];
   if(argument.startsWith('/')){paths[i]=argument;resolved[i]=true;continue;}
@@ -357,7 +375,8 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   GFile* file=g_file_new_for_uri(bytes.constData());
   char* path=g_file_get_path(file);
   // Recent and Starred items have no path of their own, only a target URI.
-  if(!path)if(GFileInfo* info=g_file_query_info(file,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI,G_FILE_QUERY_INFO_NONE,nullptr,nullptr)){
+  if(!path&&!deadline)deadline.emplace(resolveDeadlineMs);
+  if(!path)if(GFileInfo* info=g_file_query_info(file,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI,G_FILE_QUERY_INFO_NONE,deadline->cancellable(),nullptr)){
    if(const char* target=g_file_info_get_attribute_string(info,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI)){GFile* resolvedFile=g_file_new_for_uri(target);path=g_file_get_path(resolvedFile);g_object_unref(resolvedFile);}
    g_object_unref(info);
   }
