@@ -115,9 +115,12 @@ authenticated resident's, the views helper's registered through
 `SetUiProcess`, or that of any other process whose parent (from
 `/proc/PID/stat`) is the resident. The last rule covers the Edit & upload
 editor (`putgd-ui --edit-image`) and the recording helper, which never register
-(#103). The resident starts no external application: links and folders are
-opened by the views helper through the desktop, so they are never the
-resident's direct children. The
+(#103). Links and folders open through the portal's `OpenURI`/`OpenDirectory`
+requests or, when the portal fails, a detached `gio open`/`xdg-open` launch
+(`QProcess::startDetached`, so the opener is reparented to the session and is
+never a direct child of the process that launched it; see
+[diagnostics](../diagnostics.md)). The browser or file manager is therefore
+never classified as put.gd's own window. The
 [editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
 records the physical Fedora 44 runs from the RPM and the AppImage.
 
