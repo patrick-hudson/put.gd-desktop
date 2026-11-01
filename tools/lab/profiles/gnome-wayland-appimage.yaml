@@ -1,0 +1,21 @@
+{
+  "name": "gnome-wayland-appimage",
+  "desktop": "GNOME",
+  "session": "wayland",
+  "qt_platform": "wayland",
+  "session_process": "gnome-shell",
+  "image": "gnome-wayland",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance",
+  "tray_menu": {
+    "button": "right",
+    "openSeconds": 0.8,
+    "firstRowSelected": false,
+    "primeOpen": true
+  },
+  "install": "appimage"
+}

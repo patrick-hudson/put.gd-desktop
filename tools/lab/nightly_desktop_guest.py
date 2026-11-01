@@ -221,7 +221,9 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
 
 def prepare(run, row, out):
     lab.verify_owned_guest(run)
-    package = row['package']
+    # AppImages also run on Debian-derived guests. Their probe dependencies
+    # still come from apt; selecting the probes never changes the app artifact.
+    package = row.get('probePackageManager', row['package'])
     if package == 'deb':
         plan = lab.ssh(run, 'sudo -n apt-get -s install --no-install-recommends '+DEB_TOOLS, timeout=120)
         for line in plan.splitlines():
