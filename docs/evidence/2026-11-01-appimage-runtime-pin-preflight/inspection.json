@@ -1,0 +1,29 @@
+{
+  "inspectedAt": "2026-11-01T12:15:00.253729+00:00",
+  "host": "patrick-Precision-5540",
+  "scope": "Read-only public upstream asset inspection; no execution, package build or graphical acceptance",
+  "downloads": [
+    {
+      "file": "runtime-x86_64",
+      "bytes": 944632,
+      "sha256": "617aa77314d57c8b8e4fae9c3f0b35af7b30d5529cb69e98f64f92510ed98a46",
+      "matchesUpstreamDigest": true
+    },
+    {
+      "file": "runtime-x86_64.debug",
+      "bytes": 1361136,
+      "sha256": "193dd7abf4af95a5cb930ff9b7989524bf625049b1274ad03c702aba77326cc3",
+      "matchesUpstreamDigest": true
+    }
+  ],
+  "runtimeEmbeddedCommit": "https://github.com/AppImage/type2-runtime/commit/fedfad5",
+  "result": "blocked: continuous upload replaces releases/assets; no durable upstream pin found",
+  "debugIdentity": {
+    "runtimeNotes": "Displaying notes found in: .note.gnu.build-id\n  Owner                Data size \tDescription\n  GNU                  0x00000014\tNT_GNU_BUILD_ID (unique build ID bitstring)\n    Build ID: ef655b05ac26feebfd3bc24ec7ccb30389cefc33",
+    "debugNotes": "Displaying notes found in: .note.gnu.build-id\n  Owner                Data size \tDescription\n  GNU                  0x00000014\tNT_GNU_BUILD_ID (unique build ID bitstring)\n    Build ID: ef655b05ac26feebfd3bc24ec7ccb30389cefc33",
+    "debuglinkName": "runtime-x86_64.debug",
+    "debuglinkCRC32": "101f03b8",
+    "debugCRC32": "101f03b8",
+    "debuglinkMatches": true
+  }
+}
