@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -213,10 +213,12 @@ class FileManagerUpload(unittest.TestCase):
              patch.object(outcomes, '_complete', return_value=(detail, uploaded)), \
              patch.object(outcomes, '_auto_copy'), patch.object(outcomes, '_history') as history, \
              patch.object(outcomes, '_frame'):
+            order = Mock()
+            order.attach_mock(scope.stop, 'stop')
+            order.attach_mock(history, 'history')
             outcomes.file_manager_upload(ctx)
-        history.assert_called_once_with(ctx, detail)
         # Closed first, so the History frame shows the row.
-        scope.stop.assert_called_once_with('window')
+        self.assertEqual(order.mock_calls, [call.stop('window'), call.history(ctx, detail)])
 
     def test_upload_oracles(self):
         self.upload_case()
