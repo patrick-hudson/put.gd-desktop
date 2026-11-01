@@ -48,7 +48,7 @@ Error walk(const QString& folder,const std::function<Error(const Entry&)>& visit
  Entry top;top.parent=parent.fd;top.leaf=leaf.constData();top.directory=true;
  if(parent.fd<0||fstatat(parent.fd,leaf.constData(),&top.info,AT_SYMLINK_NOFOLLOW)!=0)return unreadable(display,errno);
  if(!S_ISDIR(top.info.st_mode))return {"source_unavailable",QStringLiteral("%1 is not a folder").arg(display),{}};
- QByteArray raw=leaf+'/';top.name=QString::fromUtf8(raw).toUtf8();
+ QByteArray raw=leaf+'/';if(QString::fromUtf8(raw).toUtf8()!=raw)return {"source_unsupported",QStringLiteral("%1 has a name that is not valid UTF-8").arg(display),{}};top.name=raw;
  if(auto e=visit(top))return e;
  std::vector<std::pair<std::unique_ptr<DIR,DirectoryClose>,int>> stack;
  const int first=openat(parent.fd,leaf.constData(),O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);DIR* opened=first<0?nullptr:fdopendir(first);
@@ -63,7 +63,10 @@ Error walk(const QString& folder,const std::function<Error(const Entry&)>& visit
   if(fstatat(entry.parent,item->d_name,&entry.info,AT_SYMLINK_NOFOLLOW)!=0) {if(errno==ENOENT)continue;return unreadable(shown(raw+item->d_name),errno);}
   // Symlinks, sockets, FIFOs and devices are skipped, never followed.
   entry.directory=S_ISDIR(entry.info.st_mode);if(!entry.directory&&!S_ISREG(entry.info.st_mode))continue;
-  const auto path=raw+item->d_name+(entry.directory?"/":"");entry.name=QString::fromUtf8(path).toUtf8();
+  const auto path=raw+item->d_name+(entry.directory?"/":"");
+  // Invalid UTF-8 would become U+FFFD, and two distinct names could collide in the archive.
+  if(QString::fromUtf8(path).toUtf8()!=path)return {"source_unsupported",QStringLiteral("%1 has a name that is not valid UTF-8").arg(shown(path).left(255)),{}};
+  entry.name=path;
   if(std::strchr(item->d_name,'\\'))return backslash(shown(entry.name));
   if(entry.name.size()>0xffff)return {"source_unsupported",QStringLiteral("%1 has a path too long for a zip archive").arg(shown(entry.name).left(255)),{}};
   if(auto e=visit(entry))return e;

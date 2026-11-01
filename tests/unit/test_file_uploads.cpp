@@ -11,6 +11,8 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <fcntl.h>
+#include <unistd.h>
 using namespace putgd;
 // "Upload with put.gd" from a file manager (#1105): the checks upload.files
 // runs before an operation exists, its stored route, and the --upload client's
@@ -119,6 +121,11 @@ private slots:
   const auto odd=dir_.filePath("tree/Odd");write(odd+"/a\\b.txt","x");
   selection=FileUploads::select({odd},settingsWith(QJsonArray{profile("a")}),"files",0,-1);
   QCOMPARE(selection.error.code,QString("files_rejected"));QVERIFY(selection.error.message.contains("backslash"));
+  // Names that are not UTF-8 can't keep their name in a zip, and could collide.
+  const auto latin=dir_.filePath("tree/Latin");QDir().mkpath(latin);
+  {const auto name=QFile::encodeName(latin)+"/a\xff.txt";const int fd=::open(name.constData(),O_WRONLY|O_CREAT|O_TRUNC,0600);QVERIFY(fd>=0);QCOMPARE(::write(fd,"x",1),ssize_t(1));::close(fd);}
+  selection=FileUploads::select({latin},settingsWith(QJsonArray{profile("a")}),"files",0,-1);
+  QCOMPARE(selection.error.code,QString("files_rejected"));QVERIFY(selection.error.message.contains("UTF-8"));
   // Over the file limit in files mode: the folder is named.
   auto document=settingsWith(QJsonArray{profile("a")},{},{{"fileManagerFolders","files"}}).document;auto limits=document["limits"].toObject();limits["maxFiles"]=2;document["limits"]=limits;
   selection=FileUploads::select({root},Settings::fromValidated(document),"files",0,-1);
