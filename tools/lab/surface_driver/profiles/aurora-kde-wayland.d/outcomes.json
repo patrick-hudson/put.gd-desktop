@@ -1,6 +1,10 @@
 {
   "browser": {
-    "command": ["flatpak", "run", "org.mozilla.firefox"],
+    "command": [
+      "flatpak",
+      "run",
+      "org.mozilla.firefox"
+    ],
     "profile_root": "~/.var/app/org.mozilla.firefox/.mozilla/firefox"
   },
   "focus": {
@@ -13,5 +17,11 @@
     "kind": "kwin-script",
     "shell_application": "",
     "stage": "none: existing one-shot read-only KWin script per observation"
+  },
+  "file_manager": {
+    "process": "dolphin",
+    "command": [
+      "dolphin"
+    ]
   }
 }

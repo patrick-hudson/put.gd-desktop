@@ -1,0 +1,11 @@
+{
+  "file_manager": {
+    "process": "nautilus",
+    "command": ["nautilus", "--new-window"],
+    "quit": ["nautilus", "-q"],
+    "show_banners": true,
+    "menu": "drawn",
+    "window": {"accessible": {"coordinates": "window"}},
+    "accessible": {"coordinates": "window"}
+  }
+}

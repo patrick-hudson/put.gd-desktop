@@ -243,6 +243,7 @@
   {"id": "event.autostart-login", "surface": "events", "kind": "event", "label": "Autostart at login (~/.config/autostart/putgd.desktop, AppImage login script)", "source": "src/app/LoginStartup.cpp"},
   {"id": "event.single-instance", "surface": "events", "kind": "event", "label": "Second resident sees session_running and activates the first", "visual": false, "source": "src/app/LocalServer.cpp"},
   {"id": "event.resident-retired", "surface": "events", "kind": "event", "label": "A resident left from an ended login session is retired (#490)", "visual": false, "source": "src/main.cpp"},
+  {"id": "event.file-manager-upload", "surface": "events", "kind": "event", "label": "Right-click a file in the file manager → Upload with put.gd: uploads right away, link on clipboard, notification", "method": "upload.files", "to": "history", "source": "src/app/FileManagerIntegration.cpp"},
   {"id": "event.config-changed", "surface": "events", "kind": "event", "label": "Config file changed externally: settings refresh, shortcuts rebound, login entry reapplied", "to": "settings-general", "source": "src/core/SettingsService.cpp"},
   {"id": "event.disk-full-import", "surface": "events", "kind": "event", "label": "Disk full on import: action error, toast, attention latch", "to": "notifications", "source": "src/core/ArtifactStore.cpp"},
   {"id": "event.disk-full-record", "surface": "events", "kind": "event", "label": "Disk full at record prepare (disk_space_insufficient)", "source": "src/app/RecordingService.cpp"},

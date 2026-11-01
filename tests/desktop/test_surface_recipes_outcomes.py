@@ -110,11 +110,154 @@ class Outcomes(unittest.TestCase):
             image.paste(mark, (box[0] + shift, box[1]))
             self.assertFalse(edited_pixels(image, original()))
 
-    def test_ten_recipes_reference_existing_interactions(self):
+    def test_eleven_recipes_reference_existing_interactions(self):
         recipes = discover('outcomes')
-        self.assertEqual(len(recipes), 10)
+        self.assertEqual(len(recipes), 11)
         validate_recipes(recipes)
         self.assertTrue(all(r.destinations == ('local',) for r in recipes))
+
+
+class FileManagerUpload(unittest.TestCase):
+    TSV = ('level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n'
+           '5\t1\t1\t1\t{line}\t1\t40\t200\t100\t20\t96\tUpload\n'
+           '5\t1\t1\t1\t2\t2\t150\t200\t60\t20\t96\twith\n'
+           '5\t1\t1\t1\t2\t3\t220\t200\t90\t20\t96\t{last}\n'
+           '5\t1\t1\t1\t3\t1\t40\t260\t100\t20\t96\tProperties\n')
+
+    def context(self, session='x11'):
+        ctx = ClipboardContext(session)
+        ctx.geometry = Mock(return_value=dict(x=0, y=0, width=1280, height=800, head=0, pid=7))
+        ctx.focus = Mock()
+        ctx.click_at = Mock()
+        ctx.frame = Mock()
+        return ctx
+
+    def test_right_click_lands_on_the_name_not_the_empty_end_of_its_row(self):
+        ctx = self.context()
+        # Nemo's row: [448,193,256,20]. Its centre is empty space, which opens the background menu.
+        ctx.accessible = Mock(return_value=[dict(rect=[448, 193, 256, 20], role='table cell')])
+        outcomes._right_click_file(ctx, 'role', 'fm.txt', {'process': 'nemo'})
+        ctx.click_at.assert_called_once_with(488, 203, button='right', head=0)
+        self.assertEqual(ctx.accessible.call_args.args[0]['name'], 'fm.txt*')
+
+    def test_the_smallest_node_naming_the_file_gets_the_click(self):
+        ctx = self.context()
+        ctx.accessible = Mock(return_value=[dict(rect=[0, 0, 500, 100], role='list item'), dict(rect=[10, 10, 100, 20], role='label')])
+        outcomes._right_click_file(ctx, 'role', 'fm.txt', {'process': 'dolphin'})
+        ctx.click_at.assert_called_once_with(50, 20, button='right', head=0)
+
+    def test_a_file_the_view_does_not_place_fails(self):
+        ctx = self.context()
+        # Nemo's icon view: the file has a name but no bounds.
+        ctx.accessible = Mock(return_value=[dict(rect=None, role='icon')])
+        with self.assertRaisesRegex(RecipeFailed, 'the file is visible'):
+            outcomes._right_click_file(ctx, 'role', 'fm.txt', {'process': 'nemo'})
+        ctx.click_at.assert_not_called()
+
+    def test_named_menu_needs_exactly_one_entry_and_clicks_it_as_a_popup(self):
+        ctx = self.context()
+        popups = []
+        ctx.click_at = Mock(side_effect=lambda *a, **k: popups.append(ctx._popup))
+        entry = dict(rect=[489, 270, 185, 26], popup=dict(role='menu'))
+        ctx.accessible = Mock(return_value=[])
+        with self.assertRaisesRegex(RecipeFailed, 'is in the right-click menu'):
+            outcomes._click_menu_entry(ctx, Mock(), 'role', {})
+        ctx.accessible = Mock(return_value=[entry, entry])
+        with self.assertRaisesRegex(RecipeFailed, 'one Upload with put.gd entry'):
+            outcomes._click_menu_entry(ctx, Mock(), 'role', {})
+        ctx.click_at.assert_not_called()
+        ctx.accessible = Mock(return_value=[entry])
+        outcomes._click_menu_entry(ctx, Mock(), 'role', {})
+        ctx.click_at.assert_called_once_with(541, 283, head=0)
+        self.assertEqual(popups, [entry['popup']])
+        self.assertIsNone(ctx._popup)
+
+    def test_drawn_menu_is_read_only_for_the_whole_entry_on_one_line(self):
+        self.assertEqual(outcomes._menu_line(self.TSV.format(line=2, last='put.gd')), (90, 210))
+        self.assertEqual(outcomes._menu_line(self.TSV.format(line=2, last='put.gd,')), (90, 210))
+        self.assertIsNone(outcomes._menu_line(self.TSV.format(line=2, last='nothing')))
+        self.assertIsNone(outcomes._menu_line(self.TSV.format(line=1, last='put.gd')))
+        self.assertIsNone(outcomes._menu_line('level\ttext\n'))
+
+    def test_drawn_menu_clicks_the_read_line_in_head_pixels(self):
+        ctx = self.context('wayland')
+        ctx.profile['compositor'] = dict(kind='gnome-lab-witness')
+        ctx._probe = Mock(return_value=dict(windows=[dict(pid=7, type=0, frame=[0, 0, 900, 500]),
+                                                     dict(pid=7, type=9, frame=[474, 240, 243, 450])]))
+        ctx.target = SimpleNamespace(capture_image=lambda head: Image.new('RGB', (1280, 800)))
+        ctx.shell = Mock(return_value=dict(returncode=0, stdout=self.TSV.format(line=2, last='put.gd')))
+        scope = SimpleNamespace(root='/synthetic', write=Mock())
+        outcomes._click_menu_entry(ctx, scope, 'role', {'menu': 'drawn'})
+        # The crop is read at twice its size.
+        ctx.click_at.assert_called_once_with(474 + 45, 240 + 105, head=0)
+        ctx.shell = Mock(return_value=dict(returncode=0, stdout='level\ttext\n'))
+        with self.assertRaisesRegex(RecipeFailed, 'is in the right-click menu'):
+            outcomes._click_menu_entry(ctx, scope, 'role', {'menu': 'drawn'})
+
+    def upload_case(self, *, notices=1, uploaded='digest', name='fm.txt'):
+        ctx = self.context()
+        ctx.profile.update(file_manager={'process': 'nemo'}, guest='cinnamon-x11')
+        ctx.call = Mock(return_value=dict(operations=[]))
+        ctx.notifications = Mock(return_value=[dict(summary='Upload complete')] * notices)
+        detail = dict(id='row', name=name, receipt=dict(directUrl='http://127.0.0.1:1/fm.txt'))
+        @contextmanager
+        def lane(ctx):
+            yield object(), object()
+        with patch.object(outcomes, '_lane', lane), patch.object(outcomes, '_clipboard_reader'), \
+             patch.object(outcomes, '_file_manager_window', return_value=('role', 'fm.txt', 'digest')), \
+             patch.object(outcomes, '_right_click_file'), patch.object(outcomes, '_click_menu_entry'), \
+             patch.object(outcomes.history, '_new_operation', return_value=dict(id='operation')), \
+             patch.object(outcomes.tray, '_notice', return_value=dict(summary='Upload complete')), \
+             patch.object(outcomes.tray, '_drawn_notice'), \
+             patch.object(outcomes, '_complete', return_value=(detail, uploaded)), \
+             patch.object(outcomes, '_auto_copy'), patch.object(outcomes, '_history') as history, \
+             patch.object(outcomes, '_frame'):
+            outcomes.file_manager_upload(ctx)
+        history.assert_called_once_with(ctx, detail)
+
+    def test_upload_oracles(self):
+        self.upload_case()
+        with self.assertRaisesRegex(RecipeFailed, 'SHA-256'):
+            self.upload_case(uploaded='other')
+        with self.assertRaisesRegex(RecipeFailed, 'one upload banner'):
+            self.upload_case(notices=2)
+        with self.assertRaisesRegex(RecipeFailed, 'names the right-clicked file'):
+            self.upload_case(name='other.txt')
+
+    def test_a_desktop_without_a_file_manager_is_blocked_not_green(self):
+        ctx = self.context()
+        with self.assertRaises(RecipeBlocked):
+            outcomes.file_manager_upload(ctx)
+
+    def test_a_running_file_manager_goes_first_and_only_the_owned_window_is_used(self):
+        ctx = self.context()
+        ctx.shell = Mock(side_effect=[dict(returncode=1), dict(returncode=0), dict(returncode=1)])
+        ctx.wait = lambda predicate, what, **kwargs: next(v for v in iter(predicate, None) if v)
+        ctx.keys = Mock()
+        scope = SimpleNamespace(root='/synthetic', token='a'*32, write=Mock(), launch=Mock(), defer=Mock())
+        with patch.object(outcomes.history, '_wait_window'):
+            role, name, _ = outcomes._file_manager_window(ctx, scope, dict(process='nemo', command=['nemo'], quit=['nemo', '--quit'], view_keys=['Ctrl+2']))
+        self.assertEqual(ctx.shell.call_args_list[0].args[0], 'nemo --quit')
+        self.assertEqual(ctx.shell.call_count, 3)
+        scope.launch.assert_called_once_with(['nemo', '/synthetic/fm-aaaaaaaa'], name='file-manager')
+        self.assertEqual(name, 'fm-aaaaaaaa.txt')
+        self.assertEqual(ctx.profile['windows'][role]['title'], 'fm\\-aaaaaaaa')
+        ctx.keys.assert_called_once_with('Ctrl+2')
+
+    def test_gnome_banners_turn_on_for_the_flow_and_back_off(self):
+        ctx = self.context('wayland')
+        ctx.shell = Mock(side_effect=[dict(returncode=0, stdout='false\n'), dict(returncode=0, stdout='')])
+        scope = SimpleNamespace(defer=Mock())
+        outcomes._show_banners(ctx, scope)
+        self.assertTrue(ctx.shell.call_args_list[1].args[0].endswith('set org.gnome.desktop.notifications show-banners true'))
+        ctx.shell = Mock(return_value=dict(returncode=0, stdout=''))
+        scope.defer.call_args.args[1]()
+        self.assertEqual(ctx.shell.call_args.kwargs, dict(cleanup=True))
+        self.assertTrue(ctx.shell.call_args.args[0].endswith('show-banners false'))
+        scope = SimpleNamespace(defer=Mock())
+        ctx.shell = Mock(return_value=dict(returncode=0, stdout='true\n'))
+        outcomes._show_banners(ctx, scope)
+        scope.defer.assert_not_called()
 
 
 class RecordingExports(unittest.TestCase):

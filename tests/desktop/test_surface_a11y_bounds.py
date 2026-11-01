@@ -258,6 +258,22 @@ class JustMappedWindow(unittest.TestCase):
             where = placement.toplevel(50, 'Preview', [0, 0, 932, 563])
         self.assertEqual((where['window_id'], where['frame'], asked.call_count), (31, [200, 100, 932, 600], 3))
 
+    def test_plasma_banner_is_placed_by_kwin_notification_flag_and_exact_size(self):
+        banner = dict(id='{banner}', title='plasmashell', pid=50, frame=[912, 629, 332, 81], content=[912, 629, 332, 81], notification=True)
+        panel = dict(id='{panel}', title='', pid=50, frame=[0, 746, 1280, 54], content=[0, 746, 1280, 54], notification=False)
+        placement = probe.WaylandPlacement({'kind': 'kwin-script', 'shell_application': ''})
+        placement._windows = [banner, panel]
+        self.assertEqual(placement.toplevel(50, '', [912, 629, 332, 81])['window_id'], '{banner}')
+        # Another anonymous window of that size is not the banner, and neither is a titled one.
+        placement = probe.WaylandPlacement({'kind': 'kwin-script', 'shell_application': ''})
+        placement._windows = [dict(banner, notification=False)]
+        with self.assertRaisesRegex(RuntimeError, 'missing or ambiguous'):
+            placement.toplevel(50, '', [912, 629, 332, 81])
+        placement = probe.WaylandPlacement({'kind': 'kwin-script', 'shell_application': ''})
+        placement._windows = [banner]
+        with self.assertRaisesRegex(RuntimeError, 'missing or ambiguous'):
+            placement.toplevel(50, 'Preview', [912, 629, 332, 81])
+
     def test_still_unmapped_is_refused_by_name_not_guessed(self):
         placement = probe.WaylandPlacement(WITNESS)
         placement.MAP_SETTLE = 0

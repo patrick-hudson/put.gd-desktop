@@ -7,6 +7,7 @@ invoking capture. Pixel tolerance is zero (these runs require scale 1).
 """
 from contextlib import contextmanager
 import base64
+import glob
 import hashlib
 import io
 import json
@@ -19,7 +20,7 @@ from ..api import RecipeBlocked, RecipeFailed, recipe
 from ..browser import default_browser, open_and_verify
 from ..catalog import image_modules
 from ..fixtures.base import Scope
-from . import editor, history, selectors
+from . import editor, history, selectors, tray
 
 
 def pixels_equal(actual, expected):
@@ -557,6 +558,165 @@ def edit_upload(ctx):
             x, y = (i % 2) * 320, (i // 2) * 160
             original.paste(color, (x, y, x + 320, y + 160))
         ctx.expect(edited_pixels(Image.open(io.BytesIO(data)), original), 'solid redaction and annotations occupy the drawn image coordinates')
+
+
+def _file_manager_window(ctx, scope, manager):
+    """The desktop's own file manager, in the private family, on one synthetic file.
+
+    A running one must go first, as the notice's restart does: a plugin loads
+    only at start, and it would run the entry outside the private family.
+    """
+    label = 'fm-' + scope.token[:8]
+    name, data = label + '.txt', ('putgd file manager upload ' + scope.token + '\n').encode()
+    scope.write(scope.root + '/' + label + '/' + name, data)
+    if manager.get('quit'):
+        ctx.shell(shlex.join(manager['quit']))  # Fails when none is running; the wait decides.
+        running = 'pgrep -u "$(id -u)" -x ' + shlex.quote(manager['process'])
+        ctx.wait(lambda: ctx.shell(running)['returncode'] == 1, manager['process'] + ' is gone before the restart', timeout=15)
+    scope.launch(manager['command'] + [scope.root + '/' + label], name='file-manager')
+    role = 'outcome-file-manager'
+    previous = ctx.profile.get('windows', {})
+    ctx.profile['windows'] = {**previous, role: {'title': re.escape(label), **manager.get('window', {})}}
+    scope.defer('file manager input role', lambda: ctx.profile.__setitem__('windows', previous))
+    history._wait_window(ctx, role)
+    ctx.focus(role, raise_window=False)
+    # Some icon views export no file bounds; their list views do.
+    if manager.get('view_keys'):
+        ctx.keys(*manager['view_keys'])
+    return role, name, hashlib.sha256(data).hexdigest()
+
+
+def _show_banners(ctx, scope):
+    """Nightly GNOME guests turn banners off; this flow asserts one, so turn them on for it."""
+    native = 'XDG_CONFIG_HOME="$HOME/.config" XDG_RUNTIME_DIR="$PIPEWIRE_RUNTIME_DIR" gsettings '
+    key = ' org.gnome.desktop.notifications show-banners'
+    if ctx.shell(native + 'get' + key)['stdout'].strip() != 'false':
+        return
+    ctx.expect(ctx.shell(native + 'set' + key + ' true')['returncode'] == 0, 'GNOME banners turned on')
+    scope.defer('GNOME banners', lambda: ctx.shell(native + 'set' + key + ' false', cleanup=True))
+
+
+def _node_point(ctx, role, node):
+    """A point on a live node, toward its start, as head pixels.
+
+    A list view's row runs past the file name, and past it is empty space to Nemo.
+    """
+    box = ctx.geometry(role)
+    x, y, width, height = node['rect']
+    point = (x + min(width / 2, 2 * height), y + height / 2)
+    ctx.expect(min(width, height) > 0 and node.get('coordinate_space') != 'window-relative',
+               'file manager node has desktop bounds')
+    scale = 1 if ctx.profile.get('session') == 'x11' else box.get('scale', 1)
+    return box, tuple(round((value - box.get(origin, 0)) * scale) for value, origin in zip(point, ('screen_x', 'screen_y')))
+
+
+def _right_click_file(ctx, role, name, manager):
+    # Nautilus adds the file type to the cell's name.
+    query = {'owned': True, 'name': glob.escape(name) + '*', 'visible': True, 'showing': True, **manager.get('accessible', {})}
+    def files():
+        return [n for n in ctx.accessible(query) if n.get('rect') and min(n['rect'][2:]) > 0]
+    nodes = ctx.wait(files, 'the file is visible in ' + manager['process'], timeout=30)
+    # A row and its label both name the file; the smallest is on the name itself.
+    node = min(nodes, key=lambda n: n['rect'][2] * n['rect'][3])
+    box, point = _node_point(ctx, role, node)
+    ctx.focus(role, raise_window=False)
+    ctx.click_at(*point, button='right', head=box.get('head', 0))
+
+
+ENTRY = 'Upload with put.gd'
+
+
+def _drawn_entry(ctx, scope, box):
+    """GTK4 exports its menu items without names, so read the drawn popup (head pixels)."""
+    from ..probe import POPUP_WINDOW_TYPES
+    def popup():
+        windows = ctx._probe('compositor_windows', {'compositor': ctx.profile['compositor']})['windows']
+        found = [w for w in windows if w['pid'] == box['pid'] and w.get('type') in POPUP_WINDOW_TYPES]
+        return found[0] if len(found) == 1 else None
+    menu = ctx.wait(popup, 'the right-click menu is drawn', timeout=15)
+    x, y, width, height = menu['frame']
+    attempts = []
+    def entry():
+        crop = ctx.target.capture_image(box.get('head', 0)).convert('RGB').crop((x, y, x + width, y + height))
+        stream = io.BytesIO()
+        crop.resize((width * 2, height * 2)).save(stream, format='PNG')
+        attempts.append(None)
+        path = scope.root + '/menu-' + str(len(attempts)) + '.png'
+        scope.write(path, stream.getvalue())
+        read = ctx.shell('tesseract ' + shlex.quote(path) + ' - --psm 6 tsv')
+        if read['returncode']:
+            ctx.blocked('tesseract could not read the drawn menu')
+        return _menu_line(read['stdout'])
+    line = ctx.wait(entry, ENTRY + ' is in the right-click menu', timeout=15)
+    return menu, (x + line[0] // 2, y + line[1] // 2)
+
+
+def _menu_line(tsv):
+    """(x, y) of the entry's first word in tesseract's TSV, or None."""
+    rows = [row.split('\t') for row in tsv.splitlines()[1:]]
+    words = [row for row in rows if len(row) == 12 and row[11].strip()]
+    wanted = ENTRY.split()
+    for index in range(len(words) - len(wanted) + 1):
+        group = words[index:index + len(wanted)]
+        # The last word only by its start: "put.gd" is the one tesseract can misread.
+        if ([w[11] for w in group[:-1]] == wanted[:-1] and group[-1][11].startswith('put')
+                and len({tuple(w[1:5]) for w in group}) == 1):
+            left, top, width, height = map(int, group[0][6:10])
+            return left + width // 2, top + height // 2
+    return None
+
+
+def _click_in_popup(ctx, popup, point, box):
+    ctx._popup = popup
+    try:
+        ctx.click_at(*point, head=box.get('head', 0))
+    finally:
+        ctx._popup = None
+
+
+def _click_menu_entry(ctx, scope, role, manager):
+    if manager.get('menu') == 'drawn':
+        box = ctx.geometry(role)
+        menu, point = _drawn_entry(ctx, scope, box)
+        ctx.frame('right-click-menu')
+        _click_in_popup(ctx, {'pid': menu['pid'], 'rect': menu['frame']}, point, box)
+        return
+    query = {'owned': True, 'name': glob.escape(ENTRY), 'visible': True, 'showing': True, 'enabled': True,
+             **manager.get('accessible', {})}
+    def entries():
+        return [n for n in ctx.accessible(query) if n.get('rect') and min(n['rect'][2:]) > 0]
+    nodes = ctx.wait(entries, ENTRY + ' is in the right-click menu', timeout=15)
+    ctx.frame('right-click-menu')
+    ctx.expect(len(nodes) == 1, 'one ' + ENTRY + ' entry in the right-click menu')
+    box, point = _node_point(ctx, role, nodes[0])
+    _click_in_popup(ctx, nodes[0].get('popup'), point, box)
+
+
+@recipe('event.file-manager-upload', desktop_drawn=True, timeout=300)
+def file_manager_upload(ctx):
+    manager = ctx.profile.get('file_manager')
+    if not manager:
+        ctx.blocked('this desktop declares no file manager')
+    with _lane(ctx) as (scope, service):
+        _clipboard_reader(scope)
+        if manager.get('show_banners'):
+            _show_banners(ctx, scope)
+        role, name, digest = _file_manager_window(ctx, scope, manager)
+        ctx.frame('file-manager-open')
+        before = {o['id'] for o in ctx.call('operation.recent')['operations']}
+        _right_click_file(ctx, role, name, manager)
+        _click_menu_entry(ctx, scope, role, manager)
+        oid = history._new_operation(ctx, before, 'files')['id']
+        notice = tray._notice(ctx, 'Upload complete')
+        tray._drawn_notice(ctx, notice)
+        ctx.frame('upload-banner')
+        detail, uploaded = _complete(scope, service, oid, None)
+        ctx.expect(uploaded == digest, 'uploaded object SHA-256 equals the right-clicked file')
+        _auto_copy(ctx, scope, detail)
+        ctx.expect(len([n for n in ctx.notifications() if n.get('summary') == 'Upload complete']) == 1, 'one upload banner')
+        ctx.expect(detail['name'] == name, 'History row names the right-clicked file')
+        _history(ctx, detail)
+        _frame(ctx, 'file-manager-history-row')
 
 
 def _history(ctx, detail):

@@ -757,6 +757,21 @@ with n.controller_shutdown(workers):
         self.assertTrue(any(w[0] == 'POST' and w[1].endswith('/labels') and w[2] == {'labels':['release-blocker']}
                             for w in github.writes))
 
+    def test_a_full_check_is_thirteen_cells_and_every_row_declares_its_file_manager(self):
+        from tools.lab.surface_driver.profiles import load_profile
+        self.assertEqual(nightly.FLOWS['file_manager_upload'], 'Right-click upload')
+        self.assertIn('file_manager_upload', nightly.LOCAL)
+        self.assertEqual(len(nightly.LOCAL), 11)
+        self.assertEqual(len(nightly.FLOWS), 13)
+        for desktop, process in (('mint-cinnamon-x11', 'nemo'), ('ubuntu-gnome-wayland', 'nautilus'),
+                                 ('kubuntu-kde-wayland', 'dolphin'), ('aurora-kde-wayland', 'dolphin'),
+                                 ('fedora-gnome-wayland', 'nautilus')):
+            self.assertEqual(load_profile(desktop)['file_manager']['process'], process, desktop)
+        row = dict(desktop='Mint', host='m74', cells={'file_manager_upload': nightly.cell('green')})
+        table = nightly.table(dict(desktops=[row]))
+        self.assertIn('Right-click upload', table)
+        self.assertIn('🟢', table)
+
     def test_secret_file_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'token';path.write_text('synthetic-only');path.chmod(0o644)
