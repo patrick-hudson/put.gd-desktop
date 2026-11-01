@@ -132,6 +132,18 @@ private slots:
   QVERIFY(test::waitFor([&]{return done;}));QVERIFY2(!result.error,qPrintable(result.error.code));
   QCOMPARE(result.payload.kind,QString("text"));QCOMPARE(result.payload.bytes,QByteArray("copied elsewhere"));
  }
+ // Invoked before the compositor answered; read after the connection finished.
+ void clipboardReadPreparedBeforeConnecting(){
+  Compositor compositor(true,false);QVERIFY2(compositor.error.isEmpty(),qPrintable(compositor.error));
+  DataControlSourceAdapter adapter;
+  auto prepared=adapter.prepareAcquisition("clipboard");
+  QVERIFY(test::waitFor([&]{return compositor.bound();}));
+  compositor.otherOwner({"text/plain;charset=utf-8"},"copied elsewhere");QVERIFY(ready(adapter));
+  PayloadResult result;bool done=false;
+  prepared({},[&](PayloadResult value){result=std::move(value);done=true;});
+  QVERIFY(test::waitFor([&]{return done;}));QVERIFY2(!result.error,qPrintable(result.error.code));
+  QCOMPARE(result.payload.bytes,QByteArray("copied elsewhere"));
+ }
  void withoutDataControlTheFailureStaysHonest(){
   Compositor compositor(false);QVERIFY2(compositor.error.isEmpty(),qPrintable(compositor.error));
   DataControlSourceAdapter adapter;

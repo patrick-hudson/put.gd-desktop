@@ -30,10 +30,15 @@ Error DataControlSourceAdapter::unavailable()const {
 }
 SourceAdapter::PreparedAcquisition DataControlSourceAdapter::prepareAcquisition(const QString& action) {
  if(action!="clipboard")return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"source_unsupported",captureUnavailable,{}}});};
- const auto revision=clipboard_.revision();
- if(!clipboard_.available())return [error=unavailable()](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},error});};
+ const auto revision=clipboard_.revision();const auto connectedAtInvocation=connected_;
  QPointer<DataControlSourceAdapter> guard(this);
- return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};
+ return [guard,revision,connectedAtInvocation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
+  if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
+  // The connection may have finished since the invocation; that isn't a clipboard change.
+  const auto current=guard->clipboard_.revision();
+  if(!guard->clipboard_.available()){cb({{},guard->unavailable()});return;}
+  guard->clipboard_.acquire(limits,std::move(cb),connectedAtInvocation?revision:current);
+ };
 }
 void DataControlSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb) {prepareAcquisition(action)(limits,std::move(cb));}
 void DataControlSourceAdapter::cancelAcquisition() {clipboard_.cancel();}
