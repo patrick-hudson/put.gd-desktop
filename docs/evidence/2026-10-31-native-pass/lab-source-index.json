@@ -121,8 +121,8 @@
   },
   {
     "path": "lab/checksum_chain_checks.py",
-    "sha256": "050eeb0c40f29eaa0f8023eb46d82f614c2b46bb26fabcd6662933dc90a0e9e9",
-    "bytes": 9933
+    "sha256": "f59cee1d67d72b16afd607dcfb8f802074d8d84c6fe58aa09c58296bb59f2b4f",
+    "bytes": 10341
   },
   {
     "path": "lab/native-local.patch",
@@ -138,7 +138,7 @@
   },
   {
     "path": "lab/publication_checks.py",
-    "sha256": "869f618591306c7a4c8cce7d84fcc4ca3a6ee2617d590803699badc79a31a4da",
-    "bytes": 4098
+    "sha256": "b17120f011e9004f5a513a471cc7e351ccab569ca09314371e7790915d673131",
+    "bytes": 4441
   }
 ]

@@ -18,6 +18,9 @@ HEX = re.compile(r'[0-9a-f]{64}$')
 TEXT = re.compile(r'([0-9a-f]{64})\s+\*?(.+)$')
 INDEX_NAME = re.compile(r'(.*[-_.])?(sha256sums(\.txt)?|sha256\.json|checksums?\.json|sha256)', re.I)
 EVIDENCE = Path(__file__).resolve().parents[2]
+# The only index allowed to be empty: the boat run was interrupted before any
+# member was published. Any other empty or truncated index is a mismatch.
+KNOWN_EMPTY = frozenset({'2026-10-30-boat-candidate-752-live/interrupted/SHA256SUMS'})
 
 
 def digest(path):
@@ -126,8 +129,8 @@ def audit_formats(root):
             result['originalInventories'].append(name)
             continue
         if rows is None:
-            if not path.read_bytes().strip():
-                result['emptyIndexes'].append(name)  # e.g. an interrupted run
+            if not path.read_bytes().strip() and name in KNOWN_EMPTY:
+                result['emptyIndexes'].append(name)
             else:
                 result['mismatches'].append(name)
             continue
@@ -188,9 +191,11 @@ class FormatRegression(unittest.TestCase):
             (root/'receipt.json').write_text('{"status":"green"}')
             (root/'sha256-verify.txt').write_text('published.json: OK\n')
             (root/'empty').mkdir(); (root/'empty'/'SHA256SUMS').write_text('\n')
+            known = root/'2026-10-30-boat-candidate-752-live'/'interrupted'
+            known.mkdir(parents=True); (known/'SHA256SUMS').write_text('\n')
             report = audit_formats(root)
-            self.assertEqual(sorted(report['mismatches']), ['SHA256SUMS', 'sha256.json'])
-            self.assertEqual(report['emptyIndexes'], ['empty/SHA256SUMS'])
+            self.assertEqual(sorted(report['mismatches']), ['SHA256SUMS', 'empty/SHA256SUMS', 'sha256.json'])
+            self.assertEqual(report['emptyIndexes'], sorted(KNOWN_EMPTY))
             self.assertEqual(report['formats'], {})
 
 

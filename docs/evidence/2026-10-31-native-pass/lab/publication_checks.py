@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from PIL import Image
 from tools.lab.surface_driver.receipts import Evidence
 from tools.lab.surface_driver.recipes.outcomes import pattern_visible
-from checksum_chain_checks import audit_formats, check_phase_b
+from checksum_chain_checks import KNOWN_EMPTY, audit_formats, check_phase_b
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -58,6 +58,10 @@ class PublicationChecks(unittest.TestCase):
 
     def test_every_available_checksum_file(self):
         for manifest in ROOT.parent.rglob('SHA256SUMS'):
+            lines = [line for line in manifest.read_text().splitlines() if line and not line.startswith('#')]
+            # An empty manifest checks nothing; only the interrupted boat run may be empty.
+            if str(manifest.relative_to(ROOT.parent)) not in KNOWN_EMPTY:
+                self.assertTrue(lines, str(manifest))
             for line in manifest.read_text().splitlines():
                 match = re.fullmatch(r'([0-9a-f]{64})\s+\*?(.+)', line)
                 if not line or line.startswith('#'):
