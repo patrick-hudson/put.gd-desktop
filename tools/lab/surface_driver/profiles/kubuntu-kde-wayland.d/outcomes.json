@@ -1,6 +1,10 @@
 {
+  "browser": {
+    "command": ["snap", "run", "firefox"],
+    "profile_root": "~/snap/firefox/common"
+  },
   "file_manager": {
     "process": "dolphin",
-    "command": ["dolphin"]
+    "command": ["dolphin", "--new-window"]
   }
 }

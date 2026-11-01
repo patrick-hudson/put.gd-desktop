@@ -767,6 +767,8 @@ with n.controller_shutdown(workers):
                                  ('kubuntu-kde-wayland', 'dolphin'), ('aurora-kde-wayland', 'dolphin'),
                                  ('fedora-gnome-wayland', 'nautilus')):
             self.assertEqual(load_profile(desktop)['file_manager']['process'], process, desktop)
+        # The fragment Kubuntu's cell shares keeps its snap Firefox.
+        self.assertIn('browser', load_profile('kubuntu-kde-wayland'))
         row = dict(desktop='Mint', host='m74', cells={'file_manager_upload': nightly.cell('green')})
         table = nightly.table(dict(desktops=[row]))
         self.assertIn('Right-click upload', table)

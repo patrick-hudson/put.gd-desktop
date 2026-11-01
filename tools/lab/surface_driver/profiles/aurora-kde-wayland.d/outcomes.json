@@ -1,10 +1,6 @@
 {
   "browser": {
-    "command": [
-      "flatpak",
-      "run",
-      "org.mozilla.firefox"
-    ],
+    "command": ["flatpak", "run", "org.mozilla.firefox"],
     "profile_root": "~/.var/app/org.mozilla.firefox/.mozilla/firefox"
   },
   "focus": {
@@ -20,8 +16,6 @@
   },
   "file_manager": {
     "process": "dolphin",
-    "command": [
-      "dolphin"
-    ]
+    "command": ["dolphin", "--new-window"]
   }
 }

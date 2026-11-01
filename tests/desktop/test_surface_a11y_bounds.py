@@ -264,7 +264,7 @@ class JustMappedWindow(unittest.TestCase):
         placement = probe.WaylandPlacement({'kind': 'kwin-script', 'shell_application': ''})
         placement._windows = [banner, panel]
         self.assertEqual(placement.toplevel(50, '', [912, 629, 332, 81])['window_id'], '{banner}')
-        # Another anonymous window of that size is not the banner, and neither is a titled one.
+        # A window of that size without the flag isn't the banner, nor is the banner a titled window's match.
         placement = probe.WaylandPlacement({'kind': 'kwin-script', 'shell_application': ''})
         placement._windows = [dict(banner, notification=False)]
         with self.assertRaisesRegex(RuntimeError, 'missing or ambiguous'):
