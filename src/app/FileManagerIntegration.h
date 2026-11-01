@@ -24,6 +24,7 @@ struct FileManagerContext {
  QStringList dataDirs,libraryDirs;
  QString searchPath;
  QString cgroupFile=QStringLiteral("/proc/self/cgroup"); // what the AppImage launcher reads
+ QString userRuntime; // the login's runtime directory, where its user manager listens; empty: /run/user/<uid>
 };
 struct FileManagerResult {
  Error error;               // e.g. {"cosmic_context_actions_unparseable",...}: nothing written to that file
@@ -38,7 +39,12 @@ public:
  static FileManagerResult apply(const FileManagerContext&);
  // Arms or stops the integration's own user-manager path unit + cleanup service
  // (AppImage only; separate from LoginStartup's). Context-free tests don't touch systemd.
+ // No user manager is no error: an entry used after the image is gone removes
+ // the entries itself. A failure's details name the stage, exit status and reason.
  static Error monitor(const FileManagerContext&,bool enabled);
+ // Whether this failure should be announced: once until it changes or clears
+ // (no error), across resident starts. It stays in the log and diagnostics each time.
+ static bool announceOnce(const FileManagerContext&,const Error&);
  // What the cleanup service runs when the AppImage is gone: remove owned files and our COSMIC entry only.
  // The service itself runs the launcher's shell copy (no put.gd binary is left
  // then); this is the same cleanup in process, for any put.gd resident.

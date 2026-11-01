@@ -8,6 +8,10 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QtEndian>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <cstring>
 using namespace putgd;
 namespace {
 constexpr auto programMode=QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner|QFile::ReadGroup|QFile::ExeGroup|QFile::ReadOther|QFile::ExeOther;
@@ -411,6 +415,44 @@ private slots:
   QVERIFY(!result.error);
   QCOMPARE(f.run(result.launcher,{"--upload","--","/a b/${USER}.txt"}),0);
   QCOMPARE(f.received(),QStringList({"--upload","--","/a b/${USER}.txt"}));
+ }
+ // A user manager at this runtime directory; nothing answers the socket (#1112).
+ static void managerSocket(const QString& runtime) {
+  QVERIFY(QDir().mkpath(runtime+"/systemd"));
+  const int fd=::socket(AF_UNIX,SOCK_STREAM,0);QVERIFY(fd>=0);
+  sockaddr_un address{};address.sun_family=AF_UNIX;const auto bytes=QFile::encodeName(runtime+"/systemd/private");
+  QVERIFY(size_t(bytes.size())<sizeof(address.sun_path));std::memcpy(address.sun_path,bytes.constData(),size_t(bytes.size()));
+  QCOMPARE(::bind(fd,reinterpret_cast<const sockaddr*>(&address),sizeof(address)),0);::close(fd);
+ }
+ void monitorFailureNamesItsCause() {
+  Fixture f;auto& c=f.context;c.installation="appimage";c.userRuntime=f.path("rt");managerSocket(c.userRuntime);
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  write(f.path("bin/systemd-run"),"#!/bin/sh\nprintf 'synthetic refusal\\n' >&2\nexit 1\n",programMode);
+  const auto runtime=qgetenv("XDG_RUNTIME_DIR");qunsetenv("XDG_RUNTIME_DIR");
+  SearchPath search(f.path("bin"));
+  const auto error=FileManagerIntegration::monitor(c,true);
+  if(!runtime.isNull())qputenv("XDG_RUNTIME_DIR",runtime);
+  QCOMPARE(error.code,QString("file_manager_monitor"));
+  QCOMPARE(error.details["stage"].toString(),QString("exit"));QCOMPARE(error.details["exitCode"].toInt(),1);
+  QVERIFY2(error.details["reason"].toString().contains("synthetic refusal"),qPrintable(error.details["reason"].toString()));
+  QVERIFY(error.message.contains("deleted"));
+ }
+ void monitorWithoutAUserManagerIsNoError() {
+  Fixture f;auto& c=f.context;c.installation="appimage";c.userRuntime=f.path("no-manager");
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto runtime=qgetenv("XDG_RUNTIME_DIR");qunsetenv("XDG_RUNTIME_DIR");
+  const auto armed=FileManagerIntegration::monitor(c,true),stopped=FileManagerIntegration::monitor(c,false);
+  if(!runtime.isNull())qputenv("XDG_RUNTIME_DIR",runtime);
+  QVERIFY2(!armed,qPrintable(armed.message));QVERIFY2(!stopped,qPrintable(stopped.message));
+ }
+ void aProblemIsAnnouncedOnceUntilItChangesOrClears() {
+  Fixture f;auto& c=f.context;c.installation="appimage";
+  const Error first{"file_manager_monitor","first",{}},second{"file_manager_monitor","second",{}};
+  QVERIFY(FileManagerIntegration::announceOnce(c,first));
+  QVERIFY(!FileManagerIntegration::announceOnce(c,first));
+  QVERIFY(FileManagerIntegration::announceOnce(c,second));
+  QVERIFY(!FileManagerIntegration::announceOnce(c,Error{}));
+  QVERIFY(FileManagerIntegration::announceOnce(c,second));
  }
  void toJsonCarriesTheResult() {
   FileManagerResult result;result.firstRun=true;result.written={"/a"};result.restartable={"caja"};result.error={"x","y",{}};

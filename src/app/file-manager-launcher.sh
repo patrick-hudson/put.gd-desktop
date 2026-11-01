@@ -10,6 +10,7 @@ update_information=__PUTGD_UPDATE_INFORMATION__
 script=__PUTGD_SCRIPT__
 record=__PUTGD_RECORD__
 own_directory=__PUTGD_DIRECTORY__
+user_runtime=__PUTGD_USER_RUNTIME__
 cgroup=__PUTGD_CGROUP__
 integration_id='__PUTGD_ID__'
 watch_unit=__PUTGD_WATCH_UNIT__
@@ -20,10 +21,25 @@ say() {
     printf 'put.gd file manager launcher: %s\n' "$*" >&2
 }
 
+# The user manager listens in the login's runtime directory, and systemctl and
+# systemd-run look for it only in XDG_RUNTIME_DIR (systemd 259 no longer falls
+# back to the session bus). A process given a private XDG_RUNTIME_DIR still
+# belongs to that manager, and the unit outlives the process anyway.
+manager_runtime() {
+    for directory in ${XDG_RUNTIME_DIR:+"$XDG_RUNTIME_DIR"} "$user_runtime"; do
+        if [ -S "$directory/systemd/private" ]; then
+            printf '%s' "$directory"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # The user manager owns the removal watch, separately from login startup's: it
 # exists while the integration is on, whether or not Launch at login is.
 manager() {
-    env -u LD_LIBRARY_PATH -u LD_PRELOAD systemctl --user "$@"
+    runtime=$(manager_runtime) || return 1
+    env -u LD_LIBRARY_PATH -u LD_PRELOAD XDG_RUNTIME_DIR="$runtime" systemctl --user "$@"
 }
 
 unit_exists() {
@@ -45,22 +61,41 @@ stop_watch() {
     done
 }
 
+# Exit status 3: no user manager to arm a watch in. Nothing is wrong then; a
+# menu entry used after the image is gone removes the entries itself. Any other
+# failure says why on stderr, which the resident logs.
 install_watch() {
+    runtime=$(manager_runtime) || {
+        say "no user service manager is reachable"
+        return 3
+    }
     if unit_exists "$watch_unit.path"; then
-        description=$(manager show --property=Description --value "$watch_unit.path" 2>/dev/null) || return 1
+        description=$(manager show --property=Description --value "$watch_unit.path" 2>/dev/null) || {
+            say "cannot read $watch_unit.path from the user manager"
+            return 1
+        }
         if [ "$description" = "$watch_description" ] && manager is-active --quiet "$watch_unit.path"; then
             return 0
         fi
-        stop_watch path service || return 1
+        stop_watch path service || {
+            say "cannot replace $watch_unit, described as: $description"
+            return 1
+        }
     fi
     # Updates write the next image beside this one and may remove the old one.
-    env -u LD_LIBRARY_PATH -u LD_PRELOAD systemd-run --user --quiet --collect \
+    failure=$(env -u LD_LIBRARY_PATH -u LD_PRELOAD XDG_RUNTIME_DIR="$runtime" systemd-run --user --quiet --collect \
         --expand-environment=no --unit="$watch_unit" --description="$watch_description" \
         --path-property="PathChanged=${configured%/*}" --property=Type=oneshot \
         --property=SuccessExitStatus=SIGTERM \
-        /bin/sh "$script" --cleanup-if-missing >/dev/null 2>&1 || return 1
+        /bin/sh "$script" --cleanup-if-missing 2>&1 >/dev/null) || {
+        say "systemd-run: $failure"
+        return 1
+    }
     # PathChanged does not report an image removed before the watch was armed.
-    manager start --no-block "$watch_unit.service" >/dev/null 2>&1
+    failure=$(manager start --no-block "$watch_unit.service" 2>&1 >/dev/null) || {
+        say "systemctl start: $failure"
+        return 1
+    }
 }
 
 # A private regular file of ours, not a symbolic link.
@@ -137,7 +172,12 @@ in_service() {
 
 case ${1-} in
     --install-watch) install_watch; exit $? ;;
-    --stop-watch) stop_watch path service; exit $? ;;
+    --stop-watch)
+        # No manager means nothing is armed.
+        manager_runtime >/dev/null || exit 0
+        stop_watch path service
+        exit $?
+        ;;
     --cleanup-if-missing)
         cleanup_only=true; shift
         # File replacements during an update must settle before checking.

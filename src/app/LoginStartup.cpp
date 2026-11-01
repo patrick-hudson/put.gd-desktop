@@ -9,6 +9,7 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QtEndian>
+#include <unistd.h>
 namespace putgd {
 namespace {
 QString desktopQuoted(QString value) {
@@ -153,7 +154,7 @@ Error LoginStartup::apply(const QString& root,const QString& dataRoot,const QStr
  const auto id=startupId(path,configured);
  const QHash<QString,QString> values{{"CONFIGURED",shellQuoted(configured)},{"UPDATE_INFORMATION",shellQuoted(information)},
   {"KIND",shellQuoted(kind)},{"ENTRY",shellQuoted(path)},{"SCRIPT",shellQuoted(scriptPath)},
-  {"ID",id},{"WATCH_UNIT",shellQuoted("putgd-login-startup-"+id)}};
+  {"ID",id},{"WATCH_UNIT",shellQuoted("putgd-login-startup-"+id)},{"USER_RUNTIME",shellQuoted(QStringLiteral("/run/user/%1").arg(::getuid()))}};
  const auto source=QString::fromUtf8(putgdLoginStartScript);
  QString script;qsizetype position=0;
  auto matches=QRegularExpression("__PUTGD_([A-Z_]+)__").globalMatch(source);

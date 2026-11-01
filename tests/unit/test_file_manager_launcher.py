@@ -7,6 +7,7 @@ Stand-in images and systemd-run record their arguments; no image is mounted.
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -57,6 +58,7 @@ class LauncherTest(unittest.TestCase):
         self.own = self.root / "put.gd's data/file-manager"
         self.own.mkdir(parents=True)
         self.script = self.own / "putgd-upload"
+        self.user_runtime = self.root / "user-runtime"
 
     def write(self, path, text, mode=0o755):
         path.write_text(text)
@@ -65,7 +67,8 @@ class LauncherTest(unittest.TestCase):
     def render(self, configured=None, info="", cgroup=None):
         values = {"CONFIGURED": str(configured or self.image), "UPDATE_INFORMATION": info, "SCRIPT": str(self.script),
                   "RECORD": str(self.own / "appimage.owned"), "DIRECTORY": str(self.own),
-                  "CGROUP": str(cgroup or self.cgroup), "WATCH_UNIT": "putgd-file-manager-fixture"}
+                  "CGROUP": str(cgroup or self.cgroup), "WATCH_UNIT": "putgd-file-manager-fixture",
+                  "USER_RUNTIME": str(self.user_runtime)}
         text = LAUNCHER.read_text().replace("# __PUTGD_DISCOVERY__", discovery())
         for key, value in values.items():
             text = text.replace("__PUTGD_" + key + "__", shell_quoted(value))
@@ -193,6 +196,70 @@ done
     @unittest.skipUnless(shutil.which("systemd-run") and subprocess.run(
         ["systemd-run", "--user", "--scope", "--quiet", "--expand-environment=no", "true"],
         capture_output=True).returncode == 0, "needs a user manager with systemd-run 254+")
+    def manager_socket(self, runtime):
+        """A runtime directory where a user manager listens; nothing answers it."""
+        (runtime / "systemd").mkdir(parents=True, exist_ok=True)
+        with socket.socket(socket.AF_UNIX) as listener:
+            listener.bind(str(runtime / "systemd/private"))
+
+    def stand_in_manager(self, run_status=0, run_message=""):
+        """systemctl and systemd-run that record the XDG_RUNTIME_DIR they were given."""
+        self.write(self.bin / "systemctl", """#!/bin/sh
+printf 'systemctl %s\\n' "$XDG_RUNTIME_DIR" >> "$PG_CALLS"
+case "$*" in
+ *--property=LoadState*) echo not-found ;;
+esac
+""")
+        self.write(self.bin / "systemd-run", f"""#!/bin/sh
+printf 'systemd-run %s\\n' "$XDG_RUNTIME_DIR" >> "$PG_CALLS"
+[ -z '{run_message}' ] || printf '%s\\n' '{run_message}' >&2
+exit {run_status}
+""")
+
+    def test_a_private_runtime_still_reaches_the_login_user_manager(self):
+        # systemd 259 finds the manager only through XDG_RUNTIME_DIR (#1112).
+        self.manager_socket(self.user_runtime)
+        self.stand_in_manager()
+        self.render()
+        private = self.root / "private-runtime"
+        private.mkdir()
+        completed, _ = self.run_launcher("--install-watch", env={"XDG_RUNTIME_DIR": str(private)})
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        calls = self.calls_made()
+        self.assertIn("systemd-run " + str(self.user_runtime), calls)
+        self.assertIn("systemctl " + str(self.user_runtime), calls)
+        self.assertFalse([call for call in calls if str(private) in call], calls)
+
+    def test_the_session_runtime_comes_first(self):
+        session = self.root / "session-runtime"
+        self.manager_socket(session)
+        self.manager_socket(self.user_runtime)
+        self.stand_in_manager()
+        self.render()
+        completed, _ = self.run_launcher("--install-watch", env={"XDG_RUNTIME_DIR": str(session)})
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual({call.split(" ", 1)[1] for call in self.calls_made()}, {str(session)})
+
+    def test_no_user_manager_is_reported_apart_and_nothing_runs(self):
+        self.stand_in_manager()
+        self.render()
+        private = self.root / "private-runtime"
+        private.mkdir()
+        completed, _ = self.run_launcher("--install-watch", env={"XDG_RUNTIME_DIR": str(private)})
+        self.assertEqual(completed.returncode, 3)
+        self.assertIn("no user service manager", completed.stderr)
+        self.assertEqual(self.calls_made(), [])
+        completed, _ = self.run_launcher("--stop-watch", env={"XDG_RUNTIME_DIR": str(private)})
+        self.assertEqual((completed.returncode, self.calls_made()), (0, []))
+
+    def test_a_watch_failure_says_why(self):
+        self.manager_socket(self.user_runtime)
+        self.stand_in_manager(run_status=1, run_message="Unit already exists")
+        self.render()
+        completed, _ = self.run_launcher("--install-watch")
+        self.assertEqual(completed.returncode, 1)
+        self.assertIn("systemd-run: Unit already exists", completed.stderr)
+
     def test_the_real_user_manager_keeps_dollar_names_and_leaves_the_service(self):
         # The image reports the cgroup it runs in; the launcher sees a service leaf.
         self.cgroup.write_text(SERVICE)

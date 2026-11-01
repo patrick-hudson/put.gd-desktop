@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import pwd
 import shutil
+import socket
 import subprocess
 import tempfile
 import threading
@@ -112,8 +113,15 @@ class LoginStartTest(unittest.TestCase):
             self.configuration.write_text('{"preferences":{"launchAtLogin":true}}\n')
         identity = "a" * 64
         text = SCRIPT.read_text()
+        # Where the login's user manager listens; a stand-in socket, nothing answers it.
+        runtime = self.root / "user-runtime"
+        if not runtime.exists():
+            (runtime / "systemd").mkdir(parents=True)
+            with socket.socket(socket.AF_UNIX) as listener:
+                listener.bind(str(runtime / "systemd/private"))
         values = {"CONFIGURED": str(configured), "UPDATE_INFORMATION": info, "KIND": kind,
-                  "ENTRY": str(self.entry), "SCRIPT": str(self.script), "WATCH_UNIT": watch_unit}
+                  "ENTRY": str(self.entry), "SCRIPT": str(self.script), "WATCH_UNIT": watch_unit,
+                  "USER_RUNTIME": str(runtime)}
         for key, value in values.items():
             text = text.replace("__PUTGD_" + key + "__", shell_quoted(value))
         text = text.replace("__PUTGD_ID__", identity)
