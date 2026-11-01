@@ -44,7 +44,8 @@ def admit(ctx):
             or ctx.target.physical or not ctx.profile.get('guest') or not ctx._live_admitted):
         raise RecipeBlocked('Tier 1 live requires the admitted builder guest; boat and native are forbidden')
     allowed = {'mint-cinnamon-x11': ('d69', 'f44', 'm74'), 'ubuntu-gnome-wayland': ('d69', 'f44'),
-               'kubuntu-kde-wayland': ('f44', 'k72'), 'aurora-kde-wayland': ('f44', 'd69', 'aurora-amd')}
+               'kubuntu-kde-wayland': ('f44', 'k72'), 'aurora-kde-wayland': ('f44', 'd69', 'aurora-amd'),
+               'fedora-gnome-wayland': ('f44',)}
     if ctx.host not in allowed.get(ctx.desktop, ()):
         raise RecipeBlocked('Tier 1 live desktop is not on an authorized builder')
     # Additional AppImage coverage is confined to the two declared builder guests.
@@ -55,7 +56,8 @@ def admit(ctx):
     if ctx.package == 'appimage' and appimage_profile and ctx.profile.get('guest') == appimage_profile:
         from tools.lab import lab
         appimage_guest = lab.state(ctx.target.run)['profile'] == appimage_profile
-    if not appimage_guest and ctx.package != ('appimage' if ctx.desktop == 'aurora-kde-wayland' else 'deb'):
+    expected = {'aurora-kde-wayland': 'appimage', 'fedora-gnome-wayland': 'rpm'}.get(ctx.desktop, 'deb')
+    if not appimage_guest and ctx.package != expected:
         raise RecipeBlocked('Tier 1 live requires an approved guest package/profile combination')
     from tools.lab import desktop_lock
     session = os.environ.get('PUTGD_TIER1_SESSION', '')
