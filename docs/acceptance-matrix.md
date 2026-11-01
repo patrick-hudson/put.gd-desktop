@@ -29,6 +29,18 @@ missing VM/profile or use an appropriate native machine and retain manual
 acceptance evidence. Do not relabel an existing profile as another distro or
 session. An unavailable required combination remains a recorded gate.
 
+`cinnamon-x11-appimage` and `gnome-wayland-appimage` are AppImage installation
+variants of the Mint Cinnamon/X11 and Ubuntu GNOME/Wayland profiles. They use
+the same corresponding immutable goldens and desktop/session requirements,
+with `install: appimage`; they do not replace distro-package acceptance or
+stand in for another distribution. Run them on the same capable builders as
+their package variants, recording the actual guest release and exact AppImage.
+For these Debian-derived AppImage worker rows, set `package: appimage` and
+`probePackageManager: deb`: the app comes from the image while the existing
+probe tools come from apt. GNOME preparation stages the matching extension
+from the installed image before the witness reboot; the image alone does not
+install a host Shell extension.
+
 `aurora-kde-wayland` (UEFI, `install: appimage`) is the Universal Blue Aurora
 (Fedora Atomic KDE) VM; see [Aurora VM](aurora-vm.md). It has no row in the
 package matrix above, because Aurora installs no DEB or RPM, and it doesn't
