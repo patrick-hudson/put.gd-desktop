@@ -43,7 +43,11 @@ DESKTOPS = {
     'lxde': dict(profile='lxde-x11', packages='lxde-core pcmanfm notification-daemon', session='LXDE'),
     'budgie': dict(profile='budgie-wayland', packages='budgie-desktop nemo labwc', session='budgie-desktop', gdm=True),
     'ukui': dict(profile='ukui-x11', packages='ukui-session-manager ukui-panel peony ukui-notification-daemon', session='ukui'),
-    'pantheon': dict(profile='pantheon-x11', packages='pantheon-files gala', session='pantheon'),
+    # Ubuntu 26.04 ships no Pantheon at all (no gala, pantheon-files, wingpanel or contractor), so
+    # `up` refuses. A row needs elementary OS 8.1 unpacked to a disposable disk, then these commands.
+    # gala's own environment has no WAYLAND_DISPLAY or DISPLAY; wingpanel's (comm truncated) does.
+    'pantheon': dict(profile='pantheon-wayland', session='pantheon-wayland', env_process='io.elementary.w',
+                     unavailable='Ubuntu 26.04 has no gala, pantheon-files, wingpanel or contractor package'),
     # cosmic-session requires the whole desktop (comp, panel, files, notifications); start-cosmic
     # never puts WAYLAND_DISPLAY in cosmic-session's own environment, so read a child's.
     'cosmic': dict(profile='cosmic-wayland', packages='cosmic-session wl-clipboard firefox gnome-keyring', session='cosmic',
@@ -156,6 +160,8 @@ sudo -n systemctl enable --force lightdm
 
 def up(args):
     name, spec = args.run, DESKTOPS[args.desktop]
+    if spec.get('unavailable'):
+        raise SystemExit(args.desktop+': '+spec['unavailable'])
     lock = Desktop(Path.home()/'putgd-lab/locks', args.host)
     if args.join:
         # A second guest on a builder with room shares the first guest's lease.
