@@ -66,12 +66,30 @@ Per-user files:
 | COSMIC | `$XDG_CONFIG_HOME/cosmic/com.system76.CosmicFiles/v1/context_actions`, backup `context_actions.putgd-backup` |
 
 The AppImage's stable launcher (`putgd-upload`), icon copy (`putgd.svg`),
-ownership record (`<installation>.owned`) and version stamp
-(`<installation>.stamp`) live in `<dataRoot>/file-manager/`. The launcher
-finds the current AppImage the way login startup does, so it survives updates
-and renamed images. When the AppImage is deleted, the integration's own
-systemd path watch removes the files it owns and its COSMIC entry, whether or
-not Launch at login is on.
+ownership record (`<installation>.owned`), version stamp
+(`<installation>.stamp`) and watch problem record (`<installation>.problem`)
+live in `<dataRoot>/file-manager/`. The launcher finds the current AppImage the
+way login startup does, so it survives updates and renamed images. When the
+AppImage is deleted, the integration's own systemd path watch removes the files
+it owns and its COSMIC entry, whether or not Launch at login is on.
+
+The watch and login startup run in the user's own service manager.
+`systemctl --user` and `systemd-run --user` find that manager through
+`XDG_RUNTIME_DIR`, and from systemd 259 they fail if that folder doesn't hold
+the manager's socket, even with a working session bus. So both scripts use the
+first of `XDG_RUNTIME_DIR` and `/run/user/<uid>` that contains
+`systemd/private`, which lets a resident with a private runtime folder still
+set up the watch. The `systemd-run --scope` call for an upload client keeps its
+own environment, because a scope passes it on to the resident.
+
+If the watch can't be set up, one notification says that the file manager
+entries may stay behind if the AppImage is deleted. The `.problem` record
+holds that failure, so the notification appears once across restarts until the
+failure changes or clears. Every pass still logs the stage (`start`, `timeout`,
+`crash` or `exit`), the exit status and the launcher's reason. With no user
+service manager at all, there is nothing to set up: that is logged, with no
+notification, and a menu entry used after the AppImage is gone removes the
+entries itself.
 
 COSMIC keeps every user action in one shared list. put.gd recognises its
 entry by its command, parses the list before writing, keeps a backup, parses
