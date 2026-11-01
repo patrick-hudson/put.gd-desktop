@@ -1,0 +1,6 @@
+[Caja Extension]
+Name=put.gd
+Description=Adds "Upload with put.gd" to the right-click menu of files and folders
+Icon=putgd
+Author=put.gd maintainers
+Website=https://github.com/patrick-hudson/put.gd-desktop

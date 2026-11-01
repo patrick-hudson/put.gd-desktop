@@ -63,13 +63,13 @@ bool HistoryModel::scanDestinations()const{
  return false;
 }
 QString HistoryModel::commonDestination()const{return rows_.isEmpty()||multipleDestinations()?QString{}:data(index(0),OutputRole).toString();}
-QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="edit")return "Region & edit";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
+QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="files")return "File manager";if(action=="edit")return "Region & edit";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
 QString HistoryModel::failureLabel(const QJsonObject& r){
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(!storedNothing(r)||r["operation"].toObject().isEmpty())return "Upload failed";
  const auto action=r["operation"].toObject()["action"].toString();
- return action=="edit"?"Edit failed":action=="clipboard"?"Upload failed":"Capture failed";
+ return action=="edit"?"Edit failed":action=="clipboard"||action=="files"?"Upload failed":"Capture failed";
 }
 bool HistoryModel::failed(const QJsonObject& r){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);const auto state=r["operation"].toObject().value("state");return localSaveFailed(r)||r["uploadStatus"]=="failed"||state=="failed"||state=="partial";}
 bool HistoryModel::retryUpload(const QJsonObject& r){return (r["uploadStatus"]=="failed"||r["operation"].toObject()["state"]=="failed"||r["operation"].toObject()["state"]=="partial")&&!active(r)&&r["uploadStatus"]!="local_only"&&r["uploadStatus"]!="uploaded"&&!r["operationId"].toString().isEmpty()&&!storedNothing(r);}
@@ -113,7 +113,7 @@ QString HistoryModel::statusText(const QJsonObject& r){
   if(phase=="queued")return "Waiting to upload…";
   if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
   if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
-  if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":"Selecting a capture…";
+  if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":op["action"]=="files"?"Copying the files…":"Selecting a capture…";
   if(phase=="uploading"){
    // Batch files upload side by side (#28): say how many run, wait, finished or stopped.
    QString files;const auto items=op["items"].toArray();
@@ -200,7 +200,7 @@ void HistoryModel::rebuild(){
   const bool uploading=query_.uploadStatus=="uploading"&&Operation::activeState(op["state"].toString())&&op["phase"]=="uploading";
   if(query_.offset||specific||(!query_.uploadStatus.isEmpty()&&!uploading)||(!Operation::activeState(op["state"].toString())&&!op["items"].toArray().isEmpty()))continue;
   if(!Operation::activeState(op["state"].toString())&&!QStringList{"failed","cancelled"}.contains(op["state"].toString()))continue;
-  QJsonObject group{{"id","operation:"+id},{"operationId",id},{"created",op["created"]},{"operation",op},{"name",friendlyAction(op["action"].toString())+" capture"},{"records",QJsonArray{}}};
+  QJsonObject group{{"id","operation:"+id},{"operationId",id},{"created",op["created"]},{"operation",op},{"name",friendlyAction(op["action"].toString())+(op["action"]=="files"?" upload":" capture")},{"records",QJsonArray{}}};
   if(!query_.search.isEmpty()&&!group["name"].toString().contains(query_.search,Qt::CaseInsensitive))continue;
   groups.append(group);
  }

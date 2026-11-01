@@ -117,6 +117,16 @@ public:
  // diagnosticsShareDays where the provider makes share links). `accepted`
  // answers when the operation is durable; `finished` gets its terminal state.
  void uploadDiagnostics(const QString& path,const QString& profileId,JsonReply accepted,std::function<void(const Operation&)> finished);
+ // Files and folders chosen with "Upload with put.gd" in a file manager (#1105),
+ // outside the sharing actions like a diagnostics upload: the installation is
+ // checked first, then every path, folders are expanded, and the destination is
+ // resolved once and stored with the operation. Never a local-only save. Links
+ // are copied as for a capture. Answers with the operation ID once it is durable.
+ static constexpr const char* fileManagerAction="files";
+ void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply);
+ // This resident's installation class ("system" or "appimage"); tests may set it.
+ void setInstallation(QString installation) {installation_=std::move(installation);}
+ QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
@@ -183,6 +193,8 @@ signals:
  // An automatic cleanup kept uploads the destination refused to abort that the user
  // has not heard of yet (#226): {count, bytes, buckets, labels, providers, error, hint, message}.
  void incompleteUploadsKept(const QJsonObject& notice);
+ // upload.files found no destination to upload to (#1105): Settings should open.
+ void destinationRequired();
 private:
  // Scoped provider calls count requests, independently of queue/encoding/journal work.
  class StorageActivity {
@@ -214,7 +226,7 @@ private:
  // Retry and manual cleanup requests that arrived during an automatic pass.
  QList<std::function<void()>> afterCleanup_;
  QJsonObject lastCleanup_;
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
@@ -311,6 +323,7 @@ private:
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;
+ QString installation_;
  Error startupError_;
 };
 // Callback adapters complete once, including ambiguous outcomes. Waiting occurs

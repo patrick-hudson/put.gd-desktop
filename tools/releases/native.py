@@ -11,6 +11,7 @@ import stat
 import subprocess
 import tarfile
 
+from audit_file_manager_plugins import audit_plugins
 from audit_native import audit_tree, command, sha256
 
 
@@ -121,6 +122,8 @@ def main():
         result = audit_tree(extracted, expected, require_kde=args.require_kde,
                             require_proton=args.require_proton, expected_proton_manifest=proton_expected,
                             package_target=args.package_target)
+        result["fileManagerPlugins"] = audit_plugins(extracted, build, package_target=args.package_target,
+                                                     package=package, metadata=metadata)
         package_digest = sha256(package)
         result["package"] = {**metadata, "file": package.name, "sha256": package_digest, "size": package.stat().st_size}
         (output / "native-audit.json").write_text(json.dumps(result, indent=2) + "\n")

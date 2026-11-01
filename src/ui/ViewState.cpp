@@ -29,7 +29,7 @@ bool appearanceDraft(const QJsonValue& value){
 }
 bool preferencesDraft(const QJsonValue& value){
  auto object=value.toObject();const auto colors=object.take("editorRecentColors");const auto diagnostics=object.take("diagnostics");const auto appearance=object.take("appearance");const auto updates=object.take("updates");
- return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","recordingFrameRate","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,6))
+ return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","regionSelectionMode","recordingFrameRate","unlockCredentialsAtStartup","fileManagerFolders","fileManagerMenu"})&&(colors.isUndefined()||stringArray(colors,6))
   &&(diagnostics.isUndefined()||scalars(diagnostics,{"debugLogging","packageFolder"}))&&(appearance.isUndefined()||appearanceDraft(appearance))&&(updates.isUndefined()||scalars(updates,{"check","channel"}));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}

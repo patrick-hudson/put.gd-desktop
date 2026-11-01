@@ -7,7 +7,9 @@ if [ "${GITHUB_EVENT_NAME:-}" = 'pull_request' ]; then
 fi
 # The AppImage bundles its own runtime, including putgd-record's GStreamer
 # plugins and the pinned FFmpeg from build/appimage-deps (packaging/appimage/media.json).
+# Its file-manager entries are per-user files, not the native packages' plugins (#1105).
 cmake --preset release -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RECORDING=ON \
+  -DPUTGD_NAUTILUS_PLUGIN=OFF -DPUTGD_CAJA_PLUGIN=OFF -DPUTGD_PEONY_PLUGIN=OFF \
   -DPUTGD_RELEASE_TAG="$release_tag" -DPUTGD_PACKAGE_TARGET=appimage -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_PREFIX_PATH="$PWD/build/appimage-deps;$QT_ROOT_DIR;$PWD/build/sdk"
 cmake --build --preset release --parallel "${PUTGD_BUILD_JOBS:-2}"

@@ -113,7 +113,7 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/RecordingModel.cpp
-  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp
+  src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp src/core/FolderZip.cpp
   src/core/HostEnvironment.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Which published package this build becomes, and whether it may check for a
@@ -142,6 +142,9 @@ set_source_files_properties(src/core/Distribution.cpp PROPERTIES COMPILE_DEFINIT
   "PUTGD_PACKAGE_TARGET_NAME=\"${PUTGD_PACKAGE_TARGET}\";PUTGD_UPDATE_CHECK_BUILT=${putgd_update_check_built};PUTGD_PACKAGE_REPOSITORY=\"${PUTGD_PACKAGE_REPOSITORY_URL}\"")
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity putgd_log Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
+# The streaming folder zip writer (#1105) deflates through zlib directly.
+find_package(ZLIB REQUIRED)
+target_link_libraries(putgd_core PRIVATE ZLIB::ZLIB)
 
 add_library(putgd_credentials STATIC src/secrets/CredentialStore.cpp)
 target_link_libraries(putgd_credentials PUBLIC putgd_core PRIVATE qt6keychain)
@@ -231,13 +234,28 @@ endif()
 add_dependencies(putgd_s3 putgd_s3_module)
 install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
-add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/UploadSlots.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/ResidentSession.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp src/app/UpdateService.cpp src/app/AppImageInstall.cpp)
+add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/UploadSlots.cpp src/app/RecordingService.cpp src/app/RecordingHelperBackend.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/ResidentSession.cpp src/app/LoginStartup.cpp src/app/StorageLocations.cpp src/app/LogService.cpp src/app/DiagnosticsBundle.cpp src/app/UpdateService.cpp src/app/AppImageInstall.cpp src/app/FileUploads.cpp src/app/FileManagerIntegration.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core PRIVATE putgd_credentials putgd_ui_control ${CMAKE_DL_LIBS})
 # The AppImage login script LoginStartup writes (#307), compiled in from its source.
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/app/appimage-login-start.sh" putgd_login_start_script)
 file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/app/LoginStartScript.h"
   CONTENT "#pragma once\nnamespace putgd {\ninline constexpr char putgdLoginStartScript[]=R\"putgdsh(${putgd_login_start_script})putgdsh\";\n}\n" @ONLY)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/app/appimage-login-start.sh)
+# The file-manager integration's scripts and the packaged menu files it writes
+# per user for the AppImage (#1105), compiled in from their sources.
+set(putgd_file_manager_templates "#pragma once\nnamespace putgd {\n")
+foreach(template IN ITEMS FileManagerScript=src/app/file-manager-script.sh FileManagerLauncher=src/app/file-manager-launcher.sh
+    KioServiceMenu=packaging/linux/filemanager/kio-servicemenu.desktop NemoAction=packaging/linux/filemanager/putgd-upload.nemo_action
+    ThunarSendTo=packaging/linux/filemanager/thunar-sendto.desktop FileManagerAction=packaging/linux/filemanager/file-manager-action.desktop
+    Contract=packaging/linux/filemanager/putgd-upload.contract)
+  string(REPLACE "=" ";" template "${template}")
+  list(GET template 0 template_name)
+  list(GET template 1 template_path)
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${template_path}" template_text)
+  string(APPEND putgd_file_manager_templates "inline constexpr char putgd${template_name}[]=R\"putgdsh(${template_text})putgdsh\";\n")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${template_path}")
+endforeach()
+file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated/app/FileManagerTemplates.h" CONTENT "${putgd_file_manager_templates}}\n" @ONLY)
 target_include_directories(putgd_app PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/app")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(PkgConfig REQUIRED)
@@ -425,8 +443,14 @@ endif()
 add_executable(putgd-cli src/cli/main.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp)
 target_link_libraries(putgd-cli PRIVATE putgd_app putgd_minisign Qt6::Network)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+# The file manager's `putgd --upload` client (#1105). DEB/RPM builds resolve
+# network URIs through the host's GIO in-process (GVfs FUSE paths).
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PUTGD_GIO REQUIRED IMPORTED_TARGET gio-2.0)
+add_library(putgd_upload_client STATIC src/app/UploadClient.cpp)
+target_link_libraries(putgd_upload_client PUBLIC putgd_app putgd_client Qt6::DBus PRIVATE PkgConfig::PUTGD_GIO)
 add_executable(putgd src/main.cpp)
-target_link_libraries(putgd PRIVATE putgd_build_options putgd_s3 putgd_app putgd_tray putgd_ui_supervisor putgd_ui_state putgd_appearance Qt6::Widgets)
+target_link_libraries(putgd PRIVATE putgd_build_options putgd_s3 putgd_app putgd_upload_client putgd_tray putgd_ui_supervisor putgd_ui_state putgd_appearance Qt6::Widgets)
 if(TARGET putgd_x11)
   target_link_libraries(putgd PRIVATE putgd_x11_core putgd_x11)
   target_compile_definitions(putgd PRIVATE PUTGD_NATIVE_X11)
@@ -593,6 +617,16 @@ foreach(product putgd putgd-ui putgd-capture putgd-kde-region putgd-record putgd
       VERBATIM)
   endif()
 endforeach()
+
+# File-manager menu plugins (#1105): AUTO builds each whose headers pkg-config
+# finds; package builds set ON. Before packaging/linux, which installs them.
+foreach(file_manager NAUTILUS CAJA PEONY)
+  set(PUTGD_${file_manager}_PLUGIN AUTO CACHE STRING "Build the ${file_manager} menu plugin: AUTO, ON or OFF")
+  set_property(CACHE PUTGD_${file_manager}_PLUGIN PROPERTY STRINGS AUTO ON OFF)
+endforeach()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_subdirectory(src/filemanager)
+endif()
 
 add_subdirectory(packaging/linux)
 
@@ -1270,6 +1304,20 @@ if(BUILD_TESTING)
  add_executable(test_login_startup tests/unit/test_login_startup.cpp)
  target_link_libraries(test_login_startup PRIVATE putgd_app Qt6::Test)
  add_test(NAME login_startup_contract COMMAND test_login_startup)
+ # #1105: per-user file-manager entries, the COSMIC merge and the generated scripts.
+ add_executable(test_file_manager_integration tests/unit/test_file_manager_integration.cpp)
+ target_link_libraries(test_file_manager_integration PRIVATE putgd_app Qt6::Test)
+ add_test(NAME file_manager_integration COMMAND test_file_manager_integration)
+ set_tests_properties(file_manager_integration PROPERTIES TIMEOUT 120)
+ # #1105: streaming ZIP64 folder archives; PUTGD_FOLDER_ZIP_LARGE=1 adds the >4 GiB and >65,535-entry cases.
+ add_executable(test_folder_zip tests/unit/test_folder_zip.cpp)
+ target_link_libraries(test_folder_zip PRIVATE putgd_core ZLIB::ZLIB Qt6::Test)
+ add_test(NAME folder_zip COMMAND test_folder_zip)
+ # #1105: upload.files checks, routing and the --upload client's pure parts.
+ add_executable(test_file_uploads tests/unit/test_file_uploads.cpp)
+ target_include_directories(test_file_uploads PRIVATE src tests)
+ target_link_libraries(test_file_uploads PRIVATE putgd_app putgd_upload_client Qt6::Test)
+ add_test(NAME file_uploads COMMAND test_file_uploads)
  # #490: a resident ends with its login session; fake logind.
  add_executable(test_resident_session tests/unit/test_resident_session.cpp)
  target_include_directories(test_resident_session PRIVATE tests)

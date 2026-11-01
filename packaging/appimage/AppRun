@@ -55,6 +55,12 @@ if [ "$#" -eq 1 ]; then
         --version|--version-json|-v) exec "$appdir/usr/bin/putgd-launcher" "$@" ;;
     esac
 fi
+# A file manager's "Upload with put.gd" (#1105) runs a short-lived client that
+# hands the selection to the resident. Entries made here would be removed with
+# the client and missing for the resident, so it gets none and no supervisor.
+if [ "${1-}" = --upload ]; then
+    exec "$appdir/usr/bin/putgd-launcher" "$@"
+fi
 applications=${XDG_DATA_HOME:-"$HOME/.local/share"}/applications
 permission_entry=
 record_entry=

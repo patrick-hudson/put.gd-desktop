@@ -20,6 +20,33 @@ foreach(gnome_asset extension.js metadata.json)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/integrations/gnome/${gnome_asset}"
     "${CMAKE_INSTALL_DATADIR}/gnome-shell/extensions/putgd@put.gd")
 endforeach()
+# "Upload with put.gd" menu files (#1105), installed for every file manager and
+# inert where it is absent. src/app/FileManagerIntegration.cpp writes the
+# AppImage's per-user copies from these same files; its image carries none.
+if(NOT PUTGD_PACKAGE_TARGET STREQUAL "appimage")
+  putgd_install_snapshot(filemanager/kio-servicemenu.desktop "${CMAKE_INSTALL_DATADIR}/kio/servicemenus" RENAME putgd-upload.desktop)
+  putgd_install_snapshot(filemanager/putgd-upload.nemo_action "${CMAKE_INSTALL_DATADIR}/nemo/actions")
+  putgd_install_snapshot(filemanager/thunar-sendto.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload.desktop)
+  putgd_install_snapshot(filemanager/file-manager-action.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload.desktop)
+  putgd_install_snapshot(filemanager/putgd-upload.contract "${CMAKE_INSTALL_DATADIR}/contractor")
+endif()
+# File-manager menu plugins (#1105, src/filemanager), each where its file
+# manager loads extensions, with the distros' plain shared-object mode.
+foreach(file_manager_plugin putgd-nautilus putgd-caja putgd-peony)
+  if(TARGET ${file_manager_plugin})
+    get_target_property(plugin_dir ${file_manager_plugin} PUTGD_INSTALL_DIR)
+    install(TARGETS ${file_manager_plugin} LIBRARY DESTINATION "${plugin_dir}"
+      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+    if(NOT IS_ABSOLUTE "${plugin_dir}")
+      set(plugin_dir "${CMAKE_INSTALL_PREFIX}/${plugin_dir}")
+    endif()
+    list(APPEND putgd_file_manager_plugin_dirs "${plugin_dir}")
+  endif()
+endforeach()
+if(TARGET putgd-caja)
+  # Caja's Preferences > Extensions describes a module by the file named after it.
+  putgd_install_snapshot(libputgd-caja.caja-extension "${CMAKE_INSTALL_DATADIR}/caja/extensions")
+endif()
 # This is an opt-in XDG autostart template; preferences.launchAtLogin owns enabling it.
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/autostart")
@@ -190,6 +217,10 @@ screen recordings. put.gd uploads them to your own S3-compatible bucket or to
 Proton Drive and puts the public link on the clipboard. It runs on GNOME, KDE
 Plasma and Cinnamon, on Wayland and X11.
 
+\"Upload with put.gd\" in the file manager's right-click menu uploads the
+selected files and folders. Files (Nautilus), Caja and Peony show it after
+they restart.
+
 The package's licence metadata names its main licences. Every licence and
 notice of the code it contains is listed in
 /usr/share/doc/putgd/runtime-notices.txt.")
@@ -238,9 +269,14 @@ endforeach()
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION ${putgd_rpm_system_dirs})
 # Private AWS libraries satisfy only this app, never another RPM. Keep automatic
 # detection of their system dependencies; filter only the bundled SONAMEs.
+# The file-manager plugins provide nothing either, and link no file-manager
+# library; the requires filter is a backstop. Their directories stay in the
+# file list: the RPM co-owns them, as Fedora asks when their owner isn't required.
 # RPM's default stripping also changes bytes after our runtime digest is written.
+set(putgd_rpm_private_dirs "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd" ${putgd_file_manager_plugin_dirs})
+list(JOIN putgd_rpm_private_dirs "|" putgd_rpm_private_dirs)
 set(CPACK_RPM_SPEC_MORE_DEFINE
-  "%global __provides_exclude_from ^${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n)[.]so.*$\n%define __spec_install_post /bin/true")
+  "%global __provides_exclude_from ^(${putgd_rpm_private_dirs})/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n|libnautilus-extension|libcaja-extension)[.]so.*$\n%define __spec_install_post /bin/true")
 if(TARGET putgd-record)
   # The helper links the distro GStreamer/FFmpeg libraries (shlibdeps/RPM find
   # those); element plugins are separate packages that must be present.
@@ -256,6 +292,15 @@ if(TARGET putgd-record)
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, pipewire-gstreamer")
   set(CPACK_RPM_PACKAGE_RECOMMENDS "gstreamer1-plugin-openh264, openh264")
 endif()
+# Network locations upload through GVfs's FUSE paths (#1105). Appended: the
+# recording block above sets both lists.
+foreach(recommends CPACK_DEBIAN_PACKAGE_RECOMMENDS CPACK_RPM_PACKAGE_RECOMMENDS)
+  if(${recommends})
+    string(APPEND ${recommends} ", gvfs-fuse")
+  else()
+    set(${recommends} gvfs-fuse)
+  endif()
+endforeach()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")

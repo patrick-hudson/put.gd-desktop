@@ -194,7 +194,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'clear_logs', 'create_diagnostics_bundle', 'get_diagnostics_upload_target', 'show_diagnostics_package',
                             'settings_diagnostics', 'history_save_diagnostics', 'drive_history', 'get_update_status', 'check_for_updates',
                             'open_software_updates', 'install_update', 'restart_after_update', 'drive_file_dialog', 'editor_file_dialog',
-                            'drive_editor'}
+                            'drive_editor', 'upload_files'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 review = next(tool for tool in discovered if tool.name == 'drive_recording_review')
                 self.assertIn('Use Redact', review.description)
@@ -325,6 +325,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('get_diagnostics_upload_target', {'profile_id': 'synthetic-s3'}, 'diagnostics.uploadTarget', {'profileId': 'synthetic-s3'}),
                     ('get_view_state', {}, 'ui.viewState', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
+                    ('upload_files', {'paths': ['/synthetic dir/a.png', '/synthetic dir/folder']}, 'upload.files', {'paths': ['/synthetic dir/a.png', '/synthetic dir/folder']}),
+                    ('upload_files', {'paths': ['/synthetic dir/a.png'], 'profile_id': 'synthetic-s3'}, 'upload.files', {'paths': ['/synthetic dir/a.png'], 'profileId': 'synthetic-s3'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),
                     ('open_editor', {'source': 'file', 'path': '/synthetic dir/image.png'}, 'editor.open', {'source': 'file', 'path': '/synthetic dir/image.png'}),
                     ('get_editor', {'id': 'synthetic-operation'}, 'editor.inspect', {'id': 'synthetic-operation'}),

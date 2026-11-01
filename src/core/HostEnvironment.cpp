@@ -22,11 +22,20 @@ QStringList mountRoots(const QString& appdir){
  return roots;
 }
 }
-bool fromAppImage(const QProcessEnvironment& current,const QString& executable){
- if(current.contains(savedNamesVariable))return true;
+bool insideAppDir(const QProcessEnvironment& current,const QString& executable){
  const auto root=QFileInfo(current.value("APPDIR")).canonicalFilePath();
  if(root.isEmpty()||!QDir::isAbsolutePath(current.value("APPDIR"))||executable.isEmpty())return false;
  return QFileInfo(executable).canonicalFilePath().startsWith(root+'/');
+}
+bool fromAppImage(const QProcessEnvironment& current,const QString& executable){
+ if(current.contains(savedNamesVariable))return true;
+ return insideAppDir(current,executable);
+}
+QString installationClass(const QProcessEnvironment& current,const QString& executable){
+ return insideAppDir(current,executable)?QStringLiteral("appimage"):QStringLiteral("system");
+}
+QString installationClass(){
+ return installationClass(QProcessEnvironment::systemEnvironment(),QFileInfo(QStringLiteral("/proc/self/exe")).canonicalFilePath());
 }
 QProcessEnvironment environment(const Inputs& in){
  auto result=in.current;

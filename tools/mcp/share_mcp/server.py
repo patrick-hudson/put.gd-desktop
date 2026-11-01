@@ -216,6 +216,18 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         return await adapter.call('action.invoke', {'action': action})
 
     @server.tool(annotations=effect)
+    async def upload_files(paths: list[str], profile_id: str | None = None) -> Json:
+        """Upload files and folders right away, as a file manager's "Upload with put.gd" does (#1105): 1-10000 absolute paths to existing regular files or folders. Folders follow preferences.fileManagerFolders: zip (default) uploads each folder as one <folder name>.zip; files uploads every file in it (symlinks skipped; limits.maxFiles counts the expanded files). Goes to profile_id, else captureDefaults' destination when it is an upload with a profile, else the only destination; with none it is refused with destination_required and nothing is saved locally. Uses captureDefaults.publicationMode and copies the links like a capture. Every path is checked before anything is accepted: a refusal (files_rejected, input_excessive, destination_object_too_large, disk_space_insufficient) names each bad file in details.files. Returns operationId; poll get_operation until it finishes."""
+        if not isinstance(paths, list) or not 0 < len(paths) <= 10000 or not all(identifier(path, 4096) and path.startswith('/') for path in paths):
+            return invalid()
+        if profile_id is not None and not identifier(profile_id, 64):
+            return invalid()
+        params: Json = {'paths': paths}
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        return await adapter.call('upload.files', params, timeout=150)
+
+    @server.tool(annotations=effect)
     async def open_editor(source: str = 'region', path: str | None = None) -> Json:
         """Start Capture region & edit (the edit action) from region/window/desktop/clipboard, or an absolute PNG/JPEG file path. Returns the operation ID; the editor window opens and nothing uploads until submit_editor. Region/window selection may need the user."""
         if source not in EDITOR_SOURCES or (source == 'file') != (path is not None):

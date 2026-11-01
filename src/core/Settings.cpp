@@ -262,7 +262,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/retention/logBytes", ByteSize::labels("Log storage is 1 MiB to 1 GiB."));
     const auto preferences = doc["preferences"].toObject();
     QStringList preferenceKeys{"notifications", "launchAtLogin"};
-    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates"})
+    for (const auto* optional : {"uploadClipboardBehavior", "regionSelectionMode", "recordingFrameRate", "unlockCredentialsAtStartup", "editorRecentColors", "diagnostics", "appearance", "updates", "fileManagerFolders", "fileManagerMenu"})
         if (preferences.contains(optional)) preferenceKeys.append(optional);
     if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
@@ -313,6 +313,10 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         return invalid("/preferences/regionSelectionMode", "Choose live or screenshot_first for region selection.");
     if (preferences.contains("recordingFrameRate") && !(integer(preferences["recordingFrameRate"], 30, 30) || integer(preferences["recordingFrameRate"], 60, 60)))
         return invalid("/preferences/recordingFrameRate", "Choose 30 or 60 frames per second for recordings.");
+    if (preferences.contains("fileManagerFolders") && !choice(preferences["fileManagerFolders"], {"zip", "files"}))
+        return invalid("/preferences/fileManagerFolders", "Choose zip or files for folders uploaded from a file manager.");
+    if (preferences.contains("fileManagerMenu") && !preferences["fileManagerMenu"].isBool())
+        return invalid("/preferences/fileManagerMenu", "The file manager menu setting must be true or false.");
     return {};
 }
 
@@ -391,6 +395,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.unlockCredentialsAtStartup = doc["preferences"].toObject()["unlockCredentialsAtStartup"].toBool(true);
     settings.checkForUpdates = doc["preferences"].toObject()["updates"].toObject()["check"].toBool(true);
     settings.updateChannel = doc["preferences"].toObject()["updates"].toObject()["channel"].toString("build");
+    settings.fileManagerFolders = doc["preferences"].toObject()["fileManagerFolders"].toString("zip");
+    settings.fileManagerMenu = doc["preferences"].toObject()["fileManagerMenu"].toBool(true);
     for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     return settings;
 }

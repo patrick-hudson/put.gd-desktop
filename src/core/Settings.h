@@ -83,6 +83,12 @@ struct Settings {
     // feed of this build's channel ("build") or a chosen one.
     bool checkForUpdates = true;
     QString updateChannel = "build";
+    // preferences.fileManagerFolders (#1105): a folder chosen in a file manager's
+    // "Upload with put.gd" uploads as one .zip ("zip", default) or file by file ("files").
+    QString fileManagerFolders = "zip";
+    // preferences.fileManagerMenu (#1105): the AppImage's per-user menu entries;
+    // DEB and RPM entries are system files and always on.
+    bool fileManagerMenu = true;
     // Most recent first; custom colors picked in the editor.
     static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;
