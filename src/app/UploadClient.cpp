@@ -11,6 +11,7 @@
 #include <QDBusMessage>
 #include <QDeadlineTimer>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -27,6 +28,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <utility>
 #include <chrono>
 #include <cerrno>
 #include <csignal>
@@ -103,7 +105,14 @@ constexpr int noticeHoldMs=120000;
 // window and removes it the moment its sender leaves the bus.
 void notify(const QString& title,const QString& body,bool failure){
  const auto bytes=(title+": "+body).toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);
- auto bus=QDBusConnection::sessionBus();if(!bus.isConnected())return;
+ // No notification server: the same notice in a dialog, or nothing shows at all.
+ const auto dialog=[&]{
+  auto environment=host::environment();
+  const auto libraries=withoutPrivateLibraries(environment.value("LD_LIBRARY_PATH"),binaryDirectory());
+  if(libraries.isEmpty())environment.remove("LD_LIBRARY_PATH");else environment.insert("LD_LIBRARY_PATH",libraries);
+  showDialog(title,body,environment);
+ };
+ auto bus=QDBusConnection::sessionBus();if(!bus.isConnected()){dialog();return;}
  // The AppImage integration names its stable icon copy; AppRun's points into a per-launch mount.
  const auto iconFile=qEnvironmentVariable("PUTGD_UPLOAD_ICON");
  const auto icon=QDir::isAbsolutePath(iconFile)&&QFileInfo(iconFile).isFile()?iconFile:QStringLiteral("putgd");
@@ -117,7 +126,7 @@ void notify(const QString& title,const QString& body,bool failure){
  bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",&held,SLOT(closed(uint,uint)));
  bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",&held,SLOT(invoked(uint,QString)));
  const auto reply=bus.call(call,QDBus::Block,5000);
- if(reply.type()!=QDBusMessage::ReplyMessage||reply.arguments().isEmpty())return;
+ if(reply.type()!=QDBusMessage::ReplyMessage||reply.arguments().isEmpty()){dialog();return;}
  held.track(reply.arguments().first().toUInt());
  QTimer::singleShot(noticeHoldMs,&loop,&QEventLoop::quit);
  loop.exec();
@@ -162,7 +171,7 @@ void reportScoped(){
 // `gio info` for the AppImage: the host's gio, with the host's own GIO modules
 // (the image bundles GLib without them), in an English UTF-8 output locale.
 // Plain C would print é as ?, matching a different real file.
-struct Child { QByteArray out; bool complete=false; bool notRun=false; };
+struct Child { QByteArray out; bool complete=false; bool notRun=false; int exitCode=-1; };
 Child runBounded(const QString& program,const QStringList& arguments,const QProcessEnvironment& environment,const QDeadlineTimer& deadline){
  Child result;
  int out[2],err[2];if(::pipe2(out,O_CLOEXEC)!=0)return result;if(::pipe2(err,O_CLOEXEC)!=0){::close(out[0]);::close(out[1]);return result;}
@@ -203,7 +212,8 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  if(::waitpid(pid,&status,WNOHANG)==0){::kill(pid,SIGKILL);while(::waitpid(pid,&status,0)<0&&errno==EINTR){}result.out.clear();return result;}
  result.complete=WIFEXITED(status);
  // Our failed execve above, or the dynamic loader or shell: the program never ran.
- result.notRun=result.complete&&(WEXITSTATUS(status)==126||WEXITSTATUS(status)==127);
+ if(result.complete)result.exitCode=WEXITSTATUS(status);
+ result.notRun=result.exitCode==126||result.exitCode==127;
  if(!result.complete)result.out.clear();
  return result;
 }
@@ -457,6 +467,24 @@ QStringList unreachableOverFuse(const QJsonArray& files,const QString& runtimeDi
  }
  return names;
 }
+bool showDialog(const QString& title,const QString& body,const QProcessEnvironment& environment){
+ if(environment.value("DISPLAY").isEmpty()&&environment.value("WAYLAND_DISPLAY").isEmpty())return false;
+ // xmessage doesn't wrap.
+ static const QRegularExpression line(QStringLiteral("(.{1,72})(\\s+|$)"));
+ auto wrapped=body;wrapped.replace(line,QStringLiteral("\\1\n"));
+ const QList<std::pair<QString,QStringList>> tools{
+  {"zenity",{"--error","--no-markup","--title="+title,"--text="+body}},
+  {"kdialog",{"--title",title,"--error",body}},
+  {"xmessage",{"-center",title+"\n\n"+wrapped}}};
+ for(const auto& [program,arguments]:tools){
+  const auto path=host::findProgram(program,environment);if(path.isEmpty())continue;
+  QElapsedTimer shown;shown.start();
+  const auto child=runBounded(path,arguments,environment,QDeadlineTimer(noticeHoldMs));
+  // Closed with its window's X, zenity and xmessage don't exit 0, but it was seen: no second dialog.
+  if(child.exitCode==0||shown.elapsed()>1000)return true;
+ }
+ return false;
+}
 
 int run(int argc,char** argv){
  if(argc<3||std::strcmp(argv[2],"--")!=0){std::fputs("Usage: putgd --upload -- <absolute paths or URIs>\n",stderr);return 2;}
@@ -499,7 +527,11 @@ int run(int argc,char** argv){
  if(error){
   const auto fuseGone=unreachableOverFuse(error.details["files"].toArray(),qEnvironmentVariable("XDG_RUNTIME_DIR"));
   if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
-  else if(!fuseGone.isEmpty())refuse(QStringLiteral("These network items can't be read through their local path; gvfsd-fuse may have stopped: %1. Log out and in, then try again.").arg(fuseGone.mid(0,8).join(", ")));
+  else if(!fuseGone.isEmpty()){
+   // The resident's own list still reports whatever else this selection had wrong.
+   const bool others=error.details["files"].toArray().size()>fuseGone.size();
+   refuse(QStringLiteral("These network items can't be reached at their local path: the share was disconnected, or gvfsd-fuse stopped: %1. Reconnect it, or log out and in, then try again.%2").arg(fuseGone.mid(0,8).join(", "),others?"\n"+error.message:QString()));
+  }
   else if(error.details["outcomeUnknown"].toBool())notify(QStringLiteral("put.gd — upload uncertain"),QStringLiteral("put.gd didn't confirm the upload. Check put.gd's History before trying again."),true);
   else if(error.code=="client_unavailable"||error.code=="client_timeout")refuse(QStringLiteral("put.gd isn't answering. Try again in a moment."));
   else if(error.code=="initializing")refuse(QStringLiteral("put.gd is still starting. Try again in a moment."));

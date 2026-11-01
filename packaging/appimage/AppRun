@@ -21,17 +21,20 @@ host_cache() {
         kbuildsycoca6 --noincremental >/dev/null 2>&1
 }
 # A refusal with no terminal attached, started from a file manager: stderr alone
-# shows nothing. Nothing from the image loads here. Every Plasma session has a
-# notification server and dbus-send; kdialog covers one where that call fails.
+# shows nothing. Host tools only, with the host's libraries. busctl comes with
+# systemd and can send Notify's a{sv} hints, which dbus-send before 1.16 can't;
+# a dialog covers a session with no notification server.
 host_refusal() {
     printf '%s\n' "$2" >&2
-    LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
-        dbus-send --session --print-reply --reply-timeout=5000 --dest=org.freedesktop.Notifications \
-        /org/freedesktop/Notifications org.freedesktop.Notifications.Notify \
-        string:put.gd uint32:0 string:dialog-error "string:$1" "string:$2" \
-        array:string:default,Dismiss dict:string:variant:urgency,byte,2 int32:0 >/dev/null 2>&1 ||
-        LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
-            kdialog --title put.gd --error "$1: $2" >/dev/null 2>&1 || :
+    (
+        LD_LIBRARY_PATH=$host_library_path QT_PLUGIN_PATH=$host_plugin_path
+        export LD_LIBRARY_PATH QT_PLUGIN_PATH
+        busctl --user --timeout=5 call org.freedesktop.Notifications /org/freedesktop/Notifications \
+            org.freedesktop.Notifications Notify 'susssasa{sv}i' put.gd 0 dialog-error "$1" "$2" \
+            2 default Dismiss 1 urgency y 2 0 >/dev/null 2>&1 ||
+            kdialog --title put.gd --error "$1: $2" >/dev/null 2>&1 ||
+            xmessage -center "$(printf '%s: %s\n' "$1" "$2" | fold -s -w 72)" >/dev/null 2>&1 || :
+    )
 }
 export LD_LIBRARY_PATH="$appdir/usr/lib:$appdir/usr/lib/putgd${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$appdir/usr/plugins:$appdir/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"

@@ -2,6 +2,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QJsonArray>
+#include <QProcessEnvironment>
 #include <QString>
 #include <QStringList>
 #include <functional>
@@ -52,7 +53,12 @@ QString noticeName(const QString& argument);
 // and one that does repeats invalid_request. `codeWithoutParameters` makes that call.
 bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters);
 // The names of the files the resident reported missing (`details.files` of its
-// refusal) whose whole GVfs FUSE mount can't be seen: gvfsd-fuse stopped, and the
-// files themselves may be fine. A missing file on a mount that answers isn't one.
+// refusal) whose whole GVfs FUSE mount can't be seen: the share was disconnected or
+// gvfsd-fuse stopped, and the files themselves may be fine. A missing file on a
+// mount that answers isn't one.
 QStringList unreachableOverFuse(const QJsonArray& files,const QString& runtimeDirectory);
+// A notice through the host's own dialog tool, for a session with no notification
+// server: without one, stderr would be all a right-click shows. False when no
+// display or tool could show it. `environment` is the host's own.
+bool showDialog(const QString& title,const QString& body,const QProcessEnvironment& environment);
 }

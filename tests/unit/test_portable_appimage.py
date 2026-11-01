@@ -162,7 +162,7 @@ while :; do sleep 0.05; done
         """A PATH holding only what AppRun itself needs, plus the given fake host tools."""
         bin_dir = self.root / "host-bin"
         bin_dir.mkdir()
-        for name in ("awk", "cat", "dirname", "mkdir", "mktemp", "rm", "sed"):
+        for name in ("awk", "cat", "dirname", "fold", "mkdir", "mktemp", "rm", "sed"):
             (bin_dir / name).symlink_to(shutil.which(name))
         for name, script in tools:
             self.write(bin_dir / name, script)
@@ -175,7 +175,7 @@ while :; do sleep 0.05; done
     def test_plasma_5_refusal_reaches_the_screen_through_host_tools(self):
         """Plasma 5.27 is refused; started from a file manager, stderr alone shows nothing."""
         calls = self.root / "tool-calls"
-        self.plasma_without_kbuildsycoca6(("dbus-send", self.RECORD_TOOL.format(0)), ("kdialog", self.RECORD_TOOL.format(0)))
+        self.plasma_without_kbuildsycoca6(("busctl", self.RECORD_TOOL.format(0)), ("kdialog", self.RECORD_TOOL.format(0)))
         self.env["PG_HOST_RECEIPT"] = str(calls)
         result = subprocess.run([str(APP_RUN)], env=self.env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 1)
@@ -185,16 +185,20 @@ while :; do sleep 0.05; done
         lines = calls.read_text().splitlines()
         # The host's libraries, not the image's, and one notice only.
         self.assertEqual(lines[:2], ["/ambient/libraries", "/ambient/plugins"])
-        self.assertIn("org.freedesktop.Notifications.Notify", lines)
         self.assertNotIn("--error", lines)
-        body = next(line for line in lines if line.startswith("string:The put.gd AppImage"))
-        self.assertIn("needs Plasma 6", body)
-        self.assertIn("DEB", body)
+        # Notify's whole signature: its a{sv} hints are why this isn't dbus-send.
+        signature = lines.index("susssasa{sv}i")
+        self.assertEqual(lines[signature - 2:signature], ["org.freedesktop.Notifications", "Notify"])
+        self.assertEqual(lines[signature + 1:signature + 4], ["put.gd", "0", "dialog-error"])
+        self.assertEqual(lines[signature + 4], "put.gd can't start")
+        self.assertIn("needs Plasma 6", lines[signature + 5])
+        self.assertIn("DEB", lines[signature + 5])
+        self.assertEqual(lines[signature + 6:], ["2", "default", "Dismiss", "1", "urgency", "y", "2", "0"])
         self.assertEqual(self.entries(), [])
 
     def test_plasma_5_refusal_falls_back_to_a_dialog(self):
         calls = self.root / "tool-calls"
-        self.plasma_without_kbuildsycoca6(("dbus-send", self.RECORD_TOOL.format(1)), ("kdialog", self.RECORD_TOOL.format(0)))
+        self.plasma_without_kbuildsycoca6(("busctl", self.RECORD_TOOL.format(1)), ("kdialog", self.RECORD_TOOL.format(0)))
         self.env["PG_HOST_RECEIPT"] = str(calls)
         self.assertEqual(subprocess.run([str(APP_RUN)], env=self.env, capture_output=True).returncode, 1)
         lines = calls.read_text().splitlines()

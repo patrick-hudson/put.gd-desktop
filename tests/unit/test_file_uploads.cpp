@@ -250,6 +250,34 @@ private slots:
   QVERIFY(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=gone/a.png","source_empty")},runtime.path()).isEmpty());
   QVERIFY(UploadClient::unreachableOverFuse({missing("gvfs/smb-share:server=gone/a.png")},QString()).isEmpty());
  }
+ // No notification server: the first dialog tool that shows it, in the host's environment.
+ void dialogWithoutNotificationServer() {
+  QTemporaryDir tools;const auto receipt=tools.filePath("receipt");
+  const auto tool=[&](const QString& name,int exitCode){
+   QFile file(tools.filePath(name));QVERIFY(file.open(QIODevice::WriteOnly));
+   file.write(QStringLiteral("#!/bin/sh\nprintf '%s\\n' %1 \"$@\" >> \"$RECEIPT\"\nexit %2\n").arg(name).arg(exitCode).toUtf8());file.close();
+   QVERIFY(file.setPermissions(file.permissions()|QFile::ExeOwner));
+  };
+  QProcessEnvironment environment;environment.insert("PATH",tools.path());environment.insert("RECEIPT",receipt);
+  const auto received=[&]{QFile file(receipt);if(!file.open(QIODevice::ReadOnly))return QStringList{};const auto text=QString::fromUtf8(file.readAll());file.remove();return text.split('\n',Qt::SkipEmptyParts);};
+  tool("kdialog",0);
+  // No display: nothing can show it, so nothing runs.
+  QVERIFY(!UploadClient::showDialog("Title","<b>Body & more",environment));QVERIFY(received().isEmpty());
+  environment.insert("DISPLAY",":9");
+  QVERIFY(UploadClient::showDialog("Title","<b>Body & more",environment));
+  QCOMPARE(received(),(QStringList{"kdialog","--title","Title","--error","<b>Body & more"}));
+  // A tool that can't show it passes to the next; zenity takes the text literally.
+  tool("zenity",1);
+  QVERIFY(UploadClient::showDialog("Title","<b>Body & more",environment));
+  QCOMPARE(received(),(QStringList{"zenity","--error","--no-markup","--title=Title","--text=<b>Body & more","kdialog","--title","Title","--error","<b>Body & more"}));
+  QVERIFY(QFile::remove(tools.filePath("kdialog")));QVERIFY(QFile::remove(tools.filePath("zenity")));
+  // xmessage doesn't wrap by itself.
+  tool("xmessage",0);
+  QVERIFY(UploadClient::showDialog("Title",QString(50,'a')+" "+QString(50,'b'),environment));
+  QCOMPARE(received(),(QStringList{"xmessage","-center","Title",QString(50,'a'),QString(50,'b')}));
+  QVERIFY(QFile::remove(tools.filePath("xmessage")));
+  QVERIFY(!UploadClient::showDialog("Title","Body",environment));
+ }
  // The real client refuses what it can't resolve before anything else, with no resident needed.
  void clientRefusesWithoutLocalPaths() {
   const auto putgd=qEnvironmentVariable("PUTGD_BINARY");
