@@ -9,9 +9,9 @@ from typing import Any
 from uuid import uuid4
 
 from jsonschema import ValidationError, validate
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.utilities.types import Image
-from mcp.types import ToolAnnotations
+from mcp.server import MCPServer
+from mcp.server.mcpserver import Context, Image
+from mcp.types import CallToolResult, InputRequiredResult, TextContent, Tool, ToolAnnotations
 
 
 Json = dict[str, Any]
@@ -103,24 +103,27 @@ def safe_commands(commands: Any) -> bool:
                 safe_patch(command) for command in commands))
 
 
-class StrictFastMCP(FastMCP):
-    async def list_tools(self):
+class StrictMCPServer(MCPServer):
+    async def list_tools(self) -> list[Tool]:
         tools = await super().list_tools()
         for tool in tools:
-            tool.inputSchema['additionalProperties'] = False
+            tool.input_schema['additionalProperties'] = False
         return tools
 
-    async def call_tool(self, name: str, arguments: dict[str, Any]):
-        # FastMCP deliberately disables lowlevel schema checks and coerces values.
+    async def call_tool(self, name: str, arguments: dict[str, Any],
+                        context: Context | None = None) -> CallToolResult | InputRequiredResult:
+        # MCPServer still coerces values and parses JSON strings into containers.
         # Validate the public tool schema before its function argument conversion.
         for tool in await self.list_tools():
             if tool.name == name:
                 try:
-                    validate(arguments, tool.inputSchema)
+                    validate(arguments, tool.input_schema)
                 except ValidationError:
-                    return invalid()
+                    reply = invalid()
+                    return CallToolResult(content=[TextContent(type="text", text=json.dumps(reply))],
+                                          structured_content=reply)
                 break
-        return await super().call_tool(name, arguments)
+        return await super().call_tool(name, arguments, context)
 
 
 class CliAdapter:
@@ -177,8 +180,8 @@ class CliAdapter:
         return reply
 
 
-def create_server(adapter: CliAdapter) -> FastMCP:
-    server = StrictFastMCP('put.gd', instructions=(
+def create_server(adapter: CliAdapter) -> MCPServer:
+    server = StrictMCPServer('put.gd', instructions=(
         'Inspect actual capabilities and configuration before acting. Actions use the configured '
         'local-save/public-upload destination and may write the clipboard. Preserve operation IDs. '
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
@@ -187,8 +190,8 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         'Screen recording: prepare_recording, control_recording start/pause/resume/stop, then review with edit_recording/preview_recording, or work the review window itself with drive_recording_review; only upload_recording or retryExport after a failed Upload publishes. '
         'save_recording_copy and upload_recording return once the export starts; poll get_recording until state leaves exporting. '
         'Supply only non-secret configuration and credential references.'))
-    read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
-    effect = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True)
+    read = ToolAnnotations(read_only_hint=True, destructive_hint=False, open_world_hint=False)
+    effect = ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True)
 
     @server.tool(annotations=read)
     async def inspect() -> Json:
@@ -244,7 +247,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Read the open editor: image size, crop [x,y,w,h], shapes with ids/geometry/styles, undo/redo availability, phase (editing/finalizing), preparation (null, or the last Upload that could not be prepared: status failed, code edit_export_failed or input_excessive, reason; editing resumed) and the window's view (as drive_editor inspect returns it)."""
         return await adapter.call('editor.inspect', {'id': id}) if identifier(id) else invalid()
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
         """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). A redaction removes the pixels it covers; blur is only a visual effect."""
         if not identifier(id) or not safe_commands(commands):
@@ -283,19 +286,19 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Finalize the open edit and send only the sanitized result through the configured destination (may publish a public link and copy it). Inspect the operation afterwards."""
         return await adapter.call('editor.submit', {'id': id}) if identifier(id) else invalid()
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def cancel_editor(id: str) -> Json:
         """Discard the open edit without confirmation; nothing is uploaded or archived."""
         return await adapter.call('editor.cancel', {'id': id}) if identifier(id) else invalid()
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def editor_file_dialog(id: str, action: str) -> Json:
         """Open (action open) the editor's Save a copy… chooser as the button does, read its state (inspect) or close it as a cancel (cancel). It is the desktop's own file chooser through the XDG portal, or the themed fallback dialog; the state shows open, backend portal|fallback, fallbackReason and the last result. A file picked there gets the sanitized PNG; save_editor_copy saves to a path without a dialog."""
         if not identifier(id) or action not in FILE_DIALOG_ACTIONS:
             return invalid()
         return await adapter.call('editor.fileDialog', {'id': id, 'action': action})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def drive_editor(id: str, action: str, tool: str | None = None, shape_id: int | None = None,
                            rect: list[int] | None = None, percent: float | None = None,
                            delta: list[int] | None = None, pixels: int | None = None) -> Json:
@@ -331,7 +334,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['pixels'] = pixels
         return await adapter.call('editor.view', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def raise_editor(id: str) -> Json:
         """Bring the open editor window to the front."""
         return await adapter.call('editor.raise', {'id': id}) if identifier(id) else invalid()
@@ -387,21 +390,21 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             return invalid()
         return await adapter.call('recording.select', {'id': id, 'rect': rect})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def set_recording_overlay(id: str, visible: bool) -> Json:
         """Hide or show the floating control overlay while ready/recording/paused; the recording indicator stays visible."""
         if not identifier(id) or type(visible) is not bool:
             return invalid()
         return await adapter.call('recording.overlay', {'id': id, 'visible': visible})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def edit_recording(id: str, revision: int, commands: list[Json]) -> Json:
         """Apply 1-100 review edits atomically at the current edit revision (from get_recording). Times are microseconds on the recorded clip (pauses removed); rects are output-canvas pixels. Ops: setTrim {start, end|null}, resetTrim, addMask {mask}, updateMask {maskId, mask}, removeMask {maskId}; mask = {kind: blur|solid, rect: [x,y,w,h], start, end, strength?}. Masks keep their source times when the trim changes. A stale revision is refused."""
         if not identifier(id) or type(revision) is not int or revision < 1 or not safe_recording_commands(commands):
             return invalid()
         return await adapter.call('recording.edit', {'id': id, 'revision': revision, 'commands': commands})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def drive_recording_review(id: str, action: str, time_us: int | None = None, speed: float | None = None,
                                      kind: str | None = None, rect: list[int] | None = None, mask_id: str | None = None,
                                      strength: int | None = None, format: str | None = None, codec: str | None = None) -> Json:
@@ -530,7 +533,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """Read stored original receipt, local-copy status and independent remote-deletion status."""
         return await adapter.call('history.detail', {'id': id}) if identifier(id) else invalid()
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def make_history_preview(id: str, retry: bool | None = None) -> Json:
         """Make a missing image/video preview (never made, failed or cleaned up) from the retained file or verified local copy; returns previewPath and state ready/made, or why there is none. retry=True clears an earlier refusal and regenerates an invalid app-owned cache entry."""
         if not identifier(id) or (retry is not None and type(retry) is not bool):
@@ -552,12 +555,12 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             return invalid()
         return await adapter.call('history.copyLinks', {'ids': ids})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def open_history_link(id: str) -> Json:
         """Open the stored direct URL in the desktop's default browser, as clicking the link-ready notification does: the XDG portal's OpenURI, else gio open with the host's environment. Returns route (portal or launcher), opened and fallbackFrom; link_not_opened when nothing could open it."""
         return await adapter.call('history.openLink', {'id': id}) if identifier(id) else invalid()
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=True))
     async def delete_history_uploads(ids: list[str], acknowledgement: str | None = None) -> Json:
         """Prepare original targets/effects without deletion when acknowledgement is omitted; exact acknowledgement confirms remote deletion and preserves local copies/history."""
         if not ids or len(ids) > 1000 or any(not identifier(id, 128) for id in ids):
@@ -569,12 +572,12 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['acknowledgement'] = acknowledgement
         return await adapter.call('delete.prepare' if acknowledgement is None else 'delete.confirm', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def reload_configuration() -> Json:
         """Validate/reload the active file; invalid edits preserve accepted settings; no cloud/capture activity."""
         return await adapter.call('settings.reload', {})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def create_diagnostics_bundle(operation_id: str | None = None, since: str | None = None,
                                         include_names: bool = False, output: str | None = None,
                                         preview: bool = False, notify: bool = False,
@@ -616,14 +619,14 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         # The CLI waits up to 600 s for a package that is uploaded.
         return await adapter.call('diagnostics.bundle', params, timeout=630 if upload else None)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def get_diagnostics_upload_target(profile_id: str | None = None) -> Json:
         """Where a diagnostics package would upload (profile_id, default the capture destination) and whether that destination works now: its last upload did not fail with a credential or configuration error and Test connection passes (S3 Test connection writes and removes a small test object). Returns available, profileId, label, provider, publicLink, warning and shareExpirationDays (Proton), or available false with reason and message. Settings' diagnostics dialog uses this to offer "Also upload and copy a link"."""
         if profile_id is not None and not identifier(profile_id, 64):
             return invalid()
         return await adapter.call('diagnostics.uploadTarget', {} if profile_id is None else {'profileId': profile_id}, timeout=330)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def show_diagnostics_package(path: str) -> Json:
         """Show in folder: open the file manager with a saved diagnostics package selected (org.freedesktop.FileManager1.ShowItems); without one, the XDG portal's OpenDirectory, else gio open on its folder with the host's environment. path is the absolute path create_diagnostics_bundle returned; put.gd's own putgd-diagnostics-*.zip names are accepted, and any other path a diagnostics package was saved to by this resident."""
         if not identifier(path, 4096) or not path.startswith('/'):
@@ -635,17 +638,17 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         """The daily update check (#293): build (version, kind, channel, packageTarget, supported, reason), check and channelSetting (preferences.updates), the effective channel and channelSource (setting, or repository: a DEB/RPM follows its pkg.put.gd repository's suite, whatever channelSetting says, #386), enabled, notifies (stable announces each new version once; nightly only reports it; a repository install never, since its system updater does), action, checking, attemptedAt, checkedAt, nextCheckAt, result (current, latest, tag, publishedAt, notesUrl, downloadUrl, updateAvailable; latest null when the channel has no release yet), the last error and install (the AppImage's own install: kind update|switch, switch {from, to, version, tag, older} when it would switch channels, available and reason, state and progress; see install_update). action is {kind: software-updates, manager apt|dnf, file, channel, command, updater {id, name}|null, otherChannel {channel, commands, docs}|null, older {version, command}|null} while the package's pkg.put.gd repository file is present and enabled (open it with open_software_updates); otherChannel lists the terminal commands that move to the other channel and older the one that installs the repository's older release, which the user runs themselves: put.gd never changes the repository, otherwise {kind: download, repository: absent|disabled|other|none}. Development, source and Flatpak builds report supported false with a reason. Turn checks off or pick a channel with patch_configuration's preferences.updates."""
         return await adapter.call('update.status', {})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=True))
     async def check_for_updates() -> Json:
         """Check for a newer version now, as Settings → General → Updates → Check now does, even with daily checks off: one GET of https://app.put.gd/update/v1/<channel>.json with nothing identifying, compared on this computer. Returns get_update_status's object; a failed check returns its error (update_feed_unavailable, update_feed_invalid, update_check_failed or update_check_unavailable). Nothing is downloaded or installed."""
         return await adapter.call('update.check', {}, timeout=70)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def open_software_updates() -> Json:
         """Open the system's software updater, as Settings → General → Updates → Open software updates does, for a DEB/RPM install that updates from put.gd's apt or dnf repository: Update Manager on Cinnamon, Discover on Plasma, GNOME Software on GNOME, else whichever is installed. Returns {opened, action}. Errors: software_updates_unavailable (not a repository install, or no updater installed; the details carry the apt/dnf command) or software_updates_failed. Nothing is installed by put.gd."""
         return await adapter.call('update.openSoftwareUpdates', {})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=True))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=True))
     async def install_update(confirm: bool, method: str = 'auto', channel: str | None = None, allow_older: bool = False) -> Json:
         """Install the newest version over the running AppImage, as Settings → General → Updates → Download and install does (#293 phase 3). Needs confirm true; nothing installs otherwise. AppImage builds only, while no recording or upload runs. When get_update_status's install.kind is switch (the watched channel isn't this build's, #344), this is Settings' Switch to <channel> <version>: it installs install.switch {from, to, version, tag, older}, the other channel's release the last check found, checked with that channel's own key and update permalink; channel must name install.switch.to, and allow_older true is needed when install.switch.older (the target version is older than this build). install.reason no_release means that channel has no release yet, not_checked that it hasn't been checked (check_for_updates first). method auto tries appimageupdatetool or zsync2 on the host with the release's mirrored .zsync, then downloads the whole image from the GitHub release (then pkg.put.gd); zsync or download forces one path. The file must match the release's SHA256SUMS line before it is renamed onto the same path; the old image stays as a hidden .putgd-update-backup-<version>.AppImage until the new version has started. Returns get_update_status's object at once; follow install (state running|installed|failed, phase checking|verifying|zsync|download|installing|done, method, bytes, total, error, result with method, zsync.fallbackReason and backup, restartRequired) with get_update_status, then restart_after_update. Errors: update_confirm_required, update_install_unavailable, update_install_busy, update_restart_required, update_switch_confirm_required (a switch without its channel), update_switch_older (an older target without allow_older); the child's own (update_not_available, update_no_release, update_image_not_writable, update_disk_full, update_sums_unavailable, update_download_failed, update_verification_failed, update_zsync_failed, update_install_failed) arrive in install.error."""
         if not isinstance(confirm, bool) or method not in ('auto', 'zsync', 'download') or channel not in (None, 'stable', 'nightly') or not isinstance(allow_older, bool):
@@ -659,19 +662,19 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['allowOlder'] = True
         return await adapter.call('update.install', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def restart_after_update(confirm: bool) -> Json:
         """Restart put.gd into the version install_update put in place, as Settings → General → Updates → Restart put.gd does: starts the AppImage again from the host once this resident has exited, then quits it (open windows close). Needs confirm true and get_update_status's install.restartRequired; refused while a recording or upload runs. Returns {restarting, version}; the new resident answers this MCP server's next call. Errors: update_confirm_required, update_restart_unavailable, update_install_busy, update_restart_failed."""
         if not isinstance(confirm, bool):
             return invalid()
         return await adapter.call('update.restart', {'confirm': confirm})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def clear_logs() -> Json:
         """Delete every persistent log file in put.gd's state folder and start a new one; returns removedFiles and removedBytes. Uploads, history, settings and saved diagnostics packages are untouched. inspect shows the log folder size, file count and oldest record under diagnostics.logging."""
         return await adapter.call('logs.clear', {})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def patch_configuration(patch: Json, expected_revision: str) -> Json:
         """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit. limits.maxFileBytes, maxBatchBytes and pendingArtifactBytes take a byte count, "auto" or null (no byte limit of put.gd's own; free disk and the destination's maximum still apply); inspect shows the resolved values and disk figures under configuration.result.effectiveLimits. preferences.regionSelectionMode picks how region screenshots select (#629): "live" (default; the desktop keeps updating and an open menu must close first) or "screenshot_first" (every monitor is captured before the selector opens and the region is cut from that frozen frame, so open menus are included); recording always selects live."""
         allowed = {'schemaVersion', 'actions', 'captureDefaults', 'profiles', 'archive', 'naming', 'limits', 'retention', 'preferences'}
@@ -680,7 +683,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             return invalid()
         return await adapter.call('settings.patch', {'patch': patch, 'expectedRevision': expected_revision})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def reorder_destinations(order: list[str], expected_revision: str) -> Json:
         """Set the display order of destinations (Settings list and Destination dropdowns) by listing every profile ID exactly once. Routing, exceptions and history keep their IDs. A stale revision or a missing, extra or duplicate ID changes nothing."""
         if (not isinstance(order, list) or len(order) > 64 or not all(identifier(item, 64) for item in order) or
@@ -688,7 +691,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             return invalid()
         return await adapter.call('settings.reorderProfiles', {'order': order, 'expectedRevision': expected_revision})
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def move_destination(direction: str, profile_id: str | None = None) -> Json:
         """Drive the open Settings window like Move up / Move down: select profile_id (or keep the selection), move it one place and save. Returns the new order; read settings via inspect to confirm the save."""
         if direction not in {'up', 'down'} or (profile_id is not None and not identifier(profile_id, 64)):
@@ -698,7 +701,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['profileId'] = profile_id
         return await adapter.call('ui.moveDestination', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def settings_diagnostics(action: str, enabled: bool | None = None, include_names: bool | None = None,
                                    folder: str | None = None, operation_id: str | None = None,
                                    upload: bool | None = None) -> Json:
@@ -721,7 +724,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
                 params[key] = value
         return await adapter.call('ui.diagnostics', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def drive_file_dialog(dialog: str, action: str, field: str | None = None, id: str | None = None) -> Json:
         """Open (action open) a file chooser in the open put.gd window as its button does, read its state (inspect) or close it as a cancel (cancel). dialog: editImage (Edit an image file…), historySaveAs (History → Save as… for the selected file, or the row with history or operation id), outputFolder (Settings → Capture → Local copies: Browse… for field root, images, videos, text or other) or diagnosticsFolder (Choose folder… in an open Create diagnostics package dialog). The chooser is the desktop's own through the XDG portal, or the themed fallback dialog; the reply shows open, backend portal|fallback, parentWindow, fallbackReason and the last result (status chosen|cancelled|failed, path)."""
         if dialog not in FILE_DIALOGS or action not in FILE_DIALOG_ACTIONS:
@@ -737,7 +740,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['id'] = id
         return await adapter.call('ui.fileDialog', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def drive_history(action: str, scope: str | None = None, ids: list[str] | None = None) -> Json:
         """Drive the open History page as its controls do and read its state. action: inspect; copyDeletionDetails (copy the exact preparation shown by an open deletion confirmation, without deleting); retryLoading (retry the current history query after a load failure; canRetryLoading reports availability); clearFilters (Clear filters; scope all also clears the search and shows All items, as the empty view's reset does); select (ids: history, operation or row IDs on the page shown, selected together); clearSelection; openDetails or closeDetails (the inspector over the list in the compact layout). Returns the applied query, activeFilters, filtersLabel ("Filters · N"), selectedIds, selectedRows, selectionActions (copyLinks, delete, clearSelection), deletableIds, layout (split or compact), detailsOpen and inspectorVisible. retryPreview retries a failed preview from retained source (canRetryPreview reports availability). expandPreview/closePreview open or close the selected image or recording poster in a larger dialog; canExpandPreview and previewExpanded report availability and state. dismissSavedCopy hides the saved-copy strip without losing its path; savedCopyVisible and copyJob (id, filename, path, status, error) report feedback and pending work. showSavedCopy/copySavedPath reveal or copy the last saved copy path (savedPath; savedCopyFolder reports the folder result). cancelAll opens the same confirmation as Cancel all (N)…; inspect cancelAllConfirmation.operationIds, then confirmCancelAll or keepUploading. Only those captured operation IDs are canceled; newer uploads stay running. selectionSummary includes counts, total bytes, destinations and upload-state tallies. Delete selected files with delete_history_uploads using deletableIds."""
         if action not in HISTORY_ACTIONS or (scope is not None and (action != 'clearFilters' or scope not in {'filters', 'all'})):
@@ -751,7 +754,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
             params['ids'] = ids
         return await adapter.call('ui.history', params)
 
-    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
     async def history_save_diagnostics(id: str) -> Json:
         """Drive the open History window: select the failed upload with this operation ID (or a file's history ID) on the page shown and click Save diagnostics for this upload. Saves a package for that one operation locally (nothing is uploaded), shows the "diagnostics saved" notification and returns its path."""
         return await adapter.call('ui.historySaveDiagnostics', {'id': id}) if identifier(id, 128) else invalid()
