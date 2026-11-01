@@ -71,11 +71,11 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
     const auto plan=FolderZip::plan(info.absoluteFilePath());
     if(plan.error){reject(path,plan.error.code,plan.error.message);continue;}
     if(!named(path,plan.archiveName))continue;
-    // The folder's contents are summed before writing: a compressible folder whose
-    // archive would fit can still be refused here, and the message says so.
+    // Checked against the archive's upper bound before writing: a compressible
+    // folder whose archive would fit can still be refused here, and the message says so.
     const auto bound=std::max(plan.sourceBytes,plan.finalBound);
-    if(objectLimit>0&&bound>objectLimit){reject(path,"destination_object_too_large",QStringLiteral("folder totals %1; this destination accepts files of at most %2").arg(size(bound),size(objectLimit)));continue;}
-    if(bound>limits.maxFileBytes){reject(path,"input_excessive",QStringLiteral("folder totals %1; the Largest file limit is %2").arg(size(bound),size(limits.maxFileBytes)));continue;}
+    if(objectLimit>0&&bound>objectLimit){reject(path,"destination_object_too_large",QStringLiteral("folder can zip to up to %1; this destination accepts files of at most %2").arg(size(bound),size(objectLimit)));continue;}
+    if(bound>limits.maxFileBytes){reject(path,"input_excessive",QStringLiteral("folder can zip to up to %1; the Largest file limit is %2").arg(size(bound),size(limits.maxFileBytes)));continue;}
     result.files.append(info.absoluteFilePath());result.origins.append(path);batch+=plan.sourceBytes;result.diskBytes+=plan.peakBytes;
     continue;
    }

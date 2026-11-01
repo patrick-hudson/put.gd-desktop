@@ -511,6 +511,8 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   if(ding)keep(script,scriptText(c.systemLauncher,script,"nautilus","putgd"),programMode);
   if(cosmicFiles||previous.cosmic==cosmic)applyCosmic(c.systemLauncher,cosmicFiles);
  } else if(!c.enabled) {
+  // Stop the removal watch while its launcher still exists to run --stop-watch.
+  if(auto stopped=monitor(c,false))fail(stopped);
   if(previous.cosmic==cosmic)applyCosmic(launcherPath(c),false);
  } else {
   const QFileInfo image(c.appImage);

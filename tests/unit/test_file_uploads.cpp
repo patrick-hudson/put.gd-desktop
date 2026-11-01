@@ -115,6 +115,10 @@ private slots:
   selection=FileUploads::select({root},settingsWith(QJsonArray{profile("a")}),"files",0,-1);
   QVERIFY2(!selection.error,qPrintable(selection.error.message));QVERIFY(selection.zipFolders);QCOMPARE(selection.files,QStringList{root});
   QVERIFY(selection.diskBytes>=selection.sourceBytes);
+  // A backslash can't go into a zip portably: refused by name, like files mode's naming policy.
+  const auto odd=dir_.filePath("tree/Odd");write(odd+"/a\\b.txt","x");
+  selection=FileUploads::select({odd},settingsWith(QJsonArray{profile("a")}),"files",0,-1);
+  QCOMPARE(selection.error.code,QString("files_rejected"));QVERIFY(selection.error.message.contains("backslash"));
   // Over the file limit in files mode: the folder is named.
   auto document=settingsWith(QJsonArray{profile("a")},{},{{"fileManagerFolders","files"}}).document;auto limits=document["limits"].toObject();limits["maxFiles"]=2;document["limits"]=limits;
   selection=FileUploads::select({root},Settings::fromValidated(document),"files",0,-1);

@@ -489,7 +489,7 @@ int main(int argc,char* argv[]) {
    });
  };
  configureFileManagers();
- QObject::connect(&settings,&putgd::SettingsService::accepted,&app,[&,menu=std::make_shared<bool>(settings.snapshot().fileManagerMenu)]{if(std::exchange(*menu,settings.snapshot().fileManagerMenu)!=*menu)configureFileManagers();});
+ QObject::connect(&settings,&putgd::SettingsService::accepted,&app,[&,menu=std::make_shared<bool>(settings.snapshot().fileManagerMenu)]{const bool enabled=settings.snapshot().fileManagerMenu;if(std::exchange(*menu,enabled)!=enabled)configureFileManagers();});
  QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureFileManagers);
  // The login script carries the image's update information; after an install
  // (a channel switch changes it, #344) write it from the new image at once.

@@ -38,9 +38,12 @@ struct DirectoryClose {void operator()(DIR* d) const {closedir(d);}};
 struct Descriptor {int fd=-1;~Descriptor(){if(fd>=0)::close(fd);}};
 // Visits the folder, then everything under it, parents first and in directory order.
 // One open directory per level: memory and descriptors follow depth, not entry count.
+// A zip separates folders with '/' only; extractors elsewhere read '\\' as one too.
+Error backslash(const QString& name) {return {"source_unsupported",QStringLiteral("%1 has a backslash in its name, which a zip archive can't hold portably").arg(name.left(255)),{}};}
 Error walk(const QString& folder,const std::function<Error(const Entry&)>& visit) {
  const QFileInfo info(folder);const auto leaf=QFile::encodeName(info.fileName());const auto display=info.fileName();
  if(leaf.isEmpty())return {"source_unsupported",QStringLiteral("Cannot zip %1").arg(folder),{}};
+ if(leaf.contains('\\'))return backslash(display);
  Descriptor parent;parent.fd=::open(QFile::encodeName(info.absolutePath()).constData(),O_PATH|O_DIRECTORY|O_CLOEXEC);
  Entry top;top.parent=parent.fd;top.leaf=leaf.constData();top.directory=true;
  if(parent.fd<0||fstatat(parent.fd,leaf.constData(),&top.info,AT_SYMLINK_NOFOLLOW)!=0)return unreadable(display,errno);
@@ -61,6 +64,7 @@ Error walk(const QString& folder,const std::function<Error(const Entry&)>& visit
   // Symlinks, sockets, FIFOs and devices are skipped, never followed.
   entry.directory=S_ISDIR(entry.info.st_mode);if(!entry.directory&&!S_ISREG(entry.info.st_mode))continue;
   const auto path=raw+item->d_name+(entry.directory?"/":"");entry.name=QString::fromUtf8(path).toUtf8();
+  if(std::strchr(item->d_name,'\\'))return backslash(shown(entry.name));
   if(entry.name.size()>0xffff)return {"source_unsupported",QStringLiteral("%1 has a path too long for a zip archive").arg(shown(entry.name).left(255)),{}};
   if(auto e=visit(entry))return e;
   if(!entry.directory)continue;
