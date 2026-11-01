@@ -1,0 +1,14 @@
+{
+  "name": "budgie-wayland",
+  "desktop": "Budgie",
+  "session": "wayland",
+  "qt_platform": "wayland",
+  "session_process": "budgie-panel",
+  "image": "budgie-x11",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance"
+}

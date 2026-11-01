@@ -71,6 +71,10 @@ def test_event(run, event):
         os.fsync(stream.fileno())
 
 
+SESSION_PROCESSES = ('cinnamon', 'gnome-shell', 'plasmashell', 'xfce4-session', 'mate-session', 'lxqt-session',
+                     'lxsession', 'budgie-panel', 'gala', 'ukui-session', 'cosmic-session')
+
+
 def load_profile(name):
     if not re.fullmatch(r'[a-z][a-z0-9-]+', name):
         raise LabError('Invalid profile name')
@@ -622,7 +626,7 @@ def guest_session(run, body, timeout=60):
     user = info['guest_user']
     profile = load_profile(info['profile'])
     process = profile['session_process']
-    if process not in ('cinnamon', 'gnome-shell', 'plasmashell'):
+    if process not in SESSION_PROCESSES:
         raise LabError('Unsupported native desktop session process')
     # PanelTone needs the session's XDG_CONFIG_DIRS and XDG_DATA_DIRS too
     # (docs/appearance.md): Plasma lists ~/.config/kdedefaults in the first and

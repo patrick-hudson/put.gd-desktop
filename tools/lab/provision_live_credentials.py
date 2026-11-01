@@ -282,7 +282,7 @@ def guest_call(run, broker, provider, request):
             _fail()
         profile = lab.load_profile(info['profile'])
         session = profile['session_process']
-        if session not in ('cinnamon', 'gnome-shell', 'plasmashell'):
+        if session not in lab.SESSION_PROCESSES:
             _fail()
         user = info['guest_user']
         if not re.fullmatch(r'[a-z_][a-z0-9_-]*[$]?', user):

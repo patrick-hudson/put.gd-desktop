@@ -1,0 +1,20 @@
+{
+  "name": "gnome-wayland-4g",
+  "desktop": "GNOME",
+  "session": "wayland",
+  "qt_platform": "wayland",
+  "session_process": "gnome-shell",
+  "image": "gnome-wayland",
+  "memory_mib": 4096,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance",
+  "tray_menu": {
+    "button": "right",
+    "openSeconds": 0.8,
+    "firstRowSelected": false,
+    "primeOpen": true
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "lxde-x11",
+  "desktop": "LXDE",
+  "session": "x11",
+  "qt_platform": "xcb",
+  "session_process": "lxsession",
+  "image": "lxde-x11",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance"
+}

@@ -1,0 +1,14 @@
+{
+  "name": "xfce-x11",
+  "desktop": "XFCE",
+  "session": "x11",
+  "qt_platform": "xcb",
+  "session_process": "xfce4-session",
+  "image": "xfce-x11",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance"
+}
