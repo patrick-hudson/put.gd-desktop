@@ -777,6 +777,33 @@ private slots:
             QCOMPARE(selected.pixelColor(18,18).alpha(), 0);
         }
     }
+    // Custom-framed windows carry only their resize grips: no line is painted
+    // along any edge, in either scheme.
+    void customFrameHasNoOutline() {
+        Ui::WindowHeader::setCustomFrameOverride(1);
+        auto restoreFrame = qScopeGuard([] { Ui::WindowHeader::setCustomFrameOverride(0); });
+        const auto restoreScheme = qScopeGuard([previous = Theme::scheme()] { Theme::setScheme(previous); });
+        QWidget window;
+        auto* layout = new QVBoxLayout(&window);
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->addStretch();
+        Ui::WindowHeader::install(&window, layout, nullptr);
+        Ui::styleWindow(window);
+        window.resize(400, 300);
+        window.show();
+        QVERIFY(putgd::test::waitForWindowExposed(&window));
+        for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
+            Theme::setScheme(scheme);
+            QApplication::processEvents();
+            const auto shot = window.grab().toImage();
+            const int w = shot.width(), h = shot.height();
+            const auto& p = Theme::palette(scheme);
+            QCOMPARE(shot.pixelColor(0, h / 2).rgb(), p.bg.rgb());
+            QCOMPARE(shot.pixelColor(w - 1, h / 2).rgb(), p.bg.rgb());
+            QCOMPARE(shot.pixelColor(w / 2, h - 1).rgb(), p.bg.rgb());
+            QVERIFY(shot.pixelColor(w / 2, 0).rgb() != p.borderStrong.rgb());
+        }
+    }
     // A locked value (Ui::setLocked) reads as information: its text is
     // textMuted at 4.5:1 on the page. Unavailable controls keep readable
     // textDisabled at 3:1 and omit interaction. Unlocking restores their shared look.
