@@ -11,7 +11,8 @@ from tools.lab import lab
 
 # These are probe/media/secret-service tools, never desktop or portal upgrades.
 DEB_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pil tesseract-ocr '
-             'xdotool x11-utils x11-xserver-utils xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring')
+             'xdotool x11-utils x11-xserver-utils xclip wl-clipboard gstreamer1.0-gtk3 gnome-keyring '
+             'libqt6keychain1')  # The native stdin credential bridge also runs beside AppImages.
 
 FEDORA_DESKTOP = ('gnome-shell*', 'mutter*', 'xdg-desktop-portal*', 'gdm*', 'pipewire*', 'kernel*')
 FEDORA_TOOLS = ('python3-pyqt6 python3-pyatspi python3-dbus python3-pillow tesseract '
