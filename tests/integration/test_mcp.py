@@ -267,9 +267,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('drive_editor', {'id': 'synthetic-operation', 'action': 'propertiesWidth', 'pixels': 10001}),
                 ]:
                     rejected = await session.call_tool(name, args)
-                    self.assertTrue(rejected.is_error or (
-                        rejected.structured_content and
-                        rejected.structured_content['error']['code'] == 'invalid_request'), rejected)
+                    self.assertIsNotNone(rejected.structured_content, rejected)
+                    self.assertEqual(rejected.structured_content['error']['code'], 'invalid_request', rejected)
                     self.assertEqual(self.calls, [], 'Invalid wire arguments must issue no IPC')
                 inspected = await call('inspect', {})
                 self.assertTrue(inspected['ok'])
