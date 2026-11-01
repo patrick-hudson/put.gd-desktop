@@ -602,6 +602,20 @@ mkdir -p "$session_applications" "$XDG_DATA_HOME"
 '''
 
 
+def guest_secret_prefix(info):
+    """Select an overlay-owned service for both the resident and stdin bridge.
+
+    Never apply this selection to the builder's own keychain.
+    """
+    name = info.get('secret_service')
+    if name is None:
+        return ''
+    if not isinstance(name, str) or not re.fullmatch(r':[0-9]+\.[0-9]+', name):
+        raise LabError('Invalid guest Secret Service connection')
+    return ('export SECRET_SERVICE_BUS_NAME='+shlex.quote(name)+'\n'
+            'export QTKEYCHAIN_BACKEND=libsecret\nexport KDE_SESSION_VERSION=\n')
+
+
 def guest_session(run, body, timeout=60):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
@@ -625,7 +639,7 @@ export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 {appimage_path_prefix(profile)}{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
-{appimage_entries_prefix(profile)}{body}
+{appimage_entries_prefix(profile)}{guest_secret_prefix(info)}{body}
 '''
     return ssh(run, script, timeout=timeout)
 
