@@ -328,11 +328,12 @@ raw=b''.join(b'\\\\0'+os.urandom(3)*w for _ in range(h))
 c=lambda t,d:struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d))
 open(os.path.expanduser('~/{folder}/{files}'),'wb').write(b'\\\\x89PNG\\\\r\\\\n\\\\x1a\\\\n'+c(b'IHDR',struct.pack('>IIBBBBB',w,h,8,2,0,0,0))+c(b'IDAT',zlib.compress(raw))+c(b'IEND',b''))"
 : > "$HOME/i1105/.notify.log"
-pgrep -u "$(id -u)" -x dbus-monitor >/dev/null || nohup dbus-monitor "interface='org.freedesktop.Notifications',member='Notify'" >> "$HOME/i1105/.notify.log" 2>&1 &
+# Bash (Fedora's sh) keeps the list's subshell, and with it ssh's stdout, open unless the whole list is redirected.
+{{ pgrep -u "$(id -u)" -x dbus-monitor >/dev/null || nohup dbus-monitor "interface='org.freedesktop.Notifications',member='Notify'" >> "$HOME/i1105/.notify.log" 2>&1; }} </dev/null >/dev/null 2>&1 &
 ''')
     fm = FILE_MANAGERS[json.loads((run_path(args.run)/'fm.json').read_text())['desktop']]
     if not args.no_file_manager:
-        session_shell(args.run, f'nohup {fm} "$HOME/{folder}" >/dev/null 2>&1 &\nsleep 4')
+        session_shell(args.run, f'nohup {fm} "$HOME/{folder}" </dev/null >/dev/null 2>&1 &\nsleep 4')
     print(json.dumps(record(args.run, file=files, folder=folder, fileManager=fm)))
 
 
