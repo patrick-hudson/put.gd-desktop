@@ -340,7 +340,11 @@ int main(int argc,char* argv[]) {
  });
  // After the tray settles, read saved S3 credentials once so uploads work
  // without a manual Unlock; a locked keyring shows its own prompt here.
- QTimer::singleShot(3000,&setup,[&setup]{setup.unlockSavedCredentials();});
+ // A resident started for a file-manager upload reads them at once, and the
+ // upload waits until it has (#1105): it would otherwise reach the destination
+ // with no credentials and fail.
+ QTimer::singleShot(startedForUpload?0:3000,&setup,[&setup]{setup.unlockSavedCredentials();});
+ operations.setUploadGate([&setup]()->putgd::Error{return setup.savedCredentialsSettled()?putgd::Error{}:putgd::Error{"initializing","put.gd is reading its saved credentials",{}};});
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);

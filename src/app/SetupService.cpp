@@ -82,6 +82,7 @@ QStringList SetupService::unlockSavedCredentials() {
   if((it.value()["provider"]!="s3"&&it.value()["provider"]!="backblaze-b2")||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
+ for(const auto& id:started)if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
  return started;
 }
 void SetupService::credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
@@ -121,6 +122,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  const auto found=jobs_.find(id);if(found==jobs_.end()||(*found)["state"]!="running")return;
  auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
+ startupUnlocks_.remove(id);
  completed_.enqueue(id);while(completed_.size()>64)jobs_.remove(completed_.dequeue());
  emit changed(id);
 }

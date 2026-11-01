@@ -124,6 +124,9 @@ public:
  // are copied as for a capture. Answers with the operation ID once it is durable.
  static constexpr const char* fileManagerAction="files";
  void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply);
+ // Refuses upload.files with a retryable error (initializing) while it answers one,
+ // e.g. while the startup read of saved credentials is still running.
+ void setUploadGate(std::function<Error()> gate) {uploadGate_=std::move(gate);}
  // This resident's installation class ("system" or "appimage"); tests may set it.
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
@@ -324,6 +327,7 @@ private:
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;
  QString installation_;
+ std::function<Error()> uploadGate_;
  Error startupError_;
 };
 // Callback adapters complete once, including ambiguous outcomes. Waiting occurs

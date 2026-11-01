@@ -164,6 +164,16 @@ private slots:
   QVERIFY(settings_->save(saved,settings_->revision()));
  }
 
+ // A resident started for an upload holds it until its saved credentials are read (#1105).
+ void uploadGateRefusesRetryably() {
+  const auto a=write(files("gated.txt"),"x");
+  operations_->setUploadGate([]{return Error{"initializing","put.gd is reading its saved credentials",{}};});
+  Error error;wait([&](JsonReply reply){operations_->uploadFiles({a},{},"system",std::move(reply));},&error);
+  QCOMPARE(error.code,QString("initializing"));
+  operations_->setUploadGate({});
+  wait([&](JsonReply reply){operations_->uploadFiles({a},{},"system",std::move(reply));},&error);
+  QVERIFY2(!error,qPrintable(error.message));
+ }
  void cgroupLeaf() {
   QVERIFY(UploadClient::leafUnitIsService("0::/user.slice/user-1000.slice/user@1000.service/app.slice/dbus-:1.2-org.gnome.Nautilus@0.service\n"));
   QVERIFY(!UploadClient::leafUnitIsService("0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-org.gnome.Terminal-1234.scope\n"));

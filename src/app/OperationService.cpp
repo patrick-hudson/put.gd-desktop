@@ -355,6 +355,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
  // uploads through another install's resident, whatever it asks for.
  if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){reply(error,{});return;}
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ if(uploadGate_)if(auto error=uploadGate_()){reply(error,{});return;}
  const auto snapshot=settings_.snapshot();const auto revision=settings_.revision();
  if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  const auto route=FileUploads::resolve(snapshot,profileId);
