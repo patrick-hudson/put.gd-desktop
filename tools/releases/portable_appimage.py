@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -25,6 +26,7 @@ MEDIA = ROOT / "packaging/appimage/media.json"
 WINDOW_ICON = "usr/share/icons/hicolor/scalable/apps/putgd.svg"
 # The pinned FFmpeg build (media.json) installs these; their notices come from its source.
 FFMPEG_LIBRARIES = ("libavcodec", "libavformat", "libavfilter", "libavutil", "libswscale", "libswresample")
+SECRET_SERVICE_LIBRARIES = ("libsecret-", "libglib-", "libgio-", "libgobject-", "libgmodule-", "libgthread-")
 
 
 def tools(directory: Path) -> tuple[dict, dict[str, Path]]:
@@ -266,6 +268,40 @@ def pkg_config_variable(module: str, variable: str) -> Path:
     if not value:
         raise ValueError("pkg-config has no " + variable + " for " + module)
     return Path(value)
+
+
+def audit_secret_service(appdir: Path) -> dict:
+    """Load QtKeychain's dlopened backend with the image's own dependency set.
+
+    An ordinary ldd audit misses this library. Loading a newer host libsecret
+    alongside the bundled GLib can fail on symbols added after our baseline.
+    This checks loading only; desktop acceptance proves keyring operations.
+    """
+    appdir = appdir.resolve()
+    library = appdir / "usr/lib/libsecret-1.so.0"
+    if not library.is_file() or not library.resolve().is_relative_to(appdir):
+        raise ValueError("AppImage must bundle libsecret-1.so.0 for QtKeychain")
+    environment = {key: value for key, value in os.environ.items()
+                   if key not in ("LD_LIBRARY_PATH", "LD_PRELOAD")}
+    environment["LD_LIBRARY_PATH"] = str(appdir / "usr/lib") + ":" + str(appdir / "usr/lib/putgd")
+    script = """import ctypes,json,sys
+from pathlib import Path
+ctypes.CDLL(sys.argv[1])
+paths=set()
+for line in Path('/proc/self/maps').read_text().splitlines():
+    fields=line.split(maxsplit=5)
+    if len(fields)==6 and fields[5].startswith('/'):
+        paths.add(fields[5])
+print(json.dumps(sorted(paths)))
+"""
+    loaded = subprocess.run([sys.executable, "-c", script, str(library)], env=environment,
+                            check=True, capture_output=True, text=True, timeout=30)
+    paths = [Path(path).resolve() for path in json.loads(loaded.stdout)
+             if Path(path).name.startswith(SECRET_SERVICE_LIBRARIES)]
+    if library.resolve() not in paths or any(not path.is_relative_to(appdir) for path in paths):
+        raise ValueError("Secret Service dependency resolves outside AppImage")
+    return {"backendLoaded": True, "libraries": sorted(str(path.relative_to(appdir)) for path in paths),
+            "dependenciesResolvedInsideImage": True}
 
 
 def media_layout(appdir: Path) -> dict[str, Path]:
@@ -535,14 +571,15 @@ def audit_deployed(appdir: Path, inventory: dict) -> dict:
             if "=>" not in line:
                 continue
             library, target = line.split("=>", 1)
-            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES)):
+            if library.strip().startswith(("libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES)):
                 resolved = Path(target.strip().split()[0]).resolve()
                 if not resolved.is_relative_to(appdir):
                     raise ValueError("Bundled dependency resolves outside AppDir: " + library.strip())
         checked += 1
     result = {"identityMatchedPrograms": identities, "resolvedElfFiles": checked,
               "bundledDependenciesResolvedInsideImage": True,
-              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES]}
+              "checkedDependencyPrefixes": ["libQt6", "libaws", "libs2n", "libqt6keychain", "libLayerShellQt", "libgst", *FFMPEG_LIBRARIES, *SECRET_SERVICE_LIBRARIES],
+              "secretService": audit_secret_service(appdir)}
     if media_audit:
         result["recording"] = media_audit
     return result
@@ -626,6 +663,12 @@ def main() -> int:
             argv += ["--executable", str(appdir / "usr/bin" / name)]
     module = next(appdir.glob("usr/lib*/**/putgd/" + inventory["runtimeModule"]["file"]))
     argv += ["--library", str(module)]
+    # QtKeychain dlopens libsecret, so linuxdeploy cannot discover it through
+    # DT_NEEDED. Ship the builder's backend with its matching GLib dependencies.
+    secret = pkg_config_variable("libsecret-1", "libdir") / "libsecret-1.so.0"
+    if not secret.is_file():
+        raise ValueError("AppImage builder is missing libsecret-1.so.0")
+    argv += ["--library", str(secret)]
     for path in media_plugins:
         argv += ["--library", str(path)]
     argv += ["--executable", str(media_scanner)]
