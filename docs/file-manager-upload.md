@@ -57,13 +57,13 @@ only way into DING's menu.
   once per installation. **Settings → General → File manager → File manager
   menu** turns them off (removing only the files this AppImage wrote) and on
   again; `preferences.fileManagerMenu` holds the switch.
-- **PCManFM and PCManFM-Qt**, with the DEB, RPM or AppImage: they read their
-  entries once, at the first file menu they show, so one that has already
-  shown a menu needs a restart. On LXDE and LXQt the notice says to restart it
-  if the entry is missing and, the same way, offers **Restart PCManFM** (or
-  PCManFM-Qt). It closes all of their windows; the desktop comes back. With no
-  notification server, as on a plain LXDE, the notice is a balloon and a click
-  on it restarts.
+- **PCManFM and PCManFM-Qt**, with the DEB, RPM or AppImage: they load their
+  entries at the first file menu they show, so one that has already shown a
+  menu may not show the new entry until it restarts. On LXDE and LXQt the notice
+  says to restart it if the entry is missing and, the same way, offers
+  **Restart PCManFM** (or PCManFM-Qt). It closes all of their windows; the
+  desktop comes back. With no notification server, as on a plain LXDE, the
+  notice is a balloon and a click on it restarts.
 
 Where the entry isn't supported ([the list above](#where-the-entry-appears)),
 there is no notice.
