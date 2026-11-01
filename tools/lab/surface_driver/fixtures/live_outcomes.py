@@ -39,6 +39,7 @@ def key_set_two(text):
 
 
 def admit(ctx):
+    """Require an approved disposable guest, held leases and private storage before live setup."""
     if (ctx.destination not in ('s3', 'proton') or ctx.placement != 'guest'
             or ctx.target.physical or not ctx.profile.get('guest') or not ctx._live_admitted):
         raise RecipeBlocked('Tier 1 live requires the admitted builder guest; boat and native are forbidden')
@@ -46,8 +47,16 @@ def admit(ctx):
                'kubuntu-kde-wayland': ('f44', 'k72'), 'aurora-kde-wayland': ('f44', 'd69', 'aurora-amd')}
     if ctx.host not in allowed.get(ctx.desktop, ()):
         raise RecipeBlocked('Tier 1 live desktop is not on an authorized builder')
-    if ctx.package != ('appimage' if ctx.desktop == 'aurora-kde-wayland' else 'deb'):
-        raise RecipeBlocked('Tier 1 live requires the published guest package, with AppImage on Aurora')
+    # Additional AppImage coverage is confined to the two declared builder guests.
+    # Bind the requested profile to the actual owned run before any secret read.
+    appimage_profile = {('m74', 'mint-cinnamon-x11'): 'cinnamon-x11-appimage',
+                        ('d69', 'ubuntu-gnome-wayland'): 'gnome-wayland-appimage'}.get((ctx.host, ctx.desktop))
+    appimage_guest = False
+    if ctx.package == 'appimage' and appimage_profile and ctx.profile.get('guest') == appimage_profile:
+        from tools.lab import lab
+        appimage_guest = lab.state(ctx.target.run)['profile'] == appimage_profile
+    if not appimage_guest and ctx.package != ('appimage' if ctx.desktop == 'aurora-kde-wayland' else 'deb'):
+        raise RecipeBlocked('Tier 1 live requires an approved guest package/profile combination')
     from tools.lab import desktop_lock
     session = os.environ.get('PUTGD_TIER1_SESSION', '')
     if not session:

@@ -193,6 +193,47 @@ class LiveOutcomes(unittest.TestCase):
                                 target=SimpleNamespace(physical=None),profile={'guest':'unit'},_live_admitted=True)
             with self.assertRaises(RecipeBlocked):admit(ctx)
 
+    def test_named_appimage_guests_still_require_the_desktop_lock(self):
+        """Approved package/profile pairs reach the lease guard for both live providers."""
+        for host, desktop, guest in (('m74', 'mint-cinnamon-x11', 'cinnamon-x11-appimage'),
+                                     ('d69', 'ubuntu-gnome-wayland', 'gnome-wayland-appimage'),
+                                     ('aurora-amd', 'aurora-kde-wayland', 'aurora-kde-wayland'),
+                                     ('m74', 'mint-cinnamon-x11', 'cinnamon-x11'),
+                                     ('d69', 'ubuntu-gnome-wayland', 'gnome-wayland'),
+                                     ('k72', 'kubuntu-kde-wayland', 'kde-wayland')):
+            for destination in ('s3', 'proton'):
+                with self.subTest(host=host, destination=destination):
+                    ctx = SimpleNamespace(destination=destination, placement='guest', host=host, desktop=desktop,
+                                          package='appimage' if 'appimage' in guest or host=='aurora-amd' else 'deb',
+                                          target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
+                                          profile={'guest':guest}, _live_admitted=True)
+                    with patch('tools.lab.lab.state', return_value={'profile':guest}), \
+                         patch.dict('os.environ', PUTGD_TIER1_SESSION='synthetic-session'), \
+                         patch('tools.lab.desktop_lock.Desktop', side_effect=RecipeBlocked('synthetic lock denied')) as lock:
+                        with self.assertRaisesRegex(RecipeBlocked, 'synthetic lock denied'):
+                            admit(ctx)
+                        lock.assert_called_once()
+                        self.assertEqual(lock.call_args.args[1], host)
+
+    def test_appimage_admission_rejects_wrong_host_profile_or_run_manifest(self):
+        """Reject unsupported or misidentified AppImages before any lease or credential access."""
+        for host, desktop, guest, actual in (
+                ('m74', 'mint-cinnamon-x11', 'cinnamon-x11', 'cinnamon-x11'),
+                ('m74', 'mint-cinnamon-x11', 'cinnamon-x11-appimage', 'cinnamon-x11'),
+                ('d69', 'ubuntu-gnome-wayland', 'gnome-wayland-appimage', 'gnome-wayland'),
+                ('d69', 'mint-cinnamon-x11', 'cinnamon-x11-appimage', 'cinnamon-x11-appimage'),
+                ('f44', 'ubuntu-gnome-wayland', 'gnome-wayland-appimage', 'gnome-wayland-appimage'),
+                ('k72', 'kubuntu-kde-wayland', 'kde-wayland', 'kde-wayland')):
+            with self.subTest(host=host, guest=guest, actual=actual):
+                ctx = SimpleNamespace(destination='s3', placement='guest', host=host, desktop=desktop,
+                                      package='appimage', target=SimpleNamespace(physical=None, run=Path('/synthetic/run')),
+                                      profile={'guest':guest}, _live_admitted=True)
+                with patch('tools.lab.lab.state', return_value={'profile':actual}), \
+                     patch('tools.lab.desktop_lock.Desktop') as lock:
+                    with self.assertRaisesRegex(RecipeBlocked, 'requires an approved guest package/profile'):
+                        admit(ctx)
+                    lock.assert_not_called()
+
     def test_s3_oracle_rejects_foreign_key_without_network_and_closes_mismatch(self):
         def expect(ok,note):
             if not ok:raise RecipeFailed(note)
