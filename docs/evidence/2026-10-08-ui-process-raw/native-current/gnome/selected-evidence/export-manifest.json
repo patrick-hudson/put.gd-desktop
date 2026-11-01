@@ -313,7 +313,7 @@
     },
     "reboot-request.json": {
       "sha256": "38c8edcf20c9c648145468b9a7947447e631631ba82f534cdb11180c41999728",
-      "bytes": 213
+      "bytes": 187
     },
     "receipt.json": {
       "sha256": "36682ace9beb525103521ee7c71977844588886841e0ef7e46134198e2d8cb78",
@@ -328,8 +328,8 @@
       "bytes": 5885
     },
     "session-reload.json": {
-      "sha256": "b48239eaa012edc124bdcad611006a9d1b4d4d9c85969c8940d5e5086a0146a1",
-      "bytes": 639
+      "sha256": "ec2d25d766d5c2571316a923c06230a66d5c1eff069f77324ec905238a3dcd02",
+      "bytes": 755
     },
     "session-restore-after-refresh-failure.json": {
       "sha256": "c79c52086d9f00a1d9f44ea8591cb4fc87572da4ed844c2fb95fd8171886afeb",

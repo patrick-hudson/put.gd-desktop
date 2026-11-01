@@ -53,7 +53,7 @@ index 74b502738..64a9e3e92 100644
      prior = scope.json(OWNER)
      if prior['owner'] and prior.get('provider') != 'ksecretd':
 diff --git a/tools/lab/surface_driver/recipes/outcomes.py b/tools/lab/surface_driver/recipes/outcomes.py
-index e224943be..48fe95599 100644
+index e224943be..a760c9b32061073c1bfcba8507defa2660505791 100644
 --- a/tools/lab/surface_driver/recipes/outcomes.py
 +++ b/tools/lab/surface_driver/recipes/outcomes.py
 @@ -76,9 +76,11 @@ def _frame(ctx, label):
@@ -80,13 +80,14 @@ index e224943be..48fe95599 100644
          yield scope, service
      except BaseException:
          try:
-@@ -191,6 +195,9 @@ def _pattern(ctx):
+@@ -191,6 +195,10 @@ def _pattern(ctx):
          ctx.evidence.frame(image, ctx.out/'frames/pattern-occlusion.png',
                             [[0, 0, image.width, image.height]], fallback=True)
      ctx.expect(pattern_visible(image, scene.rect), 'known fullscreen pattern covers the chosen monitor without foreign UI')
 +    if ctx.target.physical:
 +        ctx._native_pattern_verified = True
-+        ctx.evidence.frame(image, ctx.out/'frames'/ctx.recipe.name/(str(len(ctx.evidence.frames))+'-verified-pattern.png'), [])
++        ctx.evidence.frame(image, ctx.out/'frames'/ctx.recipe.name/(str(len(ctx.evidence.frames))+'-verified-pattern.png'),
++                           [[0, 0, image.width, image.height]], fallback=True)
      _frame(ctx, 'independent-frozen-pattern')
      return scene, image
  

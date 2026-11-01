@@ -788,5 +788,7 @@
     "Cinnamon screensaver is demand-activated; GetActive verifies it even when NameHasOwner is initially false.",
     "Deliberate idle-delay600 drift was refused by check-only preflight. SSH reboot required interactive authorization; visible terminal/session requests did not change uptime. No password entered. Synced owned guest then QMP system_reset; new boot ID and startup readback prove fresh boot restoration.",
     "Final complete QMP frame was reviewed, native X11 unlocked active session and policy rechecked; overlay retired after export verification."
-  ]
+  ],
+  "bootChanged": true,
+  "bootComparisonSource": "Comparison of original before/after observations before identifier redaction; identifiers omitted from publication."
 }

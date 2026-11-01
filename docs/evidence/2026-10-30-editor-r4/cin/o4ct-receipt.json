@@ -39,7 +39,7 @@
       "transport": "xcb",
       "pid": 146899,
       "start": "349620",
-      "boot": "4ac4b665-1c79-403b-bf04-73712fccd8b1",
+      "boot": "[REDACTED]",
       "reaped_pids": []
     },
     "observed_build": {

@@ -1074,13 +1074,13 @@
     {
       "path": "work/cross-desktop-current/gnome/installed-running-identity-after.json",
       "sha256": "974878719f04078f8092063bfaf1a8645c2e6511ff5cf84578a7c1454a416e8b",
-      "bytes": 5503,
+      "bytes": 5477,
       "scope": "owned GNOME build/functional artifact"
     },
     {
       "path": "work/cross-desktop-current/gnome/installed-running-identity-before.json",
       "sha256": "079e61289474b9d1d86828a1915df732806f2d5952e4a9998a60b9e6c987e8c6",
-      "bytes": 5535,
+      "bytes": 5509,
       "scope": "owned GNOME build/functional artifact"
     },
     {
@@ -1181,8 +1181,8 @@
     },
     {
       "path": "work/cross-desktop-current/gnome/overlay-restart.json",
-      "sha256": "37979c0419eb0e8fcad0093dd364c1976aedcd8377bbcef29b83e7ce3f9d074f",
-      "bytes": 1701,
+      "sha256": "91815df6b025f05d3e8b41097396bd7f0c246eaedb127a233a91a099c3c8f91a",
+      "bytes": 1649,
       "scope": "owned GNOME build/functional artifact"
     },
     {
@@ -1331,8 +1331,8 @@
     },
     {
       "path": "work/cross-desktop-current/gnome/session-reboot.json",
-      "sha256": "005813166d161a02d50641ec783a9ad2a445311b0e15387c0415a434af8a9265",
-      "bytes": 432,
+      "sha256": "41299987cea6a36978cb2cb2346d6a0785f814b23905d782f99ff398409e2c26",
+      "bytes": 380,
       "scope": "owned GNOME build/functional artifact"
     },
     {

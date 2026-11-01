@@ -1,0 +1,642 @@
+{
+  "schemaVersion": 1,
+  "priorPublishedCommit": "857af1c1e7436821845b8e544515f166d8f7a10c",
+  "scope": "Publication corrections only; no historical execution, preflight or keeper-liveness result has been fabricated.",
+  "patch": {
+    "path": "lab/native-local.patch",
+    "originalPublishedSha256": "5cbe8bcd430b13295e11859a4d5389c2080f88ba476740eb5f041344d2d158b4",
+    "publishedSha256": "086a91d6110d0d2ae927ef02d14ec932cdead6937f094d7aaa2a2d0400086741",
+    "change": "Full-frame masking of the direct pattern snapshot before its first write. This correction was not executed in the historical campaign."
+  },
+  "knownEvidenceGaps": [
+    "k72 saved preliminary socket path differs from running-identity; no alias mapping is attested",
+    "k72 saved target preflight is blocked; no successful post-install a2 replacement is published",
+    "native-local admission does not recheck keeper liveness; old tests cover startup state only"
+  ],
+  "terminalDigestPolicy": "Original terminal files digests are preserved and labelled; publishedFiles maps current sanitized bytes. Original terminal attestations are not revalidated by sanitizing receipts.",
+  "identifierChanges": [
+    {
+      "path": "docs/evidence/2026-10-08-current-desktop-matrix-raw/gnome/overlay-restart.json",
+      "priorPublishedSha256": "37979c0419eb0e8fcad0093dd364c1976aedcd8377bbcef29b83e7ce3f9d074f",
+      "publishedSha256": "91815df6b025f05d3e8b41097396bd7f0c246eaedb127a233a91a099c3c8f91a",
+      "priorBytes": 1675,
+      "publishedBytes": 1649
+    },
+    {
+      "path": "docs/evidence/2026-10-08-current-desktop-matrix-raw/gnome/session-reboot.json",
+      "priorPublishedSha256": "005813166d161a02d50641ec783a9ad2a445311b0e15387c0415a434af8a9265",
+      "publishedSha256": "41299987cea6a36978cb2cb2346d6a0785f814b23905d782f99ff398409e2c26",
+      "priorBytes": 432,
+      "publishedBytes": 380
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/gnome/selected-evidence/session-reload.json",
+      "priorPublishedSha256": "b48239eaa012edc124bdcad611006a9d1b4d4d9c85969c8940d5e5086a0146a1",
+      "publishedSha256": "ec2d25d766d5c2571316a923c06230a66d5c1eff069f77324ec905238a3dcd02",
+      "priorBytes": 613,
+      "publishedBytes": 755
+    },
+    {
+      "path": "docs/evidence/2026-10-25-integrated-linux/cinnamon-preflight-completion.json",
+      "priorPublishedSha256": "b23acdacf1822a4e37224768f965c66a4d6696009679edb45f846a651768672f",
+      "publishedSha256": "e89d1613fb84976de8b5d13d93322db20886329a6fe847d1f3ff5116b398b7c5",
+      "priorBytes": 33736,
+      "publishedBytes": 33904
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/cin/mixed-audit-invalid-receipt.json",
+      "priorPublishedSha256": "ad8110530d3b71a6fee4d955a00446d0c78b5d43b40773e364f767bb9412849b",
+      "publishedSha256": "a31fb031f257418fae243156f4d36c633528c4861a2bb4a4b9fabf7ada562a9d",
+      "priorBytes": 20714,
+      "publishedBytes": 20688
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/cin/o4c2-receipt.json",
+      "priorPublishedSha256": "6959f4268572b0dedac59eb6a3ad99db0bb2531f7e566f7be7ec70500551d0c7",
+      "publishedSha256": "f00dbc2118832a78d3ab5bd00e2e08d1cf3e08a79132f86574e1e9f28b33e570",
+      "priorBytes": 129903,
+      "publishedBytes": 129877
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/cin/o4cg-receipt.json",
+      "priorPublishedSha256": "09ae976b630f5b3e7b46c27cbf0339123f126203122000a55c85d96408142e70",
+      "publishedSha256": "ce55f9f38e14a4d822bcb35c1c6f9b01f9af694f11bdc9b265743ca17a63e5ad",
+      "priorBytes": 14056,
+      "publishedBytes": 14030
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/cin/o4cl-receipt.json",
+      "priorPublishedSha256": "ea9de3e2c08030264721b416416b10f42efa59de140090c1bedc5f4be49dbd53",
+      "publishedSha256": "6dcf6f90f37702823e18af7807842209257346ed2d22a4b1e223c046c9101a75",
+      "priorBytes": 4667,
+      "publishedBytes": 4641
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/cin/o4cm-receipt.json",
+      "priorPublishedSha256": "9a6b31715048f06df532241452c659b19cb2a47fa5fedab69089953412bf9f79",
+      "publishedSha256": "c6ca7c9ebc5659052140f3f36921659fc7a83cfca526484fa09d40267460db03",
+      "priorBytes": 7531,
+      "publishedBytes": 7505
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/cin/o4ct-receipt.json",
+      "priorPublishedSha256": "8b07459b099ee61013db7e05420664811f3f03f72a159e081cac1df0fd8790a6",
+      "publishedSha256": "20e7704b358f86810a8b0218ebd7a077ec288c8b0baca12dd7f7ca4b88c57f0a",
+      "priorBytes": 4667,
+      "publishedBytes": 4641
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/gno/o4g2-receipt.json",
+      "priorPublishedSha256": "8a3b3440251884d521360e9c2ddc6d438c8b7fd175fa47c9826718e9cd2f0bc3",
+      "publishedSha256": "d1bb6e17471a927a495d8fc85ad9cb5c2bdd4bd71674983514854dba25cc5665",
+      "priorBytes": 131408,
+      "publishedBytes": 131382
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/gno/o4gf-receipt.json",
+      "priorPublishedSha256": "0cb373c83878861da0c335f6a827baebf76d94c95ea105138b42d0ae04b5136d",
+      "publishedSha256": "6719d303d1b146d6d36f872ab1fbce6e01382015d163baaf231353afbf318be3",
+      "priorBytes": 13492,
+      "publishedBytes": 13466
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/gno/o4gm-receipt.json",
+      "priorPublishedSha256": "616ffe79aa9e32eafdf48702f9cc9895bec20bfd6909a002681710900966a651",
+      "publishedSha256": "6a151c6e939e2601a1b38daef2ae42dfbdd245e36021b08842d12de882ea039b",
+      "priorBytes": 7460,
+      "publishedBytes": 7434
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/gno/window-replay-receipt.json",
+      "priorPublishedSha256": "0cb373c83878861da0c335f6a827baebf76d94c95ea105138b42d0ae04b5136d",
+      "publishedSha256": "6719d303d1b146d6d36f872ab1fbce6e01382015d163baaf231353afbf318be3",
+      "priorBytes": 13492,
+      "publishedBytes": 13466
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/kde/corrections-receipt.json",
+      "priorPublishedSha256": "e762c17ce75e18bb5090ad2d4434db3765891a06a0dfab4b9ab71e055c638983",
+      "publishedSha256": "cd069884b71b027ffac084ca87e6dba767623727fc201e2b55d59a18f76e30c8",
+      "priorBytes": 16020,
+      "publishedBytes": 15994
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/kde/k1-invalid-cli-receipt.json",
+      "priorPublishedSha256": "b8f847168a27198a33cfe73fa02f8bfa7abb105dca08bbd2c854dd0ccdd59c7e",
+      "publishedSha256": "87c631b3b639dc6581687422ed375b1368de130aef02e7d20e3a2e765256c366",
+      "priorBytes": 29032,
+      "publishedBytes": 29006
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/kde/o4k3-receipt.json",
+      "priorPublishedSha256": "316a25d1f297cfc62840ca427b285a6d41f496dbe0f9e1faa37898eed51242e3",
+      "publishedSha256": "b3871101deef3c37094c8271db7dbfa8dee3801b65bfacd28ff5880bec011463",
+      "priorBytes": 145739,
+      "publishedBytes": 145713
+    },
+    {
+      "path": "docs/evidence/2026-10-30-editor-r4/kde/o4kg-receipt.json",
+      "priorPublishedSha256": "e762c17ce75e18bb5090ad2d4434db3765891a06a0dfab4b9ab71e055c638983",
+      "publishedSha256": "cd069884b71b027ffac084ca87e6dba767623727fc201e2b55d59a18f76e30c8",
+      "priorBytes": 16020,
+      "publishedBytes": 15994
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/cinnamon/deadline-v2-result.json",
+      "priorPublishedSha256": "e56092ab010ff5cc9bab0230fd7d4db2a5d2c6af82955e88e91f61035c822669",
+      "publishedSha256": "9e71c80e75e0618ee9312748358e206ae092a3c792ca71ad3360d9de83780cad",
+      "priorBytes": 1663,
+      "publishedBytes": 1611
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/cinnamon/final-v2-kill-results.json",
+      "priorPublishedSha256": "f9c7d8fcaca3a668ab903bd0b57194b1867f021e90f2c76f2b20660fba274452",
+      "publishedSha256": "778b296b811dc6aaeb3f9b3fa6cc0e592e9fd6233c592a13a34762090b32a467",
+      "priorBytes": 2480,
+      "publishedBytes": 2428
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/cinnamon/summary.json",
+      "priorPublishedSha256": "c7cb84697a14f3ccc821fb5a5a138d60204f702b3a736f975c6f06b3d9ed4835",
+      "publishedSha256": "15af04402313275b8d0fd4e4be495b57a3e3a07f10012b46b9e3bb77621956e4",
+      "priorBytes": 10506,
+      "publishedBytes": 10428
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/gnome/deadline-v2-result.json",
+      "priorPublishedSha256": "1e117019f60d03c2ccd8a7d2375e9b23a0a1bed46e2db785672bef7dae8d58ad",
+      "publishedSha256": "e765caac35ace149b965bd955ee1647317858172731d14514104952aba0f192f",
+      "priorBytes": 1523,
+      "publishedBytes": 1471
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/gnome/final-v2-kill-results.json",
+      "priorPublishedSha256": "db89c81555b95d488c4b046419cc55bea28dcf890dd0a3587cd0af0b1b6902c8",
+      "publishedSha256": "39ac810338cb75fcef113f8ff43cca8461aadd7e6544b73ebc9a79b37bb0f51f",
+      "priorBytes": 2138,
+      "publishedBytes": 2086
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/gnome/gnome-stale-result.json",
+      "priorPublishedSha256": "34ba6e15b72708590ec2fd525e0839addb0b0f5a35e4831d167bdc188d57b6e0",
+      "publishedSha256": "1b05ffe14d364871d1354e8e7dc3210323feeb8231da3c53888571d5416f6b7e",
+      "priorBytes": 1707,
+      "publishedBytes": 1681
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-clipboard-860/gnome/summary.json",
+      "priorPublishedSha256": "9ffb3f62f38c11e1dbc0f448d29e87d6248d0b07aaab95bec8020d84dbe8821f",
+      "publishedSha256": "d3660d5c7db6c894eee67aeaf4089ad103ee5f96e8471b049447dba9dd3b86c4",
+      "priorBytes": 12576,
+      "publishedBytes": 12472
+    },
+    {
+      "path": "docs/evidence/2026-10-30-surface-input-guards/gnome-witness-reset.json",
+      "priorPublishedSha256": "c06969abe89f2a548f924ace0adf4898342cb25cf5d51461da914e2dfc4c3fd3",
+      "publishedSha256": "6feff824e2cbbf85c9d8c49e529bd5acbe9071095ae92954609e7b5d59b9df4e",
+      "priorBytes": 370,
+      "publishedBytes": 539
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-aurora-editor/aurora/receipt.json",
+      "priorPublishedSha256": "4f9c48a9a63d52f9fe145060ac2b53d1c5117aa760a06fb6bb7cbb6c82dff69e",
+      "publishedSha256": "bbe3a6a1c34da98daeca582285291109aea349da5ab1eab7d8ec4c3b8a5b36a2",
+      "priorBytes": 34824,
+      "publishedBytes": 34798
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-aurora-editor/cinnamon/d1-receipt.json",
+      "priorPublishedSha256": "96216250e3cda57a0514818327cd34e84396e71b4617f2b5c6202bff1643f8d2",
+      "publishedSha256": "aed762232f2dc24a6f7c8444165c399c22701968f53ce463df19556e4857365d",
+      "priorBytes": 12493,
+      "publishedBytes": 12467
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-aurora-editor/cinnamon/d2-receipt.json",
+      "priorPublishedSha256": "237d47bf0162df79235bcbd971be104a9849f8a261d8e7c4dd717775a7eac78b",
+      "publishedSha256": "c1a50e3f22622d9bd3ed59b3ee93914e57b40d6773b7c586fcea96b50119b89a",
+      "priorBytes": 103708,
+      "publishedBytes": 103682
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-aurora-editor/cinnamon/receipt.json",
+      "priorPublishedSha256": "f049851368e1612fec7a32d8834f706dbb47ee7bdaddd798a4cf2e93168d5b34",
+      "publishedSha256": "e8e115d00243ec240911e272da14413c6eef370eca58e1283c881d888ac3f26e",
+      "priorBytes": 8840,
+      "publishedBytes": 8814
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/aurora/a2-receipt.json",
+      "priorPublishedSha256": "63194cceeb0f91c9aac539adf722bd041d5b3326414e67dacf883da4639f6bc8",
+      "publishedSha256": "114678184712e59990668f177964fc67f32de323e3d86eb5502324841e48f8c8",
+      "priorBytes": 16176,
+      "publishedBytes": 16150
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/aurora/a3-receipt.json",
+      "priorPublishedSha256": "7b43751e063b766b5814c3ab7e83b6fcdb230fba37e3cb62cc2794dfef3143d9",
+      "publishedSha256": "0c71b3db0c56e8783cbd331bac7149fc5d8a1a796279cc72bf7b851b1bd83c41",
+      "priorBytes": 27196,
+      "publishedBytes": 27170
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/aurora/a4-receipt.json",
+      "priorPublishedSha256": "fae1e649c234f40a8f1047a3d97ee1276a0737070f1a4c9207164927ae2f363f",
+      "publishedSha256": "9fdb57cd3d070364fc8aaa3118be17dffc7e30e2fbe867d8b3560f978f884f8b",
+      "priorBytes": 20149,
+      "publishedBytes": 20123
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/cinnamon-visible/receipt.json",
+      "priorPublishedSha256": "2817a63d90867a77f965e833220306e374d5b840d5487ac5b0e779c1a9c29f10",
+      "publishedSha256": "66c14c5e0d163abf284090b55f13884b5c7cfe5a50e358266446cdd5faabcf5e",
+      "priorBytes": 10327,
+      "publishedBytes": 10301
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/cinnamon/a2-receipt.json",
+      "priorPublishedSha256": "efc47b79d4035f13c5019f13efd3c82e870a7667ed278050b874572426da1d77",
+      "publishedSha256": "cb9d4435e57bd6cc0c052a7f1546a07d3ecb74d543ba7153900255d69c8bc3b6",
+      "priorBytes": 32378,
+      "publishedBytes": 32352
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/gnome/a2-receipt.json",
+      "priorPublishedSha256": "a14088ffb5505fc551889391d5c9d1ccc1b748087b812d586466910b03e302e6",
+      "publishedSha256": "cb50c2c6fd3f80e9a005862eda0b789f78bc06d1bd9f8389ad1a73c27746b1ee",
+      "priorBytes": 31880,
+      "publishedBytes": 31854
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/gnome/b3-receipt.json",
+      "priorPublishedSha256": "ce2c7dbb1f7b692e470b451474584ffb880aa2556fd75340f1fc0e76cdaf86ff",
+      "publishedSha256": "474faaab1b7ecb5d4efecf1653a28d11e137957ac5dce3970d6b1032ff02ff92",
+      "priorBytes": 7158,
+      "publishedBytes": 7132
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/gnome/b4-receipt.json",
+      "priorPublishedSha256": "4c6dfe2c0f169994ae90c55ce568d0277850d8a1b7374bc1df58ea8b16763bf0",
+      "publishedSha256": "4bfc8a01b5f306a16305a9909521f4681cc0c2aaf5c5920ad6ec4c01e93e45b0",
+      "priorBytes": 6181,
+      "publishedBytes": 6155
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-blockers-299e4b29/kde/a1-receipt.json",
+      "priorPublishedSha256": "117758d56563aed5110b9008d3d6eaa2583daccf5234f7b9ae00f2281ecfdc29",
+      "publishedSha256": "f12c77d57b3d899195714fbb2b7a45a9e557b48c2f27f6a25792e3c2943e2dee",
+      "priorBytes": 29847,
+      "publishedBytes": 29821
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-a-final/aurora/first-attempt/receipt.json",
+      "priorPublishedSha256": "f67073615fd75761241985cc820da38ad86e6c653f47c76919d7f072ea97a503",
+      "publishedSha256": "6e7ac1064be8c7eba8e90f350e93463ae46306d7013d5565f89893811662e137",
+      "priorBytes": 40568,
+      "publishedBytes": 40542
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-a-final/aurora/receipt.json",
+      "priorPublishedSha256": "112cbaed26a1eb884dc65c264d38c39199bb8805ad8b643801f6f620df8928af",
+      "publishedSha256": "7fddc13a580c725943c2b9507fac7f7fa1f0b2142459e5ed6e753eedca8082a0",
+      "priorBytes": 40845,
+      "publishedBytes": 40819
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-a-final/cinnamon/receipt.json",
+      "priorPublishedSha256": "ba4cb52277dc43895dcb51dbed5fb110cf295568d0b908da0d19c798f33ce5f9",
+      "publishedSha256": "910dddb2a437de348d8c8e5b3e0f1294c17e165c96d51be47f29fdd40949ef20",
+      "priorBytes": 31000,
+      "publishedBytes": 30974
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-a-final/gnome/first-attempt/receipt.json",
+      "priorPublishedSha256": "055f3cee164045b1344f85319d9fb85729a8b5e956c3b082777fe48e615f33c7",
+      "publishedSha256": "e0b6cd7c6fc399a0b665454063729afa7a7a10045f1ccc1a3d4176754fd44873",
+      "priorBytes": 31723,
+      "publishedBytes": 31697
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-a-final/gnome/receipt.json",
+      "priorPublishedSha256": "7d7dd49bff0b927376ba0c04bae6533088cec7afc370c6c5dd72f03683a775ee",
+      "publishedSha256": "2b19969a44ee8afa1ce91a4b72e24adaa8be6ac64ee49443542d3c56a39f0230",
+      "priorBytes": 30747,
+      "publishedBytes": 30721
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-a-final/kde/receipt.json",
+      "priorPublishedSha256": "47b65aa8d395116fb035da6e7f7840c46efad238bd0aa902544a9f1571867d3d",
+      "publishedSha256": "affd9a854cd387ddeb2962f7b991ef0c78933a97e8fe445c200369f98163b071",
+      "priorBytes": 32660,
+      "publishedBytes": 32634
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protona/receipt.json",
+      "priorPublishedSha256": "7fa30883dd6e72fe2d87581dd3bdafb30823e2032a7d5f00b7cc3e2ae04105a3",
+      "publishedSha256": "1416aa0615bc72567bff5a7588307d2265126d1ca3d5c516f0b294ffc4355b1e",
+      "priorBytes": 13370,
+      "publishedBytes": 13344
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/protonb/receipt.json",
+      "priorPublishedSha256": "eebbe86db70ae0f7937a743621da745b6cab8b7ddb0d9b9ff6157d35fd2e1b4d",
+      "publishedSha256": "4eb741f0c4317d6ded295cc0a32758c153a9df46faed97abdfbd464a0d087d0b",
+      "priorBytes": 9811,
+      "publishedBytes": 9785
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/cinnamon/s3a/receipt.json",
+      "priorPublishedSha256": "a1d9b7d97ec977f544440e650bc87ba7366f4e2ed7fde537d63ea1e36c7832ac",
+      "publishedSha256": "ae459e39e5559c7f174275346cca862bad640b297f597485fbd24c20f4da6eb9",
+      "priorBytes": 9436,
+      "publishedBytes": 9410
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/pattern/receipt.json",
+      "priorPublishedSha256": "d05e7bdf9c9f90715ffe825713872ff592ae6d0b7d1443a93fab8bceb99f98bf",
+      "publishedSha256": "d17a5f8132ad01bddb0e5d5e0b1781f484f19b1ea07b07e7578b4f90ea76524b",
+      "priorBytes": 3724,
+      "publishedBytes": 3698
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/protona/receipt.json",
+      "priorPublishedSha256": "985f002294ac35e86330edea0213c32855c77d5c8fc5f6acc0c6481ba9cffa9b",
+      "publishedSha256": "051e127414b001a3e0cb7a283bd1703a51dad26bc34826a09a116ad894013a6d",
+      "priorBytes": 26552,
+      "publishedBytes": 26526
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3-delete2/receipt.json",
+      "priorPublishedSha256": "7f57af75ada0d5b111b2e072ac05de4eac52e46349f875682ea5784a513840fe",
+      "publishedSha256": "11948d71d26058e446a769f4d023e08128fdff14d9d293c2e8e99783921f4f38",
+      "priorBytes": 8464,
+      "publishedBytes": 8438
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3a/receipt.json",
+      "priorPublishedSha256": "c17241ba01b3e4fe16ac5075d95bb8a9a84c085a6cba112a4361b3fde389ebf5",
+      "publishedSha256": "229f65aa9ca193464d6a352b31061771490195b53587a9c976e89225da61ceca",
+      "priorBytes": 16369,
+      "publishedBytes": 16343
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/cinnamon/s3b/receipt.json",
+      "priorPublishedSha256": "26bfa663c58232ea21c6995b79d4203bc1f7bbc725298f06cc80993ced5b5c67",
+      "publishedSha256": "091ae58cd2fdebf0147ae538d96f6e1b829e8a0ed9d277c281db10d46f88a4be",
+      "priorBytes": 24050,
+      "publishedBytes": 24024
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/protona/receipt.json",
+      "priorPublishedSha256": "d87a36c9e8209599e967364820cfb00596c061c25e31beb2901377b21f4de909",
+      "publishedSha256": "14d0ea2d1e8a8226753dc50d32ca758fec84c54e7dddba5a5f005b1dd836671b",
+      "priorBytes": 26155,
+      "publishedBytes": 26129
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "7eb7791f0f1a201b9959ccd61129bc132c749d46532f47b893ed62cef2242dac",
+      "publishedSha256": "45f5572896b8c78f54bedd143306250d95d48dc04dc9c5a0b9354afce1f1e43d",
+      "priorBytes": 24717,
+      "publishedBytes": 24691
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/gnome/s3b/receipt.json",
+      "priorPublishedSha256": "c9a6512ee074f6eac0e406cf64739009f7d127a3c730cd1fd86055a07d693c17",
+      "publishedSha256": "40a2766fa931cbd875ce93c08ff3372e61641bcb6ed89571624ed1a3cbf4086d",
+      "priorBytes": 29303,
+      "publishedBytes": 29277
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/protona/receipt.json",
+      "priorPublishedSha256": "f14207c39a156eb7f87ae3d9daf11f722e4765c40bb8615ac2df6542d3078db3",
+      "publishedSha256": "597621ae492fc536a75ddb1ab394250a1e86c3e19339353b0ffe7d5f651ac800",
+      "priorBytes": 26237,
+      "publishedBytes": 26211
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3a/receipt.json",
+      "priorPublishedSha256": "c4d6b3b4b6255f9aa40649cf53574c0558c2fe15c66a87a99c9f33ef143ddd02",
+      "publishedSha256": "e3d2c138f26edba06a50bdc853ff754962316ef2e060e9a0f30fd7498cd885cf",
+      "priorBytes": 24800,
+      "publishedBytes": 24774
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-2/kde/s3b/receipt.json",
+      "priorPublishedSha256": "bdc5b12f33570d6a8c5d2d4796441c55186c52524c4120ee4212f24a96423927",
+      "publishedSha256": "5f273979c5c1be9bcf7e817fd909c6d31e5b8262aeab31eb5ba6fb340cfe0884",
+      "priorBytes": 29385,
+      "publishedBytes": 29359
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/protona/receipt.json",
+      "priorPublishedSha256": "9a9b492f9a8c1fd0d1fe7c4e6272e0ce62c151f41aa50ebe67dbf85bb4cb7f7e",
+      "publishedSha256": "46c3bf4c43b3492c2102a6a8350b0f20fbaaad20a8cdb7cce28d5e12cc1d0135",
+      "priorBytes": 34339,
+      "publishedBytes": 34313
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-3/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "8904adf51576cf146b2a6b0fb6c3c06f95e53352bbc8d6c079f8858a89789fdd",
+      "publishedSha256": "50da92f49b4bf962726bb47682c94d22ccc6591802b46932fb67eb7d9d2a8b62",
+      "priorBytes": 29524,
+      "publishedBytes": 29498
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/protona/receipt.json",
+      "priorPublishedSha256": "672bdef34a1124942b8febf05c6d26e8b10daa4da4cd6cfb0cede0141b2043a4",
+      "publishedSha256": "b825402fa2d3822f633a559abecc1bcfa4abcd455d5ba101f4f010ad5ff78213",
+      "priorBytes": 34406,
+      "publishedBytes": 34380
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/cinnamon/s3a/receipt.json",
+      "priorPublishedSha256": "be4ef4ff6653d02a3f7bdc7b26afd0afb9f970e6b45a30ae23e85c537c37f89f",
+      "publishedSha256": "4c19f05215b75e76b7cb05f1777119366ff48357a9de2a4d387c7f83f48bbdc3",
+      "priorBytes": 27155,
+      "publishedBytes": 27129
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "6ce994e9c4be2a0e25e8b4de8537d76aecf981dfb34b1c648e99c4fa7252ff34",
+      "publishedSha256": "eaa680a36b6f3c6db4093227b02a53a75b2547dbb412da79e6a5b113432e6fc3",
+      "priorBytes": 26763,
+      "publishedBytes": 26737
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/protona/receipt.json",
+      "priorPublishedSha256": "e0adc1f372aa6b43c475d5e689f9f0a711be6224b36945b20dbc7e58188d2a78",
+      "publishedSha256": "c9ff1bde11b548216989aee396411a530c6dc86cb498a24c56294f9eafefc029",
+      "priorBytes": 34421,
+      "publishedBytes": 34395
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-4/kde/s3a/receipt.json",
+      "priorPublishedSha256": "16dfbacef56894a17a62affab6c9eaae713d277f5274f518a745e7c3108af98c",
+      "publishedSha256": "8bcd7d01a56ef2b46d9f2980f89e099e643e220d48752cb734afb159388b8f92",
+      "priorBytes": 28142,
+      "publishedBytes": 28116
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "5fa4ed9f427bc313f6f7fbaf1bacfcf27f57d306a4226ec8eb6567ab37c2c6b4",
+      "publishedSha256": "3c4bf845b9111f517eeda7c03374d1ddd4555d40cefa8a10efcfafe1dffa210e",
+      "priorBytes": 9807,
+      "publishedBytes": 9781
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-5/kde/s3a/receipt.json",
+      "priorPublishedSha256": "af3ec39679f1c4d37c9e88bd9175df0bd58a1d62da302cb309530094537299a8",
+      "publishedSha256": "96563c6167712e1238ce7a4b565bb2a444a38f41459bff5f463019b1f48f707a",
+      "priorBytes": 27788,
+      "publishedBytes": 27762
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/followup-6/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "7d64c0adc1b1387d920456e56ef1399d0f539b371de0d58f10d4ac4078077eb7",
+      "publishedSha256": "15997cc70130802d6768f8ea3d5810d22e5cdc862d3be8d46e65fc8c6d036424",
+      "priorBytes": 26410,
+      "publishedBytes": 26384
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/gnome/protona/receipt.json",
+      "priorPublishedSha256": "600882845aa3375da7c5ee40fe4048c1d0b377243198c99152ff4a051f17b7d2",
+      "publishedSha256": "d834d26085f3f23b23ba5f9f1d47b27ecca30dee927e65add6369fbfcc6a492e",
+      "priorBytes": 20070,
+      "publishedBytes": 20044
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "c00ecea3cbd007cdb5b0df213b9ae03029b967e2a64692afdf0b3613965e61dd",
+      "publishedSha256": "f32756a6e6eeee685e09995c391165b1e4db1e26c741fce915102f2d85951e23",
+      "priorBytes": 9626,
+      "publishedBytes": 9600
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/kde/protona/receipt.json",
+      "priorPublishedSha256": "7cacdaac62105dfb0d2ff0cc1e198621342f3bb7278a37283163b1817f3baf8d",
+      "publishedSha256": "bf0b79066689ad8ac3bd7e915470c5dc15886aa046d915012cb72c606536eca8",
+      "priorBytes": 13386,
+      "publishedBytes": 13360
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/kde/protonb/receipt.json",
+      "priorPublishedSha256": "129276a802263f119183212d32e7b0c460894cc499cd7e2bdc7dce8fd12b458f",
+      "publishedSha256": "3c6e812986ab6d9d945707c83f087a09f727202afbb3ea1e5a678af8cfd06676",
+      "priorBytes": 17184,
+      "publishedBytes": 17158
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/kde/s3b/receipt.json",
+      "priorPublishedSha256": "e9a5c5ba35739b446d5e3a9130c5ac8750fcb664f14fc06f1a75bc27d7e41559",
+      "publishedSha256": "7dd0d91f4be64fb32955a5243df0b958ba83315c10d6ca214c6379d8f8ce0462",
+      "priorBytes": 9721,
+      "publishedBytes": 9695
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/protona/receipt.json",
+      "priorPublishedSha256": "2c434da4f355b0dc7746b013f0028cf4fcc7d8be51999da6dfbf700aeb80bf56",
+      "publishedSha256": "2406348b2d099c8caf7c21d655b75f8c479eb531fe25bc4de685666be578d9ae",
+      "priorBytes": 17690,
+      "publishedBytes": 17664
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3a/receipt.json",
+      "priorPublishedSha256": "7753b6308293f1a0ab1dce611d21e74e7fd4a73360b992715bb5b6599212bdd3",
+      "publishedSha256": "bc7ed815b2dc598681ebd7282519a691a3ed9f21aabc71ac06c9c69d9a291284",
+      "priorBytes": 9652,
+      "publishedBytes": 9626
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3b/receipt.json",
+      "priorPublishedSha256": "1dbd0bb3e86afb50d74e239937eb9272e37bafc56717692d106437226bfea5ed",
+      "publishedSha256": "f2fcc60a90aee3c3ab647f5011cbf2d0f036d336eb6bf48b0c602dda35b65677",
+      "priorBytes": 14256,
+      "publishedBytes": 14230
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3c/receipt.json",
+      "priorPublishedSha256": "c00761475dd303dd30dbf8bc7f6d24925cf32140159791fdd1f22ae60fa8c0e3",
+      "publishedSha256": "c2e425ddacd0b9fb455820098b32902c38c22a3d4880208d40e70dc760a2293e",
+      "priorBytes": 9766,
+      "publishedBytes": 9740
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/cinnamon/s3d/receipt.json",
+      "priorPublishedSha256": "415c06321b2ab798ff443a98c54867f7e8b00e1610b4803cd3c917bf58407c97",
+      "publishedSha256": "bfae0b56ac0131204cc0b50026276ec0654d7aa7ae55244b35afe21580120916",
+      "priorBytes": 9766,
+      "publishedBytes": 9740
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protona/receipt.json",
+      "priorPublishedSha256": "cd7be85819e8f3e9f70feba879bc792a6788ea26885f0a753040f9de9195da86",
+      "publishedSha256": "ecacf7080c6574db837e553e283d9e54f98eeb5fa7121bc5c72706c4df8d7b73",
+      "priorBytes": 26052,
+      "publishedBytes": 26026
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/protonb/receipt.json",
+      "priorPublishedSha256": "6448330487f96dd0f91c2450486ac7ac1172cd708ce5f360ac3fe0a331059c1c",
+      "publishedSha256": "ebc8f74ece678768961b9c68142d0ee99f14c0c9f123582223c14b426f7ab426",
+      "priorBytes": 26053,
+      "publishedBytes": 26027
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/gnome/s3a/receipt.json",
+      "priorPublishedSha256": "785cd1b88b7c7a144cecc6d7f21dde3b5daeba9092be3d82ecce1ef80e1b3043",
+      "publishedSha256": "ce649a339f1231addb48d5e985444b15e9b5d0b4bf023344f442e7ca408e93f7",
+      "priorBytes": 13257,
+      "publishedBytes": 13231
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protona/receipt.json",
+      "priorPublishedSha256": "558da2590877890e46a74ef3d85d05aaf3e134984943b612c66c49d8fd6ac842",
+      "publishedSha256": "abdecd2cd1deaa8bcdf5aedc543d6a064e36e0d7f2fb6a38d794a0c9736b0ac8",
+      "priorBytes": 21629,
+      "publishedBytes": 21603
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/protonc/receipt.json",
+      "priorPublishedSha256": "2edcd8f006d68540413cb1887791380f26339e2625e21bc15ebdb74d313ce3b2",
+      "publishedSha256": "a5f72205c238984732ee8e65b20db0b11344c821b40dba66dd0815df27701917",
+      "priorBytes": 17803,
+      "publishedBytes": 17777
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3a/receipt.json",
+      "priorPublishedSha256": "0b63a6b4366f063cd2fa0d477fb38f96419315089f88d62d01991fa0773db928",
+      "publishedSha256": "a92bfaa1ed4a4dfa548eeb02e04c7b58c183c68105f01d292e42f740f48bb287",
+      "priorBytes": 9517,
+      "publishedBytes": 9491
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3b/receipt.json",
+      "priorPublishedSha256": "be3fcddcb03c6041a696c28ea4e94e6e5f8806590310badcc3ad893321151231",
+      "publishedSha256": "66ec10c9d12d048819af4db221dcfbd6e706ca607eb95c4f8ae7cb148b7cbe5f",
+      "priorBytes": 14206,
+      "publishedBytes": 14180
+    },
+    {
+      "path": "docs/evidence/2026-10-30-tier1-phase-b/rerun/kde/s3d/receipt.json",
+      "priorPublishedSha256": "f18e9df53c9712c0bf053b2bbb784e3807a4920d6d8cd9b2d3b5c6187afcf2ea",
+      "publishedSha256": "e1b8aaf8a143fc632139a8518be308230c83be8c359ebafa8b0860c0e20f7bfb",
+      "priorBytes": 13341,
+      "publishedBytes": 13315
+    },
+    {
+      "path": "docs/evidence/2026-10-31-native-pass/raw/k72/a1/receipt.json",
+      "priorPublishedSha256": "cd09b1eb19d778085e1344c824a5468683ebe4cebec25cdae60c7d2465b34e83",
+      "publishedSha256": "2641c1cdc708e218edffeb535b012bedc6207b5353a8703f770088c9595964d0",
+      "priorBytes": 18244,
+      "publishedBytes": 18218
+    },
+    {
+      "path": "docs/evidence/2026-10-31-native-pass/raw/k72/a2/receipt.json",
+      "priorPublishedSha256": "a4f16e6b415cb7cea4789b456d78f5179de612f6c570c6fba875f7de6efaa123",
+      "publishedSha256": "dfa2c5b0e7f46f2680d5a63e87b60ddd52626b3416d0171df07333f04221c360",
+      "priorBytes": 37702,
+      "publishedBytes": 37676
+    }
+  ]
+}

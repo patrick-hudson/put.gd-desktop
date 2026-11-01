@@ -6,5 +6,10 @@
   "files": {
     "receipt.json": "a4f16e6b415cb7cea4789b456d78f5179de612f6c570c6fba875f7de6efaa123",
     "coverage.json": "3471196cf135354cbedc6818ab18d8a9d60e49f5fe7c47b1a25ad983a1b0ff10"
+  },
+  "fileDigestScope": "files identifies the original private run bytes before publication sanitization; publishedFiles identifies this repository copy.",
+  "originalTerminalSha256": "7db32f3aa03c4d73c39dadd3c7cf17d7896530e233f481dcb95a928873bb4742",
+  "publishedFiles": {
+    "receipt.json": "dfa2c5b0e7f46f2680d5a63e87b60ddd52626b3416d0171df07333f04221c360"
   }
 }

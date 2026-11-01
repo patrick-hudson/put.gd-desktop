@@ -1,8 +1,8 @@
 [
   {
     "path": "lab/assess.py",
-    "sha256": "49c1b525072da44dba10271ac376ad026ba5e6bb7e2d84fd71da56c76a7ccdf0",
-    "bytes": 4878
+    "sha256": "09b253adcdf919c553a65fc25dcb6d101ff20c753f77b1267938c546ee4066d3",
+    "bytes": 4914
   },
   {
     "path": "lab/attempts/b1-hash-restored-b_native.py",
@@ -95,6 +95,11 @@
     "bytes": 13364
   },
   {
+    "path": "lab/attempts/growth-native_acceptance.py",
+    "sha256": "ef9c28a5db91cd57fb41f9e4e3a5d88c53baf53fe77a9fff87ec234b148a792c",
+    "bytes": 41917
+  },
+  {
     "path": "lab/b_campaign.py",
     "sha256": "14ca4dc5600fe9602c9566eb22b7bfb09a4550b50773cc9589c55c2ac1733503",
     "bytes": 8273
@@ -115,8 +120,20 @@
     "bytes": 3686
   },
   {
+    "path": "lab/native-local.patch",
+    "sha256": "086a91d6110d0d2ae927ef02d14ec932cdead6937f094d7aaa2a2d0400086741",
+    "bytes": 7986,
+    "originalPublishedSha256": "5cbe8bcd430b13295e11859a4d5389c2080f88ba476740eb5f041344d2d158b4",
+    "publicationNote": "Later fail-closed frame masking; not historical tested patch bytes."
+  },
+  {
     "path": "lab/native_admission_checks.py",
     "sha256": "296d9c9104baaf4a805578bf9fabbe517fe1d4d1df4298cae616a5f61fe239f1",
     "bytes": 1585
+  },
+  {
+    "path": "lab/publication_checks.py",
+    "sha256": "2844de46388263d21587db01484ce2418c50dc9f7dc541ef4e511974896e9f8a",
+    "bytes": 3624
   }
 ]

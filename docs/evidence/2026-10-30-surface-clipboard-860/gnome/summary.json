@@ -137,7 +137,7 @@
         "transport": "x11-selection-bridge",
         "pid": 75974,
         "start": "247080",
-        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+        "boot": "[REDACTED]",
         "reaped_pids": []
       }
     },
@@ -206,7 +206,7 @@
         "transport": "x11-selection-bridge",
         "pid": 46718,
         "start": "166255",
-        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+        "boot": "[REDACTED]",
         "reaped_pids": []
       }
     },
@@ -275,7 +275,7 @@
         "transport": "x11-selection-bridge",
         "pid": 59045,
         "start": "223664",
-        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc",
+        "boot": "[REDACTED]",
         "reaped_pids": []
       }
     },
@@ -352,7 +352,7 @@
         "transport": "x11-selection-bridge",
         "pid": 22803,
         "start": "82312",
-        "boot": "80e85c7c-4353-4dc9-8cf4-b3560c0b40fc"
+        "boot": "[REDACTED]"
       }
     },
     "editor-before": {

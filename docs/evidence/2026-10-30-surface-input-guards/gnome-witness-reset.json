@@ -5,5 +5,7 @@
   "reason": "session-manager reboot request did not reload the extension; guest sudo -n unavailable; controlled reset of this authenticated disposable overlay only",
   "at": "2026-10-30T09:28:39.451874+00:00",
   "response": {},
-  "afterBootId": "[REDACTED]"
+  "afterBootId": "[REDACTED]",
+  "bootChanged": true,
+  "bootComparisonSource": "Comparison of original before/after observations before identifier redaction; identifiers omitted from publication."
 }

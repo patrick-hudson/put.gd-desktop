@@ -44,7 +44,7 @@
       "transport": "wayland",
       "pid": 4110,
       "start": "14937",
-      "boot": "594bc0cf-6bfc-46e5-9e32-8dcdd23df969",
+      "boot": "[REDACTED]",
       "reaped_pids": []
     },
     "cleanup_errors": [

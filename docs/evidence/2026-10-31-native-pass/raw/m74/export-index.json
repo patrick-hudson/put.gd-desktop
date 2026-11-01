@@ -1105,5 +1105,6 @@
       "bytes": 653
     }
   ],
-  "archiveSha256": "bdf4d3997c73a11a246ac5bc826e820af5bac69d2146a9af0ba07624afb5d8b5"
+  "archiveSha256": "bdf4d3997c73a11a246ac5bc826e820af5bac69d2146a9af0ba07624afb5d8b5",
+  "digestScope": "Original private exported run inputs. These digests and byte counts are not checks of sanitized published files; see terminal publishedFiles and SHA256SUMS."
 }

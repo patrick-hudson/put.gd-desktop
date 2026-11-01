@@ -3,7 +3,7 @@
   "timestampUtc": "2026-10-08T20:46:38.279459+00:00",
   "scope": "Restart existing writable fresh GNOME test overlay only; discover installed system helper; no golden modification",
   "oldHostPid": 2204570,
-  "bootIdBefore": "5e43c72e-a65d-4f7c-8f32-88614ca7ae8c",
+  "bootIdBefore": "[REDACTED]",
   "vncPort": 5936,
   "initialAttempt": "GNOME session reboot command did not restart the locked session",
   "acpiPowerdownReply": {},

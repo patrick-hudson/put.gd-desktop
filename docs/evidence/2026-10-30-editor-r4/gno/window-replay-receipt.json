@@ -39,7 +39,7 @@
       "transport": "x11-selection-bridge",
       "pid": 149800,
       "start": "360972",
-      "boot": "9e068036-0d3d-4c78-906f-1f42fe05fbae",
+      "boot": "[REDACTED]",
       "reaped_pids": []
     },
     "observed_build": {
