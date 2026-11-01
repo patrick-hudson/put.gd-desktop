@@ -22,12 +22,14 @@ foreach(gnome_asset extension.js metadata.json)
 endforeach()
 # "Upload with put.gd" menu files (#1105), installed for every file manager and
 # inert where it is absent. src/app/FileManagerIntegration.cpp writes the
-# AppImage's per-user copies from these same files.
-putgd_install_snapshot(filemanager/kio-servicemenu.desktop "${CMAKE_INSTALL_DATADIR}/kio/servicemenus" RENAME putgd-upload.desktop)
-putgd_install_snapshot(filemanager/putgd-upload.nemo_action "${CMAKE_INSTALL_DATADIR}/nemo/actions")
-putgd_install_snapshot(filemanager/thunar-sendto.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload.desktop)
-putgd_install_snapshot(filemanager/file-manager-action.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload.desktop)
-putgd_install_snapshot(filemanager/putgd-upload.contract "${CMAKE_INSTALL_DATADIR}/contractor")
+# AppImage's per-user copies from these same files; its image carries none.
+if(NOT PUTGD_PACKAGE_TARGET STREQUAL "appimage")
+  putgd_install_snapshot(filemanager/kio-servicemenu.desktop "${CMAKE_INSTALL_DATADIR}/kio/servicemenus" RENAME putgd-upload.desktop)
+  putgd_install_snapshot(filemanager/putgd-upload.nemo_action "${CMAKE_INSTALL_DATADIR}/nemo/actions")
+  putgd_install_snapshot(filemanager/thunar-sendto.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload.desktop)
+  putgd_install_snapshot(filemanager/file-manager-action.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload.desktop)
+  putgd_install_snapshot(filemanager/putgd-upload.contract "${CMAKE_INSTALL_DATADIR}/contractor")
+endif()
 # File-manager menu plugins (#1105, src/filemanager), each where its file
 # manager loads extensions, with the distros' plain shared-object mode.
 foreach(file_manager_plugin putgd-nautilus putgd-caja putgd-peony)

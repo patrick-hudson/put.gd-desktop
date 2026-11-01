@@ -226,7 +226,7 @@ private:
  // Retry and manual cleanup requests that arrived during an automatic pass.
  QList<std::function<void()>> afterCleanup_;
  QJsonObject lastCleanup_;
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins;};
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;QStringList origins={};};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
  void clearObservation(const QString&);
