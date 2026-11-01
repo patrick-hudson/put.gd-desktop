@@ -115,10 +115,12 @@ authenticated resident's, the views helper's registered through
 `SetUiProcess`, or that of any other process whose parent (from
 `/proc/PID/stat`) is the resident. The last rule covers the Edit & upload
 editor (`putgd-ui --edit-image`) and the recording helper, which never register
-(#103). Links and folders open through the portal's `OpenURI`/`OpenDirectory`
-requests or, when the portal fails, a detached `gio open`/`xdg-open` launch
-(`QProcess::startDetached`, so the opener is reparented to the session and is
-never a direct child of the process that launched it; see
+(#103). Links open through the portal's `OpenURI` request; folders go
+`ShowItems` → `OpenDirectory` → launcher. When a portal request fails for a
+reason other than the user cancelling or the portal not answering, the
+launcher runs `gio open` (or `xdg-open`) with `QProcess::startDetached`, so the
+opener runs in its own session and is not a child of the process that launched
+it; a cancelled or unanswered portal request skips the launcher (see
 [diagnostics](../diagnostics.md)). The browser or file manager is therefore
 never classified as put.gd's own window. The
 [editor refusal receipt](../evidence/2026-10-19-gnome-editor-refusal.md)
