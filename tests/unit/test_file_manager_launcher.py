@@ -58,7 +58,11 @@ class LauncherTest(unittest.TestCase):
         self.own = self.root / "put.gd's data/file-manager"
         self.own.mkdir(parents=True)
         self.script = self.own / "putgd-upload"
-        self.user_runtime = self.root / "user-runtime"
+        # A short root: a socket path may not pass 107 bytes, however long TMPDIR is.
+        runtimes = tempfile.TemporaryDirectory(prefix="pg-rt-", dir="/tmp")
+        self.addCleanup(runtimes.cleanup)
+        self.runtimes = Path(runtimes.name)
+        self.user_runtime = self.runtimes / "user"
 
     def write(self, path, text, mode=0o755):
         path.write_text(text)
@@ -228,7 +232,7 @@ exit {run_status}
         self.assertFalse([call for call in calls if str(private) in call], calls)
 
     def test_the_session_runtime_comes_first(self):
-        session = self.root / "session-runtime"
+        session = self.runtimes / "session"
         self.manager_socket(session)
         self.manager_socket(self.user_runtime)
         self.stand_in_manager()

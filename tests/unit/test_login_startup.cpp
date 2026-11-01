@@ -58,7 +58,9 @@ private slots:
   auto quoted=receipt;quoted.replace("'","'\\''");
   writeImage(QDir(bin).filePath("systemctl"),("#!/bin/sh\nprintf 'called\\n' >> '"+quoted+"'\nprintf 'not-found\\n'\n").toUtf8());
   // A user manager to reach, whatever the machine running this test has (#1112).
-  const auto runtime=dir.filePath("rt");QVERIFY(QDir().mkpath(runtime+"/systemd"));
+  // A short root: a socket path may not pass 107 bytes, however long TMPDIR is.
+  QTemporaryDir runtimeRoot("/tmp/pg-rt-XXXXXX");QVERIFY(runtimeRoot.isValid());
+  const auto runtime=runtimeRoot.path();QVERIFY(QDir().mkpath(runtime+"/systemd"));
   {
    const int fd=::socket(AF_UNIX,SOCK_STREAM,0);QVERIFY(fd>=0);
    sockaddr_un address{};address.sun_family=AF_UNIX;const auto bytes=QFile::encodeName(runtime+"/systemd/private");

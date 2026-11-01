@@ -425,7 +425,9 @@ private slots:
   QCOMPARE(::bind(fd,reinterpret_cast<const sockaddr*>(&address),sizeof(address)),0);::close(fd);
  }
  void monitorFailureNamesItsCause() {
-  Fixture f;auto& c=f.context;c.installation="appimage";c.userRuntime=f.path("rt");managerSocket(c.userRuntime);
+  // A short root: a socket path may not pass 107 bytes, however long TMPDIR is.
+  QTemporaryDir runtimeRoot("/tmp/pg-rt-XXXXXX");QVERIFY(runtimeRoot.isValid());
+  Fixture f;auto& c=f.context;c.installation="appimage";c.userRuntime=runtimeRoot.path();managerSocket(c.userRuntime);
   QVERIFY(!FileManagerIntegration::apply(c).error);
   write(f.path("bin/systemd-run"),"#!/bin/sh\nprintf 'synthetic refusal\\n' >&2\nexit 1\n",programMode);
   const auto runtime=qgetenv("XDG_RUNTIME_DIR");qunsetenv("XDG_RUNTIME_DIR");

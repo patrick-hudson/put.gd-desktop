@@ -114,7 +114,11 @@ class LoginStartTest(unittest.TestCase):
         identity = "a" * 64
         text = SCRIPT.read_text()
         # Where the login's user manager listens; a stand-in socket, nothing answers it.
-        runtime = self.root / "user-runtime"
+        # A short root: a socket path may not pass 107 bytes, however long TMPDIR is.
+        if not hasattr(self, "runtimes"):
+            self.runtimes = tempfile.TemporaryDirectory(prefix="pg-rt-", dir="/tmp")
+            self.addCleanup(self.runtimes.cleanup)
+        runtime = Path(self.runtimes.name) / "user"
         if not runtime.exists():
             (runtime / "systemd").mkdir(parents=True)
             with socket.socket(socket.AF_UNIX) as listener:
