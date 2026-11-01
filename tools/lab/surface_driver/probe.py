@@ -703,7 +703,9 @@ class WaylandPlacement:
             # undecorated cover size; ordinary anonymous windows stay refused.
             anonymous_selector = title in ('Capture region', 'Recording region') and owned(pid) and selector_process(pid)
             found = [w for w in self.windows() if w['pid'] == pid and
-                     (w['title'] == title or (anonymous_selector and not w['title'] and w['frame'][2:] == [width, height])) and
+                     (w['title'] == title or (anonymous_selector and not w['title'] and w['frame'][2:] == [width, height])
+                      # Plasma's banner has no accessible title; KWin names it a notification.
+                      or (not title and w.get('notification') and w['frame'][2:] == [width, height])) and
                      w.get('type') not in POPUP_WINDOW_TYPES and
                      0 <= w['frame'][2] - width <= 2 * self.MAX_SIDE and 0 <= w['frame'][3] - height <= self.MAX_TOP + self.MAX_SIDE]
             if not found:

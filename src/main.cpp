@@ -59,6 +59,7 @@
 #endif
 #ifdef PUTGD_NATIVE_KDE
 #include "platform/kde/KdeSourceAdapter.h"
+#include "platform/wayland/DataControlSourceAdapter.h"
 #endif
 namespace {
 // -1 means no connection was made and normal resident startup may proceed.
@@ -235,6 +236,9 @@ int main(int argc,char* argv[]) {
 #ifdef PUTGD_NATIVE_KDE
  putgd::KdeSourceAdapter* kde=nullptr;
  if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
+ // Any other Wayland desktop has no capture, but may still offer the clipboard.
+ putgd::DataControlSourceAdapter* dataControl=nullptr;
+ if(!source&&wayland){auto adapter=std::make_unique<putgd::DataControlSourceAdapter>();dataControl=adapter.get();source=std::move(adapter);}
 #endif
  if(!source)source=std::make_unique<putgd::UnavailableSource>();
  const auto dataRoot=locations.dataRoot;
@@ -376,6 +380,7 @@ int main(int argc,char* argv[]) {
 #endif
 #ifdef PUTGD_NATIVE_KDE
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+ if(dataControl)QObject::connect(dataControl,&putgd::DataControlSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
  QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
@@ -487,7 +492,7 @@ int main(int argc,char* argv[]) {
     if(ticket!=fileManagerGeneration->load())return;
     fileManagerStatus=result;if(error)fileManagerStatus["error"]=error.toJson();
     putgd::logging::write(putgd::logApp(),error?QtWarningMsg:QtInfoMsg,"File manager menu applied",fileManagerStatus);
-    if(result["firstRun"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
+    if(result["announce"].toBool()){QStringList restartable;for(const auto& name:result["restartable"].toArray())restartable.append(name.toString());tray.notifyFileManagerMenu(restartable);}
     // After the generation check: a superseded pass must not record a failure nobody was told about.
     if(putgd::FileManagerIntegration::announceOnce(context,error))tray.notifyFileManagerProblem(error.message);
     refreshSettingsDiagnostics();

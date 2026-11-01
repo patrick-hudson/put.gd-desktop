@@ -41,6 +41,7 @@ FLOWS = dict(region_upload='Region', window_desktop='Window / desktop',
              link_browser='Link → browser', history_delete='History delete',
              auto_copy='Auto-copy', upload_clipboard='Upload clipboard',
              copy_image='Copy image', survives_exit='Survives exit',
+             file_manager_upload='Right-click upload',
              s3_region_upload='Live S3', proton_region_upload='Live Proton')
 LOCAL = [name for name in FLOWS if not name.startswith(('s3_', 'proton_'))]
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
