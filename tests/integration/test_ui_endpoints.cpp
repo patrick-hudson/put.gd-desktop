@@ -149,15 +149,18 @@ private slots:
   QVERIFY(settings.save(document,{}));
   {
    CredentialStore credentials;SetupService setup(settings,credentials,{});
-   const auto started=setup.unlockSavedCredentials();QCOMPARE(started.size(),1);
+   // #1105: a file-manager upload waits until the startup read has run and ended.
+   QVERIFY(!setup.savedCredentialsSettled());
+   const auto started=setup.unlockSavedCredentials();QCOMPARE(started.size(),1);QVERIFY(!setup.savedCredentialsSettled());
    Error error;QJsonObject record;setup.inspect(started.first(),[&](Error e,QJsonObject value){error=e;record=value;});
    QVERIFY(!error);QCOMPARE(record["kind"].toString(),QString("unlockCredentials"));QCOMPARE(record["profileId"].toString(),QString("s3saved"));
    QVERIFY(setup.unlockSavedCredentials().isEmpty());
    PUTGD_TRY_COMPARE_WITH_TIMEOUT((setup.inspect(started.first(),[&](Error,QJsonObject value){record=value;}),record["state"].toString()),QString("failed"),10000);
+   QVERIFY(setup.savedCredentialsSettled());
   }
   auto preferences=document["preferences"].toObject();preferences["unlockCredentialsAtStartup"]=false;document["preferences"]=preferences;
   QVERIFY(settings.save(document,settings.revision()));
-  {CredentialStore credentials;SetupService setup(settings,credentials,{});QVERIFY(setup.unlockSavedCredentials().isEmpty());}
+  {CredentialStore credentials;SetupService setup(settings,credentials,{});QVERIFY(setup.unlockSavedCredentials().isEmpty());QVERIFY(setup.savedCredentialsSettled());}
   if(bus.isNull())qunsetenv("DBUS_SESSION_BUS_ADDRESS");else qputenv("DBUS_SESSION_BUS_ADDRESS",bus);
  }
  void credentialRevealRejectsStaleMissingAndNonS3Destinations() {

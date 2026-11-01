@@ -1,5 +1,6 @@
 #include "app/FileUploads.h"
 #include "app/UploadClient.h"
+#include "app/FileManagerIntegration.h"
 #include "core/Log.h"
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/Waits.h"
@@ -164,6 +165,24 @@ private slots:
   QVERIFY(settings_->save(saved,settings_->revision()));
  }
 
+ // A resident started for an upload holds it until its saved credentials are read (#1105).
+ void uploadGateRefusesRetryably() {
+  const auto a=write(files("gated.txt"),"x");
+  operations_->setUploadGate([]{return Error{"initializing","put.gd is reading its saved credentials",{}};});
+  Error error;wait([&](JsonReply reply){operations_->uploadFiles({a},{},"system",std::move(reply));},&error);
+  QCOMPARE(error.code,QString("initializing"));
+  operations_->setUploadGate({});
+  wait([&](JsonReply reply){operations_->uploadFiles({a},{},"system",std::move(reply));},&error);
+  QVERIFY2(!error,qPrintable(error.message));
+ }
+ // The AppImage watches these for a DEB or RPM installed beside it.
+ void systemDirectoriesThatExist() {
+  QTemporaryDir root;QVERIFY(root.isValid());
+  QVERIFY(QDir().mkpath(root.filePath("share/nemo/actions")));QVERIFY(QDir().mkpath(root.filePath("lib/nautilus/extensions-4")));
+  FileManagerContext context;context.dataDirs={root.filePath("share")};context.libraryDirs={root.filePath("lib")};
+  auto directories=FileManagerIntegration::systemDirectories(context);directories.sort();
+  QCOMPARE(directories,(QStringList{root.filePath("lib/nautilus/extensions-4"),root.filePath("share/nemo/actions")}));
+ }
  void cgroupLeaf() {
   QVERIFY(UploadClient::leafUnitIsService("0::/user.slice/user-1000.slice/user@1000.service/app.slice/dbus-:1.2-org.gnome.Nautilus@0.service\n"));
   QVERIFY(!UploadClient::leafUnitIsService("0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-org.gnome.Terminal-1234.scope\n"));

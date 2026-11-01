@@ -461,6 +461,15 @@ Error ioError(const QString& message,const QString& path) {return {"file_manager
 }
 
 QString FileManagerIntegration::label() {return QStringLiteral("Upload with put.gd");}
+QStringList FileManagerIntegration::systemDirectories(const FileManagerContext& c) {
+ QStringList directories;
+ for(const auto& root:dataDirectories(c))for(const auto& format:menuFormats)directories<<QDir(root).filePath(QString::fromLatin1(format.directory));
+ const auto roots=c.libraryDirs.isEmpty()?QStringList{"/usr/lib64","/usr/lib/x86_64-linux-gnu","/usr/lib/aarch64-linux-gnu","/usr/lib"}:c.libraryDirs;
+ for(const auto& root:roots)for(const auto* relative:{"nautilus/extensions-4","caja/extensions-2.0"})directories<<QDir(root).filePath(QString::fromLatin1(relative));
+ directories.removeDuplicates();
+ directories.removeIf([](const QString& directory){return !QFileInfo(directory).isDir();});
+ return directories;
+}
 QString FileManagerIntegration::launcherPath(const FileManagerContext& c) {return QDir(ownDirectory(c)).filePath("putgd-upload");}
 QString FileManagerIntegration::cosmicPath(const FileManagerContext& c) {return QDir(c.configHome).filePath("cosmic/com.system76.CosmicFiles/v1/context_actions");}
 

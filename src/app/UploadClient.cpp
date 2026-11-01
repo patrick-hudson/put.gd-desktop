@@ -31,6 +31,7 @@
 #include <poll.h>
 #include <sys/file.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -49,6 +50,20 @@ constexpr qsizetype requestBudget=1024*1024-4096;
 constexpr int pollIntervalMs=250;
 const char* const scopedVariable="PUTGD_UPLOAD_SCOPED";
 const char* const startedFdVariable="PUTGD_UPLOAD_STARTED_FD";
+// In a forked child before execve: nothing this client holds is passed on.
+// The AppImage runtime's descriptor for its mount (fd 1023) would otherwise
+// keep the client's mount alive for the resident's whole lifetime.
+void closeInherited(int keep=-1){
+ const auto range=[](unsigned first,unsigned last){
+#ifdef SYS_close_range
+  if(::syscall(SYS_close_range,first,last,0)==0)return;
+#endif
+  for(unsigned fd=first;fd<=last&&fd<65536;++fd)::close(int(fd));
+ };
+ if(keep<3){range(3,~0U);return;}
+ if(keep>3)range(3,unsigned(keep)-1);
+ range(unsigned(keep)+1,~0U);
+}
 
 QString executablePath(){return QFileInfo(QStringLiteral("/proc/self/exe")).canonicalFilePath();}
 QString binaryDirectory(){return QFileInfo(executablePath()).absolutePath();}
@@ -63,7 +78,24 @@ struct CStrings {
 };
 QList<QByteArray> encoded(const QStringList& values){QList<QByteArray> list;for(const auto& value:values)list.append(QFile::encodeName(value));return list;}
 
+// Ends a wait when the server closes or uses one notification.
+class NotificationWait final:public QObject {
+ Q_OBJECT
+public:
+ explicit NotificationWait(QEventLoop& loop):loop_(loop) {}
+ void track(uint id) {id_=id;}
+public Q_SLOTS:
+ void closed(uint id,uint) {if(id_&&id==id_)loop_.quit();}
+ void invoked(uint id,const QString&) {if(id_&&id==id_)loop_.quit();}
+private:
+ uint id_=0;QEventLoop& loop_;
+};
+// How long the client stays to keep a notice on screen (see notify()).
+constexpr int noticeHoldMs=120000;
 // What the user sees: put.gd's own notification, the same server the resident uses.
+// The client stays on the session bus until the notice is closed or used, for at
+// most noticeHoldMs: Cinnamon ties a notice named "put.gd" to an open put.gd
+// window and removes it the moment its sender leaves the bus.
 void notify(const QString& title,const QString& body,bool failure){
  const auto bytes=(title+": "+body).toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);
  auto bus=QDBusConnection::sessionBus();if(!bus.isConnected())return;
@@ -71,9 +103,19 @@ void notify(const QString& title,const QString& body,bool failure){
  const auto iconFile=qEnvironmentVariable("PUTGD_UPLOAD_ICON");
  const auto icon=QDir::isAbsolutePath(iconFile)&&QFileInfo(iconFile).isFile()?iconFile:QStringLiteral("putgd");
  auto call=QDBusMessage::createMethodCall("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","Notify");
- const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"}};
- call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{},hints,failure?0:10000});
- bus.call(call,QDBus::Block,5000);
+ // Resident: Cinnamon otherwise removes put.gd's notices at once while a put.gd window has focus.
+ const QVariantMap hints{{"urgency",QVariant::fromValue(static_cast<uchar>(failure?2:1))},{"desktop-entry","putgd"},{"resident",true}};
+ // A default action: clicking the notice then reports ActionInvoked, which ends the client's wait.
+ call.setArguments({QStringLiteral("put.gd"),uint(0),icon,title.left(512),body.left(4096),QStringList{"default","Dismiss"},hints,failure?0:10000});
+ // Subscribed before Notify: a close that comes at once is delivered once the loop runs.
+ QEventLoop loop;NotificationWait held(loop);
+ bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",&held,SLOT(closed(uint,uint)));
+ bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",&held,SLOT(invoked(uint,QString)));
+ const auto reply=bus.call(call,QDBus::Block,5000);
+ if(reply.type()!=QDBusMessage::ReplyMessage||reply.arguments().isEmpty())return;
+ held.track(reply.arguments().first().toUInt());
+ QTimer::singleShot(noticeHoldMs,&loop,&QEventLoop::quit);
+ loop.exec();
 }
 void refuse(const QString& body){notify(QStringLiteral("put.gd — nothing uploaded"),body,true);}
 
@@ -96,7 +138,7 @@ int leaveServiceCgroup(int argc,char** argv){
  CStrings childArguments(argumentBytes),childEnvironment(environmentList(environment));
  const pid_t child=::fork();
  if(child<0){::close(started[0]);::close(started[1]);return -1;}
- if(child==0){::fcntl(started[1],F_SETFD,0);::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);}
+ if(child==0){closeInherited(started[1]);::fcntl(started[1],F_SETFD,0);::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);}
  ::close(started[1]);
  char byte=0;ssize_t count;do count=::read(started[0],&byte,1);while(count<0&&errno==EINTR);
  ::close(started[0]);
@@ -124,7 +166,7 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  if(pid<0){for(int fd:{out[0],out[1],err[0],err[1]})::close(fd);return result;}
  if(pid==0){
   const int null=::open("/dev/null",O_RDONLY);if(null>=0)::dup2(null,0);
-  ::dup2(out[1],1);::dup2(err[1],2);
+  ::dup2(out[1],1);::dup2(err[1],2);closeInherited();
   ::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);
  }
  ::close(out[1]);::close(err[1]);
@@ -227,6 +269,7 @@ Start startResident(bool appImage,const QString& appImagePath,bool scoped){
  if(pid==0){
   ::setsid();if(::chdir(home.constData())!=0&&::chdir("/")!=0)::_exit(127);
   const int null=::open("/dev/null",O_RDWR);if(null>=0){::dup2(null,0);::dup2(null,1);::dup2(null,2);}
+  closeInherited();
   ::execve(childArguments.data()[0],childArguments.data(),childEnvironment.data());::_exit(127);
  }
  return {pid,!runner.isEmpty()};
@@ -423,3 +466,4 @@ int run(int argc,char** argv){
  }
 }
 }
+#include "UploadClient.moc"
