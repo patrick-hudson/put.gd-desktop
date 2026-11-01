@@ -23,13 +23,14 @@ struct FileManagerContext {
  // put.gd's plugins. searchPath: PATH, for the file-manager programs.
  QStringList dataDirs,libraryDirs;
  QString searchPath;
- QString desktop;                            // XDG_CURRENT_DESKTOP, for tests; empty asks the environment
+ QString desktop,kdeVersion;                 // XDG_CURRENT_DESKTOP and KDE_SESSION_VERSION, for tests; empty asks the environment
  QString cgroupFile=QStringLiteral("/proc/self/cgroup"); // what the AppImage launcher reads
  QString userRuntime; // the login's runtime directory, where its user manager listens; empty: /run/user/<uid>
 };
 struct FileManagerResult {
  Error error;               // e.g. {"cosmic_context_actions_unparseable",...}: nothing written to that file
  bool firstRun=false;       // no version stamp existed for this installation identity; stamp now written
+ bool announce=false;       // firstRun, on a desktop where this installation has an entry: say so
  QStringList written,removed,skipped; // absolute paths: changed now; removed; not written (a duplicate, or a file put.gd does not manage)
  QStringList restartable;   // firstRun only: the session's own file manager when it needs a restart. "nautilus"/"caja"/"peony" with a system plugin; "pcmanfm"/"pcmanfm-qt" with a FileManager-Actions entry
  QString launcher;          // the stable launcher script (AppImage)

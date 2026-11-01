@@ -161,6 +161,7 @@ private slots:
   QTest::newRow("XFCE")<<"XFCE"<<"system"<<QStringList{};
   QTest::newRow("Cinnamon")<<"X-Cinnamon"<<"system"<<QStringList{};
   QTest::newRow("KDE")<<"KDE"<<"system"<<QStringList{};
+  QTest::newRow("COSMIC")<<"COSMIC"<<"system"<<QStringList{};
  }
  void firstRunNamesOnlyTheSessionsFileManager() {
   QFETCH(QString,desktop);QFETCH(QString,installation);QFETCH(QStringList,restartable);
@@ -171,7 +172,30 @@ private slots:
   for(const auto* name:{"nautilus","caja","peony","pcmanfm","pcmanfm-qt"})write(QDir(c.searchPath).filePath(name),"#!/bin/sh\n",programMode);
   const auto result=FileManagerIntegration::apply(c);
   QVERIFY2(!result.error,qPrintable(result.error.message));
-  QVERIFY(result.firstRun);QCOMPARE(result.restartable,restartable);
+  QVERIFY(result.firstRun);QVERIFY(result.announce);QCOMPARE(result.restartable,restartable);
+ }
+ void firstRunAnnouncesOnlyAnEntryThatExists_data() {
+  QTest::addColumn<QString>("desktop");QTest::addColumn<QString>("kdeVersion");QTest::addColumn<QString>("installation");QTest::addColumn<bool>("announce");
+  QTest::newRow("UKUI AppImage")<<"UKUI"<<""<<"appimage"<<false;
+  QTest::newRow("UKUI DEB")<<"UKUI"<<""<<"system"<<true;
+  QTest::newRow("Plasma 5 AppImage")<<"KDE"<<"5"<<"appimage"<<false;
+  QTest::newRow("Plasma 5 DEB")<<"KDE"<<"5"<<"system"<<true;
+  QTest::newRow("Plasma 6 AppImage")<<"KDE"<<"6"<<"appimage"<<true;
+  QTest::newRow("Deepin")<<"Deepin"<<""<<"system"<<false;
+  QTest::newRow("Trinity")<<"TDE"<<""<<"appimage"<<false;
+  QTest::newRow("Enlightenment")<<"Enlightenment"<<""<<"system"<<false;
+  QTest::newRow("LXDE AppImage")<<"LXDE"<<""<<"appimage"<<true;
+  QTest::newRow("COSMIC")<<"COSMIC"<<""<<"system"<<true;
+ }
+ void firstRunAnnouncesOnlyAnEntryThatExists() {
+  QFETCH(QString,desktop);QFETCH(QString,kdeVersion);QFETCH(QString,installation);QFETCH(bool,announce);
+  Fixture f;auto& c=f.context;c.installation=installation;c.desktop=desktop;c.kdeVersion=kdeVersion;
+  const auto result=FileManagerIntegration::apply(c);
+  QVERIFY(result.firstRun);QCOMPARE(result.announce,announce);
+  QCOMPARE(result.toJson()["announce"].toBool(),announce);
+  // Only the first run: the stamp is written either way, so no notice comes later.
+  const auto again=FileManagerIntegration::apply(c);
+  QVERIFY(!again.firstRun);QVERIFY(!again.announce);
  }
  void firstRunNeedsTheFileManagerOnPathAndItsEntry() {
   // PCManFM isn't installed: nothing to name.

@@ -1,5 +1,6 @@
 #include "FileUploads.h"
 #include "core/ArtifactStore.h"
+#include "core/ByteSize.h"
 #include "core/FolderZip.h"
 #include "core/UploadNaming.h"
 #include <QDirIterator>
@@ -37,6 +38,11 @@ Error matchInstallation(const QString& requested,const QString& resident){
  return {"installation_mismatch",QStringLiteral("put.gd from %1 is running. Quit that put.gd first (from its tray menu or its window's Quit), or use the menu entry of that installation.").arg(name(resident)),{{"resident",resident},{"requested",requested}}};
 }
 Selection select(const QStringList& paths,const Settings& settings,const QString& action,qint64 objectLimit,qint64 diskAvailable){
+ ArtifactStore::DiskBudget disk;disk.freeBytes=diskAvailable;
+ return select(paths,settings,action,objectLimit,disk);
+}
+Selection select(const QStringList& paths,const Settings& settings,const QString& action,qint64 objectLimit,const ArtifactStore::DiskBudget& disk){
+ const auto diskAvailable=disk.available();
  Selection result;result.zipFolders=settings.fileManagerFolders!="files";
  const auto& limits=settings.limits;
  QJsonArray problems;QStringList listed;
@@ -98,7 +104,8 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
  if(problems.isEmpty()&&result.files.isEmpty())reject(QStringLiteral("selection"),"input_excessive","contains no files to upload");
  if(problems.isEmpty()&&batch>limits.maxBatchBytes)reject(QStringLiteral("selection"),"input_excessive",QStringLiteral("totals %1; the Largest batch limit is %2").arg(size(batch),size(limits.maxBatchBytes)));
  if(problems.isEmpty()&&diskAvailable>=0&&result.diskBytes>diskAvailable)
-  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space to import: it needs %1, and %2 can be used in put.gd's data folder.").arg(size(result.diskBytes),size(diskAvailable)),{{"requiredBytes",double(result.diskBytes)},{"availableBytes",double(diskAvailable)}}};
+  // The cause is usually the reserve, not this file: say what's free, what's kept and what to do.
+  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space: this needs %1. The disk with put.gd's data folder has %2 free, and put.gd keeps %3 free for the system. Free up at least %4 and try again.").arg(ByteSize::fileSummary(result.diskBytes),ByteSize::fileSummary(disk.freeBytes),ByteSize::fileSummary(disk.reserveBytes+disk.reservedBytes),ByteSize::fileSummary(result.diskBytes+disk.reserveBytes+disk.reservedBytes-disk.freeBytes)),{{"requiredBytes",double(result.diskBytes)},{"availableBytes",double(diskAvailable)}}};
  if(!problems.isEmpty()){
   const auto more=problems.size()>listed.size()?QStringLiteral("\n… and %1 more").arg(problems.size()-listed.size()):QString();
   // Size refusals keep their own code when every problem is one; anything else is files_rejected.

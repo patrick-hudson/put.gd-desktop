@@ -46,6 +46,7 @@ public:
  QList<QVariantMap> received;
  QList<uint> closed;
  std::atomic_int answered{0};
+ std::atomic_bool buttons{true};
 public slots:
  uint Notify(const QString& app, uint, const QString& icon, const QString& summary, const QString& body,
              const QStringList& actions, const QVariantMap& hints, int timeout) {
@@ -57,7 +58,7 @@ public slots:
   return 0;
  }
  void CloseNotification(uint id) {QMutexLocker lock(&mutex);closed.append(id);}
- QStringList GetCapabilities() { return {"body"}; }
+ QStringList GetCapabilities() { return buttons ? QStringList{"body", "actions"} : QStringList{"body"}; }
  QString GetServerInformation(QString& vendor, QString& version, QString& spec) { vendor="Synthetic";version="1";spec="1.2";return "Synthetic"; }
 signals:
  void ActionInvoked(uint id, const QString& action);
@@ -139,6 +140,7 @@ private slots:
    id = notifications->received.size();
    const auto notice = notifications->received.last();
    QCOMPARE(notice["actions"].toStringList(), QStringList({"restart-file-manager-synthetic-file-manager", "Restart synthetic-file-manager"}));
+   QCOMPARE(notice["body"].toString(), QString("Upload with put.gd is in your right-click menu. Restart synthetic-file-manager if it's missing; that closes its windows."));
    QCOMPARE(notice["timeout"].toInt(), 0);
    QVERIFY(notice["hints"].toMap()["resident"].toBool());
   }
@@ -156,6 +158,19 @@ private slots:
   // Once used, the button is gone.
   invoke(id, "restart-file-manager-synthetic-file-manager");
   PUTGD_COMPARE_STEADY(closed(), QList<uint>{id}, 200);
+  // A server without buttons, like UKUI's: the text alone, and it goes away by itself.
+  notifications->buttons = false;
+  const auto answeredBefore = notifications->answered.load();
+  controller.notifyFileManagerMenu({"synthetic-file-manager"});
+  PUTGD_TRY_COMPARE(notifications->answered.load(), answeredBefore + 1);
+  {
+   QMutexLocker lock(&notifications->mutex);
+   const auto notice = notifications->received.last();
+   QVERIFY(notice["actions"].toStringList().isEmpty());
+   QCOMPARE(notice["timeout"].toInt(), 10000);
+   QVERIFY(!notice["hints"].toMap().contains("resident"));
+  }
+  notifications->buttons = true;
   // No server, as on a plain LXDE: nothing to answer Notify, so Qt's balloon carries it.
   QVERIFY(bus.unregisterService("org.freedesktop.Notifications"));
   const auto restore = qScopeGuard([&] { bus.registerService("org.freedesktop.Notifications"); });

@@ -494,7 +494,7 @@ QString FileManagerIntegration::launcherPath(const FileManagerContext& c) {retur
 QString FileManagerIntegration::cosmicPath(const FileManagerContext& c) {return QDir(c.configHome).filePath("cosmic/com.system76.CosmicFiles/v1/context_actions");}
 
 QJsonObject FileManagerResult::toJson() const {
- QJsonObject json{{"firstRun",firstRun},{"written",QJsonArray::fromStringList(written)},{"removed",QJsonArray::fromStringList(removed)},
+ QJsonObject json{{"firstRun",firstRun},{"announce",announce},{"written",QJsonArray::fromStringList(written)},{"removed",QJsonArray::fromStringList(removed)},
   {"skipped",QJsonArray::fromStringList(skipped)},{"restartable",QJsonArray::fromStringList(restartable)}};
  if(!launcher.isEmpty())json["launcher"]=launcher;
  if(error)json["error"]=error.toJson();
@@ -615,6 +615,10 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
  if(result.firstRun) {
   // The session's own file manager only: Files on PATH says nothing on LXDE.
   const auto desktops=(c.desktop.isEmpty()?qEnvironmentVariable("XDG_CURRENT_DESKTOP"):c.desktop).split(':');
+  const auto onDesktop=[&](const QStringList& names){return std::any_of(desktops.begin(),desktops.end(),[&](const QString& desktop){return names.contains(desktop,Qt::CaseInsensitive);});};
+  // docs/file-manager-upload.md's unsupported list: no entry there, so no notice claiming one.
+  const auto plasma5=onDesktop({"KDE"})&&(c.kdeVersion.isEmpty()?qEnvironmentVariable("KDE_SESSION_VERSION"):c.kdeVersion)=="5";
+  result.announce=!onDesktop({"Deepin","DDE","Enlightenment","TDE","Trinity"})&&!(appImage&&(onDesktop({"UKUI"})||plasma5));
   // libfm and libfm-qt read FileManager-Actions once, at a process's first file menu.
   const QString actionsFile="file-manager/actions/putgd-upload.desktop";
   const auto actions=system?inDataDirectories(dataDirectories(c),actionsFile):next.files.contains(QDir(c.dataHome).filePath(actionsFile));
@@ -625,7 +629,7 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
    {"pcmanfm",{"LXDE"},actions},
    {"pcmanfm-qt",{"LXQt"},actions}};
   for(const auto& manager:managers)
-   if(manager.installed&&onPath(c,manager.name)&&std::any_of(desktops.begin(),desktops.end(),[&](const QString& desktop){return manager.desktops.contains(desktop,Qt::CaseInsensitive);}))
+   if(manager.installed&&onPath(c,manager.name)&&onDesktop(manager.desktops))
     result.restartable<<manager.name;
  }
  return result;

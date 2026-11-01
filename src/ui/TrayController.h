@@ -87,6 +87,7 @@ private:
  void openNotificationLink(const QUrl&);
  // The graphical resident's toast, sent without waiting for the server (#597).
  void showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
+ void sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
  int trayMessagesInFlight_ = 0;
  // Its buttons, by notification id: the server shows them and reports the click.
  QHash<uint,QHash<QString,QString>> trayActions_;
