@@ -42,7 +42,7 @@ DESKTOPS = {
     'mate': dict(profile='mate-x11', packages='mate-desktop-environment-core caja mate-notification-daemon mate-applets', session='mate'),
     'lxqt': dict(profile='lxqt-x11', packages='lxqt-core lxqt-panel lxqt-notificationd lxqt-session openbox pcmanfm-qt', session='lxqt'),
     'lxde': dict(profile='lxde-x11', packages='lxde-core pcmanfm notification-daemon', session='LXDE'),
-    'budgie': dict(profile='budgie-wayland', packages='budgie-desktop nemo labwc', session='budgie-desktop', gdm=True),
+    'budgie': dict(profile='budgie-wayland', packages='budgie-desktop nemo labwc wl-clipboard wayland-utils', session='budgie-desktop', gdm=True),
     # The session aborts on a missing GSettings schema from smaller sets; the metapackage is 673 MB.
     # Its X11 window manager is only an alternative to the Wayland compositor, so name it, or the
     # UKUI session has no window manager and no panel. Its synaptics driver also satisfies Xorg's
@@ -57,7 +57,7 @@ DESKTOPS = {
                      unavailable='Ubuntu 26.04 has no gala, pantheon-files, wingpanel or contractor package'),
     # cosmic-session requires the whole desktop (comp, panel, files, notifications); start-cosmic
     # never puts WAYLAND_DISPLAY in cosmic-session's own environment, so read a child's.
-    'cosmic': dict(profile='cosmic-wayland', packages='cosmic-session wl-clipboard firefox gnome-keyring', session='cosmic',
+    'cosmic': dict(profile='cosmic-wayland', packages='cosmic-session wl-clipboard wayland-utils firefox gnome-keyring', session='cosmic',
                    dnf=True, env_process='cosmic-panel'),
     # Ubuntu 24.04's own desktop, Nautilus and DING are already in the golden.
     'gnome': dict(profile='gnome-x11', preinstalled=True),
