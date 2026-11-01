@@ -1,6 +1,7 @@
 """Geometry and cleanup regressions. Run on the lab host, never as desktop proof."""
 import json
 import math
+import os
 from pathlib import Path
 import signal
 import sys
@@ -276,6 +277,43 @@ class PhysicalPointerSafety(unittest.TestCase):
 
 
 class Hygiene(unittest.TestCase):
+    def test_installer_receipt_digests_reach_persistent_and_fresh_probes_over_stdin(self):
+        """Guest queries cannot replace identities frozen from the controller-side receipt."""
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);digest='a'*64
+            receipt=dict(sha256='b'*64,format='appimage',installedBinarySha256={'/usr/bin/putgd-capture':digest})
+            (root/'package.json').write_text(json.dumps(receipt))
+            target=self.probe_target();target.run=root
+            source='VERIFIED_HELPER_SHA256={}\ndef geometry(query):\n return VERIFIED_HELPER_SHA256\ndef control_geometry(query):\n return VERIFIED_HELPER_SHA256\n'
+            try:
+                with patch('tools.lab.surface_driver.target.lab.ssh_args',return_value=['sh','-c']):
+                    expected={'putgd-capture':digest}
+                    self.assertEqual(target.probe('geometry',{},source)['result'],expected)
+                    # The channel keeps the installation identity it started with.
+                    receipt['installedBinarySha256']['/usr/bin/putgd-capture']='c'*64
+                    (root/'package.json').write_text(json.dumps(receipt))
+                    self.assertEqual(target.probe('control',{'VERIFIED_HELPER_SHA256':{'putgd-capture':'d'*64}},source)['result'],expected)
+                    self.assertNotIn(digest,repr(target._probe_process.args))
+            finally:
+                target._close_probe()
+
+    def test_invalid_or_symlinked_installer_receipt_refuses_before_starting_probe(self):
+        """A malformed controller receipt cannot fall back to a guest-controlled path."""
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);receipt=root/'package.json';target=self.probe_target();target.run=root
+            with patch('tools.lab.surface_driver.target.subprocess.Popen') as process:
+                for value in ({}, {'installedBinarySha256':{'/usr/bin/putgd-capture':'bad digest'}}):
+                    receipt.write_text(json.dumps(value))
+                    with self.subTest(value=value),self.assertRaisesRegex(RecipeBlocked,'installation receipt'):
+                        target.probe('geometry',{},'def geometry(query):return {}')
+                receipt.unlink();other=root/'other.json';other.write_text('{}');receipt.symlink_to(other)
+                with self.assertRaisesRegex(RecipeBlocked,'installation receipt'):
+                    target.probe('geometry',{},'def geometry(query):return {}')
+                receipt.unlink();os.mkfifo(receipt,0o600)
+                with self.assertRaisesRegex(RecipeBlocked,'installation receipt'):
+                    target.probe('geometry',{},'def geometry(query):return {}')
+                process.assert_not_called()
+
     def test_mid_drag_failure_releases_at_last_reached_position(self):
         with tempfile.TemporaryDirectory() as td:
             class Input:

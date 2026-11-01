@@ -41,6 +41,43 @@ class FakeGitHub:
 
 
 class NightlyTests(unittest.TestCase):
+    def test_debian_appimage_prepares_native_bridge_runtime_before_guest_probes(self):
+        """An AppImage supplies no distro dependencies for the native credential relay."""
+        from tools.lab import nightly_desktop_guest as guest
+        class ProbesReady(Exception):
+            pass
+        installed = set()
+        def ssh(_run, command, **_kwargs):
+            """Model a minimal golden whose relay runtime is initially absent."""
+            if 'apt-get install ' in command:
+                installed.update(command.split())
+            return ''
+        def first_probe(*_args, **_kwargs):
+            """The relay must be loadable before any keyring or credential operation."""
+            if 'libqt6keychain1' not in installed:
+                raise RuntimeError('synthetic native relay cannot load libqt6keychain.so.1')
+            raise ProbesReady
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(guest.lab, 'verify_owned_guest'), \
+             patch.object(guest.lab, 'ssh', side_effect=ssh), \
+             patch.object(guest.lab, 'guest_session', side_effect=first_probe):
+            row = dict(package='appimage', probePackageManager='deb', desktop='mint-cinnamon-x11')
+            with self.assertRaises(ProbesReady):
+                guest.prepare('/owned/run', row, Path(tmp))
+
+    def test_debian_appimage_bridge_prerequisites_still_refuse_desktop_upgrades(self):
+        """Installing a relay runtime cannot authorize a desktop-stack transaction."""
+        from tools.lab import nightly_desktop_guest as guest
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(guest.lab, 'verify_owned_guest'), \
+             patch.object(guest.lab, 'ssh', return_value='Inst pipewire (synthetic upgrade)') as ssh, \
+             patch.object(guest.lab, 'guest_session') as session:
+            row = dict(package='appimage', probePackageManager='deb', desktop='mint-cinnamon-x11')
+            with self.assertRaisesRegex(RuntimeError, 'desktop-package transaction refused'):
+                guest.prepare('/owned/run', row, Path(tmp))
+            self.assertEqual(ssh.call_count, 1)
+            session.assert_not_called()
+
     def test_retained_guest_keeps_durable_reservation_and_blocks_lease(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
