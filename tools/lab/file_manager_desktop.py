@@ -386,7 +386,7 @@ def verify(args):
     path = f'"$HOME/{value.get("folder", "i1105")}/{value["file"]}"'
     local = hashlib.sha256(bytes.fromhex(lab.ssh(run_path(name), f'od -An -tx1 -v {path} | tr -d " \\n"').strip())).hexdigest()
     remote = hashlib.sha256(urllib.request.urlopen(link, timeout=30).read()).hexdigest()
-    clip = session_shell(name, 'if [ "${XDG_SESSION_TYPE:-}" = wayland ]; then wl-paste -n; else xclip -selection clipboard -o; fi').strip()
+    clip = session_shell(name, 'if [ "${XDG_SESSION_TYPE:-}" = wayland ]; then wl-paste -n 2>/dev/null || true; else xclip -selection clipboard -o 2>/dev/null || true; fi').strip()
     notify = lab.ssh(run_path(name), 'cat "$HOME/i1105/.notify.log"')
     result = dict(build=build, file=value['file'], historyId=row['id'], hashMatch=local == remote, clipboardIsLink=clip == link,
                   notified='Upload complete' in notify, notifyCalls=notify.count('member=Notify'),
