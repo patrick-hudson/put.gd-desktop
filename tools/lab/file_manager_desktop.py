@@ -154,7 +154,7 @@ sudo -n systemctl stop apt-daily.service apt-daily-upgrade.service 2>/dev/null |
         return prepare+'''sudo -n -E apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends xclip >/dev/null
 '''
     return prepare+f'''echo lightdm shared/default-x-display-manager select lightdm | sudo -n debconf-set-selections
-sudo -n -E apt-get -o DPkg::Lock::Timeout=600 install -y --no-install-recommends {UBUNTU_GREETER} xserver-xorg xclip dbus-x11 gnome-keyring firefox {spec['packages']} >/dev/null
+sudo -n -E apt-get -o DPkg::Lock::Timeout=600 -o Dpkg::Options::=--force-confnew install -y --no-install-recommends {UBUNTU_GREETER} xserver-xorg xclip dbus-x11 gnome-keyring firefox {spec['packages']} >/dev/null
 sudo -n mkdir -p /etc/lightdm/lightdm.conf.d
 printf '[Seat:*]\\nautologin-user=lab\\nautologin-session={spec['session']}\\n' | sudo -n tee /etc/lightdm/lightdm.conf.d/50-lab.conf >/dev/null
 sudo -n systemctl disable gdm3 2>/dev/null || true
