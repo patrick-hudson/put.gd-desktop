@@ -377,7 +377,8 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   // Recent and Starred items have no path of their own, only a target URI.
   if(!path&&!deadline)deadline.emplace(resolveDeadlineMs);
   if(!path)if(GFileInfo* info=g_file_query_info(file,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI,G_FILE_QUERY_INFO_NONE,deadline->cancellable(),nullptr)){
-   if(const char* target=g_file_info_get_attribute_string(info,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI)){GFile* resolvedFile=g_file_new_for_uri(target);path=g_file_get_path(resolvedFile);g_object_unref(resolvedFile);}
+   // Only a file:// target: decoding it needs no GVfs call that could stall.
+   if(const char* target=g_file_info_get_attribute_string(info,G_FILE_ATTRIBUTE_STANDARD_TARGET_URI);target&&g_str_has_prefix(target,"file:"))path=g_filename_from_uri(target,nullptr,nullptr);
    g_object_unref(info);
   }
   if(path){paths[i]=QFile::decodeName(path);g_free(path);resolved[i]=QDir::isAbsolutePath(paths[i]);}
