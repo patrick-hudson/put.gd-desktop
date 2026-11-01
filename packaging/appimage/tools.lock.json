@@ -94,8 +94,8 @@
     },
     "qtKeychain": {
       "repository": "https://github.com/frankosterfeld/qtkeychain.git",
-      "release": "0.14.2",
-      "commit": "8eac9889775ca45c106d077bb0d3744754a1570a"
+      "release": "0.17.0",
+      "commit": "875f77d9f61bd97fd84cca47ce3bc71186dfbd09"
     },
     "ffmpeg": {
       "repository": "https://github.com/FFmpeg/FFmpeg.git",
