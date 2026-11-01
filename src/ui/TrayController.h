@@ -17,6 +17,7 @@ class QSystemTrayIcon;
 namespace putgd {
 #ifdef Q_OS_LINUX
 class NativeTray;
+struct NotificationAction;
 #endif
 class TrayController final : public QObject {
  Q_OBJECT
@@ -54,12 +55,13 @@ public:
  // "Diagnostics package saved" with a Show in folder button.
  void notifyDiagnosticsSaved(const QJsonObject& bundleResult);
  // "Upload with put.gd" in file managers (#1105): the notice once per install,
- // naming each file manager that loads put.gd's plugin only when it starts, with
- // a button that restarts it (closing its windows, which the notice says first).
+ // naming the session's file manager if it may need a restart, with a button that
+ // restarts it (closing its windows, which the notice says first).
  void notifyFileManagerMenu(const QStringList& restartable);
  // A problem setting the menu up, e.g. COSMIC's action list could not be read.
  void notifyFileManagerProblem(const QString& message);
- // Quits nautilus, caja or peony; Files starts again in the background. False for other names.
+ // Quits a file manager FileManagerIntegration::restartScript knows; Files, and a
+ // PCManFM drawing the desktop, start again in the background. False for other names.
  static bool restartFileManager(const QString& name);
  // The update check's state (#293): a stable update shows a menu entry that
  // opens Settings; nightly updates show only in Settings.
@@ -84,8 +86,14 @@ private:
 #ifdef Q_OS_LINUX
  void openNotificationLink(const QUrl&);
  // The graphical resident's toast, sent without waiting for the server (#597).
- void showTrayMessage(const QString& title, const QString& message, bool warning);
+ void showTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
+ void sendTrayMessage(const QString& title, const QString& message, bool warning, const QList<NotificationAction>& actions);
  int trayMessagesInFlight_ = 0;
+ // Its buttons, by notification id: the server shows them and reports the click.
+ QHash<uint,QHash<QString,QString>> trayActions_;
+ bool trayActionsConnected_ = false;
+ QMetaObject::Connection trayRestartClick_; // Qt's balloon has one click signal, whichever balloon is showing
+ Q_SLOT void trayNotificationAction(uint id, const QString& key);
 #endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;

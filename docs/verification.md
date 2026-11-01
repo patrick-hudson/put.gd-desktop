@@ -9,6 +9,24 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Link copied on Wayland desktops with no native adapter (#1105) — 2026-11-01
+
+PR #1134's CI packages (`26.1101.3720-dev+ga01c147bef80`) ran on disposable
+guests with a real right-click from a cold start, live S3 and the real browser.
+Offscreen and fixture tests prove only the protocol.
+
+| Desktop | Package | Compositor offers data-control | Result |
+|---|---|---|---|
+| COSMIC 1.11, Fedora 44 | RPM, AppImage | ext and wlr | "Upload complete", clipboard holds the link, object sha256 matches |
+| Budgie 10.10, Ubuntu 26.04 | DEB, AppImage | ext and wlr | "Upload complete", clipboard holds the link, object sha256 matches |
+| Pantheon Secure Session, elementary OS 8.1 | Ubuntu 24.04 DEB | neither | "Completed with a problem: Uploaded. Could not copy the link.", `source_unsupported` |
+
+On COSMIC with the RPM, **Upload clipboard** also read text and a PNG (pixels
+equal to the uploaded object), `history.copyImage` wrote an image, and a region
+capture failed with `source_unsupported`. Budgie's clipboard read and image write
+were not run on a real desktop. GNOME, KDE and X11 guests were not rerun for this
+change; their routes are unchanged.
+
 ## Published nightly physical native gates — 2026-10-31
 
 Published `v26.1031.3384-nightly` / clean source `4d3840c6108c` was installed
