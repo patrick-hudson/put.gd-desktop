@@ -26,6 +26,7 @@ instruction file. Use the existing documentation below; this file is an index.
 | Optional MCP helper and integration suite | [docs/mcp.md](docs/mcp.md) |
 | Edit & upload image editor, redaction export and agent editing | [docs/image-editor.md](docs/image-editor.md) |
 | Open, save and folder dialogs (XDG portal FileChooser, themed fallback) | [docs/file-dialogs.md](docs/file-dialogs.md) |
+| "Upload with put.gd" in file managers: adapters, plugins, `upload.files`, `--upload` client | [docs/file-manager-upload.md](docs/file-manager-upload.md), [GitHub issue #1105](https://github.com/patrick-hudson/put.gd-desktop/issues/1105) |
 | Screen recording contract, plan and decision record | [docs/recording.md](docs/recording.md), [plan](docs/plans/2026-10-17-2230-feat-screen-recording-plan.md) |
 | Appearance (System/Dark/Light), theme tokens and tray tint | [docs/appearance.md](docs/appearance.md) |
 | UI catalog, reference images and updating them after a UI change | [docs/ui-catalog.md](docs/ui-catalog.md) |

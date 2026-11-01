@@ -132,7 +132,11 @@ rejects the #76 pattern in source.
 
 **packages** calls `package.yml`. It builds and audits the Ubuntu 24.04,
 Ubuntu 26.04 and Debian 13 DEBs, the Fedora 44 RPM and the AppImage, and compiles the curated source
-export on Ubuntu 24.04. Its `sbom` job writes a CycloneDX SBOM of every package and
+export on Ubuntu 24.04. `native.py` also audits the file-manager plugins
+(`tools/releases/audit_file_manager_plugins.py`, #1105): `readelf -d` NEEDED
+entries, `nm -D` symbol sources for Peony, the RPM's co-owned directories and
+provides, and a load check per plugin (`putgd-<fm>-check`, QPluginLoader for
+Peony); changes under `src/filemanager/` select the package jobs. Its `sbom` job writes a CycloneDX SBOM of every package and
 scans them with Grype ([SBOMs and vulnerability scans](release.md#sboms-and-vulnerability-scans)).
 With a release tag, `collect` verifies and assembles the
 public asset set. See [releases](release.md).
