@@ -1,4 +1,5 @@
 #pragma once
+#include "core/ArtifactStore.h"
 #include "core/Settings.h"
 #include <QStringList>
 namespace putgd {
@@ -24,6 +25,8 @@ struct Selection {
  bool zipFolders=false;
  qint64 sourceBytes=0,diskBytes=0;
 };
+Selection select(const QStringList& paths,const Settings&,const QString& action,qint64 objectLimit,const ArtifactStore::DiskBudget& disk);
+// As if diskAvailable were simply free, with nothing kept back; negative: unknown, not checked.
 Selection select(const QStringList& paths,const Settings&,const QString& action,qint64 objectLimit,qint64 diskAvailable);
 // The installation identity check, the first step of upload.files.
 Error matchInstallation(const QString& requested,const QString& resident);

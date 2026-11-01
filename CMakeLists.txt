@@ -328,7 +328,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(Threads REQUIRED)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
     src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
-    src/platform/kde/DataControlClipboard.cpp
+    src/platform/kde/DataControlClipboard.cpp src/platform/wayland/DataControlSourceAdapter.cpp
     src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
@@ -760,6 +760,12 @@ if(BUILD_TESTING)
     add_dependencies(test_kde_clipboard_import putgd-ui putgd_gnome_mime_fixture)
     add_test(NAME kde_clipboard_import COMMAND test_kde_clipboard_import)
     set_tests_properties(kde_clipboard_import PROPERTIES TIMEOUT 60)
+    add_executable(test_wayland_data_control_source tests/integration/test_wayland_data_control_source.cpp
+      "${protocol_dir}/ext-data-control-v1-server-protocol.h")
+    target_include_directories(test_wayland_data_control_source PRIVATE "${protocol_dir}")
+    target_link_libraries(test_wayland_data_control_source PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
+    add_test(NAME wayland_data_control_source COMMAND test_wayland_data_control_source)
+    set_tests_properties(wayland_data_control_source PROPERTIES TIMEOUT 60)
   endif()
   if(UNIX)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

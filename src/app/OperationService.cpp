@@ -367,7 +367,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
  background([this,paths,snapshot,destination,selected,artifactsRoot](Error& e){
   qint64 objectLimit=0;
   if(!destination.providerId.isEmpty())if(auto provider=providers_.find(destination.providerId))objectLimit=provider->capabilities(destination).maximumObjectBytes;
-  *selected=FileUploads::select(paths,snapshot,fileManagerAction,objectLimit,ArtifactStore::diskBudget(artifactsRoot).available());
+  *selected=FileUploads::select(paths,snapshot,fileManagerAction,objectLimit,ArtifactStore::diskBudget(artifactsRoot));
   e=selected->error;return QJsonObject{};
  },[this,snapshot,revision,route,destination,selected,reply](Error e,QJsonObject) mutable {
   if(!e)e=route.error;

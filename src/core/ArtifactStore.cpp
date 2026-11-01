@@ -186,7 +186,7 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
  DiskBudget budget;const auto hold=reserveDisk(root_,required,&budget);
  {
   if(!hold){
-   result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space to import: it needs %1, and %2 can be used in put.gd's data folder (%3 free, with %4 kept free for the system).").arg(size(required),size(budget.available()),size(budget.freeBytes),size(budget.reserveBytes)),
+   result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space to import: it needs %1, and %2 can be used in put.gd's data folder (%3 free, with %4 kept free for the system).").arg(ByteSize::fileSummary(required),ByteSize::fileSummary(budget.available()),ByteSize::fileSummary(budget.freeBytes),ByteSize::fileSummary(budget.reserveBytes)),
     {{"requiredBytes",double(required)},{"availableBytes",double(budget.available())},{"freeBytes",double(budget.freeBytes)},{"reserveBytes",double(budget.reserveBytes)}}};
    QDir(staging).removeRecursively();return result;
   }

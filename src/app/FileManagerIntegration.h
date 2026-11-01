@@ -23,14 +23,16 @@ struct FileManagerContext {
  // put.gd's plugins. searchPath: PATH, for the file-manager programs.
  QStringList dataDirs,libraryDirs;
  QString searchPath;
+ QString desktop,kdeVersion;                 // XDG_CURRENT_DESKTOP and KDE_SESSION_VERSION, for tests; empty asks the environment
  QString cgroupFile=QStringLiteral("/proc/self/cgroup"); // what the AppImage launcher reads
  QString userRuntime; // the login's runtime directory, where its user manager listens; empty: /run/user/<uid>
 };
 struct FileManagerResult {
  Error error;               // e.g. {"cosmic_context_actions_unparseable",...}: nothing written to that file
  bool firstRun=false;       // no version stamp existed for this installation identity; stamp now written
+ bool announce=false;       // firstRun, on a desktop where this installation has an entry: say so
  QStringList written,removed,skipped; // absolute paths: changed now; removed; not written (a duplicate, or a file put.gd does not manage)
- QStringList restartable;   // "nautilus"/"caja"/"peony" whose system plugin is installed and needs a restart (system install, firstRun only)
+ QStringList restartable;   // firstRun only: the session's own file manager, at most one, when it may need a restart. "nautilus"/"caja"/"peony" with a system plugin; "pcmanfm"/"pcmanfm-qt" with a FileManager-Actions entry
  QString launcher;          // the stable launcher script (AppImage)
  QJsonObject toJson() const;
 };
@@ -51,6 +53,8 @@ public:
  static Error cleanupIfMissing(const FileManagerContext&);
  // The menu label and the per-user file paths, for tests and diagnostics.
  static QString label();
+ // The /bin/sh -c script that restarts a restartable file manager, its name as $1; empty for any other name.
+ static QString restartScript(const QString& name);
  // The existing system directories whose put.gd files (menu files, plugins) make
  // per-user ones duplicates; a DEB or RPM installed beside the AppImage lands there.
  static QStringList systemDirectories(const FileManagerContext&);
