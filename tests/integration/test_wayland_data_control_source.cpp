@@ -83,10 +83,10 @@ public:
  QByteArray paste(const QByteArray& mime){
   if(!selection_)return {};
   int pipes[2];if(pipe2(pipes,O_NONBLOCK|O_CLOEXEC)<0)return {};
-  ext_data_control_source_v1_send(selection_,mime.constData(),pipes[1]);::close(pipes[1]);flush();
+  ext_data_control_source_v1_send_send(selection_,mime.constData(),pipes[1]);::close(pipes[1]);flush();
   QByteArray bytes;bool done=false;
-  test::waitFor([&]{char chunk[4096];const auto n=::read(pipes[0],chunk,sizeof chunk);if(n>0)bytes.append(chunk,n);else if(n==0)done=true;return done;});
-  ::close(pipes[0]);return bytes;
+  const bool finished=test::waitFor([&]{char chunk[4096];const auto n=::read(pipes[0],chunk,sizeof chunk);if(n>0)bytes.append(chunk,n);else if(n==0)done=true;return done;});
+  ::close(pipes[0]);return finished?bytes:QByteArray{};
  }
 };
 class DataControlSourceTest final:public QObject {
@@ -94,7 +94,8 @@ class DataControlSourceTest final:public QObject {
  static Error copied(DataControlSourceAdapter& adapter,const CopyPayload& payload){
   Error result{"unfinished","Copy did not finish",{}};bool done=false;
   adapter.copy(payload,[&](Error error){result=std::move(error);done=true;});
-  test::waitFor([&]{return done;});return result;
+  if(!test::waitFor([&]{return done;}))qWarning("Copy did not finish in time");
+  return result;
  }
  static CopyPayload text(const QString& value){CopyPayload payload;payload.kind="text";payload.text=value;return payload;}
  static bool ready(DataControlSourceAdapter& adapter){return test::waitFor([&]{return adapter.capabilities()["clipboard"].toObject()["available"].toBool();});}
