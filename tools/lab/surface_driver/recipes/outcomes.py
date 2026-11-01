@@ -92,11 +92,7 @@ def _lane(ctx):
         yield scope, service
         no_app_error_banner(ctx)
     except BaseException:
-        try:
-            if banners := ctx.app_error_banners():
-                ctx.note('put.gd error banner in this flow: ' + ' | '.join(banners))
-        except Exception as error:
-            ctx.note('notification check unavailable: ' + type(error).__name__)
+        note_app_error_banners(ctx)
         try:
             _frame(ctx, 'outcome-failed-before-cleanup')
         except Exception as error:
@@ -104,6 +100,15 @@ def _lane(ctx):
         raise
     finally:
         ctx.expect(not scope.close(), 'outcome scope cleanup succeeded')
+
+
+def note_app_error_banners(ctx):
+    """For a flow already failing: name any put.gd failure banner without replacing that failure."""
+    try:
+        if banners := ctx.app_error_banners():
+            ctx.note('put.gd error banner in this flow: ' + ' | '.join(banners))
+    except Exception as error:
+        ctx.note('notification check unavailable: ' + type(error).__name__)
 
 
 def no_app_error_banner(ctx):

@@ -2117,7 +2117,11 @@ def clear_screen(query):
     for windows keeps the pass within the persistent probe's 15-second reply limit.
     """
     deadline = time.monotonic() + 8
-    closed = close_notifications(deadline) if query.get('notifications', True) else None
+    closed = None
+    if query.get('notifications', True):
+        # A session can have no notification server, and windows can still be cleared.
+        with contextlib.suppress(OSError, subprocess.SubprocessError, TypeError):
+            closed = close_notifications(deadline)
     rows = layout({'compositor': query.get('compositor')})['windows']
     above = next((row for row in rows if str(row['id']) == str(query.get('above'))), None)
     targets = []

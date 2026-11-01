@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.lab.surface_driver import probe
 from tools.lab.surface_driver.api import RecipeBlocked, RecipeFailed
 from tools.lab.surface_driver.context import DriverContext
-from tools.lab.surface_driver.recipes import outcomes
+from tools.lab.surface_driver.recipes import outcomes, outcomes_live
 
 ROWS = [{'id': 1, 'title': 'desktop icons', 'pid': 10, 'process': 'nemo-desktop', 'owned': False, 'stack': 1},
         {'id': 2, 'title': 'pattern', 'pid': 20, 'process': 'python3', 'owned': True, 'stack': 2},
@@ -42,6 +42,14 @@ class ClearScreen(unittest.TestCase):
         _, banners, stopped = self.clear(obscuring=3, notifications=False)
         banners.assert_not_called()
         self.assertEqual(stopped, [3])
+
+    def test_windows_are_still_cleared_without_a_notification_server(self):
+        failure = probe.subprocess.CalledProcessError(1, 'gdbus')
+        with patch.object(probe, 'close_notifications', side_effect=failure), \
+             patch.object(probe, 'layout', return_value={'windows': ROWS}), patch.object(probe, 'stop_windows') as stop:
+            reply = probe.clear_screen({'obscuring': 3, 'shell': ['plasmashell']})
+        self.assertEqual(reply['newest_notification'], None)
+        self.assertEqual([row['id'] for row in stop.call_args.args[0]], [3])
 
     def test_banners_close_back_from_the_newest_id(self):
         with patch.object(probe, 'run', return_value='(uint32 70,)') as notify, patch.object(probe.subprocess, 'run') as close:
@@ -145,6 +153,15 @@ class AppErrorBanner(unittest.TestCase):
                             {'summary': 'put.gd - file manager menu', 'body': 'Cannot configure', 'hints': {'urgency': 2}}])
         with self.assertRaisesRegex(RecipeFailed, 'file manager menu: Cannot configure'):
             outcomes.no_app_error_banner(ctx)
+
+    def test_a_failing_live_flow_names_the_banner_and_keeps_its_failure(self):
+        ctx = self.context([{'summary': 'put.gd', 'body': 'Cannot configure', 'hints': {'urgency': 2}}])
+        ctx.notes = []
+        ctx.note = ctx.notes.append
+        with patch.object(outcomes_live, '_region_upload', side_effect=RecipeFailed('upload failed')), \
+             self.assertRaisesRegex(RecipeFailed, 'upload failed'):
+            outcomes_live._live_flow(ctx)
+        self.assertEqual(ctx.notes, ['put.gd error banner in this flow: put.gd: Cannot configure'])
 
     def test_normal_banners_pass(self):
         outcomes.no_app_error_banner(self.context([{'summary': 'put.gd', 'body': 'Uploaded', 'hints': {'urgency': 1}}]))
