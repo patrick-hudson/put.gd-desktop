@@ -14,11 +14,19 @@ from types import SimpleNamespace
 from PIL import Image
 from tools.lab.surface_driver.receipts import Evidence
 from tools.lab.surface_driver.recipes.outcomes import pattern_visible
+from checksum_chain_checks import audit_formats, check_phase_b
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class PublicationChecks(unittest.TestCase):
+    def test_current_phase_b_chain_and_additional_index_formats(self):
+        result = check_phase_b(ROOT.parent/'2026-10-30-tier1-phase-b')
+        self.assertEqual(result['cohorts'], 6)
+        self.assertEqual(result['productionCompletionValidations'], 6)
+        self.assertGreater(result['combinedEntries'], result['cohortEntries'])
+        self.assertEqual(audit_formats(ROOT.parent)['mismatches'], [])
+
     def test_notification_inside_pattern_is_masked_before_saving(self):
         image = Image.new('RGB', (80, 60), (255, 0, 255))
         rect = (10, 10, 60, 40)
