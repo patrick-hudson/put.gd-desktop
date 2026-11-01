@@ -2581,21 +2581,6 @@ protected:
     void mousePressEvent(QMouseEvent* event) override {
         if (event->button() == Qt::LeftButton && owner_->windowHandle()) owner_->windowHandle()->startSystemResize(edges_);
     }
-    // The window's 1 px outline: frameless windows have no desktop border.
-    void paintEvent(QPaintEvent*) override {
-        QPainter p(this);
-        p.setPen(t().borderStrong);
-        if (edges_ == Qt::LeftEdge) p.drawLine(0, 0, 0, height());
-        else if (edges_ == Qt::RightEdge) p.drawLine(width() - 1, 0, width() - 1, height());
-        else if (edges_ == Qt::TopEdge) p.drawLine(0, 0, width(), 0);
-        else if (edges_ == Qt::BottomEdge) p.drawLine(0, height() - 1, width(), height() - 1);
-        else {
-            if (edges_ & Qt::LeftEdge) p.drawLine(0, 0, 0, height());
-            if (edges_ & Qt::RightEdge) p.drawLine(width() - 1, 0, width() - 1, height());
-            if (edges_ & Qt::TopEdge) p.drawLine(0, 0, width(), 0);
-            if (edges_ & Qt::BottomEdge) p.drawLine(0, height() - 1, width(), height() - 1);
-        }
-    }
 private:
     QWidget* owner_;
     Qt::Edges edges_;
