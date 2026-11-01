@@ -804,7 +804,8 @@ asyncio.run(main())
                                              'notifications': notifications,
                                              'shell': self.profile.get('evidence', {}).get('shell_processes', [])})
         stopped = ['%s (%s)' % (row['title'], row['process']) for row in reply.get('stopped', [])]
-        self.note('cleared screen: banners '+('closed' if notifications else 'kept')+'; windows closed: '+(', '.join(stopped) or 'none'))
+        banners = 'kept' if not notifications else 'closed' if reply.get('newest_notification') is not None else 'not closed'
+        self.note('cleared screen: banners '+banners+'; windows closed: '+(', '.join(stopped) or 'none'))
         return reply
 
     def _try_clear_screen(self, **options):

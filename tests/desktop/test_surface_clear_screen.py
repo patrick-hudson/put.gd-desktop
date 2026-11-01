@@ -81,6 +81,8 @@ class Dispatch(unittest.TestCase):
 
 
 class Guard(unittest.TestCase):
+    newest = 7
+
     def context(self, replies):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
@@ -91,7 +93,7 @@ class Guard(unittest.TestCase):
         calls = []
         def fake(name, query):
             calls.append((name, query))
-            return replies.pop(0) if name == 'foreground' else {'stopped': [{'title': 'old window', 'process': 'kate'}]}
+            return replies.pop(0) if name == 'foreground' else {'newest_notification': self.newest, 'stopped': [{'title': 'old window', 'process': 'kate'}]}
         ctx._probe, ctx.notes = fake, []
         ctx.note = ctx.notes.append
         ctx._check_time = lambda: None
@@ -111,6 +113,13 @@ class Guard(unittest.TestCase):
         with self.assertRaisesRegex(RecipeFailed, 'stuck'):
             ctx._guard()
         self.assertIn('screen clearing unavailable: no notification server', ctx.notes)
+
+    def test_the_receipt_says_when_banners_could_not_be_closed(self):
+        self.newest = None
+        ctx, _ = self.context([{'ok': False, 'obscuring_window': 'kate', 'obscuring_window_id': 3}, {'ok': True}])
+        with patch('tools.lab.surface_driver.context.time.sleep'):
+            ctx._guard()
+        self.assertIn('cleared screen: banners not closed; windows closed: old window (kate)', ctx.notes)
 
     def test_a_cover_that_stays_still_fails_and_is_named(self):
         ctx, _ = self.context([{'ok': False, 'obscuring_window': 'stuck', 'obscuring_window_id': 3} for _ in range(4)])
