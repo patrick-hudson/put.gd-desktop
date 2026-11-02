@@ -424,6 +424,20 @@ private slots:
   const auto title=[&]{const auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return qdbus_cast<WireTooltip>(qdbus_cast<QVariantMap>(result.arguments().first())["ToolTip"]).title;};
   QCOMPARE(title(),QString("put.gd"));tray.setActivity(Theme::trayTints(false).idle,"Transfer progress",50);QCOMPARE(title(),QString("Uploading"));tray.setActivity(Theme::trayTints(false).upload,"Finished",-1,0,"Upload complete");QCOMPARE(title(),QString("Upload complete"));tray.setActivity(Theme::trayTints(false).error,"Failure",-2);QCOMPARE(title(),QString("Needs attention"));tray.setActivity(Theme::trayTints(false).idle,{});QCOMPARE(title(),QString("put.gd"));
  }
+ void seasonAndLightFramesPublishOnlyPixels() {
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
+  const auto service=watcher.registrations.last();
+  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
+  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
+  const auto idle=Theme::trayTints(false).idle;const auto base=observer.icons,tips=observer.tooltips;
+  // Same colour, percent and text: only the glyph moved, so a midnight still redraws.
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_TRY_COMPARE(observer.icons,base+1);
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);putgd::test::settle(50);QCOMPARE(observer.icons,base+1);
+  tray.setActivity(idle,"Uploading: 2 MB of 4 MB (50%)",50,0,"Uploading",IconArt::TrayGlyph::Tree);PUTGD_TRY_COMPARE(observer.icons,base+2);PUTGD_TRY_COMPARE(observer.tooltips,tips+1);
+  for(int lights:{1,2,3,0})tray.setActivity(idle,"Uploading: 2 MB of 4 MB (50%)",50,0,"Uploading",IconArt::TrayGlyph::Tree,lights);
+  PUTGD_TRY_COMPARE(observer.icons,base+6);putgd::test::settle(50);QCOMPARE(observer.tooltips,tips+1);
+  tray.setActivity(idle,"Uploading: 2 MB of 4 MB (50%)",50,0,"Uploading",IconArt::TrayGlyph::Tree,0);putgd::test::settle(50);QCOMPARE(observer.icons,base+6);
+ }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
   const auto service=watcher.registrations.last();

@@ -89,10 +89,15 @@ private slots:
   for(int percent:{-1,-2,0,50,100})for(int scale:{1,2,3})QCOMPARE(IconArt::liftTray(TrayIcon{idle(),percent},scale),IconArt::liftTray(idle(),percent,scale));
  }
  void everyGlyphKeepsTheBowl(){
-  // The lower middle of the bowl and its transparent well are the same in every glyph.
+  // The bowl's solid body and its transparent well match the mark's below y=17;
+  // only the contour's width differs.
+  const auto mark=IconArt::liftTray(idle(),-1,8);
   for(const auto glyph:{TrayGlyph::Turkey,TrayGlyph::Tree}){
-   const auto image=IconArt::liftTray(TrayIcon{idle(),-1,0,glyph},8);const auto mark=IconArt::liftTray(idle(),-1,8);
-   for(int y=17*8;y<192;++y)for(int x=0;x<192;++x)QCOMPARE(image.pixelColor(x,y),mark.pixelColor(x,y));
+   const auto image=IconArt::liftTray(TrayIcon{idle(),-1,0,glyph},8);
+   for(int y=17*8;y<192;++y)for(int x=0;x<192;++x){
+    if(mark.pixelColor(x,y)==idle())QCOMPARE(image.pixelColor(x,y),idle());
+    if(qAlpha(mark.pixel(x,y))==0)QCOMPARE(qAlpha(image.pixel(x,y)),0);
+   }
   }
  }
  void seasonalArtReachesItsOwnHeight(){
