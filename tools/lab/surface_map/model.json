@@ -470,6 +470,7 @@
   {"id": "about.build-details", "surface": "about", "kind": "button", "label": "Build details disclosure", "control": "buildDetails", "source": "src/ui/AboutWindow.cpp"},
   {"id": "about.copy-build-details", "surface": "about", "kind": "button", "label": "Copy build details", "source": "src/ui/AboutWindow.cpp"},
   {"id": "about.close", "surface": "about", "kind": "button", "label": "Close (default button)", "control": "closeAbout", "source": "src/ui/AboutWindow.cpp"},
+  {"id": "about.window-close", "surface": "about", "kind": "button", "label": "Close window (custom frame; the only window control here)", "control": "windowClose", "source": "src/ui/Ui.cpp"},
   {"id": "about.key-esc", "surface": "about", "kind": "key", "label": "Close", "keys": ["Esc"], "source": "src/ui/AboutWindow.cpp"},
   {"id": "about.modeless", "surface": "about", "kind": "state", "label": "Modeless: the main window stays usable", "source": "src/ui/AboutWindow.cpp"},
   {"id": "about.version", "surface": "about", "kind": "state", "label": "Version text (selectable)", "control": "aboutVersion", "source": "src/ui/AboutWindow.cpp"},

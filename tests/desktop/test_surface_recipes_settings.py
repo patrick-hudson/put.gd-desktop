@@ -159,7 +159,7 @@ class Fake(Context):
 
     def click(self, control, window, **kwargs):
         control = {'text:Include file names': 'includeFileNames', 'text:Package contents': 'packageContentsToggle', 'text:Also upload and copy a link': 'uploadPackage', 'text:Save package': 'savePackage', 'text:Save and upload': 'savePackage', 'text:Cancel': 'closePackage', 'text:Close': 'closePackage'}.get(control, control)
-        if control == 'closeAbout': self.about_visible = False
+        if control in ('closeAbout', 'windowClose'): self.about_visible = False
         if control == 'buildDetails': self.about_expanded = not self.about_expanded
         if control == 'copyBuildDetails': self.clipboard = json.dumps(self.build)
         if control == 'resetAdvancedDefaults': self.confirmation = 'Reset limits to defaults'
@@ -351,7 +351,7 @@ class Contracts(unittest.TestCase):
         ids = [identifier for rec in RECIPES for identifier in rec.interactions]
         self.assertEqual(set(ids), expected)
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertEqual(len(expected), 69)
+        self.assertEqual(len(expected), 70)
 
     def test_declared_blockers_raise_with_specific_reason(self):
         for rec in RECIPES:
@@ -828,7 +828,7 @@ class Contracts(unittest.TestCase):
 
     def test_wayland_about_lifecycle_uses_native_inventory_queries(self):
         from tools.lab.surface_driver.probe import QUERY_KEYS
-        for identifier in ('about.close', 'about.key-esc'):
+        for identifier in ('about.close', 'about.key-esc', 'about.window-close'):
             with self.subTest(identifier=identifier):
                 ctx = Fake()
                 ctx.profile = dict(ctx.profile, session='wayland')
