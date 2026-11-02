@@ -154,7 +154,8 @@ The recipe needs no AWS credentials on the instance:
    `get-console-output`.
 2. Pull the image by digest and run `bootc-image-builder --type qcow2` (digest
    `sha256:b858892139e0779d48869a4dd8cbbc4e257da49f5a4b502824a55d221ed65a55`) with a
-   `lab` user in `wheel`, the provisioner key and a 46 GiB root.
+   `lab` user in `wheel`, the [standard password](remote-golden-images.md#standard-remote-guest-login),
+   the provisioner key and a 46 GiB root.
 3. Boot an overlay under UEFI with a private VARS copy and `restrict=on` user
    networking, so the guest can't update itself.
 4. The image has sshd off and no host keys, and Plasma's first-run wizard holds
@@ -171,10 +172,12 @@ The recipe needs no AWS credentials on the instance:
 7. Upload with presigned multipart part URLs generated on the workstation, using
    `GLACIER_IR`, SSE-S3 and the `sha256`, `zst-sha256`, `virtual-size` and
    `source-container-digest` metadata. curl must send each part from a file, because S3
-   rejects chunked uploads with 501. Download the object back, then compare hashes and
-   the image.
-8. Restore to each builder through a short-lived presigned URL, and change the two
-   golden paths in `~/.config/putgd-nightly/config.json` on all five builders.
+   rejects chunked uploads with 501. Upload the sidecars too, including the new
+   `known_hosts` with the guest's pin. Download the image back, then compare hashes
+   and the image.
+8. Restore the image and sidecars to each builder through a short-lived presigned URL.
+   Then point the `golden` and `knownHosts` paths in
+   `~/.config/putgd-nightly/config.json` at them on all five builders.
 9. Terminate the instance, then delete its security group and key pair.
 
 ## Fedora 45 golden
