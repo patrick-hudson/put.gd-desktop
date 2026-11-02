@@ -1,0 +1,98 @@
+{
+  "date": "2026-11-01",
+  "kind": "Manual upstream release/security/migration review; no live-service acceptance",
+  "nightly": "v26.1101.3698-nightly",
+  "sourceCommit": "38fa2ac634d475733e2ebfe70c2871da6425e31b",
+  "supportedAssets": [
+    "ubuntu24.04-x86_64.deb",
+    "ubuntu26.04-x86_64.deb",
+    "debian13-x86_64.deb",
+    "fedora44-x86_64.rpm",
+    "x86_64.AppImage"
+  ],
+  "components": [
+    {
+      "name": "AWS SDK",
+      "pinned": "1.11.907",
+      "upstream": "1.11.921 (2026-10-30)",
+      "status": "Newer release exists; no advisory newer than the pin. The Base64 advisories CVE-2026-19642/19643 were fixed in 1.11.862, before this pin. No action before stable.",
+      "references": [
+        "https://github.com/aws/aws-sdk-cpp/releases/tag/1.11.921",
+        "https://github.com/aws/aws-sdk-cpp/security/advisories/GHSA-mxm9-xpf9-x66x",
+        "https://github.com/aws/aws-sdk-cpp/security/advisories/GHSA-wxx3-prfc-69xx"
+      ]
+    },
+    {
+      "name": "Qt AppImage",
+      "pinned": "6.12.0",
+      "upstream": "6.12.0 (newest qtbase 6.x tag)",
+      "status": "Current. Embedded HarfBuzz 14.5.0 carries CVE-2026-113679; the scoped exception from #1065 keys on the libQt6Gui fingerprint and the absent WASM shaper and expires 2027-01-29 (#1070). No newer Qt bundles HarfBuzz 15 yet.",
+      "references": [
+        "https://github.com/qt/qtbase/tree/v6.12.0",
+        "https://github.com/patrick-hudson/put.gd-desktop/issues/1070"
+      ]
+    },
+    {
+      "name": "FFmpeg",
+      "pinned": "7.1.5 / 3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587",
+      "status": "Unchanged since the 2026-10-31 review. Exact source/configuration/library scopes match the existing policy dispositions (expire 2027-01-21); raw findings retained. No new exception.",
+      "references": [
+        "https://github.com/FFmpeg/FFmpeg/commit/3a0867c2bfda4a4d4309ca1a8cbdc6175e67f587"
+      ]
+    },
+    {
+      "name": "Bun (embedded Proton helper runtime)",
+      "pinned": "1.4.4",
+      "upstream": "bun-v1.4.4 (2026-10-22), newest release",
+      "status": "Current. The three High advisories that blocked 3384 (#1054: GHSA-663w-cv8g-jj2p CVE-2026-111497 Brotli, GHSA-26q8-h657-pf84 eMudhra CA trust, GHSA-cf8x-9m69-3gg3 HTTP/3 QPACK, published 2026-10-23/24, range >=1.3.14 <1.4.4) are all patched in 1.4.4; the helper was relinked in #1071. No advisory newer than 2026-10-24 is published.",
+      "references": [
+        "https://github.com/oven-sh/bun/releases/tag/bun-v1.4.4",
+        "https://github.com/oven-sh/bun/security/advisories/GHSA-663w-cv8g-jj2p",
+        "https://github.com/oven-sh/bun/security/advisories/GHSA-26q8-h657-pf84",
+        "https://github.com/oven-sh/bun/security/advisories/GHSA-cf8x-9m69-3gg3"
+      ]
+    },
+    {
+      "name": "Proton Drive SDK (@protontech/drive-sdk)",
+      "pinned": "0.23.0 / 8a44654aece1609f0f7218be51c205103945abd8",
+      "upstream": "js/v0.23.0, 2026-10-19 (npm latest 0.23.0)",
+      "status": "Current; upgraded from 0.22.2 in b8894b94f after the 2026-10-31 review. The 0.22.2..0.23.0 range (20 monorepo commits) marks two client breaking changes (node type required for available-name lookup; experimental search methods) and adds album capabilities; the helper is built against 0.23.0 and the Live Proton cell is green on all five desktops for this nightly (#1003). README still targets the cryptographic migration for end of 2026/early 2027 with final timing pending; older SDK releases will stop interoperating once the service switches.",
+      "references": [
+        "https://github.com/ProtonDriveApps/sdk/compare/js/v0.22.2...js/v0.23.0",
+        "https://github.com/ProtonDriveApps/sdk/blob/8a44654aece1609f0f7218be51c205103945abd8/README.md",
+        "https://registry.npmjs.org/@protontech/drive-sdk"
+      ]
+    },
+    {
+      "name": "Proton Crypto (@protontech/crypto)",
+      "pinned": "2.2.0 / 68b93b7d2cadd043cd08203710af382706ed1458",
+      "upstream": "2.2.0 (2026-10-01), npm latest",
+      "status": "Current. OpenPGP.js fork pin 6.3.1 (@protontech/openpgp).",
+      "references": [
+        "https://registry.npmjs.org/@protontech/crypto",
+        "https://github.com/ProtonMail/WebPackages/commit/68b93b7d2cadd043cd08203710af382706ed1458"
+      ]
+    },
+    {
+      "name": "Proton helper npm inputs",
+      "pinned": "ky 1.14.3, @openpgp/web-stream-tools 0.3.1, typescript 5.9.3",
+      "upstream": "ky 2.2.0, typescript 7.0.2 (Renovate #592, major, pending approval)",
+      "status": "Major updates deferred; no advisory. #369's direct web-stream-tools pin is present.",
+      "references": [
+        "https://github.com/patrick-hudson/put.gd-desktop/issues/592"
+      ]
+    }
+  ],
+  "liveCompatibilityEvidence": {
+    "scope": "Nightly Tier 1 'Live Proton' cell (region capture uploaded to the Proton test account, link checked) on v26.1101.3698-nightly, all five desktops green",
+    "rows": {
+      "Cinnamon (Mint) / m74": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003#issuecomment-6560584522",
+      "Ubuntu GNOME / d69": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003#issuecomment-6560584749",
+      "Kubuntu KDE / k72": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003#issuecomment-6560585027",
+      "Aurora / aurora-amd": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003#issuecomment-6560585232",
+      "Fedora GNOME / f44": "https://github.com/patrick-hudson/put.gd-desktop/issues/1003#issuecomment-6561221856"
+    },
+    "notCovered": "Browser authentication and refresh, anonymous protected/unprotected download equality, sharing history, interruption/reconciliation and old journal/config/receipt compatibility were not rerun for this review."
+  },
+  "nextAction": "None before stable. Rerun this review on the exact stable draft under #384; revisit #1070 when a Qt release bundles HarfBuzz 15; FFmpeg/ICU dispositions expire 2027-01-21."
+}

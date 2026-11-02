@@ -9,6 +9,20 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Published nightly artifact/source/CVE audit rerun — 2026-11-01
+
+The [exact-asset rerun](evidence/2026-11-01-exact-asset-audit/README.md) covers
+`v26.1101.3698-nightly` (`38fa2ac634d4`) on d69 with the same driver as the
+2026-10-31 rehearsal: 15 assets, four linked source assets, two Proton transport
+parts, all five regenerated SBOMs, a separate 590 s exact-source rebuild that
+reproduces every program identity and the published Proton helper, and the
+stable policy against a fresh Grype database. **Zero errors, 180 findings, 31
+accepted, zero blocking, no embedded Bun advisories**; the published and
+regenerated SBOM scans agree. The signature, pkg.put.gd mirror, feed and zsync
+checks and the dated Proton/dependency maintenance review are recorded beside it.
+This is artifact/source evidence on nightly bytes, not legal, live-service,
+graphical or stable acceptance; #383/#511/#384 rerun it on the stable draft.
+
 ## Link copied on Wayland desktops with no native adapter (#1105) — 2026-11-01
 
 PR #1134's CI packages (`26.1101.3720-dev+ga01c147bef80`) ran on disposable
