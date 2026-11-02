@@ -205,15 +205,33 @@ void HistoryModel::rebuild(){
   groups.append(group);
  }
  std::stable_sort(groups.begin(),groups.end(),[](const auto& a,const auto& b){if(active(a)!=active(b))return active(a);return a["created"].toString()>b["created"].toString();});
- beginResetModel();rows_.clear();createdAt_.clear();facts_.clear();dayLabelsFor_={};hiddenCancelled_=0;
- for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hiddenCancelled_;continue;}rows_.append(group);createdAt_.append(created(group));facts_.append(rowFacts(group));}
+ QList<QJsonObject> rows;QList<QDateTime> createdAt;QList<RowFacts> facts;int hidden=0;
+ for(auto group:groups){const auto op=group["operation"].toObject();const bool cancelled=op["state"]=="cancelled"||op["cancelled"].toBool()||group["uploadStatus"]=="cancelled";if(cancelled&&!showCancelled_){++hidden;continue;}rows.append(group);createdAt.append(created(group));facts.append(rowFacts(group));}
+ // A live operation republishes up to four times a second, usually without
+ // moving anything a row is laid out from. Update such rows where they are: a
+ // reset repaints every visible tile and drops a press, for one row's facts.
+ QList<int> changed;bool keep=rows.size()==rows_.size();
+ for(int row=0;keep&&row<rows.size();++row)if(rows[row]!=rows_[row]){const auto key=[](const QJsonObject& r){return r["operationId"].toString(r["id"].toString());};keep=key(rows[row])==key(rows_[row])&&rows[row]["name"]==rows_[row]["name"]&&createdAt[row]==createdAt_[row]&&facts[row]==facts_[row];changed.append(row);}
+ if(keep)for(int row:changed){const auto before=data(index(row),SubtitleRole);rows_[row]=rows[row];keep=keep&&before==data(index(row),SubtitleRole);}
+ const bool destinations=keep?scanDestinations():false;
+ const qint64 minute=QDateTime::currentSecsSinceEpoch()/60;const bool timesMoved=std::exchange(timesMinute_,minute)!=minute;
+ if(keep&&destinations==multipleDestinations_&&(!dayLabelsFor_.isValid()||dayLabelsFor_==QDate::currentDate())){
+  hiddenCancelled_=hidden;for(int row:changed)emit dataChanged(index(row),index(row),{RecordRole,SubtitleRole,ThumbnailRole,ProgressRole,OutputRole,Qt::ToolTipRole,Qt::AccessibleTextRole});
+  // Nothing else repaints the rows that didn't change, so their ages would stop.
+  if(timesMoved&&!rows_.isEmpty())emit dataChanged(index(0),index(rows_.size()-1),{CreatedRole});
+  emit loaded();return;
+ }
+ // Paths queued for the old rows mustn't crowd out the ones the new rows ask for.
+ for(const auto& path:std::as_const(thumbnailQueue_))thumbnailRequested_.remove(path);thumbnailQueue_.clear();
+ thumbnails_.setMaxCost(thumbnailCacheCost(rows.size()));
+ beginResetModel();rows_=rows;createdAt_=createdAt;facts_=facts;dayLabelsFor_={};hiddenCancelled_=hidden;
  multipleDestinations_=scanDestinations();endResetModel();emit loaded();
 }
-void HistoryModel::loadThumbnail(const QString& path)const{if(thumbnailRequested_.contains(path)||thumbnailQueue_.size()>=32)return;thumbnailRequested_.insert(path);thumbnailQueue_.append(path);nextThumbnail();}
+void HistoryModel::loadThumbnail(const QString& path)const{if(thumbnailRequested_.contains(path)||thumbnailQueue_.size()>=qMax(32,rowCount()))return;thumbnailRequested_.insert(path);thumbnailQueue_.append(path);nextThumbnail();}
 void HistoryModel::nextThumbnail()const{
  if(thumbnailLoading_||thumbnailQueue_.isEmpty())return;
  thumbnailLoading_=true;const auto path=thumbnailQueue_.takeFirst();const auto generation=thumbnailGeneration_;auto image=std::make_shared<QImage>();
- history_.background([path,image](Error&){QFileInfo file(path);if(!file.isFile()||file.size()>8*1024*1024)return QJsonObject{};QImageReader reader(path);const auto s=reader.size();if(!s.isValid()||qint64(s.width())*s.height()>16000000)return QJsonObject{};reader.setScaledSize(s.scaled(360,220,Qt::KeepAspectRatio));const auto length=reader.text(durationKey);*image=reader.read();if(!length.isEmpty())image->setText(durationKey,length);return QJsonObject{};},const_cast<HistoryModel*>(this),[g=QPointer<HistoryModel>(const_cast<HistoryModel*>(this)),path,generation,image](Error,QJsonObject){if(!g)return;g->thumbnailLoading_=false;if(generation==g->thumbnailGeneration_){g->thumbnailRequested_.remove(path);g->thumbnails_.insert(path,new QImage(*image),qMax(1,int(image->sizeInBytes()/1024)));for(int row=0;row<g->rowCount();++row)if(g->record(row)["previewPath"]==path)emit g->dataChanged(g->index(row),g->index(row),{ThumbnailRole});}g->nextThumbnail();});
+ history_.background([path,image](Error&){QFileInfo file(path);if(!file.isFile()||file.size()>8*1024*1024)return QJsonObject{};QImageReader reader(path);const auto s=reader.size();if(!s.isValid()||qint64(s.width())*s.height()>16000000)return QJsonObject{};reader.setScaledSize(s.scaled(360,220,Qt::KeepAspectRatio));const auto length=reader.text(durationKey);*image=reader.read();if(image->depth()>32)*image=image->convertToFormat(QImage::Format_ARGB32);if(!length.isEmpty())image->setText(durationKey,length);return QJsonObject{};},const_cast<HistoryModel*>(this),[g=QPointer<HistoryModel>(const_cast<HistoryModel*>(this)),path,generation,image](Error,QJsonObject){if(!g)return;g->thumbnailLoading_=false;if(generation==g->thumbnailGeneration_){g->thumbnailRequested_.remove(path);g->thumbnails_.insert(path,new QImage(*image),qMax(1,int(image->sizeInBytes()/1024)));for(int row=0;row<g->rowCount();++row)if(g->record(row)["previewPath"]==path)emit g->dataChanged(g->index(row),g->index(row),{ThumbnailRole});}g->nextThumbnail();});
 }
 void HistoryModel::reloadThumbnail(const QString& path){if(path.isEmpty())return;thumbnails_.remove(path);thumbnailRequested_.remove(path);for(int row=0;row<rowCount();++row)if(record(row)["previewPath"]==path)emit dataChanged(index(row),index(row),{ThumbnailRole});}
 void HistoryModel::releaseThumbnails(){++thumbnailGeneration_;thumbnailQueue_.clear();thumbnailRequested_.clear();thumbnails_.clear();}
