@@ -39,8 +39,9 @@ QPainterPath treeSilhouette() {
  p.closeSubpath();
  return tray().united(p);
 }
-// The decoration is two ornaments: a garland only blurred the tiers at tray size.
-QPainterPath treeCutouts() {return disc(10.8,9.3,.8).united(disc(13.6,13,.8));}
+// The decoration is two small ornaments, off the centre line: a garland or anything
+// larger only blurred the tiers at tray size.
+QPainterPath treeCutouts() {return disc(10.3,9.8,.55).united(disc(14.2,13.2,.55));}
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;

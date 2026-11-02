@@ -132,7 +132,7 @@ private slots:
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
    QCOMPARE(qAlpha(tree.pixel(int(6.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(int(17.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(12*8,18*8)),0);
-   QCOMPARE(qAlpha(tree.pixel(int(10.8*8),int(9.3*8))),0);QCOMPARE(qAlpha(tree.pixel(int(13.6*8),13*8)),0);
+   QCOMPARE(qAlpha(tree.pixel(int(10.3*8),int(9.8*8))),0);QCOMPARE(qAlpha(tree.pixel(int(14.2*8),int(13.2*8))),0);
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
    QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
   }
