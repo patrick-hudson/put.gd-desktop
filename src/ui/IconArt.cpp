@@ -33,15 +33,14 @@ QPainterPath turkeySilhouette() {
 }
 QPainterPath treeSilhouette() {
  QPainterPath p;p.moveTo(12,.5);
- // A star on three tall, narrow tiers: the mark's arrow is one wide head on a stem,
- // and at 16 px this must not read as it. The lowest tips end 1.2 units above the
- // bowl's rim and stay over its well, so the gap survives resampling.
- for(const auto& point:{QPointF(12.62,2.05),QPointF(14.28,2.16),QPointF(13,3.22),QPointF(13.41,4.84),QPointF(12.6,4.4),QPointF(15.3,6.6),QPointF(13.4,6),QPointF(17.2,9.2),QPointF(14,8.6),QPointF(18.6,11.8),QPointF(13.5,11.8),QPointF(13.5,15),QPointF(10.5,15),QPointF(10.5,11.8),QPointF(5.4,11.8),QPointF(10,8.6),QPointF(6.8,9.2),QPointF(10.6,6),QPointF(8.7,6.6),QPointF(11.4,4.4),QPointF(10.59,4.84),QPointF(11,3.22),QPointF(9.72,2.16),QPointF(11.38,2.05)})p.lineTo(point);
+ // A star on a tall tree standing in the bowl's well, clear of it all round. Any
+ // tree on the rim needs a wide head on a stem, which at 16 px is the mark's arrow.
+ for(const auto& point:{QPointF(12.62,2.05),QPointF(14.28,2.16),QPointF(13,3.22),QPointF(13.41,4.84),QPointF(12.6,4.6),QPointF(15,7.4),QPointF(13.2,6.8),QPointF(16.4,11),QPointF(13.8,10.3),QPointF(16.9,15),QPointF(13.5,15),QPointF(13.5,16.6),QPointF(10.5,16.6),QPointF(10.5,15),QPointF(7.1,15),QPointF(10.2,10.3),QPointF(7.6,11),QPointF(10.8,6.8),QPointF(9,7.4),QPointF(11.4,4.6),QPointF(10.59,4.84),QPointF(11,3.22),QPointF(9.72,2.16),QPointF(11.38,2.05)})p.lineTo(point);
  p.closeSubpath();
  return tray().united(p);
 }
 // The decoration is two ornaments: a garland only blurred the tiers at tray size.
-QPainterPath treeCutouts() {return disc(11,8,.8).united(disc(13.2,10.6,.8));}
+QPainterPath treeCutouts() {return disc(10.8,9.3,.8).united(disc(13.6,13,.8));}
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;

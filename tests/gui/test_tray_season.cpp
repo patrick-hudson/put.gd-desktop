@@ -128,11 +128,11 @@ private slots:
   }
  }
  void cutoutsAndTheGapStayTransparent(){
-  // Tree: the gap between the lowest tier and the bowl's rim, and the ornaments.
+  // Tree: the gap to the bowl on both sides and below, and the ornaments.
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
-   QCOMPARE(qAlpha(tree.pixel(4*8,int(12.5*8))),0);QCOMPARE(qAlpha(tree.pixel(20*8,int(12.5*8))),0);QCOMPARE(qAlpha(tree.pixel(6*8,int(12.4*8))),0);QCOMPARE(qAlpha(tree.pixel(18*8,int(12.4*8))),0);
-   QCOMPARE(qAlpha(tree.pixel(11*8,8*8)),0);QCOMPARE(qAlpha(tree.pixel(int(13.2*8),int(10.6*8))),0);
+   QCOMPARE(qAlpha(tree.pixel(int(6.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(int(17.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(12*8,18*8)),0);
+   QCOMPARE(qAlpha(tree.pixel(int(10.8*8),int(9.3*8))),0);QCOMPARE(qAlpha(tree.pixel(int(13.6*8),13*8)),0);
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
    QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
   }
