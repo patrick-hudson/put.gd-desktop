@@ -739,7 +739,7 @@ def about_details(ctx):
             ctx.keys('Esc')
 
 
-def about_close_recipe(identifier, key):
+def about_close_recipe(identifier, key, control='closeAbout'):
     @recipe(identifier)
     def close(ctx):
         about_open(ctx)
@@ -751,7 +751,7 @@ def about_close_recipe(identifier, key):
         if key:
             ctx.keys(key)
         else:
-            ctx.click('closeAbout', window='about')
+            ctx.click(control, window='about')
         ctx.frame('about-after-close')
         consecutive = 0
         def settled():
@@ -766,6 +766,7 @@ def about_close_recipe(identifier, key):
 
 about_close_recipe('about.close', None)
 about_close_recipe('about.key-esc', 'Esc')
+about_close_recipe('about.window-close', None, 'windowClose')
 
 
 @recipe('about.modeless')

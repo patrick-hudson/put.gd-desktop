@@ -8,6 +8,7 @@
   "about.modeless": "settings",
   "about.version": "settings",
   "about.website": "settings",
+  "about.window-close": "settings",
   "advanced.clear-logs": "settings",
   "advanced.config-file": "settings",
   "advanced.create-package": "settings",

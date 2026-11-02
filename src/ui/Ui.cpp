@@ -626,7 +626,8 @@ void Style::polish(QWidget* widget) {
     QColor colour;
     QFont f;
     bool setFont = true;
-    if (name == "title" || name == "page") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
+    if (name == "wordmark") f = font(Type::display, true);
+    else if (name == "title" || name == "page") f = font(widget->property("compactHeading").toBool() ? Type::compactPage : Type::page, true);
     else if (name == "sectionTitle" || name == "section") f = font(Type::section, true);
     else if (name == "label") f = labelFont();
     else if (name == "body") f = font(Type::body);
@@ -2604,7 +2605,7 @@ private:
         const int w = owner_->width(), h = owner_->height(), e = 4, k = 10;
         const QList<QRect> boxes{{0, k, e, h - 2 * k}, {w - e, k, e, h - 2 * k}, {k, 0, w - 2 * k, e}, {k, h - e, w - 2 * k, e},
                                  {0, 0, k, k}, {w - k, 0, k, k}, {0, h - k, k, k}, {w - k, h - k, k, k}};
-        const bool free = !(owner_->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen));
+        const bool free = !(owner_->windowState() & (Qt::WindowMaximized | Qt::WindowFullScreen)) && owner_->minimumSize() != owner_->maximumSize();
         for (int i = 0; i < edges_.size(); ++i) {
             edges_[i]->setGeometry(boxes[i]);
             edges_[i]->setVisible(free);
@@ -2644,8 +2645,15 @@ bool WindowHeader::customFrame() {
     return platform == QLatin1String("xcb") || platform.startsWith(QLatin1String("wayland"));
 }
 
-void WindowHeader::setButtonLayout(const WindowButtonLayout& layout) {
+void WindowHeader::setCloseOnly() {
+    closeOnly_ = true;
+    setButtonLayout(WindowButtons::instance().layout());
+}
+
+void WindowHeader::setButtonLayout(const WindowButtonLayout& requested) {
     if (!leftButtons_) return;
+    auto layout = requested;
+    if (closeOnly_) for (auto* side : {&layout.left, &layout.right}) side->removeIf([](const QString& name) { return name != QLatin1String("close"); });
     for (auto* group : {leftButtons_, rightButtons_})
         while (auto* item = group->layout()->takeAt(0)) delete item;
     for (auto* button : {minimize_, maximize_, close_}) button->hide();
@@ -2886,7 +2894,7 @@ void WindowHeader::mousePressEvent(QMouseEvent* event) {
     QWidget::mousePressEvent(event);
 }
 void WindowHeader::mouseDoubleClickEvent(QMouseEvent* event) {
-    if (event->button() == Qt::LeftButton && customFrame() && window_) {
+    if (event->button() == Qt::LeftButton && customFrame() && window_ && !closeOnly_) {
         if (window_->isMaximized()) window_->showNormal();
         else window_->showMaximized();
         event->accept();
@@ -2895,7 +2903,7 @@ void WindowHeader::mouseDoubleClickEvent(QMouseEvent* event) {
     QWidget::mouseDoubleClickEvent(event);
 }
 void WindowHeader::contextMenuEvent(QContextMenuEvent* event) {
-    if (!customFrame() || !window_) { QWidget::contextMenuEvent(event); return; }
+    if (!customFrame() || !window_ || closeOnly_) { QWidget::contextMenuEvent(event); return; }
     auto* menu = new QMenu(this);
     menu->setObjectName("windowContextMenu");
     menu->setAttribute(Qt::WA_DeleteOnClose);

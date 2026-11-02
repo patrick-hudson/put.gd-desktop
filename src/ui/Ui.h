@@ -42,7 +42,7 @@ constexpr int labelGutter = 220;
 // Type sizes and minimum line boxes in logical pixels.
 namespace Type {
 constexpr int caption = 12, metadata = caption, micro = caption, maskBadge = 12;
-constexpr int body = 14, label = 14, section = 16, page = 22, compactPage = 20, technical = 13;
+constexpr int body = 14, label = 14, section = 16, page = 22, compactPage = 20, technical = 13, display = 28;
 constexpr int captionLine = 16, bodyLine = 20, sectionLine = 22, pageLine = 28;
 constexpr int sectionAbove = 24, sectionBelow = 8;
 }
@@ -321,6 +321,9 @@ public:
     Density density() const { return density_; }
     void chromeAfter(QWidget* last);
     void setButtonLayout(const WindowButtonLayout&);
+    // For a small fixed-size window: only the close button, wherever the desktop
+    // puts it, and no maximize on double-click or window menu on the band.
+    void setCloseOnly();
     // The compact band's height for the current fonts: the title's line height
     // plus padding, never less than a 32 px control target plus padding.
     int compactHeight() const;
@@ -344,6 +347,7 @@ private:
     void syncWindowState();
     void fitHeight();
     Density density_ = Density::Standard;
+    bool closeOnly_ = false;
     QPointer<QWidget> window_;
     QToolButton* menu_ = nullptr;
     QLabel* name_ = nullptr;

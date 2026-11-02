@@ -8,6 +8,9 @@ public:
  explicit AboutWindow(const QJsonObject& residentBuild, QWidget* parent = nullptr);
  QString detailedText()const{return details_;}
  int maximumFitHeight()const;
+protected:
+ void showEvent(QShowEvent*)override;
+ void paintEvent(QPaintEvent*)override;
 private:
  void fitHeight();
  QString details_;
