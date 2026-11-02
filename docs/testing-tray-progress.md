@@ -254,7 +254,7 @@ there, and without it a Breeze Dark panel reads as Plasma's light default.
 `TRAY_TINTS` in `tray_progress.py` mirrors `Theme.cpp`; the contracts read the
 C++ table and `PanelTone`'s rule rows back, so the two can't drift.
 
-The tooltip title is `put.gd` when idle or preparing, `Uploading` while an upload
+The tooltip title is `put.gd` (in November and December, `put.gd - Happy Holidays!`, which is then also the last line under any status title; see [seasonal glyphs](appearance.md#seasonal-glyphs)) when idle or preparing, `Uploading` while an upload
 is shown, `Upload complete` for a confirmed upload and `Needs attention` for a
 latched failure (`TrayController::refreshActivity`). Working icons keep the idle
 glyph, with an encoding-colour fill for upload progress; the upload colour is

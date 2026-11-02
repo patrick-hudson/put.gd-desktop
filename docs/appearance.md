@@ -146,6 +146,37 @@ menu glyphs use the same tint. The resident's full diagnostics (`ui.snapshot`
 `diagnostics`, and diagnostics packages) report the choice as
 `trayTint {panel, source, color}`.
 
+### Seasonal glyphs
+
+The tray icon follows the local calendar, every year: a turkey from November 1
+to 30, a Christmas tree from December 1 to 31, and the ordinary mark otherwise.
+Each is a vector shape drawn on the mark's own bowl (`src/ui/IconArt.cpp`), in
+the same panel tints as the mark. Nothing else about the app icon changes.
+
+| State | What the icon shows | Tooltip title |
+| --- | --- | --- |
+| Idle | the seasonal glyph, still | `put.gd - Happy Holidays!` (`put.gd` in other months) |
+| Uploading | the amber fill climbs the glyph's own height, head or star included | `Uploading`, with the real progress rows |
+| Confirmed complete | the glyph in the success tint, briefly | `Upload complete` |
+| Failure, recording or paused | the ordinary mark with its badge | the status as usual |
+
+In the seasons, status titles keep their rows and the greeting is the last line
+of the tooltip. A badge always draws on the ordinary mark because its halo would
+erase the turkey's head; the seasonal glyph returns when the badge clears. No
+glyph animates, and no timer runs for one.
+
+`TrayCalendar` picks the glyph, and a running resident changes it without a
+restart: at local midnight, on logind's resume signal, on each tray refresh, and
+within five minutes of a clock or time zone change. `ui.snapshot`
+`diagnostics.trayIcon` reports `{glyph, shown, localDate, calendarOverride}`:
+`glyph` is the calendar's choice, `shown` is what a badge leaves on screen.
+
+For lab previews and tests, `PUTGD_TRAY_CALENDAR_NOW` (a local ISO date, or date
+and time) starts the tray's own clock at that moment and lets it run, so a run
+started at `2026-11-30T23:59:50` crosses into December ten seconds later. It
+moves only the tray glyph and greeting, is logged as a warning, and reports
+`calendarOverride: true`. Don't change a builder's system clock to see a season.
+
 ## View state
 
 The interface reports the appearance in use in its checkpoint, and
