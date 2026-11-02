@@ -10,7 +10,6 @@ public:
  int maximumFitHeight()const;
 protected:
  void showEvent(QShowEvent*)override;
- void paintEvent(QPaintEvent*)override;
  bool eventFilter(QObject*,QEvent*)override;
 private:
  void fitHeight();

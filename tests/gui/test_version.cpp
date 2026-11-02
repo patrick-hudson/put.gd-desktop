@@ -1,6 +1,7 @@
 #include "fixtures/Waits.h"
 #include "core/BuildInfo.h"
 #include "ui/AboutWindow.h"
+#include "ui/Theme.h"
 #include "ui/Ui.h"
 #include "platform/HostOpen.h"
 #include <QLabel>
@@ -74,29 +75,31 @@ private slots:
  void aboutUsesTheSharedSpacingAndTypeRoles() {
   Ui::apply(*qApp);AboutWindow dialog({{"version","26.1027.1543-dev"}});dialog.show();QApplication::processEvents();
   auto* content=dialog.findChild<QWidget*>("aboutContent");auto* buttons=dialog.findChild<QWidget*>("aboutActions");auto* icon=dialog.findChild<QLabel*>("qt_msgboxex_icon_label");auto* tagline=dialog.findChild<QLabel*>("qt_msgbox_informativelabel");auto* version=dialog.findChild<QLabel*>("aboutVersion");auto* website=dialog.findChild<QPushButton*>("putgdWebsite");QVERIFY(content&&buttons&&icon&&tagline&&version&&website);for(auto* text:{dialog.findChild<QLabel*>("qt_msgbox_label"),tagline,version})QVERIFY2(text->height()>=text->fontMetrics().height(),qPrintable(text->objectName()));
-  const int edge=Ui::WindowHeader::customFrame()?1:0,margin=Ui::space(Ui::Space::xl);QCOMPARE(dialog.layout()->contentsMargins(),QMargins(edge,edge,edge,edge));QVERIFY(content->mapTo(&dialog,QPoint()).x()>margin);QVERIFY(icon->width()>=Ui::scaled(64));QVERIFY(icon->height()>=Ui::scaled(64));QCOMPARE(tagline->font().pixelSize(),Ui::scaled(13));QCOMPARE(tagline->palette().color(QPalette::WindowText),Theme::current().textSecondary);QCOMPARE(version->palette().color(QPalette::WindowText),Theme::current().textSecondary);
-  QVERIFY(version->mapTo(&dialog,QPoint()).y()<website->mapTo(&dialog,QPoint()).y());QCOMPARE(dialog.height()-buttons->mapTo(&dialog,QPoint(0,buttons->height())).y(),margin+edge);QCOMPARE(buttons->mapTo(&dialog,QPoint(buttons->width(),0)).x(),dialog.width()-margin-edge);
+  const int margin=Ui::space(Ui::Space::xl);QCOMPARE(dialog.layout()->contentsMargins(),QMargins());QVERIFY(content->mapTo(&dialog,QPoint()).x()>margin);QVERIFY(icon->width()>=Ui::scaled(64));QVERIFY(icon->height()>=Ui::scaled(64));QCOMPARE(tagline->font().pixelSize(),Ui::scaled(13));QCOMPARE(tagline->palette().color(QPalette::WindowText),Theme::current().textSecondary);QCOMPARE(version->palette().color(QPalette::WindowText),Theme::current().textSecondary);
+  QVERIFY(version->mapTo(&dialog,QPoint()).y()<website->mapTo(&dialog,QPoint()).y());QCOMPARE(dialog.height()-buttons->mapTo(&dialog,QPoint(0,buttons->height())).y(),margin);QCOMPARE(buttons->mapTo(&dialog,QPoint(buttons->width(),0)).x(),dialog.width()-margin);
  }
 
  // The window fits its content from the first frame, also after a details round trip: no dead space below Close.
  void aboutOpensAndCollapsesToItsContent(){
   Ui::apply(*qApp);AboutWindow dialog({{"version","26.1102.3797"},{"gitCommit","a40505cb7d788b598878277469fad0c1f2e3d4c5"},{"dirty",false},{"baseVersion","26.1102.3797"},{"packageVersion","26.1102.3797"},{"sourceProvenance","git"}});dialog.show();QApplication::processEvents();
-  auto* close=dialog.findChild<QPushButton*>("closeAbout");auto* toggle=dialog.findChild<QToolButton*>("buildDetails");QVERIFY(close&&toggle);const int margin=Ui::space(Ui::Space::xl)+(Ui::WindowHeader::customFrame()?1:0);const auto below=[&]{return dialog.height()-close->mapTo(&dialog,QPoint(0,close->height())).y();};
+  auto* close=dialog.findChild<QPushButton*>("closeAbout");auto* toggle=dialog.findChild<QToolButton*>("buildDetails");QVERIFY(close&&toggle);const int margin=Ui::space(Ui::Space::xl);const auto below=[&]{return dialog.height()-close->mapTo(&dialog,QPoint(0,close->height())).y();};
   const int opened=dialog.height();QCOMPARE(opened,dialog.layout()->totalHeightForWidth(dialog.width()));QCOMPARE(below(),margin);toggle->click();QApplication::processEvents();QVERIFY(dialog.height()>opened);QCOMPARE(below(),margin);toggle->click();QApplication::processEvents();QCOMPARE(dialog.height(),opened);QCOMPARE(below(),margin);
   dialog.close();dialog.show();QApplication::processEvents();QCOMPARE(dialog.height(),opened);
  }
  // A failed browser open reports back after the window fitted itself: it makes room, then gives it back.
  void aboutMakesRoomForBrowserFeedback(){
   Ui::apply(*qApp);AboutWindow dialog({{"version","26.1102.3797"}});dialog.show();QApplication::processEvents();const int opened=dialog.height();auto* close=dialog.findChild<QPushButton*>("closeAbout");auto* feedback=static_cast<Ui::BrowserFeedback*>(dialog.findChild<QWidget*>("aboutWebsiteFeedback"));QVERIFY(close&&feedback);const QUrl url("https://put.gd");
-  feedback->opening(url)({{"opened",false}});QVERIFY(feedback->isVisible());PUTGD_TRY_VERIFY(dialog.height()>opened);QVERIFY(feedback->height()>=feedback->minimumSizeHint().height());QCOMPARE(dialog.height()-close->mapTo(&dialog,QPoint(0,close->height())).y(),Ui::space(Ui::Space::xl)+(Ui::WindowHeader::customFrame()?1:0));
+  feedback->opening(url)({{"opened",false}});QVERIFY(feedback->isVisible());PUTGD_TRY_VERIFY(dialog.height()>opened);QVERIFY(feedback->height()>=feedback->minimumSizeHint().height());QCOMPARE(dialog.height()-close->mapTo(&dialog,QPoint(0,close->height())).y(),Ui::space(Ui::Space::xl));
   feedback->opening(url)({{"opened",true}});QVERIFY(!feedback->isVisible());PUTGD_TRY_COMPARE(dialog.height(),opened);
  }
  // put.gd's own band, close button only, and no resize edges on the fixed window.
  void aboutUsesTheCustomFrameWithOnlyClose(){
   Ui::WindowHeader::setCustomFrameOverride(1);auto restore=qScopeGuard([]{Ui::WindowHeader::setCustomFrameOverride(0);});Ui::apply(*qApp);AboutWindow dialog({{"version","26.1102.3797"}});dialog.show();QApplication::processEvents();
-  QVERIFY(dialog.windowFlags().testFlag(Qt::FramelessWindowHint));auto* header=dialog.findChild<Ui::WindowHeader*>("windowHeader");QVERIFY(header&&header->isVisible());QCOMPARE(header->mapTo(&dialog,QPoint()),QPoint(1,1));QCOMPARE(header->findChild<QLabel*>("brandName")->text(),QString("About put.gd"));
+  QVERIFY(dialog.windowFlags().testFlag(Qt::FramelessWindowHint));auto* header=dialog.findChild<Ui::WindowHeader*>("windowHeader");QVERIFY(header&&header->isVisible());QCOMPARE(header->mapTo(&dialog,QPoint()),QPoint());QCOMPARE(header->findChild<QLabel*>("brandName")->text(),QString("About put.gd"));
   auto* close=dialog.findChild<QToolButton*>("windowClose");QVERIFY(close&&close->isVisible());QVERIFY(!dialog.findChild<QToolButton*>("windowMinimize")->isVisible());QVERIFY(!dialog.findChild<QToolButton*>("windowMaximize")->isVisible());
   QTest::mouseDClick(header,Qt::LeftButton,{},QPoint(header->width()/2,header->height()/2));QVERIFY(!dialog.isMaximized());QCOMPARE(dialog.minimumSize(),dialog.maximumSize());int edges=0;for(auto* child:dialog.findChildren<QWidget*>(Qt::FindDirectChildrenOnly))if(QList<Qt::CursorShape>{Qt::SizeHorCursor,Qt::SizeVerCursor,Qt::SizeFDiagCursor,Qt::SizeBDiagCursor}.contains(child->cursor().shape())){++edges;QVERIFY(!child->isVisible());}QCOMPARE(edges,8);
+  // No outline: the window's edge is its own background, like every floating surface since #1153.
+  const auto image=dialog.grab().toImage();const auto bg=Theme::current().bg.rgb();for(const auto& edge:{QPoint(image.width()/2,image.height()-1),QPoint(0,image.height()-2),QPoint(image.width()-1,image.height()-2)})QCOMPARE(image.pixelColor(edge).rgb(),bg);
   close->click();QVERIFY(!dialog.isVisible());
  }
  void aboutKeepsTheDesktopFrameWhenAsked(){

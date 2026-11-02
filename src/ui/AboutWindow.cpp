@@ -104,8 +104,7 @@ QString caption(const QString& key){QString text;for(const auto c:key){if(c.isUp
 AboutWindow::AboutWindow(const QJsonObject& residentBuild,QWidget* parent):QDialog(parent),details_(QString::fromUtf8(QJsonDocument(residentBuild).toJson(QJsonDocument::Indented))){
  Fonts::load();
  Ui::apply(*qApp);setWindowTitle("About put.gd");setWindowIcon(Ui::icon("brand"));setWindowModality(Qt::NonModal);const auto* display=screen()?screen():QGuiApplication::primaryScreen();setFixedWidth(display?qMin(Ui::scaled(480),display->availableGeometry().width()-2*Ui::space(Ui::Space::xl)):Ui::scaled(480));
- // Without the desktop's frame the window draws its own edge, so it stands off a dark window behind it.
- auto* root=new QVBoxLayout(this);const int edge=Ui::WindowHeader::customFrame()?1:0;root->setContentsMargins(edge,edge,edge,edge);root->setSpacing(0);
+ auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
  auto* scene=new AboutScene(this);auto* sceneColumn=new QVBoxLayout(scene);sceneColumn->setContentsMargins(0,0,0,0);sceneColumn->setSpacing(0);root->addWidget(scene);
  auto* header=Ui::WindowHeader::install(this,sceneColumn,nullptr,Ui::WindowHeader::Density::Compact);header->setProperty("uiChromePlane",true);header->setCloseOnly();header->findChild<Ui::ElidedLabel*>("brandName")->setText("About put.gd");
  // The selection sits in the desktop with room to see what it was drawn over.
@@ -138,7 +137,6 @@ int AboutWindow::maximumFitHeight()const{const auto* display=screen()?screen():Q
 void AboutWindow::showEvent(QShowEvent* event){fitHeight();QDialog::showEvent(event);}
 // A failed browser open reports back later; the fixed-height window makes room for it.
 bool AboutWindow::eventFilter(QObject* watched,QEvent* event){if(event->type()==QEvent::Show||event->type()==QEvent::Hide)QTimer::singleShot(0,this,[this]{if(isVisible())fitHeight();});return QDialog::eventFilter(watched,event);}
-void AboutWindow::paintEvent(QPaintEvent*){if(!Ui::WindowHeader::customFrame())return;QPainter p(this);const auto& c=Theme::current();p.setPen(Ui::mix(c.borderStrong,c.bg,0.45));p.drawRect(rect().adjusted(0,0,-1,-1));}
 void AboutWindow::fitHeight(){layout()->setSizeConstraint(QLayout::SetNoConstraint);setMinimumHeight(0);setMaximumHeight(maximumFitHeight());auto* facts=findChild<QScrollArea*>("aboutBuildScroll");
  // A child shown or hidden only marks its own layout; forget the body's cached height before measuring.
  facts->parentWidget()->layout()->invalidate();facts->parentWidget()->updateGeometry();facts->setMaximumHeight(QWIDGETSIZE_MAX);facts->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);layout()->activate();const int natural=layout()->totalHeightForWidth(width()),limit=maximumFitHeight();if(natural>limit){facts->setMaximumHeight(qMax(facts->minimumSizeHint().height(),facts->heightForWidth(facts->width())-(natural-limit)));facts->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);layout()->invalidate();layout()->activate();}setFixedHeight(qMin(layout()->totalHeightForWidth(width()),limit));}
