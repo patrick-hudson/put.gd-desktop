@@ -160,8 +160,10 @@ the same panel tints as the mark. Nothing else about the app icon changes.
 | Confirmed complete | the glyph in the success tint, briefly | `Upload complete` |
 | Failure, recording or paused | the ordinary mark with its badge | the status as usual |
 
-In the seasons, status titles keep their rows and the greeting is the last line
-of the tooltip. A badge always draws on the ordinary mark because its halo would
+In the seasons, active work keeps its ordinary title and activity rows, with the
+greeting as the last line. Preparation, recording, pause, review and local saving
+keep `put.gd` above their activity; only a truly idle tray makes the greeting its
+title. A badge always draws on the ordinary mark because its halo would
 erase the turkey's head; the seasonal glyph returns when the badge clears. No
 glyph animates, and no timer runs for one.
 
