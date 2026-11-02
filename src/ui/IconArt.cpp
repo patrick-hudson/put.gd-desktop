@@ -21,7 +21,7 @@ QPainterPath tray() {
 }
 QPainterPath disc(qreal x,qreal y,qreal radius) {QPainterPath p;p.addEllipse(QPointF(x,y),radius,radius);return p;}
 // Seasonal silhouettes, before any cutouts: the contour follows only the outside,
-// so an eye or an ornament stays a clean hole on any panel.
+// so the turkey's eye stays a clean hole on any panel.
 QPainterPath turkeySilhouette() {
  QPainterPath p;
  p.moveTo(9,16);p.quadTo(7.6,14.5,7.6,12.3);p.lineTo(2,10.3);p.quadTo(.5,9.7,.8,8.2);p.quadTo(1.1,6.7,2.7,7.1);p.lineTo(5.4,8.2);
@@ -33,22 +33,20 @@ QPainterPath turkeySilhouette() {
 }
 QPainterPath treeSilhouette() {
  QPainterPath p;p.moveTo(12,.5);
- // A star on a tall tree standing in the bowl's well, clear of it all round. Any
- // tree on the rim needs a wide head on a stem, which at 16 px is the mark's arrow.
- for(const auto& point:{QPointF(12.62,2.05),QPointF(14.28,2.16),QPointF(13,3.22),QPointF(13.41,4.84),QPointF(12.6,4.6),QPointF(15,7.4),QPointF(13.2,6.8),QPointF(16.4,11),QPointF(13.8,10.3),QPointF(16.9,15),QPointF(13.5,15),QPointF(13.5,16.6),QPointF(10.5,16.6),QPointF(10.5,15),QPointF(7.1,15),QPointF(10.2,10.3),QPointF(7.6,11),QPointF(10.8,6.8),QPointF(9,7.4),QPointF(11.4,4.6),QPointF(10.59,4.84),QPointF(11,3.22),QPointF(9.72,2.16),QPointF(11.38,2.05)})p.lineTo(point);
+ // A star on a tall tree standing in the bowl's well, clear of it all round. A tree
+ // on the rim needs a wide head on a stem, which at 16 px is the mark's arrow. The
+ // square steps cut 1.5 units between tiers: anything shallower closes up at tray size.
+ for(const auto& point:{QPointF(12.6,1.9),QPointF(14.1,2),QPointF(13,3),QPointF(13.25,3.8),QPointF(15,5.5),QPointF(15,6.25),QPointF(13,6.25),QPointF(13,7.75),QPointF(15.75,9.5),QPointF(15.75,10.25),QPointF(13.25,10.25),QPointF(13.25,11.75),QPointF(16.5,14),QPointF(16.5,14.75),QPointF(13.25,14.75),QPointF(13.25,16.5),QPointF(10.75,16.5),QPointF(10.75,14.75),QPointF(7.5,14.75),QPointF(7.5,14),QPointF(10.75,11.75),QPointF(10.75,10.25),QPointF(8.25,10.25),QPointF(8.25,9.5),QPointF(11,7.75),QPointF(11,6.25),QPointF(9,6.25),QPointF(9,5.5),QPointF(10.75,3.8),QPointF(11,3),QPointF(9.9,2),QPointF(11.4,1.9)})p.lineTo(point);
  p.closeSubpath();
  return tray().united(p);
 }
-// The decoration is two small ornaments, off the centre line: a garland or anything
-// larger only blurred the tiers at tray size.
-QPainterPath treeCutouts() {return disc(10.3,9.8,.55).united(disc(14.2,13.2,.55));}
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;
 }
 const QPainterPath& glyphShape(TrayGlyph glyph) {
- static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(disc(17.5,2.9,.9)),fir=glyphOutline(TrayGlyph::Tree).subtracted(treeCutouts());
- return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:glyphOutline(glyph);
+ static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(disc(17.5,2.9,.9));
+ return glyph==TrayGlyph::Turkey?bird:glyphOutline(glyph);
 }
 QImage canvas(int scale) {
  QImage result(24*scale,24*scale,QImage::Format_ARGB32);

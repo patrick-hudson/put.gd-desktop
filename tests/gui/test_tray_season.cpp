@@ -5,6 +5,7 @@
 #include "fixtures/Waits.h"
 #include <QSignalSpy>
 #include <QtTest>
+#include <array>
 #include <ctime>
 
 using namespace putgd;
@@ -128,13 +129,28 @@ private slots:
   }
  }
  void cutoutsAndTheGapStayTransparent(){
-  // Tree: the gap to the bowl on both sides and below, and the ornaments.
+  // Tree: the gap to the bowl on both sides and below.
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
    QCOMPARE(qAlpha(tree.pixel(int(6.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(int(17.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(12*8,18*8)),0);
-   QCOMPARE(qAlpha(tree.pixel(int(10.3*8),int(9.8*8))),0);QCOMPARE(qAlpha(tree.pixel(int(14.2*8),int(13.2*8))),0);
+   
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
    QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
+  }
+ }
+ // The steps between tiers are what tell the tree from the mark's arrow at tray size.
+ void treeTiersStayDivided(){
+  for(int percent:{-1,50,100}){
+   const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
+   const auto clear=[&](qreal x,qreal y){return qAlpha(tree.pixel(int(x*8),int(y*8)))==0;};
+   const auto solid=[&](qreal x,qreal y){return qAlpha(tree.pixel(int(x*8),int(y*8)))==255;};
+   // Each tier's end is solid; the step below it is empty, both sides, then the next tier widens.
+   for(const auto& [tierY,tierX,stepY,stepX]:{std::array<qreal,4>{5.9,14.4,7,14},{9.9,15.2,11,15}}){
+    QVERIFY(solid(tierX,tierY));QVERIFY(solid(24-tierX,tierY));QVERIFY(clear(stepX,stepY));QVERIFY(clear(24-stepX,stepY));
+   }
+   QVERIFY(solid(16,14.4));QVERIFY(solid(8,14.4));
+   // The centre is unbroken from the star to the trunk: no ornaments or other holes.
+   for(qreal y=1.5;y<16.2;y+=.25)QVERIFY2(solid(12,y),qPrintable(QString::number(y)));
   }
  }
  void aBadgeDrawsOnTheOrdinaryMark_data(){
