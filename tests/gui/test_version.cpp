@@ -85,6 +85,12 @@ private slots:
   const int opened=dialog.height();QCOMPARE(opened,dialog.layout()->totalHeightForWidth(dialog.width()));QCOMPARE(below(),margin);toggle->click();QApplication::processEvents();QVERIFY(dialog.height()>opened);QCOMPARE(below(),margin);toggle->click();QApplication::processEvents();QCOMPARE(dialog.height(),opened);QCOMPARE(below(),margin);
   dialog.close();dialog.show();QApplication::processEvents();QCOMPARE(dialog.height(),opened);
  }
+ // A failed browser open reports back after the window fitted itself: it makes room, then gives it back.
+ void aboutMakesRoomForBrowserFeedback(){
+  Ui::apply(*qApp);AboutWindow dialog({{"version","26.1102.3797"}});dialog.show();QApplication::processEvents();const int opened=dialog.height();auto* close=dialog.findChild<QPushButton*>("closeAbout");auto* feedback=static_cast<Ui::BrowserFeedback*>(dialog.findChild<QWidget*>("aboutWebsiteFeedback"));QVERIFY(close&&feedback);const QUrl url("https://put.gd");
+  feedback->opening(url)({{"opened",false}});QVERIFY(feedback->isVisible());PUTGD_TRY_VERIFY(dialog.height()>opened);QVERIFY(feedback->height()>=feedback->minimumSizeHint().height());QCOMPARE(dialog.height()-close->mapTo(&dialog,QPoint(0,close->height())).y(),Ui::space(Ui::Space::xl));
+  feedback->opening(url)({{"opened",true}});QVERIFY(!feedback->isVisible());PUTGD_TRY_COMPARE(dialog.height(),opened);
+ }
  // put.gd's own band, close button only, and no resize edges on the fixed window.
  void aboutUsesTheCustomFrameWithOnlyClose(){
   Ui::WindowHeader::setCustomFrameOverride(1);auto restore=qScopeGuard([]{Ui::WindowHeader::setCustomFrameOverride(0);});Ui::apply(*qApp);AboutWindow dialog({{"version","26.1102.3797"}});dialog.show();QApplication::processEvents();
