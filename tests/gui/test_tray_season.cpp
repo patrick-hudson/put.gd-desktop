@@ -117,7 +117,7 @@ private slots:
   }
   // The head and the star turn amber at 100%, above the old fill top of y=2.
   if(glyph==TrayGlyph::Turkey)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(int(15.5*8),int(1.5*8)),amber());
-  if(glyph==TrayGlyph::Tree)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(12*8,2*8),amber());
+  if(glyph==TrayGlyph::Tree)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(12*8,int(2.9*8)),amber());
  }
  void fillClimbsBottomUpWithGlyphBounds_data(){fullFillCoversTheWholeSilhouette_data();}
  void fillClimbsBottomUpWithGlyphBounds(){
@@ -131,8 +131,8 @@ private slots:
   // Tree: the gap between the lowest tier and the bowl's rim, and the ornaments.
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
-   QCOMPARE(qAlpha(tree.pixel(4*8,12*8)),0);QCOMPARE(qAlpha(tree.pixel(20*8,12*8)),0);
-   QCOMPARE(qAlpha(tree.pixel(int(11.1*8),int(5.9*8))),0);QCOMPARE(qAlpha(tree.pixel(int(13.6*8),int(6.9*8))),0);QCOMPARE(qAlpha(tree.pixel(12*8,int(9.95*8))),0);
+   QCOMPARE(qAlpha(tree.pixel(4*8,int(12.5*8))),0);QCOMPARE(qAlpha(tree.pixel(20*8,int(12.5*8))),0);QCOMPARE(qAlpha(tree.pixel(6*8,int(12.4*8))),0);QCOMPARE(qAlpha(tree.pixel(18*8,int(12.4*8))),0);
+   QCOMPARE(qAlpha(tree.pixel(11*8,8*8)),0);QCOMPARE(qAlpha(tree.pixel(int(13.2*8),int(10.6*8))),0);
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
    QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
   }

@@ -32,19 +32,16 @@ QPainterPath turkeySilhouette() {
  return tray().united(p);
 }
 QPainterPath treeSilhouette() {
- QPainterPath p;p.moveTo(12,.4);
- // Star, three deep tiers and a short trunk: the mark's arrow has a tall stem and
- // one wide head, and at 16 px this must not read as it. The lowest tier ends two
- // units above the bowl's rim.
- for(const auto& point:{QPointF(12.5,1.6),QPointF(13.8,1.7),QPointF(12.9,2.5),QPointF(13.1,3.2),QPointF(16.4,5.2),QPointF(13.9,5.2),QPointF(19.2,8),QPointF(15.4,8),QPointF(21,11),QPointF(13.5,11),QPointF(13.5,14),QPointF(10.5,14),QPointF(10.5,11),QPointF(3,11),QPointF(8.6,8),QPointF(4.8,8),QPointF(10.1,5.2),QPointF(7.6,5.2),QPointF(10.9,3.2),QPointF(11.1,2.5),QPointF(10.2,1.7),QPointF(11.5,1.6)})p.lineTo(point);
+ QPainterPath p;p.moveTo(12,.5);
+ // A star on three tall, narrow tiers: the mark's arrow is one wide head on a stem,
+ // and at 16 px this must not read as it. The lowest tips end 1.2 units above the
+ // bowl's rim and stay over its well, so the gap survives resampling.
+ for(const auto& point:{QPointF(12.62,2.05),QPointF(14.28,2.16),QPointF(13,3.22),QPointF(13.41,4.84),QPointF(12.6,4.4),QPointF(15.3,6.6),QPointF(13.4,6),QPointF(17.2,9.2),QPointF(14,8.6),QPointF(18.6,11.8),QPointF(13.5,11.8),QPointF(13.5,15),QPointF(10.5,15),QPointF(10.5,11.8),QPointF(5.4,11.8),QPointF(10,8.6),QPointF(6.8,9.2),QPointF(10.6,6),QPointF(8.7,6.6),QPointF(11.4,4.4),QPointF(10.59,4.84),QPointF(11,3.22),QPointF(9.72,2.16),QPointF(11.38,2.05)})p.lineTo(point);
  p.closeSubpath();
  return tray().united(p);
 }
-QPainterPath treeCutouts() {
- QPainterPath garland;garland.moveTo(7.8,9.2);garland.cubicTo(10,10.2,14,10.2,16.2,9.2);
- QPainterPathStroker stroker;stroker.setWidth(1);stroker.setCapStyle(Qt::RoundCap);
- return stroker.createStroke(garland).united(disc(11.1,5.9,.8)).united(disc(13.6,6.9,.8));
-}
+// The decoration is two ornaments: a garland only blurred the tiers at tray size.
+QPainterPath treeCutouts() {return disc(11,8,.8).united(disc(13.2,10.6,.8));}
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
  return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;

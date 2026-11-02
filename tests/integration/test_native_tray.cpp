@@ -434,8 +434,8 @@ private slots:
   const auto idle=Theme::trayTints(false).idle;const auto base=observer.icons,tips=observer.tooltips;
   // Same colour, percent and text: only the glyph moved, so a midnight still redraws.
   tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_TRY_COMPARE(observer.icons,base+1);
-  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);putgd::test::settle(50);QCOMPARE(observer.icons,base+1);
-  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Tree);PUTGD_TRY_COMPARE(observer.icons,base+2);putgd::test::settle(50);QCOMPARE(observer.tooltips,tips);
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_COMPARE_STEADY(observer.icons,base+1,50);
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Tree);PUTGD_TRY_COMPARE(observer.icons,base+2);PUTGD_COMPARE_STEADY(observer.tooltips,tips,50);
  }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
