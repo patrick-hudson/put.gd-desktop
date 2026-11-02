@@ -1063,34 +1063,18 @@ void Style::drawPrimitive(PrimitiveElement element, const QStyleOption* option, 
         return;
     }
     case PE_FrameLineEdit: return;
-    case PE_Frame: case PE_FrameMenu: {
-        if (element == PE_FrameMenu) {
-            p->save();
-            p->setPen(c.borderStrong);
-            p->setBrush(Qt::NoBrush);
-            p->drawRect(option->rect.adjusted(0, 0, -1, -1));
-            p->restore();
-            return;
-        }
+    case PE_FrameMenu: return;
+    case PE_Frame: {
         if (qobject_cast<const QPlainTextEdit*>(widget) || qobject_cast<const QTextEdit*>(widget) || (widget && widget->property("uiFieldFrame").toBool())) {
             if (widget->objectName() == "historySummary") return;
             field(p, option->rect, option, widget, widget->hasFocus());
             return;
         }
-        p->save();
-        p->setPen(c.border);
-        p->setBrush(Qt::NoBrush);
-        p->drawRect(QRectF(option->rect).adjusted(0.5, 0.5, -0.5, -0.5));
-        p->restore();
         return;
     }
-    case PE_PanelMenu: rounded(p, option->rect, c.surfaceRaised, c.border, Metric::containerRadius); return;
+    case PE_PanelMenu: rounded(p, option->rect, c.surfaceRaised, {}, Metric::containerRadius); return;
     case PE_PanelTipLabel:
         p->fillRect(option->rect, c.surfaceRaised);
-        p->save();
-        p->setPen(c.borderStrong);
-        p->drawRect(option->rect.adjusted(0, 0, -1, -1));
-        p->restore();
         return;
     case PE_IndicatorCheckBox: case PE_IndicatorItemViewItemCheck: {
         const int side = std::min({option->rect.width(), option->rect.height(), scaled(17)});
@@ -1488,12 +1472,11 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         if (name == "status") {
             const auto tone = widget->property("feedbackTone").toString();
             const QColor fill = tone == "success" ? c.successSurface : tone == "error" ? c.dangerSurface : c.surface;
-            const QColor stroke = tone == "success" ? mix(c.success, c.successSurface, 0.45) : tone == "error" ? mix(c.danger, c.dangerSurface, 0.45) : c.border;
-            rounded(p, r, fill, stroke, Metric::containerRadius);
+            rounded(p, r, fill, {}, Metric::containerRadius);
             return;
         }
         if (name == "notice") {
-            rounded(p, r, c.surfaceRaised, c.borderStrong, Metric::containerRadius);
+            rounded(p, r, c.surfaceRaised, {}, Metric::containerRadius);
             return;
         }
         if (name == "card") {
@@ -1505,8 +1488,8 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         }
         if (name == "separator") { p->fillRect(option->rect, c.border); return; }
         // A recessed area for media: previews and thumbnails sit on it.
-        if (name == "well") { rounded(p, r, c.well, c.border, Metric::containerRadius); return; }
-        if (name == "pill") { rounded(p, r, c.selected, c.borderStrong, Metric::smallRadius); return; }
+        if (name == "well") { rounded(p, r, c.well, {}, Metric::containerRadius); return; }
+        if (name == "pill") { rounded(p, r, c.selected, {}, Metric::smallRadius); return; }
         if (name == "unitSuffix") {
             p->save();
             p->setRenderHint(QPainter::Antialiasing);
@@ -1725,14 +1708,6 @@ void paintImageShadow(QPainter& painter, const QRectF& image) {
         painter.setPen(QPen(QColor(0, 0, 0, alpha), 1));
         painter.drawRoundedRect(image.translated(0, 2).adjusted(-spread, -spread, spread, spread), spread, spread);
     }
-    painter.restore();
-}
-void paintImageEdge(QPainter& painter, const QRectF& image) {
-    if (image.isEmpty()) return;
-    painter.save();
-    painter.setBrush(Qt::NoBrush);
-    painter.setPen(QPen(Theme::scheme() == Theme::Scheme::Dark ? QColor(255, 255, 255, 26) : QColor(0, 0, 0, 31), 1));
-    painter.drawRect(image.adjusted(0.5, 0.5, -0.5, -0.5));
     painter.restore();
 }
 
@@ -2075,7 +2050,7 @@ void Banner::paintEvent(QPaintEvent*) {
     painter.fillRect(rect(), colors.bg);
     const bool fillOnly = fillOnly_ || tone_ == Tone::Error;
     const QColor fill = fillOnly ? (tone_ == Tone::Error ? colors.dangerSurface : tone_ == Tone::Warning ? colors.warningSurface : tone_ == Tone::Success ? colors.successSurface : colors.surface) : colors.surface;
-    rounded(&painter, rect(), fill, fillOnly ? QColor() : colors.borderStrong, Metric::containerRadius);
+    rounded(&painter, rect(), fill, {}, Metric::containerRadius);
     const int side = scaled(Metric::icon);
     QRect firstRow = content_->geometry();
     int lineHeight = text_->fontMetrics().lineSpacing();

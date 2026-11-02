@@ -441,12 +441,12 @@ private slots:
         int amber=0;for(int y=0;y<shot.height();++y)for(int px=list->geometry().left();px<=list->geometry().right();++px)if(shot.pixelColor(px,y)==Theme::current().accent)++amber;QVERIFY(amber>=24);
         QVERIFY(shot.pixelColor(x,Ui::Metric::segmentInset-1)!=Theme::current().selected);
     }
-    void recessedMediaKeepsAnEdgeInBothSchemes() {
+    void recessedMediaHasNoOutlineInBothSchemes() {
         for (const auto scheme : {Theme::Scheme::Dark, Theme::Scheme::Light}) {
             Theme::setScheme(scheme); const auto& c = Theme::current();
             QImage image(100, 80, QImage::Format_RGB32); image.fill(c.well);
-            { QPainter p(&image); Ui::paintImageShadow(p, QRectF(20,20,60,40)); p.fillRect(QRectF(20,20,60,40), c.well); Ui::paintImageEdge(p, QRectF(20,20,60,40)); }
-            QVERIFY(image.pixelColor(50,20) != c.well);
+            { QPainter p(&image); Ui::paintImageShadow(p, QRectF(20,20,60,40)); p.fillRect(QRectF(20,20,60,40), c.well); }
+            QCOMPARE(image.pixelColor(50,20), c.well);
             QCOMPARE(image.pixelColor(50,40), c.well);
             QCOMPARE(image.pixelColor(50,65) != c.well, scheme == Theme::Scheme::Dark);
         }

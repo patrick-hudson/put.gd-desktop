@@ -315,7 +315,6 @@ void EditorCanvas::paintEvent(QPaintEvent*){
  }
  // The open field shows the text being typed; painting it here as well showed it twice.
  painter.restore();
- Ui::paintImageEdge(painter,target);
  if(tool_==Tool::Crop){
   const auto crop=toWidget(cropDraft_);QPainterPath outside;outside.addRect(target);outside.addRect(crop);
   painter.fillPath(outside,dim());

@@ -132,7 +132,6 @@ private:
 
 // Recessed media only: shadow before the image, one-pixel edge after it.
 void paintImageShadow(QPainter&, const QRectF&);
-void paintImageEdge(QPainter&, const QRectF&);
 
 // A region of the window: its fill token and the hairlines on its edges.
 // role: "bg" (default), "well", "surface" or "raised".

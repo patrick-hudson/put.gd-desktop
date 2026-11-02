@@ -171,13 +171,14 @@ private slots:
    }
   }
  }
- void canvasDrawsAnEdgeAroundImagesInBothSchemes(){
+ void canvasDrawsNoEdgeAroundImagesInBothSchemes(){
   const auto previous=Theme::scheme();auto restore=qScopeGuard([previous]{Theme::setScheme(previous);});
   for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
    Theme::setScheme(scheme);const auto fill=Theme::current().well;
    QImage image(400,260,QImage::Format_RGB32);image.fill(fill);EditDocument doc(image);EditorCanvas canvas(doc);canvas.resize(500,360);canvas.show();QVERIFY(putgd::test::waitForWindowExposed(&canvas));canvas.fit();
    const auto rendered=canvas.grab().toImage();QCOMPARE(rendered.pixelColor(250,100),fill);
-   bool edge=false;for(int y=49;y<=51;++y)edge=edge||rendered.pixelColor(250,y)!=fill;QVERIFY(edge);
+   // The image's own top rows; the soft shadow above them stays.
+   for(int y=50;y<=51;++y)QCOMPARE(rendered.pixelColor(250,y),fill);
    QCOMPARE(rendered.pixelColor(250,0),Theme::current().well);
   }
  }

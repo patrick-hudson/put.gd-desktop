@@ -192,7 +192,7 @@ inline QRect regionSizeBox(const QRect& bounds,const QFontMetrics& metrics,const
     y=std::clamp(y,bounds.top(),bounds.bottom()-size.height()+1);
     return {QPoint(x,y),size};
 }
-// An opaque, outlined pill stays legible over any desktop in either theme.
+// An opaque, frameless pill stays legible over any desktop in either theme.
 inline void paintRegionPill(QPainter& painter,const QRect& box,const QString& text,qreal opacity=1){
     if(box.isEmpty()||opacity<=0)return;
     painter.save();
@@ -201,8 +201,8 @@ inline void paintRegionPill(QPainter& painter,const QRect& box,const QString& te
     const auto& colors=Theme::current();
     const qreal radius=box.height()/2.0;
     painter.setBrush(colors.surfaceRaised);
-    painter.setPen(QPen(colors.borderStrong,1));
-    painter.drawRoundedRect(QRectF(box).adjusted(0.5,0.5,-0.5,-0.5),radius,radius);
+    painter.setPen(Qt::NoPen);
+    painter.drawRoundedRect(QRectF(box),radius,radius);
     painter.setPen(colors.text);
     painter.drawText(box,Qt::AlignCenter,text);
     painter.restore();

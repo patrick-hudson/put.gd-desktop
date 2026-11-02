@@ -467,9 +467,9 @@ protected:
     void paintEvent(QPaintEvent*) override {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
-        painter.setPen(QPen(QColor(255, 255, 255, 60), 1));
+        painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(0, 0, 0, 215));
-        painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8, 8);
+        painter.drawRoundedRect(QRectF(rect()), 8, 8);
     }
 };
 }
@@ -632,7 +632,6 @@ void FrameView::paintEvent(QPaintEvent*) {
     Ui::paintImageShadow(painter, target);
     painter.fillRect(target, Qt::black);
     if (!frame_.isNull()) painter.drawImage(target, frame_);
-    Ui::paintImageEdge(painter, target);
     // An earlier frame under a preview error is dimmed so it never reads as current.
     if (stale()) painter.fillRect(target, QColor(0, 0, 0, 140));
     const QRectF selectedView = [&] { for (const auto& m : masks_) if (m.id == selected_) return toView(m.rect); return QRectF(); }();
