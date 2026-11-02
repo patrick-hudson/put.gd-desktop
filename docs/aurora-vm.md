@@ -173,8 +173,8 @@ The recipe needs no AWS credentials on the instance:
    `GLACIER_IR`, SSE-S3 and the `sha256`, `zst-sha256`, `virtual-size` and
    `source-container-digest` metadata. curl must send each part from a file, because S3
    rejects chunked uploads with 501. Upload the sidecars too, including the new
-   `known_hosts` with the guest's pin. Download the image back, then compare hashes
-   and the image.
+   `known_hosts` with the guest's pin. Download the image and sidecars back, compare
+   each SHA-256 with the local copy, and compare the image.
 8. Restore the image and sidecars to each builder through a short-lived presigned URL.
    Then point the `golden` and `knownHosts` paths in
    `~/.config/putgd-nightly/config.json` at them on all five builders.
