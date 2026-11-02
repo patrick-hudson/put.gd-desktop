@@ -15,9 +15,11 @@ synthetic flat-colour desktop captures and the window was maximized in Gallery, 
 Frames came from `xwd` of the root window, about 4 a second, so a short blank between frames can be missed.
 A lower count means tiles were showing the placeholder.
 
-GNOME Wayland (`f44`, Qt 6.11): `scrollingPaintsOnlyWhatScrollsIn` passes on the live session, so
-scrolling moves pixels there too. That covers paint regions, not captured frames. Plasma wasn't run.
+GNOME Wayland (`f44`, Fedora 44, Qt 6.11): `scrollingPaintsOnlyWhatScrollsIn` in
+[`tests/gui/test_history_view.cpp`](../../../tests/gui/test_history_view.cpp), merged in #1151, passes
+on the live session at `3f5d0b0da071` with `QT_QPA_PLATFORM=wayland`, so scrolling moves pixels there
+too. That covers paint regions, not captured frames. Plasma wasn't run.
 
 ![Before: 15 tiles show the placeholder during a recording](before.png)
 
-![After: every tile keeps its thumbnail during a recording](after.png)
+![After: no sampled frame during a recording shows a blanked tile](after.png)
