@@ -422,7 +422,15 @@ private slots:
   PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,400);
   QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
  }
+ void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch_data() {
+  QTest::addColumn<QByteArray>("date");QTest::addColumn<bool>("seasonal");
+  QTest::newRow("ordinary")<<QByteArray("2026-06-15T12:00:00")<<false;
+  QTest::newRow("turkey")<<QByteArray("2026-11-15T12:00:00")<<true;
+  QTest::newRow("tree")<<QByteArray("2026-12-15T12:00:00")<<true;
+ }
  void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch() {
+  QFETCH(QByteArray,date);QFETCH(bool,seasonal);
+  qputenv("PUTGD_TRAY_CALENDAR_NOW",date);auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   // One upload at a time: the second action queues behind the first.
@@ -438,6 +446,9 @@ private slots:
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_VERIFY(preparing->load());
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.reads,2);
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Queued"));QCOMPARE(provider->checks.load(),0);QCOMPARE(provider->uploads.load(),0);
+  QCOMPARE(tray->toolTip().section('\n',0,0),QString("put.gd"));
+  if(seasonal)QCOMPARE(tray->toolTip().section('\n',-1),QString("put.gd - Happy Holidays!"));
+  else QVERIFY(!tray->toolTip().contains("Happy Holidays!"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
@@ -872,6 +883,34 @@ private slots:
   controller.invokeShortcut("record");PUTGD_TRY_COMPARE(state(),QString("recording"));
   controller.invokeShortcut("record");PUTGD_TRY_COMPARE(state(),QString("reviewing"));
   const int raises=backend->log.count("raise");controller.invokeShortcut("record");PUTGD_TRY_COMPARE(backend->log.count("raise"),raises+1);QCOMPARE(state(),QString("reviewing"));
+ }
+
+ void seasonalRecordingStatusPrecedesTheGreeting_data() {
+  QTest::addColumn<QByteArray>("date");
+  QTest::newRow("turkey")<<QByteArray("2026-11-15T12:00:00");
+  QTest::newRow("tree")<<QByteArray("2026-12-15T12:00:00");
+ }
+ void seasonalRecordingStatusPrecedesTheGreeting() {
+  QFETCH(QByteArray,date);
+  qputenv("PUTGD_TRAY_CALENDAR_NOW",date);auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();backend->deferPrepare=true;backend->deferExports=true;operations.setRecordingBackend(std::move(fake));
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  QCOMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
+  const auto tooltip=[](const QString& status){return "put.gd\n"+status+"\nput.gd - Happy Holidays!";};
+  auto command=[&](const QString& name,const QJsonObject& params){QJsonObject out;bool done=false;operations.recordingCommand(name,params,[&](Error error,QJsonObject result){QVERIFY2(!error,qPrintable(error.message));out=result;done=true;});(void)putgd::test::waitFor([&]{return done;});return out;};
+  const auto id=command("prepare",{{"target",QJsonObject{{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}}},{"format","mp4"}})["recordingId"].toString();QVERIFY(!id.isEmpty());
+  PUTGD_TRY_VERIFY(bool(backend->pendingPrepare));PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Setting up the recording"));
+  std::exchange(backend->pendingPrepare,{})({},{});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Ready to record"));
+  command("start",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Recording"));
+  command("pause",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Recording paused"));
+  command("resume",{{"id",id}});command("stop",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Reviewing the recording"));
+  bool saved=false;operations.recordingCommand("saveCopy",{{"id",id},{"path",directory.filePath("copy.mp4")}},[&](Error error,QJsonObject){QVERIFY(!error);saved=true;});
+  PUTGD_TRY_COMPARE(backend->pendingExports.size(),1);PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Saving a copy of the recording"));
+  backend->pendingExports.takeFirst()();PUTGD_TRY_VERIFY(saved);PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Reviewing the recording"));
+  command("cancel",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
  }
 
  // Recording and pause have independent overlays; transfer fills amber and only

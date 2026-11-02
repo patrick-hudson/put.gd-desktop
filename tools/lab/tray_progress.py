@@ -30,7 +30,7 @@ TERMINAL = {'completed', 'partial', 'failed', 'cancelled', 'interrupted'}
 COPY_SETTLED = ('copied', 'partial', 'suppressed', 'failed', 'no_result')
 # TrayController::refreshActivity: the tooltip's title, then its activity rows.
 IDLE = 'put.gd'
-# November and December: the idle title, and the last line under any status title.
+# November and December: the idle title, or the last line after active work.
 SEASONAL_IDLE = 'put.gd - Happy Holidays!'
 UPLOADING = 'Uploading'
 COMPLETE = 'Upload complete'
@@ -289,10 +289,13 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     title = snapshot.get('title')
     require(title in (IDLE, SEASONAL_IDLE, UPLOADING, COMPLETE, ATTENTION), 'Unexpected tray title')
     if text == SEASONAL_IDLE or text.endswith('\n' + SEASONAL_IDLE):
-        require(title in (UPLOADING, COMPLETE, ATTENTION), 'Seasonal greeting under an idle title')
+        require(title in (IDLE, UPLOADING, COMPLETE, ATTENTION), 'Seasonal greeting under an idle title')
+        require(title != IDLE or text != SEASONAL_IDLE,
+                'Seasonal greeting under an idle title without activity')
         # It replaces a row that would only repeat the title.
         text = COMPLETE if text == SEASONAL_IDLE and title == COMPLETE else text[:-len(SEASONAL_IDLE)].rstrip('\n')
     require(SEASONAL_IDLE not in text, 'Seasonal greeting is not the last tooltip line')
+    require(title != SEASONAL_IDLE or not text, 'Seasonal idle title takes priority over activity')
     icons = snapshot.get('icons', [])
     has = lambda icon, role: icon.get('opaqueColors', {}).get(tints[role], 0) > 0
     require(icons, 'SNI has no icon pixmaps')
