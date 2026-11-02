@@ -136,5 +136,8 @@ On release day, repeat the three commands on the stable draft from a fresh
 checkout of the stable tag itself (so the policy, dispositions and tool lock are
 the ones the tag carries, not nightly's), into new output directories, and
 compare `checks.vulnerabilities`, `checks.upstreamAdvisories` and the
-dispositions' fingerprints with this record. The Release workflow's own run on
-the uploaded draft does the same from the tag's checkout.
+dispositions' fingerprints with this record. The Release workflow's draft job
+runs only `audit_assets.py --download` from the tag's checkout; for a stable tag
+the rebuild receipt comes from the package build's own `sourceBuild` CI receipt,
+which stable collection requires, so no separate `check_source_build.py` run is
+needed unless that receipt is to be checked independently, as here.
