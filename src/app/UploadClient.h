@@ -1,4 +1,5 @@
 #pragma once
+#include "core/Error.h"
 #include <QByteArray>
 #include <QHash>
 #include <QJsonArray>
@@ -18,6 +19,9 @@ bool requested(int argc,char** argv);
 int run(int argc,char** argv);
 
 // The pieces below are separate for tests.
+// One request to the resident at socketPath and its reply, over the raw
+// session socket; error holds the resident's refusal or the transport failure.
+QJsonObject request(const QString& socketPath,const QString& method,const QJsonObject& params,Error& error);
 // Whether the leaf unit of a /proc/self/cgroup text is a .service: a file
 // manager started by D-Bus activation runs in one, and stopping it stops
 // everything left in its cgroup. Every user process sits under

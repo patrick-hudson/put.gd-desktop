@@ -1,7 +1,5 @@
 #include "core/ByteSize.h"
 #include "SessionClient.h"
-#include <QJsonDocument>
-#include <QJsonParseError>
 #include <QLocalSocket>
 #include <QPointer>
 #include <QThread>
@@ -11,16 +9,10 @@
 
 namespace putgd {
 namespace {
-constexpr qsizetype maximumRequest = 1024 * 1024;
-constexpr qsizetype maximumResponse = 16 * 1024 * 1024;
+using SessionProtocol::maximumRequest;
+using SessionProtocol::maximumResponse;
+using SessionProtocol::invalidResponse;
 constexpr qsizetype maximumConcurrent = 64;
-constexpr int deadlineMilliseconds = 15000;
-// Time for the reply to cross the socket after the resident's own deadline.
-constexpr int transportMarginMilliseconds = 15000;
-Error invalidResponse(bool submitted) {
-    return {"invalid_response", "Resident response does not match the request protocol",
-            submitted ? QJsonObject{{"outcomeUnknown", true}} : QJsonObject{}};
-}
 }
 
 struct SessionClient::Pending : QObject {
@@ -79,9 +71,7 @@ SessionClient::RequestId SessionClient::request(const QString& method, const QJs
     }
 
     pending->wireId = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    pending->outgoing = QJsonDocument(QJsonObject{
-        {"schemaVersion", 1}, {"requestId", pending->wireId}, {"session", socketPath_},
-        {"method", method}, {"params", params}}).toJson(QJsonDocument::Compact) + '\n';
+    pending->outgoing = SessionProtocol::encodeRequest(pending->wireId, socketPath_, method, params);
     if (pending->outgoing.size() > maximumRequest) {
         finish(id, {"request_too_large", ByteSize::labels("Request exceeds 1 MiB"), {}});
         return id;
@@ -97,13 +87,7 @@ SessionClient::RequestId SessionClient::request(const QString& method, const QJs
     return id;
 }
 
-int SessionClient::deadlineMs(const QString& method) {
-    if (method == "diagnostics.bundle") return diagnosticsBundleReplyMs + transportMarginMilliseconds;
-    if (method == "diagnostics.uploadTarget") return diagnosticsUploadTargetReplyMs + transportMarginMilliseconds;
-    if (method == "history.preview") return historyPreviewReplyMs + transportMarginMilliseconds;
-    if (method == "upload.files") return uploadFilesReplyMs + transportMarginMilliseconds;
-    return deadlineMilliseconds;
-}
+int SessionClient::deadlineMs(const QString& method) { return SessionProtocol::deadlineMs(method); }
 
 void SessionClient::start(RequestId id) {
     auto* pending = pending_.value(id);
@@ -149,25 +133,13 @@ void SessionClient::receive(RequestId id) {
         return;
     }
 
-    QJsonParseError parseError;
-    const auto document = QJsonDocument::fromJson(pending->incoming, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+    Error error;
+    QJsonObject result;
+    if (!SessionProtocol::decodeReply(pending->incoming, pending->wireId, error, result)) {
         finish(id, invalidResponse(pending->submitted));
         return;
     }
-    const auto envelope = document.object();
-    const auto error = envelope["error"].toObject();
-    if (!envelope["schemaVersion"].isDouble() || envelope["schemaVersion"].toDouble() != 1 ||
-        !envelope["requestId"].isString() || envelope["requestId"].toString() != pending->wireId ||
-        !envelope["ok"].isBool() || !envelope["result"].isObject() ||
-        !envelope["error"].isObject() || !error["code"].isString() ||
-        !error["message"].isString() || !error["details"].isObject() ||
-        envelope["ok"].toBool() != error["code"].toString().isEmpty()) {
-        finish(id, invalidResponse(pending->submitted));
-        return;
-    }
-    finish(id, {error["code"].toString(), error["message"].toString(), error["details"].toObject()},
-           envelope["result"].toObject());
+    finish(id, std::move(error), std::move(result));
 }
 
 void SessionClient::transportFailed(RequestId id, bool timedOut) {

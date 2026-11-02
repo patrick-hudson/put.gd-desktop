@@ -4,7 +4,7 @@
 #include "LocalIpc.h"
 #include "LocalServer.h"
 #include "ResidentSession.h"
-#include "client/SessionClient.h"
+#include "client/SessionProtocol.h"
 #include "core/HostEnvironment.h"
 #include <QCoreApplication>
 #include <QDBusConnection>
@@ -24,6 +24,7 @@
 #include <QThread>
 #include <QTimer>
 #include <QUrl>
+#include <QUuid>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -43,6 +44,24 @@
 #include <time.h>
 #include <unistd.h>
 namespace putgd::UploadClient {
+// One synchronous request over the resident's raw session socket (LocalIpc),
+// with SessionClient's envelope, deadlines and error codes: the request is
+// never replayed once it reached the socket (outcomeUnknown), a missing or
+// silent resident is client_unavailable or client_timeout, and a reply that
+// breaks the protocol is invalid_response.
+QJsonObject request(const QString& socketPath,const QString& method,const QJsonObject& params,Error& error){
+ error={};
+ const auto wireId=QUuid::createUuid().toString(QUuid::WithoutBraces);
+ const auto frame=SessionProtocol::encodeRequest(wireId,socketPath,method,params);
+ if(frame.size()>SessionProtocol::maximumRequest){error={"request_too_large","Request exceeds 1 MiB",{}};return {};}
+ const auto exchange=exchangeLocalSession(socketPath,frame,SessionProtocol::deadlineMs(method),SessionProtocol::maximumResponse);
+ const auto unknown=[&](Error e){if(exchange.sent)e.details["outcomeUnknown"]=true;return e;};
+ if(!exchange.connected||exchange.errorCode=="transport_failed"){error=unknown({"client_unavailable","Cannot exchange a complete response with the resident",{}});return {};}
+ if(exchange.errorCode=="activation_timeout"){error=unknown({"client_timeout","Resident request exceeded its deadline",{}});return {};}
+ QJsonObject result;
+ if(!exchange.errorCode.isEmpty()||!SessionProtocol::decodeReply(exchange.response,wireId,error,result)){error=SessionProtocol::invalidResponse(exchange.sent);return {};}
+ return result;
+}
 namespace {
 // Every systemd-run call: newer systemd expands ${...} in a scope's arguments,
 // so a selected /somewhere/${USER}.txt would otherwise become another file.
@@ -252,11 +271,7 @@ GioAnswer hostGioInfo(const QStringList& uris){
  return answer;
 }
 
-QJsonObject request(const QString& method,const QJsonObject& params,Error& error){
- SessionClient client(LocalServer::defaultSocketPath());QEventLoop loop;QJsonObject result;
- client.request(method,params,&loop,[&](Error e,QJsonObject r){error=std::move(e);result=std::move(r);loop.quit();});
- loop.exec();return result;
-}
+QJsonObject request(const QString& method,const QJsonObject& params,Error& error){return UploadClient::request(LocalServer::defaultSocketPath(),method,params,error);}
 void sleepMs(int ms){QEventLoop loop;QTimer::singleShot(ms,&loop,&QEventLoop::quit);loop.exec();}
 
 // #490: a resident left from an ended login session is retired, never used.

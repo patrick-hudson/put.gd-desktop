@@ -2,6 +2,8 @@
 #include "core/ArtifactStore.h"
 #include "app/UploadClient.h"
 #include "app/FileManagerIntegration.h"
+#include "app/HistoryService.h"
+#include "app/LocalServer.h"
 #include "core/Log.h"
 #include "fixtures/U2Fixtures.h"
 #include "fixtures/Waits.h"
@@ -13,6 +15,8 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <atomic>
+#include <thread>
 #include <fcntl.h>
 #include <unistd.h>
 using namespace putgd;
@@ -293,6 +297,29 @@ private slots:
   QVERIFY(!UploadClient::showDialog("Title","Body",environment));
  }
  // The real client refuses what it can't resolve before anything else, with no resident needed.
+ // #1149: the client's requests cross the resident's raw session socket with
+ // SessionClient's envelope: replies and refusals arrive as the resident sent
+ // them, and a missing resident is client_unavailable with no unknown outcome.
+ void requestOverTheRawSessionSocket() {
+  HistoryService history(*operations_);LocalServer server(*settings_,*operations_,history);
+  const auto runtime=dir_.filePath("rt");QVERIFY(QDir().mkpath(runtime));QVERIFY(!server.listen(runtime).error);
+  const auto path=server.socketPath();
+  // The resident answers from this thread's event loop, so the synchronous client runs beside it.
+  auto ask=[&](const QString& socket,const QString& method,const QJsonObject& params,Error& error){
+   QJsonObject result;std::atomic<bool> done{false};
+   std::thread client([&]{result=UploadClient::request(socket,method,params,error);done=true;});
+   if(!putgd::test::waitFor([&]{return done.load();},20000))qWarning("request timed out");
+   client.join();return result;
+  };
+  Error error;const auto capabilities=ask(path,"capabilities",{},error);
+  QVERIFY2(!error,qPrintable(error.code));QVERIFY(capabilities.contains("methods")||!capabilities.isEmpty());
+  const auto unknown=ask(path,"no.such.method",{},error);
+  QCOMPARE(error.code,QString("unknown_method"));QVERIFY(unknown.isEmpty());QVERIFY(!error.details.contains("outcomeUnknown"));
+  const auto refused=ask(path,"upload.files",{{"paths",QJsonArray{"relative.txt"}},{"installation","system"}},error);
+  QVERIFY(error);QVERIFY(refused.isEmpty());
+  ask(dir_.filePath("rt/none/session.sock"),"capabilities",{},error);
+  QCOMPARE(error.code,QString("client_unavailable"));QVERIFY(!error.details.contains("outcomeUnknown"));
+ }
  void clientRefusesWithoutLocalPaths() {
   const auto putgd=qEnvironmentVariable("PUTGD_BINARY");
   if(putgd.isEmpty())QSKIP("PUTGD_BINARY is not set");

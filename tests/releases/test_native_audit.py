@@ -1,6 +1,7 @@
 """Extracted native-package checks; actual ELF/desktop validation is separate."""
 import gzip
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -127,6 +128,27 @@ class NativeInventoryTests(unittest.TestCase):
             with self.subTest(option=option), patch.object(audit, "command", side_effect=commands):
                 with self.assertRaisesRegex(ValueError, error):
                     audit.audit_tree(self.root, self.manifest)
+
+    def test_resident_must_not_link_networking_or_tls(self):
+        # Gate C of the acceptance matrix (#1149): the resident maps no
+        # QtNetwork or OpenSSL at idle, so neither may be a direct dependency.
+        for soname in ("libQt6Network.so.6", "libssl.so.3", "libcrypto.so.3", "libgtk-3.so.0"):
+            def commands(argv, *, env=None):
+                if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd"):
+                    return f" 0x0000000000000001 (NEEDED) Shared library: [{soname}]\n 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
+                return self.commands(argv, env=env)
+            with self.subTest(soname=soname), patch.object(audit, "command", side_effect=commands):
+                with self.assertRaisesRegex(ValueError, "gate C forbids: " + re.escape(soname)):
+                    audit.audit_tree(self.root, self.manifest)
+
+    def test_workers_may_link_networking(self):
+        def commands(argv, *, env=None):
+            if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd-cli"):
+                return " 0x0000000000000001 (NEEDED) Shared library: [libQt6Network.so.6]\n 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=commands):
+            result = audit.audit_tree(self.root, self.manifest)
+        self.assertIn("libQt6Network.so.6", result["elfDependencies"]["usr/bin/putgd-cli"]["needed"])
 
     def test_full_audit_compares_every_compiled_identity(self):
         with patch.object(audit, "command", side_effect=self.commands):

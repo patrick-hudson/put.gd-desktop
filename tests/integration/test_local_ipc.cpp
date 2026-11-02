@@ -7,6 +7,7 @@
 #include <QSignalSpy>
 #include <QTimer>
 #include <vector>
+#include <thread>
 #ifdef Q_OS_LINUX
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -110,6 +111,46 @@ private slots:
   QTemporaryDir d;const auto path=d.filePath("session.sock");
   {LocalIpcServer server;QVERIFY(server.listen(path));QVERIFY(QFile::remove(path));QFile replacement(path);QVERIFY(replacement.open(QIODevice::WriteOnly));replacement.write("preserve");}
   QFile replacement(path);QVERIFY(replacement.open(QIODevice::ReadOnly));QCOMPARE(replacement.readAll(),QByteArray("preserve"));
+ }
+ // #1149: the resident's --upload client exchanges one request over the raw
+ // socket. The reply deadline and size limit are the caller's, and sent tells
+ // a lost reply (outcome unknown) from a request that never left.
+ void exchangeHonoursDeadlineLimitAndReportsSent() {
+  QTemporaryDir d;const auto path=QFile::encodeName(d.filePath("session.sock"));
+  sockaddr_un address{};address.sun_family=AF_UNIX;std::memcpy(address.sun_path,path.constData(),size_t(path.size())+1);
+  const int listener=::socket(AF_UNIX,SOCK_STREAM|SOCK_CLOEXEC,0);QVERIFY(listener>=0);
+  QCOMPARE(::bind(listener,reinterpret_cast<sockaddr*>(&address),sizeof(address)),0);QCOMPARE(::listen(listener,4),0);
+  // Each accepted peer: read its frame, then answer per scenario.
+  enum class Answer { Echo, Oversize, Silent, Close, Fragmented };
+  std::vector<Answer> answers{Answer::Echo,Answer::Fragmented,Answer::Oversize,Answer::Silent,Answer::Close};
+  std::thread server([&]{
+   for(const auto answer:answers) {
+    const int peer=::accept(listener,nullptr,nullptr);if(peer<0)return;
+    QByteArray frame;char chunk[4096];
+    while(!frame.contains('\n')){const auto count=::recv(peer,chunk,sizeof(chunk),0);if(count<=0)break;frame.append(chunk,count);}
+    if(answer==Answer::Echo)::send(peer,frame.constData(),size_t(frame.size()),MSG_NOSIGNAL);
+    else if(answer==Answer::Fragmented){for(qsizetype i=0;i<frame.size();++i){::send(peer,frame.constData()+i,1,MSG_NOSIGNAL);std::this_thread::sleep_for(std::chrono::milliseconds(2));}}
+    else if(answer==Answer::Oversize){const QByteArray big(3000,'x');::send(peer,big.constData(),size_t(big.size()),MSG_NOSIGNAL);}
+    else if(answer==Answer::Silent)std::this_thread::sleep_for(std::chrono::milliseconds(putgd::test::scaled(600)));
+    ::close(peer);
+   }
+  });
+  const QByteArray request="{\"method\":\"capabilities\"}\n";
+  const auto socketPath=d.filePath("session.sock");
+  auto echo=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(echo.connected);QVERIFY(echo.sent);QVERIFY(echo.errorCode.isEmpty());QCOMPARE(echo.response,request);
+  auto fragmented=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(fragmented.sent);QVERIFY(fragmented.errorCode.isEmpty());QCOMPARE(fragmented.response,request);
+  auto oversize=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(oversize.sent);QCOMPARE(oversize.errorCode,QString("response_too_large"));QVERIFY(oversize.response.isEmpty());
+  QElapsedTimer elapsed;elapsed.start();
+  auto silent=exchangeLocalSession(socketPath,request,putgd::test::scaled(200),2048);
+  QVERIFY(silent.connected);QVERIFY(silent.sent);QCOMPARE(silent.errorCode,QString("activation_timeout"));QVERIFY(elapsed.elapsed()<putgd::test::scaled(600));
+  auto closed=exchangeLocalSession(socketPath,request,putgd::test::scaled(3000),2048);
+  QVERIFY(closed.sent);QCOMPARE(closed.errorCode,QString("transport_failed"));QVERIFY(closed.response.isEmpty());
+  server.join();::close(listener);
+  auto absent=exchangeLocalSession(d.filePath("missing.sock"),request,putgd::test::scaled(500),2048);
+  QVERIFY(!absent.connected);QVERIFY(!absent.sent);
  }
  void recoversOwnedStaleSocket() {
   QTemporaryDir d;const auto runtime=d.filePath("runtime");QVERIFY(QDir().mkpath(runtime));const auto path=QFile::encodeName(runtime+"/session.sock");sockaddr_un address{};address.sun_family=AF_UNIX;QVERIFY(path.size()<qsizetype(sizeof(address.sun_path)));std::memcpy(address.sun_path,path.constData(),path.size()+1);

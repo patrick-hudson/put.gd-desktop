@@ -1,7 +1,7 @@
 #include "core/ByteSize.h"
 #include "LocalServer.h"
 #include "RecordingBackend.h"
-#include "client/SessionClient.h"
+#include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
 #include <QUuid>

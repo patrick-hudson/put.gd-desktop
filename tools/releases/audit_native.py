@@ -17,6 +17,7 @@ try:
 except ModuleNotFoundError:
     from tools.releases.audit_proton import audit_proton
 
+RESIDENT_FORBIDDEN_NEEDED = re.compile(r"^lib(Qt6Network|ssl|crypto|gtk)")
 PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-launcher")
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
@@ -166,6 +167,12 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
                  *([root / result["proton"]["helper"]] if "proton" in result else [])]:
         dynamic = command(["readelf", "-d", str(path)])
         needed = re.findall(r"\(NEEDED\).*?\[(.*?)\]", dynamic)
+        # The resident stays small at idle (acceptance matrix gate C): no
+        # QtNetwork, OpenSSL or GTK may be a direct dependency of usr/bin/putgd.
+        # Networking lives in putgd-cli and the worker processes (#1149).
+        if path == root / "usr/bin/putgd":
+            if forbidden := [soname for soname in needed if RESIDENT_FORBIDDEN_NEEDED.match(soname)]:
+                raise ValueError(f"Resident links a library gate C forbids: {', '.join(forbidden)}")
         resolved = command(["ldd", str(path)], env=env)
         if "not found" in resolved:
             raise ValueError(f"Unresolved native dependency: {path.name}\n{resolved}")
