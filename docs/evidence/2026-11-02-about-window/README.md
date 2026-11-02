@@ -1,10 +1,10 @@
 # About window redesign (#1155)
 
-Pictures of the About window with put.gd's own title bar, the capture scene and
-the window fitted to its content.
+Pictures of the About window with put.gd's own title bar, the capture scene, no
+outline, and the window fitted to its content.
 
-Every "after" picture shows build `26.1102.3802-dev+g822dea2cddcd`, commit
-`822dea2cddcd6a6330551d881cf2018ceb30e2bf`, clean source tree, built from that
+Every "after" picture shows build `26.1102.3803-dev+gf820f1679065`, commit
+`f820f1679065b39d36a9f125065f0e0fe7132edc`, clean source tree, built from that
 commit on the host and run with a private profile on its physical desktop.
 
 | Picture | Shows | Desktop |
@@ -17,5 +17,5 @@ Red boxes and labels are annotations added afterwards.
 
 The drag and close checks in #1155 used real input on a scratch build from before
 its browser-feedback fix (`20c4f61a7`), on Cinnamon X11, Plasma Wayland and GNOME
-Wayland (f44). The exact commit above was opened and expanded on Cinnamon X11 and
-Plasma Wayland.
+Wayland (f44). The commit above, the first without the window outline, was opened and expanded on
+Cinnamon X11 and Plasma Wayland.
