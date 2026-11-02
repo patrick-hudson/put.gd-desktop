@@ -86,25 +86,30 @@ do not delete them without Patrick's approval.
 The Aurora goldens are named directories rather than `transfer-<id>/`, and each
 holds `source.manifest.json`, `image-info.json`, the pinned guest `known_hosts`
 and the bootstrap inputs beside `image.qcow2`. They are described in
-[Aurora VM](aurora-vm.md). The independently rebuilt Fedora 45 cloud golden
-below is verified on `f44`, `d69` and S3. It uses the same pinned Aurora OS as the
-older `-852d34e885c1` golden, with its own disk identity. The older disk still
-has no complete S3 image copy. The Fedora 44 evaluation goldens remain `f44`-only.
+[Aurora VM](aurora-vm.md). The current Fedora 45 golden is on all five builders and
+in S3. On 2026-11-02, with Patrick's approval, the two older Fedora 45 goldens were
+deleted from the builders: `-852d34e885c1`, which never had a complete S3 image, so
+no copy remains, and the 2026-10-29 cloud golden, which remains in S3 and in the
+Boat snapshot. Deleting `-852d34e885c1` was an approved exception to the two-copies
+rule above, made knowing it can't be restored. The Fedora 44 evaluation goldens remain `f44`-only.
 
-**Which Fedora 45 golden counts for acceptance.** The Aurora Fedora 45 row in the
-[acceptance matrix](acceptance-matrix.md) stays on `-852d34e885c1`, booted as a VM
-on a physical builder (`f44` or `d69`). That disk is the one every recorded
-Aurora 45 result used. The cloud golden is a separate build of the same OS
-payload, with different bytes. It serves as the off-site restore copy and as the
+**Which Fedora 45 golden counts for acceptance.** Since 2026-11-02 the Aurora
+Fedora 45 row in the [acceptance matrix](acceptance-matrix.md) uses
+`aurora-testing-45.20261101.2-ec2-20261102-a1` (Plasma 6.8.2), booted as a VM on a
+physical builder; see [Plasma 6.8 golden](aurora-vm.md#plasma-68-golden). Every Aurora
+45 result recorded before then used `-852d34e885c1` (Plasma 6.7.5), which no longer
+exists. The 2026-10-29 cloud golden is a separate build of that older OS
+payload. It serves as an off-site restore copy and as the
 base of the `putgd-lab-aurora` Boat snapshot, for development, recipe debugging
 and flake reproduction. Boat runs never count as acceptance rows, whichever golden
-they use. To move acceptance to the cloud golden, a builder-hosted run must first
-show it gives the same results, and the matrix must then be updated.
+they use. A new golden moves acceptance once a builder-hosted run has passed on it
+and the matrix has been updated.
 
 | Name (profile `aurora-kde-wayland`) | SHA-256 | Fedora `f44` | Debian `d69` |
 | --- | --- | --- | --- |
-| `aurora-testing-45.20261022.1-ec2-20261029-a1` (Fedora 45 cloud restore base) | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` | same name; verified 2026-10-30 | same name; verified 2026-10-30 |
-| `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, use for acceptance) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | same name | same name; SHA-256 and sidecars verified 2026-10-23 (receipt `work/verification/golden-transfer-1d422e725efb`) |
+| `aurora-testing-45.20261101.2-ec2-20261102-a1` (Fedora 45, Plasma 6.8.2, use for acceptance) | `731b43833009724506feb20d35a19a417da8bbae2890940571b7da4edc1a35ae` | same name; verified 2026-11-02 | same name; verified 2026-11-02 |
+| `aurora-testing-45.20261022.1-ec2-20261029-a1` (Fedora 45 cloud restore base, Plasma 6.7.5) | `a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128` | removed 2026-11-02; S3 only | removed 2026-11-02; S3 only |
+| `aurora-testing-45.20261022.1-852d34e885c1` (Fedora 45 base, Plasma 6.7.5) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | removed 2026-11-02 | removed 2026-11-02; no copy remains |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` (Fedora 44 base) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | same name | none |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54`, `-f9c006a376e1` (history) | see [Aurora VM](aurora-vm.md#goldens-on-f44) | same name | none |
 
@@ -149,6 +154,25 @@ inventory, failed attempts, fresh launch/reset/held-overlay-refusal/guarded-clea
 receipts and worker deletion proof. Follow the [recipe](boat-snapshots.md) to
 make another new version; never overwrite these images or snapshot names.
 
+### Aurora Plasma 6.8 golden
+
+Built on EC2 on 2026-11-02 from Aurora `testing-45.20261101.2`; see
+[Plasma 6.8 golden](aurora-vm.md#plasma-68-golden) for the facts and recipe.
+
+| Item | Verified value |
+| --- | --- |
+| S3 image key | `linux/aurora-testing-45.20261101.2-ec2-20261102-a1/aurora-testing-45.20261101.2-ec2-20261102-a1.qcow2.zst` |
+| S3 manifest key | Same prefix, `aurora-testing-45.20261101.2-ec2-20261102-a1.manifest.json` |
+| Image SHA-256 | `731b43833009724506feb20d35a19a417da8bbae2890940571b7da4edc1a35ae` |
+| Compressed SHA-256 | `6a7ef6dd591ea7b69afb0d1ee421450d7a10890f709745bb8e3e89f641ee5a53` |
+| Image / compressed / virtual bytes | 11,139,153,920 / 4,171,244,697 / 50,994,348,032 |
+| Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
+| Host copies | `f44`, `d69`, `k72`, `m74` and `aurora-amd`: `~/work/put.gd/work/lab-images/aurora-testing-45.20261101.2-ec2-20261102-a1/image.qcow2` |
+
+The S3 object passed a download round trip on EC2 (both hashes and `qemu-img compare`),
+and each builder's restore checked both hashes and `qemu-img check`. The
+`putgd-lab-aurora` Boat snapshot still holds the 2026-10-29 Plasma 6.7.5 golden.
+
 ### Aurora Fedora 45 cloud golden and Boat snapshot
 
 For [#665](https://github.com/patrick-hudson/put.gd-desktop/issues/665), Patrick
@@ -168,7 +192,7 @@ independent provisioning. Existing builder disks were not replaced.
 | Image / compressed / virtual bytes | 10,503,323,648 / 4,311,949,729 / 50,994,348,032 |
 | Storage | Glacier Instant Retrieval, SSE-S3; small sidecars use Standard |
 | S3 composite SHA-256 | `UJFDDDU3KHt+Megzp2WwAIpSImrkPoPbZQLMcTutsMQ=-65` |
-| Host copies | Both builders: `~/work/put.gd/work/lab-images/aurora-testing-45.20261022.1-ec2-20261029-a1/image.qcow2` |
+| Host copies | None since 2026-11-02; restore from S3 |
 | Boat snapshot | `putgd-lab-aurora`, ready; snapshot `23bc3677-0b0d-42eb-9930-3e29cc3c47b5` |
 
 The EC2 job verified manual standard login and plasmalogin autologin as `lab`,
@@ -231,8 +255,8 @@ The separate older-disk upload was cancelled at 84 verified 64 MiB parts
 (5,637,144,576 bytes), and its incomplete multipart upload was aborted. No
 complete image object was created for `aurora-testing-45.20261022.1-852d34e885c1`.
 Its already-uploaded small metadata and OVMF copies remain under that old
-prefix; they do not constitute an S3 golden image. The old f44 image and sidecar
-hashes, sizes, modes and mtimes remained unchanged. The unused worker from
+prefix; they do not constitute an S3 golden image. At that time the old f44 image and
+sidecar hashes, sizes, modes and mtimes remained unchanged. The unused worker from
 that upload session was deleted, preserving other sessions' workers and the
 EC2-built named snapshot. The receipt distinguishes these two sessions and
 identities explicitly.
