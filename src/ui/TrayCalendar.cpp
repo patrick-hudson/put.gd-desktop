@@ -14,7 +14,7 @@ constexpr qint64 pastMidnightMs=50;
 TrayCalendar::TrayCalendar(QObject* parent):QObject(parent){
  if(const auto value=qEnvironmentVariable("PUTGD_TRAY_CALENDAR_NOW");!value.isEmpty()){
   const auto start=QDateTime::fromString(value,Qt::ISODate);
-  if(start.isValid()){overridden_=true;offsetSeconds_=QDateTime::currentDateTime().secsTo(start);qWarning("Tray calendar overridden for this process: %s",qPrintable(value));}
+  if(start.isValid()){overridden_=true;offsetMs_=QDateTime::currentDateTime().msecsTo(start);qWarning("Tray calendar overridden for this process: %s",qPrintable(value));}
   else qWarning("Ignoring PUTGD_TRAY_CALENDAR_NOW: %s is not a local ISO date",qPrintable(value));
  }
  date_=now().date();glyph_=glyphFor(date_);
@@ -31,7 +31,7 @@ IconArt::TrayGlyph TrayCalendar::glyphFor(const QDate& date){
 qint64 TrayCalendar::msUntilTomorrow(const QDateTime& now){
  return qMax(qint64(1),now.msecsTo(now.date().addDays(1).startOfDay()));
 }
-QDateTime TrayCalendar::now()const{return QDateTime::currentDateTime().addSecs(offsetSeconds_);}
+QDateTime TrayCalendar::now()const{return QDateTime::currentDateTime().addMSecs(offsetMs_);}
 void TrayCalendar::schedule(){
  timer_.start(int(qMin(longestSleepMs,msUntilTomorrow(now())+pastMidnightMs)));
 }

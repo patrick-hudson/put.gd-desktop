@@ -31,7 +31,7 @@ private:
  QDateTime now()const;
  void schedule();
  Q_SLOT void sleeping(bool entering);
- qint64 offsetSeconds_=0;
+ qint64 offsetMs_=0;
  bool overridden_=false;
  QDate date_;
  IconArt::TrayGlyph glyph_=IconArt::TrayGlyph::Mark;

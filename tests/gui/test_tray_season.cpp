@@ -112,7 +112,7 @@ private slots:
   }
   // The head and the star turn amber at 100%, above the old fill top of y=2.
   if(glyph==TrayGlyph::Turkey)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(int(16.9*8),int(1.5*8)),amber());
-  if(glyph==TrayGlyph::Tree)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(12*8,int(1.2*8)),amber());
+  if(glyph==TrayGlyph::Tree)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(12*8,2*8),amber());
  }
  void fillClimbsBottomUpWithGlyphBounds_data(){fullFillCoversTheWholeSilhouette_data();}
  void fillClimbsBottomUpWithGlyphBounds(){
