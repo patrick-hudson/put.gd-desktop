@@ -1263,7 +1263,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     noticeBand->setContentWidget(notice_);
     noticeBand->hide();
     banner->addWidget(noticeBand);
-    // Keep the well and image edge; fixed compact insets preserve the frame at large text.
+    // Keep the well; fixed compact insets preserve the frame at large text.
     view_ = new FrameView(this, maskNames_);
     view_->setObjectName("frame");
     view_->setContentsMargins(reviewSpace(Ui::Space::xs), 0, reviewSpace(Ui::Space::xs), 0);
