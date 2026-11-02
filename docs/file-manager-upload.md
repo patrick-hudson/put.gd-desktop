@@ -28,7 +28,7 @@ The design, its council review and the decisions behind it are in
 | UKUI | Peony | top level, folders and desktop | plugin `libputgd-peony.so` | not supported (use the DEB) |
 
 Not supported: Deepin, COSMIC Files before epoch-1.0.10, the AppImage on UKUI
-and on Plasma 5.27, Enlightenment's EFM and Trinity. Flatpak is not a target.
+and on Plasma 5.27, Enlightenment's EFM and Trinity. Supported package formats are DEB, RPM and AppImage.
 On Plasma 5.27 the whole AppImage doesn't run, not only its menu entry: started
 there, it shows a notification (a dialog with no notification server) saying it
 needs Plasma 6 or the DEB, then exits.

@@ -385,7 +385,7 @@ waiting for the lock, over a probe process left behind by a finished test.
   job on a host whose load is already above its core count; k72 and m74 have four cores.
 - **Recording, capture-latency and memory slots need a quiet host.** While someone
   holds a desktop for that work, don't start new heavy SSH jobs on that host
-  (builds, flatpak-builder, full ctest). Jobs already running may finish. The
+  (builds and full ctest). Jobs already running may finish. The
   slot holder records the host load next to its results.
 - **Don't change the desktop under test.** Never install, upgrade or downgrade
   compositor or desktop packages on these hosts: mutter, gnome-shell, kwin,
@@ -393,8 +393,13 @@ waiting for the lock, over a probe process left behind by a finished test.
   dnf or apt transaction before you confirm it, so a tool install doesn't pull
   them in. Use a nested or containerised setup instead.
 - **The workstation is Patrick's.** No builds, full ctest, packaging,
-  flatpak-builder, VMs or encoding runs there. Git, editing, reading and a single
+  VMs or encoding runs there. Git, editing, reading and a single
   short test are fine.
+
+The automatic nightly desktop check runs from d69's timer at 07:30 UTC on all
+five builders, using the holder name `nightly-desktops`, and posts to pinned
+[issue #1003](https://github.com/patrick-hudson/put.gd-desktop/issues/1003).
+Release manual desktop leases by 07:15 UTC so the check can acquire them.
 
 ### Desktop locks
 
@@ -455,8 +460,8 @@ Processes and agents started over SSH aren't part of the desktop session. A GNOM
 or Plasma logout doesn't stop them, and neither does ending your agent session.
 Before you release:
 
-1. Stop everything you started on the host: residents, `flatpak ps` instances,
-   input agents (`sudo -n systemctl stop putgd-lab-input`), pattern windows and
+1. Stop everything you started on the host: residents, any leftover `flatpak ps`
+   instances, input agents (`sudo -n systemctl stop putgd-lab-input`), pattern windows and
    recordings, plus the workstation-side SSH forwards. Kill only the exact PIDs
    you started.
 2. Remove anything temporary you added: desktop entries (then run
@@ -464,7 +469,8 @@ Before you release:
    again, and check that the packaged extension loaded), installed packages, and
    `~/.local/share/putgd`, `~/.cache/putgd` or `~/.config/putgd` if your runs
    created them.
-3. Run `release HOST --session ID`. On the host it runs `flatpak ps` and
+3. Run `release HOST --session ID`. On the host it inventories `flatpak ps`
+   instances and runs
    `pgrep -u patrick -af 'putgd|host_input|videotestsrc'`, and checks for user
    putgd desktop entries, extension copies and data, and an installed `putgd`
    package. It lists anything that appeared since you acquired the lock and
@@ -719,9 +725,8 @@ to move or retire it. For each transfer:
    existing projects. Follow [VM lifecycle](vm-lab.md) and
    [retention rules](evidence-retention.md).
 
-Windows bases retain their stricter disk/UEFI/TPM/identity bundle and independent
-copy rules; see [Windows lab](windows-vm-lab.md). Copying a Linux golden does not
-authorize partial Windows-base transfers.
+The [historical base lifecycle](history/windows-vm-lab.md) records the stricter
+disk/UEFI/TPM/identity bundle rules for retired experiments; preserve those artifacts.
 
 ## Access inventory checked 2026-10-16
 

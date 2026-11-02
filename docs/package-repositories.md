@@ -2,14 +2,16 @@
 
 put.gd's DEB and RPM update through apt and dnf like any other package. Each tagged
 package adds put.gd's signed repository for its channel, so `apt upgrade`, `dnf upgrade`,
-Update Manager, Discover and GNOME Software install new versions. This is phase 2 of
+Update Manager, Discover and GNOME Software install new versions. Legacy pre-#373
+`0.Y.Z-rc.N` builds, parsed as kind `candidate`, use the stable repository; there is
+no candidate channel. This is phase 2 of
 [#293](https://github.com/patrick-hudson/put.gd-desktop/issues/293). The update check in
 [updates.md](updates.md) then points to the system's updater instead of a download.
 
 ## What the packages add
 
-Only tagged builds (nightly and stable, and the pre-#373 candidate) add a repository, and each trusts only
-its own channel's key. Candidates follow stable. Development and source builds add
+Only tagged builds add a repository: current calendar-tagged nightly and stable builds, plus the legacy pre-#373 `0.Y.Z-rc.N` candidates, which use the stable repository, and each trusts only
+its own channel's key. Development and source builds add
 nothing.
 
 | Package | File | Notes |

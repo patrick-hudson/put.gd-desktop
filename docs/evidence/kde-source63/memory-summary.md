@@ -90,9 +90,10 @@ in the portable exports.
 Use [the recorded-evidence checks](reproduction.md) to verify sample hashes,
 identity joins, coverage, RSS and CPU with Python's standard library. These can
 run in GitHub Actions without Qt, Node.js or AWS credentials. They verify saved
-data, not a new desktop session. Real compositor testing still uses
-[the KDE procedure](../../testing-kde-memory.md) and
-[the VM lab](../../vm-lab.md), current source manifests and visible VNC.
+data, not a new desktop session. [The historical KDE procedure](../../history/testing-kde-memory.md)
+is a reference for this checkpoint. New compositor testing follows the
+[current acceptance matrix](../../acceptance-matrix.md) and
+[the VM lab](../../vm-lab.md), with current source manifests and visible VNC.
 Use standard CMake presets/Ninja, the official AWS SDK and distro Qt.
 
 Keep golden disks immutable and test independent overlays. Normally close the

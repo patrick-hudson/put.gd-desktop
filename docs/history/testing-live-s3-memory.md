@@ -1,6 +1,8 @@
 # Live-S3 memory acceptance
 
-The [source114 transport regressions](testing-live-s3-transport.md) pass on Cinnamon, GNOME and KDE, including live upload, production History deletion and five-minute post-use memory. Historical failures remain recorded. [Replayable source114 evidence](evidence/live-s3-memory/source114/README.md) preserves exact versions and qualifications; [lab storage safeguards](lab-storage.md) gate capacity and retention.
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+
+The [source114 transport regressions](testing-live-s3-transport.md) pass on Cinnamon, GNOME and KDE, including live upload, production History deletion and five-minute post-use memory. Historical failures remain recorded. [Replayable source114 evidence](../evidence/live-s3-memory/source114/README.md) preserves exact versions and qualifications; [lab storage safeguards](../lab-storage.md) gate capacity and retention.
 
 This protocol tests closed-view residency after real uploads. It does not promise a fixed ceiling during active capture/upload or while Settings/History is open. Use synthetic inputs, a unique test namespace, and exact receipt-guarded cleanup. No bucket policy, versioning or existing objects may change.
 

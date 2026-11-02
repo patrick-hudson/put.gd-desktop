@@ -1,9 +1,11 @@
 # KDE resident and region selector
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [architecture](../architecture.md). Do not use it as a work list.
+
 Status: retained source63 implementation. Recorded KDE local-native and memory
 gates passed, followed by current-source Cinnamon/GNOME regressions. Current real
 S3/remote History and full release acceptance remain pending. See
-[the cumulative strategy](memory-strategy.md) and [source63 evidence](evidence/kde-source63/memory-summary.md).
+[the cumulative strategy](../memory-strategy.md) and [source63 evidence](../evidence/kde-source63/memory-summary.md).
 Host contract tests alone do not establish compositor support.
 
 On an unambiguous native KDE Wayland session, the resident uses `QCoreApplication`.
@@ -103,7 +105,7 @@ ctest --preset dev --output-junit build/dev/Testing/results.xml
 
 Retain the exact clean commit, compiled manifest, executable hashes, registered test
 set, JUnit and logs. Every implementation commit receives the generated development
-version documented in [versioning.md](versioning.md); rebuild after committing.
+version documented in [versioning.md](../versioning.md); rebuild after committing.
 Include `putgd-kde-region` in installed version/hash inventories and escaped-helper
 checks. Linux truncates its process name to `putgd-kde-regio`; process names alone
 are insufficient identity proof.
@@ -127,4 +129,4 @@ Once KDE is satisfactory, run both Cinnamon and GNOME functional and memory
 regressions on the exact candidate version. Do not run the full three-desktop matrix
 for every small KDE iteration. Preserve their checkpointed implementations while
 fixing KDE-specific failures. See [KDE memory evidence](testing-kde-memory.md) and
-[VM lifecycle](vm-lab.md) for the original baseline and lab rules.
+[VM lifecycle](../vm-lab.md) for the original baseline and lab rules.

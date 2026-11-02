@@ -1,5 +1,7 @@
 # Replaying on-demand view startup measurements
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+
 Keep the on-demand process split and resident tray. The original source-41
 comparison reduced closed whole-family RSS by about 20 MiB, but its cold
 five-minute peak was 44.390625 MiB. The 40 MiB target remains open. This document
@@ -84,7 +86,7 @@ constructor/show cost was 116–129 ms, versus under 7 ms for the handshake.
 Those values guide experiments; diagnostic overhead prevents treating them as a
 product saving. Hidden-page cost attribution precedes any lazy-page refactor.
 
-The [attribution receipt](evidence/2026-10-08-view-startup-attribution.json)
+The [attribution receipt](../evidence/2026-10-08-view-startup-attribution.json)
 exports both complete diagnostic patches, source/binary provenance, normal build
 commands, frozen workload results, safe numeric trace records and the parser.
 The fine probe located 30.0–32.6 ms constructing hidden Capture, Shortcuts and
@@ -186,7 +188,7 @@ matched clean45 reference to separate the lazy-page contribution from other chan
 
 ## Confirmed startup result
 
-The [clean46 confirmation receipt](evidence/2026-10-09-lazy-settings-confirmation.json)
+The [clean46 confirmation receipt](../evidence/2026-10-09-lazy-settings-confirmation.json)
 contains the native checks, commands, per-process samples, exact build identities
 and both decision inputs/outputs. Two alternating serial runs per build produced
 four reopen samples each. The matched clean45 median was 332.5025 ms; clean46 was
@@ -210,11 +212,11 @@ protocol coalescing was not selected because its located upper bound was under
 preserved separately. Native receipts and post-use guest memory do not establish
 full compositor coverage, U9, cloud acceptance or the cold 40 MiB target.
 
-The subsequent [cold source45 reference](evidence/2026-10-09-cold-reference45.json)
+The subsequent [cold source45 reference](../evidence/2026-10-09-cold-reference45.json)
 measured 45.414 MiB peak/final RSS over five minutes, with no views or operations.
 It is separate from the empty-view and post-native guest observations. Native
 initialization attribution is recorded in
-[its own receipt](evidence/2026-10-09-native-initialization.json); a Core-only
+[its own receipt](../evidence/2026-10-09-native-initialization.json); a Core-only
 constructor without a working tray and capture pipeline is not a product win.
 Compatible memory changes may be combined, but require a measured integrated
 whole-family candidate rather than summing independent savings.

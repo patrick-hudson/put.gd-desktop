@@ -1,5 +1,7 @@
 # Live S3 transport
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [overview](../overview.md). Do not use it as a work list.
+
 ## Source114: complete live-S3 regressions
 
 The measured implementation is `0258600b752dae6304ba61d48b67d56883dfb6b2`,
@@ -35,7 +37,7 @@ source106 Cinnamon profiles remain separately recorded. These results do not
 claim a new fresh-repeat optimization decision, full release/fresh-agent
 acceptance, or a universal 40 MiB ceiling during active work or open views.
 
-See [the source114 evidence and replay](evidence/live-s3-memory/source114/README.md).
+See [the source114 evidence and replay](../evidence/live-s3-memory/source114/README.md).
 The original resetting network peer remains unidentified. The controlled TLS
 comparison and successful SDK regressions support the bounded compatibility fix;
 they do not prove packet fragmentation or a particular firewall defect.
@@ -178,7 +180,7 @@ chains and were protected. No VM image or power/compositor setting changed.
 See `lab-storage.md` for capacity gates, current-plus-one-rollback retention,
 restoration and future immutable-base migration.
 
-Committed evidence is under [source108](evidence/live-s3-transport/source108/). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
+Committed evidence is under [source108](../evidence/live-s3-transport/source108). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
 
 
 ## OpenSSL 3.5 handshake compatibility follow-up

@@ -1,10 +1,12 @@
 # UI redesign experiment — issue 40
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [visual-language](../visual-language.md). Do not use it as a work list.
+
 This is the historical 2026-10-15 visual experiment record. The user approved the
 first visual round and expanded testing on 2026-10-16. Current merge-preparation
-source and acceptance are recorded in the [dated acceptance receipt](evidence/2026-10-16-issue40-redesign-acceptance.md).
+source and acceptance are recorded in the [dated acceptance receipt](../evidence/2026-10-16-issue40-redesign-acceptance.md).
 Deferral statements below describe their original checkpoints.
-The subsequent visual-language contract was [Graphite](visual-language.md). Since 2026-10-29 the app style is `putgd::Ui`; the names below are the ones used at the time.
+The subsequent visual-language contract was [Graphite](../visual-language.md). Since 2026-10-29 the app style is `putgd::Ui`; the names below are the ones used at the time.
 
 Baseline: freshly fetched `origin/main` `50fd37c`, branch `codex/ui-redesign-experiment`.
 Source: user-supplied `put.gd-ui-brief.zip` and `BRIEF.md` (2026-10-15).

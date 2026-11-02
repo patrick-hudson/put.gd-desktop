@@ -5,7 +5,7 @@ This record certifies the candidates on `claude/putgd-desktop-issue-50-29bb77`
 review and tray work, and `625b7ff38bb0` (the branch head) for the Wayland
 acquisition paths. The feature is described in
 [recording](../recording.md); the plan is
-[2026-10-17-2230-feat-screen-recording-plan](../plans/2026-10-17-2230-feat-screen-recording-plan.md).
+[2026-10-17-2230-feat-screen-recording-plan](../history/plans/2026-10-17-2230-feat-screen-recording-plan.md).
 
 ## Suites
 

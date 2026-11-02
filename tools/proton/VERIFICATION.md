@@ -225,4 +225,4 @@ All 32 tests / 149 assertions passed; eleven compiled stdio cases exercise long
 budget acceptance and out-of-range rejection without an account; complete
 1,048,337-byte stdout drain passed. Four upstream Crypto/Bun type errors remain;
 no helper/test type diagnostics remain. Live large-file recovery and release
-acceptance are recorded separately in `docs/proton-drive-verification.md`.
+acceptance are recorded separately in `docs/history/proton-drive-verification.md`.

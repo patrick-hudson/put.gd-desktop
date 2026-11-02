@@ -13,8 +13,7 @@ The resident writes JSON Lines files to `$XDG_STATE_HOME/putgd/logs/`, which is
 `QStandardPaths::StateLocation` needs Qt 6.7 and the minimum is 6.4.2, so put.gd
 resolves the path itself. The `putgd` state folder and `logs/` are created owner-only
 (0700) and must be directories owned by the user; each file is created 0600 with
-`O_NOFOLLOW`. Windows builds are not supported yet; the planned location is
-`%LOCALAPPDATA%\putgd\logs\`.
+`O_NOFOLLOW`.
 
 Files are named `putgd-<UTC start, yyyyMMddTHHmmsszzz>Z-<pid>-<sequence>.jsonl`, so
 name order is time order. The resident starts a new file when it starts and when the
@@ -707,7 +706,7 @@ The update check and the B2 worker add that file's certificates to Qt's default 
 worker passes it to the AWS SDK as `caFile`, for uploads and Test connection's link check.
 
 - Verification stays on, and nothing is bundled or added to what the host trusts.
-- A DEB, RPM or Flatpak build never sets the variable, so it uses its distribution's TLS
+- A DEB or RPM build never sets the variable, so it uses its distribution's TLS
   setup unchanged.
 - The Proton Drive helper (Bun) carries its own root certificates and wasn't affected.
 - appimageupdatetool is a separate image with its own copy of libcurl. Its Fedora problem
@@ -723,4 +722,4 @@ same way the notification does.
 ## Not yet available
 
 Wiring the upload into the **Create diagnostics package…** dialog ("Also upload and
-copy a link") is #158; Windows is #125.
+copy a link") is #158.

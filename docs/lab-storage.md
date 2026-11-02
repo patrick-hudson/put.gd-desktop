@@ -99,7 +99,7 @@ Never infer a disk is disposable from its VM name or stopped status. Inventory
 every qcow2 backing chain and live QEMU open disk reference before retiring a
 disk. Current golden images may themselves depend on an older run directory.
 Protect the complete transitive backing graph. Do not boot, edit, move, overwrite
-or delete referenced bases; Linux and Windows immutable-base rules still apply.
+or delete referenced bases; immutable-base rules still apply.
 Guest filesystem deletion can free guest space without reclaiming host qcow2
 allocation. The current Linux drive launch lacks discard forwarding; do not
 attempt live conversion, rebase or base modification to reclaim that allocation.

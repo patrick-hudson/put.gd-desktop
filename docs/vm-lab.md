@@ -64,7 +64,7 @@ validate its recorded backing chain, host process/port absence and new QEMU iden
 then update the live run metadata without overwriting the prior receipt.
 
 The current Linux runner records the golden SHA256 but does not enforce
-Windows-style sealing or verify a sealed manifest before launch. Existing golden
+sealed manifests before launch. Existing golden
 files may still be writable. These workflow restrictions remain mandatory.
 
 The provisioned GNOME/KDE goldens are the standalone images
@@ -257,8 +257,8 @@ private official AWS runtime, dependency lock and licenses. Qt, its platform plu
 QtKeychain and SQLite driver come from normal guest distro packages. Development installs use apt’s `--reinstall` and compare installed application binary
 SHA256 values with the requested package, even when its version is unchanged. The installed
 `putgd` binary resolves private SDK libraries with RPATH; `putgd-launcher` scopes that
-runtime directory for desktop startup. U10 still owns complete release lifecycle,
-checksums and final notice auditing.
+runtime directory for desktop startup. Complete release lifecycle, checksums and
+final notice auditing require the [release runbook](release-runbook.md).
 
 New guest bootstrap installs the root-owned fixed supervisor at
 `/usr/local/lib/putgd-lab/package_install.py`. Every DEB `install` also stages
@@ -733,8 +733,7 @@ python3 tools/lab/lab.py layout --run "$lab_run"
 ## Retire completed overlays
 
 Run lifecycle commands on the actual QEMU host. A sandbox with a filtered process
-view cannot certify that a VM stopped. Linux launch/reset, Windows lifecycle
-operations and overlay cleanup share a host lock. Cleanup also checks actual
+view cannot certify that a VM stopped. Linux launch/reset and overlay cleanup share a host lock. Cleanup also checks actual
 process/open-file identities and QEMU backing chains, identified by their image
 headers rather than filename extensions. It holds a native QEMU image lock
 through final verification and unlink, preventing a competing writer from
@@ -777,7 +776,7 @@ Custom campaigns and reviewed failures need an explicit completion manifest.
 Export all required failure context, source/package identities, parameters,
 results and witnesses first. Keep them private. In that evidence directory save
 `completion.json` containing `run` (absolute run directory), `runId` (Linux state
-`id` or Windows state `run_id`), `completed: true` and `outcome: "passed"` or
+`id`), `completed: true` and `outcome: "passed"` or
 `"failed"`. A separate manifest has `schemaVersion: 1`,
 `kind: "vm-overlay-cleanup-evidence"`, those same four fields, and a `files`
 object mapping relative evidence paths, including `completion.json`, to their
@@ -792,9 +791,7 @@ python3 tools/lab/lab.py cleanup --run "$lab_run" \
   --evidence-manifest "$completion_manifest"
 ```
 
-Windows custom runs use `python3 tools/lab/windows.py cleanup --vm RUN
---evidence-manifest MANIFEST` after shutdown, with the same preview and evidence
-rules. Do not place evidence manifests or private run files in release exports.
+Do not place evidence manifests or private run files in release exports.
 Retirement removes the old guest filesystem permanently; future tests use a
 fresh run directory cloned from the preserved golden.
 
@@ -946,7 +943,7 @@ automatic login in that disposable guest
 so a fresh boot reaches the native desktop.
 
 Aurora (Universal Blue, Fedora Atomic KDE) is an image-based evaluation guest
-for AppImage and Flatpak testing. It needs UEFI firmware, has no package
+for AppImage testing. It needs UEFI firmware, has no package
 manager and uses plasmalogin instead of SDDM. The `aurora-kde-wayland` profile
 sets `"firmware": "uefi"` (the runner adds the host's read-only
 `OVMF_CODE_4M` image and a private per-run copy of `OVMF_VARS_4M`, found under

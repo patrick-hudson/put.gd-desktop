@@ -9,6 +9,8 @@ execution: code
 
 # Qt Screenshot Sharing for Linux - Plan
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [overview](../../overview.md). Do not use it as a work list.
+
 ## Goal Capsule
 
 Objective: A Linux user can capture a screen region, the active window, the full desktop, or clipboard content with a hotkey and paste a working public share link moments later.
@@ -25,7 +27,7 @@ Stop conditions: Do not substitute a different capture target or claim desktop s
 
 ## Acceptance status — 2026-10-13
 
-Use the [current acceptance index](../verification.md#current-acceptance-index--2026-10-13)
+Use the [current acceptance index](../../verification.md#current-acceptance-index--2026-10-13)
 for the latest versioned evidence. Later source114 and current-main checks
 supersede the historical live-S3 blockers recorded in the execution notes below.
 Hosted Linux CI passes; Windows/macOS evidence remains compile-only. Closing
@@ -698,7 +700,7 @@ Implementation checkpoint (2026-10-08): the resident tray and on-demand helper
 are implemented. Dev 41/41 and the 16 affected ASan/UBSan and instrumented-Qt TSan
 contracts pass, as do the Release build and separate MCP suite. The completed
 review's four confirmed defects have caller fixes and regression evidence.
-See [the implementation receipt](../evidence/2026-10-08-ui-process.json).
+See [the implementation receipt](../../evidence/2026-10-08-ui-process.json).
 GNOME ownership and setup-result recovery now have reproduced regressions and
 passing bounded fixes (see the linked follow-up receipts in verification.md).
 The frozen source-41 build now passes the three desktops' native capture/clipboard
@@ -707,7 +709,7 @@ native-dialog and local-work continuity subsets. All three post-use VM memory
 observations are guarded and exported; retain RSS/PSS/private together, especially
 for KDE's shared graphics mappings. Full AE17 and remote-storage cases remain
 open. Physical cold and matched empty-view results are recorded in
-[the current-source evidence](../evidence/2026-10-08-ui-process-native-memory.json).
+[the current-source evidence](../../evidence/2026-10-08-ui-process-native-memory.json).
 All four matched physical runs pass: closed whole-family RSS falls from 65.09
 to 45.04 MiB, with PSS/private savings of 15.00/14.70 MiB. Retain the split for
 that benefit while recording higher open-state PSS and slower Settings reopens.
@@ -761,9 +763,9 @@ Verification: Release evidence records every required profile/case, package inst
 | Live S3 smoke | Explicit synthetic fixture | PUT/ACL, unauthenticated public URL bytes, guarded fixture deletion and recorded effect | General capture correctness or instantaneous cache invalidation |
 
 Implementation checkpoint (2026-10-13): the CMake presets, U6 lab runner and
-native/AppImage release validators now exist. Follow [build](../build.md),
-[VM lab](../vm-lab.md) and [release](../release.md) for their actual commands.
-Tool availability is not acceptance: [verification](../verification.md) records
+native/AppImage release validators now exist. Follow [build](../../build.md),
+[VM lab](../../vm-lab.md) and [release](../../release.md) for their actual commands.
+Tool availability is not acceptance: [verification](../../verification.md) records
 which source/package identities and cases passed, and which U9/U10 gates remain
 open. The requirements below remain the release contract.
 
@@ -829,7 +831,7 @@ Windows/macOS CI proves compilation of shared components only. Physical Cinnamon
 ## Implementation checkpoint: 2026-10-08
 
 This checkpoint records progress without changing the acceptance requirements.
-Detailed evidence and limitations remain in [verification.md](../verification.md).
+Detailed evidence and limitations remain in [verification.md](../../verification.md).
 
 | Work | Implemented and observed | Remaining acceptance |
 | --- | --- | --- |
@@ -843,7 +845,7 @@ pass memory/undefined-behavior checks with leak detection and instrumented-Qt th
 checks. These do not replace real desktop, live publication/deletion, package
 lifecycle, or full U9 walkthrough gates. Structured memory comparisons, including
 the rejected candidate, are retained in
-[the machine-readable record](../evidence/2026-10-08-resident-memory.json).
+[the machine-readable record](../../evidence/2026-10-08-resident-memory.json).
 
 
 The subsequent fresh Cinnamon KVM overlay walkthrough passed normal package
@@ -851,8 +853,8 @@ installation, native region capture, independent Qt/GTK clipboard checks and a
 local official-SDK MCP/CLI parity/configuration recovery subset. A GTK fixture MIME
 negotiation defect was fixed without weakening byte comparisons; its original red
 attempts remain recorded. See
-[the structured receipt](../evidence/2026-10-08-fresh-cinnamon.json) and
-[verification](../verification.md) for parameters, operation IDs and limitations.
+[the structured receipt](../../evidence/2026-10-08-fresh-cinnamon.json) and
+[verification](../../verification.md) for parameters, operation IDs and limitations.
 This advances U6/U9 evidence; it does not close the full desktop matrix, remote S3,
 lifecycle or remaining performance gates.
 
@@ -884,7 +886,7 @@ to 64 MiB, and History retains one bounded selected preview rather than an image
 per row. These checks prove lifetime/admission behavior, not post-use RSS or the
 40 MiB target. Full AE15 scales/states, remote S3 and remaining desktop, lifecycle,
 MCP and performance gates remain open. Exact parameters, hashes and receipts are
-in [the structured record](../evidence/2026-10-08-settings-refinement.json).
+in [the structured record](../../evidence/2026-10-08-settings-refinement.json).
 
 The memory continuation preserves Cinnamon-native fonts and dialogs by explicit
 user choice. The reviewed private CMake S3 module defers mapping the official SDK
@@ -894,13 +896,13 @@ from 56.270 to 51.887 MiB peak RSS, with idle CPU at 0.003331% of one core. The
 into the canonical source; all 26 combined development tests pass. Approximately
 40 MiB and post-S3 memory acceptance remain open. Three empty-view cycles finish
 at 79.551 MiB; populated history and upload costs require separate measurements.
-[The SDK evidence](../evidence/2026-10-08-sdk-memory.json) retains both original and
+[The SDK evidence](../../evidence/2026-10-08-sdk-memory.json) retains both original and
 final comparisons, exact identities, full raw results and the actual review.
 Commands and observation limits are in [testing-memory.md](../testing-memory.md).
 A temporary custom-style probe saved only 0.719 MiB, below the declared threshold;
 keep the custom appearance and pursue larger measured opportunities.
 
-The synthetic post-use allocator probe found 9,547,776 bytes (9.105 MiB) of reclaimable RSS after five desktop/image cycles, with allocated arena bytes unchanged at 3,366,480. Add a bounded idle heap reclamation pass after payloads and operation workers drain, preserve native clipboard ownership and live UI state, and measure repeated-use RSS, idle CPU and next-action latency. This R20 follow-up is separate from the fixed cold-idle optimization metric: it cannot establish the 40 MiB target. [Protocol, complete sanitized raw results and temporary probe source](../evidence/2026-10-08-payload-allocator.json) are retained for replay.
+The synthetic post-use allocator probe found 9,547,776 bytes (9.105 MiB) of reclaimable RSS after five desktop/image cycles, with allocated arena bytes unchanged at 3,366,480. Add a bounded idle heap reclamation pass after payloads and operation workers drain, preserve native clipboard ownership and live UI state, and measure repeated-use RSS, idle CPU and next-action latency. This R20 follow-up is separate from the fixed cold-idle optimization metric: it cannot establish the 40 MiB target. [Protocol, complete sanitized raw results and temporary probe source](../../evidence/2026-10-08-payload-allocator.json) are retained for replay.
 
 ### R1/R20 implementation checkpoint (2026-10-08)
 
@@ -908,7 +910,7 @@ Live transparent region selection is implemented across the adapter paths. Nativ
 Cinnamon evidence verifies a changing background, normal and rapid-release pixels
 without the outline, independent Qt paste, and Escape/right-click cancellation.
 New GNOME/KDE graphical and mixed-display evidence remains required.
-[The bounded record](../evidence/2026-10-08-live-region.json) preserves the exact
+[The bounded record](../../evidence/2026-10-08-live-region.json) preserves the exact
 source, binary, protocol and sanitizer identities.
 
 Production glibc cleanup runs once after accepted capture/clipboard work and local
@@ -917,7 +919,7 @@ capture/image cycles finished at 66.473 MiB, compared with 75.648 MiB in the ear
 attribution build; the maximum observed allocator call was 750 microseconds.
 Final coherent development contracts passed 25/25 and affected memory/thread
 checks passed. This is separate from cold idle and post-S3 memory acceptance.
-[Cleanup evidence](../evidence/2026-10-08-heap-reclaim.json) and
+[Cleanup evidence](../../evidence/2026-10-08-heap-reclaim.json) and
 [replay instructions](../testing-memory.md) retain exact parameters and structured
 results. Keep approximately 40 MiB, populated-history/upload memory, next-action
 latency and the remaining desktop/release gates open until measured.
@@ -946,7 +948,7 @@ comparison measured 46.020 MiB versus 52.012 MiB for the retained reference
 observed. The earlier 45.625 MiB sample predates the disconnect fix and is retained
 separately. Combined integration passed 28 development and four affected Release contracts;
 the committed whole app measured 46.188 MiB over another five minutes. Keep 40 MiB and
-post-upload memory acceptance open. [Raw results and commands](../evidence/2026-10-08-local-ipc.json)
+post-upload memory acceptance open. [Raw results and commands](../../evidence/2026-10-08-local-ipc.json)
 record the baselines, fix, review receipts and all comparisons.
 
 ### Journal latency follow-up (2026-10-08)
@@ -962,7 +964,7 @@ initialization intervals overlapped the previous cancellation commit; the trace
 has not split permissions, foreign-key setup and schema-version reads. Repeated
 query preparation is present, but is not established as the cause of that wait.
 Retain separate tests for populated history and capture/cancellation journaling.
-[Source identities, parameters and complete traces](../evidence/2026-10-08-region-latency-raw/manifest.json)
+[Source identities, parameters and complete traces](../../evidence/2026-10-08-region-latency-raw/manifest.json)
 remain available for replay; the timing gate remains open.
 
 The standalone rollback/FULL probe completed twelve fresh-process cases with two
@@ -973,8 +975,8 @@ dominated the synthetic timings. This does not identify every waiting call in
 the actual product. No product SQLite change was made from this probe, and the
 150 ms gate remains unpassed. The controlled reader's `beginNs` is overwritten
 by its later write, so absolute reader start is unavailable; phase durations and
-writer timestamps remain usable. [Evidence](../evidence/2026-10-08-sqlite-locating.json)
-and [the bounded report/replay](../evidence/2026-10-08-sqlite-locating-raw/report.md)
+writer timestamps remain usable. [Evidence](../../evidence/2026-10-08-sqlite-locating.json)
+and [the bounded report/replay](../../evidence/2026-10-08-sqlite-locating-raw/report.md)
 preserve all samples and source/build/library identities, without databases or
 payload bytes. Synthetic cache RSS findings do not establish product memory
 savings or populated-history/recovery/concurrency acceptance; no WAL case ran.
@@ -986,7 +988,7 @@ successful recovery. The unchanged five-minute physical comparison fell from
 threshold. Native Cinnamon fonts/dialogs remain enabled; no dependency was added.
 Three native empty-view cycles reopened Settings, History and Activity, ending
 at 73.8242 MiB after hiding them. Track that post-use retention separately from
-cold idle. [The evidence](../evidence/2026-10-08-startup-reclaim.json) retains the
+cold idle. [The evidence](../../evidence/2026-10-08-startup-reclaim.json) retains the
 test-first regressions, source review, frozen commands and complete measurements.
 The 40 MiB target remains open. Further work needs an attributed source of savings
 outside the once-only startup request; repeated trimming is not this experiment.
@@ -1024,11 +1026,11 @@ from that snapshot. Refresh the test wave on current source, record every blocke
 profile, and keep cold/post-view/post-action memory distinct. Stop superseded
 VMs after copying needed packages and evidence; retain necessary SDK/build caches
 powered off and never remove a referenced golden disk. [Replay and workflow](../testing-vm-memory-audit.md)
-and [the original audit](../evidence/2026-10-08-vm-memory-audit.json) capture the
+and [the original audit](../../evidence/2026-10-08-vm-memory-audit.json) capture the
 reason for this requirement. The 40 MiB target and outstanding desktop/release
 acceptance gates remain open until their own evidence passes.
 
-Execution evidence: [the current-source matrix](../evidence/2026-10-08-current-desktop-matrix.json)
+Execution evidence: [the current-source matrix](../../evidence/2026-10-08-current-desktop-matrix.json)
 now records 12 passing native cases per profile, repeated Settings/History/Activity
 opens, GNOME's additional live-background region proof, and new 28/28 Dev suites
 on GNOME/KDE. Cinnamon reused the unchanged product's earlier full Dev/sanitizer
@@ -1107,7 +1109,7 @@ actionable findings. These are headless/scoped checks: frozen current-source
 Cinnamon/GNOME/KDE views, normal close/reopen, independent Copy result paste and
 small-window inspection remain required before visual acceptance. ASan/UBSan and
 native replay outcomes will be recorded separately; prior witnesses are not
-relabelled. See [the refinement checkpoint](../evidence/2026-10-08-ui-refinement.json).
+relabelled. See [the refinement checkpoint](../../evidence/2026-10-08-ui-refinement.json).
 
 Source `f56dc72` (version `0.1.1-dev.43+gf56dc72de4fe`) freezes the view
 refinement. The affected ASan/UBSan GUI suite passes 3/3. All three previous lab
@@ -1125,7 +1127,7 @@ harness and reject changes that merely report readiness earlier.
 
 
 Startup attribution follow-up: the complete diagnostic replay material is exported
-in [view-startup attribution](../evidence/2026-10-08-view-startup-attribution.json)
+in [view-startup attribution](../../evidence/2026-10-08-view-startup-attribution.json)
 and [the replay guide](../testing-view-startup.md). Hidden advanced page construction
 and show-phase Polish account for about 41–44 ms on two reopens. One isolated lazy
 page experiment is underway; no latency improvement or 200 ms achievement is
@@ -1141,7 +1143,7 @@ Tab/Shift-Tab traversal, visible trays and normal Settings/History/Activity help
 exit. Two alternating physical runs per build measured 332.50 ms for clean45 and
 295.43 ms for the trial: 37.07 ms faster, below the approved >40 ms keep threshold.
 Both original-source and matched-source decisions are inconclusive. Preserve the
-experiment and its [confirmation evidence](../evidence/2026-10-09-lazy-settings-confirmation.json);
+experiment and its [confirmation evidence](../../evidence/2026-10-09-lazy-settings-confirmation.json);
 do not integrate it or claim the ~200 ms target. The product retains source45's
 reviewed tray correction and source43's independent UI improvements.
 
@@ -1164,12 +1166,12 @@ cross-desktop acceptance still requires their current-version evidence.
 The fresh source45 five-minute physical cold reference is 45.414 MiB RSS,
 25.506 MiB PSS and 23.066 MiB private, with 0.0033% of one CPU core and no
 activation or operations. It passes the original idle budget, but exceeds the
-40 MiB target. See [cold-reference evidence](../evidence/2026-10-09-cold-reference45.json).
+40 MiB target. See [cold-reference evidence](../../evidence/2026-10-09-cold-reference45.json).
 Cinnamon-only initialization locators measured about 11.34 MiB settled RSS for
 QCoreApplication plus a session-bus connection, 37.32 MiB for QGuiApplication
 and 40.04 MiB for QApplication. These small programs implement no tray, capture
 or operation service; their difference identifies a promising boundary and is
-not a product saving. See [initialization evidence](../evidence/2026-10-09-native-initialization.json).
+not a product saving. See [initialization evidence](../../evidence/2026-10-09-native-initialization.json).
 
 The next memory investigation targets the basic listener and tray, deferring
 graphical initialization until work needs it. Existing native Unix resident IPC
@@ -1298,7 +1300,7 @@ process absence. It adds private bounded call-location diagnostics and a
 committed standard-Python stress recipe. The follow-up's 18 contracts and
 20-cohort/8,000-child stress passed; these are collector checks, not source52
 collector evidence or the memory target.
-[Evidence and limits](../evidence/2026-10-09-cold-family-metadata-race.json).
+[Evidence and limits](../../evidence/2026-10-09-cold-family-metadata-race.json).
 
 Keep the next clean version's Cinnamon functional, timing, two cold and two
 closed-view gates ahead of GNOME/KDE runtime expansion. GNOME/KDE memory work
@@ -1361,7 +1363,7 @@ KDE, compared with 28.520/18.383 MiB Cinnamon. Their graphical fallback is uncha
 a Wayland 40 MiB RSS result remains unachieved. These VM observations are separate
 from the physical target and have no matched old-guest baseline. See
 [native-listener replay](../testing-native-listener.md) and
-[structured evidence](../evidence/2026-10-09-native-listener.json). Retain this
+[structured evidence](../../evidence/2026-10-09-native-listener.json). Retain this
 memory result while fixing capture responsiveness; do not weaken its timing gate
 or infer a Wayland 40 MiB win from Cinnamon.
 
@@ -1409,7 +1411,7 @@ verified; all three view-helper generations exited normally. This one-pair
 regression confirms preservation of the already passing Cinnamon implementation.
 GNOME memory is still unmeasured, and review found a GNOME Qt-argument routing
 regression that must be corrected before retaining its candidate. See the
-[bounded regression record](../evidence/2026-10-10-gnome-candidate-cinnamon-regression.json).
+[bounded regression record](../../evidence/2026-10-10-gnome-candidate-cinnamon-regression.json).
 
 Live S3 provider testing now passes against the isolated synthetic root object:
 upload, unsigned public URL byte comparison and guarded deletion succeeded.
@@ -1425,7 +1427,7 @@ and the owned test fixture was stopped. A single post-cloud diagnostic measured
 memory remains an open gate. The test resident then exited normally, with its
 exact process generation and session socket absent. Credentials remained local
 and session-only throughout; no memory-zeroization claim is made. Follow
-[the repeatable live S3 procedure](../testing-live-s3.md) with fresh synthetic IDs.
+[the repeatable live S3 procedure](../../testing-live-s3.md) with fresh synthetic IDs.
 
 
 ### Current GNOME boundary checkpoint (2026-10-10)
@@ -1593,7 +1595,7 @@ or rewrite package dependencies. The source63 GNOME host-package reuse attempt
 was rejected after an actual dependency check; its normal guest build is running. Remote S3/history and full U9
 acceptance remain pending; local memory results do not satisfy those gates.
 The content-free samples and reproducible checks are recorded in
-[the source63 evidence](../evidence/kde-source63/reproduction.md).
+[the source63 evidence](../../evidence/kde-source63/reproduction.md).
 
 ### Current GNOME regression checkpoint — 2026-10-11
 
@@ -1605,7 +1607,7 @@ notification setting; Reload matched the saved document and revisions; the final
 restore returned the entire original configuration. These checks do not establish
 the remaining focused History/Activity/live-selection gates or GNOME memory
 acceptance. Preserve the passing KDE and Cinnamon checkpoints while completing
-those gates. Portable metadata is in [the source63 evidence](../evidence/kde-source63/reproduction.md)
+those gates. Portable metadata is in [the source63 evidence](../../evidence/kde-source63/reproduction.md)
 and `../evidence/kde-source63/gnome-guest-build-a1.json`, `gnome-native12-a1.json`
 and `gnome-settings-a1.json`. No payload or raw configuration is included.
 
@@ -1618,7 +1620,7 @@ original configuration restored. Activity parent/item copy, live selection/curso
 final local packet and two post-use plus one fresh-cold300-second GNOME memory
 windows remain required. An additional30 minutes was requested but not approved;
 do not treat this checkpoint as full regression or memory acceptance. See
-[the partial GNOME checkpoint](../evidence/kde-source63/gnome-focused-checkpoint-a1.json).
+[the partial GNOME checkpoint](../../evidence/kde-source63/gnome-focused-checkpoint-a1.json).
 
 
 ### Confirmed source63 local memory checkpoint — 2026-10-11
@@ -1649,8 +1651,8 @@ their failed attempts and deadline history. Real current guest S3/remote History
 copy/deletion and post-S3 memory, full U9 and a fresh-agent walkthrough remain
 release gates. Continue the existing UI/product plan after that acceptance work;
 no new optimization candidate is authorized by this checkpoint. See
-[the memory report](../evidence/kde-source63/memory-summary.md) and
-[reproducible recorded-sample checks](../evidence/kde-source63/reproduction.md).
+[the memory report](../../evidence/kde-source63/memory-summary.md) and
+[reproducible recorded-sample checks](../../evidence/kde-source63/reproduction.md).
 
 
 ### Cumulative review and strategy publication — 2026-10-11
@@ -1662,7 +1664,7 @@ in this report-only round. Preserve the local memory keeper and its source63
 measurements; passing RSS does not close correctness or release gates.
 
 [The review](../reviews/2026-10-11-cumulative-review.md) records exact locations,
-preconditions, proposed fixes and validation limits. [The strategy](../memory-strategy.md)
+preconditions, proposed fixes and validation limits. [The strategy](../../memory-strategy.md)
 documents the resident/helper boundaries, native clipboard lifetimes, decoder
 loading, cumulative allocation policy and reproducible acceptance sequence.
 Publish this checkpoint as a draft PR; current guest live-S3/remote History,
