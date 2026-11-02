@@ -1,5 +1,7 @@
 # Proton Drive: evidence and release gates
 
+> **Historical record.** This is a dated audit of a shipping integration, kept for its source-specific decisions and receipts. Use the current [Proton Drive guide](../proton-drive.md), [release gates](../proton-drive.md#release-gates) and [maintenance procedure](../proton-drive.md#maintenance-procedure) for ongoing work.
+
 Reconciled: 2026-10-15. Initial audit source: main
 `50fd37cafafcc4611925642b93dccb9d9f0949ab`. Subsequent tested candidates
 are identified with their individual receipts below.
@@ -29,11 +31,11 @@ create-only writes, fresh ownership checks and explicit recovery contracts.
 ## Evidence reconciliation
 
 These rows credit only their recorded source and workload. The initial audit read
-sources and existing records only. The subsequent [P1 campaign](evidence/2026-10-15-proton-p1-recovery.md)
+sources and existing records only. The subsequent [P1 campaign](../evidence/2026-10-15-proton-p1-recovery.md)
 built and tested its fingerprinted candidate and exercised an isolated account
-folder. The [normal-use application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md)
+folder. The [normal-use application follow-up](../evidence/2026-10-15-proton-p1-app-recovery.md)
 adds Cinnamon recovery and post-use idle evidence. The later
-[P2 resource campaign](evidence/2026-10-15-proton-p2-resources.md) measures active
+[P2 resource campaign](../evidence/2026-10-15-proton-p2-resources.md) measures active
 SDK process families and rejects a memory experiment. None certifies final main.
 
 | Scope | Evidence credited | Remaining limit |
@@ -41,14 +43,14 @@ SDK process families and rejects a memory experiment. None certifies final main.
 | Provider integration and shared pipeline | Merged [PR #25](https://github.com/patrick-hudson/put.gd-desktop/pull/25), head `39d8d3ec1a303123e8384f1ec1181518b83d2037`; [integration checkpoints](proton-drive-verification.md) record S3/local regressions, configuration, receipts, history and sharing recovery | PR description's draft/pending language describes an earlier checkpoint; merge is confirmed. It is not blanket service acceptance. |
 | Automated checks | Integration checkpoints record full 59/59 dev-preset runs; final large-file helper follow-up records 32 tests / 149 assertions and compiled stdio checks | Full TypeScript checking still reports four upstream Crypto/Bun declaration errors. No claim of a clean type-check or a new test run on main. |
 | Authenticated local uploads | Integration checkpoints record private/share probes, real SDK progress and own-link creation/revocation. Large-file recovery at `c758b4d` completed 2,851,612,672 source bytes through explicit same-operation retry | This proves the recorded local recovery, not anonymous download or all service failures. Older unknown drafts were preserved. |
-| Recipient download, password and expiration | Fresh [P1 recipient receipt](evidence/2026-10-15-proton-p1-recovery.md): unsigned-in public/protected downloads matched source hashes, password cases passed; shortened live expiry and revocation blocked access | The historical receipt was not recoverable. This is new service evidence, not final packaged/native acceptance. |
+| Recipient download, password and expiration | Fresh [P1 recipient receipt](../evidence/2026-10-15-proton-p1-recovery.md): unsigned-in public/protected downloads matched source hashes, password cases passed; shortened live expiry and revocation blocked access | The historical receipt was not recoverable. This is new service evidence, not final packaged/native acceptance. |
 | Live native S3 and Proton tray/clipboard workflows | Merged [PR #30](https://github.com/patrick-hudson/put.gd-desktop/pull/30) records source `9f186e9dff667a9f550b3db4c89e8a042dfbc9a3`, tree `5dad7cfb2b59bb22bf22e7a97a166be60c9f62aa`, count 169: Cinnamon first, then GNOME/KDE; queue/concurrent admission, cancellation/retry, exact link paste, local recovery, restart and tray-host recovery | Credited from the PR acceptance record, not a new raw-artifact replay. Proton recipient decrypted download and active-helper memory were outside that campaign. Same-account helpers serialize. |
 | Cold/resident memory | PR #30 records two five-minute physical whole-family cold peaks of 25.09/25.18 MiB and VM resident observations of 25.53 MiB Cinnamon, 27.46 MiB GNOME and 29.06 MiB KDE | VM samples exclude the compositor and do not measure authenticated active-helper memory. The cold target is not an active-upload budget. |
-| Later shared tray changes | [Issue #33 native receipt](evidence/2026-10-14-storage-tray-native.md), source `061c2d9c569dc10b5c8681a7ad7beb3093e61b80`: three-desktop rendered states and two post-use memory windows passed | Uses a synthetic offline S3 wire oracle, not a live Proton account. Do not substitute it for the earlier live Proton campaign. |
-| Later settings changes | [Issue #37 record](evidence/2026-10-14-settings-drafts.md), final tested candidate `337773f4d5cef719b3f54d59bdb336ba3121f453`: Cinnamon graphical/memory passed; KDE 59/59 and GNOME 60/60 development suites passed | Final host suite was 58/59 before a passing tmpfs retry. KDE graphical work stopped after a cancellation timeout; remaining KDE/GNOME graphical/memory work was not completed. Current-main three-desktop acceptance remains open. |
+| Later shared tray changes | [Issue #33 native receipt](../evidence/2026-10-14-storage-tray-native.md), source `061c2d9c569dc10b5c8681a7ad7beb3093e61b80`: three-desktop rendered states and two post-use memory windows passed | Uses a synthetic offline S3 wire oracle, not a live Proton account. Do not substitute it for the earlier live Proton campaign. |
+| Later settings changes | [Issue #37 record](../evidence/2026-10-14-settings-drafts.md), final tested candidate `337773f4d5cef719b3f54d59bdb336ba3121f453`: Cinnamon graphical/memory passed; KDE 59/59 and GNOME 60/60 development suites passed | Final host suite was 58/59 before a passing tmpfs retry. KDE graphical work stopped after a cancellation timeout; remaining KDE/GNOME graphical/memory work was not completed. Current-main three-desktop acceptance remains open. |
 | Bundling and package integrity | Integration checkpoints record repeated offline helper builds, stale-source rejection, installed runtime/manifest/notices checks. PR #30 records an ordinary distribution DEB audit | Historical artifact evidence only. The final P4/P6 receipt below supersedes the former shipping-pipeline, notices and format gaps for its recorded candidate. |
-| Authentication isolation and disposable lab setup | [Supported setup](proton-drive.md), [native replay](testing-tray-progress.md) and PR #30 describe the private keychain bridge, serialized refreshed-state handoff and removal of copied guest entries | This does not establish expired/revoked session acceptance. Never revoke a copied shared session to manufacture a disposable-session failure. |
-| Final experimental Proton candidate | [P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md), clean `a5112bc`: four audited artifacts, source export/rebuild, Cinnamon-first then GNOME/KDE native checks, Fedora/AppImage smoke checks, anonymous download and secure session cleanup | Bounded VM workload; P1 controlled-only cases and four upstream type diagnostics remain disclosed. Merge local work before closing #10; wider application certification remains separate. |
+| Authentication isolation and disposable lab setup | [Supported setup](../proton-drive.md), [native replay](../testing-tray-progress.md) and PR #30 describe the private keychain bridge, serialized refreshed-state handoff and removal of copied guest entries | This does not establish expired/revoked session acceptance. Never revoke a copied shared session to manufacture a disposable-session failure. |
+| Final experimental Proton candidate | [P4/P6 receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md), clean `a5112bc`: four audited artifacts, source export/rebuild, Cinnamon-first then GNOME/KDE native checks, Fedora/AppImage smoke checks, anonymous download and secure session cleanup | Bounded VM workload; P1 controlled-only cases and four upstream type diagnostics remain disclosed. Merge local work before closing #10; wider application certification remains separate. |
 
 The historical pending statements in the integration/helper records retain their
 original meaning. PR #30 supersedes their initial pending tray/compositor/setup
@@ -61,7 +63,7 @@ checks for its exact artifacts and bounded workload.
 
 P1 is complete for its recorded owned-folder and bounded-response scope.
 P2 is complete for its recorded Cinnamon resource workload. P3 notice/source/rebuild
-work is complete. The [final shipping/package receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) completes P4 and
+work is complete. The [final shipping/package receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) completes P4 and
 P6 for clean candidate `a5112bc`; P5 credits the actual maintenance transition.
 These are source-specific feature results, not current-main or whole-application
 release certification.
@@ -96,14 +98,14 @@ capability URLs, passwords, tokens and account identities. If it cannot be
 recovered, perform a bounded synthetic repeat during final acceptance rather
 than inventing a receipt. The historical issue checkbox remains issue-reported; the new repeat is independently documented below.
 
-P1 progress on 2026-10-15: [fresh service and recipient evidence](evidence/2026-10-15-proton-p1-recovery.md)
+P1 progress on 2026-10-15: [fresh service and recipient evidence](../evidence/2026-10-15-proton-p1-recovery.md)
 now covers recipient hashes/protection/expiry/revocation, access refresh, isolated
 session revocation, cancellation/reconciliation/retry, changed revisions, a real
 quota rejection and an anonymous viewer write denial. Actual SDK Retry-After
 timing/cancellation is tested; ten bounded wrong-password attempts produced no 429.
 Fixed swallowed service guidance, revoked-refresh reconnect guidance and an
 interrupted-journal copy status that stayed pending. The
-[application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md) completes
+[application follow-up](../evidence/2026-10-15-proton-p1-app-recovery.md) completes
 normal-use folder-unavailable, crash/restart, real deadline/partial-result and
 missing-account-access recovery with native clipboard checks. Retries preserved
 identities and confirmed receipts; a scoped SDK listing found ten confirmed nodes
@@ -135,7 +137,7 @@ hard total active-memory ceiling, given the SDK/runtime behavior. The pre-run
 gate. Freeze the authenticated workload, record its cost and preserve the
 separate 40 MiB post-use idle, CPU, swap and helper-lifetime gates.
 
-The [P2 receipt](evidence/2026-10-15-proton-p2-resources.md) records clean Release
+The [P2 receipt](../evidence/2026-10-15-proton-p2-resources.md) records clean Release
 baseline `e558436e30c96d0e68fea14d9429e5ed2b811eaf` in visible Cinnamon/X11:
 account inspection, small/large upload/share, cancellation after actual bytes,
 original-operation retry and three repeated cycles passed with native paste.
@@ -155,9 +157,9 @@ Current packaged cross-desktop evidence remains P6.
 
 ### P3 — Redistribution and rebuild materials (complete)
 
-The [initial audit](evidence/2026-10-15-proton-p3-redistribution.md) and
-[materials receipt](evidence/2026-10-15-proton-p3-materials.md) remain historical
-records. The [rebuild follow-up](evidence/2026-10-15-proton-p3-rebuild.md) completes
+The [initial audit](../evidence/2026-10-15-proton-p3-redistribution.md) and
+[materials receipt](../evidence/2026-10-15-proton-p3-materials.md) remain historical
+records. The [rebuild follow-up](../evidence/2026-10-15-proton-p3-rebuild.md) completes
 the remaining native compiler/relink proof using the user-approved disposable
 toolchain exception. P3 is complete for notices, source materials and executable
 rebuild proof. Public delivery and actual package inclusion remain P4/P6.
@@ -176,7 +178,7 @@ preserves the conservative source superset, now supplemented with 77 original
 legal files from pinned Rust standard-library preferred source and its vendor
 inputs. This is not an exact linked ELF notice inventory. Six source/build-input
 assets are catalogued with exact hashes in
-[tools/proton/notices/SOURCES.json](../tools/proton/notices/SOURCES.json).
+[tools/proton/notices/SOURCES.json](../../tools/proton/notices/SOURCES.json).
 The new supplement corrects the original native preflight and Argon replay route;
 the original sealed source packets and receipts remain unchanged.
 
@@ -193,7 +195,7 @@ claimed. These marked proof executables are not production replacements.
 The official helper was reprovisioned offline and retains its exact fingerprint.
 Actual Proton install-rule fixtures verify delivery and tamper checks for all
 twelve redistribution files; they do not establish final package acceptance.
-The subsequent [P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) records public delivery of all six sealed
+The subsequent [P4/P6 receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) records public delivery of all six sealed
 packets through two hashed transport parts, the complete application source
 export/rebuild, and actual package/live/resource/graphical checks. The original
 P3 install-rule fixtures alone did not prove those later results. No S3 operation
@@ -260,8 +262,8 @@ or a bounded documented disposition. Do not call the full type-check passing.
 Build and install actual shipping packages. Preserve source/package/binary
 hashes, supported-version evidence, and visible native functional/memory results
 on Cinnamon/X11 first, followed by GNOME/Wayland and KDE/Wayland. Observe the
-remaining general release requirements in [release.md](release.md) and
-[verification.md](verification.md); this feature audit does not close them.
+remaining general release requirements in [release.md](../release.md) and
+[verification.md](../verification.md); this feature audit does not close them.
 
 ## Maintenance procedure
 
@@ -296,7 +298,7 @@ remaining general release requirements in [release.md](release.md) and
 
 ## Issue closure and next work
 
-The [final receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) completes the feature-specific P4/P6 checks at
+The [final receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) completes the feature-specific P4/P6 checks at
 `a5112bc` and credits P5 using the completed Crypto source transition. It retains
 failed attempts, the Fedora dependency and GNOME MIME fixes, actual package
 hashes, source delivery/rebuild, native functional/resource evidence and secure

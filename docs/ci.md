@@ -71,7 +71,7 @@ every hosted Python suite once through `tools/ci/contracts.py`:
 - `lab`: every `tests/desktop/test_*.py`, `tests/maintenance` and the UI-process
   benchmark contract. QEMU disk utilities are installed so overlay tests run.
 - `observer`: the cold-family observer suite inside an owned, 45-second subtree.
-- `evidence`: the saved source114 live-S3 numeric replay, which is historical
+- `evidence`: the saved historical live-S3 numeric replay, which is historical
   validation rather than a fresh cloud or desktop run.
 
 Each group writes a JSON report and log to the `contracts` artifact. A failing
@@ -232,7 +232,7 @@ usual acceptance like any other change.
 | MCP helper | `tools/mcp/pyproject.toml` | PyPI | one group |
 
 ICU is the build that ships inside Qt's binaries, so it moves with Qt and is not
-watched by itself. The flatpak manifest is a research spike and not watched.
+watched by itself. The unsupported sandbox manifest was a research spike and is not watched.
 
 **Versions only, then a refresh.** Renovate changes the version fields. Its
 post-upgrade task, `tools/maintenance/refresh_pins.py`, then re-derives
@@ -318,9 +318,9 @@ tag) and `prerelease: true`.
   catches up on its schedule, or when its deploy workflow is run by hand:
   `gh workflow run deploy.yml -R patrick-hudson/put.gd-site`.
 
-`release.yml` only stages drafts and sends nothing. A candidate or stable release
+`release.yml` only stages drafts and sends nothing. A stable draft
 is published by hand with `publish.py --publish`, which sends the same event with
-the operator's own `gh` login (see [releases](release.md#candidate-and-stable)).
+the operator's own `gh` login (see [releases](release.md#stable)).
 `tests/ci/test_release_channels.py` pins the nightly step and forbids every other
 `/dispatches` call in the workflows: workflows never start one another.
 
@@ -419,7 +419,7 @@ reads the newest one on a ref. Three rules keep the total bounded:
   eviction. `--dry-run` lists the deletions without making them. The job is not
   in the required `CI` summary.
 
-Historical budget per job, measured 2026-10-19 (before Windows CI was removed;
+Historical budget per job, measured 2026-10-19 (before non-Linux CI was removed;
 compressed archive sizes; the ceiling is
 `CCACHE_MAXSIZE`, which bounds what a working set can grow to):
 
@@ -429,7 +429,7 @@ compressed archive sizes; the ceiling is
 | `ccache-linux-26.04-*` | `nightly` push | 1 | 435 MB | 1 GB |
 | `ccache-clang-asan-26.04-*` | `nightly` push | 1 | 102 MB | 400 MB |
 | `qt-asan-core-26.04-*` | first miss on a ref | 1 per ref | 31 MB | recipe-bound |
-| `install-qt-action-*` (Windows, AppImage) | first miss | 1 each | 650 MB | Qt version |
+| `install-qt-action-*` (AppImage and retired platform jobs) | first miss | 1 each | 650 MB | Qt version |
 | `putgd-sdk-v1-*` (9 environments) | first miss on a ref | 1 per environment | about 60 MB | dependency lock |
 | `ctest-cost-linux-*` | every non-fork run | 1 per ref | under 2 kB | |
 | `grype-db-v6-<sha256>` ([vulnerability database](release.md#sboms-and-vulnerability-scans)) | first `sbom` job to see a new database, per ref | 1 per ref | about 195 MB | one database |
@@ -471,7 +471,7 @@ No invalid or redundant test was established in the audit. Long waits protect
 real contracts: worker ownership beyond its old 30-second idle expiry, the
 15-second client/CLI deadline, incomplete IPC frame disconnection, allocator
 cleanup admission, cancellation and subprocess reaping. CLI, client, provider
-and SDK-worker checks cover different failure boundaries. Full source114 KDE
+and SDK-worker checks cover different failure boundaries. The historical KDE
 CTest evidence totaled 363.86s; 27 sub-second tests contributed only 6.52s,
 while 14 tests over ten seconds contributed 271.86s.
 
@@ -971,7 +971,7 @@ authenticated packaged desktop and resource acceptance.
 ## Rollout measurements (October 2026)
 
 Historical hosted runs from the first day of the redesigned pipeline, before
-Windows support was dropped on 2026-10-31. "Cold" means the
+non-Linux support was dropped on 2026-10-31. "Cold" means the
 cache keys had just changed; "warm" restored the caches the `nightly` push run
 saved. Wall time runs from the trigger to the last job.
 
@@ -996,7 +996,7 @@ under 90 seconds; see [hosted CTest schedule](#hosted-ctest-schedule).
 | CTest (67 tests) | 5:06 | 5:02 |
 | SDK provisioning | 2:48 | skipped |
 
-Windows dropped from 7:42 cold to 3:21 warm. The published nightly spent 2:20
+The retired platform job fell from 7:42 cold to 3:21 warm in that historical run. The published nightly spent 2:20
 collecting and 3:13 publishing after its builds. The unchanged-source nightly
 ran only `plan` and skipped every other job.
 
@@ -1026,7 +1026,6 @@ exact SDK prefix on every platform. One matched cold/warm pair, in seconds:
 | --- | ---: | ---: |
 | Ubuntu 24.04 | 861 | 633 |
 | Ubuntu 26.04 | 918 | 766 |
-| Windows 2022 | 426 | 334 |
 | macOS 14 | 344 | 261 |
 
 Warm Linux CTest times were 159.22 and 173.27 seconds. Earlier run 38201680155

@@ -1,8 +1,10 @@
 # Physical memory measurements
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+
 Use the production Release build and dynamically linked distribution Qt described
-in [build.md](build.md). The separate instrumented dependencies in
-[thread-sanitizer.md](thread-sanitizer.md) establish thread-checking evidence;
+in [build.md](../build.md). The separate instrumented dependencies in
+[thread-sanitizer.md](../thread-sanitizer.md) establish thread-checking evidence;
 their memory footprint is not a production baseline. These commands require the
 actual physical Cinnamon X11 session, Linux `/proc`, Python 3, `systemd-detect-virt`,
 `xprop` and `xwininfo`; the view diagnostic also uses `wmctrl`.
@@ -25,7 +27,7 @@ python3 tests/performance/observe_idle.py \
 ```
 
 `observe_idle.py` launches the unchanged
-[`bench_idle.py`](../tests/performance/bench_idle.py), with the same arguments,
+[`bench_idle.py`](../../tests/performance/bench_idle.py), with the same arguments,
 warmup and sampling. The frozen harness creates a private validated local-only
 configuration with no profiles, disabled shortcuts, notifications and login
 startup. It records RSS from `/proc/<pid>/statm`, resident CPU ticks over elapsed
@@ -85,13 +87,13 @@ acceptance, or the approximately 40 MiB gate.
 
 ## Retained continuation evidence
 
-[The continuation attribution export](evidence/2026-10-08-memory-continuation-attribution.json)
+[The continuation attribution export](../evidence/2026-10-08-memory-continuation-attribution.json)
 contains the source journal hash, protocol, measurement hashes, all failed
 attempts, sample summaries and a manifest of complete sanitized raw result and
 partial-progress JSON under `evidence/2026-10-08-memory-continuation-raw/`.
 The earlier comparison remains in
-[the resident-memory record](evidence/2026-10-08-resident-memory.json), with its
-[review receipt](evidence/2026-10-08-memory-review.json).
+[the resident-memory record](../evidence/2026-10-08-resident-memory.json), with its
+[review receipt](../evidence/2026-10-08-memory-review.json).
 
 The completed reference at revision `1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827`
 used frozen harness SHA256
@@ -139,7 +141,7 @@ review-fixed candidate completed the same observer workload at 54,407,168 bytes
 operations. The reduction from the repeat reference is 7.789%. The actual decision
 script retained it on the optimization branch at `cadd9ed`; canonical integration
 passes all 26 development tests. The original 51.996 MiB candidate sample remains
-in [the SDK memory record](evidence/2026-10-08-sdk-memory.json), alongside the final
+in [the SDK memory record](../evidence/2026-10-08-sdk-memory.json), alongside the final
 source, review, binary identities and comparison. Native Cinnamon fonts and dialogs
 were retained. The approximately 40 MiB target remains open. The module is pinned
 after first use, so cold savings do not establish post-S3 savings.
@@ -159,7 +161,7 @@ the legacy 300-second gate and are not performance acceptance.
 
 ## Synthetic post-use allocator attribution
 
-[The payload allocator record](evidence/2026-10-08-payload-allocator.json) retains
+[The payload allocator record](../evidence/2026-10-08-payload-allocator.json) retains
 the exact protocol, ten operation IDs, binary/source fingerprints, native package
 versions, complete sanitized results, controller and temporary source patch. Five
 1280×800 desktop captures paired with 96×64 synthetic clipboard images reached
@@ -184,7 +186,7 @@ live widgets, native fonts/dialogs and clipboard ownership remain intact. Other
 allocators report reclamation unsupported. See `diagnostics.memory` in the CLI
 reference; its count records attempts, which may reclaim no pages.
 
-[The production record](evidence/2026-10-08-heap-reclaim.json) includes a replayable
+[The production record](../evidence/2026-10-08-heap-reclaim.json) includes a replayable
 five-cycle local capture/clipboard test, source and binary identities, all ten
 operation IDs and complete sanitized process samples. Final drained RSS was
 69,701,632 bytes (66.473 MiB), versus 79,323,136 bytes (75.648 MiB) in the earlier
@@ -234,7 +236,7 @@ matches original Qt on both Linux event loops. The original 45.625 MiB pre-fix
 sample, failing tests, sandbox listener failures, reviewed fix, and fresh fixed
 measurement remain distinct.
 
-[Complete IPC evidence and replay parameters](evidence/2026-10-08-local-ipc.json)
+[Complete IPC evidence and replay parameters](../evidence/2026-10-08-local-ipc.json)
 include source/binary hashes, raw tests, review receipts, original/repeated
 baselines and the fixed comparison decisions. Each run uses a fresh output path.
 The two-hour/three-variant IPC scope adds no dependency or cloud resource; its
@@ -252,7 +254,7 @@ was smaller. These are one-sample stable-mode comparisons, not a statistical
 confidence interval. Three native empty-view cycles reopened Settings, History
 and Activity successfully, ending at 73.8242 MiB hidden RSS. That post-use figure
 is separate from cold idle and does not establish a permanent plateau.
-[Startup evidence, frozen parameters and raw reports](evidence/2026-10-08-startup-reclaim.json)
+[Startup evidence, frozen parameters and raw reports](../evidence/2026-10-08-startup-reclaim.json)
 preserve both workloads and the source review. The local resume specification is
 `.context/compound-engineering/ce-optimize/resident-startup-reclaim/spec.yaml`.
 
@@ -266,7 +268,7 @@ resources while preserving logical widgets and drafts. It must check complete
 repainting, rapid reopen, minimize/restore, dialogs and selection state, and
 measure RSS/PSS and reopen latency. It would address post-use retention, not
 lower the never-opened cold baseline. [The source attribution and bounded test
-proposal](evidence/2026-10-08-startup-reclaim-raw/hidden-views-attribution.json)
+proposal](../evidence/2026-10-08-startup-reclaim-raw/hidden-views-attribution.json)
 record the exact inspected sources and limitations; no such product change or
 saving has been measured yet.
 
@@ -286,22 +288,22 @@ The 512 KiB cap lowered synthetic first-scan RSS growth by about 1.510 MiB;
 actual paginated history and cold-idle savings remain unmeasured. Preserve the
 probe limitation: a later write overwrites reader `beginNs`, so the absolute
 reader-start timestamp is unavailable; individual phase durations and writer
-timestamps remain usable. [The structured evidence](evidence/2026-10-08-sqlite-locating.json)
-and [report/replay](evidence/2026-10-08-sqlite-locating-raw/report.md) retain all
+timestamps remain usable. [The structured evidence](../evidence/2026-10-08-sqlite-locating.json)
+and [report/replay](../evidence/2026-10-08-sqlite-locating-raw/report.md) retain all
 420 raw samples, source/build/library identities, commands and limitations.
 Databases and payload bytes are excluded; replay regenerates private synthetic
 data. No WAL test or production recovery/concurrency acceptance is inferred.
 
 ## Integer widths and object layout
 
-Use the standalone [layout inspection tool](../tools/diagnostics/layout/README.md)
+Use the standalone [layout inspection tool](../../tools/diagnostics/layout/README.md)
 before proposing narrower fields or member reordering. It uses normal CMake/Ninja
 and the existing Qt headers, prints JSON metadata, and touches no application
 state. Its instructions cover fresh build directories, consumed header hashes,
 compiler/ABI identity, numeric bounds, live counts and the required workload
 measurement after a candidate change.
 
-The [recorded GCC 13.3 / Qt 6.4.2 inspection](evidence/2026-10-08-layout-inspection.json)
+The [recorded GCC 13.3 / Qt 6.4.2 inspection](../evidence/2026-10-08-layout-inspection.json)
 found `int`, `qint32` and `std::int32_t` all occupy 4 bytes; `qint64` and
 `std::int64_t` occupy 8. Merely changing aliases saves nothing. A synthetic
 narrowing example retained its 16-byte stride because padding grew; a separate

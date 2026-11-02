@@ -1,5 +1,7 @@
 # Memory attribution before the hidden-window experiment
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [memory-strategy](../memory-strategy.md). Do not use it as a work list.
+
 These are measurements of unchanged product code, not optimization results.
 The current source is `dac46af06feb0e8326d472c77bdf96cff117be51`. Its product
 sources and CMake files are identical to the preceding desktop wave's
@@ -21,7 +23,7 @@ were 77,488,128 and 76,845,056 bytes. All windows reopened; the median is
 
 The Wayland observations follow the twelve native capture, clipboard and
 cancellation cases plus repeated view opens recorded in the [current desktop
-matrix](evidence/2026-10-08-current-desktop-matrix.json). GNOME also performed the
+matrix](../evidence/2026-10-08-current-desktop-matrix.json). GNOME also performed the
 recorded live-background region check. The common quiet 120-second observation
 used five-second intervals after five seconds of warmup, with 25 unchanged RSS
 samples per guest. Do not compare these used sessions with the separate physical
@@ -53,8 +55,8 @@ selection, preview cleanup, activity selection, dialog parenting, minimize,
 rapid hide/show, destruction with a deferred callback, full repaint and reopen
 latency. Keep native fonts/dialogs. Require measured results and functional
 acceptance on Cinnamon, GNOME and KDE; offscreen widget tests alone are insufficient.
-The [frozen proposal](evidence/2026-10-08-memory-attribution-raw/proposal/spec.yaml)
-and [checkpoint](evidence/2026-10-08-memory-attribution-raw/proposal/experiment-log.json)
+The [frozen proposal](../evidence/2026-10-08-memory-attribution-raw/proposal/spec.yaml)
+and [checkpoint](../evidence/2026-10-08-memory-attribution-raw/proposal/experiment-log.json)
 record the scope, baseline, gates and pending approval. The live working copy is
 under `.context/compound-engineering/ce-optimize/resident-view-surfaces/`.
 
@@ -78,10 +80,10 @@ The approximately 40 MiB cold target remains open.
 
 ## Evidence and replay
 
-The [raw manifest](evidence/2026-10-08-memory-attribution-raw/manifest.json)
+The [raw manifest](../evidence/2026-10-08-memory-attribution-raw/manifest.json)
 maps executed scripts and receipts to their original local paths and hashes.
 It excludes credentials, payloads, VM disks, binaries and the SDK source archive.
-The [cold probe bundle](evidence/2026-10-08-memory-attribution-raw/cold/README.md)
+The [cold probe bundle](../evidence/2026-10-08-memory-attribution-raw/cold/README.md)
 has its own source/build manifest and replay instructions.
 
 Verify every committed file against its manifest before reuse. Copy scripts into

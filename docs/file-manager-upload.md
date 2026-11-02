@@ -28,7 +28,7 @@ The design, its council review and the decisions behind it are in
 | UKUI | Peony | top level, folders and desktop | plugin `libputgd-peony.so` | not supported (use the DEB) |
 
 Not supported: Deepin, COSMIC Files before epoch-1.0.10, the AppImage on UKUI
-and on Plasma 5.27, Enlightenment's EFM and Trinity. Flatpak is not a target.
+and on Plasma 5.27, Enlightenment's EFM and Trinity. Supported package formats are DEB, RPM and AppImage.
 
 The entry reaches desktops the rest of the app doesn't list as supported. The
 [README](../README.md) lists Cinnamon on X11, GNOME 50 on Wayland, KDE Plasma on

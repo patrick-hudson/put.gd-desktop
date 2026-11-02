@@ -1,11 +1,13 @@
 # Resident service and an on-demand UI
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [architecture](../architecture.md). Do not use it as a work list.
+
 Status: retain the split and native listener boundaries. Source63 meets the 40 MiB
 resident target in the recorded local workflows on Cinnamon, GNOME and KDE;
 current real S3/remote History and full release acceptance remain pending. Read
-[the current strategy and workload limits](memory-strategy.md). Measurements below
+[the current strategy and workload limits](../memory-strategy.md). Measurements below
 from source41 and earlier are historical, not the current baseline. See
-[protocol and lifecycle](ui-process-protocol.md).
+[protocol and lifecycle](../ui-process-protocol.md).
 The resident must retain a tray icon and menu while all UI windows are closed.
 It must still offer capture/upload actions and reopen Settings and History
 (the former Activity view is now History). Closing the UI must leave shortcuts, clipboard ownership and operations
@@ -72,7 +74,7 @@ build have mapped-readiness medians of 332.68 versus 100.92 ms. These times incl
 observer overhead and do not certify completed painting or p95 latency. The
 separate five-minute cold run peaks at 44.390625 MiB, so 40 MiB remains unmet.
 Native Cinnamon fonts/dialogs remain enabled. See the [measured decision and raw
-evidence](evidence/2026-10-08-ui-process-native-memory.json).
+evidence](../evidence/2026-10-08-ui-process-native-memory.json).
 
 A subsequent four-run standard Qt cost probe kept the native GTK/font integration
 and measured only 0.63 MiB settled RSS difference between full and native styling,

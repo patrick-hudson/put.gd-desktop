@@ -169,10 +169,9 @@ exercised build/package/run/collect instructions, actual MCP/CLI local-operation
 parity and configuration-error recovery. Its local-only scope and source-identity
 limitations remain recorded; it did not exercise cloud publication or deletion.
 
-Full U9 still requires complete production-resident tool/effect coverage and a
+Full agent acceptance still requires complete production-resident tool/effect coverage and a
 current-source reproducible walkthrough, including remote receipt/history/deletion
 behavior. The source55 Cinnamon live S3 check used the production CLI and GUI,
-so it does not establish MCP cloud parity. Current native and memory checkpoints
-also leave the remaining U6 display/failure cases, full compositor release gates
-and U10 release lifecycle open. [verification.md](verification.md) records the
+so it does not establish MCP cloud parity. Each new build also needs current display/failure cases, full compositor
+release gates and release lifecycle evidence. [verification.md](verification.md) records the
 source-specific checks and outstanding acceptance.

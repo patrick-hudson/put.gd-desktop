@@ -46,8 +46,7 @@ install a host Shell extension.
 package matrix above, because Aurora installs no DEB or RPM, and it doesn't
 replace the Kubuntu or Debian KDE/Wayland evidence. It is a required VM desktop,
 alongside the Ubuntu GNOME VM, in the
-[AppImage full-acceptance profile](#appimage-full-acceptance-profile) below. The
-Flatpak's acceptance will use it too. The profile has two goldens on `f44`, one
+[AppImage full-acceptance profile](#appimage-full-acceptance-profile) below. The profile has two goldens on `f44`, one
 per Fedora base, and the runner takes either through `--golden`:
 
 | Aurora base | Golden | Plasma / KWin | Role |

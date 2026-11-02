@@ -1,8 +1,10 @@
 # Replaying the capture regression investigation
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../overview.md); see [overview](../overview.md). Do not use it as a work list.
+
 This is a diagnosis archive from October 9, 2026. Feature parity is **not established** by it. Source49 met Cinnamon's memory target in the separate native-listener experiment, but capture startup regressed. The two-stage helper preparation change was still under development when this packet was captured; it has no acceptance claim here.
 
-The [structured packet](evidence/2026-10-09-capture-parity-debug.json) contains 34 capture runs, exact binary/harness fingerprints, commands, exit receipts, all numerical samples and synthetic operation outcomes. Its manifest identifies every exported file, transformation and SHA256. Dirty and instrumented locator builds are explicitly labeled. A base Git hash with `.dirty` is not a clean source version; complete transient source snapshots were not saved for every variant. Binary fingerprints still identify what actually ran.
+The [structured packet](../evidence/2026-10-09-capture-parity-debug.json) contains 34 capture runs, exact binary/harness fingerprints, commands, exit receipts, all numerical samples and synthetic operation outcomes. Its manifest identifies every exported file, transformation and SHA256. Dirty and instrumented locator builds are explicitly labeled. A base Git hash with `.dirty` is not a clean source version; complete transient source snapshots were not saved for every variant. Binary fingerprints still identify what actually ran.
 
 Run `python3 docs/evidence/capture-parity-debug/verify_export.py` to verify the archive and recompute every saved budget. Success means the archive is internally consistent, including its failed gates; it does not mean the application passed.
 

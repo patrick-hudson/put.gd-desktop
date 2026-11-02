@@ -48,7 +48,7 @@ observers, source/asset/session identities, annotated visuals and cleanup are
 in [the physical native evidence](evidence/2026-10-31-native-pass/README.md).
 #379, #1063 and #1064 are now closed; these failed observations remain the
 historical results for the tested build. #44 stays open; this does not certify
-stable bytes or complete U9.
+stable bytes or complete agent acceptance.
 
 ## Published nightly artifact/source/CVE audit — 2026-10-31
 
@@ -162,8 +162,7 @@ work packages:
 | Release campaign and stable signing | [#384](https://github.com/patrick-hudson/put.gd-desktop/issues/384) | promote.py dry run passed on `0435ed6a` under the old scheme; repeat after #373 |
 | KDE/X11 rows, graphical-store installs | [#385](https://github.com/patrick-hudson/put.gd-desktop/issues/385) | proposed for 0.1.2; GNOME/X11 obsolete (GNOME 50 has no X11 session) |
 
-Flatpak ([#83](https://github.com/patrick-hudson/put.gd-desktop/issues/83)) is
-outside the first stable.
+Supported packages are DEB, RPM and AppImage; other package experiments are out of scope.
 
 ## Native package full acceptance (#375, #377, #382) — 2026-10-23
 
@@ -358,8 +357,8 @@ Policy: [CI coverage, stalled installs](ci.md#stalled-installs). Evidence:
   failed the job red after 43.5 minutes, inside its 90-minute timeout.
 
 Not covered: retries for the `linux` and `sanitizers` installs (#389), the
-AppImage install's lack of a snapshot (#500), the Windows `portable` job
-(#501), and the Qt ASan download (#502).
+AppImage install's lack of a snapshot (#500), and the Qt ASan download (#502).
+The `portable` job cited by that audit was removed with the retired platform.
 
 ## Weekly stress lane on k72 (#360) — 2026-10-22
 
@@ -554,7 +553,6 @@ AppImage (sha256 `d14dc770…`).
 - Not covered:
   - a Cinnamon desktop (the core route ran on Xvfb only);
   - recorder windows;
-  - Flatpak.
 
 ## GNOME editor window refusal — 2026-10-19
 
@@ -574,7 +572,6 @@ the RPM's Shell extension, version 2, loaded.
 - Not covered:
   - recorder windows;
   - the X11 adapters, which still don't refuse the editor;
-  - the Flatpak app-ID rule (#83 change 2).
 
 ## AppImage Wayland window icons — 2026-10-19
 
@@ -636,7 +633,7 @@ The image's own `putgd-record` diagnostics can't read its exports (#92).
 The [recording packaging receipt](evidence/2026-10-18-recording-packaging.md)
 records pull request #75, with final code `7aa1aff`:
 
-- Pull request CI on `7aa1aff`: contracts, Linux suites, Windows build, three
+- Pull request CI on `7aa1aff`: contracts, Linux suites, the then-supported cross-platform build, three
   native packages, and the AppImage. The AppImage's audit runs the relocated
   recorder and requires its bundled x264/x265 to work.
 - On the physical Kubuntu Plasma/X11 desktop, the Ubuntu 26.04 DEB recorded,
@@ -702,7 +699,7 @@ physical Debian Plasma 6.3 and Fedora GNOME 50 Wayland desktops, the
 Ubuntu 26.04 GNOME, Kubuntu 26.04 Plasma 6.6 and Fedora 44 GNOME KVM guests,
 and system audio through the speaker and headphone ports on the physical
 Kubuntu, Debian and Fedora desktops (headphone route not measurable on
-Fedora, where WirePlumber moves the default sink). Windows, microphone
+Fedora, where WirePlumber moves the default sink). Microphone
 capture and listening tests with real headphones remain uncovered.
 
 ## Screen recording — 2026-10-18
@@ -721,7 +718,7 @@ acquisition) on pull request #68:
   KWin/Mutter native streams reaching `ready` with no input on the physical
   Debian Plasma and Fedora GNOME desktops, clips carrying the pattern.
 
-Windows, microphone capture and AMD GPU export remain uncovered; the Wayland
+Microphone capture and AMD GPU export were uncovered in this recording checkpoint; the Wayland
 guests were rerun by the follow-up above.
 
 ## Resident PNG readers — 2026-10-17
@@ -768,7 +765,7 @@ candidate `329d736`:
   desktops, including both halves of the issue #54 outline fix and the
   wlr-data-control clipboard fallback.
 
-Physical Fedora and Windows remain uncovered.
+Physical Fedora was uncovered in that campaign; the retired platform is out of scope.
 
 ## Local S3 settings controls — 2026-10-16
 
@@ -795,29 +792,30 @@ frozen product source `1010842`, including the History clipboard ownership and
 packages, Cinnamon-first functional/memory gates, then GNOME/Wayland and KDE/Wayland
 acceptance with independent paste and two five-minute post-use observations each.
 The JSON companion binds package, running-process, module and helper identities.
-The wider physical, mixed-display and U9/U10 release gates below remain separate.
+The wider physical, mixed-display and agent and release gates below remain separate.
 
 ## Current acceptance index — 2026-10-13
 
 The historical source108 GNOME/KDE TLS failures were superseded by the passing
-[source114 transport retest](testing-live-s3-transport.md). Keep their failure
+[historical transport retest](history/testing-live-s3-transport.md). Keep their failure
 receipts as diagnostic history; they are not current release blockers.
 
 | Scope | Latest linked evidence | Limit |
 | --- | --- | --- |
-| Build and automated contracts | [Main b1ed4ae Build run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727), all four jobs passed | Windows/macOS compile shared code only; CI is not compositor proof |
+| Build and automated contracts | [Main b1ed4ae Build run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727), all four jobs passed | The retired cross-platform jobs compiled shared code only; CI is not compositor proof |
 | Cold first capture (#3) | [Unable-to-reproduce closure](https://github.com/patrick-hudson/put.gd-desktop/issues/3#issuecomment-6149342985): b75c0dd, 3/3 cold runs each on GNOME/KDE, exact image/native-paste comparisons | Does not prove the S3 fix caused the historical timeout to disappear or rule out a rare race |
-| Live S3 and retained memory (#4) | [Closure and exact scope](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663): source114 full workload plus bounded b1ed4ae-tree Cinnamon/GNOME/KDE checks | The newer check covers region/text publication, restart/history/deletion and two idle windows per desktop; it is not a new full geometry matrix |
+| Live S3 and retained memory (#4) | [Closure and exact scope](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663): the historical full workload plus bounded b1ed4ae-tree Cinnamon/GNOME/KDE checks | The newer check covers region/text publication, restart/history/deletion and two idle windows per desktop; it is not a new full geometry matrix |
 | Release and fresh-agent acceptance (#5) | [Dated audit](evidence/2026-10-13-issue5-acceptance.md): clean SDK/dev/release builds, production CLI/MCP/live S3, Cinnamon upgrade with 10,000 records | Initial unexplained auto-copy suppression blocks sibling expansion; physical hardware and full geometry/performance acceptance remain separate gates. Remaining findings and acceptance work: [#24](https://github.com/patrick-hudson/put.gd-desktop/issues/24) |
 
-Full release readiness has not been established. The requirements remain in the
-[approved plan](plans/2026-10-07-1926-feat-qt-linux-share-plan.md), even though
-[issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1) is closed.
+Full release readiness requires the current [acceptance matrix](acceptance-matrix.md)
+and [release runbook](release-runbook.md). The
+[original plan](history/plans/2026-10-07-1926-feat-qt-linux-share-plan.md) and its closed
+[bootstrap issue](https://github.com/patrick-hudson/put.gd-desktop/issues/1) are historical context.
 [Lab storage safeguards](lab-storage.md) gate capacity and verified retention.
 
 ## Proton evidence reconciliation — 2026-10-15
 
-The [Proton register](proton-drive-release-gates.md) credits the merged integration
+The [Proton register](history/proton-drive-release-gates.md) credits the merged integration
 and the source-specific P1 recovery/recipient, P2 resource and P3 source/rebuild
 receipts. The [final P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) records the actual packaged
 experimental Proton candidate `a5112bc`: source publication/extracted production
@@ -838,13 +836,13 @@ use the index above and later dated receipts to determine what superseded them.
 
 | Unit / slice | Observed evidence | Remaining gate |
 | --- | --- | --- |
-| U1 bootstrap | Mint 22.3, GCC 13.3, Qt 6.4.2, QtKeychain 0.14.2; AWS 1.11.907 plus 15 pinned submodules built; Debug contracts and no-test Release build passed; ASan/UBSan contracts passed outside process sandbox | Authored CI jobs have not run on Ubuntu 26.04, Windows, or macOS |
-| U2 shared services | Test-first service failures and returned/stored regressions; all 11 current executables pass Debug (16.47s) and ASan/UBSan with leak checking (37.67s); no-test Release builds; actual resident socket/CLI, asynchronous settings, manifest recovery, bounded acquisition/retry, opaque receipts/deletion, previews and 10,000-record history tested | Literal full-filesystem archive failure awaits the lab; GUI binding and production adapters belong to later units. All shared-service thread checks pass with instrumented dependencies; native adapters require separate acceptance |
-| U3 S3 / secrets | Real pinned SDK and signed offline HTTP fixture; QtKeychain jobs through isolated D-Bus peer; full Debug 17/17 (37.00s), ASan/UBSan with leak detection 17/17 (67.81s), no-test Release build; adapter/secret-store TSan 5/5 (41.01s) | Real Mint GUI secret-store setup passed; live test returned AccessDenied before publication. Successful live S3/custom-domain workflow remains a gate |
-| U4 native foundation | Native XCB/EWMH/RandR capture, unfocused keys, external-focus-preserving selector, bounded asynchronous clipboard transfers and composition; full Debug 19/19 (40.69s). Final changed operations/geometry/native targets pass ASan/UBSan with leak detection 3/3 (11.25s) and TSan with instrumented Qt/X11 3/3 (12.47s). Four reviewed simplifications preserved those checks | Named Mint guest capture/clipboard/paste checks passed. Physical workflow, successful live S3, mixed-display acceptance and release budgets remain gates |
-| U9 headless MCP slice | Locked official Python SDK stdio discovery and strict public argument schemas; 12 tools forwarding argument-vector production CLI calls; actual SDK stdio plus production CLI against a synthetic Unix peer: 3 tests pass | Actual resident/native effects, U6 graphical instructions, and a fresh-agent walkthrough remain required for full U9 acceptance |
-| U5 settings / resident GUI | Real settings/service widgets, independently routed local folders, session/keychain form, history paging/deletion, copy-only retry, observed-revision conflicts and startup refresh; current Debug23/23 (44.21s). Affected7 memory/thread checks passed, then final shared-copy/core3/3 memory38.15s/thread90.02s; final GUI history6cases Debug2805ms/memory8851ms/thread27190ms. No-test Release builds | Actual Mint settings, OS keyring consent, notifications and independent native paste witnessed; login, remote history and custom R35 visuals remain gates |
-| U6 lab / development package | Authenticated Mint22.3 ISO, real installed Cinnamon6.6.4/KVM guest, console-pinned SSH/public lab key; normal CPackDEB generated with distroQt/privateofficialAWS runtime; host lab6contracts pass. Foreground-process interruption was diagnosed and replaced with normal QEMUdaemon/pidfile ownership | Two independent disks and region/window/desktop/text/image/two-file native paste checks passed; mixed-display and timeout/crash evidence remain gates |
+| Bootstrap | Mint 22.3, GCC 13.3, Qt 6.4.2, QtKeychain 0.14.2; AWS 1.11.907 plus 15 pinned submodules built; Debug contracts and no-test Release build passed; ASan/UBSan contracts passed outside process sandbox | At this checkpoint the authored CI jobs had not run on Ubuntu 26.04 or the retired non-Linux platforms |
+| Shared services | Test-first service failures and returned/stored regressions; all 11 current executables pass Debug (16.47s) and ASan/UBSan with leak checking (37.67s); no-test Release builds; actual resident socket/CLI, asynchronous settings, manifest recovery, bounded acquisition/retry, opaque receipts/deletion, previews and 10,000-record history tested | Literal full-filesystem archive failure awaits the lab; GUI binding and production adapters belong to later units. All shared-service thread checks pass with instrumented dependencies; native adapters require separate acceptance |
+| S3 / secrets | Real pinned SDK and signed offline HTTP fixture; QtKeychain jobs through isolated D-Bus peer; full Debug 17/17 (37.00s), ASan/UBSan with leak detection 17/17 (67.81s), no-test Release build; adapter/secret-store TSan 5/5 (41.01s) | Real Mint GUI secret-store setup passed; live test returned AccessDenied before publication. Successful live S3/custom-domain workflow remains a gate |
+| Native foundation | Native XCB/EWMH/RandR capture, unfocused keys, external-focus-preserving selector, bounded asynchronous clipboard transfers and composition; full Debug 19/19 (40.69s). Final changed operations/geometry/native targets pass ASan/UBSan with leak detection 3/3 (11.25s) and TSan with instrumented Qt/X11 3/3 (12.47s). Four reviewed simplifications preserved those checks | Named Mint guest capture/clipboard/paste checks passed. Physical workflow, successful live S3, mixed-display acceptance and release budgets remain gates |
+| Headless MCP slice | Locked official Python SDK stdio discovery and strict public argument schemas; 12 tools forwarding argument-vector production CLI calls; actual SDK stdio plus production CLI against a synthetic Unix peer: 3 tests pass | Actual resident/native effects, lab graphical instructions, and a fresh-agent walkthrough remain required for full agent acceptance |
+| Settings / resident GUI | Real settings/service widgets, independently routed local folders, session/keychain form, history paging/deletion, copy-only retry, observed-revision conflicts and startup refresh; current Debug23/23 (44.21s). Affected7 memory/thread checks passed, then final shared-copy/core3/3 memory38.15s/thread90.02s; final GUI history6cases Debug2805ms/memory8851ms/thread27190ms. No-test Release builds | Actual Mint settings, OS keyring consent, notifications and independent native paste witnessed; login, remote history and custom R35 visuals remain gates |
+| Lab / development package | Authenticated Mint22.3 ISO, real installed Cinnamon6.6.4/KVM guest, console-pinned SSH/public lab key; normal CPackDEB generated with distroQt/privateofficialAWS runtime; host lab6contracts pass. Foreground-process interruption was diagnosed and replaced with normal QEMUdaemon/pidfile ownership | Two independent disks and region/window/desktop/text/image/two-file native paste checks passed; mixed-display and timeout/crash evidence remain gates |
 | Current native/UI wave | GNOME and KDE production adapters compile; bridge/FD contracts pass. Integrated Debug25/25 (44.16s), affected memory6/6 (17.26s), thread5/6 plus real-font history1/1 (25.80s); final changed S3/UI memory2/2 (10.34s), thread2/2 (21.13s). Native Ubuntu Qt6.10 full25/25 (36.84s). All six GNOME single-head local acquisition/paste workflows pass; Escape and right-click cancellation preserve the independent text source | GNOME GTK interop, zero-area cancellation, ownership/lifecycle/display matrix and live publication; actual KDE, complete MCP acceptance, physical performance and release lifecycle evidence |
 
 Configuration tests cover fresh setup without an implicit cloud profile, private atomic
@@ -948,7 +946,7 @@ filter was introduced. Production continues to use distribution Qt. No physical 
 capture, live AWS request or guest desktop acceptance has occurred in this slice.
 
 
-U9 headless tests exercise the real official MCP SDK/client transport and built CLI
+Agent headless tests exercise the real official MCP SDK/client transport and built CLI
 with a synthetic session peer. They verify discovery, strict types/extra-key rejection,
 request correlation, configuration conflict and deletion mappings, unavailable/malformed
 session responses and process timeouts. They do not replace native/resident upload or
@@ -990,7 +988,7 @@ fixture bytes differed from the requested archive. The runner now uses normal ap
 The fixture source chord uses Ctrl+Alt+Shift+T/I/F, avoiding Cinnamon's terminal shortcut.
 Host lab contracts pass 6/6 (0.003s), including rejecting VM performance certification.
 
-The user added R35/AE15 on 2026-10-08: the original functional forms were scaffolding for
+The user added the visual-design requirements on 2026-10-08: the original functional forms were scaffolding for
 a polished custom Qt visual design. Their contract tests do not satisfy the final
 rendered visual review. The user also provided Ubuntu26.04.1 and Fedora44 installation
 media. Both SHA256 values match good official checksum signatures, pinned in image-lock.
@@ -1010,7 +1008,7 @@ The custom Qt visual system has been inspected in installed Mint and Ubuntu
 applications. Settings, activity and populated history use the same design.
 An actual compact-history preview/expanded-controls failure was fixed; the installed
 Mint witness fits 1000×700 with a visible preview. Offscreen GUI tests retain strict
-layout and keyboard checks. Full AE15 scale/error/confirmation-state inspection
+layout and keyboard checks. Full visual scale/error/confirmation-state inspection
 remains pending. Shortcut statuses now show readable per-action results with exact
 JSON behind a keyboard-accessible advanced disclosure.
 
@@ -1101,7 +1099,7 @@ A fresh independent agent exercised fixed production CLI/official MCP metadata
 inspection, revision patches/conflicts and deliberate configuration-error recovery
 in an isolated offscreen process. Its structured record reports14CLI calls,7MCP
 requests and12discovered tools, with zero operations/provider calls. This is partial
-U9 evidence; real Cinnamon, build and U6 lab walkthrough gates remain pending.
+agent evidence; real Cinnamon, build and lab walkthrough gates remain pending.
 
 ### Simple setup and measured performance follow-up (2026-10-08)
 
@@ -1116,7 +1114,7 @@ compact form passed the three affected host GUI targets (6.17s) and native KDE Q
 targets (5.16s). Those widget tests run offscreen and do not certify KWin rendering.
 The standard CPack DEB was installed and its binary fingerprint verified. Installed
 single-scale inspection is partial: complete scale, focus, error, and remote-deletion
-visual acceptance remains open. Simple setup is implemented; AE15 is not complete.
+visual acceptance remains open. Simple setup was implemented; the complete visual review was not established by this checkpoint.
 
 The physical capture supervisor records private isolated configuration, hardware,
 binary hashes, parameters, logs, operation IDs, and result data. The final actual
@@ -1125,7 +1123,7 @@ operations and no saved payloads. Its p95 painted overlay latency was 235.821ms,
 which fails the 150ms budget. Earlier fixture-readiness failures remain recorded.
 The fixture background is labelled neutral grey. The actual KDE selector was
 separately inspected over the normal desktop with a drawn rectangle. Capture
-latency still requires attribution and correction; this is not a passing U10 gate.
+latency still requires attribution and correction; this is not a passing release gate.
 
 The VNC viewer showed fragmented incremental updates after a KDE window drag,
 while contemporaneous direct QMP framebuffer witnesses remained clean. The exact
@@ -1193,7 +1191,7 @@ minimal child environment omitted XDG_RUNTIME_DIR; the documented endpoint optio
 worked without launching another resident. The
 [structured receipt](evidence/2026-10-08-fresh-cinnamon.json) retains run parameters,
 package/binary hashes, operation IDs, failures and exact limitations. This local
-single-head subset does not complete full U6/U9, remote publication/deletion, the
+single-head subset does not complete full lab and agent acceptance, remote publication/deletion, the
 compositor matrix or release lifecycle acceptance.
 
 ### Settings, filenames and image ownership refinement (2026-10-08)
@@ -1206,7 +1204,7 @@ credential input. Reload from file rereads accepted external configuration;
 an accepted save shows a blue confirmation banner. The installed Cinnamon
 1000×700 window was inspected at scale 1 on a 1280×800 display through VNC5935.
 Witnesses cover fresh setup, region selection, help, advanced filename patterns,
-save feedback, unsaved Cancel/reopen and Reload. Full AE15 scale/state acceptance
+save feedback, unsaved Cancel/reopen and Reload. Full visual scale/state acceptance
 and final user visual approval remain open.
 
 Fresh configuration preserves imported file names and uses timestamped capture,
@@ -1263,7 +1261,7 @@ review and raw measurements. Third-party uninstrumented library limits remain.
 Three empty-view cycles on the reviewed binary finish at 79.551 MiB; no operations
 or cloud requests occurred. This is a view-lifecycle diagnostic, not a permanent
 plateau or leak proof. The module remains pinned after first S3 use, so cold gains
-do not establish post-S3 memory savings. The [replay instructions](testing-memory.md)
+do not establish post-S3 memory savings. The [replay instructions](history/testing-memory.md)
 describe private inputs, timing, logs and the physical-machine/CI boundary.
 
 ### Live selection and post-use cleanup (2026-10-08)
@@ -1443,7 +1441,7 @@ All five ownership assertions pass under the guest’s existing GJS 1.88.0.
 Host CMake configuration passes without Node lookup. [The receipt](evidence/2026-10-08-gjs-ownership.json)
 keeps this result separate from the frozen source-43 native build.
 
-### Live S3 and source57 Cinnamon checkpoint — 2026-10-10
+### Live S3 and Cinnamon resident experiment — 2026-10-10
 
 The [source55 live S3 record](evidence/2026-10-09-live-s3-cinnamon.json)
 uses the clean `0.1.1-dev.55+g033b73fb58a3` resident, commit
@@ -1460,11 +1458,11 @@ outcome of this specific successful workflow. Follow
 
 The single post-cloud diagnostic was 49.14 MiB RSS. It was neither cold nor a
 frozen memory workload and does not establish post-upload memory acceptance.
-This source55 text workflow does not prove source57 cloud behavior, all content
+This earlier text workflow did not prove cloud behavior of the later resident experiment, all content
 types/collision/failure cases, GNOME/KDE remote history or MCP cloud parity.
 No browser/CDN invalidation or credential-memory zeroization was tested.
 
-The isolated clean source57 candidate is `0.1.1-dev.57+g2a02118ffc7b`, commit
+The isolated clean resident experiment was `0.1.1-dev.57+g2a02118ffc7b`, commit
 `2a02118ffc7bcf3f4643b83f83d5dd7594a8207f`. Cinnamon's implementation is unchanged
 by its GNOME startup/argument corrections. It passed twelve native local
 capture/clipboard cases, with Qt and GTK independent paste, plus current tray,
@@ -1493,17 +1491,17 @@ Its 27 synthetic safety contracts also pass. After cleanup, a fresh physical
 inventory found no owned app/helper/capture/fixture/benchmark or known observer
 processes, and the serial slot was released.
 
-The [local source57 expansion gate](../work/gnome-native-boundary/cinnamon-candidate57/physical/cinnamon-expansion-gate.json)
+The local resident expansion gate (`work/gnome-native-boundary/cinnamon-candidate57/physical/cinnamon-expansion-gate.json`, private and unavailable in this checkout)
 has SHA256 `41041a41048f0cfb34d8c7ee514d6cb065c76c97b2d1f635c2f748b9b80123d3`;
 root rehashed its 81 references. These raw receipts remain local work artifacts.
 This establishes the approximately 40 MiB Cinnamon cold/empty-view regression
 target and its timing guard, with native fonts/dialogs preserved. It does not
 establish post-S3, post-capture or populated-history retained-memory bounds,
-a permanent plateau, mixed-display acceptance, full AE17/U9/U10, or current57
+a permanent plateau, mixed-display acceptance, the complete agent workflow and release acceptance, or that experiment's
 GNOME/KDE acceptance. GNOME comparison/confirmation and KDE work remain separate;
 their memory failures must not roll back the passing Cinnamon changes.
 
-Source57 GNOME subsequently passed all fifty registered guest tests, the twelve
+The GNOME resident experiment subsequently passed all fifty registered guest tests, the twelve
 native capture/clipboard/cancellation cases and the local focused UI gates on
 its verified Core route. Two separate 300-second post-use observations both
 peaked at 32.77 MiB RSS, with 61 valid samples each and worst CPU 0.0334% of one
@@ -1514,15 +1512,15 @@ pins exact source, workload, process and original result hashes. The approved
 samples passed coverage and exact identity checks. Independent numeric and
 lifecycle review confirmed the external 5.119-second warmup, normal shutdown
 and unchanged populated profile. Both preceding orchestration failures reached
-no samples and remain preserved. Source57 is retained in its clean isolated
-checkout; it is not integrated into main. This establishes the scoped GNOME VM
-cold/post-local-native target, with Cinnamon implementation unchanged. GNOME
-remote History, KDE and post-S3 memory remain open; see
-[the replay procedure](testing-gnome-memory.md).
+no samples and remain preserved. The experiment was retained in its clean isolated
+checkout and was not integrated at this checkpoint. This established the scoped
+GNOME VM cold/post-local-native target, with Cinnamon implementation unchanged.
+GNOME remote History, KDE and post-S3 memory were still open at that point; see
+[the replay procedure](history/testing-gnome-memory.md).
 
-### KDE source57 memory baseline — 2026-10-10
+### KDE resident memory baseline — 2026-10-10
 
-KDE now uses the same clean source57 keeper. Its standard development/release
+KDE used the same clean resident experiment. Its standard development/release
 builds, package and all 49 registered tests completed; its registry matches the
 host exactly. GNOME's additional GJS ownership contract is conditional and absent
 on KDE. The installed package and live resident match
@@ -1546,23 +1544,23 @@ attribution hashes and native/source joins. Measurement integrity and CPU pass;
 the 40 MiB RSS target fails. PSS does not replace the requested RSS target.
 
 The [bounded record](evidence/2026-10-10-kde-source57-memory-baseline.json) and
-[procedure](testing-kde-memory.md) preserve deterministic parameters, commands,
+[procedure](history/testing-kde-memory.md) preserve deterministic parameters, commands,
 hashes, failed attempts and workload qualifications. Current cold and post-S3
 memory, remote History, full geometry, physical KDE, canonical clean-checkout
 lab replay, MCP and release acceptance remain open. No KDE optimization candidate
 has been implemented. The retained Cinnamon and GNOME implementations are unchanged.
 
-### Source114 live-S3 regression — 2026-10-12
+### Historical live-S3 regression — 2026-10-12
 
 Runtime `0.1.1-dev.114+g0258600b752d` passed all three native/GUI/live-S3 regression
 workloads and exact production cleanup. Five-minute RSS+swap peaks were 29.059 MiB
 on Cinnamon, 36.078 MiB on GNOME and 31.285 MiB on KDE, with zero swap/remaining
-helpers and idle CPU below 0.0201% of one core. All 105 source114 synthetic objects
+helpers and idle CPU below 0.0201% of one core. All 105 synthetic objects in that campaign
 (including the targeted KDE 12) were uploaded, independently verified and removed
 through production. No SDK error, automatic retry or emergency cleanup occurred.
 
-[The transport report](testing-live-s3-transport.md) and
-[source114 replay](evidence/live-s3-memory/source114/README.md) retain exact
+[The transport report](history/testing-live-s3-transport.md) and
+[historical live-S3 replay](evidence/live-s3-memory/source114/README.md) retain exact
 identities, parameters, historical failures and qualifications. One current full
 regression per desktop does not claim a fresh-repeat optimization decision or
 full release/fresh-agent acceptance. Documentation commits do not rename the
@@ -1571,7 +1569,7 @@ measured binaries.
 
 ## Closed dropdown wheel input — issue #26 (2026-10-14)
 
-The shared `VisualStyle::ChoiceBox` now ignores wheel input on the closed control,
+The then-named `VisualStyle::ChoiceBox` was changed to ignore wheel input on the closed control,
 so Qt can scroll its containing pane without changing the selection. Popup mouse
 selection, keyboard arrows, and editable text entry retain their existing behavior.
 A source audit found all current dropdowns in the Capture and Destinations settings
@@ -1602,8 +1600,8 @@ regressions remain pending; no VM base was booted or changed for this slice.
 
 Activity and History previously used a stretched first column. Growing another
 column took the same width from that first column, moving the target's left edge
-against the pointer; the first column itself was not interactive. Both views now
-use shared `VisualStyle::configureColumns` sizing on their existing Qt headers.
+against the pointer; the first column itself was not interactive. Both views were changed to
+use the then-named `VisualStyle::configureColumns` sizing on their existing Qt headers.
 It fits the first column when the
 viewport changes width, preserving the compact layout, but leaves column drags
 to Qt without redistributing their width. Native minimum widths still apply.
@@ -1729,7 +1727,7 @@ same twelve cases and view/restart checks. Memory sampling followed each
 restart and native History reopen/close: two serial 300-second intervals per
 desktop met the 40 MiB RSS, <0.5% CPU, zero-swap and no-helper gates. They do not
 establish same-resident post-capture retention, physical performance or complete
-U9/U10 acceptance; broader workloads and release gates remain issue #44.
+agent and release acceptance; broader workloads and release gates remain issue #44.
 
 All three overlays were retired through guarded cleanup after evidence export.
 Exact package/binary/run identities, raw samples, failures and cleanup receipts
@@ -1742,4 +1740,4 @@ is not claimed fixed by the startup change.
 The 2026-10-16 combined S3/Proton controls campaign passed the current-source
 Cinnamon-first three-desktop functional matrix and user-requested 30-second
 post-use memory observations; see [the native receipt](evidence/2026-10-16-destination-controls-native.md).
-Its synthetic S3 and minimal Proton scope does not establish broader U9 or live-cloud gates.
+Its synthetic S3 and minimal Proton scope does not establish broader agent or live-cloud gates.

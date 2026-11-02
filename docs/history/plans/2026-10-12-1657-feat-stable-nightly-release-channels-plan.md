@@ -9,11 +9,13 @@ execution: code
 
 # Stable and Nightly Release Channels - Plan
 
+> **Historical record.** This page describes an app version, experiment or plan that no longer exists and is kept for context only. The current design is in [overview](../../overview.md); see [release](../../release.md). Do not use it as a work list.
+
 ## Goal Capsule
 
 - Objective: Users can download identifiable development builds as changes land, while stable releases remain a separate, deliberate choice.
 - Means: Extend the existing Linux package pipeline with immutable nightly tags and explicit publication channels (KTD1, KTD2, KTD4).
-- Authority: The user's release-channel request governs this addition; the implementation contract in issue #1 and `docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md` still governs application behavior.
+- Authority: The user's release-channel request governs this addition; the implementation contract in issue #1 and `docs/history/plans/2026-10-07-1926-feat-qt-linux-share-plan.md` still governs application behavior.
 - Execution profile: Build/release metadata and automation changes, using the existing CMake, Python standard-library tooling and GitHub Actions builders.
 - Stop conditions: A mismatched source identity, unsuccessful required build, unverified package bytes or conflicting existing release prevents publication (R6, R7).
 - Ownership: The implementing agent completes the units and shipping verification; maintainers promote development work and authorize stable publication (R2, R5).

@@ -178,8 +178,12 @@ The Linux resident uses Unix-domain sockets through Qt Core notifications. Qt
 Network remains a build dependency for the CLI, compatibility tests and lazy S3
 module; non-Linux builds retain Qt local sockets. The native IPC contracts join
 the ordinary `ctest --preset dev` run and its existing CI JUnit artifact. Physical
-Cinnamon RSS measurements use the separate procedure in
-[testing-memory.md](testing-memory.md), not a headless CI substitute.
+Cinnamon RSS measurements use the applicable
+[acceptance-matrix memory gates](acceptance-matrix.md) and the
+[cold-family observer](../tests/performance/observe_cold_family.py) /
+[UI-process observer and evaluator](../tests/performance/bench_ui_process.py), with the
+[earlier measurement record](history/testing-memory.md) retained for context.
+Headless CI is not a physical memory measurement.
 
 Proton-enabled Linux x86-64 builds additionally provision the private runtime:
 

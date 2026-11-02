@@ -1,6 +1,6 @@
 # Screen recording
 
-Status: **slices 1 to 7 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**,
+Status: **slices 1 to 7 of the [recording plan](history/plans/2026-10-17-2230-feat-screen-recording-plan.md)**,
 with the open items listed in its slice status. Recording ships in the DEB,
 RPM and AppImage; see "Packages and codecs".
 The contract below is implemented and tested against a fake backend and the
@@ -916,7 +916,7 @@ preview (their first frame, through the image job). Animated WebP reads
 through Qt's WebP image plugin, which Debian, Ubuntu and Fedora package apart
 from Qt GUI, so the DEB requires `qt6-image-formats-plugins` and the RPM
 `qt6-qtimageformats` (#189); the AppImage bundles `libqwebp.so` from the
-pinned Qt and the Flatpak's KDE runtime carries it.
+pinned Qt.
 
 The poster is made after the operation ends, so a slow or failing decode
 never delays the upload, the copied link or the copied result. The resident
