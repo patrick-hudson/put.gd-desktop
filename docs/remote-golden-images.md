@@ -90,7 +90,8 @@ and the bootstrap inputs beside `image.qcow2`. They are described in
 in S3. On 2026-11-02, with Patrick's approval, the two older Fedora 45 goldens were
 deleted from the builders: `-852d34e885c1`, which never had a complete S3 image, so
 no copy remains, and the 2026-10-29 cloud golden, which remains in S3 and in the
-Boat snapshot. The Fedora 44 evaluation goldens remain `f44`-only.
+Boat snapshot. Deleting `-852d34e885c1` was an approved exception to the two-copies
+rule above, made knowing it can't be restored. The Fedora 44 evaluation goldens remain `f44`-only.
 
 **Which Fedora 45 golden counts for acceptance.** Since 2026-11-02 the Aurora
 Fedora 45 row in the [acceptance matrix](acceptance-matrix.md) uses
