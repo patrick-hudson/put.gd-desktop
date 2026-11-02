@@ -71,6 +71,8 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ // These tests are about status, not the season; test_tray_season covers that.
+ void initTestCase(){qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");}
  void diagnosticsNamesTheWorkThatActuallyRan(){
   for(const auto& action:QStringList{"region","window","desktop","edit"}){
    QJsonObject failed{{"action",action},{"state","failed"},{"items",QJsonArray{}}};

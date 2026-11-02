@@ -1,6 +1,7 @@
 #pragma once
 #include "app/OperationService.h"
 #include "PanelTone.h"
+#include "TrayCalendar.h"
 #include <QObject>
 #include <QElapsedTimer>
 #include <QColor>
@@ -71,6 +72,8 @@ public:
  QString updateLabel() const {return updateLabel_;}
  // The panel tone the tray tint follows, and which input decided it (#60).
  QJsonObject trayTint()const;
+ // The glyph the calendar picked, its local date, and whether a lab override set it.
+ QJsonObject trayIconState()const;
  // Opens the file manager with a saved package selected (FileManager1.ShowItems),
  // or its folder when no file manager answers. Only put.gd's own package names,
  // unless savedHere: diagnostics.bundle wrote that path in this resident (#223).
@@ -118,6 +121,14 @@ private:
  void retintMenu();
  int iconPercent_=-1;
  int iconRecording_=0;
+ // The December tree's lights while an upload is showing; nothing else animates.
+ TrayCalendar calendar_;
+ QTimer twinkleTimer_;
+ bool motionReduced_=false,twinkleOffered_=false;
+ IconArt::TrayGlyph iconGlyph_=IconArt::TrayGlyph::Mark;
+ int iconLights_=0;
+ void twinkle();
+ void checkReducedMotion();
  QString activityText_,activityTitle_="put.gd";
  QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
  QSet<QString> activeUploads_,failedItems_;

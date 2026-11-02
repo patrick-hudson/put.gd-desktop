@@ -15,6 +15,7 @@
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
 #include <QDBusPendingReply>
+#include <QDBusVariant>
 #endif
 #include <QApplication>
 #include <QCursor>
@@ -28,6 +29,10 @@
 #include <QSystemTrayIcon>
 #include <QScreen>
 #include <QDir>
+#include <QGuiApplication>
+#include <QSettings>
+#include <QStandardPaths>
+#include <QStyleHints>
 #include <QHash>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -206,7 +211,7 @@ TrayController::TrayController(OperationService& operations,
  } else
 #endif
  {
- tray_ = new QSystemTrayIcon(Ui::icon("tray",Theme::trayTints(panel_.light()).idle), this);
+ tray_ = new QSystemTrayIcon(Ui::trayIcon({Theme::trayTints(panel_.light()).idle,-1,0,calendar_.glyph()}), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);uploadStatus_->setProperty("visualRole","information");auto* statusSeparator=menu_->addSeparator();statusSeparator->setObjectName("trayStatusSeparator");cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
@@ -262,6 +267,13 @@ TrayController::TrayController(OperationService& operations,
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
  connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
+ // The calendar's glyph takes over at local midnight with no restart.
+ connect(&calendar_,&TrayCalendar::glyphChanged,this,&TrayController::refreshActivity);
+ twinkleTimer_.setInterval(500);
+ connect(&twinkleTimer_,&QTimer::timeout,this,&TrayController::twinkle);
+#ifdef Q_OS_LINUX
+ if(native_)connect(native_.get(),&NativeTray::availabilityChanged,this,&TrayController::refreshActivity);
+#endif
  connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
@@ -409,6 +421,10 @@ void TrayController::retintMenu() {
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
+QJsonObject TrayController::trayIconState()const {
+ const QHash<IconArt::TrayGlyph,QString> names{{IconArt::TrayGlyph::Mark,"mark"},{IconArt::TrayGlyph::Turkey,"turkey"},{IconArt::TrayGlyph::Tree,"tree"}};
+ return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()},{"twinkling",twinkleTimer_.isActive()}};
+}
 void TrayController::cancelUploads() {
  QStringList ids;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;ids<<op["id"].toString();
@@ -438,7 +454,39 @@ void TrayController::refreshMenu() {
  failedUploads_->setProperty("operationId",attentionOperation_);failedUploads_->setText(attention);failedUploads_->setVisible(errorPending_);cancelUpload_->setText(uploads>1?"Cancel all uploads…":"Cancel upload");
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,menu_->findChild<QAction*>("trayStatusSeparator"),cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
 }
+void TrayController::twinkle() {
+#ifdef Q_OS_LINUX
+ if(native_&&!native_->available()){twinkleTimer_.stop();iconLights_=0;return;}
+#endif
+ // Each tick publishes only pixels: A, B, both, neither. The fill stays the byte count's.
+ iconLights_=(iconLights_+1)%4;
+ const int lights=iconLights_;
+#ifdef Q_OS_LINUX
+ if(native_)native_->setActivity(iconColor_,activityText_,iconPercent_,iconRecording_,activityTitle_,iconGlyph_,lights);
+ else
+#endif
+ if(tray_)tray_->setIcon(Ui::trayIcon({iconColor_,iconPercent_,iconRecording_,iconGlyph_,lights}));
+}
+void TrayController::checkReducedMotion() {
+ // Qt 6.4 has no motion preference: ask where the desktops keep theirs, once per upload.
+ motionReduced_=false;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 12, 0)
+ if(auto* gui=qobject_cast<QGuiApplication*>(QCoreApplication::instance()))motionReduced_=gui->styleHints()->accessibility()->motionPreference()==Qt::MotionPreference::ReducedMotion;
+#endif
+ if(QSettings(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation)+"/kdeglobals",QSettings::IniFormat).value("KDE/AnimationDurationFactor",1).toDouble()==0)motionReduced_=true;
+#ifdef Q_OS_LINUX
+ auto call=QDBusMessage::createMethodCall("org.freedesktop.portal.Desktop","/org/freedesktop/portal/desktop","org.freedesktop.portal.Settings","Read");
+ call<<QString("org.gnome.desktop.interface")<<QString("enable-animations");
+ auto* watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(call,1000),this);
+ connect(watcher,&QDBusPendingCallWatcher::finished,this,[this](QDBusPendingCallWatcher* finished){
+  finished->deleteLater();const QDBusPendingReply<QVariant> reply=*finished;if(reply.isError())return;
+  auto value=reply.value();while(value.metaType()==QMetaType::fromType<QDBusVariant>())value=value.value<QDBusVariant>().variant();
+  if(value.metaType()==QMetaType::fromType<bool>()&&!value.toBool()){motionReduced_=true;refreshActivity();}
+ });
+#endif
+}
 void TrayController::refreshActivity() {
+ calendar_.check();
  refreshMenu();
  const auto observations=operations_.activeObservations();
  QSet<QString> activeIds;
@@ -488,18 +536,31 @@ void TrayController::refreshActivity() {
   else percent=iconPercent_;
  }
  const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):idleTooltip;
- if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_)return;
+ const auto glyph=calendar_.glyph();
+ // Only a revealed upload with the tree showing: never idle, after an outcome,
+ // beside a badge, or while recording or reviewing privately before an Upload.
+ bool hostShowing=true;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle);
+ hostShowing=!native_||native_->available();
+#endif
+ const bool lit=glyph==IconArt::TrayGlyph::Tree&&percent>=0&&uploadVisible_&&operations_.storageActive()&&!errorPending_&&!uploadCompleted_&&!recording&&hostShowing;
+ if(lit&&!twinkleTimer_.isActive()&&!twinkleOffered_){twinkleOffered_=true;checkReducedMotion();}
+ if(!lit)twinkleOffered_=false;
+ if(lit&&!motionReduced_){if(!twinkleTimer_.isActive())twinkleTimer_.start();}
+ else twinkleTimer_.stop();
+ const int lights=twinkleTimer_.isActive()?iconLights_:0;
+ if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_&&lights==iconLights_)return;
+#ifdef Q_OS_LINUX
+ if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph,lights);
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_)tray_->setIcon(Ui::icon("tray",color,percent,recording));
+  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_||glyph!=iconGlyph_||lights!=iconLights_)tray_->setIcon(Ui::trayIcon({color,percent,recording,glyph,lights}));
   if(text!=activityText_||tooltipTitle!=activityTitle_)tray_->setToolTip(tooltipTitle+(text.isEmpty()||text==tooltipTitle?QString{}:QString("\n")+text));
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).
  if(text!=activityText_||tooltipTitle!=activityTitle_)logging::debug(logUi(),"Tray tooltip changed",{{"title",tooltipTitle},{"activity",text}});
- iconColor_=color;iconPercent_=percent;iconRecording_=recording;activityText_=text;activityTitle_=tooltipTitle;
+ iconColor_=color;iconPercent_=percent;iconRecording_=recording;iconGlyph_=glyph;iconLights_=lights;activityText_=text;activityTitle_=tooltipTitle;
 }
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";

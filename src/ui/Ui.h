@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <functional>
 #include "Theme.h"
+#include "IconArt.h"
 #include <QFont>
 #include <QIcon>
 #include <QList>
@@ -403,6 +404,8 @@ QComboBox* choiceBox(QWidget* parent);
 QIcon icon(const QString& name);
 // A glyph in a fixed colour: tray tints, glyphs drawn on the accent.
 QIcon icon(const QString& name,const QColor& color,int percent=-1,int recording=0);
+// One tray frame, for the Qt tray. Never cached: seasonal and progress frames come and go.
+QIcon trayIcon(const IconArt::TrayIcon& icon);
 // Folder of the check, radio, chevron and spin step images painted from the
 // scheme's tokens (1x and @2x) in a private temporary folder for this process,
 // for stylesheets' image urls; empty when it cannot be written.

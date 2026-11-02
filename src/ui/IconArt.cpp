@@ -19,22 +19,72 @@ QPainterPath tray() {
  p.lineTo(22,18);p.quadTo(22,23,17,23);p.lineTo(7,23);p.quadTo(2,23,2,18);p.closeSubpath();
  return p;
 }
+QPainterPath disc(qreal x,qreal y,qreal radius) {QPainterPath p;p.addEllipse(QPointF(x,y),radius,radius);return p;}
+QPainterPath turkey() {
+ QPainterPath p=tray();
+ // Three tail feathers, spread around their root and clear of each other at the tips.
+ for(const qreal angle:{-68.0,-32.0,8.0}) {
+  QPainterPath feather;feather.addRoundedRect(QRectF(8,1.8,4,10.5),2,2);
+  p=p.united(QTransform().translate(10,12.3).rotate(angle).translate(-10,-12.3).map(feather));
+ }
+ QPainterPath body;
+ body.moveTo(7.5,11.5);body.quadTo(8,9,10.8,9);body.lineTo(14,9);body.lineTo(15,5.6);
+ body.quadTo(13.9,4.7,14.1,3.1);body.quadTo(14.4,.7,16.9,.7);body.quadTo(19.6,.7,19.7,3.5);
+ body.quadTo(19.7,5.2,18,6);body.lineTo(17.1,10.6);body.quadTo(16.7,13.7,14.8,16);body.lineTo(9,16);
+ body.quadTo(7.2,14.4,7.5,11.5);body.closeSubpath();
+ QPainterPath beak;beak.moveTo(19.3,2.8);beak.lineTo(23.1,4.2);beak.lineTo(19.2,5.5);beak.closeSubpath();
+ QPainterPath wattle;
+ wattle.moveTo(18.4,5.8);wattle.quadTo(20.6,6.2,19.5,9.3);wattle.quadTo(18.9,10.8,17.7,9.8);
+ wattle.quadTo(16.8,9,17.6,7);wattle.closeSubpath();
+ return p.united(body).united(beak).united(wattle).subtracted(disc(17.7,2.9,.8));
+}
+// The tree's tiers are drawn in a taller box and squeezed, which leaves the
+// clear gap above the bowl's rim.
+const QTransform treeSquash=QTransform().translate(0,.48).scale(1,.76);
+QPainterPath treeLight(int index) {return index?disc(14.4,9.372,1):disc(10.4,6.332,1);}
+QPainterPath tree() {
+ QPainterPath trunk;trunk.addRect(QRectF(9,11,6,5));
+ QPainterPath tiers;
+ tiers.moveTo(12,2);
+ for(const auto& point:{QPointF(16.6,6.7),QPointF(14.8,6.7),QPointF(19,10.8),QPointF(16.1,10.8),QPointF(20.2,15.1),QPointF(3.8,15.1),QPointF(7.9,10.8),QPointF(5,10.8),QPointF(9.2,6.7),QPointF(7.4,6.7)})tiers.lineTo(point);
+ tiers.closeSubpath();
+ QPainterPath star;star.moveTo(12,.15);
+ for(const auto& point:{QPointF(12.47,1.353),QPointF(13.759,1.428),QPointF(12.761,2.247),QPointF(13.087,3.497),QPointF(12,2.8),QPointF(10.913,3.497),QPointF(11.239,2.247),QPointF(10.241,1.428),QPointF(11.53,1.353)})star.lineTo(point);
+ star.closeSubpath();
+ QPainterPath garlands;garlands.moveTo(8,9);garlands.quadTo(12,11.4,16,10.7);garlands.moveTo(7.2,12.6);garlands.quadTo(12,15,17,13.7);
+ QPainterPathStroker stroker;stroker.setWidth(.85);stroker.setCapStyle(Qt::RoundCap);
+ return tray().united(trunk).united(treeSquash.map(tiers)).united(star)
+  .subtracted(treeSquash.map(stroker.createStroke(garlands)))
+  .subtracted(treeLight(0)).subtracted(treeLight(1));
+}
+const QPainterPath& glyphShape(TrayGlyph glyph) {
+ static const QPainterPath mark=arrow().united(tray()),bird=turkey(),fir=tree();
+ return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;
+}
 QImage canvas(int scale) {
  QImage result(24*scale,24*scale,QImage::Format_ARGB32);
  result.setDevicePixelRatio(scale);result.fill(Qt::transparent);return result;
 }
 }
-QImage liftTray(const QColor& color,int percent,int scale,int recording) {
+QImage liftTray(const QColor& color,int percent,int scale,int recording) {return liftTray(TrayIcon{color,percent,recording},scale);}
+QImage liftTray(const TrayIcon& icon,int scale) {
+ const auto& color=icon.color;const int percent=icon.percent,recording=icon.recording;
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
  const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
  const bool failed=percent==-2;
  const auto glyph=failed?tints.error:color;
- const auto shape=arrow().united(tray());
+ const auto& shape=glyphShape(failed||recording?TrayGlyph::Mark:icon.glyph);
  if(percent<0) p.fillPath(shape,glyph);
  else {
   p.fillPath(shape,glyph);
-  p.save();const auto fill=qBound(0,percent,100)/100.0;
-  p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,tints.encoding);p.restore();
+  const auto bounds=shape.boundingRect();const auto level=bounds.bottom()-bounds.height()*qBound(0,percent,100)/100.0;
+  // The fill climbs the whole silhouette; a clip at a full fill could round away its top row.
+  p.save();if(percent<100)p.setClipRect(QRectF(0,level,24,bounds.bottom()-level));p.fillPath(shape,tints.encoding);p.restore();
+  // A lit ornament contrasts with whatever surrounds it, and leaves the fill line alone.
+  if(&shape==&glyphShape(TrayGlyph::Tree))for(int light=0;light<2;++light)if(icon.lights&(1<<light)) {
+   p.save();p.setClipRect(QRectF(0,0,24,level));p.fillPath(treeLight(light),tints.encoding);p.restore();
+   p.save();p.setClipRect(QRectF(0,level,24,24-level));p.fillPath(treeLight(light),glyph);p.restore();
+  }
  }
  p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
  p.setBrush(Qt::NoBrush);p.drawPath(shape);
