@@ -1,7 +1,8 @@
 # File manager refusals (#1138)
 
-Guest frames from the CI packages of #1138 at `922be7369`
-(`26.1102.3774~dev+ge7d882e8c680`). Boxes mark the change.
+Guest frames from the CI packages of #1138's head `922be7369`, built as its
+merge commit with nightly, `e7d882e8c680` (`26.1102.3774~dev+ge7d882e8c680`).
+Boxes mark the change.
 
 | Picture | Guest | What it shows |
 | --- | --- | --- |
