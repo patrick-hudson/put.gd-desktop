@@ -12,7 +12,7 @@ rows and current-candidate evidence remain gates.
 ## History gallery blanking, scrolling and gap crash (#1151) — 2026-11-02
 
 [Evidence](evidence/2026-11-02-history-gallery/README.md): with `v26.1102.3796-nightly` on Mint
-Cinnamon X11, a desktop recording blanked up to 15 of about 45 gallery tiles and resting the pointer
+Cinnamon X11, a desktop recording blanked 15 or more of about 45 gallery tiles at its worst and resting the pointer
 between tiles crashed `putgd-ui`. With PR #1151's DEB at `3f5d0b0da071`, no frame showed a blanked
 tile and the crash was gone. `putgd-ui` CPU per wheel notch fell from 144.5 ms to 59.2 ms. The scroll
 paint test also passes on live GNOME Wayland; Plasma wasn't run. Synthetic history, not live storage.
