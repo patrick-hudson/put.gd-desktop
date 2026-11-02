@@ -116,7 +116,7 @@ private slots:
    QVERIFY(pixelsOf(image,amber())>0);
   }
   // The head and the star turn amber at 100%, above the old fill top of y=2.
-  if(glyph==TrayGlyph::Turkey)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(int(16.9*8),int(1.5*8)),amber());
+  if(glyph==TrayGlyph::Turkey)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(int(15.5*8),int(1.5*8)),amber());
   if(glyph==TrayGlyph::Tree)QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,glyph},8).pixelColor(12*8,2*8),amber());
  }
  void fillClimbsBottomUpWithGlyphBounds_data(){fullFillCoversTheWholeSilhouette_data();}
@@ -128,31 +128,14 @@ private slots:
   }
  }
  void cutoutsAndTheGapStayTransparent(){
-  // Tree: the gap between the lowest tier and the bowl's rim, and an unlit ornament.
-  // The contour stroke narrows the gap by .325 on each side.
+  // Tree: the gap between the lowest tier and the bowl's rim, and the ornaments.
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
-   QCOMPARE(qAlpha(tree.pixel(4*8,int(12.5*8))),0);QCOMPARE(qAlpha(tree.pixel(20*8,int(12.5*8))),0);
-   QCOMPARE(qAlpha(tree.pixel(int(10.4*8),int(6.332*8))),0);QCOMPARE(qAlpha(tree.pixel(int(14.4*8),int(9.372*8))),0);
+   QCOMPARE(qAlpha(tree.pixel(4*8,12*8)),0);QCOMPARE(qAlpha(tree.pixel(20*8,12*8)),0);
+   QCOMPARE(qAlpha(tree.pixel(int(10.8*8),int(5.9*8))),0);QCOMPARE(qAlpha(tree.pixel(int(14.5*8),int(7.2*8))),0);QCOMPARE(qAlpha(tree.pixel(12*8,int(9.8*8))),0);
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
-   QCOMPARE(qAlpha(turkey.pixel(int(17.7*8),int(2.9*8))),0);
+   QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
   }
- }
- void twinkleMovesOnlyItsLights(){
-  const QRect a(int(9.4*8),int(5.3*8),17,17),b(int(13.4*8),int(8.3*8),17,17);
-  for(int percent:{0,10,50,90,100}){
-   const auto dark=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree,0},8);
-   for(int lights:{1,2,3}){
-    const auto lit=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree,lights},8);
-    QVERIFY(lit!=dark);
-    for(int y=0;y<192;++y)for(int x=0;x<192;++x)if(!a.contains(x,y)&&!b.contains(x,y))QCOMPARE(lit.pixel(x,y),dark.pixel(x,y));
-   }
-  }
-  // A lit ornament contrasts: amber above the fill line, neutral below it.
-  QCOMPARE(IconArt::liftTray(TrayIcon{idle(),0,0,TrayGlyph::Tree,1},8).pixelColor(int(10.4*8),int(6.332*8)),amber());
-  QCOMPARE(IconArt::liftTray(TrayIcon{idle(),100,0,TrayGlyph::Tree,1},8).pixelColor(int(10.4*8),int(6.332*8)),idle());
-  // The turkey has no lights.
-  QCOMPARE(IconArt::liftTray(TrayIcon{idle(),50,0,TrayGlyph::Turkey,3},8),IconArt::liftTray(TrayIcon{idle(),50,0,TrayGlyph::Turkey,0},8));
  }
  void aBadgeDrawsOnTheOrdinaryMark_data(){
   QTest::addColumn<int>("percent");QTest::addColumn<int>("recording");
@@ -163,10 +146,10 @@ private slots:
  void aBadgeDrawsOnTheOrdinaryMark(){
   QFETCH(int,percent);QFETCH(int,recording);
   const auto mark=IconArt::liftTray(idle(),percent,2,recording);
-  for(const auto glyph:{TrayGlyph::Turkey,TrayGlyph::Tree})for(int lights:{0,3})QCOMPARE(IconArt::liftTray(TrayIcon{idle(),percent,recording,glyph,lights},2),mark);
+  for(const auto glyph:{TrayGlyph::Turkey,TrayGlyph::Tree})QCOMPARE(IconArt::liftTray(TrayIcon{idle(),percent,recording,glyph},2),mark);
  }
  void qtTrayIconIsTheSameFrame(){
-  const TrayIcon icon{idle(),50,0,TrayGlyph::Tree,1};
+  const TrayIcon icon{idle(),50,0,TrayGlyph::Tree};
   QCOMPARE(Ui::trayIcon(icon).pixmap(48,48).toImage().convertToFormat(QImage::Format_ARGB32),[&]{auto image=IconArt::liftTray(icon,2);image.setDevicePixelRatio(1);return image;}());
   // The cached Ui::icon paths don't carry a season into the ordinary mark.
   const auto plain=Ui::icon("tray",idle()).pixmap(24,24).toImage();

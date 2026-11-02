@@ -7,11 +7,8 @@ namespace putgd::IconArt {
 // The tray's upper glyph; every one keeps the mark's bowl. A badge always draws
 // on the ordinary mark, because the turkey's head sits under it.
 enum class TrayGlyph {Mark,Turkey,Tree};
-// What one tray frame shows. lights is a bitmask of the tree's two ornaments.
-struct TrayIcon {
- QColor color;int percent=-1,recording=0;TrayGlyph glyph=TrayGlyph::Mark;int lights=0;
- bool operator==(const TrayIcon&)const=default;
-};
+// What one tray frame shows.
+struct TrayIcon {QColor color;int percent=-1,recording=0;TrayGlyph glyph=TrayGlyph::Mark;};
 QImage liftTray(const TrayIcon& icon,int scale=1);
 // Software rendering also serves the Core-only StatusNotifier resident.
 // -1 is solid; -2 tints the glyph error and adds a badge when not recording.

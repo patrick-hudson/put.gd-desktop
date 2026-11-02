@@ -262,9 +262,9 @@ private slots:
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),turkey);QCOMPARE(controller.trayIconState()["glyph"].toString(),QString("turkey"));QVERIFY(controller.trayIconState()["calendarOverride"].toBool());
   const auto tooltip=tray->toolTip();
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),fir);
-  QCOMPARE(controller.trayIconState()["localDate"].toString(),QString("2026-12-01"));QCOMPARE(tray->toolTip(),tooltip);QVERIFY(!controller.trayIconState()["twinkling"].toBool());
+  QCOMPARE(controller.trayIconState()["localDate"].toString(),QString("2026-12-01"));QCOMPARE(tray->toolTip(),tooltip);
  }
- void treeTwinklesOnlyDuringARevealedUpload() {
+ void seasonalGlyphCarriesFillSuccessAndFallsBackUnderABadge() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
   Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
@@ -272,25 +272,17 @@ private slots:
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
   auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});
   const auto& tints=Theme::trayTints(false);
-  const auto frame=[&](int percent,int lights){return Ui::trayIcon({tints.idle,percent,0,IconArt::TrayGlyph::Tree,lights}).pixmap(24,24).toImage();};
-  const auto twinkling=[&]{return controller.trayIconState()["twinkling"].toBool();};
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(-1,0));putgd::test::settle(700);QVERIFY(!twinkling());QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(-1,0));
+  const auto frame=[&](const QColor& color,int percent){return Ui::trayIcon({color,percent,0,IconArt::TrayGlyph::Tree}).pixmap(24,24).toImage();};
+  // Idle publishes one still frame: nothing here runs on a clock.
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,-1));
   operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
   provider->requests.first().progress({"uploading",1,2});
-  PUTGD_TRY_VERIFY(twinkling());PUTGD_TRY_VERIFY(tray->toolTip().contains("(50%)"));
-  // Every frame keeps the byte count's 50%; the tooltip doesn't move with the lights.
-  const auto tooltip=tray->toolTip();QSet<int> seen;
-  PUTGD_TRY_VERIFY([&]{const auto image=tray->icon().pixmap(24,24).toImage();for(int lights=0;lights<4;++lights)if(image==frame(50,lights))seen.insert(lights);return seen.size()==4;}());
-  QCOMPARE(tray->toolTip(),tooltip);
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,50));PUTGD_TRY_VERIFY(tray->toolTip().contains("(50%)"));
   provider->completions.takeFirst()();
-  PUTGD_TRY_VERIFY(tray->toolTip().startsWith("Upload complete"));QVERIFY(!twinkling());
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),Ui::trayIcon({tints.upload,-1,0,IconArt::TrayGlyph::Tree}).pixmap(24,24).toImage());
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(-1,0));QVERIFY(!twinkling());
-  // A failure stops the lights and shows the ordinary mark with its badge.
-  operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),2);
-  provider->requests.last().progress({"uploading",1,2});PUTGD_TRY_VERIFY(twinkling());
-  controller.notifyFailure({"synthetic_failure","Synthetic failed upload",{}});QVERIFY(!twinkling());
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),Ui::icon("tray",tints.error,-2).pixmap(24,24).toImage());
+  PUTGD_TRY_VERIFY(tray->toolTip().startsWith("Upload complete"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.upload,-1));
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,-1));
+  controller.notifyFailure({"synthetic_failure","Synthetic failed upload",{}});
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),Ui::icon("tray",tints.error,-2).pixmap(24,24).toImage());QCOMPARE(controller.trayIconState()["shown"].toString(),QString("mark"));QCOMPARE(controller.trayIconState()["glyph"].toString(),QString("tree"));
  }
 
  void concurrentTransferFillUsesSourceByteWeights() {

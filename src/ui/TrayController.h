@@ -121,14 +121,8 @@ private:
  void retintMenu();
  int iconPercent_=-1;
  int iconRecording_=0;
- // The December tree's lights while an upload is showing; nothing else animates.
  TrayCalendar calendar_;
- QTimer twinkleTimer_;
- bool motionReduced_=false,twinkleOffered_=false;
  IconArt::TrayGlyph iconGlyph_=IconArt::TrayGlyph::Mark;
- int iconLights_=0;
- void twinkle();
- void checkReducedMotion();
  QString activityText_,activityTitle_="put.gd";
  QAction *uploadStatus_=nullptr,*cancelUpload_=nullptr,*uploadSeparator_=nullptr,*failedUploads_=nullptr;
  QSet<QString> activeUploads_,failedItems_;
