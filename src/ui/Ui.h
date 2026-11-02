@@ -130,9 +130,8 @@ private:
     void drawButtonLabel(const QStyleOption*, const QString& text, const QIcon&, QSize iconSize, QPainter*, const QWidget*, QRect body) const;
 };
 
-// Recessed media only: shadow before the image, one-pixel edge after it.
+// Recessed media only: a soft shadow painted before the image.
 void paintImageShadow(QPainter&, const QRectF&);
-void paintImageEdge(QPainter&, const QRectF&);
 
 // A region of the window: its fill token and the hairlines on its edges.
 // role: "bg" (default), "well", "surface" or "raised".

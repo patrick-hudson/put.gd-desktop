@@ -18,6 +18,16 @@ private slots:
   Theme::setScheme(before);
  }
 
+ // Frameless: the pill's top edge, mid-width, is its fill and not a border.
+ void pillHasNoOutline(){
+  const auto restore=qScopeGuard([previous=Theme::scheme()]{Theme::setScheme(previous);});
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);
+   QImage image(200,40,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);
+   {QPainter painter(&image);paintRegionPill(painter,QRect(10,10,180,20),{});}
+   QCOMPARE(image.pixelColor(100,10),Theme::palette(scheme).surfaceRaised);
+  }
+ }
  void hintPillUsesThemeAndOneLine(){
   const auto original=qApp->font();auto restore=qScopeGuard([&]{qApp->setFont(original);});
   for(int pixels:{14,21})for(auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){

@@ -104,9 +104,8 @@ QList<QRect> screenRects() {
     for (QScreen* screen : QGuiApplication::screens()) rects.append(screen->geometry());
     return rects;
 }
-// The bar in the interface's scheme (#198). Its outline meets 3:1 against
-// both black and white in either scheme, so the bar's edge shows over any
-// content; the primary actions use the shared neutral role.
+// The bar in the interface's scheme (#198), a frameless surface; the primary
+// actions use the shared neutral role.
 
 }
 
@@ -329,7 +328,7 @@ ControlBar::ControlBar(const Options& options, const RecordingConfig& config, QW
     setObjectName("putgd-record-bar");
     setWindowTitle(QString::fromLatin1(controlBarTitle));
     setAttribute(Qt::WA_ShowWithoutActivating);
-    // The app's painted controls; the bar paints its own surface and outline.
+    // The app's painted controls; the bar paints its own surface.
     Fonts::load();
     if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) Ui::apply(*app);
     connect(&Theme::Notifier::instance(), &Theme::Notifier::changed, this, [this] { refresh(); update(); });
@@ -551,8 +550,6 @@ void ControlBar::setState(const QString& state) { state_ = state; refresh(); }
 void ControlBar::paintEvent(QPaintEvent*) {
     QPainter painter(this);
     painter.fillRect(rect(), Theme::current().bg);
-    painter.setPen(Theme::current().controlOutline);
-    painter.drawRect(rect().adjusted(0, 0, -1, -1));
 }
 void ControlBar::setRetained(qint64 us) {
     time_->setText(durationText(us));

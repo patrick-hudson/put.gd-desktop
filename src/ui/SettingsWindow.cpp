@@ -396,7 +396,7 @@ public:
   const int height=metrics.height()+16,width=qMin(220,8+16+8+metrics.horizontalAdvance(label)+12);
   QPixmap image(QSize(width,height)*ratio);image.setDevicePixelRatio(ratio);image.fill(Qt::transparent);
   QPainter painter(&image);painter.setRenderHint(QPainter::Antialiasing);painter.setOpacity(0.86);
-  painter.setPen(QPen(Theme::current().accent,1));painter.setBrush(Theme::current().surfaceRaised);painter.drawRoundedRect(QRectF(0.5,0.5,width-1,height-1),7,7);
+  painter.setPen(Qt::NoPen);painter.setBrush(Theme::current().surfaceRaised);painter.drawRoundedRect(QRectF(0,0,width,height),7,7);
   item.icon().paint(&painter,QRect(8,(height-16)/2,16,16));
   painter.setFont(font);painter.setPen(Theme::current().text);
   painter.drawText(QRect(32,0,width-32-8,height),Qt::AlignVCenter|Qt::AlignLeft,metrics.elidedText(label,Qt::ElideRight,width-32-8));

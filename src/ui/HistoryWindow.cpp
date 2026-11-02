@@ -640,7 +640,7 @@ public:
    const auto category=record["category"].toString();const int side=grid()?36:24;
    Ui::icon(category=="images"?"images":category=="videos"?"record":category=="text"?"clipboard":"document").paint(p,QRect(thumb.center()-QPoint(side/2,side/2),QSize(side,side)));
   }
-  p->restore();p->setPen(QPen(t.border,1));p->setBrush(Qt::NoBrush);p->drawRoundedRect(QRectF(thumb).adjusted(0.5,0.5,-0.5,-0.5),4,4);
+  p->restore();
   // The primary action uses its own measured width; hover icons keep a fixed slot.
   const auto action=i.data(HistoryModel::PrimaryActionRole).toString();const bool showPrimary=primaryShown(i);const bool routineActionsShown=inlineActions(i)&&(hover||chosen||(grid()&&(i==view_->currentIndex()||i==actionIndex_))||((option.state&QStyle::State_HasFocus)&&view_->hasFocus()));const bool actionsShown=routineActionsShown||(inlineActions(i)&&(recovery(i)||(grid()&&failed)));
   const auto primaryBounds=primaryRect(outer,i);const auto moreBounds=menuRect(outer,i);

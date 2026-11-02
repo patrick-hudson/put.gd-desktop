@@ -322,8 +322,7 @@ private slots:
             QVERIFY2(matching * 3 > image.width() * image.height(), qPrintable(QStringLiteral("%1: %2 of %3 pixels are bg").arg(putgd::Theme::name(scheme)).arg(matching).arg(image.width() * image.height())));
         }
     }
-    // Over any content: the text reads on the bar, and the bar's outline
-    // (3:1 against black and white) shows where it ends, in both schemes.
+    // Over any content: the text reads on the frameless bar in both schemes.
     void barReadsOverAnyContent() {
         const auto previous = putgd::Theme::scheme();
         const auto restore = qScopeGuard([previous] { putgd::Theme::setScheme(previous); });
@@ -334,11 +333,9 @@ private slots:
             QVERIFY(putgd::Theme::contrast(p.textMuted, p.bg) >= 4.5);
             // Inactive actions meet 3:1; the information above keeps 4.5:1.
             QVERIFY(putgd::Theme::contrast(p.textDisabled, p.bg) >= 3.0);
-            QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::black) >= 3.0);
-            QVERIFY(putgd::Theme::contrast(p.controlOutline, Qt::white) >= 3.0);
             putgd::Theme::setScheme(scheme);
             ControlBar bar(barOptions(), putgd::RecordingConfig{});
-            QCOMPARE(bar.grab().toImage().pixelColor(0, 0), p.controlOutline);
+            QCOMPARE(bar.grab().toImage().pixelColor(0, 0), p.bg);
             // Record and Stop keep white on green and red.
             QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#2e7d32")) >= 4.5);
             QVERIFY(putgd::Theme::contrast(Qt::white, QColor("#c62828")) >= 4.5);
