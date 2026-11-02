@@ -37,7 +37,7 @@ class LabUiContract(unittest.TestCase):
 
     def test_tray_titles_attention_and_phase_labels(self):
         tray = load('tray_progress')
-        wanted = {tray.IDLE, tray.UPLOADING, tray.COMPLETE, tray.ATTENTION, tray.FINISHING, tray.REVIEW,
+        wanted = {tray.IDLE, tray.SEASONAL_IDLE, tray.UPLOADING, tray.COMPLETE, tray.ATTENTION, tray.FINISHING, tray.REVIEW,
                   *tray.LABELS.values(), *(label for labels in tray.ATTENTION_LABELS.values() for label in labels)}
         self.assertLiterals(wanted, 'src/ui/TrayController.cpp')
         # The native item draws the same titles when it is given none.

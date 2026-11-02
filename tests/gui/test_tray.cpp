@@ -71,6 +71,8 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ // These tests are about status, not the season; test_tray_season covers that.
+ void initTestCase(){qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");}
  void diagnosticsNamesTheWorkThatActuallyRan(){
   for(const auto& action:QStringList{"region","window","desktop","edit"}){
    QJsonObject failed{{"action",action},{"state","failed"},{"items",QJsonArray{}}};
@@ -247,6 +249,61 @@ private slots:
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }
 
+ // Everything date-driven runs through TrayCalendar's real clock path, started
+ // at a chosen moment by its documented override.
+ void seasonalGlyphFollowsTheCalendarWithoutARestart() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-11-30T23:59:58");auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
+  const auto idle=Theme::trayTints(false).idle;
+  const auto turkey=Ui::trayIcon({idle,-1,0,IconArt::TrayGlyph::Turkey}).pixmap(24,24).toImage(),fir=Ui::trayIcon({idle,-1,0,IconArt::TrayGlyph::Tree}).pixmap(24,24).toImage();
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),turkey);QCOMPARE(controller.trayIconState()["glyph"].toString(),QString("turkey"));QVERIFY(controller.trayIconState()["calendarOverride"].toBool());
+  QCOMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),fir);
+  QCOMPARE(controller.trayIconState()["localDate"].toString(),QString("2026-12-01"));QCOMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
+ }
+ void seasonalGreetingFollowsTheCalendar_data() {
+  QTest::addColumn<QByteArray>("start");QTest::addColumn<QString>("before");QTest::addColumn<QString>("after");
+  QTest::newRow("into November")<<QByteArray("2026-10-31T23:59:58")<<QString("put.gd")<<QString("put.gd - Happy Holidays!");
+  QTest::newRow("back to normal in January")<<QByteArray("2026-12-31T23:59:58")<<QString("put.gd - Happy Holidays!")<<QString("put.gd");
+ }
+ void seasonalGreetingFollowsTheCalendar() {
+  QFETCH(QByteArray,start);QFETCH(QString,before);QFETCH(QString,after);
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  qputenv("PUTGD_TRAY_CALENDAR_NOW",start);auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
+  QCOMPARE(tray->toolTip(),before);PUTGD_TRY_COMPARE(tray->toolTip(),after);
+ }
+ void seasonalGlyphCarriesFillSuccessAndFallsBackUnderABadge() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-12-15T12:00:00");auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
+  auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});
+  const auto& tints=Theme::trayTints(false);
+  const auto frame=[&](const QColor& color,int percent){return Ui::trayIcon({color,percent,0,IconArt::TrayGlyph::Tree}).pixmap(24,24).toImage();};
+  // Idle publishes one still frame: nothing here runs on a clock.
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,-1));
+  operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
+  provider->requests.first().progress({"uploading",1,2});
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,50));PUTGD_TRY_VERIFY(tray->toolTip().contains("(50%)"));
+  // Status stays the title with its real details; the greeting is the last line.
+  const auto lines=[&]{return tray->toolTip().split('\n');};
+  QCOMPARE(lines().first(),QString("Uploading"));QVERIFY(lines().at(1).contains("(50%)"));QCOMPARE(lines().last(),QString("put.gd - Happy Holidays!"));
+  provider->completions.takeFirst()();
+  PUTGD_TRY_VERIFY(tray->toolTip().startsWith("Upload complete"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.upload,-1));
+  QCOMPARE(lines().last(),QString("put.gd - Happy Holidays!"));
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,-1));PUTGD_TRY_COMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
+  controller.notifyFailure({"synthetic_failure","Synthetic failed upload",{}});
+  QCOMPARE(lines().first(),QString("Needs attention"));QVERIFY(lines().at(1).startsWith("Action needs attention"));QCOMPARE(lines().last(),QString("put.gd - Happy Holidays!"));
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),Ui::icon("tray",tints.error,-2).pixmap(24,24).toImage());QCOMPARE(controller.trayIconState()["shown"].toString(),QString("mark"));QCOMPARE(controller.trayIconState()["glyph"].toString(),QString("tree"));
+ }
+
  void concurrentTransferFillUsesSourceByteWeights() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->concurrency=8;provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
@@ -365,7 +422,15 @@ private slots:
   PUTGD_COMPARE_STEADY(tray->icon().pixmap(24,24).toImage(),red,400);
   QVERIFY(tray->contextMenu()->findChild<QAction*>("trayFailedUploads")->isVisible());
  }
+ void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch_data() {
+  QTest::addColumn<QByteArray>("date");QTest::addColumn<bool>("seasonal");
+  QTest::newRow("ordinary")<<QByteArray("2026-06-15T12:00:00")<<false;
+  QTest::newRow("turkey")<<QByteArray("2026-11-15T12:00:00")<<true;
+  QTest::newRow("tree")<<QByteArray("2026-12-15T12:00:00")<<true;
+ }
  void preparingAndQueuedOperationsStayBlueBeforeStorageDispatch() {
+  QFETCH(QByteArray,date);QFETCH(bool,seasonal);
+  qputenv("PUTGD_TRAY_CALENDAR_NOW",date);auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
   // One upload at a time: the second action queues behind the first.
@@ -381,6 +446,9 @@ private slots:
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_VERIFY(preparing->load());
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.reads,2);
   PUTGD_TRY_VERIFY(tray->toolTip().contains("Queued"));QCOMPARE(provider->checks.load(),0);QCOMPARE(provider->uploads.load(),0);
+  QCOMPARE(tray->toolTip().section('\n',0,0),QString("put.gd"));
+  if(seasonal)QCOMPARE(tray->toolTip().section('\n',-1),QString("put.gd - Happy Holidays!"));
+  else QVERIFY(!tray->toolTip().contains("Happy Holidays!"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }
 
@@ -815,6 +883,34 @@ private slots:
   controller.invokeShortcut("record");PUTGD_TRY_COMPARE(state(),QString("recording"));
   controller.invokeShortcut("record");PUTGD_TRY_COMPARE(state(),QString("reviewing"));
   const int raises=backend->log.count("raise");controller.invokeShortcut("record");PUTGD_TRY_COMPARE(backend->log.count("raise"),raises+1);QCOMPARE(state(),QString("reviewing"));
+ }
+
+ void seasonalRecordingStatusPrecedesTheGreeting_data() {
+  QTest::addColumn<QByteArray>("date");
+  QTest::newRow("turkey")<<QByteArray("2026-11-15T12:00:00");
+  QTest::newRow("tree")<<QByteArray("2026-12-15T12:00:00");
+ }
+ void seasonalRecordingStatusPrecedesTheGreeting() {
+  QFETCH(QByteArray,date);
+  qputenv("PUTGD_TRAY_CALENDAR_NOW",date);auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();backend->deferPrepare=true;backend->deferExports=true;operations.setRecordingBackend(std::move(fake));
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  QCOMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
+  const auto tooltip=[](const QString& status){return "put.gd\n"+status+"\nput.gd - Happy Holidays!";};
+  auto command=[&](const QString& name,const QJsonObject& params){QJsonObject out;bool done=false;operations.recordingCommand(name,params,[&](Error error,QJsonObject result){QVERIFY2(!error,qPrintable(error.message));out=result;done=true;});(void)putgd::test::waitFor([&]{return done;});return out;};
+  const auto id=command("prepare",{{"target",QJsonObject{{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}}},{"format","mp4"}})["recordingId"].toString();QVERIFY(!id.isEmpty());
+  PUTGD_TRY_VERIFY(bool(backend->pendingPrepare));PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Setting up the recording"));
+  std::exchange(backend->pendingPrepare,{})({},{});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Ready to record"));
+  command("start",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Recording"));
+  command("pause",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Recording paused"));
+  command("resume",{{"id",id}});command("stop",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Reviewing the recording"));
+  bool saved=false;operations.recordingCommand("saveCopy",{{"id",id},{"path",directory.filePath("copy.mp4")}},[&](Error error,QJsonObject){QVERIFY(!error);saved=true;});
+  PUTGD_TRY_COMPARE(backend->pendingExports.size(),1);PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Saving a copy of the recording"));
+  backend->pendingExports.takeFirst()();PUTGD_TRY_VERIFY(saved);PUTGD_TRY_COMPARE(tray->toolTip(),tooltip("Reviewing the recording"));
+  command("cancel",{{"id",id}});PUTGD_TRY_COMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
  }
 
  // Recording and pause have independent overlays; transfer fills amber and only

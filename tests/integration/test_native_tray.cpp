@@ -156,6 +156,8 @@ class NativeTrayWire final : public QObject {
  }
 private slots:
  void initTestCase() {
+  // Status and titles here, not the season: test_tray and test_tray_season cover that.
+  qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
   QVERIFY(peer.isConnected()); QVERIFY(client.isConnected());
   qDBusRegisterMetaType<WireLayout>(); qDBusRegisterMetaType<WireImage>(); qDBusRegisterMetaType<WireImages>();
@@ -423,6 +425,17 @@ private slots:
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());
   const auto title=[&]{const auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return qdbus_cast<WireTooltip>(qdbus_cast<QVariantMap>(result.arguments().first())["ToolTip"]).title;};
   QCOMPARE(title(),QString("put.gd"));tray.setActivity(Theme::trayTints(false).idle,"Transfer progress",50);QCOMPARE(title(),QString("Uploading"));tray.setActivity(Theme::trayTints(false).upload,"Finished",-1,0,"Upload complete");QCOMPARE(title(),QString("Upload complete"));tray.setActivity(Theme::trayTints(false).error,"Failure",-2);QCOMPARE(title(),QString("Needs attention"));tray.setActivity(Theme::trayTints(false).idle,{});QCOMPARE(title(),QString("put.gd"));
+ }
+ void seasonChangePublishesOnlyPixels() {
+  NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;
+  const auto service=watcher.registrations.last();
+  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
+  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
+  const auto idle=Theme::trayTints(false).idle;const auto base=observer.icons,tips=observer.tooltips;
+  // Same colour, percent and text: only the glyph moved, so a midnight still redraws.
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_TRY_COMPARE(observer.icons,base+1);
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Turkey);PUTGD_COMPARE_STEADY(observer.icons,base+1,50);
+  tray.setActivity(idle,{},-1,0,"put.gd",IconArt::TrayGlyph::Tree);PUTGD_TRY_COMPARE(observer.icons,base+2);PUTGD_COMPARE_STEADY(observer.tooltips,tips,50);
  }
  void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
   NativeTray tray;PUTGD_TRY_VERIFY(tray.available());ActivitySignalPeer observer;

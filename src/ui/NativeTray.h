@@ -1,4 +1,5 @@
 #pragma once
+#include "IconArt.h"
 #include <QDBusConnection>
 #include <QObject>
 #include <QColor>
@@ -21,7 +22,7 @@ public:
  ~NativeTray() override;
  bool available() const;
  bool availabilityKnown() const;
- void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {});
+ void setActivity(const QColor& color, const QString& description, int percent = -1,int recording = 0,const QString& title = {},IconArt::TrayGlyph glyph = IconArt::TrayGlyph::Mark);
  // Shows the "update" menu entry with this label; empty hides it (#293).
  void setUpdateLabel(const QString& label);
  void setCommands(const QHash<QString,QString>& shortcuts,const QString& uploadStatus,int uploads=1,bool failed=false,const QString& recording = {},const QString& attention = "Failed uploads");

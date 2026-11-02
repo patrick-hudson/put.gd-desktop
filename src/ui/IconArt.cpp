@@ -19,25 +19,58 @@ QPainterPath tray() {
  p.lineTo(22,18);p.quadTo(22,23,17,23);p.lineTo(7,23);p.quadTo(2,23,2,18);p.closeSubpath();
  return p;
 }
+QPainterPath disc(qreal x,qreal y,qreal radius) {QPainterPath p;p.addEllipse(QPointF(x,y),radius,radius);return p;}
+// Seasonal silhouettes, before any cutouts: the contour follows only the outside,
+// so the turkey's eye stays a clean hole on any panel.
+QPainterPath turkeySilhouette() {
+ QPainterPath p;
+ p.moveTo(9,16);p.quadTo(7.6,14.5,7.6,12.3);p.lineTo(2,10.3);p.quadTo(.5,9.7,.8,8.2);p.quadTo(1.1,6.7,2.7,7.1);p.lineTo(5.4,8.2);
+ p.lineTo(3.6,5.2);p.quadTo(2.7,3.7,4,2.9);p.quadTo(5.3,2.1,6.3,3.5);p.lineTo(8.5,7);
+ p.lineTo(8.8,3);p.quadTo(8.9,1.4,10.4,1.4);p.quadTo(12,1.4,11.9,3.2);p.lineTo(11.4,9);p.lineTo(14,9);
+ p.lineTo(15,5.6);p.quadTo(13.9,4.7,14.1,3.1);p.quadTo(14.4,.7,16.9,.7);p.quadTo(19.3,.7,19.6,2.9);p.lineTo(23,4.2);p.lineTo(19.5,5.4);
+ p.lineTo(18.5,5.8);p.quadTo(20.1,6.6,19.3,9);p.quadTo(18.9,10.1,17.8,9.2);p.lineTo(17.1,10.6);p.quadTo(16.7,13.7,14.8,16);p.closeSubpath();
+ return tray().united(p);
+}
+QPainterPath treeSilhouette() {
+ QPainterPath p;p.moveTo(12,.5);
+ // A star on a tall tree standing in the bowl's well, clear of it all round. A tree
+ // on the rim needs a wide head on a stem, which at 16 px is the mark's arrow. The
+ // square steps cut 1.5 units between tiers: anything shallower closes up at tray size.
+ for(const auto& point:{QPointF(12.6,1.9),QPointF(14.1,2),QPointF(13,3),QPointF(13.25,3.8),QPointF(15,5.5),QPointF(15,6.25),QPointF(13,6.25),QPointF(13,7.75),QPointF(15.75,9.5),QPointF(15.75,10.25),QPointF(13.25,10.25),QPointF(13.25,11.75),QPointF(16.5,14),QPointF(16.5,14.75),QPointF(13.25,14.75),QPointF(13.25,16.5),QPointF(10.75,16.5),QPointF(10.75,14.75),QPointF(7.5,14.75),QPointF(7.5,14),QPointF(10.75,11.75),QPointF(10.75,10.25),QPointF(8.25,10.25),QPointF(8.25,9.5),QPointF(11,7.75),QPointF(11,6.25),QPointF(9,6.25),QPointF(9,5.5),QPointF(10.75,3.8),QPointF(11,3),QPointF(9.9,2),QPointF(11.4,1.9)})p.lineTo(point);
+ p.closeSubpath();
+ return tray().united(p);
+}
+const QPainterPath& glyphOutline(TrayGlyph glyph) {
+ static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
+ return glyph==TrayGlyph::Turkey?bird:glyph==TrayGlyph::Tree?fir:mark;
+}
+const QPainterPath& glyphShape(TrayGlyph glyph) {
+ static const QPainterPath bird=glyphOutline(TrayGlyph::Turkey).subtracted(disc(17.5,2.9,.9));
+ return glyph==TrayGlyph::Turkey?bird:glyphOutline(glyph);
+}
 QImage canvas(int scale) {
  QImage result(24*scale,24*scale,QImage::Format_ARGB32);
  result.setDevicePixelRatio(scale);result.fill(Qt::transparent);return result;
 }
 }
-QImage liftTray(const QColor& color,int percent,int scale,int recording) {
+QImage liftTray(const QColor& color,int percent,int scale,int recording) {return liftTray(TrayIcon{color,percent,recording},scale);}
+QImage liftTray(const TrayIcon& icon,int scale) {
+ const auto& color=icon.color;const int percent=icon.percent,recording=icon.recording;
  auto image=canvas(scale);QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);
  const auto& light=Theme::trayTints(true);const auto& tints=Theme::trayTints(color==light.idle||color==light.upload||color==light.encoding||color==light.error);
  const bool failed=percent==-2;
  const auto glyph=failed?tints.error:color;
- const auto shape=arrow().united(tray());
+ const auto shown=failed||recording?TrayGlyph::Mark:icon.glyph;const auto& shape=glyphShape(shown);
  if(percent<0) p.fillPath(shape,glyph);
  else {
   p.fillPath(shape,glyph);
-  p.save();const auto fill=qBound(0,percent,100)/100.0;
-  p.setClipRect(QRectF(0,23-21*fill,24,21*fill));p.fillPath(shape,tints.encoding);p.restore();
+  const auto bounds=shape.boundingRect();const auto level=bounds.bottom()-bounds.height()*qBound(0,percent,100)/100.0;
+  // The fill climbs the whole silhouette; a clip at a full fill could round away its top row.
+  p.save();if(percent<100)p.setClipRect(QRectF(0,level,24,bounds.bottom()-level));p.fillPath(shape,tints.encoding);p.restore();
  }
- p.setPen(QPen(Theme::trayOutline(),0.65,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
- p.setBrush(Qt::NoBrush);p.drawPath(shape);
+ // Thinner on the seasonal art, whose feathers and gap the full contour would close.
+ p.setPen(QPen(Theme::trayOutline(),shown==TrayGlyph::Mark?0.65:0.45,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));
+ p.setBrush(Qt::NoBrush);p.drawPath(glyphOutline(shown));
  // A 7 px disc at 16 px, with a 1 px transparent ring, always top-right.
  const QRectF badge=failed||recording?QRectF(13.5,0,10.5,10.5):QRectF();
  if(!badge.isEmpty()){

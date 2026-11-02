@@ -164,10 +164,10 @@ NativeLayout menuLayout(int id, int depth, const QStringList& names, const QStri
   result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names, update, shortcuts, upload,uploads,failed,recording,attention,outputs))));
  return result;
 }
-NativeImages brandIcon(const QColor& color=Theme::trayTints(false).idle,int percent=-1,int recording=0) {
+NativeImages brandIcon(const IconArt::TrayIcon& icon=IconArt::TrayIcon{Theme::trayTints(false).idle}) {
  NativeImages result;
  for (int scale : {1, 2, 3}) {
-  const auto image=IconArt::liftTray(color,percent,scale,recording);
+  const auto image=IconArt::liftTray(icon,scale);
   NativeImage wire{image.width(), image.height(), QByteArray(image.width() * image.height() * 4, '\0')};
   for (int y = 0; y < image.height(); ++y) for (int x = 0; x < image.width(); ++x) {
    const auto pixel = image.pixel(x, y); const int pos = (y * image.width() + x) * 4;
@@ -204,7 +204,7 @@ public:
  void provideActivationToken(const QString& token);
  QString takeActivationToken();
  void aboutToShow(){emit q_->menuAboutToShow();}
- void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title);
+ void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
  // The update entry's label, empty while it is hidden, and the layout revision
  // that changes with it.
@@ -246,6 +246,7 @@ private:
  NativeImages icons_;
  QColor color_ = Theme::trayTints(false).idle;
  int percent_ = -1;
+ IconArt::TrayGlyph glyph_ = IconArt::TrayGlyph::Mark;
  int recording_ = 0;
  QString recordingText_;
  QString activityText_,activityTitle_="put.gd";
@@ -456,14 +457,14 @@ void NativeTrayPrivate::notificationActivated(uint id,const QString& action) {
  });
 }
 void NativeTrayPrivate::notificationClosed(uint id,uint) {notificationLinks_.remove(id);notificationActions_.remove(id);residentNotifications_.remove(id);}
-void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title) {
+void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {
  percent=qBound(-2,percent,100);
- const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_;
+ const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_||glyph!=glyph_;
  const auto tooltipTitle=title.isEmpty()?(percent==-2?QString("Needs attention"):percent>=0?QString("Uploading"):QString("put.gd")):title;
  const bool textChanged=description!=activityText_||tooltipTitle!=activityTitle_;
  if(!iconChanged&&!textChanged)return;
- color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;
- if(iconChanged)icons_=brandIcon(color,percent,recording);
+ color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;glyph_=glyph;
+ if(iconChanged)icons_=brandIcon({color,percent,recording,glyph});
  const auto props=properties(false);QVariantMap changed;
  if(textChanged)changed.insert("ToolTip",props["ToolTip"]);
  if(iconChanged)changed.insert("IconPixmap",props["IconPixmap"]);
@@ -621,7 +622,7 @@ NativeTray::NativeTray(const QDBusConnection& bus, QObject* parent): QObject(par
 NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
-void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title) {d_->setActivity(color,description,percent,recording,title);}
+void NativeTray::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph) {d_->setActivity(color,description,percent,recording,title,glyph);}
 void NativeTray::setUpdateLabel(const QString& label) {d_->setUpdateLabel(label);}
 void NativeTray::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {d_->setCommands(shortcuts,upload,uploads,failed,recording,attention);}
 void NativeTrayPrivate::setCommands(const QHash<QString,QString>& shortcuts,const QString& upload,int uploads,bool failed,const QString& recording,const QString& attention) {

@@ -40,6 +40,7 @@ bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
 const QString idleTooltip = "put.gd";
+const QString seasonalTooltip = "put.gd - Happy Holidays!";
 // Which way a link or folder opened on the host (#326), never the target itself.
 void logOpened(const QString& target,const QJsonObject& result) {
  auto fields=result;fields["target"]=target;
@@ -206,9 +207,9 @@ TrayController::TrayController(OperationService& operations,
  } else
 #endif
  {
- tray_ = new QSystemTrayIcon(Ui::icon("tray",Theme::trayTints(panel_.light()).idle), this);
+ tray_ = new QSystemTrayIcon(Ui::trayIcon({Theme::trayTints(panel_.light()).idle,-1,0,calendar_.glyph()}), this);
  menu_ = std::make_unique<QMenu>();
- tray_->setToolTip(idleTooltip);
+ tray_->setToolTip(calendar_.glyph()==IconArt::TrayGlyph::Mark?idleTooltip:seasonalTooltip);
  uploadStatus_=menu_->addAction(QString{});uploadStatus_->setObjectName("trayUploadStatus");uploadStatus_->setEnabled(false);uploadStatus_->setProperty("visualRole","information");auto* statusSeparator=menu_->addSeparator();statusSeparator->setObjectName("trayStatusSeparator");cancelUpload_=menu_->addAction("Cancel upload");cancelUpload_->setObjectName("trayCancelUpload");connect(cancelUpload_,&QAction::triggered,this,&TrayController::cancelUploads);uploadSeparator_=menu_->addSeparator();connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
  outputMenu_=menu_->addMenu("Capture output");outputSummary_=outputMenu_->menuAction();outputSummary_->setObjectName("trayOutputSummary");for(const auto& action:Settings::presentationOrder()){auto* entry=new QWidgetAction(outputMenu_);entry->setObjectName("trayOutput"+action);auto* label=new QLabel;label->setTextFormat(Qt::PlainText);label->setWordWrap(true);const auto* screen=outputMenu_->screen();const int available=screen?screen->availableGeometry().width():Ui::scaled(480);label->setMinimumWidth(qMin(Ui::scaled(280),available));label->setMaximumWidth(qMin(Ui::scaled(480),available));label->setContentsMargins(Ui::space(Ui::Space::m),Ui::space(Ui::Space::s),Ui::space(Ui::Space::m),Ui::space(Ui::Space::s));Ui::role(label,"muted");entry->setDefaultWidget(label);connect(entry,&QAction::changed,label,[entry,label]{label->setText(entry->text());});outputMenu_->addAction(entry);}auto* change=menu_->addAction("Change output…");change->setObjectName("trayChangeOutput");connect(change,&QAction::triggered,this,[this]{showView("captureSettings");});menu_->addSeparator();
  // Capture entries first, in the order people reach for them; QAction text
@@ -262,6 +263,8 @@ TrayController::TrayController(OperationService& operations,
  // The panel's colour, not the app theme, picks the tint (#60): re-tint the
  // icon and its menu glyphs when the desktop switches.
  connect(&panel_,&PanelTone::changed,this,[this]{iconColor_=QColor();retintMenu();refreshActivity();});
+ // The calendar's glyph takes over at local midnight with no restart.
+ connect(&calendar_,&TrayCalendar::glyphChanged,this,&TrayController::refreshActivity);
  connect(&operations_,&OperationService::operationError,this,[this](const QString& id,QJsonObject operation){operation["id"]=id;latchFailure({"archive_failed","Local save failed",{}},operation);});
  connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
@@ -409,6 +412,10 @@ void TrayController::retintMenu() {
 QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
+QJsonObject TrayController::trayIconState()const {
+ const QHash<IconArt::TrayGlyph,QString> names{{IconArt::TrayGlyph::Mark,"mark"},{IconArt::TrayGlyph::Turkey,"turkey"},{IconArt::TrayGlyph::Tree,"tree"}};
+ return {{"glyph",names.value(calendar_.glyph())},{"shown",names.value(iconRecording_||iconPercent_==-2?IconArt::TrayGlyph::Mark:iconGlyph_)},{"localDate",calendar_.date().toString(Qt::ISODate)},{"calendarOverride",calendar_.overridden()}};
+}
 void TrayController::cancelUploads() {
  QStringList ids;for(const auto& value:operations_.activeObservations()){
   const auto op=value.toObject();if(op["destination"].toObject()["providerId"].toString().isEmpty()||(op["action"]=="record"&&!recordingHandedOver(op)))continue;ids<<op["id"].toString();
@@ -439,6 +446,7 @@ void TrayController::refreshMenu() {
  uploadStatus_->setText(status);for(auto* entry:{uploadStatus_,menu_->findChild<QAction*>("trayStatusSeparator"),cancelUpload_,uploadSeparator_})entry->setVisible(uploading);
 }
 void TrayController::refreshActivity() {
+ calendar_.check();
  refreshMenu();
  const auto observations=operations_.activeObservations();
  QSet<QString> activeIds;
@@ -474,7 +482,7 @@ void TrayController::refreshActivity() {
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
  QString recordingStatus;int recording=0;for(const auto& value:observations){const auto op=value.toObject();if(op["action"]=="record"&&op["state"]=="recording"){recordingStatus=phaseLabel(op);if(op["phase"]=="recording")recording=1;else if(op["phase"]=="paused"&&!recording)recording=2;}}
  auto activity=activityText(observations);if(!recordingStatus.isEmpty()&&!activity.contains(recordingStatus))activity+=(activity.isEmpty()?QString{}:"\n")+recordingStatus;
- const auto text=errorPending_?attentionLabel_+QString(" — open the tray menu to review")+(activity.isEmpty()?QString{}:"\n"+activity):
+ auto text=errorPending_?attentionLabel_+QString(" — open the tray menu to review")+(activity.isEmpty()?QString{}:"\n"+activity):
                  uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activity;
  // Active work keeps the idle glyph; only a confirmed completion turns green.
@@ -487,19 +495,25 @@ void TrayController::refreshActivity() {
   else if(operations_.storageActive())percent=uploadPercent(observations);
   else percent=iconPercent_;
  }
- const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):idleTooltip;
- if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_)return;
+ const auto glyph=calendar_.glyph();const bool seasonal=glyph!=IconArt::TrayGlyph::Mark;
+ // Only an idle tray makes the greeting its title. Preparation, recording,
+ // review and local saving keep their ordinary title above the activity rows.
+ const auto& identity=seasonal&&text.isEmpty()?seasonalTooltip:idleTooltip;
+ const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):identity;
+ // Status keeps the title; the greeting stays on as the last line, so the season doesn't hide it.
+ if(seasonal&&tooltipTitle!=seasonalTooltip)text=text.isEmpty()||text==tooltipTitle?seasonalTooltip:text+"\n"+seasonalTooltip;
+ if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle);
+ if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph);
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_)tray_->setIcon(Ui::icon("tray",color,percent,recording));
+  if(color!=iconColor_||percent!=iconPercent_||recording!=iconRecording_||glyph!=iconGlyph_)tray_->setIcon(Ui::trayIcon({color,percent,recording,glyph}));
   if(text!=activityText_||tooltipTitle!=activityTitle_)tray_->setToolTip(tooltipTitle+(text.isEmpty()||text==tooltipTitle?QString{}:QString("\n")+text));
  }
  // The tooltip's title and activity lines as the tray now shows them (#250).
  if(text!=activityText_||tooltipTitle!=activityTitle_)logging::debug(logUi(),"Tray tooltip changed",{{"title",tooltipTitle},{"activity",text}});
- iconColor_=color;iconPercent_=percent;iconRecording_=recording;activityText_=text;activityTitle_=tooltipTitle;
+ iconColor_=color;iconPercent_=percent;iconRecording_=recording;iconGlyph_=glyph;activityText_=text;activityTitle_=tooltipTitle;
 }
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";

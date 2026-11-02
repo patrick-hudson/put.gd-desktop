@@ -42,6 +42,36 @@ class TrayProgressContracts(unittest.TestCase):
                 tray.socket_paths(root / ('é' * 50), root / 'qmp.sock')
             self.assertFalse(short.exists())
 
+    def test_seasonal_greeting_is_the_idle_title_or_the_last_line_only(self):
+        idle = observation('', color='#d6d6d2', title=tray.SEASONAL_IDLE)
+        self.assertTrue(tray.check_tooltip(idle, [], 's3', 42)['idle'])
+        records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
+                    'bytesTransferred': n*1024**2, 'bytesTotal': 4*1024**2} for n in (1, 2, 3)]
+        row = 'Uploading: 2 MB of 4 MB (50%)'
+        self.assertTrue(tray.check_tooltip(observation(row + '\n' + tray.SEASONAL_IDLE), records, 's3', 42)['counter'])
+        # The counter is still checked behind the greeting.
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(observation('Uploading: 5 MB of 4 MB (125%)\n' + tray.SEASONAL_IDLE), records, 's3', 42)
+        with self.assertRaisesRegex(tray.TrayProgressError, 'last tooltip line'):
+            tray.check_tooltip(observation(tray.SEASONAL_IDLE + '\n' + row), records, 's3', 42)
+        with self.assertRaisesRegex(tray.TrayProgressError, 'under an idle title'):
+            tray.check_tooltip(observation(tray.SEASONAL_IDLE, color='#d6d6d2', title=tray.IDLE), [], 's3', 42)
+        complete = observation(tray.SEASONAL_IDLE, tray.TRAY_TINTS['dark']['upload'], tray.COMPLETE)
+        self.assertFalse(tray.check_tooltip(complete, [], 's3', 42)['idle'])
+        # Any other idle wording is still refused.
+        with self.assertRaisesRegex(tray.TrayProgressError, 'Unexpected tray title'):
+            tray.check_tooltip(observation('', color='#d6d6d2', title='put.gd - Season\'s Greetings'), [], 's3', 42)
+
+    def test_seasonal_preparation_keeps_ordinary_title_and_greeting_last(self):
+        for phase, row in [('preflight', 'Checking destination'), ('saving_local', 'Saving local copy')]:
+            records = [{'phase': phase}]
+            active = observation(row + '\n' + tray.SEASONAL_IDLE, color='#d6d6d2', title=tray.IDLE)
+            self.assertIn(phase, tray.check_tooltip(active, records, 's3', 42)['phases'])
+            with self.assertRaisesRegex(tray.TrayProgressError, 'takes priority over activity'):
+                tray.check_tooltip(observation(row, color='#d6d6d2', title=tray.SEASONAL_IDLE), records, 's3', 42)
+            with self.assertRaisesRegex(tray.TrayProgressError, 'matching production observation'):
+                tray.check_tooltip(active, [], 's3', 42)
+
     def test_s3_counter_is_bounded_by_real_observations_and_percentage_matches(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2, 'bytesTotal': 4*1024**2}

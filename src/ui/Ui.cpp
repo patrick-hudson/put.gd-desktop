@@ -3185,6 +3185,12 @@ QIcon icon(const QString& name,const QColor& color,int percent,int recording){
  if(!progress)cache.insert(key,result);
  return result;
 }
+QIcon trayIcon(const IconArt::TrayIcon& state){
+ if(state.glyph==IconArt::TrayGlyph::Mark)return icon("tray",state.color,state.percent,state.recording);
+ QIcon result;
+ for(int scale:{1,2,3}){auto image=IconArt::liftTray(state,scale);image.setDevicePixelRatio(1);result.addPixmap(QPixmap::fromImage(image));}
+ return result;
+}
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,space(Space::xs));layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");frame->setMaximumWidth(Ui::scaled(720));auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(0,space(Space::xl),0,0);layout->setSpacing(space(Space::s));auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
 void alignFormValue(QLabel* caption,QLabel* value){

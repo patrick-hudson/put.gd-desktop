@@ -73,6 +73,7 @@ class TrayNotificationLatency final : public QObject {
  QDBusConnection bus = QDBusConnection::connectToBus(QDBusConnection::SessionBus, "tray-latency-peer");
 private slots:
  void initTestCase() {
+  qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");
   if (qEnvironmentVariable("PUTGD_ISOLATED_TRAY_LATENCY_TEST") != "1")
    QSKIP("Requires its dedicated private-bus/Xvfb invocation");
   QVERIFY(QCoreApplication::instance()->inherits("QApplication"));
