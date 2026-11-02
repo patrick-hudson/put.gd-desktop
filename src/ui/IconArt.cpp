@@ -33,16 +33,17 @@ QPainterPath turkeySilhouette() {
 }
 QPainterPath treeSilhouette() {
  QPainterPath p;p.moveTo(12,.4);
- // Star, three tiers and trunk; the lowest tier ends 2.1 units above the bowl's rim.
- for(const auto& point:{QPointF(12.5,1.6),QPointF(13.8,1.7),QPointF(12.9,2.5),QPointF(13.1,3.2),QPointF(16.2,5.6),QPointF(14.6,5.6),QPointF(18.5,8.1),QPointF(16,8.1),QPointF(20,10.9),QPointF(14,10.9),QPointF(14,16),QPointF(10,16),QPointF(10,10.9),QPointF(4,10.9),QPointF(8,8.1),QPointF(5.5,8.1),QPointF(9.4,5.6),QPointF(7.8,5.6),QPointF(10.9,3.2),QPointF(11.1,2.5),QPointF(10.2,1.7),QPointF(11.5,1.6)})p.lineTo(point);
+ // Star, three deep tiers and a short trunk: the mark's arrow has a tall stem and
+ // one wide head, and at 16 px this must not read as it. The lowest tier ends two
+ // units above the bowl's rim.
+ for(const auto& point:{QPointF(12.5,1.6),QPointF(13.8,1.7),QPointF(12.9,2.5),QPointF(13.1,3.2),QPointF(16.4,5.2),QPointF(13.9,5.2),QPointF(19.2,8),QPointF(15.4,8),QPointF(21,11),QPointF(13.5,11),QPointF(13.5,14),QPointF(10.5,14),QPointF(10.5,11),QPointF(3,11),QPointF(8.6,8),QPointF(4.8,8),QPointF(10.1,5.2),QPointF(7.6,5.2),QPointF(10.9,3.2),QPointF(11.1,2.5),QPointF(10.2,1.7),QPointF(11.5,1.6)})p.lineTo(point);
  p.closeSubpath();
  return tray().united(p);
 }
 QPainterPath treeCutouts() {
- QPainterPath garland;
- garland.moveTo(7.9,8.8);garland.quadTo(12,10.2,16.3,9);garland.quadTo(16.8,8.9,16.9,9.4);garland.quadTo(17,9.9,16.5,10);
- garland.quadTo(12,11.2,7.6,9.8);garland.quadTo(7.1,9.6,7.3,9.1);garland.quadTo(7.5,8.7,7.9,8.8);garland.closeSubpath();
- return garland.united(disc(10.8,5.9,.8)).united(disc(14.5,7.2,.8));
+ QPainterPath garland;garland.moveTo(7.8,9.2);garland.cubicTo(10,10.2,14,10.2,16.2,9.2);
+ QPainterPathStroker stroker;stroker.setWidth(1);stroker.setCapStyle(Qt::RoundCap);
+ return stroker.createStroke(garland).united(disc(11.1,5.9,.8)).united(disc(13.6,6.9,.8));
 }
 const QPainterPath& glyphOutline(TrayGlyph glyph) {
  static const QPainterPath mark=arrow().united(tray()),bird=turkeySilhouette(),fir=treeSilhouette();
