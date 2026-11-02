@@ -99,6 +99,16 @@ private slots:
   QCOMPARE(connections,0);QVERIFY(!server.hasPendingConnections());
   QVERIFY(client.readAllStandardError().isEmpty());
  }
+ // #1105: the upload client tells a resident from before upload.files by this:
+ // with no parameters, a method the resident lacks is unknown_method and one it
+ // has is its own invalid_request. Builds before the feature answer the same way.
+ void methodWithoutParametersSaysWhetherTheResidentKnowsIt(){
+  QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);
+  const auto code=[&](const QString& method,const QJsonObject& params){QString found;server.dispatch({{"schemaVersion",1},{"requestId","known"},{"session",server.socketPath()},{"method",method},{"params",params}},[&](Error error,QJsonObject){found=error.code;});return found;};
+  QCOMPARE(code("upload.files",{}),QString("invalid_request"));
+  QCOMPARE(code("upload.futureMethod",{}),QString("unknown_method"));
+  QCOMPARE(code("upload.futureMethod",{{"paths",QJsonArray{"/a"}}}),QString("invalid_request"));
+ }
  void quitAcknowledgesBeforeDeferredShutdownAndRejectsUnexpectedParameters(){
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);
   auto request=[&](const QJsonObject& params){return QJsonObject{{"schemaVersion",1},{"requestId","quit"},{"session",server.socketPath()},{"method","ui.quit"},{"params",params}};};

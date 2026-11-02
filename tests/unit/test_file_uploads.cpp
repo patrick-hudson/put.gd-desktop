@@ -218,12 +218,79 @@ private slots:
   // AppImage: file:// is decoded in-process; other schemes go to the host gio, newlines never do.
   QStringList asked;
   const auto result=UploadClient::resolve({"/abs/a.txt","file:///tmp/b%20c.txt","sftp://host/%C3%A9.txt","sftp://host/a%0Ab.txt","relative","-platform"},true,[&](const QStringList& uris){
-   asked=uris;return QHash<QString,QString>{{UploadClient::normalizedUri("sftp://host/%C3%A9.txt"),"/run/user/1000/gvfs/sftp:host=host/é.txt"}};});
+   asked=uris;UploadClient::GioAnswer answer;answer.found.insert(UploadClient::normalizedUri("sftp://host/%C3%A9.txt"),"/run/user/1000/gvfs/sftp:host=host/é.txt");return answer;});
   QCOMPARE(asked,QStringList{"sftp://host/%C3%A9.txt"});
   QCOMPARE(result.paths,(QStringList{"/abs/a.txt","/tmp/b c.txt","/run/user/1000/gvfs/sftp:host=host/é.txt"}));
   QCOMPARE(result.unresolved,(QStringList{"sftp://host/a%0Ab.txt","relative","-platform"}));
+  QVERIFY(result.needingGio.isEmpty());
+  // A gio that couldn't run is told apart from one that found no local path.
+  // Only what gio had to resolve is put down to it.
+  const auto gioCantRun=[](const QStringList&){UploadClient::GioAnswer answer;answer.unavailable=true;return answer;};
+  const auto noGio=UploadClient::resolve({"recent:///43a92608","relative.txt","/abs/a.txt"},true,gioCantRun);
+  QCOMPARE(noGio.unresolved,(QStringList{"recent:///43a92608","relative.txt"}));QCOMPARE(noGio.needingGio,QStringList{"recent:///43a92608"});
+  QVERIFY(UploadClient::resolve({"file:///tmp/x"},true,gioCantRun).needingGio.isEmpty());
+  QVERIFY(UploadClient::resolve({"recent:///43a92608"},true,[](const QStringList&){return UploadClient::GioAnswer{};}).needingGio.isEmpty());
   // DEB/RPM: GIO in-process.
   QCOMPARE(UploadClient::resolve({"file:///tmp/x%20y"},false,{}).paths,QStringList{"/tmp/x y"});
+ }
+ void refusalNames() {
+  QCOMPARE(UploadClient::noticeName("smb://srv/share/a%20b.png"),QString("a b.png"));
+  // Recent's last segment is a hash of the item, not its name.
+  QCOMPARE(UploadClient::noticeName("recent:///43a926080238a02829512b7d6ae7ba8b"),QString("recent:///43a926080238a02829512b7d6ae7ba8b"));
+  QCOMPARE(UploadClient::noticeName("relative.txt"),QString("relative.txt"));
+  QCOMPARE(UploadClient::noticeName("sftp://alice:secret@host/?token=x"),QString("sftp://host/"));
+ }
+ // A build before upload.files answers invalid_request to any unknown method
+ // with parameters; without them, unknown_method. A current resident's
+ // invalid_request stays that resident's own refusal.
+ void residentBeforeTheFeature() {
+  int asked=0;
+  const auto answering=[&](const QString& code){return [&asked,code]{++asked;return code;};};
+  QVERIFY(UploadClient::residentLacksUpload("unknown_method",answering("")));QCOMPARE(asked,0);
+  QVERIFY(UploadClient::residentLacksUpload("invalid_request",answering("unknown_method")));QCOMPARE(asked,1);
+  QVERIFY(!UploadClient::residentLacksUpload("invalid_request",answering("invalid_request")));QCOMPARE(asked,2);
+  QVERIFY(!UploadClient::residentLacksUpload("invalid_request",answering("client_unavailable")));QCOMPARE(asked,3);
+  QVERIFY(!UploadClient::residentLacksUpload("files_rejected",answering("unknown_method")));QCOMPARE(asked,3);
+ }
+ void fuseMountThatStopped() {
+  QTemporaryDir runtime;QVERIFY(QDir(runtime.path()).mkpath("gvfs/smb-share:server=live"));
+  const auto gvfs=runtime.filePath("gvfs/");
+  const auto missing=[](const QString& path,const QString& code="source_missing"){return QJsonObject{{"path",path},{"code",code},{"message","no longer exists"}};};
+  // The mount answers: that file really is gone.
+  QVERIFY(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=live/a.png")},runtime.path()).isEmpty());
+  QCOMPARE(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=gone/d/a.png"),missing(gvfs+"smb-share:server=live/b.png"),missing(gvfs+"smb-share:server=gone/c.png")},runtime.path()),(QStringList{"a.png","c.png"}));
+  // Not GVfs's folder, or not this problem.
+  QVERIFY(UploadClient::unreachableOverFuse({missing("/home/lab/a.png")},runtime.path()).isEmpty());
+  QVERIFY(UploadClient::unreachableOverFuse({missing(gvfs+"smb-share:server=gone/a.png","source_empty")},runtime.path()).isEmpty());
+  QVERIFY(UploadClient::unreachableOverFuse({missing("gvfs/smb-share:server=gone/a.png")},QString()).isEmpty());
+ }
+ // No notification server: the first dialog tool that shows it, in the host's environment.
+ void dialogWithoutNotificationServer() {
+  QTemporaryDir tools;const auto receipt=tools.filePath("receipt");
+  const auto tool=[&](const QString& name,int exitCode){
+   QFile file(tools.filePath(name));QVERIFY(file.open(QIODevice::WriteOnly));
+   file.write(QStringLiteral("#!/bin/sh\nprintf '%s\\0' %1 \"$@\" >> \"$RECEIPT\"\nexit %2\n").arg(name).arg(exitCode).toUtf8());file.close();
+   QVERIFY(file.setPermissions(file.permissions()|QFile::ExeOwner));
+  };
+  QProcessEnvironment environment;environment.insert("PATH",tools.path());environment.insert("RECEIPT",receipt);
+  const auto received=[&]{QFile file(receipt);if(!file.open(QIODevice::ReadOnly))return QStringList{};const auto text=QString::fromUtf8(file.readAll());file.remove();return text.split(QChar(0),Qt::SkipEmptyParts);};
+  tool("kdialog",0);
+  // No display: nothing can show it, so nothing runs.
+  QVERIFY(!UploadClient::showDialog("Title","<b>Body & more",environment));QVERIFY(received().isEmpty());
+  environment.insert("DISPLAY",":9");
+  QVERIFY(UploadClient::showDialog("Title","<b>Body & more",environment));
+  QCOMPARE(received(),(QStringList{"kdialog","--title","Title","--error","<b>Body & more"}));
+  // A tool that can't show it passes to the next; zenity takes the text literally.
+  tool("zenity",1);
+  QVERIFY(UploadClient::showDialog("Title","<b>Body & more",environment));
+  QCOMPARE(received(),(QStringList{"zenity","--error","--no-markup","--title=Title","--text=<b>Body & more","kdialog","--title","Title","--error","<b>Body & more"}));
+  QVERIFY(QFile::remove(tools.filePath("kdialog")));QVERIFY(QFile::remove(tools.filePath("zenity")));
+  // xmessage doesn't wrap by itself.
+  tool("xmessage",0);
+  QVERIFY(UploadClient::showDialog("Title",QString(50,'a')+" "+QString(50,'b'),environment));
+  QCOMPARE(received(),(QStringList{"xmessage","-center","Title\n\n"+QString(50,'a')+"\n"+QString(50,'b')+"\n"}));
+  QVERIFY(QFile::remove(tools.filePath("xmessage")));
+  QVERIFY(!UploadClient::showDialog("Title","Body",environment));
  }
  // The real client refuses what it can't resolve before anything else, with no resident needed.
  void clientRefusesWithoutLocalPaths() {

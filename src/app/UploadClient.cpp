@@ -11,6 +11,7 @@
 #include <QDBusMessage>
 #include <QDeadlineTimer>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -27,6 +28,7 @@
 #include <mutex>
 #include <optional>
 #include <thread>
+#include <utility>
 #include <chrono>
 #include <cerrno>
 #include <csignal>
@@ -103,7 +105,14 @@ constexpr int noticeHoldMs=120000;
 // window and removes it the moment its sender leaves the bus.
 void notify(const QString& title,const QString& body,bool failure){
  const auto bytes=(title+": "+body).toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);
- auto bus=QDBusConnection::sessionBus();if(!bus.isConnected())return;
+ // No notification server: the same notice in a dialog, or nothing shows at all.
+ const auto dialog=[&]{
+  auto environment=host::environment();
+  const auto libraries=withoutPrivateLibraries(environment.value("LD_LIBRARY_PATH"),binaryDirectory());
+  if(libraries.isEmpty())environment.remove("LD_LIBRARY_PATH");else environment.insert("LD_LIBRARY_PATH",libraries);
+  showDialog(title,body,environment);
+ };
+ auto bus=QDBusConnection::sessionBus();if(!bus.isConnected()){dialog();return;}
  // The AppImage integration names its stable icon copy; AppRun's points into a per-launch mount.
  const auto iconFile=qEnvironmentVariable("PUTGD_UPLOAD_ICON");
  const auto icon=QDir::isAbsolutePath(iconFile)&&QFileInfo(iconFile).isFile()?iconFile:QStringLiteral("putgd");
@@ -117,7 +126,7 @@ void notify(const QString& title,const QString& body,bool failure){
  bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","NotificationClosed",&held,SLOT(closed(uint,uint)));
  bus.connect("org.freedesktop.Notifications","/org/freedesktop/Notifications","org.freedesktop.Notifications","ActionInvoked",&held,SLOT(invoked(uint,QString)));
  const auto reply=bus.call(call,QDBus::Block,5000);
- if(reply.type()!=QDBusMessage::ReplyMessage||reply.arguments().isEmpty())return;
+ if(reply.type()!=QDBusMessage::ReplyMessage||reply.arguments().isEmpty()){dialog();return;}
  held.track(reply.arguments().first().toUInt());
  QTimer::singleShot(noticeHoldMs,&loop,&QEventLoop::quit);
  loop.exec();
@@ -162,7 +171,7 @@ void reportScoped(){
 // `gio info` for the AppImage: the host's gio, with the host's own GIO modules
 // (the image bundles GLib without them), in an English UTF-8 output locale.
 // Plain C would print é as ?, matching a different real file.
-struct Child { QByteArray out; bool complete=false; };
+struct Child { QByteArray out; bool complete=false; bool notRun=false; int exitCode=-1; };
 Child runBounded(const QString& program,const QStringList& arguments,const QProcessEnvironment& environment,const QDeadlineTimer& deadline){
  Child result;
  int out[2],err[2];if(::pipe2(out,O_CLOEXEC)!=0)return result;if(::pipe2(err,O_CLOEXEC)!=0){::close(out[0]);::close(out[1]);return result;}
@@ -202,6 +211,9 @@ Child runBounded(const QString& program,const QStringList& arguments,const QProc
  while(!deadline.hasExpired()){const auto done=::waitpid(pid,&status,WNOHANG);if(done==pid)break;if(done<0&&errno!=EINTR)break;::usleep(10000);}
  if(::waitpid(pid,&status,WNOHANG)==0){::kill(pid,SIGKILL);while(::waitpid(pid,&status,0)<0&&errno==EINTR){}result.out.clear();return result;}
  result.complete=WIFEXITED(status);
+ // Our failed execve above, or the dynamic loader or shell: the program never ran.
+ if(result.complete)result.exitCode=WEXITSTATUS(status);
+ result.notRun=result.exitCode==126||result.exitCode==127;
  if(!result.complete)result.out.clear();
  return result;
 }
@@ -217,25 +229,27 @@ private:
  std::mutex mutex_;std::condition_variable wake_;bool done_=false;
  std::thread timer_;
 };
-QHash<QString,QString> hostGioInfo(const QStringList& uris){
- QHash<QString,QString> found;if(uris.isEmpty())return found;
+GioAnswer hostGioInfo(const QStringList& uris){
+ GioAnswer answer;if(uris.isEmpty())return answer;
  const QDeadlineTimer deadline(resolveDeadlineMs);
  auto environment=host::environment();
- const auto gio=host::findProgram("gio",environment);if(gio.isEmpty())return found;
+ const auto gio=host::findProgram("gio",environment);if(gio.isEmpty()){answer.unavailable=true;return answer;}
  environment.insert("LC_ALL","C.UTF-8");
  for(const char* name:{"LANGUAGE","CHARSET","G_FILENAME_ENCODING","G_BROKEN_FILENAMES"})environment.remove(QString::fromLatin1(name));
  // C.UTF-8 comes from distribution packaging; trust gio's output only in a UTF-8 charset.
  const auto locale=host::findProgram("locale",environment);
- if(locale.isEmpty()||runBounded(locale,{"charmap"},environment,deadline).out.trimmed()!="UTF-8")return found;
+ if(locale.isEmpty()||runBounded(locale,{"charmap"},environment,deadline).out.trimmed()!="UTF-8"){answer.unavailable=true;return answer;}
  QStringList arguments{"info","-a","standard::type,standard::target-uri"};arguments<<uris;
  const auto batch=runBounded(gio,arguments,environment,deadline);
- if(batch.complete)found=parseGioInfo(batch.out);
+ if(batch.notRun){answer.unavailable=true;return answer;}
+ if(batch.complete)answer.found=parseGioInfo(batch.out);
  for(const auto& uri:uris){
-  if(found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
+  if(answer.found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
   const auto single=runBounded(gio,{"info","-a","standard::type,standard::target-uri",uri},environment,deadline);
-  if(single.complete)found.insert(parseGioInfo(single.out));
+  if(single.notRun)answer.unavailable=true;
+  if(single.complete)answer.found.insert(parseGioInfo(single.out));
  }
- return found;
+ return answer;
 }
 
 QJsonObject request(const QString& method,const QJsonObject& params,Error& error){
@@ -430,11 +444,51 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   g_object_unref(file);
  }
  if(!remote.isEmpty()&&gioInfo){
-  const auto found=gioInfo(remote);
-  for(int n=0;n<remote.size();++n){const auto path=found.value(normalizedUri(remote[n]));if(QDir::isAbsolutePath(path)){paths[remoteIndexes[n]]=path;resolved[remoteIndexes[n]]=true;}}
+  const auto answer=gioInfo(remote);
+  for(int n=0;n<remote.size();++n){const auto path=answer.found.value(normalizedUri(remote[n]));if(QDir::isAbsolutePath(path)){paths[remoteIndexes[n]]=path;resolved[remoteIndexes[n]]=true;}else if(answer.unavailable)result.needingGio.append(remote[n]);}
  }
  for(int i=0;i<arguments.size();++i)(resolved[i]?result.paths:result.unresolved).append(resolved[i]?paths[i]:arguments[i]);
  return result;
+}
+QString noticeName(const QString& argument){
+ const QUrl url(argument);
+ if(!url.isValid())return argument.left(120);
+ if(!url.fileName().isEmpty()&&!argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive))return url.fileName();
+ // A share's root has no file name; a password in its URI must not reach the notice.
+ return url.toString(QUrl::RemoveUserInfo|QUrl::RemoveQuery|QUrl::RemoveFragment).left(120);
+}
+bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters){
+ if(code=="unknown_method")return true;
+ return code=="invalid_request"&&codeWithoutParameters()=="unknown_method";
+}
+QStringList unreachableOverFuse(const QJsonArray& files,const QString& runtimeDirectory){
+ QStringList names;const auto root=QDir(runtimeDirectory).filePath("gvfs")+'/';
+ for(const auto& value:files){
+  const auto file=value.toObject();const auto path=file["path"].toString();
+  if(file["code"].toString()!="source_missing"||!path.startsWith(root))continue;
+  // The resident's own check just returned, so this can't stall on a live mount.
+  if(!QFileInfo::exists(root+path.mid(root.size()).section('/',0,0)))names.append(QFileInfo(path).fileName());
+ }
+ return names;
+}
+bool showDialog(const QString& title,const QString& body,const QProcessEnvironment& environment){
+ if(environment.value("DISPLAY").isEmpty()&&environment.value("WAYLAND_DISPLAY").isEmpty())return false;
+ // xmessage doesn't wrap.
+ static const QRegularExpression line(QStringLiteral("(.{1,72})(\\s+|$)"));
+ auto wrapped=body;wrapped.replace(line,QStringLiteral("\\1\n"));
+ const QList<std::pair<QString,QStringList>> tools{
+  {"zenity",{"--error","--no-markup","--title="+title,"--text="+body}},
+  {"kdialog",{"--title",title,"--error",body}},
+  {"xmessage",{"-center",title+"\n\n"+wrapped}}};
+ for(const auto& [program,arguments]:tools){
+  const auto path=host::findProgram(program,environment);if(path.isEmpty())continue;
+  QElapsedTimer shown;shown.start();
+  const auto child=runBounded(path,arguments,environment,QDeadlineTimer(noticeHoldMs));
+  // Closed with its window's X, zenity and xmessage don't exit 0, but it was seen: no second
+  // dialog. One still up at the deadline may never have opened a window, so the next one tries.
+  if(child.exitCode==0||(child.complete&&shown.elapsed()>1000))return true;
+ }
+ return false;
 }
 
 int run(int argc,char** argv){
@@ -455,8 +509,14 @@ int run(int argc,char** argv){
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");
  if(arguments.isEmpty()){refuse(QStringLiteral("No files were selected."));return 2;}
  if(!resolution.unresolved.isEmpty()){
-  QStringList names;for(const auto& item:resolution.unresolved.mid(0,8)){const QUrl url(item);names.append(url.isValid()&&!url.fileName().isEmpty()?url.fileName():item.left(120));}
-  refuse(QStringLiteral("These items have no local path, so put.gd can't read them: %1%2").arg(names.join(", "),resolution.unresolved.size()>8?QStringLiteral(" and %1 more").arg(resolution.unresolved.size()-8):QString()));
+  const auto listed=[](const QStringList& items){
+   QStringList names;for(const auto& item:items.mid(0,8))names.append(noticeName(item));
+   return names.join(", ")+(items.size()>8?QStringLiteral(" and %1 more").arg(items.size()-8):QString());
+  };
+  auto others=resolution.unresolved;for(const auto& item:resolution.needingGio)others.removeOne(item);
+  const auto noPath=QStringLiteral("These items have no local path, so put.gd can't read them: %1").arg(listed(others));
+  if(resolution.needingGio.isEmpty())refuse(noPath);
+  else refuse(QStringLiteral("put.gd couldn't resolve these locations because gio is unavailable on this system: %1. Install gio, or upload from the file's own folder.%2").arg(listed(resolution.needingGio),others.isEmpty()?QString():"\n"+noPath));
   return 1;
  }
  QJsonObject params{{"paths",QJsonArray::fromStringList(resolution.paths)},{"installation",installation}};
@@ -474,7 +534,13 @@ int run(int argc,char** argv){
   sleepMs(pollIntervalMs);
  }
  if(error){
-  if(error.code=="unknown_method")refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
+  const auto fuseGone=unreachableOverFuse(error.details["files"].toArray(),qEnvironmentVariable("XDG_RUNTIME_DIR"));
+  if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Quit put.gd (from its tray menu or its window's Quit) or log out and in, then try again."));
+  else if(!fuseGone.isEmpty()){
+   // The resident's own list still reports whatever else this selection had wrong.
+   const bool others=error.details["files"].toArray().size()>fuseGone.size();
+   refuse(QStringLiteral("These network items can't be reached at their local path: the share was disconnected, or gvfsd-fuse stopped: %1. Reconnect it, or log out and in, then try again.%2").arg(fuseGone.mid(0,8).join(", "),others?"\n"+error.message:QString()));
+  }
   else if(error.details["outcomeUnknown"].toBool())notify(QStringLiteral("put.gd — upload uncertain"),QStringLiteral("put.gd didn't confirm the upload. Check put.gd's History before trying again."),true);
   else if(error.code=="client_unavailable"||error.code=="client_timeout")refuse(QStringLiteral("put.gd isn't answering. Try again in a moment."));
   else if(error.code=="initializing")refuse(QStringLiteral("put.gd is still starting. Try again in a moment."));
