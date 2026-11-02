@@ -290,7 +290,8 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     require(title in (IDLE, SEASONAL_IDLE, UPLOADING, COMPLETE, ATTENTION), 'Unexpected tray title')
     if text == SEASONAL_IDLE or text.endswith('\n' + SEASONAL_IDLE):
         require(title in (UPLOADING, COMPLETE, ATTENTION), 'Seasonal greeting under an idle title')
-        text = text[:-len(SEASONAL_IDLE)].rstrip('\n')
+        # It replaces a row that would only repeat the title.
+        text = COMPLETE if text == SEASONAL_IDLE and title == COMPLETE else text[:-len(SEASONAL_IDLE)].rstrip('\n')
     require(SEASONAL_IDLE not in text, 'Seasonal greeting is not the last tooltip line')
     icons = snapshot.get('icons', [])
     has = lambda icon, role: icon.get('opaqueColors', {}).get(tints[role], 0) > 0

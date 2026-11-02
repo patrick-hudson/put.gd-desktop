@@ -56,6 +56,8 @@ class TrayProgressContracts(unittest.TestCase):
             tray.check_tooltip(observation(tray.SEASONAL_IDLE + '\n' + row), records, 's3', 42)
         with self.assertRaisesRegex(tray.TrayProgressError, 'under an idle title'):
             tray.check_tooltip(observation(tray.SEASONAL_IDLE, color='#d6d6d2', title=tray.IDLE), [], 's3', 42)
+        complete = observation(tray.SEASONAL_IDLE, tray.TRAY_TINTS['dark']['upload'], tray.COMPLETE)
+        self.assertFalse(tray.check_tooltip(complete, [], 's3', 42)['idle'])
         # Any other idle wording is still refused.
         with self.assertRaisesRegex(tray.TrayProgressError, 'Unexpected tray title'):
             tray.check_tooltip(observation('', color='#d6d6d2', title='put.gd - Season\'s Greetings'), [], 's3', 42)

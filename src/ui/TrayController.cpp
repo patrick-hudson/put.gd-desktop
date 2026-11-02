@@ -499,7 +499,7 @@ void TrayController::refreshActivity() {
  const auto& identity=seasonal?seasonalTooltip:idleTooltip;
  const auto tooltipTitle=errorPending_?QString("Needs attention"):uploadCompleted_?QString("Upload complete"):uploadVisible_||operations_.storageActive()?QString("Uploading"):identity;
  // Status keeps the title; the greeting stays on as the last line, so the season doesn't hide it.
- if(seasonal&&tooltipTitle!=identity)text+="\n"+seasonalTooltip;
+ if(seasonal&&tooltipTitle!=identity)text=text.isEmpty()||text==tooltipTitle?seasonalTooltip:text+"\n"+seasonalTooltip;
  if(tooltipTitle==activityTitle_&&color==iconColor_&&percent==iconPercent_&&recording==iconRecording_&&text==activityText_&&glyph==iconGlyph_)return;
 #ifdef Q_OS_LINUX
  if(native_)native_->setActivity(color,text,percent,recording,tooltipTitle,glyph);
