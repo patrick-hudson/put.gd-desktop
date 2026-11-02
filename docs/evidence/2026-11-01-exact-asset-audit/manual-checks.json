@@ -1,0 +1,11 @@
+{
+  "date": "2026-11-01",
+  "host": "d69 (Debian 13), headless over SSH; nothing ran on the workstation",
+  "tag": "v26.1101.3698-nightly",
+  "checks": [
+    {"id": "P2", "item": "pkg.put.gd/releases/<tag>/SHA256SUMS.minisig verifies the downloaded SHA256SUMS with packaging/linux/repo/keys/putgd-nightly.minisign.pub", "result": "pass", "detail": "minisign 0.12: 'Signature and comment signature verified', trusted comment 'put.gd v26.1101.3698-nightly nightly'. The signature is published by the signer at pkg.put.gd, not as a GitHub asset."},
+    {"id": "P1b", "item": "pkg.put.gd/releases/<tag>/SHA256SUMS is byte-identical to the GitHub asset", "result": "pass", "detail": "cmp identical; sha256sum --check --strict --ignore-missing: 14 OK"},
+    {"id": "P5a", "item": "update/v1/nightly.json names the tag and its asset SHA-256s match SHA256SUMS", "result": "pass", "detail": "feed tag v26.1101.3698-nightly, generatedAt 2026-11-01T13:20:55Z; 0 of 5 asset digests differ; nightly.json.minisig verifies with the same key and trusted comment"},
+    {"id": "P5b", "item": ".zsync header and app.put.gd/dl/nightly/appimage.zsync", "result": "pass", "detail": "Filename putgd-26.1101.3698-nightly-x86_64.AppImage, Length 153729528, SHA-1 a9e6c2fe73aef0197a8b411b55a01c6d0b29a31d, URL https://pkg.put.gd/releases/v26.1101.3698-nightly/...; the app.put.gd copy is byte-identical to the release asset"}
+  ]
+}

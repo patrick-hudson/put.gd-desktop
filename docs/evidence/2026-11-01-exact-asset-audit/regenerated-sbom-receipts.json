@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sboms": {
+    "appimage": {
+      "label": "appimage",
+      "file": "putgd-26.1101.3698-nightly-appimage.cdx.json",
+      "sha256": "fbf462abb770dda3065ef782366fac71d7ea64295f4317cdb63d728236a10e58",
+      "bytes": 97922,
+      "package": "putgd-26.1101.3698-nightly-x86_64.AppImage",
+      "packageSha256": "905d0eacce7466fe2d2dc0f0398598755adac7cb855f8dd75f305d71a3a13b96",
+      "components": 169,
+      "origins": {
+        "bundled": 44,
+        "bundled-distro": 125
+      }
+    },
+    "ubuntu24.04": {
+      "label": "ubuntu24.04",
+      "file": "putgd-26.1101.3698-nightly-ubuntu24.04.cdx.json",
+      "sha256": "cff232a36fa72b857bd5c511c7b46d846dc6547725e6528d8d1d04d239139438",
+      "bytes": 16604,
+      "package": "putgd-26.1101.3698-nightly-ubuntu24.04-x86_64.deb",
+      "packageSha256": "a81b882499446b35044c85d437d64259318afa4177234c21efbe8f4cc243d09a",
+      "components": 24,
+      "origins": {
+        "bundled": 24
+      }
+    },
+    "ubuntu26.04": {
+      "label": "ubuntu26.04",
+      "file": "putgd-26.1101.3698-nightly-ubuntu26.04.cdx.json",
+      "sha256": "f6cb4988573e8b768ecf8809163fe1cfaea403744606ffa267bfa43abc223cab",
+      "bytes": 16604,
+      "package": "putgd-26.1101.3698-nightly-ubuntu26.04-x86_64.deb",
+      "packageSha256": "b8406f1c1a12f784db7a557e21fc0c511231e31640d453bea5a1af3a0f34cf5a",
+      "components": 24,
+      "origins": {
+        "bundled": 24
+      }
+    },
+    "debian13": {
+      "label": "debian13",
+      "file": "putgd-26.1101.3698-nightly-debian13.cdx.json",
+      "sha256": "e4a17b6f90911f89fa8e1da3f95faea197e4921af25da898a991506be774c7e5",
+      "bytes": 16595,
+      "package": "putgd-26.1101.3698-nightly-debian13-x86_64.deb",
+      "packageSha256": "0ad958f23cf23ea07e0a4409d0964df88435dac86debaac0cf0d8b2d43a04884",
+      "components": 24,
+      "origins": {
+        "bundled": 24
+      }
+    },
+    "fedora44": {
+      "label": "fedora44",
+      "file": "putgd-26.1101.3698-nightly-fedora44.cdx.json",
+      "sha256": "61e434a50ab1711609cc0fff4c2c4415ba3d4909e3320e70d54d682b50996052",
+      "bytes": 16595,
+      "package": "putgd-26.1101.3698-nightly-fedora44-x86_64.rpm",
+      "packageSha256": "b321f70f7c321d072c678bac7bd494a53cf87483b8e5eb66c6302395f8ec5378",
+      "components": 24,
+      "origins": {
+        "bundled": 24
+      }
+    }
+  }
+}

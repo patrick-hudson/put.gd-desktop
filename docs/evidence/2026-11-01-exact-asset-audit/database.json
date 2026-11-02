@@ -1,0 +1,7 @@
+{
+  "name": "vulnerability-db_v6.1.10_2026-11-01T00:24:34Z_1793514012.tar.zst",
+  "url": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.10_2026-11-01T00:24:34Z_1793514012.tar.zst",
+  "sha256": "d0e1af9e6491440e1a671d0a0aafc32c5c7cb5cda787dcec3482799ef298f31c",
+  "built": "2026-11-01T06:20:12Z",
+  "schemaVersion": "v6.1.10"
+}
