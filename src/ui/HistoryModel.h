@@ -23,8 +23,8 @@ public:
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
  QJsonArray activeOperations()const;static int operationProgress(const QJsonObject&);
  void releaseThumbnails();
- // KB to hold a page's largest thumbnails. A view repaints every visible tile
- // in order, and an LRU cache smaller than that misses on all of them.
+ // KB to hold a page's largest thumbnails, 32 bits a pixel once loaded. A view repaints
+ // every visible tile in order, and an LRU cache smaller than that misses on all of them.
  static int thumbnailCacheCost(int rows){return qMax(8192,rows*(360*220*4/1024+1));}
  bool multipleDestinations()const;QString commonDestination()const;
  // Reads a preview again once it has been made (#190) at a path whose earlier read failed.
@@ -58,6 +58,6 @@ private:
  // every paint asks for many times (#1064).
  UiSession& history_;UiHistoryQuery query_;QList<QJsonObject> rows_;QList<QDateTime> createdAt_;QList<RowFacts> facts_;mutable QStringList dayLabels_;mutable QDate dayLabelsFor_;bool multipleDestinations_=false;QJsonArray records_,operations_;qint64 total_=0;quint64 request_=0;
  bool queryBusy_=false,loadInFlight_=false,loadPending_=false,showCancelled_=false;int hiddenCancelled_=0;
- mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable bool thumbnailLoading_=false;mutable quint64 thumbnailGeneration_=0;
+ mutable QCache<QString,QImage> thumbnails_{8192};mutable QStringList thumbnailQueue_;mutable QSet<QString> thumbnailRequested_;mutable bool thumbnailLoading_=false;mutable quint64 thumbnailGeneration_=0;qint64 timesMinute_=0;
 };
 }

@@ -163,13 +163,14 @@ private slots:
   event(QEvent::MouseButtonPress,option.rect.topLeft()+QPoint(4,4));QVERIFY(!event(QEvent::MouseButtonRelease,at));PUTGD_COMPARE_STEADY(copies,0,20);
   QVERIFY(event(QEvent::MouseButtonPress,at));const auto far=at-QPoint(QApplication::startDragDistance()+2,0);QMouseEvent move(QEvent::MouseMove,QPointF(far),QPointF(list->viewport()->mapToGlobal(far)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(list->viewport(),&move);QVERIFY(!event(QEvent::MouseButtonRelease,at));PUTGD_COMPARE_STEADY(copies,0,20);
   QVERIFY(event(QEvent::MouseButtonPress,at));list->model()->dataChanged(index,index,{});QVERIFY(!event(QEvent::MouseButtonRelease,at));PUTGD_COMPARE_STEADY(copies,0,20);
-  QVERIFY(event(QEvent::MouseButtonPress,at));QVERIFY(event(QEvent::MouseButtonRelease,at));PUTGD_TRY_COMPARE(copies,1);
+  QVERIFY(event(QEvent::MouseButtonPress,at));list->model()->dataChanged(index,index,{HistoryModel::SubtitleRole,HistoryModel::CreatedRole});QVERIFY(event(QEvent::MouseButtonRelease,at));PUTGD_TRY_COMPARE(copies,1);
+  QVERIFY(event(QEvent::MouseButtonPress,at));QVERIFY(event(QEvent::MouseButtonRelease,at));PUTGD_TRY_COMPARE(copies,2);
   window.activateWindow();button->setFocus(Qt::TabFocusReason);PUTGD_TRY_VERIFY(button->hasFocus());QTest::keyClick(button,Qt::Key_Space);PUTGD_TRY_COMPARE(copies,2);
   window.findChild<QToolButton*>("historyGridMode")->click();window.resize(Ui::scaled(1400),900);PUTGD_TRY_COMPARE(window.historyState()["layout"].toString(),QString("split"));auto* details=window.findChild<QToolButton*>("historyRowDetails");QVERIFY(details->isHidden());putgd::test::settle(30);list->doItemsLayout();const auto reserved=list->visualRect(index);list->setFocus();QTest::keyClick(list,Qt::Key_Return);PUTGD_TRY_VERIFY(window.historyState()["inspectorVisible"].toBool());QVERIFY(!details->isVisible());QVERIFY(!window.findChild<QToolButton*>("historyDetailsBack")->isVisible());auto* close=window.findChild<QToolButton*>("historyDetailsClose");QVERIFY(close->isVisible());QCOMPARE(close->accessibleName(),QString("Close details"));QCOMPARE(close->size(),QSize(32,32));QVERIFY(!rowMenuAction(list,"Show details"));close->setFocus();QTest::keyClick(close,Qt::Key_Space);PUTGD_TRY_VERIFY(!window.historyState()["inspectorVisible"].toBool());QVERIFY(details->isHidden());PUTGD_TRY_COMPARE(list->visualRect(index),reserved);
  }
  static bool seedCaptures(QTemporaryDir& d,SettingsService& settings,OperationService& operations,int rows){
   if(!QDir().mkpath(d.filePath("data/previews")))return false;HistoryStore ledger(operations.databasePath());for(int n=0;n<rows;++n){
-   const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces),original=d.filePath(id+".png"),preview=d.filePath("data/previews/"+id+".png");QImage image(720,440,QImage::Format_RGB32);image.fill(QColor::fromHsv(n*7,90,70));if(!image.save(original)||!image.save(preview))return false;
+   const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces),original=d.filePath(id+".png"),preview=d.filePath("data/previews/"+id+".png");QImage image(720,440,QImage::Format_RGBX64);image.fill(QColor::fromHsv(n*7,90,70));if(!image.save(original)||!image.save(preview))return false;
    Operation op;op.id=QString("thumbnail-operation-%1").arg(n);op.created=QDateTime::currentDateTimeUtc().addSecs(-n).toString(Qt::ISODateWithMs);op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=id;item.artifact.path=original;item.artifact.name=QString("Capture %1.png").arg(n);item.artifact.bytes=QFileInfo(original).size();item.artifact.mime="image/png";item.artifact.category="images";item.artifact.previewPath=preview;item.local.status="saved";item.local.path=original;item.uploadStatus="local_only";op.items.append(item);if(ledger.saveOperation(op))return false;
   }
   return true;
@@ -185,7 +186,7 @@ private slots:
   auto reload=[&]{const auto before=loaded.size();model->refresh();PUTGD_TRY_VERIFY(loaded.size()>before);};
   reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),0);
   const auto id=model->record(3)["id"].toString();QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.testMarker',1) AS BLOB) WHERE id='"+id+"'"));
-  reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),1);QCOMPARE(changes.first().first().toModelIndex().row(),3);QCOMPARE(model->record(3)["testMarker"].toInt(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);
+  reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),1);QCOMPARE(changes.first().first().toModelIndex().row(),3);const auto roles=changes.first().at(2).value<QList<int>>();QVERIFY(!roles.isEmpty());QVERIFY(!roles.contains(HistoryModel::PrimaryActionRole));QCOMPARE(model->record(3)["testMarker"].toInt(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);
   QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.bytes',7) AS BLOB) WHERE id='"+id+"'"));
   reload();QCOMPARE(resets.size(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);QCOMPARE(sweep(),rows);
  }
@@ -197,10 +198,12 @@ private slots:
   if(gallery){window.findChild<QToolButton*>("historyGridMode")->click();QCOMPARE(bar->singleStep(),listStep);window.findChild<QToolButton*>("historyListMode")->click();QCOMPARE(bar->singleStep(),listStep);window.findChild<QToolButton*>("historyGridMode")->click();}
   putgd::test::settle(100);PUTGD_TRY_VERIFY(bar->maximum()>100);
   // What the view fills has to match what it used to show through.
-  const auto gap=list->viewport()->grab().toImage().pixelColor(list->viewport()->width()-1,list->viewport()->height()-1);const auto centre=list->mapTo(&window,list->rect().center());list->hide();const auto behind=window.grab().toImage().pixelColor(centre);list->show();QCOMPARE(gap,behind);putgd::test::settle(50);
+  const auto gap=list->viewport()->grab().toImage().pixelColor(list->viewport()->width()-1,list->viewport()->height()-1);const auto at=list->viewport()->mapTo(&window,QPoint(list->viewport()->width()-1,list->viewport()->height()-1));list->hide();const auto behind=window.grab().toImage().pixelColor(at);list->show();QCOMPARE(gap,behind);
+  // Thumbnails still arriving and the list coming back repaint on their own.
+  auto* model=list->model();auto loaded=[&]{for(int row=0;row<model->rowCount();++row)if(qvariant_cast<QImage>(model->index(row,0).data(HistoryModel::ThumbnailRole)).isNull())return false;return true;};PUTGD_TRY_VERIFY(loaded());putgd::test::settle(200);
   struct Paints:QObject{QList<int> heights;bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Paint)heights<<static_cast<QPaintEvent*>(event)->region().boundingRect().height();return false;}} paints;list->viewport()->installEventFilter(&paints);
   for(int step=0;step<10;++step){bar->setValue(bar->value()+10);QCoreApplication::processEvents();QCoreApplication::processEvents();}
-  list->viewport()->removeEventFilter(&paints);QVERIFY(!paints.heights.isEmpty());std::sort(paints.heights.begin(),paints.heights.end());QVERIFY2(paints.heights[paints.heights.size()/2]<=10,qPrintable(QString("Median paint %1px of %2px").arg(paints.heights[paints.heights.size()/2]).arg(list->viewport()->height())));
+  list->viewport()->removeEventFilter(&paints);QVERIFY(!paints.heights.isEmpty());QString painted;for(int height:paints.heights)painted+=QString::number(height)+" ";for(int height:paints.heights)QVERIFY2(height<=10,qPrintable("Scroll paint heights, of "+QString::number(list->viewport()->height())+": "+painted));
  }
  void corruptPreviewRetriesThroughTheSession(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
