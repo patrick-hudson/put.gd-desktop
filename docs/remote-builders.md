@@ -12,7 +12,7 @@ run the required profile. Record the reason for each fallback. Work under
 | Debian 13 | `patrick@192.168.68.69` | KDE Plasma on Wayland | `127.0.0.1:5979` | `putgd-debian-vnc.service` |
 | Kubuntu 26.04.1 LTS | `patrick@192.168.68.72` | KDE Plasma 6.6.6 on Wayland (default since 2026-10-20; X11 session on request) | `127.0.0.1:5972` | `putgd-kubuntu-vnc.service` |
 | Linux Mint 22.3 | `patrick@192.168.68.74` | Cinnamon 6.6.4 on X11 | `127.0.0.1:5974` | `putgd-mint-vnc.service` |
-| Aurora Fedora 45 (`aurora-amd`) | `patrick@192.168.68.71` | Plasma 6.7.5 on Wayland | `127.0.0.1:5976` | `putgd-aurora-vnc.service` |
+| Aurora Fedora 45 (`aurora-amd`) | `patrick@192.168.68.71` | Plasma 6.8.2 on Wayland (follows `aurora:testing`, so it moves) | `127.0.0.1:5976` | `putgd-aurora-vnc.service` |
 
 The user authorizes full root access on these five machines through passwordless
 sudo: install normal distro dependencies, configure build tools, compile and run
@@ -96,7 +96,20 @@ for this host and preserve the historical Windows records.
 `aurora-amd` (`192.168.68.71`) is a preferred build and native Plasma/Wayland
 test host. Its 2026-10-29 bootstrap ran Aurora `testing-45.20261029.1` on an AMD
 Ryzen 5 PRO 8500GE / Radeon 740M, with 16 GB RAM and a 512 GB NVMe drive.
-The native session used Plasma/KWin 6.7.5 and distro Qt 6.11.2.
+The native session used Plasma/KWin 6.7.5 and distro Qt 6.11.2. On 2026-11-01 it
+rebooted into `testing-45.20261101.2` (digest
+`sha256:c3358112307abc4602b69fbc647ec46654a864344b541f4580a23a735e9497ca`): Plasma/KWin 6.8.2, Qt unchanged.
+
+This host follows the `aurora:testing` tag with `uupd.timer` enabled. The timer
+stages a new image daily, and the next reboot boots it, so **any reboot can change
+the desktop version**. Check `rpm-ostree status` and `rpm-ostree db diff` before
+relying on one. After a Plasma version change, Plasma opens a Welcome Center window
+over the desktop once; close it by PID before desktop tests (its process name is
+`plasma-welcome-`, so `pgrep -x plasma-welcome` misses it).
+
+The nightly Aurora row doesn't test this physical desktop. It boots a VM overlay of
+the [current Aurora golden](aurora-vm.md#plasma-68-golden) on this host, so the two
+versions can differ.
 
 ### Build commands
 
