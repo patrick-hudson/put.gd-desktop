@@ -373,6 +373,9 @@ public:
   paintSecondary_=Ui::toolButton({}, {},"secondary",view_->viewport());paintSecondary_->setProperty("uiDensity","compact");paintSecondary_->hide();paintQuiet_=Ui::toolButton({}, {},"quiet",view_->viewport());paintQuiet_->setProperty("uiDensity","compact");paintQuiet_->hide();
   primary_=Ui::toolButton({}, {},"secondary",view_->viewport());primary_->setObjectName("historyRowPrimary");primary_->setToolButtonStyle(Qt::ToolButtonTextOnly);primary_->setProperty("uiDensity","compact");primary_->hide();connect(primary_,&QToolButton::clicked,this,[this]{const auto i=grid()?QModelIndex(actionIndex_):view_->currentIndex();if(i.isValid()&&primaryShown(i)&&primary)primary(i);});
   more_=Ui::toolButton({}, {},"quiet",view_->viewport());more_->setObjectName("historyRowMore");more_->setIcon(Ui::chromeIcon("more"));more_->setProperty("uiDensity","compact");more_->hide();view_->viewport()->installEventFilter(this);
+  // Opaque, so scrolling moves the pixels already drawn and paints only the
+  // strip scrolled in; eventFilter fills what the transparent view used to show.
+  view_->viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
   details_=Ui::toolButton({}, {},"quiet",view_->viewport());details_->setObjectName("historyRowDetails");details_->setIcon(Ui::chromeIcon("chevron-right"));details_->setAccessibleName("Show details");details_->setAccessibleDescription("Open the selected item's details. Enter also opens details.");details_->setToolTip("Show details (Enter)");details_->setProperty("uiDensity","compact");details_->hide();connect(details_,&QToolButton::clicked,this,[this]{if(details)details(view_->currentIndex());});
   connect(more_,&QToolButton::clicked,this,[this]{const auto i=grid()?QModelIndex(actionIndex_):view_->currentIndex();if(i.isValid()&&menu){menuOpen_=true;menu(i,more_->mapToGlobal(QPoint(0,more_->height())));menuOpen_=false;updateMore();}});
   for(auto* button:{primary_,more_})button->installEventFilter(this);QWidget::setTabOrder(view_,primary_);QWidget::setTabOrder(primary_,more_);
@@ -420,6 +423,7 @@ public:
   if(watched==view_->viewport()&&event->type()==QEvent::MouseMove&&pressed_.isValid()&&(static_cast<QMouseEvent*>(event)->position().toPoint()-pressPosition_).manhattanLength()>QApplication::startDragDistance())cancelPress();
   if(watched==view_->viewport()&&(event->type()==QEvent::Hide||event->type()==QEvent::UngrabMouse))cancelPress();
   if(watched==view_->viewport()&&event->type()==QEvent::Hide)thumbnails_.clear();
+  if(watched==view_->viewport()&&event->type()==QEvent::Paint){QPainter painter(view_->viewport());painter.fillRect(static_cast<QPaintEvent*>(event)->rect(),Theme::current().bg);}
   if(watched==view_->viewport()&&(event->type()==QEvent::Resize||event->type()==QEvent::Show||event->type()==QEvent::Paint)){
    updateMore();
   }
@@ -849,7 +853,9 @@ void HistoryWindow::applyFilters(){searchTimer_->stop();{const QSignalBlocker bl
 // The heading names what the list shows: the category, and failed uploads
 // when only those are shown (the sidebar toggle or the Upload state filter).
 void HistoryWindow::updateHeading(){if(!heading_)return;auto* upload=findChild<QComboBox*>("historyChoiceuploadStatus");const bool locked=categories_->currentRow()==5;Ui::setLocked(upload,locked);upload->setEnabled(!locked);upload->setToolTip(locked?"Locked to Failed while Failed uploads is selected":QString{});upload->setAccessibleDescription(upload->toolTip());const auto* item=categories_->currentItem();const auto category=item?item->text():QString("All items");const bool failed=findChild<QLineEdit*>("historyFilteruploadStatus")->text()=="failed";const auto text=!failed?category:categories_->currentRow()==0||categories_->currentRow()==5?QString("Failed uploads"):category+" · failed uploads";if(heading_->text()!=text){heading_->setText(text);updateFooterLayout();}}
-void HistoryWindow::setGridMode(bool grid){grid_->setChecked(grid);findChild<QToolButton*>("historyListMode")->setChecked(!grid);table_->parentWidget()->layout()->setContentsMargins(space(Space::xxl)-(grid?1:2)*space(Space::s),0,space(Space::s),0);table_->setViewMode(grid?QListView::IconMode:QListView::ListMode);table_->setMovement(QListView::Static);table_->setWrapping(grid);table_->setGridSize(QSize());table_->setUniformItemSizes(false);table_->doItemsLayout();updateInspectorLayout();emit viewStateChanged();}
+// A wheel step defaults to the first item's height. Keep the list's, its first row
+// under a day heading: a gallery tile would move about 2.4 times as far.
+void HistoryWindow::setGridMode(bool grid){grid_->setChecked(grid);findChild<QToolButton*>("historyListMode")->setChecked(!grid);table_->parentWidget()->layout()->setContentsMargins(space(Space::xxl)-(grid?1:2)*space(Space::s),0,space(Space::s),0);table_->setViewMode(grid?QListView::IconMode:QListView::ListMode);table_->setMovement(QListView::Static);table_->setWrapping(grid);table_->setGridSize(QSize());table_->setUniformItemSizes(false);table_->verticalScrollBar()->setSingleStep(grid?rowContentHeight()+dayHeadingHeight():-1);table_->doItemsLayout();updateInspectorLayout();emit viewStateChanged();}
 void HistoryWindow::updateInspectorLayout(){if(!split_)return;updateFooterLayout();
  // Side by side only while both panes get what they need at this text size:
  // the list a readable name beside its thumbnail and actions, the inspector

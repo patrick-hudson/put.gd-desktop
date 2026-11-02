@@ -189,6 +189,19 @@ private slots:
   QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.bytes',7) AS BLOB) WHERE id='"+id+"'"));
   reload();QCOMPARE(resets.size(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);QCOMPARE(sweep(),rows);
  }
+ void scrollingPaintsOnlyWhatScrollsIn_data(){QTest::addColumn<bool>("gallery");QTest::addColumn<bool>("light");for(bool light:{false,true}){QTest::newRow(light?"list-light":"list-dark")<<false<<light;QTest::newRow(light?"gallery-light":"gallery-dark")<<true<<light;}}
+ void scrollingPaintsOnlyWhatScrollsIn(){
+  QFETCH(bool,gallery);QFETCH(bool,light);const auto previous=Theme::scheme();Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);auto theme=qScopeGuard([previous]{Theme::setScheme(previous);});
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QVERIFY(seedCaptures(d,settings,operations,50));
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);Ui::styleWindow(window);window.resize(1400,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),50);auto* bar=list->verticalScrollBar();const int listStep=bar->singleStep();
+  if(gallery){window.findChild<QToolButton*>("historyGridMode")->click();QCOMPARE(bar->singleStep(),listStep);window.findChild<QToolButton*>("historyListMode")->click();QCOMPARE(bar->singleStep(),listStep);window.findChild<QToolButton*>("historyGridMode")->click();}
+  putgd::test::settle(100);PUTGD_TRY_VERIFY(bar->maximum()>100);
+  // What the view fills has to match what it used to show through.
+  const auto gap=list->viewport()->grab().toImage().pixelColor(list->viewport()->width()-1,list->viewport()->height()-1);const auto centre=list->mapTo(&window,list->rect().center());list->hide();const auto behind=window.grab().toImage().pixelColor(centre);list->show();QCOMPARE(gap,behind);putgd::test::settle(50);
+  struct Paints:QObject{QList<int> heights;bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Paint)heights<<static_cast<QPaintEvent*>(event)->region().boundingRect().height();return false;}} paints;list->viewport()->installEventFilter(&paints);
+  for(int step=0;step<10;++step){bar->setValue(bar->value()+10);QCoreApplication::processEvents();QCoreApplication::processEvents();}
+  list->viewport()->removeEventFilter(&paints);QVERIFY(!paints.heights.isEmpty());std::sort(paints.heights.begin(),paints.heights.end());QVERIFY2(paints.heights[paints.heights.size()/2]<=10,qPrintable(QString("Median paint %1px of %2px").arg(paints.heights[paints.heights.size()/2]).arg(list->viewport()->height())));
+ }
  void corruptPreviewRetriesThroughTheSession(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);const auto original=d.filePath("original.png");QImage image(80,50,QImage::Format_RGB32);image.fill(Qt::green);QVERIFY(image.save(original));QFile bytes(original);QVERIFY(bytes.open(QIODevice::ReadOnly));const auto hash=QString::fromLatin1(QCryptographicHash::hash(bytes.readAll(),QCryptographicHash::Sha256).toHex());bytes.close();const auto cached=d.filePath("data/previews/"+id+".png");QVERIFY(QDir().mkpath(QFileInfo(cached).path()));{QFile file(cached);QVERIFY(file.open(QIODevice::WriteOnly));file.write("broken png");}
