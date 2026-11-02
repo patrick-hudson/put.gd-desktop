@@ -43,13 +43,15 @@ The four original goldens below are standalone qcow2 files (virtual 48 GiB) unde
 The [immutable-golden rules](vm-lab.md#base-protection-and-inventory) apply.
 The three Fedora 44 goldens exist only on `f44` (no Debian or S3 copy, so the
 [two-copies rule](remote-golden-images.md) is not satisfied for them); the
-older Fedora 45 disk has a verified Debian copy but no complete S3 image.
-The independently rebuilt Fedora 45 cloud golden has verified Fedora, Debian
-and S3 copies; see [cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot).
+current Fedora 45 golden is on all five builders and in S3. The two older Fedora 45
+goldens were removed from the builders on 2026-11-02, with Patrick's approval. The
+2026-10-29 cloud golden remains in S3; see
+[cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot).
 
 | Directory | Base | SHA-256 | State |
 | --- | --- | --- | --- |
-| `aurora-testing-45.20261022.1-852d34e885c1` | Fedora 45 (`aurora:testing`) | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | **Use this one for acceptance** (on a builder; the cloud golden is for restore and Boat development, see [which golden counts](remote-golden-images.md#current-inventory)). v3 rebased to `testing-45.20261022.1`, updater timer masked, single deployment; 24.0 GB allocated. See [Fedora 45 golden](#fedora-45-golden). |
+| `aurora-testing-45.20261101.2-ec2-20261102-a1` | Fedora 45 (`aurora:testing`), Plasma 6.8.2 | `731b43833009724506feb20d35a19a417da8bbae2890940571b7da4edc1a35ae` | **Use this one for acceptance.** On all five builders and in S3; see [Plasma 6.8 golden](#plasma-68-golden). |
+| `aurora-testing-45.20261022.1-852d34e885c1` | Fedora 45 (`aurora:testing`), Plasma 6.7.5 | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | **Removed on 2026-11-02; no copy remains.** Its S3 prefix holds only sidecars and firmware. Earlier state: (on a builder; the cloud golden is for restore and Boat development, see [which golden counts](remote-golden-images.md#current-inventory)). v3 rebased to `testing-45.20261022.1`, updater timer masked, single deployment; 24.0 GB allocated. See [Fedora 45 golden](#fedora-45-golden). |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` | Fedora 44 (`aurora:stable`) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | The Fedora 44 base: v2 plus lab idle settings (no screen lock, dimming, display power-off or suspend). Its `uupd.timer` is still enabled; see [automatic updates](#automatic-updates). 15.4 GB allocated. |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54` | Fedora 44 | `b9ee08f09d8a4fbd4e57de04c8c1b6e9833400685492a1ab58a341d5e76dd7e7` | v1 plus `/etc/plasmalogin.conf.d/putgd-lab-autologin.conf`; autologin verified (`Service=plasmalogin-autologin`, Wayland user session). |
 | `aurora-stable-44.20260908.1-f9c006a376e1` | Fedora 44 | `65cc3ae1cfb91dc5054ff2c4c50b82e8dddeed8ba53d6c29fd16282b1a0f1811` | First boot plus bootstrap. Its SDDM autologin drop-in is ignored (Aurora uses plasmalogin), so it boots to the greeter. |
@@ -111,7 +113,78 @@ sudo -n systemctl stop uupd.service; sudo -n systemctl disable --now uupd.timer
 The Fedora 45 golden has the timer disabled and masked, so its overlays stay on
 the base they were made from.
 
+## Plasma 6.8 golden
+
+`aurora-testing-45.20261101.2-ec2-20261102-a1` is the required Aurora guest. Aurora's `testing` tag moved
+from Plasma 6.7.5 to 6.8.2 between 2026-10-29 and 2026-11-01, so this golden pins the
+same image the physical `aurora-amd` builder rebooted into. It was built on a
+temporary EC2 instance on 2026-11-02 (UTC), which is now terminated. Like earlier
+goldens, it stays on this image; a later `testing` image needs a new golden.
+
+| Item | Value |
+| --- | --- |
+| Image | `ghcr.io/ublue-os/aurora@sha256:c3358112307abc4602b69fbc647ec46654a864344b541f4580a23a735e9497ca`, version `testing-45.20261101.2` |
+| Guest | `VERSION_ID=45`, kernel `7.2.11-300.fc45`, `plasma-workspace-6.8.2-1.fc45`, `kwin-6.8.2-2.fc45`, `plasma-login-manager-6.8.2-1.fc45`, `layer-shell-qt-6.8.2-1.fc45`, `xdg-desktop-portal-kde-6.8.2-1.fc45`, `qt6-qtbase-6.11.2-3.fc45`, `pipewire-1.6.11-1.fc45`, `mesa-dri-drivers-26.2.6-1.fc45`; btrfs root |
+| Session | plasmalogin autologin as `lab` (`Service=plasmalogin-autologin`, `Type=wayland`, `Desktop=KDE`, `Class=user`). The standard password also passed a manual greeter login before autologin was enabled. |
+| Lab settings | `uupd.timer` masked, `/etc/plasma-setup-done` present, Welcome Center already seen (`LastSeenVersion=6.8.2`), hostname `aurora-lab`, America/Chicago, `guest_idle.py` preflight passed. `bootc status` shows the pinned digest with `signature: containerPolicy`, no staged or rollback deployment. |
+| SSH | Host key `SHA256:Y0ufFqg5/mARX/Mz5sF+8mTv9zaGOL2q3c0I2SOavsc`, read on the serial console and matched against `ssh-keyscan`. `known_hosts` pins `[127.0.0.1]:22426` and `:22427`. Authorized keys: the Aurora bootstrap key `putgd-lab-aurora` and the workstation's provisioner key. |
+| Golden | Standalone qcow2, 11,139,153,920 bytes, virtual 50,994,348,032 bytes, SHA-256 `731b43833009724506feb20d35a19a417da8bbae2890940571b7da4edc1a35ae`, `qemu-img compare` identical to the provisioned overlay, `qemu-img check` clean, mode 0444. |
+| Copies | S3 `linux/aurora-testing-45.20261101.2-ec2-20261102-a1/` and all five builders under the same directory name; every restore checked both hashes and `qemu-img check`. |
+| Evidence | [Receipt](evidence/2026-11-02-aurora-plasma-68-golden/receipt.json), [autologin desktop](evidence/2026-11-02-aurora-plasma-68-golden/autologin-desktop.png); the rest under `sidecars/` in S3. |
+
+### Application result
+
+[Nightly recheck](https://github.com/patrick-hudson/put.gd-desktop/issues/1003) of the
+Aurora row on `aurora-amd`, release `v26.1101.3698-nightly`, AppImage SHA-256
+`905d0eacce7466fe2d2dc0f0398598755adac7cb855f8dd75f305d71a3a13b96`: 12 of 12 cells
+green with no retries, including recording, live S3 and live Proton, in 872 seconds. The
+run recorded this golden's SHA-256 (run ID
+`048b95e7-5a96-47b8-a159-0428e96ca7df`). It ran in a VM with software rendering, so it
+doesn't exercise KWin's hardware GL paths. The controller checkout was `6f74e288`, which
+predates the file-manager upload flow, so that 13th cell wasn't run on this golden; the
+next scheduled nightly run updates the checkout first and includes it.
+
+### How to rebuild it
+
+The recipe needs no AWS credentials on the instance:
+
+1. Launch an `m7i.2xlarge` Ubuntu 24.04 instance with `NestedVirtualization=enabled`,
+   a 200 GiB gp3 volume, shutdown behaviour `terminate` and a self-stop timer, with SSH
+   open only to the workstation's address. Pin its host key from
+   `get-console-output`.
+2. Pull the image by digest and run `bootc-image-builder --type qcow2` (digest
+   `sha256:b858892139e0779d48869a4dd8cbbc4e257da49f5a4b502824a55d221ed65a55`) with a
+   `lab` user in `wheel`, the [standard password](remote-golden-images.md#standard-remote-guest-login),
+   the provisioner key and a 46 GiB root.
+3. Boot an overlay under UEFI with a private VARS copy and `restrict=on` user
+   networking, so the guest can't update itself.
+4. The image has sshd off and no host keys, and Plasma's first-run wizard holds
+   the seat. Log in on the serial console, wait for the login banner to finish (its
+   terminal probes eat typed input), run `systemctl enable --now sshd`, and compare the
+   fingerprint with `ssh-keyscan`.
+5. Over SSH, mask `uupd.timer`, `touch /etc/plasma-setup-done` and reboot. Log in once
+   at the greeter with the standard password; this also records the Welcome Center as
+   seen, so overlays don't open it. Run
+   [`bootstrap-aurora-guest.sh`](../tools/lab/bootstrap-aurora-guest.sh), append the
+   provisioner key and reboot to confirm autologin.
+6. Remove provisioning files, vacuum the journal, run `fstrim -av` and power off.
+   Then `qemu-img convert`, `compare` and `check`, hash it, and compress with zstd.
+7. Upload with presigned multipart part URLs generated on the workstation, using
+   `GLACIER_IR`, SSE-S3 and the `sha256`, `zst-sha256`, `virtual-size` and
+   `source-container-digest` metadata. curl must send each part from a file, because S3
+   rejects chunked uploads with 501. Upload the sidecars too, including the new
+   `known_hosts` with the guest's pin. Download the image and sidecars back, compare
+   each SHA-256 with the local copy, and compare the image.
+8. Restore the image and sidecars to each builder through a short-lived presigned URL.
+   Then point the `golden` and `knownHosts` paths in
+   `~/.config/putgd-nightly/config.json` at them on all five builders.
+9. Terminate the instance, then delete its security group and key pair.
+
 ## Fedora 45 golden
+
+This section is a historical record: the image was deleted from `f44` and `d69` on
+2026-11-02, with Patrick's approval, and was never fully uploaded to S3. It can't be
+restored, and its commands no longer run as written.
 
 `aurora-testing-45.20261022.1-852d34e885c1` is the Aurora guest on a Fedora 45
 base. It was made on 2026-10-23 (UTC) from an overlay of the v3 golden, because
@@ -133,7 +206,7 @@ golden directory holds `provisioning-verify.log`.
 | Deployments | Single: the Fedora 44 rollback deployment was removed with `rpm-ostree cleanup -r` (5.7 GB freed) before the poweroff. |
 | SSH | Host key unchanged (`SHA256:yeRsgHkd8AI0lIuNZ4H6YE2i4d1D7cxeFI86/uKoWiA`); `known_hosts` pins `[127.0.0.1]:22426` and `[127.0.0.1]:22427`. Only the builder bootstrap key `~/work/put.gd/work/lab-bootstrap-f44/aurora/identity` is authorized; the run-private key that `launch` appends was removed before the poweroff. |
 | Golden | standalone qcow2, 23,965,663,232 bytes, SHA-256 `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556`, `qemu-img compare` identical to the source overlay, `qemu-img check` clean, mode 0444. |
-| Copies | `f44` and `d69` (same directory name; the copy was streamed through the workstation on 2026-10-23, its SHA-256 and all sidecar hashes match, `qemu-img check` clean; receipt `work/verification/golden-transfer-1d422e725efb`). No complete S3 copy of this older disk. Patrick approved the independently rebuilt `aurora-testing-45.20261022.1-ec2-20261029-a1` from the same pinned Aurora OS for cloud restore; it has verified Fedora, Debian and S3 copies and is in `putgd-lab-aurora`. See [cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot). |
+| Copies | None since 2026-11-02. Previously `f44` and `d69` (same directory name; the copy was streamed through the workstation on 2026-10-23, its SHA-256 and all sidecar hashes match, `qemu-img check` clean; receipt `work/verification/golden-transfer-1d422e725efb`). No complete S3 copy of this older disk. Patrick approved the independently rebuilt `aurora-testing-45.20261022.1-ec2-20261029-a1` from the same pinned Aurora OS for cloud restore; its builder copies were also removed on 2026-11-02, and it remains in S3 and in `putgd-lab-aurora`. See [cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot). |
 
 ### How it was made
 
@@ -237,7 +310,8 @@ Check that the chosen SSH and VNC ports are free on the builder first
 ```sh
 set -eu
 cd ~/work/put.gd
-g=~/work/put.gd/work/lab-images/aurora-testing-45.20261022.1-852d34e885c1
+g=~/work/put.gd/work/lab-images/aurora-testing-45.20261101.2-ec2-20261102-a1
+a=~/PATH/TO/putgd-VERSION-nightly-x86_64.AppImage  # a published nightly
 r=~/work/put.gd/work/lab-runs/aurora-$(python3 -c 'import uuid; print(uuid.uuid4().hex[:8])')
 test ! -e "$r"
 python3 tools/diagnostics/check_socket_paths.py --socket "$r/qmp.sock"
@@ -246,7 +320,7 @@ python3 tools/lab/lab.py launch --profile aurora-kde-wayland \
   --bootstrap-key ~/work/put.gd/work/lab-bootstrap-f44/aurora/identity \
   --known-hosts "$g/known_hosts" --ssh-port 22426 --vnc-display 26 --timeout 420
 python3 tools/lab/lab.py install --run "$r" \
-  --appimage ~/work/put.gd/work/aurora-lab/appimage-9042776/putgd-0.1.1-dev.419+g9042776eb70e-x86_64.AppImage
+  --appimage "$a"
 python3 tools/lab/lab.py start --run "$r"
 python3 tools/lab/lab.py cli --run "$r" --method capabilities
 python3 tools/lab/lab.py screenshot --run "$r"
