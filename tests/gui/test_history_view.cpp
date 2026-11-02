@@ -68,6 +68,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QSignalSpy>
+#include <algorithm>
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
 class HistoryPaintObserver final:public QObject {
@@ -165,6 +166,28 @@ private slots:
   QVERIFY(event(QEvent::MouseButtonPress,at));QVERIFY(event(QEvent::MouseButtonRelease,at));PUTGD_TRY_COMPARE(copies,1);
   window.activateWindow();button->setFocus(Qt::TabFocusReason);PUTGD_TRY_VERIFY(button->hasFocus());QTest::keyClick(button,Qt::Key_Space);PUTGD_TRY_COMPARE(copies,2);
   window.findChild<QToolButton*>("historyGridMode")->click();window.resize(Ui::scaled(1400),900);PUTGD_TRY_COMPARE(window.historyState()["layout"].toString(),QString("split"));auto* details=window.findChild<QToolButton*>("historyRowDetails");QVERIFY(details->isHidden());putgd::test::settle(30);list->doItemsLayout();const auto reserved=list->visualRect(index);list->setFocus();QTest::keyClick(list,Qt::Key_Return);PUTGD_TRY_VERIFY(window.historyState()["inspectorVisible"].toBool());QVERIFY(!details->isVisible());QVERIFY(!window.findChild<QToolButton*>("historyDetailsBack")->isVisible());auto* close=window.findChild<QToolButton*>("historyDetailsClose");QVERIFY(close->isVisible());QCOMPARE(close->accessibleName(),QString("Close details"));QCOMPARE(close->size(),QSize(32,32));QVERIFY(!rowMenuAction(list,"Show details"));close->setFocus();QTest::keyClick(close,Qt::Key_Space);PUTGD_TRY_VERIFY(!window.historyState()["inspectorVisible"].toBool());QVERIFY(details->isHidden());PUTGD_TRY_COMPARE(list->visualRect(index),reserved);
+ }
+ static bool seedCaptures(QTemporaryDir& d,SettingsService& settings,OperationService& operations,int rows){
+  if(!QDir().mkpath(d.filePath("data/previews")))return false;HistoryStore ledger(operations.databasePath());for(int n=0;n<rows;++n){
+   const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces),original=d.filePath(id+".png"),preview=d.filePath("data/previews/"+id+".png");QImage image(720,440,QImage::Format_RGB32);image.fill(QColor::fromHsv(n*7,90,70));if(!image.save(original)||!image.save(preview))return false;
+   Operation op;op.id=QString("thumbnail-operation-%1").arg(n);op.created=QDateTime::currentDateTimeUtc().addSecs(-n).toString(Qt::ISODateWithMs);op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id=id;item.artifact.path=original;item.artifact.name=QString("Capture %1.png").arg(n);item.artifact.bytes=QFileInfo(original).size();item.artifact.mime="image/png";item.artifact.category="images";item.artifact.previewPath=preview;item.local.status="saved";item.local.path=original;item.uploadStatus="local_only";op.items.append(item);if(ledger.saveOperation(op))return false;
+  }
+  return true;
+ }
+ // A gallery repaint reads every visible tile in turn: the cache has to hold them all, or each repaint blanks the tiles it evicted.
+ void everyTileKeepsItsThumbnailWhileAnOperationRepublishes(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
+  const int rows=50;QVERIFY(seedCaptures(d,settings,operations,rows));
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1100,750);window.show();auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());PUTGD_TRY_COMPARE(model->rowCount(),rows);
+  auto sweep=[&]{int shown=0;for(int row=0;row<rows;++row)shown+=!qvariant_cast<QImage>(model->index(row).data(HistoryModel::ThumbnailRole)).isNull();return shown;};
+  PUTGD_TRY_COMPARE(sweep(),rows);for(int pass=0;pass<5;++pass)QCOMPARE(sweep(),rows);
+  selectRow(list,3);QSignalSpy resets(model,&QAbstractItemModel::modelReset),changes(model,&QAbstractItemModel::dataChanged),loaded(model,&HistoryModel::loaded);
+  auto reload=[&]{const auto before=loaded.size();model->refresh();PUTGD_TRY_VERIFY(loaded.size()>before);};
+  reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),0);
+  const auto id=model->record(3)["id"].toString();QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.testMarker',1) AS BLOB) WHERE id='"+id+"'"));
+  reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),1);QCOMPARE(changes.first().first().toModelIndex().row(),3);QCOMPARE(model->record(3)["testMarker"].toInt(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);
+  QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.bytes',7) AS BLOB) WHERE id='"+id+"'"));
+  reload();QCOMPARE(resets.size(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);QCOMPARE(sweep(),rows);
  }
  void corruptPreviewRetriesThroughTheSession(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());

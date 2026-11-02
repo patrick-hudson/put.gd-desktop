@@ -23,6 +23,9 @@ public:
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
  QJsonArray activeOperations()const;static int operationProgress(const QJsonObject&);
  void releaseThumbnails();
+ // KB to hold a page's largest thumbnails. A view repaints every visible tile
+ // in order, and an LRU cache smaller than that misses on all of them.
+ static int thumbnailCacheCost(int rows){return qMax(8192,rows*(360*220*4/1024+1));}
  bool multipleDestinations()const;QString commonDestination()const;
  // Reads a preview again once it has been made (#190) at a path whose earlier read failed.
  void reloadThumbnail(const QString& path);
@@ -48,7 +51,7 @@ signals:void activityChanged();void busyChanged(bool);void loaded();void error(c
 private:
  void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;bool scanDestinations()const;
  // What the row offers and whether it failed: fixed until the next rebuild.
- struct RowFacts {bool active=false,failed=false;QString primary;};
+ struct RowFacts {bool active=false,failed=false;QString primary;bool operator==(const RowFacts&)const=default;};
  static RowFacts rowFacts(const QJsonObject&);
  QString dayLabel(int row)const;
  // Per row, kept with rows_: the parsed local creation time and facts that
