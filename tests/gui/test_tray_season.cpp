@@ -86,7 +86,7 @@ private slots:
   const QDateTime late(QDate(2026,11,30),QTime(23,59,59,500));QCOMPARE(TrayCalendar::msUntilTomorrow(late),qint64(500));
   QCOMPARE(TrayCalendar::msUntilTomorrow(QDateTime(QDate(2026,6,1),QTime(0,0))),qint64(86400000));
  }
- void markKeepsItsExactPixels(){
+ void markOverloadsProduceTheSamePixels(){
   for(int percent:{-1,-2,0,50,100})for(int scale:{1,2,3})QCOMPARE(IconArt::liftTray(TrayIcon{idle(),percent},scale),IconArt::liftTray(idle(),percent,scale));
  }
  void everyGlyphKeepsTheBowl(){
@@ -133,7 +133,7 @@ private slots:
   for(int percent:{-1,50,100}){
    const auto tree=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Tree},8);
    QCOMPARE(qAlpha(tree.pixel(int(6.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(int(17.5*8),14*8)),0);QCOMPARE(qAlpha(tree.pixel(12*8,18*8)),0);
-   
+
    const auto turkey=IconArt::liftTray(TrayIcon{idle(),percent,0,TrayGlyph::Turkey},8);
    QCOMPARE(qAlpha(turkey.pixel(int(17.5*8),int(2.9*8))),0);
   }
