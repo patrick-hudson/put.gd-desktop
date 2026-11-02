@@ -15,6 +15,7 @@ commit on the host and run with a private profile on its physical desktop.
 
 Red boxes and labels are annotations added afterwards.
 
-The behaviour checks in #1155 used real input on a scratch build of the same About
-code: expand, collapse, drag and close on Cinnamon X11, Plasma Wayland and GNOME
-Wayland (f44).
+The drag and close checks in #1155 used real input on a scratch build from before
+its browser-feedback fix (`20c4f61a7`), on Cinnamon X11, Plasma Wayland and GNOME
+Wayland (f44). The exact commit above was opened and expanded on Cinnamon X11 and
+Plasma Wayland.
