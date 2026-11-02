@@ -140,7 +140,9 @@ Aurora row on `aurora-amd`, release `v26.1101.3698-nightly`, AppImage SHA-256
 green with no retries, including recording, live S3 and live Proton, in 872 seconds. The
 run recorded this golden's SHA-256 (run ID
 `048b95e7-5a96-47b8-a159-0428e96ca7df`). It ran in a VM with software rendering, so it
-doesn't exercise KWin's hardware GL paths.
+doesn't exercise KWin's hardware GL paths. The controller checkout was `6f74e288`, which
+predates the file-manager upload flow, so that 13th cell wasn't run on this golden; the
+next scheduled nightly run updates the checkout first and includes it.
 
 ### How to rebuild it
 
@@ -306,6 +308,7 @@ Check that the chosen SSH and VNC ports are free on the builder first
 set -eu
 cd ~/work/put.gd
 g=~/work/put.gd/work/lab-images/aurora-testing-45.20261101.2-ec2-20261102-a1
+a=~/PATH/TO/putgd-VERSION-nightly-x86_64.AppImage  # a published nightly
 r=~/work/put.gd/work/lab-runs/aurora-$(python3 -c 'import uuid; print(uuid.uuid4().hex[:8])')
 test ! -e "$r"
 python3 tools/diagnostics/check_socket_paths.py --socket "$r/qmp.sock"
@@ -314,7 +317,7 @@ python3 tools/lab/lab.py launch --profile aurora-kde-wayland \
   --bootstrap-key ~/work/put.gd/work/lab-bootstrap-f44/aurora/identity \
   --known-hosts "$g/known_hosts" --ssh-port 22426 --vnc-display 26 --timeout 420
 python3 tools/lab/lab.py install --run "$r" \
-  --appimage ~/work/put.gd/work/aurora-lab/appimage-9042776/putgd-0.1.1-dev.419+g9042776eb70e-x86_64.AppImage
+  --appimage "$a"
 python3 tools/lab/lab.py start --run "$r"
 python3 tools/lab/lab.py cli --run "$r" --method capabilities
 python3 tools/lab/lab.py screenshot --run "$r"

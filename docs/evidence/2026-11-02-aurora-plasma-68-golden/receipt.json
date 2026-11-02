@@ -84,7 +84,11 @@
     "green": 12,
     "retried": 0,
     "seconds": 872.346,
-    "placement": "VM, software rendering"
+    "placement": "VM, software rendering",
+    "controllerCheckout": "6f74e288",
+    "flowsNotInCheckout": [
+      "file_manager_upload"
+    ]
   },
   "ec2": {
     "region": "us-west-2",
