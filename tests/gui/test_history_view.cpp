@@ -68,6 +68,7 @@
 #include <QCryptographicHash>
 #include <QDir>
 #include <QSignalSpy>
+#include <QHelpEvent>
 #include <algorithm>
 #include "fixtures/Waits.h"
 using namespace putgd;using namespace putgd::test;
@@ -165,7 +166,7 @@ private slots:
   QVERIFY(event(QEvent::MouseButtonPress,at));list->model()->dataChanged(index,index,{});QVERIFY(!event(QEvent::MouseButtonRelease,at));PUTGD_COMPARE_STEADY(copies,0,20);
   QVERIFY(event(QEvent::MouseButtonPress,at));list->model()->dataChanged(index,index,{HistoryModel::SubtitleRole,HistoryModel::CreatedRole});QVERIFY(event(QEvent::MouseButtonRelease,at));PUTGD_TRY_COMPARE(copies,1);
   QVERIFY(event(QEvent::MouseButtonPress,at));QVERIFY(event(QEvent::MouseButtonRelease,at));PUTGD_TRY_COMPARE(copies,2);
-  window.activateWindow();button->setFocus(Qt::TabFocusReason);PUTGD_TRY_VERIFY(button->hasFocus());QTest::keyClick(button,Qt::Key_Space);PUTGD_TRY_COMPARE(copies,2);
+  window.activateWindow();button->setFocus(Qt::TabFocusReason);PUTGD_TRY_VERIFY(button->hasFocus());QTest::keyClick(button,Qt::Key_Space);PUTGD_TRY_COMPARE(copies,3);
   window.findChild<QToolButton*>("historyGridMode")->click();window.resize(Ui::scaled(1400),900);PUTGD_TRY_COMPARE(window.historyState()["layout"].toString(),QString("split"));auto* details=window.findChild<QToolButton*>("historyRowDetails");QVERIFY(details->isHidden());putgd::test::settle(30);list->doItemsLayout();const auto reserved=list->visualRect(index);list->setFocus();QTest::keyClick(list,Qt::Key_Return);PUTGD_TRY_VERIFY(window.historyState()["inspectorVisible"].toBool());QVERIFY(!details->isVisible());QVERIFY(!window.findChild<QToolButton*>("historyDetailsBack")->isVisible());auto* close=window.findChild<QToolButton*>("historyDetailsClose");QVERIFY(close->isVisible());QCOMPARE(close->accessibleName(),QString("Close details"));QCOMPARE(close->size(),QSize(32,32));QVERIFY(!rowMenuAction(list,"Show details"));close->setFocus();QTest::keyClick(close,Qt::Key_Space);PUTGD_TRY_VERIFY(!window.historyState()["inspectorVisible"].toBool());QVERIFY(details->isHidden());PUTGD_TRY_COMPARE(list->visualRect(index),reserved);
  }
  static bool seedCaptures(QTemporaryDir& d,SettingsService& settings,OperationService& operations,int rows){
@@ -184,11 +185,18 @@ private slots:
   PUTGD_TRY_COMPARE(sweep(),rows);for(int pass=0;pass<5;++pass)QCOMPARE(sweep(),rows);
   selectRow(list,3);QSignalSpy resets(model,&QAbstractItemModel::modelReset),changes(model,&QAbstractItemModel::dataChanged),loaded(model,&HistoryModel::loaded);
   auto reload=[&]{const auto before=loaded.size();model->refresh();PUTGD_TRY_VERIFY(loaded.size()>before);};
-  reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),0);
+  // A minute rolling over during the test adds a refresh of every row's age.
+  auto rowChanges=[&]{QList<QList<QVariant>> found;for(const auto& change:changes)if(change.at(2).value<QList<int>>()!=QList<int>{HistoryModel::CreatedRole})found.append(change);return found;};
+  reload();QCOMPARE(resets.size(),0);QCOMPARE(rowChanges().size(),0);
   const auto id=model->record(3)["id"].toString();QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.testMarker',1) AS BLOB) WHERE id='"+id+"'"));
-  reload();QCOMPARE(resets.size(),0);QCOMPARE(changes.size(),1);QCOMPARE(changes.first().first().toModelIndex().row(),3);const auto roles=changes.first().at(2).value<QList<int>>();QVERIFY(!roles.isEmpty());QVERIFY(!roles.contains(HistoryModel::PrimaryActionRole));QCOMPARE(model->record(3)["testMarker"].toInt(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);
+  reload();const auto updates=rowChanges();QCOMPARE(resets.size(),0);QCOMPARE(updates.size(),1);QCOMPARE(updates.first().first().toModelIndex().row(),3);const auto roles=updates.first().at(2).value<QList<int>>();QVERIFY(!roles.isEmpty());QVERIFY(!roles.contains(HistoryModel::PrimaryActionRole));QCOMPARE(model->record(3)["testMarker"].toInt(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);
   QVERIFY(sql(operations.databasePath(),"UPDATE history SET data=CAST(json_set(CAST(data AS TEXT),'$.bytes',7) AS BLOB) WHERE id='"+id+"'"));
   reload();QCOMPARE(resets.size(),1);QCOMPARE(list->selectionModel()->selectedRows().value(0).row(),3);QCOMPARE(sweep(),rows);
+ }
+ void tooltipBetweenGalleryTilesHasNoRow(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QVERIFY(seedCaptures(d,settings,operations,1));
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1400,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),1);window.findChild<QToolButton*>("historyGridMode")->click();putgd::test::settle(100);
+  const auto beside=list->viewport()->rect().bottomRight();QVERIFY(!list->indexAt(beside).isValid());QHelpEvent help(QEvent::ToolTip,beside,list->viewport()->mapToGlobal(beside));QApplication::sendEvent(list->viewport(),&help);QVERIFY(list->isVisible());
  }
  void scrollingPaintsOnlyWhatScrollsIn_data(){QTest::addColumn<bool>("gallery");QTest::addColumn<bool>("light");for(bool light:{false,true}){QTest::newRow(light?"list-light":"list-dark")<<false<<light;QTest::newRow(light?"gallery-light":"gallery-dark")<<true<<light;}}
  void scrollingPaintsOnlyWhatScrollsIn(){

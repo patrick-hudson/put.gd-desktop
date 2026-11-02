@@ -412,6 +412,8 @@ public:
   if(shown.mid(shown.size()-order.size())!=order)for(auto* button:order)button->raise();
  }
  bool helpEvent(QHelpEvent* event,QAbstractItemView* view,const QStyleOptionViewItem& option,const QModelIndex& i)override{
+  // Qt also asks about the gaps between gallery tiles, where there is no row.
+  if(!i.isValid())return QStyledItemDelegate::helpEvent(event,view,option,i);
   if(i.data(HistoryModel::FailedRole).toBool()&&!menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),failureDescription(i),view);return true;}
   if(inlineActions(i)&&menuRect(option.rect,i).contains(event->pos())){QToolTip::showText(event->globalPos(),"More actions for "+i.data(HistoryModel::RecordRole).toJsonObject()["name"].toString(),view);return true;}return QStyledItemDelegate::helpEvent(event,view,option,i);
  }
