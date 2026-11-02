@@ -130,6 +130,11 @@ Both use shared controls around the working area and the app's window identity.
 The editor helper receives the resident's resolved light/dark scheme so opening
 it does not unexpectedly change appearance.
 
+The About window uses the compact header with only a close button: it fits its
+content, so it has no resize edges, maximize or window menu. Its top is a painted
+scene, a dimmed desktop with put.gd's identity in a lit region selection, and it
+follows the theme tokens.
+
 Custom Linux chrome uses `QWindow` system move and resize rather than
 compositor-specific positioning. Verify dragging, all resize edges, minimize,
 maximize/restore, double-click, close and keyboard window management on both X11
