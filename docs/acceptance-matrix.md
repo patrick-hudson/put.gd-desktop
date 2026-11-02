@@ -102,6 +102,28 @@ are unchanged: the [screen recording rows](#screen-recording-rows), the
 [native package full-acceptance profile](#native-package-full-acceptance-profile)
 still test each format, and the AppImage profile does not replace them.
 
+## Idle memory budget
+
+The 40 MiB budget is the resident's own share of memory, so it applies to Pss. RSS is recorded
+next to it but not gated, because on a distro package it is mostly the distro's shared library
+text, which the resident touches but does not own, and which grows with each Qt release. Measured
+on the published nightly `26.1102.3797` after 180 s idle, private profile, no credentials
+([evidence](evidence/2026-11-02-gate-c-idle-memory-1149/README.md), [#1149](https://github.com/patrick-hudson/put.gd-desktop/issues/1149)):
+
+| Resident | RSS MiB | Pss MiB | USS MiB | Of the RSS: Qt libs | Of the RSS: `libQt6Network` with what the distro's copy pulls in |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Fedora 44 RPM, Qt 6.11 | 39.5 | 16.5 | 8.9 | 13.1 | 4.2 |
+| Kubuntu 26.04 DEB, Qt 6.10 | 40.6 | 11.7 | 9.7 | 12.0 | 6.6 |
+| Mint 22.3 DEB, Qt 6.4 | 36.1 | 15.2 | 8.9 | 10.7 | 5.4 |
+| AppImage (bundled Qt 6.8), any of the three | 33.0 to 33.7 | 18.0 to 19.3 | 9.7 to 11.4 | 12.4 to 13.2 | 0.7 |
+
+The resident links `libQt6Network` for its `QLocalServer` session socket. The distro's copy
+needs `libproxy`, whose backend needs `libcurl`, which brings the distro's TLS stack (OpenSSL on
+Fedora, Debian 13 and Ubuntu 26.04; GnuTLS on Ubuntu 24.04 and Mint), Kerberos and LDAP: that
+chain, not Qt's TLS plugin, is why `libssl` appears. The AppImage's bundled Qt has no `libproxy`,
+so it maps none of it. Nothing in the chain is used while idle, and its Pss share is about 1 MiB.
+Pss on Plasma is lowest because the desktop already shares the same Qt pages.
+
 ## Screen recording rows
 
 Recording ([recording](recording.md)) is accepted per package format, because
@@ -167,8 +189,11 @@ memory window and the coordinator's OK for each logout.
   - The resident, `putgd-ui` and `session.sock` are up, and `putgd-ui` uses the native platform on Wayland.
   - The tray icon is present, and its menu opens with a real click.
   - The put.gd icon shows in the title bar (where the window decoration draws app icons) and in the task switcher.
-- **C. Idle memory:** after a 180 s idle window, the resident's RSS and PSS are under the 40 MiB budget.
-  - No GTK, KDE platform theme, `libssl` or `libQt6Network` is mapped in the resident.
+- **C. Idle memory:** after a 180 s idle window on a quiet host, the resident's PSS is under the 40 MiB budget.
+  Its RSS is recorded beside it, with the host load, and is not gated: most of it is shared library text
+  ([why](#idle-memory-budget)).
+  - No GTK or KDE platform theme is mapped in the resident. `libQt6Network` is expected (the session socket
+    is a `QLocalServer`); record the TLS, proxy and Kerberos libraries mapped with it.
 - **D. Capture:** region, window and desktop captures each produce a PNG with a history entry.
   - **Edit & upload:** a blur and a solid redaction, checked in the uploaded pixels, then Upload.
   - **Save a copy…** opens the desktop's portal chooser (the themed fallback only where no portal FileChooser exists), and the saved file exists.
@@ -364,8 +389,9 @@ Each resident runs with private `XDG_CONFIG_HOME`,
   - A real click on the notification opens the release notes in the real default browser.
   - A stable DEB from the repository never notifies.
 - **U15. Idle RSS.** The resident on N+1 after each desktop's updates, quiet host, `--background`, 30 s
-  settle, then RSS every second for 180 s. The median, Pss and the mapped TLS/network libraries are
-  recorded, compared with N on the same desktop. Both stay under the 40 MiB budget.
+  settle, then RSS and Pss every second for 180 s. The medians and the mapped TLS/network libraries are
+  recorded, compared with N on the same desktop. Pss stays under the 40 MiB budget; RSS is recorded
+  ([why](#idle-memory-budget)).
 - **U16. Cleanup.** Remove put.gd, the repository files and keys the pass added, the AppImages, profiles,
   autostart entries, lab objects (404 confirmed), lab keys, VM overlays, tunnels and wall tiles.
   - Restore each desktop's default browser byte for byte.
@@ -452,8 +478,10 @@ On the accepted nightly, installed by item L.
   - put.gd starts from the desktop's application menu with a real click: Cinnamon's menu, Kickoff, or the GNOME overview search. The resident, `putgd-ui` and `session.sock` are up, and `putgd-ui` uses the native platform on Wayland.
   - The tray icon is present, and its menu opens with a real click.
   - The put.gd icon shows in the menu, the title bar (where the decoration draws app icons) and the task switcher.
-- **C. Idle memory:** after a 180 s idle window on a quiet host, the resident's RSS and PSS are under the 40 MiB budget.
-  - Record what the resident maps: GTK, the KDE platform theme, `libssl` and `libQt6Network`, against the AppImage's C (none).
+- **C. Idle memory:** after a 180 s idle window on a quiet host, the resident's PSS is under the 40 MiB budget.
+  Its RSS is recorded, not gated ([why](#idle-memory-budget)).
+  - No GTK or KDE platform theme is mapped. Record `libQt6Network` and what the distro's copy pulls in through
+    `libproxy` (`libcurl` with its TLS, Kerberos and LDAP libraries), against the AppImage's C.
   - Record the host load beside the numbers.
 - **D. Capture:**
   - Region, window and desktop captures each produce a PNG with a history entry, through the desktop's native path:
