@@ -23,7 +23,7 @@ this rehearsal.
 | Assets | 15 installer/SBOM/support assets (`SHA256SUMS` `30cccc40…`), four linked source assets from `sources-v26.1101.3698-nightly-files`, two Proton transport parts (1,300,000,000 + 1,094,441,755 bytes) from `proton-sources-0.23.0-crypto2.2.0-bun1.4.4` |
 | Driver | `tools/releases/audit_assets.py` at nightly `7c59a53cc3e412cf3387e9f602947f57ea82e0a8` (script SHA-256 `c11813c09a88…`), plus `check_source_build.py` |
 | Host | physical **d69 / debian** (Debian 13), headless over pinned SSH under `~/work/audit-3698/`; no desktop session, keychain, Proton account or user destination. Nothing ran on the workstation. |
-| Time | downloads and first pass 2026-11-01 17:50–17:58Z; rebuild 23:4x–23:5xZ; final bound pass finished 2026-11-02T00:40:14Z (dated 2026-11-01 as the campaign day) |
+| Time (UTC) | downloads and first pass 2026-11-01 23:53–23:58Z; rebuild 23:57–00:07Z; final bound pass 2026-11-02 00:40–00:44Z. Dated 2026-11-01, the campaign day; d69's clock runs at UTC−6, so its file times read six hours earlier. |
 | Scanner | Syft v1.55.0, Grype v0.121.0 (`packaging/sbom/tools.lock.json`); database `v6.1.10` built `2026-11-01T06:20:12Z`, archive SHA-256 `d0e1af9e6491440e1a671d0a0aafc32c5c7cb5cda787dcec3482799ef298f31c` ([database.json](database.json)) |
 
 | File | What it holds |
@@ -51,7 +51,7 @@ The final driver run exited **0**: `passed: true`, `errors: []`. The first pass
 | P2 | `SHA256SUMS.minisig` (published at pkg.put.gd) verifies with the pinned nightly key; feed `.minisig` too | **pass** | [manual-checks.json](manual-checks.json) |
 | P3 | pkg.put.gd `SHA256SUMS` copy, `update/v1/nightly.json` and `app.put.gd/dl/nightly/appimage.zsync` agree with the release | **pass** | [manual-checks.json](manual-checks.json) |
 | N1 | Native DEB/RPM: inventories, modes and root ownership, nine programs, private library directory, `libputgd-s3.so` runtime module identity, metadata and notices (`runtime-notices.txt`, DEP-5 `copyright`, AWS/component snapshots, `proton/THIRD-PARTY-NOTICES.txt`) | **pass** on all four | `checks.packages.<target>.audit` |
-| N2 | AppImage: 139 inventoried components, 658 files, licence texts present for every component, AppStream licence expression matches, no native notice, no linuxdeploy leftovers, no second copies, 226 `$ORIGIN`-relative search paths, `--version-json` identities of the compiled programs | **pass** | `checks.packages.appimage.audit` |
+| N2 | AppImage: 139 inventoried licence components (the SBOM counts 169 components because it also lists the AWS CRT libraries and the helper's npm packages one by one), 658 files, licence texts present for every component, AppStream licence expression matches, no native notice, no linuxdeploy leftovers, no second copies, 226 `$ORIGIN`-relative search paths, `--version-json` identities of the compiled programs | **pass** | `checks.packages.appimage.audit` |
 | N3 | Curated source export: 484 files, hashes and modes verified against the tagged Git blobs, identity `38fa2ac6`/3698, Proton catalog bound to `tools/proton/notices/SOURCES.json` | **pass** | `checks.sourceExport` |
 | N4 | Complete AppImage corresponding source (759,191,721 bytes) closes over the runtime, AWS SDK, FFmpeg, ICU, LayerShellQt, mimalloc, Qt modules, QtKeychain, the Proton helper and every bundled Ubuntu source package | **pass** | `checks.completeSource` |
 | N5 | Proton corresponding source: both transport parts concatenate to the catalog hash, six inner packets verify, all five helper copies are `9fd4d72f…` and match the catalog, runtime manifest `35b17e01…`, `@openpgp/web-stream-tools` notice present (#369) | **pass** | `checks.protonSource`, `checks.packages.<target>.proton` |
@@ -64,15 +64,17 @@ The final driver run exited **0**: `passed: true`, `errors: []`. The first pass
 ### Vulnerabilities
 
 All 180 scanner findings are in the AppImage; each native SBOM has zero Grype
-findings. Critical/High with a fix, the class the stable gate blocks on:
+findings. The 33 Critical/High rows, which the stable gate blocks on when a fix
+exists:
 
 - **29 FFmpeg 7.1.5** findings and **1 ICU 73.2** finding are accepted by the
   scoped dispositions from #538/#539 until **2027-01-21**, unchanged.
 - **CVE-2026-113679 HarfBuzz 14.5.0** (Qt's embedded copy) is accepted by #1065's
   scope (absent WASM shaper, keyed on the `libQt6Gui` fingerprint) until
   **2027-01-29**; [#1070](https://github.com/patrick-hudson/put.gd-desktop/issues/1070) tracks the revisit.
-- **CVE-2025-3887** in Ubuntu's `gstreamer1.0-plugins-bad` 1.24.2 is reported, not
-  blocking: Ubuntu has published no fix, so it does not meet the fixable-only gate.
+- **CVE-2025-3887** appears twice, for Ubuntu's `gstreamer1.0-plugins-bad` and
+  `libgstreamer-plugins-bad1.0-0` 1.24.2-1ubuntu4. Both rows are reported, not
+  blocking: Ubuntu has published no fix, so they do not meet the fixable-only gate.
 
 Compared with the 2026-10-31 run on 3384 (180 findings, 30 accepted, **1
 blocking**, plus three embedded Bun advisories): the blocking HarfBuzz finding
@@ -117,10 +119,15 @@ bound rerun (`audit2.log`) failed at once because `gh` had no token in its
 environment; `rpm` prints `cannot open Packages database in /var/lib/rpm` on
 Debian while querying the RPM, which is noise and did not affect the result.
 
-Raw downloads, the five regenerated SBOMs, the five raw Grype results, the full
-rebuild tree and log and all three driver logs stay private on d69 under
-`~/work/audit-3698/`; [raw-evidence-index.txt](raw-evidence-index.txt) holds
-their SHA-256s. No credential, payload or personal path is in this packet.
+Raw downloads, the linked source assets, both Proton transport parts, the five
+regenerated SBOMs, the five raw Grype results, the rebuild receipts and log and
+all three driver logs stay private on d69 under `~/work/audit-3698/`;
+[raw-evidence-index.txt](raw-evidence-index.txt) holds each file's SHA-256. The
+1.8 GB rebuild tree (`rebuild/putgd-26.1101.3698-nightly-source/`) is retained
+without per-file hashes; its outputs are bound by the receipt. The receipts and
+`audit.json` name d69's own paths under `/home/patrick/work/`, which are the
+builder's working directories, the same as in the 2026-10-31 packet; no
+credential, payload or workstation path is in this packet.
 
 On release day, repeat the three commands on the stable draft from a new
 directory and compare `checks.vulnerabilities`, `checks.upstreamAdvisories` and

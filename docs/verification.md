@@ -21,7 +21,8 @@ accepted, zero blocking, no embedded Bun advisories**; the published and
 regenerated SBOM scans agree. The signature, pkg.put.gd mirror, feed and zsync
 checks and the dated Proton/dependency maintenance review are recorded beside it.
 This is artifact/source evidence on nightly bytes, not legal, live-service,
-graphical or stable acceptance; #383/#511/#384 rerun it on the stable draft.
+graphical or stable acceptance. #383 and #511 track this rehearsal; #384 reruns
+the same driver on the exact stable draft.
 
 ## Link copied on Wayland desktops with no native adapter (#1105) — 2026-11-01
 

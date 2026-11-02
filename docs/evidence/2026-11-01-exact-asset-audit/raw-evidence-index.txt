@@ -31,3 +31,12 @@ b8406f1c1a12f784db7a557e21fc0c511231e31640d453bea5a1af3a0f34cf5a  assets/putgd-2
 b7b09c9c29cc30d45526eef390c3c15f6c8a8ca756c7ae46a53660a4b413e99a  assets/release-builds.json
 30cccc40ca1713bc7f96c4e63cd4cafe5ea96b3cc9f67cf76c5598fd135e8977  assets/SHA256SUMS
 91305b27127dcb219b0371f83ef436bea4449ebaf85a2b4b516477ae75c25e05  assets/source-delivery.json
+ae1158abcecc2f279e1de44bc6690e912e964b7030c523b785a122129e40b5cd  work/audit-3698/exact-audit/sources/putgd-26.1101.3698-nightly-appimage-complete-source.tar.gz
+b5da2712dcd2188b9df2f63c1798077668301680e197548b4d12e807cbfb8f53  work/audit-3698/exact-audit/sources/putgd-26.1101.3698-nightly-source.tar.gz
+b61519696dca3009db4e8cddd9b7c3fba5d839f24c2c8efe3430b6540e890739  work/audit-3698/exact-audit/sources/putgd-gnome50-26.1101.3698-nightly.zip
+be0804da9b3e592e797ea21096d86f75a26e29131907bea634842a1d14ce2097  work/audit-3698/exact-audit/sources/SHA256SUMS
+d233cad3042a734a0225978cde8b2c6884a8fd87d4b961811a88695542d4bf17  work/audit-3698/exact-audit/sources/source-archive.json
+b5ff5d79324a57e3d51c573c2f77b68bee0dd1e80b84c885e5c177c0e744f85f  work/audit-3698/exact-audit/proton-sources/putgd-proton-corresponding-source.tar.gz.part1
+78ac53ae7970d5ef2757801762dd6794bd7d471e0c7022026f63323485a8c361  work/audit-3698/exact-audit/proton-sources/putgd-proton-corresponding-source.tar.gz.part2
+a196af2cecb45d87e9bad8b1ede240e1027cfbf580f02dadf957e1059cb1ba42  work/audit-3698/exact-audit-rebuilt/sources/source-build-results.json
+# The rebuild tree work/audit-3698/rebuild/putgd-26.1101.3698-nightly-source/ (1.8 GB) is retained on d69 without per-file hashes.
