@@ -87,7 +87,7 @@ Colours that are not theme colours stay fixed: the brand mark, user content
 (screenshots, annotation colours, redaction black), the custom-colour
 rainbow swatch, the on-screen region selection ring and the scrim behind a
 video poster's play glyph. Region selectors draw no scrim (#629); their hint pill and
-size label use `surfaceRaised`, `borderStrong` and `text` from the current scheme.
+size label use `surfaceRaised` and `text` from the current scheme, with no outline.
 
 ## Recording overlays
 
@@ -100,9 +100,9 @@ frame and restyles it live (see [recording](recording.md)).
 
 | Element | Colours |
 | --- | --- |
-| Control bar | `bg` fill, `text`, `surfaceRaised` controls, `accent` check box with a tick painted from `onAccent`; its outline is `textDisabled`, which meets 3:1 against both black and white in either scheme, so the bar's edge shows over any content |
+| Control bar | `bg` fill, `text`, `surfaceRaised` controls, `accent` check box with a tick painted from `onAccent`; frameless, with no outline |
 | Record and Stop buttons, state dot | fixed green and red (white text, 4.5:1 or better), the same in both schemes |
-| Region selector hint and size label | the scheme's `bg` label with `text`, outlined like the bar, so it reads over any content |
+| Region selector hint and size label | an opaque `surfaceRaised` label with `text` and no outline, so it reads over any content |
 | Review window | the window tokens; Upload is the primary (`accent`) button |
 | Selection ring, dimming, review frame surround, mask outlines | fixed: they sit on the desktop or the recording |
 
