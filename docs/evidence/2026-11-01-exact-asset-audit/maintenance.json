@@ -26,10 +26,11 @@
       "name": "Qt AppImage",
       "pinned": "6.12.0",
       "upstream": "6.12.0 (newest qtbase 6.x tag)",
-      "status": "Current. Embedded HarfBuzz 14.5.0 carries CVE-2026-113679; the scoped exception from #1065 keys on the libQt6Gui fingerprint and the absent WASM shaper and expires 2027-01-29 (#1070). No newer Qt bundles HarfBuzz 15 yet.",
+      "status": "Current. Embedded HarfBuzz 14.5.0 carries CVE-2026-113679; the scoped exception recorded under #1055 (PR #1065) keys on the libQt6Gui fingerprint and the absent WASM shaper and expires 2027-01-29 (#1070). No newer Qt bundles HarfBuzz 15 yet.",
       "references": [
         "https://github.com/qt/qtbase/tree/v6.12.0",
-        "https://github.com/patrick-hudson/put.gd-desktop/issues/1070"
+        "https://github.com/patrick-hudson/put.gd-desktop/issues/1070",
+        "https://github.com/patrick-hudson/put.gd-desktop/issues/1055"
       ]
     },
     {

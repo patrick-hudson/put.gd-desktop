@@ -68,9 +68,10 @@ findings. The 33 Critical/High rows, which the stable gate blocks on when a fix
 exists:
 
 - **29 FFmpeg 7.1.5** findings and **1 ICU 73.2** finding are accepted by the
-  scoped dispositions from #538/#539 until **2027-01-21**, unchanged.
-- **CVE-2026-113679 HarfBuzz 14.5.0** (Qt's embedded copy) is accepted by #1065's
-  scope (absent WASM shaper, keyed on the `libQt6Gui` fingerprint) until
+  scoped dispositions recorded under #511 (merged in #538/#539) until
+  **2027-01-21**, unchanged.
+- **CVE-2026-113679 HarfBuzz 14.5.0** (Qt's embedded copy) is accepted by the
+  #1055 exception (PR #1065; absent WASM shaper, keyed on the `libQt6Gui` fingerprint) until
   **2027-01-29**; [#1070](https://github.com/patrick-hudson/put.gd-desktop/issues/1070) tracks the revisit.
 - **CVE-2025-3887** appears twice, for Ubuntu's `gstreamer1.0-plugins-bad` and
   `libgstreamer-plugins-bad1.0-0` 1.24.2-1ubuntu4. Both rows are reported, not
