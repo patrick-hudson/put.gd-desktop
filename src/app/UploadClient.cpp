@@ -452,7 +452,10 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
 }
 QString noticeName(const QString& argument){
  const QUrl url(argument);
- return url.isValid()&&!url.fileName().isEmpty()&&!argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive)?url.fileName():argument.left(120);
+ if(!url.isValid())return argument.left(120);
+ if(!url.fileName().isEmpty()&&!argument.startsWith(QLatin1String("recent:"),Qt::CaseInsensitive))return url.fileName();
+ // A share's root has no file name; a password in its URI must not reach the notice.
+ return url.toString(QUrl::RemoveUserInfo|QUrl::RemoveQuery|QUrl::RemoveFragment).left(120);
 }
 bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters){
  if(code=="unknown_method")return true;

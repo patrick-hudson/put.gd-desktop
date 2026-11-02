@@ -238,6 +238,7 @@ private slots:
   // Recent's last segment is a hash of the item, not its name.
   QCOMPARE(UploadClient::noticeName("recent:///43a926080238a02829512b7d6ae7ba8b"),QString("recent:///43a926080238a02829512b7d6ae7ba8b"));
   QCOMPARE(UploadClient::noticeName("relative.txt"),QString("relative.txt"));
+  QCOMPARE(UploadClient::noticeName("sftp://alice:secret@host/?token=x"),QString("sftp://host/"));
  }
  // A build before upload.files answers invalid_request to any unknown method
  // with parameters; without them, unknown_method. A current resident's
