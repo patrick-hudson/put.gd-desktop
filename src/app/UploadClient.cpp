@@ -246,6 +246,7 @@ GioAnswer hostGioInfo(const QStringList& uris){
  for(const auto& uri:uris){
   if(answer.found.contains(normalizedUri(uri))||deadline.hasExpired())continue;
   const auto single=runBounded(gio,{"info","-a","standard::type,standard::target-uri",uri},environment,deadline);
+  if(single.notRun)answer.unavailable=true;
   if(single.complete)answer.found.insert(parseGioInfo(single.out));
  }
  return answer;
@@ -443,8 +444,8 @@ Resolution resolve(const QStringList& arguments,bool appImage,const GioInfo& gio
   g_object_unref(file);
  }
  if(!remote.isEmpty()&&gioInfo){
-  const auto answer=gioInfo(remote);result.gioUnavailable=answer.unavailable;
-  for(int n=0;n<remote.size();++n){const auto path=answer.found.value(normalizedUri(remote[n]));if(QDir::isAbsolutePath(path)){paths[remoteIndexes[n]]=path;resolved[remoteIndexes[n]]=true;}}
+  const auto answer=gioInfo(remote);
+  for(int n=0;n<remote.size();++n){const auto path=answer.found.value(normalizedUri(remote[n]));if(QDir::isAbsolutePath(path)){paths[remoteIndexes[n]]=path;resolved[remoteIndexes[n]]=true;}else if(answer.unavailable)result.needingGio.append(remote[n]);}
  }
  for(int i=0;i<arguments.size();++i)(resolved[i]?result.paths:result.unresolved).append(resolved[i]?paths[i]:arguments[i]);
  return result;
@@ -480,8 +481,9 @@ bool showDialog(const QString& title,const QString& body,const QProcessEnvironme
   const auto path=host::findProgram(program,environment);if(path.isEmpty())continue;
   QElapsedTimer shown;shown.start();
   const auto child=runBounded(path,arguments,environment,QDeadlineTimer(noticeHoldMs));
-  // Closed with its window's X, zenity and xmessage don't exit 0, but it was seen: no second dialog.
-  if(child.exitCode==0||shown.elapsed()>1000)return true;
+  // Closed with its window's X, zenity and xmessage don't exit 0, but it was seen: no second
+  // dialog. One still up at the deadline may never have opened a window, so the next one tries.
+  if(child.exitCode==0||(child.complete&&shown.elapsed()>1000))return true;
  }
  return false;
 }
@@ -504,10 +506,14 @@ int run(int argc,char** argv){
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");
  if(arguments.isEmpty()){refuse(QStringLiteral("No files were selected."));return 2;}
  if(!resolution.unresolved.isEmpty()){
-  QStringList names;for(const auto& item:resolution.unresolved.mid(0,8))names.append(noticeName(item));
-  const auto listed=names.join(", ")+(resolution.unresolved.size()>8?QStringLiteral(" and %1 more").arg(resolution.unresolved.size()-8):QString());
-  if(resolution.gioUnavailable)refuse(QStringLiteral("put.gd couldn't resolve these locations because gio is unavailable on this system: %1. Install gio, or upload from the file's own folder.").arg(listed));
-  else refuse(QStringLiteral("These items have no local path, so put.gd can't read them: %1").arg(listed));
+  const auto listed=[](const QStringList& items){
+   QStringList names;for(const auto& item:items.mid(0,8))names.append(noticeName(item));
+   return names.join(", ")+(items.size()>8?QStringLiteral(" and %1 more").arg(items.size()-8):QString());
+  };
+  auto others=resolution.unresolved;for(const auto& item:resolution.needingGio)others.removeOne(item);
+  const auto noPath=QStringLiteral("These items have no local path, so put.gd can't read them: %1").arg(listed(others));
+  if(resolution.needingGio.isEmpty())refuse(noPath);
+  else refuse(QStringLiteral("put.gd couldn't resolve these locations because gio is unavailable on this system: %1. Install gio, or upload from the file's own folder.%2").arg(listed(resolution.needingGio),others.isEmpty()?QString():"\n"+noPath));
   return 1;
  }
  QJsonObject params{{"paths",QJsonArray::fromStringList(resolution.paths)},{"installation",installation}};

@@ -34,7 +34,8 @@ QString normalizedUri(const QString& uri);
 bool decodedNewline(const QString& uri);
 // uri → local path from the complete output of `gio info` (one record per uri: line).
 QHash<QString,QString> parseGioInfo(const QByteArray& output);
-struct Resolution { QStringList paths,unresolved; bool gioUnavailable=false; };
+// needingGio: the unresolved arguments only gio could have resolved, when it couldn't run.
+struct Resolution { QStringList paths,unresolved,needingGio; };
 // What the host's gio found; `unavailable` when it couldn't run at all, as opposed
 // to running and finding no local path.
 struct GioAnswer { QHash<QString,QString> found; bool unavailable=false; };

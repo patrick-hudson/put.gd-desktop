@@ -168,7 +168,7 @@ while :; do sleep 0.05; done
             self.write(bin_dir / name, script)
         self.env.update(PATH=str(bin_dir), LD_LIBRARY_PATH="/ambient/libraries", QT_PLUGIN_PATH="/ambient/plugins",
                         WAYLAND_DISPLAY="wayland-0")
-        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\ntouch \"$PG_TEST_RECEIPT\"\n")
+        self.write(self.app / "usr/bin/putgd-launcher", "#!/bin/sh\n: > \"$PG_TEST_RECEIPT\"\n")
 
     RECORD_TOOL = "#!/bin/sh\nprintf '%s\\n' \"$LD_LIBRARY_PATH\" \"$QT_PLUGIN_PATH\" \"$@\" >> \"$PG_HOST_RECEIPT\"\nexit {}\n"
 

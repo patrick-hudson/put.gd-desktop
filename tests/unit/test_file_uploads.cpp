@@ -222,12 +222,14 @@ private slots:
   QCOMPARE(asked,QStringList{"sftp://host/%C3%A9.txt"});
   QCOMPARE(result.paths,(QStringList{"/abs/a.txt","/tmp/b c.txt","/run/user/1000/gvfs/sftp:host=host/é.txt"}));
   QCOMPARE(result.unresolved,(QStringList{"sftp://host/a%0Ab.txt","relative","-platform"}));
-  QVERIFY(!result.gioUnavailable);
+  QVERIFY(result.needingGio.isEmpty());
   // A gio that couldn't run is told apart from one that found no local path.
-  const auto noGio=UploadClient::resolve({"recent:///43a92608","/abs/a.txt"},true,[](const QStringList&){UploadClient::GioAnswer answer;answer.unavailable=true;return answer;});
-  QVERIFY(noGio.gioUnavailable);QCOMPARE(noGio.unresolved,QStringList{"recent:///43a92608"});
-  QVERIFY(!UploadClient::resolve({"file:///tmp/x"},true,[](const QStringList&){UploadClient::GioAnswer answer;answer.unavailable=true;return answer;}).gioUnavailable);
-  QVERIFY(!UploadClient::resolve({"recent:///43a92608"},true,[](const QStringList&){return UploadClient::GioAnswer{};}).gioUnavailable);
+  // Only what gio had to resolve is put down to it.
+  const auto gioCantRun=[](const QStringList&){UploadClient::GioAnswer answer;answer.unavailable=true;return answer;};
+  const auto noGio=UploadClient::resolve({"recent:///43a92608","relative.txt","/abs/a.txt"},true,gioCantRun);
+  QCOMPARE(noGio.unresolved,(QStringList{"recent:///43a92608","relative.txt"}));QCOMPARE(noGio.needingGio,QStringList{"recent:///43a92608"});
+  QVERIFY(UploadClient::resolve({"file:///tmp/x"},true,gioCantRun).needingGio.isEmpty());
+  QVERIFY(UploadClient::resolve({"recent:///43a92608"},true,[](const QStringList&){return UploadClient::GioAnswer{};}).needingGio.isEmpty());
   // DEB/RPM: GIO in-process.
   QCOMPARE(UploadClient::resolve({"file:///tmp/x%20y"},false,{}).paths,QStringList{"/tmp/x y"});
  }
@@ -266,11 +268,11 @@ private slots:
   QTemporaryDir tools;const auto receipt=tools.filePath("receipt");
   const auto tool=[&](const QString& name,int exitCode){
    QFile file(tools.filePath(name));QVERIFY(file.open(QIODevice::WriteOnly));
-   file.write(QStringLiteral("#!/bin/sh\nprintf '%s\\n' %1 \"$@\" >> \"$RECEIPT\"\nexit %2\n").arg(name).arg(exitCode).toUtf8());file.close();
+   file.write(QStringLiteral("#!/bin/sh\nprintf '%s\\0' %1 \"$@\" >> \"$RECEIPT\"\nexit %2\n").arg(name).arg(exitCode).toUtf8());file.close();
    QVERIFY(file.setPermissions(file.permissions()|QFile::ExeOwner));
   };
   QProcessEnvironment environment;environment.insert("PATH",tools.path());environment.insert("RECEIPT",receipt);
-  const auto received=[&]{QFile file(receipt);if(!file.open(QIODevice::ReadOnly))return QStringList{};const auto text=QString::fromUtf8(file.readAll());file.remove();return text.split('\n',Qt::SkipEmptyParts);};
+  const auto received=[&]{QFile file(receipt);if(!file.open(QIODevice::ReadOnly))return QStringList{};const auto text=QString::fromUtf8(file.readAll());file.remove();return text.split(QChar(0),Qt::SkipEmptyParts);};
   tool("kdialog",0);
   // No display: nothing can show it, so nothing runs.
   QVERIFY(!UploadClient::showDialog("Title","<b>Body & more",environment));QVERIFY(received().isEmpty());
@@ -285,7 +287,7 @@ private slots:
   // xmessage doesn't wrap by itself.
   tool("xmessage",0);
   QVERIFY(UploadClient::showDialog("Title",QString(50,'a')+" "+QString(50,'b'),environment));
-  QCOMPARE(received(),(QStringList{"xmessage","-center","Title",QString(50,'a'),QString(50,'b')}));
+  QCOMPARE(received(),(QStringList{"xmessage","-center","Title\n\n"+QString(50,'a')+"\n"+QString(50,'b')+"\n"}));
   QVERIFY(QFile::remove(tools.filePath("xmessage")));
   QVERIFY(!UploadClient::showDialog("Title","Body",environment));
  }
