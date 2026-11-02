@@ -30,6 +30,8 @@ TERMINAL = {'completed', 'partial', 'failed', 'cancelled', 'interrupted'}
 COPY_SETTLED = ('copied', 'partial', 'suppressed', 'failed', 'no_result')
 # TrayController::refreshActivity: the tooltip's title, then its activity rows.
 IDLE = 'put.gd'
+# November and December: the idle title, and the last line under any status title.
+SEASONAL_IDLE = 'put.gd - Happy Holidays!'
 UPLOADING = 'Uploading'
 COMPLETE = 'Upload complete'
 ATTENTION = 'Needs attention'
@@ -285,7 +287,11 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     require(not re.search(r'https?://|file://|synthetic-[12]\.txt|/tmp/|/home/', text, re.IGNORECASE),
             'Tray tooltip exposes a source name, path or link')
     title = snapshot.get('title')
-    require(title in (IDLE, UPLOADING, COMPLETE, ATTENTION), 'Unexpected tray title')
+    require(title in (IDLE, SEASONAL_IDLE, UPLOADING, COMPLETE, ATTENTION), 'Unexpected tray title')
+    if text == SEASONAL_IDLE or text.endswith('\n' + SEASONAL_IDLE):
+        require(title in (UPLOADING, COMPLETE, ATTENTION), 'Seasonal greeting under an idle title')
+        text = text[:-len(SEASONAL_IDLE)].rstrip('\n')
+    require(SEASONAL_IDLE not in text, 'Seasonal greeting is not the last tooltip line')
     icons = snapshot.get('icons', [])
     has = lambda icon, role: icon.get('opaqueColors', {}).get(tints[role], 0) > 0
     require(icons, 'SNI has no icon pixmaps')
@@ -316,7 +322,7 @@ def check_tooltip(snapshot, records, provider, pid, *, attention=None, tints=TRA
     filled = [has(icon, 'encoding') for icon in icons]
     require(all(has(icon, 'idle') for icon in icons) or all(filled),
             'SNI icon does not have the required idle/active brand color')
-    if title == IDLE and not text:
+    if title in (IDLE, SEASONAL_IDLE) and not text:
         require(not any(filled) and all(has(icon, 'idle') for icon in icons), 'Idle tray retains a progress fill')
         observed(not records, 'Idle tray while production work remains active')
         return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}

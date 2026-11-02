@@ -334,6 +334,14 @@ int main(int argc,char** argv){
    for(int n=0;n<labels.size();++n){const auto icon=Ui::icon("tray",tints.idle,n>=4?-2:n==3?50:-1,n==1||n==3||n==5?1:n==2||n==6?2:0);painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,20,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
   }painter.end();if(!states.save(QDir(output).filePath("settings-tray-states.png")))return 2;
  }
+ {
+  // The calendar's glyphs at idle, in transfer and on success, with the sizes a host may pick.
+  QImage seasons(1260,400,QImage::Format_ARGB32_Premultiplied);QPainter painter(&seasons);painter.setFont(Ui::font(Ui::Type::metadata));
+  const QStringList labels{"Turkey","Turkey 50%","Turkey 100%","Turkey complete","Tree","Tree 50%","Tree 100%"};
+  for(const bool light:{false,true}){const int y=light?200:0;const auto& panel=Theme::palette(light?Theme::Scheme::Light:Theme::Scheme::Dark);painter.fillRect(0,y,seasons.width(),200,panel.bg);painter.setPen(panel.text);const auto& tints=Theme::trayTints(light);
+   for(int n=0;n<labels.size();++n){const auto icon=Ui::trayIcon({n==3?tints.upload:tints.idle,n==1||n==5?50:n==2||n==6?100:-1,0,n<4?IconArt::TrayGlyph::Turkey:IconArt::TrayGlyph::Tree});painter.drawPixmap(n*180+66,y+8,icon.pixmap(48,48));int x=n*180+32;for(int size:{16,22,24}){painter.drawPixmap(x,y+76,icon.pixmap(size,size));x+=40;}painter.drawText(QRect(n*180,y+112,180,84),Qt::AlignHCenter|Qt::TextWordWrap,labels[n]);}
+  }painter.end();if(!seasons.save(QDir(output).filePath("settings-tray-seasons.png")))return 2;
+ }
  DataDir data("pgr");if(!data.isValid())return 2;const auto config=catalogConfig(data.path());SettingsService settings(data.filePath("synthetic-config.json"),[](const QString&,const QJsonObject&){return Error{};});if(!settings.save(config,{})){qCritical("Cannot write synthetic catalog configuration");return 2;}
  // No production provider or capture action is used. Credentials below are
  // synthetic and stored only in the fixture session, never the OS keychain.

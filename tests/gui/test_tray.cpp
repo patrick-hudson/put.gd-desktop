@@ -260,9 +260,23 @@ private slots:
   const auto idle=Theme::trayTints(false).idle;
   const auto turkey=Ui::trayIcon({idle,-1,0,IconArt::TrayGlyph::Turkey}).pixmap(24,24).toImage(),fir=Ui::trayIcon({idle,-1,0,IconArt::TrayGlyph::Tree}).pixmap(24,24).toImage();
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),turkey);QCOMPARE(controller.trayIconState()["glyph"].toString(),QString("turkey"));QVERIFY(controller.trayIconState()["calendarOverride"].toBool());
-  const auto tooltip=tray->toolTip();
+  QCOMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),fir);
-  QCOMPARE(controller.trayIconState()["localDate"].toString(),QString("2026-12-01"));QCOMPARE(tray->toolTip(),tooltip);
+  QCOMPARE(controller.trayIconState()["localDate"].toString(),QString("2026-12-01"));QCOMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
+ }
+ void seasonalGreetingFollowsTheCalendar_data() {
+  QTest::addColumn<QByteArray>("start");QTest::addColumn<QString>("before");QTest::addColumn<QString>("after");
+  QTest::newRow("into November")<<QByteArray("2026-10-31T23:59:58")<<QString("put.gd")<<QString("put.gd - Happy Holidays!");
+  QTest::newRow("back to normal in January")<<QByteArray("2026-12-31T23:59:58")<<QString("put.gd - Happy Holidays!")<<QString("put.gd");
+ }
+ void seasonalGreetingFollowsTheCalendar() {
+  QFETCH(QByteArray,start);QFETCH(QString,before);QFETCH(QString,after);
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  qputenv("PUTGD_TRAY_CALENDAR_NOW",start);auto restore=qScopeGuard([]{qputenv("PUTGD_TRAY_CALENDAR_NOW","2026-06-15T12:00:00");});
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
+  QCOMPARE(tray->toolTip(),before);PUTGD_TRY_COMPARE(tray->toolTip(),after);
  }
  void seasonalGlyphCarriesFillSuccessAndFallsBackUnderABadge() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
@@ -278,10 +292,15 @@ private slots:
   operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});PUTGD_TRY_COMPARE(provider->requests.size(),1);
   provider->requests.first().progress({"uploading",1,2});
   PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,50));PUTGD_TRY_VERIFY(tray->toolTip().contains("(50%)"));
+  // Status stays the title with its real details; the greeting is the last line.
+  const auto lines=[&]{return tray->toolTip().split('\n');};
+  QCOMPARE(lines().first(),QString("Uploading"));QVERIFY(lines().at(1).contains("(50%)"));QCOMPARE(lines().last(),QString("put.gd - Happy Holidays!"));
   provider->completions.takeFirst()();
   PUTGD_TRY_VERIFY(tray->toolTip().startsWith("Upload complete"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.upload,-1));
-  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,-1));
+  QCOMPARE(lines().last(),QString("put.gd - Happy Holidays!"));
+  PUTGD_TRY_COMPARE(tray->icon().pixmap(24,24).toImage(),frame(tints.idle,-1));PUTGD_TRY_COMPARE(tray->toolTip(),QString("put.gd - Happy Holidays!"));
   controller.notifyFailure({"synthetic_failure","Synthetic failed upload",{}});
+  QCOMPARE(lines().first(),QString("Needs attention"));QVERIFY(lines().at(1).startsWith("Action needs attention"));QCOMPARE(lines().last(),QString("put.gd - Happy Holidays!"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),Ui::icon("tray",tints.error,-2).pixmap(24,24).toImage());QCOMPARE(controller.trayIconState()["shown"].toString(),QString("mark"));QCOMPARE(controller.trayIconState()["glyph"].toString(),QString("tree"));
  }
 
