@@ -44,7 +44,7 @@
       "name": "Bun (embedded Proton helper runtime)",
       "pinned": "1.4.4",
       "upstream": "bun-v1.4.4 (2026-10-22), newest release",
-      "status": "Current. The three High advisories that blocked 3384 (#1054: GHSA-663w-cv8g-jj2p CVE-2026-111497 Brotli, GHSA-26q8-h657-pf84 eMudhra CA trust, GHSA-cf8x-9m69-3gg3 HTTP/3 QPACK, published 2026-10-23/24, range >=1.3.14 <1.4.4) are all patched in 1.4.4; the helper was relinked in #1071. No advisory newer than 2026-10-24 is published.",
+      "status": "Current. The three High advisories that blocked 3384 (#1054) are all patched in 1.4.4 and the helper was relinked in #1071: GHSA-663w-cv8g-jj2p / CVE-2026-111497 Brotli decoder out-of-bounds write (affects >=1.0.21, <1.4.4); GHSA-26q8-h657-pf84 compromised eMudhra (emSign) intermediate CA trust (affects <1.4.4); GHSA-cf8x-9m69-3gg3 HTTP/3 QPACK amplification (affects >=1.3.14, <1.4.4; HTTP/3 is off by default and unused by the helper). Published 2026-10-23/24; no advisory newer than 2026-10-24 is published.",
       "references": [
         "https://github.com/oven-sh/bun/releases/tag/bun-v1.4.4",
         "https://github.com/oven-sh/bun/security/advisories/GHSA-663w-cv8g-jj2p",

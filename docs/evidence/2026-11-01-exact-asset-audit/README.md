@@ -74,7 +74,10 @@ exists:
   **2027-01-29**; [#1070](https://github.com/patrick-hudson/put.gd-desktop/issues/1070) tracks the revisit.
 - **CVE-2025-3887** appears twice, for Ubuntu's `gstreamer1.0-plugins-bad` and
   `libgstreamer-plugins-bad1.0-0` 1.24.2-1ubuntu4. Both rows are reported, not
-  blocking: Ubuntu has published no fix, so they do not meet the fixable-only gate.
+  blocking. Ubuntu's fix, `1.24.2-1ubuntu4+esm1`, is published only through
+  Ubuntu Pro ESM Apps, not in the public noble archive the AppImage bundles from,
+  so Grype records the finding as `not-fixed` and the fixable-only gate does not
+  trip. The affected H.265 parser has no identified product input path (#543).
 
 Compared with the 2026-10-31 run on 3384 (180 findings, 30 accepted, **1
 blocking**, plus three embedded Bun advisories): the blocking HarfBuzz finding
@@ -129,6 +132,9 @@ without per-file hashes; its outputs are bound by the receipt. The receipts and
 builder's working directories, the same as in the 2026-10-31 packet; no
 credential, payload or workstation path is in this packet.
 
-On release day, repeat the three commands on the stable draft from a new
-directory and compare `checks.vulnerabilities`, `checks.upstreamAdvisories` and
-the dispositions' fingerprints with this record.
+On release day, repeat the three commands on the stable draft from a fresh
+checkout of the stable tag itself (so the policy, dispositions and tool lock are
+the ones the tag carries, not nightly's), into new output directories, and
+compare `checks.vulnerabilities`, `checks.upstreamAdvisories` and the
+dispositions' fingerprints with this record. The Release workflow's own run on
+the uploaded draft does the same from the tag's checkout.
