@@ -97,6 +97,35 @@
     "incompleteMultipartUploads": 0,
     "awsCredentialsOnInstance": false
   },
-  "olderGoldensRemoved": false,
+  "olderGoldensRemoved": {
+    "approvedBy": "Patrick, 2026-11-02",
+    "preCheck": "no open files, VMs, backed overlays or symlinks; S3 objects listed",
+    "removed": {
+      "aurora-testing-45.20261022.1-852d34e885c1": {
+        "sha256": "33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556",
+        "hosts": [
+          "f44",
+          "d69"
+        ],
+        "remainingImageCopies": 0,
+        "s3": "sidecars and firmware only"
+      },
+      "aurora-testing-45.20261022.1-ec2-20261029-a1": {
+        "sha256": "a71cdd0cc8b485ee7e384670245293dbafd7fe46b8cbb05b4fbccf0d1f0d8128",
+        "hosts": [
+          "f44",
+          "d69",
+          "aurora-amd"
+        ],
+        "remainingImageCopies": 1,
+        "s3": "image, manifest and sidecars"
+      }
+    },
+    "kept": [
+      "aurora-stable-44.20260908.1-v3-492c3f8945d1",
+      "aurora-stable-44.20260908.1-v2-af46889e2a54",
+      "aurora-stable-44.20260908.1-f9c006a376e1"
+    ]
+  },
   "credentialsOrPresignedUrlsIncluded": false
 }

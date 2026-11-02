@@ -43,14 +43,15 @@ The four original goldens below are standalone qcow2 files (virtual 48 GiB) unde
 The [immutable-golden rules](vm-lab.md#base-protection-and-inventory) apply.
 The three Fedora 44 goldens exist only on `f44` (no Debian or S3 copy, so the
 [two-copies rule](remote-golden-images.md) is not satisfied for them); the
-older Fedora 45 disk has a verified Debian copy but no complete S3 image.
-The independently rebuilt Fedora 45 cloud golden has verified Fedora, Debian
-and S3 copies; see [cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot).
+current Fedora 45 golden is on all five builders and in S3. The two older Fedora 45
+goldens were removed from the builders on 2026-11-02, with Patrick's approval. The
+2026-10-29 cloud golden remains in S3; see
+[cloud golden and Boat snapshot](remote-golden-images.md#aurora-fedora-45-cloud-golden-and-boat-snapshot).
 
 | Directory | Base | SHA-256 | State |
 | --- | --- | --- | --- |
 | `aurora-testing-45.20261101.2-ec2-20261102-a1` | Fedora 45 (`aurora:testing`), Plasma 6.8.2 | `731b43833009724506feb20d35a19a417da8bbae2890940571b7da4edc1a35ae` | **Use this one for acceptance.** On all five builders and in S3; see [Plasma 6.8 golden](#plasma-68-golden). |
-| `aurora-testing-45.20261022.1-852d34e885c1` | Fedora 45 (`aurora:testing`), Plasma 6.7.5 | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | Superseded for acceptance on 2026-11-02; kept for comparison. Earlier state: (on a builder; the cloud golden is for restore and Boat development, see [which golden counts](remote-golden-images.md#current-inventory)). v3 rebased to `testing-45.20261022.1`, updater timer masked, single deployment; 24.0 GB allocated. See [Fedora 45 golden](#fedora-45-golden). |
+| `aurora-testing-45.20261022.1-852d34e885c1` | Fedora 45 (`aurora:testing`), Plasma 6.7.5 | `33fedf977f1e0cb7e34b944700f1959f4da5c708fa85dbbc9879077af1278556` | **Removed on 2026-11-02; no copy remains.** Its S3 prefix holds only sidecars and firmware. Earlier state: (on a builder; the cloud golden is for restore and Boat development, see [which golden counts](remote-golden-images.md#current-inventory)). v3 rebased to `testing-45.20261022.1`, updater timer masked, single deployment; 24.0 GB allocated. See [Fedora 45 golden](#fedora-45-golden). |
 | `aurora-stable-44.20260908.1-v3-492c3f8945d1` | Fedora 44 (`aurora:stable`) | `6a2fb407830f95228bb06f4d20d7cd0bd1aec8ed937ef59430e50eb608b62c2d` | The Fedora 44 base: v2 plus lab idle settings (no screen lock, dimming, display power-off or suspend). Its `uupd.timer` is still enabled; see [automatic updates](#automatic-updates). 15.4 GB allocated. |
 | `aurora-stable-44.20260908.1-v2-af46889e2a54` | Fedora 44 | `b9ee08f09d8a4fbd4e57de04c8c1b6e9833400685492a1ab58a341d5e76dd7e7` | v1 plus `/etc/plasmalogin.conf.d/putgd-lab-autologin.conf`; autologin verified (`Service=plasmalogin-autologin`, Wayland user session). |
 | `aurora-stable-44.20260908.1-f9c006a376e1` | Fedora 44 | `65cc3ae1cfb91dc5054ff2c4c50b82e8dddeed8ba53d6c29fd16282b1a0f1811` | First boot plus bootstrap. Its SDDM autologin drop-in is ignored (Aurora uses plasmalogin), so it boots to the greeter. |
@@ -175,6 +176,10 @@ The recipe needs no AWS credentials on the instance:
 9. Terminate the instance, then delete its security group and key pair.
 
 ## Fedora 45 golden
+
+This section is a historical record: the image was deleted from `f44` and `d69` on
+2026-11-02, with Patrick's approval, and was never fully uploaded to S3. It can't be
+restored, and its commands no longer run as written.
 
 `aurora-testing-45.20261022.1-852d34e885c1` is the Aurora guest on a Fedora 45
 base. It was made on 2026-10-23 (UTC) from an overlay of the v3 golden, because
