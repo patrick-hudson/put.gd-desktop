@@ -3,8 +3,10 @@
 #include "X11NativeSnapshot.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <limits>
+#include <utility>
 #include <QImageReader>
 #include <QCryptographicHash>
 #include <QFile>
@@ -44,14 +46,24 @@ CaptureProcessController::Preparation::~Preparation(){
  const auto controller=controller_;const auto generation=generation_;
  QMetaObject::invokeMethod(controller,[controller,generation]{if(controller)controller->abandon(generation);},Qt::QueuedConnection);
 }
-CaptureProcessController::CaptureProcessController(QString helperPath,QObject* parent):QObject(parent),helperPath_(std::move(helperPath)),deadline_(this),stopDeadline_(this){
+CaptureProcessController::CaptureProcessController(QString helperPath,QObject* parent):QObject(parent),helperPath_(std::move(helperPath)),deadline_(this),stopDeadline_(this),holdDeadline_(this){
  if(helperPath_.isEmpty())helperPath_=QCoreApplication::applicationDirPath()+"/putgd-capture";
- deadline_.setSingleShot(true);stopDeadline_.setSingleShot(true);
+ deadline_.setSingleShot(true);stopDeadline_.setSingleShot(true);holdDeadline_.setSingleShot(true);
+ connect(&holdDeadline_,&QTimer::timeout,this,&CaptureProcessController::releaseCrosshair);
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout","deadline",{{"ready",ready_},{"begun",begun_},{"result",resultReceived_}}));});
  connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_&&process_->state()!=QProcess::NotRunning)process_->kill();});
 }
-CaptureProcessController::~CaptureProcessController(){closing_=true;deadline_.stop();stopDeadline_.stop();if(control_)control_->stop();if(process_){process_->disconnect(this);process_->kill();process_->waitForFinished(1000);}if(decoder_){decoder_->disconnect(this);decoder_->wait();delete decoder_;}artifact_.cleanup();if(callback_){auto callback=std::move(callback_);callback_={};callback({{},{"cancelled","Capture adapter closed",{}}});}}
+CaptureProcessController::~CaptureProcessController(){closing_=true;releaseCrosshair();deadline_.stop();stopDeadline_.stop();if(control_)control_->stop();if(process_){process_->disconnect(this);process_->kill();process_->waitForFinished(1000);}if(decoder_){decoder_->disconnect(this);decoder_->wait();delete decoder_;}artifact_.cleanup();if(callback_){auto callback=std::move(callback_);callback_={};callback({{},{"cancelled","Capture adapter closed",{}}});}}
 bool CaptureProcessController::busy()const{return prepared_||bool(callback_)||process_;}
+bool CaptureProcessController::holdCrosshair(){
+ if(busy()||!cursorCache_.holdPointer())return false;
+ holdDeadline_.start(crosshairHoldMs);
+ return true;
+}
+// Clicks are kept past an expired hold: the helper may still arrive to use them.
+void CaptureProcessController::releaseCrosshair(){holdDeadline_.stop();heldButtons_.append(cursorCache_.releasePointer());}
+void CaptureProcessController::forgetHeldButtons(){heldButtons_.clear();}
+void CaptureProcessController::releaseUnclaimedCrosshair(){if(!busy()){releaseCrosshair();forgetHeldButtons();}}
 bool CaptureProcessController::preparedReady()const{return prepared_&&ready_&&!begun_&&!failure_;}
 qint64 CaptureProcessController::processId()const{return process_?process_->processId():0;}
 QJsonObject CaptureProcessController::diagnostics()const{return {{"processId",processId()},{"active",busy()},{"lastExit",lastExit_},{"build",build()}};}
@@ -63,9 +75,16 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  if(limits.imagePixels<1||limits.imageBytes<4||limits.maxFileBytes<1){ticket->failure_=unavailable("input_excessive");if(earlyReleased)earlyReleased();return ticket;}
  // Cursor defaults may depend on root dimensions as well as theme/DPI.
  // Key the bounded resource by all frozen layout metadata, not scale alone.
- const bool cursorCompatible=captureCursorCacheCompatible();
- if(!cursorCompatible)cursorCache_.clear();
- cursorFingerprint_=cursorCompatible&&frozen["action"]=="region"?QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(frozen["layout"].toObject()).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex()):QString{};requestedCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);
+ cursorCompatible_=captureCursorCacheCompatible();
+ cursorFingerprint_=cursorCache_.supported()&&frozen["action"]=="region"?QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(frozen["layout"].toObject()).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex()):QString{};
+ // Only a Qt that loads cursors the way the seed does may replace its own with
+ // this one. Any Qt can show it until its own appears: the helper reports the
+ // exact image Qt chose, and a hold needs nothing more.
+ const bool holdable=!cursorFingerprint_.isEmpty()&&!screenshotFirst;
+ const auto residentCursor=cursorFingerprint_.isEmpty()?XCB_CURSOR_NONE:cursorCache_.lookup(cursorFingerprint_);
+ requestedCursor_=cursorCompatible_?residentCursor:0;
+ if(!holdable||!residentCursor){releaseCrosshair();forgetHeldButtons();}
+ else if(!cursorCache_.holding()&&cursorCache_.holdPointer())holdDeadline_.start(crosshairHoldMs);
  earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;
  launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=false;
  directory_=std::make_unique<QTemporaryDir>("/tmp/putgd-capture-XXXXXX");
@@ -80,7 +99,7 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  connect(child,&QProcess::readyReadStandardError,this,[this,child,epoch]{const auto bytes=child->readAllStandardError();if(process_==child&&generation_==epoch)output_.append(bytes);});
  connect(control_,&CaptureControl::frame,this,[this,child,epoch](const QString& type,const QJsonObject& payload){if(process_==child&&generation_==epoch)receive(type,payload);});
  connect(control_,&CaptureControl::failed,this,[this,child,epoch](Error error){if(process_==child&&generation_==epoch)fail(std::move(error));});
- connect(child,&QProcess::started,this,[this,child,epoch,frozen,outcome,screenshotFirst,appearance]{if(process_!=child||generation_!=epoch)return;launchPid_=process_->processId();launchStartTicks_=processStartTicks(launchPid_);output_.started(launchPid_,{{"generation",QString::number(generation_)}});QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"target",frozen},{"outcome",outcome},{"cursor",QJsonObject{{"id",QString::number(requestedCursor_)},{"cache",!cursorFingerprint_.isEmpty()&&cursorCache_.supported()}}},{"path",path_},{"device",device_},{"inode",inode_},{"limits",QJsonObject{{"imagePixels",limits_.imagePixels},{"imageBytes",limits_.imageBytes},{"maxFileBytes",limits_.maxFileBytes}}}};if(screenshotFirst&&region_)bootstrap["regionMode"]="screenshot_first";control_->send("bootstrap",bootstrap);});
+ connect(child,&QProcess::started,this,[this,child,epoch,frozen,outcome,screenshotFirst,appearance]{if(process_!=child||generation_!=epoch)return;launchPid_=process_->processId();launchStartTicks_=processStartTicks(launchPid_);output_.started(launchPid_,{{"generation",QString::number(generation_)}});QJsonObject bootstrap{{"appearance",appearance},{"build",build()},{"nonce",nonce_},{"generation",QString::number(generation_)},{"target",frozen},{"outcome",outcome},{"cursor",QJsonObject{{"id",QString::number(requestedCursor_)},{"cache",cursorCompatible_&&!cursorFingerprint_.isEmpty()},{"observe",!cursorCompatible_&&!cursorFingerprint_.isEmpty()}}},{"path",path_},{"device",device_},{"inode",inode_},{"limits",QJsonObject{{"imagePixels",limits_.imagePixels},{"imageBytes",limits_.imageBytes},{"maxFileBytes",limits_.maxFileBytes}}}};if(screenshotFirst&&region_)bootstrap["regionMode"]="screenshot_first";control_->send("bootstrap",bootstrap);});
  connect(child,&QProcess::errorOccurred,this,[this,child,epoch](QProcess::ProcessError error){if(process_!=child||generation_!=epoch)return;if(error==QProcess::FailedToStart){output_.failedToStart(child->errorString());if(!failure_)failure_=unavailable("capture_start_failed");exited(-1,QProcess::CrashExit);}});
  connect(child,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,[this,child,epoch](int code,QProcess::ExitStatus status){if(process_==child&&generation_==epoch)exited(code,status);});deadline_.start(10000);child->start(helperPath_,{});return ticket;
 }
@@ -96,9 +115,9 @@ void CaptureProcessController::discard(const Ticket& ticket){if(ticket&&ticket->
 void CaptureProcessController::abandon(quint64 generation){if(!closing_&&prepared_&&!beginRequested_&&generation==generation_)cancel();}
 void CaptureProcessController::sendPreview(){
  if(!region_||previewed_||!ready_||failure_||cancelling_)return;
- previewCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);previewed_=true;
+ previewCursor_=cursorCompatible_&&!cursorFingerprint_.isEmpty()?cursorCache_.lookup(cursorFingerprint_):0;previewed_=true;
  QPointer<CaptureProcessController> guard(this);
- const bool sent=control_&&control_->send("preview",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"cursor",QString::number(previewCursor_)}});
+ const bool sent=control_&&control_->send("preview",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"cursor",QString::number(previewCursor_)},{"hold",QString::number(cursorCache_.holding()||!heldButtons_.isEmpty()?cursorCache_.current():0)}});
  if(!guard)return;
  if(!sent){fail(unavailable("capture_protocol","preview_send"));return;}
  // Interactive selection is bounded separately from invisible startup.
@@ -122,14 +141,14 @@ void CaptureProcessController::sendBegin(){
 }
 void CaptureProcessController::cancel(){
  if(!busy()||cancelling_)return;
- cancelling_=true;if(!failure_)failure_={"cancelled","Capture acquisition cancelled",{}};if(auto ticket=preparation_.lock())ticket->failure_=failure_;deadline_.stop();
+ cancelling_=true;releaseCrosshair();forgetHeldButtons();if(!failure_)failure_={"cancelled","Capture acquisition cancelled",{}};if(auto ticket=preparation_.lock())ticket->failure_=failure_;deadline_.stop();
  if(ready_&&control_)control_->send("cancel",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
  notifyEarlyTerminal();
  if(process_&&process_->state()!=QProcess::NotRunning)stopDeadline_.start(2000);else complete();
 }
 void CaptureProcessController::fail(Error error){
  if(!busy()||failure_)return;
- logFailure(error);failure_=std::move(error);notifyEarlyTerminal();deadline_.stop();if(control_)control_->stop();if(process_&&process_->state()!=QProcess::NotRunning){process_->kill();stopDeadline_.start(2000);}else complete();
+ releaseCrosshair();forgetHeldButtons();logFailure(error);failure_=std::move(error);notifyEarlyTerminal();deadline_.stop();if(control_)control_->stop();if(process_&&process_->state()!=QProcess::NotRunning){process_->kill();stopDeadline_.start(2000);}else complete();
 }
 void CaptureProcessController::receive(const QString& type,const QJsonObject& payload){
  if(!busy())return;
@@ -147,7 +166,7 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
   if(ready_||payload.size()!=4||payload["build"].toObject()!=build()||!payload["cursor"].isObject()){fail(unavailable("capture_incompatible","ready_frame"));return;}
   const auto seed=payload["cursor"].toObject();
   if(!seed.isEmpty()){
-   if(requestedCursor_||cursorFingerprint_.isEmpty()||!cursorCache_.supported()||seed.size()!=5||!seed["pixels"].isString()){fail(unavailable("capture_protocol","cursor_seed"));return;}
+   if(requestedCursor_||!cursorCompatible_||cursorFingerprint_.isEmpty()||!cursorCache_.supported()||seed.size()!=5||!seed["pixels"].isString()){fail(unavailable("capture_protocol","cursor_seed"));return;}
    for(const auto& key:{"width","height","xhot","yhot"}){const auto value=seed[key];if(!value.isDouble()||value.toDouble()!=value.toInteger()||value.toInteger()<0||value.toInteger()>64){fail(unavailable("capture_protocol","cursor_seed"));return;}}
    const int width=seed["width"].toInt(),height=seed["height"].toInt(),xhot=seed["xhot"].toInt(),yhot=seed["yhot"].toInt();const auto text=seed["pixels"].toString();
    if(width<1||height<1||xhot>=width||yhot>=height||text.size()>21848){fail(unavailable("capture_protocol","cursor_seed"));return;}
@@ -166,7 +185,23 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
   // Keep the helper's own reason and details: they name the failed check and
   // its geometry, which a diagnostics package otherwise cannot recover (#331).
   failure_=code=="cancelled"?Error{"cancelled","Capture acquisition cancelled",{}}:Error{code,reason.isEmpty()?genericReason:reason,details};
-  logFailure(failure_);notifyEarlyTerminal();deadline_.stop();stopDeadline_.start(2000);return;
+  releaseCrosshair();forgetHeldButtons();logFailure(failure_);notifyEarlyTerminal();deadline_.stop();stopDeadline_.start(2000);return;
+ }
+ if(type=="handoff"){
+  if(!ready_||!previewed_||payload.size()!=2){fail(unavailable("capture_protocol","handoff_frame"));return;}
+  // The helper's surfaces are up, so input from here on lands on them. It takes
+  // what the resident collected before it asks for its own grab.
+  releaseCrosshair();
+  QJsonArray buttons;
+  for(const auto& button:std::exchange(heldButtons_,{}))buttons.append(QJsonObject{{"press",button.press},{"button",button.button},{"x",button.x},{"y",button.y}});
+  QPointer<CaptureProcessController> guard(this);
+  const bool sent=control_&&control_->send("handoff_done",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"buttons",buttons}});
+  if(guard&&!sent)fail(unavailable("capture_protocol","handoff_send"));
+  return;
+ }
+ if(type=="cursor_image"){
+  if(!ready_||!previewed_||payload.size()!=7||cursorFingerprint_.isEmpty()){fail(unavailable("capture_protocol","cursor_image"));return;}
+  observedCursor(payload);return;
  }
  if(type=="result"){
   if(!ready_||!begun_||resultReceived_||payload.size()!=6||!payload["bytes"].isString()||!payload["sha256"].isString()||!payload["width"].isDouble()||!payload["height"].isDouble()){fail(unavailable("capture_protocol","result_frame"));return;}
@@ -212,8 +247,21 @@ void CaptureProcessController::exited(int code,QProcess::ExitStatus status){
  if(!failure_&&(!accepted_||code!=0||status!=QProcess::NormalExit)){failure_=unavailable("capture_crashed","helper_exit",{{"exitCode",code},{"status",status==QProcess::NormalExit?"normal":"crash"},{"accepted",accepted_}});logFailure(failure_);}
  complete();
 }
+void CaptureProcessController::observedCursor(const QJsonObject& image){
+ for(const auto& key:{"width","height","xhot","yhot"}){const auto value=image[key];if(!value.isDouble()||value.toDouble()!=value.toInteger()||value.toInteger()<0||value.toInteger()>64){fail(unavailable("capture_protocol","cursor_image"));return;}}
+ const int width=image["width"].toInt(),height=image["height"].toInt(),xhot=image["xhot"].toInt(),yhot=image["yhot"].toInt();const auto text=image["pixels"].toString();
+ if(!image["pixels"].isString()||width<1||height<1||xhot>=width||yhot>=height||text.size()>21848){fail(unavailable("capture_protocol","cursor_image"));return;}
+ const auto decoded=QByteArray::fromBase64Encoding(text.toLatin1(),QByteArray::AbortOnBase64DecodingErrors);
+ if(!decoded||decoded.decoded.size()!=width*height*4||QString::fromLatin1(decoded.decoded.toBase64())!=text){fail(unavailable("capture_protocol","cursor_image"));return;}
+ // Most presses report what the cache already holds; a theme change does not.
+ QCryptographicHash identity(QCryptographicHash::Sha256);identity.addData(decoded.decoded);identity.addData(QByteArray::number(width)+'x'+QByteArray::number(height)+'+'+QByteArray::number(xhot)+'+'+QByteArray::number(yhot));
+ const auto hash=identity.result();
+ if(hash==observedCursorHash_&&cursorCache_.lookup(cursorFingerprint_))return;
+ if(cursorCache_.seed(width,height,xhot,yhot,decoded.decoded,cursorFingerprint_))observedCursorHash_=hash;
+}
 void CaptureProcessController::complete(){
  if(decoder_||(process_&&process_->state()!=QProcess::NotRunning))return;
+ releaseCrosshair();forgetHeldButtons();
  notifyEarlyTerminal();
  if(process_){process_->disconnect(this);
   // A completion callback may delete this controller inside QProcess signals.

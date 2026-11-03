@@ -6,6 +6,7 @@
 #include <QRegion>
 #include <QPointer>
 #include <QTimer>
+#include <functional>
 #include <thread>
 #include <xcb/xcb.h>
 #include <xcb/xcb_keysyms.h>
@@ -38,6 +39,15 @@ public:
  // outline frame, or this long after the grab if nothing is drawn.
  static constexpr int accessibilityDelayMs=100;
  void start() override;
+ // The resident holds the pointer with this cursor until these surfaces exist.
+ // After mapping them the overlay calls release and waits for pointerReleased(),
+ // whose buttons, in native root coordinates, it acts on once it owns the input.
+ void setPointerHandoff(xcb_cursor_t cursor,std::function<void()> release);
+ struct HeldButton {bool press=false;int button=0;QPoint native;};
+ void pointerReleased(QList<HeldButton> buttons);
+ // Reports the exact cursor image shown once input is grabbed (the resident shows
+ // it at the next press): pixels are ARGB as XFixes returns them.
+ void setCursorObserver(std::function<void(int width,int height,int xhot,int yhot,const uint32_t* pixels)> observer);
  void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
  // Presentation statistics for lab logs (PUTGD_REGION_DEBUG_LOG) and tests.
  // Pointer motions while dragging are coalesced into presents: one flush of
@@ -58,6 +68,9 @@ private:
  void startAccessibility();
  void initializeSurfaces();
  void grabInput();
+ void observeCursor();
+ // False once a button has ended the selection.
+ bool button(bool press,int button,QPoint native);
  // Only the compact hint and size pills are client raster images; a frozen
  // frame is uploaded once into a server pixmap and repainted by the server.
  struct Badge {QImage image;QString key;QPoint at;};
@@ -93,7 +106,11 @@ private:
  QList<Surface> surfaces_;
  xcb_connection_t* connection_=nullptr;
  xcb_window_t root_=XCB_WINDOW_NONE;
- xcb_cursor_t residentCursor_=XCB_CURSOR_NONE;
+ xcb_cursor_t residentCursor_=XCB_CURSOR_NONE,handoffCursor_=XCB_CURSOR_NONE;
+ std::function<void()> releasePointer_;
+ std::function<void(int,int,int,int,const uint32_t*)> cursorObserver_;
+ bool awaitingPointer_=false;
+ QList<HeldButton> heldButtons_;
  xcb_colormap_t colormap_=XCB_COLORMAP_NONE;
  xcb_gcontext_t gc_=XCB_NONE;
  xcb_key_symbols_t* keys_=nullptr;

@@ -8,7 +8,7 @@ namespace putgd {
 class X11CoreSourceAdapter final:public QObject,public SourceAdapter {
  Q_OBJECT
 public:
- explicit X11CoreSourceAdapter(QObject* parent=nullptr);
+ explicit X11CoreSourceAdapter(QObject* parent=nullptr,QString helperPath={});
  ~X11CoreSourceAdapter() override;
  quint64 clipboardRevision()const override;
  std::optional<quint64> lastCopyRevision()const override{return clipboard_.lastCopyRevision();}
@@ -29,6 +29,7 @@ signals:
  // The display's X server went away, as it does when its session ends.
  void displayLost();
 private:
+ bool crosshairHeld_=false;
  X11NativeSnapshot capture_;X11Clipboard clipboard_;X11Shortcuts shortcuts_;CaptureProcessController helper_;qint64 uiProcess_=0;
 };
 }

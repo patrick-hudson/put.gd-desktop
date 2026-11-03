@@ -10,12 +10,14 @@
 #include <QSurfaceFormat>
 #include <QtGui/qguiapplication_platform.h>
 #include <X11/keysym.h>
+#include <xcb/xfixes.h>
 #include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <unistd.h>
+#include <utility>
 namespace putgd {
 namespace {
 // Pill fonts in this process: 0 load on first use, 1 loading on a worker, 2 loaded.
@@ -81,6 +83,8 @@ bool NativeRegionOverlay::supportsLayout(const QList<CaptureFrame>& frames){
  }
  return true;
 }
+void NativeRegionOverlay::setPointerHandoff(xcb_cursor_t cursor,std::function<void()> release){handoffCursor_=cursor;releasePointer_=std::move(release);}
+void NativeRegionOverlay::setCursorObserver(std::function<void(int,int,int,int,const uint32_t*)> observer){cursorObserver_=std::move(observer);}
 bool NativeRegionOverlay::checked(xcb_void_cookie_t cookie){auto* error=xcb_request_check(connection_,cookie);const bool ok=!error;std::free(error);return ok;}
 void NativeRegionOverlay::start(){
  if(started_||finished_)return;
@@ -145,8 +149,9 @@ void NativeRegionOverlay::initializeSurfaces(){
   Surface surface;surface.frame=frame;surface.frame.pixels={};surface.index=int(surfaces_.size());surface.window=xcb_generate_id(connection_);surface.pen=std::max(1,qRound(frame.density));
   // RGB32 keeps an opaque alpha byte, matching the 32-bit ARGB visual.
   if(frozen_)surface.frozen=frame.pixels.convertToFormat(QImage::Format_RGB32);
-  const uint32_t values[]={0,0,1,XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_KEY_PRESS,colormap_};
-  creates.append(xcb_create_window_checked(connection_,32,surface.window,root_,int16_t(frame.nativeRect.x()),int16_t(frame.nativeRect.y()),uint16_t(frame.nativeRect.width()),uint16_t(frame.nativeRect.height()),0,XCB_WINDOW_CLASS_INPUT_OUTPUT,visual,XCB_CW_BACK_PIXEL|XCB_CW_BORDER_PIXEL|XCB_CW_OVERRIDE_REDIRECT|XCB_CW_EVENT_MASK|XCB_CW_COLORMAP,values));
+  // The held crosshair stays up across the moment between the two grabs.
+  const uint32_t values[]={0,0,1,XCB_EVENT_MASK_EXPOSURE|XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE|XCB_EVENT_MASK_POINTER_MOTION|XCB_EVENT_MASK_KEY_PRESS,colormap_,handoffCursor_};
+  creates.append(xcb_create_window_checked(connection_,32,surface.window,root_,int16_t(frame.nativeRect.x()),int16_t(frame.nativeRect.y()),uint16_t(frame.nativeRect.width()),uint16_t(frame.nativeRect.height()),0,XCB_WINDOW_CLASS_INPUT_OUTPUT,visual,XCB_CW_BACK_PIXEL|XCB_CW_BORDER_PIXEL|XCB_CW_OVERRIDE_REDIRECT|XCB_CW_EVENT_MASK|XCB_CW_COLORMAP|XCB_CW_CURSOR,values));
   const uint32_t pid=uint32_t(getpid());xcb_change_property(connection_,XCB_PROP_MODE_REPLACE,surface.window,pidProperty,XCB_ATOM_CARDINAL,32,1,&pid);
   surfaces_.append(std::move(surface));
  }
@@ -189,8 +194,37 @@ void NativeRegionOverlay::initializeSurfaces(){
  // pre-grab parent input and subsequent child-grab input are delivered to this
  // same connection, preserving event order without a Qt logical-input fallback.
  for(const auto& surface:surfaces_)xcb_map_window(connection_,surface.window);
+ if(releasePointer_){
+  // The maps must have taken effect before the resident lets go: the server
+  // replays what it held at that moment, onto whatever is under the pointer.
+  auto* fence=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);std::free(fence);
+  awaitingPointer_=true;std::exchange(releasePointer_,{})();
+  return;
+ }
  grabClock_.start();
  grabInput();
+}
+void NativeRegionOverlay::pointerReleased(QList<HeldButton> buttons){
+ if(finished_||!awaitingPointer_)return;
+ awaitingPointer_=false;heldButtons_=std::move(buttons);grabClock_.start();grabInput();
+}
+bool NativeRegionOverlay::button(bool press,int button,QPoint native){
+ QPointer<NativeRegionOverlay> guard(this);
+ if(press){
+  if(button==3){cancel();return false;}
+  if(button==1){keyboardScreen_=-1;anchor_=logicalPoint(native);selection_=QRectF(anchor_,QSizeF{});dragging_=true;move(anchor_);}
+ }else if(button==1){release(logicalPoint(native));if(!guard||finished_)return false;}
+ return guard&&!finished_;
+}
+void NativeRegionOverlay::observeCursor(){
+ if(!cursorObserver_)return;
+ auto observer=std::exchange(cursorObserver_,{});
+ auto* version=xcb_xfixes_query_version_reply(connection_,xcb_xfixes_query_version(connection_,1,0),nullptr);
+ const bool supported=version&&version->major_version>=1;std::free(version);
+ if(!supported)return;
+ auto* image=xcb_xfixes_get_cursor_image_reply(connection_,xcb_xfixes_get_cursor_image(connection_),nullptr);
+ if(image&&image->width>=1&&image->height>=1&&image->width<=64&&image->height<=64&&image->xhot<image->width&&image->yhot<image->height)observer(image->width,image->height,image->xhot,image->yhot,xcb_xfixes_get_cursor_image_cursor_image(image));
+ std::free(image);
 }
 void NativeRegionOverlay::grabInput(){
  if(finished_)return;
@@ -220,10 +254,18 @@ void NativeRegionOverlay::grabInput(){
  }
  QPointer<NativeRegionOverlay> accessibility(this);
  QTimer::singleShot(accessibilityDelayMs,this,[accessibility]{if(accessibility)accessibility->startAccessibility();});
+ observeCursor();
  if(frozen_)showFrozen();
  hint_.start();
  notifier_=new QSocketNotifier(xcb_get_file_descriptor(connection_),QSocketNotifier::Read,this);
  connect(notifier_,&QSocketNotifier::activated,this,[this]{events();});
+ // Clicks from the resident's hold came first; they end before anything queued here.
+ QPointer<NativeRegionOverlay> guard(this);
+ draining_=true;
+ for(const auto& held:std::exchange(heldButtons_,{})){if(!button(held.press,held.button,held.native)){if(guard)draining_=false;return;}}
+ draining_=false;
+ // A drag still in progress continues from where the pointer is now.
+ if(dragging_){auto* pointer=xcb_query_pointer_reply(connection_,xcb_query_pointer(connection_,root_),nullptr);if(pointer)move(logicalPoint({pointer->root_x,pointer->root_y}));std::free(pointer);}
  // Replies above may already have buffered events; do not depend on another
  // socket wakeup to consume an initial button/key event.
  events();
@@ -245,9 +287,8 @@ void NativeRegionOverlay::drain(){
  while(connection_&&!finished_){
   auto* raw=xcb_poll_for_event(connection_);if(!raw)break;
   const auto type=raw->response_type&127;
-  if(type==XCB_BUTTON_PRESS){const auto event=*reinterpret_cast<xcb_button_press_event_t*>(raw);std::free(raw);if(event.detail==3){cancel();return;}if(event.detail==1){keyboardScreen_=-1;anchor_=logicalPoint({event.root_x,event.root_y});selection_=QRectF(anchor_,QSizeF{});dragging_=true;move(anchor_);}}
+  if(type==XCB_BUTTON_PRESS||type==XCB_BUTTON_RELEASE){const auto event=*reinterpret_cast<xcb_button_press_event_t*>(raw);std::free(raw);if(!button(type==XCB_BUTTON_PRESS,event.detail,{event.root_x,event.root_y}))return;}
   else if(type==XCB_MOTION_NOTIFY){const auto event=*reinterpret_cast<xcb_motion_notify_event_t*>(raw);std::free(raw);move(logicalPoint({event.root_x,event.root_y}));}
-  else if(type==XCB_BUTTON_RELEASE){const auto event=*reinterpret_cast<xcb_button_release_event_t*>(raw);std::free(raw);if(event.detail==1){release(logicalPoint({event.root_x,event.root_y}));if(!guard||finished_)return;}}
   else if(type==XCB_KEY_PRESS){const auto event=*reinterpret_cast<xcb_key_press_event_t*>(raw);std::free(raw);const auto symbol=xcb_key_symbols_get_keysym(keys_,event.detail,0);int qtKey=0;
    switch(symbol){case XK_Tab:case XK_ISO_Left_Tab:qtKey=Qt::Key_Tab;break;case XK_Escape:qtKey=Qt::Key_Escape;break;case XK_Return:case XK_KP_Enter:qtKey=Qt::Key_Return;break;
    case XK_Left:case XK_KP_Left:qtKey=Qt::Key_Left;break;case XK_Right:case XK_KP_Right:qtKey=Qt::Key_Right;break;

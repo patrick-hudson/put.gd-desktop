@@ -98,7 +98,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(!ids.isEmpty())emit observationsChanged();
  });
  uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);
- connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);pump();});
+ source_.setRegionScreenshotFirst(settings_.snapshot().regionSelectionMode=="screenshot_first");
+ connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);source_.setRegionScreenshotFirst(settings_.snapshot().regionSelectionMode=="screenshot_first");pump();});
  RecordingService::Host host;
  host.reviewOptions=[this](const Operation& op){return uploadReviewOptions(op,providers_);};
  host.settings=[this]{return settings_.snapshot();};

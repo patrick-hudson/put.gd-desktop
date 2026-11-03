@@ -2,6 +2,7 @@
 #include "platform/x11/CaptureCursorCache.h"
 #include "platform/x11/X11NativeSnapshot.h"
 #include <QTest>
+#include <QElapsedTimer>
 #include <QVersionNumber>
 #include <QJsonArray>
 #include <QColor>
@@ -15,6 +16,10 @@
 #include <sys/stat.h>
 #include <thread>
 #include <QScopeGuard>
+#include <xcb/xcb.h>
+#include <xcb/xcb_keysyms.h>
+#include <xcb/xtest.h>
+#include "platform/x11/X11CoreSourceAdapter.h"
 #include <QTemporaryDir>
 #include "fixtures/Waits.h"
 namespace {
@@ -37,9 +42,142 @@ QJsonObject snapshot(){return {{"schemaVersion",1},{"action","desktop"},{"window
 namespace {
 QJsonObject regionSnapshot(char fingerprint){auto result=snapshot();result["action"]="region";auto layout=result["layout"].toObject();layout["scale"]=QString(64,QChar(fingerprint));result["layout"]=layout;return result;}
 }
+namespace {
+int pointerGrabStatus(xcb_connection_t* connection){
+ const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+ auto* reply=xcb_grab_pointer_reply(connection,xcb_grab_pointer(connection,0,root,0,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,XCB_CURSOR_NONE,XCB_CURRENT_TIME),nullptr);
+ const int status=reply?reply->status:-1;std::free(reply);
+ if(status==XCB_GRAB_STATUS_SUCCESS){xcb_ungrab_pointer(connection,XCB_CURRENT_TIME);xcb_flush(connection);}
+ return status;
+}
+void seedCursor(putgd::CaptureProcessController& controller){
+ qputenv("PUTGD_TEST_CAPTURE_MODE",cacheExpected()?"cursor-seed":"observe-cursor");int completed=0;
+ controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){QVERIFY2(!value.error,qPrintable(value.error.code));++completed;});
+ PUTGD_TRY_COMPARE(completed,1);
+}
+}
 class CaptureProcessTests final:public QObject {
  Q_OBJECT
 private slots:
+ void crosshairHoldLastsUntilTheHelperAsks(){
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
+  // The first press has no crosshair to show yet.
+  QVERIFY(!controller.holdCrosshair());
+  seedCursor(controller);QVERIFY(!controller.busy());
+  // A press that starts no selection gives the pointer straight back.
+  QVERIFY(controller.holdCrosshair());QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  controller.releaseUnclaimedCrosshair();QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-handoff");
+  QVERIFY(controller.holdCrosshair());
+  auto ticket=controller.prepare(regionSnapshot(),{});
+  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);
+  const auto frames=cursorTrace(trace);QCOMPARE(frames[1]["phase"].toString(),QString("preview"));QVERIFY(frames[1]["hold"].toString().toULongLong()>0);QCOMPARE(frames[2]["phase"].toString(),QString("released"));
+  // The controller has let go before it answered the helper.
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  int completed=0;putgd::Error error;controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));
+  // Failure and cancellation end a hold as well.
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-cancel");QVERIFY(controller.holdCrosshair());int early=0;
+  auto cancelled=controller.prepare(regionSnapshot(),{},[&](putgd::Error){++early;});
+  PUTGD_TRY_COMPARE(early,1);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  PUTGD_TRY_VERIFY(!controller.busy());
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-waiting");QVERIFY(controller.holdCrosshair());
+  auto dropped=controller.prepare(regionSnapshot(),{});PUTGD_TRY_VERIFY(controller.preparedReady());
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  controller.cancel();QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));PUTGD_TRY_VERIFY(!controller.busy());
+ }
+ void inputDuringTheHold_data(){
+  QTest::addColumn<QString>("input");
+  for(const char* input:{"escape","hotkey-again","right-click"})QTest::newRow(input)<<QString::fromLatin1(input);
+ }
+ void inputDuringTheHold(){
+  // The real press path: a key through the server, the resident's shortcut, the
+  // hold, then a helper that is still loading when the input arrives.
+  QFETCH(QString,input);
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+  auto* symbols=xcb_key_symbols_alloc(connection);QVERIFY(symbols);const auto freeSymbols=qScopeGuard([&]{xcb_key_symbols_free(symbols);});
+  const auto code=[&](uint32_t sym){auto* codes=xcb_key_symbols_get_keycode(symbols,sym);const uint8_t found=codes?codes[0]:0;std::free(codes);return found;};
+  const auto fake=[&](uint8_t type,uint8_t detail){xcb_test_fake_input(connection,type,detail,XCB_CURRENT_TIME,root,0,0,0);auto* fence=xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr);std::free(fence);};
+  const auto chord=[&]{const uint8_t ctrl=code(0xffe3),shift=code(0xffe1),one=code('1');fake(XCB_KEY_PRESS,ctrl);fake(XCB_KEY_PRESS,shift);fake(XCB_KEY_PRESS,one);fake(XCB_KEY_RELEASE,one);fake(XCB_KEY_RELEASE,shift);fake(XCB_KEY_RELEASE,ctrl);};
+  putgd::X11CoreSourceAdapter adapter(nullptr,PUTGD_CAPTURE_FIXTURE);adapter.bindShortcuts({{"region","Ctrl+Shift+1"}});
+  QVERIFY(adapter.capabilities()["shortcuts"].toObject()["available"].toBool());
+  QList<putgd::Error> terminals;int released=0,presses=0;
+  QList<putgd::SourceAdapter::PreparedAcquisition> prepared;
+  const putgd::ResourceLimits limits;
+  connect(&adapter,&putgd::X11CoreSourceAdapter::actionRequested,this,[&](const QString& action){++presses;prepared.append(adapter.prepareAcquisition(action,limits,[&](putgd::Error error){terminals.append(error);},[&]{++released;}));});
+  qputenv("PUTGD_TEST_CAPTURE_MODE",cacheExpected()?"cursor-seed":"observe-cursor");
+  chord();PUTGD_TRY_COMPARE(presses,1);
+  int completed=0;prepared.takeFirst()(limits,[&](putgd::PayloadResult){++completed;});PUTGD_TRY_COMPARE(completed,1);PUTGD_TRY_COMPARE(released,1);
+  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-late");released=0;
+  chord();PUTGD_TRY_COMPARE(presses,2);
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  if(input=="escape"){
+   const uint8_t escape=code(0xff1b);fake(XCB_KEY_PRESS,escape);fake(XCB_KEY_RELEASE,escape);
+   // The pointer and cursor come back at once, ahead of the helper it no longer needs.
+   PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+   PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
+   PUTGD_TRY_COMPARE(released,1);
+  }else if(input=="right-click"){
+   fake(XCB_BUTTON_PRESS,3);fake(XCB_BUTTON_RELEASE,3);
+   // The crosshair stays until the helper's surfaces arrive, which then cancel.
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+   PUTGD_TRY_COMPARE(terminals.size(),1);QCOMPARE(terminals[0].code,QString("cancelled"));
+   PUTGD_TRY_COMPARE(released,1);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+   const auto frames=cursorTrace(trace);QCOMPARE(frames.last()["phase"].toString(),QString("released"));
+   QVERIFY(QJsonDocument(frames.last()["buttons"].toArray()).toJson().contains("\"button\":3")||frames.last()["buttons"].toArray()[0].toObject()["button"].toInt()==3);
+  }else{
+   // Ignored: the first selection keeps the hold and carries on as if unpressed.
+   chord();PUTGD_TRY_COMPARE(presses,3);PUTGD_TRY_COMPARE(released,1);QCOMPARE(terminals.size(),0);
+   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+   PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+   bool finished=false;prepared.first()(limits,[&](putgd::PayloadResult value){QVERIFY2(!value.error,qPrintable(value.error.code));finished=true;});PUTGD_TRY_VERIFY(finished);
+  }
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+ }
+ void crosshairHoldEndsAtItsTimeout(){
+  // The helper takes longer than the hold: the desktop gets the pointer back on
+  // time, and the helper still receives the click made while it was held.
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
+  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-late-long");
+  QElapsedTimer clock;clock.start();
+  QVERIFY(controller.holdCrosshair());auto ticket=controller.prepare(regionSnapshot(),{});
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+  xcb_test_fake_input(connection,XCB_BUTTON_PRESS,1,XCB_CURRENT_TIME,root,0,0,0);xcb_test_fake_input(connection,XCB_BUTTON_RELEASE,1,XCB_CURRENT_TIME,root,0,0,0);xcb_flush(connection);
+  PUTGD_COMPARE_STEADY(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED),putgd::CaptureProcessController::crosshairHoldMs-500);
+  PUTGD_TRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  QVERIFY(clock.elapsed()<putgd::CaptureProcessController::crosshairHoldMs+1500);
+  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);
+  const auto frames=cursorTrace(trace);QVERIFY(frames[1]["hold"].toString().toULongLong()>0);QCOMPARE(frames[2]["buttons"].toArray().size(),2);
+  controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());
+ }
+ void screenshotFirstAndOtherSourcesHoldNothing(){
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
+  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-waiting");
+  // A hold's Leave events would change what Screenshot first is about to freeze.
+  QVERIFY(controller.holdCrosshair());
+  auto ticket=controller.prepare(regionSnapshot(),{},{},{},{},true);
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
+  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),2);QCOMPARE(cursorTrace(trace)[1]["hold"].toString(),QString("0"));
+  controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());
+ }
+ void observedCursorEnablesTheHoldOnNewerQt(){
+  if(cacheExpected())QSKIP("Qt below 6.5 seeds this cache from libXcursor");
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
+  // The observed image never replaces the helper's own Qt cursor.
+  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-handoff");QVERIFY(controller.holdCrosshair());
+  auto ticket=controller.prepare(regionSnapshot(),{});PUTGD_TRY_COMPARE(cursorTrace(trace).size(),3);
+  const auto frames=cursorTrace(trace);QCOMPARE(frames[0]["cursorId"].toString(),QString("0"));QCOMPARE(frames[1]["cursorId"].toString(),QString("0"));QVERIFY(frames[1]["hold"].toString().toULongLong()>0);
+  controller.cancel();PUTGD_TRY_VERIFY(!controller.busy());
+ }
  void cleanup(){qunsetenv("PUTGD_TEST_CAPTURE_MODE");qunsetenv("PUTGD_TEST_CAPTURE_TRACE");}
  void resolvedAppearanceReachesTheIsolatedCaptureHelper(){
   QTemporaryDir directory("/tmp/putgd-theme-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
@@ -498,7 +636,7 @@ private slots:
   QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
   putgd::CaptureControl control(process);bool ready=false;connect(&control,&putgd::CaptureControl::frame,this,[&](const QString& type,const QJsonObject&){if(type=="ready")ready=true;});
   process.start(PUTGD_CAPTURE_FIXTURE,{});QVERIFY(process.waitForStarted());
-  QVERIFY(control.send("bootstrap",{{"build",QJsonDocument::fromJson(putgd::buildManifestJson()).object()},{"nonce",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"generation","1"},{"target",snapshot()},{"cursor",QJsonObject{{"id","0"},{"cache",false}}},{"path",path},{"device",QString::number(qulonglong(st.st_dev))},{"inode",QString::number(qulonglong(st.st_ino))},{"limits",QJsonObject{{"imagePixels",1000},{"imageBytes",4000},{"maxFileBytes",4000}}}}));
+  QVERIFY(control.send("bootstrap",{{"build",QJsonDocument::fromJson(putgd::buildManifestJson()).object()},{"nonce",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"generation","1"},{"target",snapshot()},{"cursor",QJsonObject{{"id","0"},{"cache",false},{"observe",false}}},{"path",path},{"device",QString::number(qulonglong(st.st_dev))},{"inode",QString::number(qulonglong(st.st_ino))},{"limits",QJsonObject{{"imagePixels",1000},{"imageBytes",4000},{"maxFileBytes",4000}}}}));
   PUTGD_TRY_VERIFY(ready);process.closeWriteChannel();QVERIFY(process.waitForFinished());QCOMPARE(process.exitStatus(),QProcess::NormalExit);QCOMPARE(process.exitCode(),3);QVERIFY(!QFile::exists(path));QVERIFY(!QDir(directory.path()).exists());
  }
  void artifactCleanupPreservesReplacementFile(){

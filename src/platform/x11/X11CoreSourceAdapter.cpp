@@ -2,8 +2,19 @@
 #include <QCoreApplication>
 #include <QPointer>
 #include <QJsonArray>
+#include <utility>
 namespace putgd {
-X11CoreSourceAdapter::X11CoreSourceAdapter(QObject* parent):QObject(parent){connect(&shortcuts_,&X11Shortcuts::activated,this,&X11CoreSourceAdapter::actionRequested);connect(&shortcuts_,&X11Shortcuts::bindingsChanged,this,&X11CoreSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&X11Shortcuts::connectionLost,this,&X11CoreSourceAdapter::displayLost);}
+X11CoreSourceAdapter::X11CoreSourceAdapter(QObject* parent,QString helperPath):QObject(parent),helper_(std::move(helperPath)){connect(&shortcuts_,&X11Shortcuts::escapePressed,this,[this]{
+  // Selection is not up yet, so nothing else can take this: the keyboard is free and
+  // the focused window receives the key too, as it does before any selector shows.
+  if(helper_.crosshairHeld())helper_.cancel();
+ });connect(&shortcuts_,&X11Shortcuts::pressed,this,[this](const QString& action){
+  // First thing at the press, before logging, settings, freezing or the helper's load.
+  crosshairHeld_=(action=="region"||action=="edit")&&!regionScreenshotFirst_&&helper_.holdCrosshair();
+ });connect(&shortcuts_,&X11Shortcuts::activated,this,[this](const QString& action){
+  emit actionRequested(action);
+  if(std::exchange(crosshairHeld_,false))helper_.releaseUnclaimedCrosshair();
+ });connect(&shortcuts_,&X11Shortcuts::bindingsChanged,this,&X11CoreSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&X11Shortcuts::connectionLost,this,&X11CoreSourceAdapter::displayLost);}
 X11CoreSourceAdapter::~X11CoreSourceAdapter(){helper_.cancel();clipboard_.cancel();}
 quint64 X11CoreSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 QJsonObject X11CoreSourceAdapter::capabilities()const{

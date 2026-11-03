@@ -37,6 +37,9 @@ void X11Shortcuts::syncMatcher(const xcb_get_modifier_mapping_reply_t* map){
  QList<X11RawKeyMatcher::Binding> bindings;for(const auto& grab:grabs_)bindings.append({grab.action,grab.code,grab.modifiers});matcher_.setBindings(std::move(bindings));
 }
 void X11Shortcuts::deliver(const QString& action,const QString& path,uint32_t time){
+ // A raw-only press means another client holds the keyboard, such as an open
+ // menu. Leave that case to the helper's own bounded wait for its grabs.
+ if(path==QLatin1String("passive"))emit pressed(action);
  last_={{"action",action},{"path",path},{"sequence",qint64(++activations_)},{"serverTime",qint64(time)}};
  logging::info(logApp(),"Shortcut pressed",{{"action",action},{"path",path}});
  emit activated(action);
@@ -138,7 +141,7 @@ void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){con
   if(generic->extension==xinputOpcode_&&(generic->event_type==XCB_INPUT_RAW_KEY_PRESS||generic->event_type==XCB_INPUT_RAW_KEY_RELEASE)){
    const auto* key=reinterpret_cast<xcb_input_raw_key_press_event_t*>(raw);const auto code=uint8_t(key->detail);
    if(generic->event_type==XCB_INPUT_RAW_KEY_RELEASE)matcher_.release(code);
-   else if(const auto action=matcher_.press(code);action&&!recording_){
+   else if(const auto action=matcher_.press(code);(symbols_&&xcb_key_symbols_get_keysym(symbols_,code,0)==XK_Escape&&(emit escapePressed(),false))||(action&&!recording_)){
     // The server queues a passive grab's core press right after this raw
     // event. A roundtrip brings it into this drain, so both are matched here.
     auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);free(sync);
