@@ -68,6 +68,33 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
  }
  const auto frozen=layout();const auto revision=core_?outputs_.revision():0;return [guard,action,frozen,revision,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->capture(action,frozen,revision,limits,std::move(cb),outcome,screenshot);};
 }
+SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QString& action,const ResourceLimits& acceptedLimits,std::function<void(Error)> terminal,std::function<void()> released){
+#if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
+ // The selector returns geometry only, so it need not wait for the two journal
+ // saves; the pixels still do. Every other case keeps its path through capture().
+ const auto frozen=core_&&action=="region"&&!regionScreenshotFirst_?layout():QList<CaptureFrame>{};
+ const auto revision=core_?outputs_.revision():0;
+ if(!frozen.isEmpty()&&!overlay_&&!region_.busy()&&!region_.cleanupRequired()&&unchanged(frozen,revision)){
+  QPointer<KdeSourceAdapter> guard(this);const auto generation=generation_;
+  auto ticket=region_.prepare(frozen,captureOutcome_,captureAppearance_,std::move(terminal),std::move(released));
+  return [guard,ticket,frozen,revision,acceptedLimits,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
+   if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}
+   if(limits.imagePixels!=acceptedLimits.imagePixels||limits.imageBytes!=acceptedLimits.imageBytes||limits.maxFileBytes!=acceptedLimits.maxFileBytes){guard->region_.discard(ticket);cb({{},{"input_excessive","Prepared capture limits changed",{}}});return;}
+   guard->region_.begin(ticket,[guard,frozen,revision,limits,generation,cb=std::move(cb)](QRectF selection,Error error)mutable{
+    if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Desktop capture cancelled",{}}});return;}
+    if(error){cb({{},std::move(error)});return;}
+    // The selection may have finished before this continuation ran.
+    if(!guard->unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed during region selection",{}}});return;}
+    guard->captureScreens(frozen,revision,selection,limits,std::move(cb));
+   });
+  };
+ }
+#else
+ Q_UNUSED(acceptedLimits);Q_UNUSED(terminal);
+#endif
+ if(released)released();
+ return prepareAcquisition(action);
+}
 void KdeSourceAdapter::verifyExternalWindow(const QString& windowId,std::function<void(Error)> reply){
  const QUuid frozenId(windowId);
  if(frozenId.isNull()){reply({"target_unavailable","KWin did not identify the captured window",{}});return;}

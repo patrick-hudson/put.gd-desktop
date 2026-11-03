@@ -22,6 +22,16 @@ QString processStartTicks(qint64 pid) {
  return ok && ticks>0?QString::number(ticks):QString{};
 }
 }
+struct KdeRegionProcess::Prepared {
+ bool settled=false; QRectF selection; Error error;
+ std::function<void(QRectF,Error)> reply; std::function<void(Error)> terminal; std::function<void()> released;
+};
+KdeRegionProcess::Preparation::~Preparation() {
+ if(consumed_.load() || !owner_) return;
+ // A prepared continuation can die on a journal worker. Marshal the cleanup.
+ QPointer<KdeRegionProcess> owner=owner_; auto state=state_;
+ QMetaObject::invokeMethod(owner,[owner,state]{ if(owner) owner->abandon(state); },Qt::QueuedConnection);
+}
 KdeRegionProcess::KdeRegionProcess(QObject* parent):KdeRegionProcess(QString{},parent) {}
 KdeRegionProcess::KdeRegionProcess(QString helperPath,QObject* parent)
  :QObject(parent),helperPath_(std::move(helperPath)),deadline_(this),stopDeadline_(this) {
@@ -93,6 +103,34 @@ void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<voi
   if(process_==child && generation_==epoch) finish(code,status);
  });
  deadline_.start(10000); child->start(helperPath_,{});
+}
+KdeRegionProcess::Ticket KdeRegionProcess::prepare(const QList<CaptureFrame>& frames,QString outcome,QJsonObject appearance,std::function<void(Error)> terminal,std::function<void()> released) {
+ auto ticket=std::make_shared<Preparation>(); ticket->owner_=this;
+ auto state=std::make_shared<Prepared>(); ticket->state_=state;
+ state->terminal=std::move(terminal); state->released=std::move(released);
+ start(frames,[state](QRectF selection,Error error){
+  state->settled=true; state->selection=selection; state->error=error;
+  auto terminal=std::move(state->terminal); auto released=std::move(state->released); auto reply=std::move(state->reply);
+  state->terminal={}; state->released={}; state->reply={};
+  // begin() owns delivery once it has run; before that only metadata is reported.
+  if(error && !reply && terminal) terminal(error);
+  if(released) released();
+  if(reply) reply(selection,error);
+ },std::move(outcome),{},std::move(appearance));
+ return ticket;
+}
+void KdeRegionProcess::begin(const Ticket& ticket,std::function<void(QRectF,Error)> callback) {
+ if(!ticket || ticket->owner_!=this || ticket->consumed_.exchange(true)) { callback({},unavailable("capture_protocol")); return; }
+ const auto state=ticket->state_;
+ if(state->settled) { callback(state->selection,state->error); return; }
+ state->reply=std::move(callback);
+}
+void KdeRegionProcess::discard(const Ticket& ticket) {
+ if(ticket && ticket->owner_==this && !ticket->consumed_.exchange(true)) abandon(ticket->state_);
+}
+void KdeRegionProcess::abandon(const std::shared_ptr<Prepared>& state) {
+ // Only an unsettled preparation can own the one running helper.
+ if(!closing_ && !state->settled) cancel();
 }
 void KdeRegionProcess::receive(const QString& type,const QJsonObject& payload) {
  if(!busy() || terminal_) return;

@@ -18,6 +18,9 @@ public:
  std::optional<quint64> lastCopyRevision()const override{return clipboard_.lastCopyRevision();}
  QJsonObject capabilities()const override;
  PreparedAcquisition prepareAcquisition(const QString&) override;
+ // A live region selection starts here, before the journal, as on X11.
+ PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)>,std::function<void()>) override;
+ using SourceAdapter::prepareAcquisition;
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override;
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;

@@ -261,6 +261,53 @@ private slots:
   putgd::test::settle(40);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
   QVERIFY(tearingDown);QCOMPARE(callbacks,0);QCOMPARE(reentries,0);
  }
+ void preparedSelectionWaitsForBegin() {
+  // The selector runs ahead of the journal; its geometry is held until begin().
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","ok");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  int terminals=0,releases=0;
+  auto ticket=process.prepare(frames(),{},{},[&](Error){++terminals;},[&]{++releases;});
+  QVERIFY(process.busy());PUTGD_TRY_COMPARE(releases,1);QVERIFY(!process.busy());QCOMPARE(terminals,0);
+  QRectF selected;Error error;int replies=0;
+  process.begin(ticket,[&](QRectF rectangle,Error e){selected=rectangle;error=e;++replies;});
+  qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QCOMPARE(replies,1);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(selected,QRectF(-20,20,60,40));
+  // A ticket delivers once.
+  process.begin(ticket,[&](QRectF,Error e){error=e;++replies;});QCOMPARE(replies,2);QCOMPARE(error.code,QString("capture_protocol"));
+ }
+ void preparedSelectionDeliversThroughEarlyBegin() {
+  // The durable continuation arrived first: the selection completes it directly.
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","ok");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  int terminals=0,releases=0,replies=0;QRectF selected;
+  auto ticket=process.prepare(frames(),{},{},[&](Error){++terminals;},[&]{++releases;});
+  process.begin(ticket,[&](QRectF rectangle,Error){selected=rectangle;++replies;});QCOMPARE(replies,0);
+  PUTGD_TRY_COMPARE(replies,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QCOMPARE(releases,1);QCOMPARE(terminals,0);QCOMPARE(selected,QRectF(-20,20,60,40));
+ }
+ void preparedCancellationReportsTerminalMetadata() {
+  // Esc before the journal finishes: the operation learns of it without a begin().
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  int releases=0;Error terminal;
+  auto ticket=process.prepare(frames(),{},{},[&](Error e){terminal=e;},[&]{++releases;});
+  putgd::test::settle(100);process.cancel();PUTGD_TRY_COMPARE(releases,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QCOMPARE(terminal.code,QString("cancelled"));
+  Error error;process.begin(ticket,[&](QRectF,Error e){error=e;});QCOMPARE(error.code,QString("cancelled"));
+ }
+ void droppedPreparationCancelsItsSelector() {
+  // The journal failed: nothing will ever ask for this geometry.
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  int releases=0;
+  // A prepared continuation can die on a journal worker, not the session thread.
+  {auto ticket=process.prepare(frames(),{},{},{},[&]{++releases;});PUTGD_VERIFY_STEADY(process.busy(),100);std::thread worker([ticket=std::move(ticket)]()mutable{ticket.reset();});worker.join();}
+  PUTGD_TRY_COMPARE(releases,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");QVERIFY(!process.busy());
+ }
+ void busyPreparationFailsWithoutDisturbingTheSelector() {
+  qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");KdeRegionProcess process(QCoreApplication::applicationFilePath());
+  int firstReleases=0,secondReleases=0;Error second;
+  auto first=process.prepare(frames(),{},{},{},[&]{++firstReleases;});
+  auto other=process.prepare(frames(),{},{},[&](Error e){second=e;},[&]{++secondReleases;});
+  QCOMPARE(second.code,QString("busy_selecting"));QCOMPARE(secondReleases,1);QVERIFY(process.busy());QCOMPARE(firstReleases,0);
+  process.discard(first);PUTGD_TRY_COMPARE(firstReleases,1);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+ }
  void missingHelperFailsOnce() {
   KdeRegionProcess process("/does-not-exist-putgd-kde-region");int callbacks=0;
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_start_failed"));++callbacks;});
