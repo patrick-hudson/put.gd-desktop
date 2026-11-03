@@ -85,7 +85,7 @@ class GnomeHelperFixture final:public QObject,protected QDBusContext {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface","org.putgd.Gnome50")
  uint currentPid_=0,failPid_=0,failures_=0;
- QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_,lastRegionMode_;int acquires_=0;
+ QJsonArray registrations_,lastAcquireMimes_;QString lastOutcome_,lastRegionMode_;int acquires_=0,previews_=0,previewsAtAcquire_=0,releases_=0;QJsonObject lastPreview_;
  int hellos_=0,binds_=0,commits_=0;
  QJsonObject lastBindings_;
  QString helloError_=qEnvironmentVariable("PUTGD_TEST_HELLO_ERROR"),prepareError_=qEnvironmentVariable("PUTGD_TEST_PREPARE_ERROR");
@@ -98,7 +98,7 @@ public slots:
   if(helloError_=="incompatible")return json({{"version",99},{"shellMajor",50}});
   if(!helloError_.isEmpty()){sendErrorReply(helloError_,"Synthetic bridge failure");return {};}
   const int loaded=qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION")?qEnvironmentVariableIntValue("PUTGD_TEST_EXTENSION_VERSION"):putgd::gnome::extensionVersion;
-  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",loaded},{"recordingVersion",loaded>=2?1:0}});}
+  return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1},{"extensionVersion",loaded},{"recordingVersion",loaded>=2?1:0},{"previewVersion",qEnvironmentVariableIsSet("PUTGD_TEST_EXTENSION_NO_PREVIEW")?QJsonValue():QJsonValue(1)}});}
  QString SetUiProcess(uint pid){
   registrations_.append(int(pid));
   if(pid==failPid_&&failures_){--failures_;return json({{"error",QJsonObject{{"code","helper_unavailable"},{"message","Synthetic registration failure"},{"details",QJsonObject{}}}}});}
@@ -120,17 +120,18 @@ public slots:
  }
  void SetErrors(const QString& hello,const QString& prepare){helloError_=hello;prepareError_=prepare;}
  QString Prepare(const QString& id,const QString&){if(!prepareError_.isEmpty()){sendErrorReply(prepareError_,"Synthetic preparation failure");return {};}return json({{"version",1},{"requestId",id}});}
+ QString Preview(const QString& id,const QString& encoded){++previews_;lastPreview_=QJsonDocument::fromJson(encoded.toUtf8()).object();return json({{"version",1},{"requestId",id},{"shown",true}});}
  QString Acquire(const QString& id,const QString& encoded){
-  const auto bounds=QJsonDocument::fromJson(encoded.toUtf8()).object();++acquires_;lastOutcome_=bounds["outcome"].toString();lastRegionMode_=bounds["regionMode"].toString();const auto mimes=bounds["imageMimes"].toArray();lastAcquireMimes_=mimes;
+  const auto bounds=QJsonDocument::fromJson(encoded.toUtf8()).object();++acquires_;previewsAtAcquire_=previews_;lastOutcome_=bounds["outcome"].toString();lastRegionMode_=bounds["regionMode"].toString();const auto mimes=bounds["imageMimes"].toArray();lastAcquireMimes_=mimes;
   for(const auto& mime:mimes)
    if(!mime.isString()||!mime.toString().startsWith("image/"))
     return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Invalid supported image MIME list"}}}});
   return json({{"version",1},{"requestId",id},{"mime","text/plain;charset=utf-8"},{"bytes",1}});
  }
  QString Read(const QString& id,qulonglong offset,uint){return json({{"version",1},{"requestId",id},{"offset",double(offset)},{"data","eA=="}});}
- QString Release(const QString&){return json({});}
+ QString Release(const QString&){++releases_;return json({});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
+ QString State(){return json({{"outcome",lastOutcome_},{"regionMode",lastRegionMode_},{"acquires",acquires_},{"previews",previews_},{"releases",releases_},{"previewsAtAcquire",previewsAtAcquire_},{"lastPreview",lastPreview_},{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
  signals:
  void Action(const QString& action,const QString& ticket);
@@ -242,6 +243,44 @@ private slots:
    bool completed=false;source.acquire(action,{},[&](PayloadResult value){QVERIFY(value.error.code!="helper_outdated");completed=true;});PUTGD_TRY_VERIFY(completed);
    QCOMPARE(state()["regionMode"].toString(),expected);
   }
+ }
+ void liveRegionSelectionShowsBeforeAcquire(){
+  // The selector returns geometry only, so it can show ahead of the journal.
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  source.setCaptureOutcome("Saves locally");source.setCaptureAppearance({{"scheme","light"}});
+  auto previews=state()["previews"].toInt();
+  auto prepared=source.prepareAcquisition("region");
+  PUTGD_TRY_COMPARE(state()["previews"].toInt(),previews+1);
+  const auto preview=state()["lastPreview"].toObject();QCOMPARE(preview["outcome"].toString(),QString("Saves locally"));QCOMPARE(preview["appearance"].toObject()["scheme"].toString(),QString("light"));
+  QCOMPARE(state()["previewsAtAcquire"].toInt(),previews);
+  bool completed=false;prepared({},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
+  QCOMPARE(state()["previewsAtAcquire"].toInt(),previews+1);
+  // Only a live region previews: other sources have no selector, and Screenshot
+  // first freezes the stage after the journal.
+  previews=state()["previews"].toInt();
+  completed=false;source.acquire("desktop",{},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
+  source.setRegionScreenshotFirst(true);
+  completed=false;source.acquire("region",{},[&](PayloadResult){completed=true;});PUTGD_TRY_VERIFY(completed);
+  QCOMPARE(state()["previews"].toInt(),previews);
+ }
+ void droppedPreviewReleasesTheSelector(){
+  // The journal failed or the operation stopped: nothing will ever Acquire.
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  const auto releases=state()["releases"].toInt();
+  {auto prepared=source.prepareAcquisition("region");std::thread worker([prepared=std::move(prepared)]()mutable{prepared={};});worker.join();}
+  PUTGD_TRY_COMPARE(state()["releases"].toInt(),releases+1);
+ }
+ void extensionWithoutPreviewKeepsSelectingFromAcquire(){
+  // An upgrade leaves the previous extension loaded until the next login. Its
+  // Hello does not advertise Preview; region capture keeps working, with no logout.
+  stopFixture();qputenv("PUTGD_TEST_EXTENSION_NO_PREVIEW","1");QVERIFY(startFixture());qunsetenv("PUTGD_TEST_EXTENSION_NO_PREVIEW");
+  GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));
+  QVERIFY(!source.capabilities()["helper"].toObject()["outdated"].toBool());
+  const auto acquires=state()["acquires"].toInt();
+  PayloadResult result;bool completed=false;source.acquire("region",{},[&](PayloadResult value){result=std::move(value);completed=true;});PUTGD_TRY_VERIFY(completed);
+  QVERIFY2(!result.error,qPrintable(result.error.code));
+  QCOMPARE(state()["previews"].toInt(),0);QCOMPARE(state()["acquires"].toInt(),acquires+1);
+  stopFixture();QVERIFY(startFixture());PUTGD_TRY_VERIFY(helperAvailable(source));
  }
  void screenCapturesSendOnlyPngWithoutListingImagePlugins(){
   // Listing image types instantiates every installed Qt image plugin; only a

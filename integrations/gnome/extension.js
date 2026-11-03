@@ -32,6 +32,7 @@ const XML = `<node><interface name="${IFACE}">
 <method name="InvalidateCopy"><arg type="s" direction="out"/></method>
 <method name="Revision"><arg type="s" direction="out"/></method>
 <method name="Prepare"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Preview"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Acquire"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Read"><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
 <method name="Release"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
@@ -954,7 +955,7 @@ export default class PutgdExtension extends Extension {
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
             extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1,
-            recordingVersion: 1}));
+            recordingVersion: 1, previewVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -1073,6 +1074,35 @@ export default class PutgdExtension extends Extension {
             new GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
     }
 
+    // A live region selection shows at the press, ahead of the resident's two
+    // journal saves. It returns only geometry, which Acquire takes up once the
+    // operation is durable; no pixels are read here. When it cannot start now,
+    // Acquire selects the usual way and reports why.
+    PreviewAsync([id, json], invocation) {
+        this._run(invocation, sender => {
+            const request = this._get(id, sender);
+            check(json.length <= 4096, 'bridge_protocol', 'Region preview exceeds the control-message limit');
+            const options = JSON.parse(json);
+            check(options.outcome === undefined || (typeof options.outcome === 'string' && options.outcome.length <= 256),
+                'bridge_protocol', 'Invalid capture outcome');
+            // A request that already failed, in _prepare for example, keeps its error
+            // for Acquire to report; throwing here would drop it.
+            if (request.error || !this._enabled || request.action !== 'region' || request.started || request.preview || this._selector)
+                return {version: 1, requestId: id, shown: false};
+            const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: m.density})), options.outcome ?? '', null, options.appearance ?? {});
+            this._selector = request.selector = selector;
+            request.stage = 'region-select';
+            request.preview = selector.selectAsync().then(selected => ({selected}), error => ({error})).then(result => {
+                if (request.selector === selector) {
+                    request.selector = null;
+                    this._selector = null;
+                }
+                return result;
+            });
+            return {version: 1, requestId: id, shown: true};
+        });
+    }
+
     AcquireAsync([id, json], invocation) {
         this._run(invocation, async sender => {
             const request = this._get(id, sender);
@@ -1140,23 +1170,35 @@ export default class PutgdExtension extends Extension {
             const bottom = request.layout.map(m => m.logical[1] + m.logical[3]);
             selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
             if (request.action === 'region') {
-                check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
-                // Screenshot first (#629): read the whole stage before the
-                // selector opens, so open menus stay in the frame it shows.
-                if (limits.regionMode === 'screenshot_first') {
-                    request.stage = 'region-freeze';
-                    const [content, scale] = await new Shell.Screenshot().screenshot_stage_to_content();
+                let selected;
+                if (request.preview) {
+                    request.stage = 'region-select';
+                    const result = await request.preview;
                     this._alive(request);
-                    check(content && Number.isFinite(scale) && scale > 0, 'capture_failed', 'GNOME could not freeze the desktop');
-                    frozen = {content, scale, texture: content.get_texture()};
+                    if (result.error)
+                        throw result.error;
+                    selected = result.selected;
+                    // Pixels must not include another selector that started meanwhile.
+                    check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+                } else {
+                    check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+                    // Screenshot first (#629): read the whole stage before the
+                    // selector opens, so open menus stay in the frame it shows.
+                    if (limits.regionMode === 'screenshot_first') {
+                        request.stage = 'region-freeze';
+                        const [content, scale] = await new Shell.Screenshot().screenshot_stage_to_content();
+                        this._alive(request);
+                        check(content && Number.isFinite(scale) && scale > 0, 'capture_failed', 'GNOME could not freeze the desktop');
+                        frozen = {content, scale, texture: content.get_texture()};
+                    }
+                    const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null, request.limits.appearance ?? {});
+                    this._selector = request.selector = selector;
+                    request.stage = 'region-select';
+                    selected = await selector.selectAsync();
+                    request.selector = null;
+                    this._selector = null;
+                    this._alive(request);
                 }
-                const selector = new RegionSelector(false, request.layout.map(m => ({x: m.logical[0], y: m.logical[1], width: m.logical[2], height: m.logical[3], density: frozen ? frozen.scale : m.density})), request.limits.outcome, frozen?.content ?? null, request.limits.appearance ?? {});
-                this._selector = request.selector = selector;
-                request.stage = 'region-select';
-                const selected = await selector.selectAsync();
-                request.selector = null;
-                this._selector = null;
-                this._alive(request);
                 check(selected, 'cancelled', 'GNOME region selection cancelled');
                 selection = rectangle(selected);
             }

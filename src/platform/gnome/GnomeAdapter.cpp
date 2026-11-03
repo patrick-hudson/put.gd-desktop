@@ -1,4 +1,6 @@
 #include "GnomeAdapter.h"
+#include <atomic>
+#include <memory>
 #include "GnomeProtocol.h"
 #include "platform/NativeSession.h"
 #include "core/ImageJob.h"
@@ -158,7 +160,21 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  else if(action=="region"&&outdated()){error=recordingShellError();if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
- return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot);};
+ // Show a live selection at the press; Acquire waits for the journal and takes
+ // up its geometry. Screenshot first freezes the stage only after both saves.
+ // An extension loaded before this method selects from Acquire, as it always did.
+ // The journal may fail or the operation stop before this continuation runs. It
+ // can die on a journal worker; the selector must not stay up until the bridge's
+ // 120 s timeout, so an unconsumed preview is released on the session thread.
+ auto started=std::make_shared<std::atomic_bool>(false);std::shared_ptr<void> preview;
+ if(!error&&action=="region"&&!regionScreenshotFirst_&&helper_["previewVersion"].toInt()==1){
+  call("Preview",{id,json({{"appearance",captureAppearance_},{"outcome",captureOutcome_}})},[](Error,QJsonObject){});
+  preview=std::shared_ptr<void>(nullptr,[guard,id,started](void*){
+   if(started->load()||!guard)return;
+   QMetaObject::invokeMethod(guard,[guard,id]{if(guard&&guard->prepared_.removeOne(id))guard->release(id);},Qt::QueuedConnection);
+  });
+ }
+ return [guard,id,action,error,outcome=captureOutcome_,screenshot=action=="region"&&regionScreenshotFirst_,started,preview](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){started->store(true);if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply),outcome,screenshot);};
 }
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
 void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst){
