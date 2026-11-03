@@ -48,12 +48,16 @@ void hydrateRemote(Operation& op,const QHash<QString,QJsonObject>& statuses) {
   if(state.contains("shareIntentOptions"))item.shareIntentOptions=state["shareIntentOptions"].toObject();
  }
 }
+// A query only ever stepped forward. QSqlCachedResult otherwise keeps every
+// fetched row until the query finishes: recovery over a 10,000-operation
+// journal held 34 MiB of row blobs at once (#1161). Forward-only keeps one.
+QSqlQuery forwardQuery(const QSqlDatabase& db) {QSqlQuery q(db);q.setForwardOnly(true);return q;}
 Error readRemoteStates(QSqlDatabase db,const QStringList& ids,QHash<QString,QJsonObject>& statuses) {
  // Bound SQL parameters to the exact selected operations; concurrent new
  // operations cannot shift the hydration set between the two reads.
  for(qsizetype offset=0;offset<ids.size();offset+=200) {
   const auto batch=ids.mid(offset,200);QStringList marks;for(qsizetype i=0;i<batch.size();++i)marks.append("?");
-  QSqlQuery q(db);q.prepare("SELECT id,remote_status,json_extract(data,'$.shareStatus'),json_extract(data,'$.shareReceipt'),json_extract(data,'$.shareIntent'),json_extract(data,'$.shareIntentOptions') FROM item_state WHERE operation_id IN ("+marks.join(',')+")");for(const auto& id:batch)q.addBindValue(id);
+  auto q=forwardQuery(db);q.prepare("SELECT id,remote_status,json_extract(data,'$.shareStatus'),json_extract(data,'$.shareReceipt'),json_extract(data,'$.shareIntent'),json_extract(data,'$.shareIntentOptions') FROM item_state WHERE operation_id IN ("+marks.join(',')+")");for(const auto& id:batch)q.addBindValue(id);
   if(!q.exec())return sqlError();
   while(q.next()){QJsonObject state{{"remoteStatus",q.value(1).toString()}};if(!q.value(2).isNull())state["shareStatus"]=q.value(2).toString();if(!q.value(3).isNull())state["shareReceipt"]=decode(q.value(3));if(!q.value(4).isNull())state["shareIntent"]=q.value(4).toString();if(!q.value(5).isNull())state["shareIntentOptions"]=decode(q.value(5));statuses.insert(q.value(0).toString(),state);}
  }
@@ -210,7 +214,7 @@ Operation HistoryStore::operation(const QString& id,Error* error) const {
 }
 QList<Operation> HistoryStore::recover(Error* error) {
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
- QSqlQuery q(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
+ auto q=forwardQuery(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
  while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);bool changed=false;
   if(op.state=="accepted"||op.state=="acquiring") {op.state="interrupted";op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};changed=true;}
   // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
@@ -225,12 +229,12 @@ QList<Operation> HistoryStore::recover(Error* error) {
  }
  q.finish();for(const auto& op:result) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
  // Sharing intent survives a crash; revoke/create are never automatically replayed.
- QSqlQuery shares(db_);if(!shares.exec("SELECT data FROM sharing_operations WHERE json_extract(data,'$.state') IN ('accepted','running')")){if(error)*error=sqlError();return result;}
+ auto shares=forwardQuery(db_);if(!shares.exec("SELECT data FROM sharing_operations WHERE json_extract(data,'$.state') IN ('accepted','running')")){if(error)*error=sqlError();return result;}
  QList<QJsonObject> interruptedShares;
  while(shares.next()){auto doc=decode(shares.value(0));if(doc["state"]=="accepted"||doc["state"]=="running"){doc["state"]="interrupted";doc["status"]="unknown";auto receipt=doc["receipt"].toObject();receipt["directUrl"]="";doc["receipt"]=receipt;interruptedShares.append(doc);}}
  shares.finish();for(const auto& doc:interruptedShares)if(auto e=saveSharing(doc)){if(error)*error=e;return {};}
  // A driver may have sent a DELETE before the session died. Keep its exact progress.
- QSqlQuery d(db_);if(!d.exec("SELECT data FROM deletions")) {if(error)*error=sqlError();return result;}
+ auto d=forwardQuery(db_);if(!d.exec("SELECT data FROM deletions")) {if(error)*error=sqlError();return result;}
  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc["state"]=="accepted"||doc["state"]=="running") {doc["state"]="interrupted";auto items=doc["items"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item["status"]=="deleting") item["status"]="unknown";items[i]=item;}doc["items"]=items;pending.append(doc);}}
  d.finish();for(const auto& doc:pending) if(auto e=saveDeletion(doc)) {if(error)*error=e;return {};}
  return result;
@@ -251,7 +255,7 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  else filter("remote_status",query.remoteStatus);
  if(!query.from.isEmpty()) {where+=" AND created>=?";values.append(query.from);}if(!query.to.isEmpty()) {where+=" AND created<=?";values.append(query.to);}
  if(!query.search.isEmpty()) {where+=" AND name LIKE ? ESCAPE '\\'";auto escaped=query.search;escaped.replace("\\","\\\\");escaped.replace("%","\\%");escaped.replace("_","\\_");values.append("%"+escaped+"%");}
- QSqlQuery q(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
+ auto q=forwardQuery(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
  if(!q.exec()||!q.next()) {r.error=sqlError();return r;}r.total=q.value(0).toLongLong();
  q.prepare("SELECT data FROM history"+where+" ORDER BY created DESC,id LIMIT ? OFFSET ?");for(const auto& v:values) q.addBindValue(v);q.addBindValue(query.limit);q.addBindValue(query.offset);
  if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(relocate(publicRecord(decode(q.value(0)))));return r;
@@ -261,14 +265,14 @@ QJsonObject HistoryStore::detail(const QString& id,Error* error) const {if(error
 QJsonArray HistoryStore::recent(int limit,Error* error) const {
  QJsonArray result;if(error_) {if(error)*error=error_;return result;}
  if(limit<1||limit>10000) {if(error)*error={"invalid_query","Invalid recent activity limit",{}};return result;}
- QSqlQuery q(db_);q.prepare("SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?");q.addBindValue(limit);if(!q.exec()){if(error)*error=sqlError();return result;}
+ auto q=forwardQuery(db_);q.prepare("SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?");q.addBindValue(limit);if(!q.exec()){if(error)*error=sqlError();return result;}
  QList<Operation> operations;QStringList ids;while(q.next()){auto op=Operation::fromJson(decode(q.value(0)));relocate(op);ids.append(op.id);operations.append(std::move(op));}q.finish();
  QHash<QString,QJsonObject> statuses;if(auto e=readRemoteStates(db_,ids,statuses)){if(error)*error=e;return {};}
  for(auto& op:operations){hydrateRemote(op,statuses);result.append(op.publicJson());}return result;
 }
 QList<Operation> HistoryStore::operationsSince(const QString& from,const QStringList& states,int limit,Error* error) const {
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
- QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE json_extract(data,'$.created')>=? ORDER BY json_extract(data,'$.created') DESC,id");q.addBindValue(from);
+ auto q=forwardQuery(db_);q.prepare("SELECT data FROM operations WHERE json_extract(data,'$.created')>=? ORDER BY json_extract(data,'$.created') DESC,id");q.addBindValue(from);
  if(!q.exec()){if(error)*error=sqlError();return result;}
  while(result.size()<limit&&q.next()){auto op=Operation::fromJson(decode(q.value(0)));if(!states.contains(op.state))continue;relocate(op);result.append(std::move(op));}
  return result;
@@ -284,7 +288,7 @@ std::optional<Operation> HistoryStore::lastUpload(const QString& profileId,Error
 }
 QStringList HistoryStore::journaledOperations(Error* error) const {
  QStringList result;if(error_) {if(error)*error=error_;return result;}
- QSqlQuery q(db_);
+ auto q=forwardQuery(db_);
  if(!q.exec("SELECT id FROM operations WHERE EXISTS(SELECT 1 FROM json_each(operations.data,'$.items') AS item WHERE json_extract(item.value,'$.uploadJournal.uploadId') IS NOT NULL)")) {if(error)*error=sqlError();return result;}
  while(q.next())result.append(q.value(0).toString());
  return result;
