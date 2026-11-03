@@ -325,8 +325,7 @@ Each resident runs with private `XDG_CONFIG_HOME`,
     `/tmp/.mount_put.gd*` mount and the resident's inherited mount descriptor before restarting.
     After N+1 starts, exactly one AppImage runtime and one FUSE mount remain for this isolated
     installation. The old runtime has exited and its mount is absent from `/proc/self/mountinfo`.
-    If the old mountpoint remains, `fuser -vm` reports no holder. Repeat an update/restart to
-    check that runtimes and mounts do not accumulate.
+    If the old mount is still listed, capture `fuser -vm` on that mount as failure evidence.
     Save before/after process, mount and fd listings with both images' hashes and build identities.
 - **U8. appimageupdatetool** (continuous build, digest recorded) on N: `--check-for-update` says yes, and
   the update writes N+1 beside N, which matches `SHA256SUMS`. On Fedora this needs
