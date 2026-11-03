@@ -1,4 +1,5 @@
 #include "WindowButtons.h"
+#include "ChildProcess.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QSettings>
@@ -103,7 +104,9 @@ void WindowButtons::monitorSettings() {
             }
         }
     });
+    terminateWithParent(monitor_);
     monitor_.start(program, {QStringLiteral("monitor"), schema_, QStringLiteral("button-layout")});
+    terminateWithParent(query_);
     query_.start(program, {QStringLiteral("get"), schema_, QStringLiteral("button-layout")});
     // A broken settings service must never stall window construction.
     QTimer::singleShot(2000, &query_, [this] { if (query_.state() != QProcess::NotRunning) query_.kill(); });
