@@ -1,12 +1,14 @@
 // Production widget input/painting without a Wayland compositor or layer role.
 // This does not establish native KWin focus, dismissal or capture correctness.
 #include "platform/kde/KdeRegionOverlay.h"
+#include "platform/kde/KdeDesktopFont.h"
 #include "platform/kde/KdeRegionProtocol.h"
 #include "ui/RegionSelection.h"
 #include <QtTest>
 #include <QApplication>
 #include <QDir>
 #include <QScreen>
+#include <QTemporaryDir>
 #include <QWindow>
 namespace putgd {
 class KdeRegionOverlayTest final:public QObject {
@@ -152,6 +154,20 @@ private slots:
    QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
    QCOMPARE(selected,QRectF(2788,900,160,120));QCOMPARE(encoded(selected),selected);
   }
+ }
+ void desktopFontComesFromKdeglobals(){
+  QTemporaryDir directory;QVERIFY(directory.isValid());
+  const auto write=[&](const QString& name,const QByteArray& text){QFile file(directory.filePath(name));QVERIFY(file.open(QIODevice::WriteOnly));file.write(text);};
+  write("user","[Colors:Window]\nfont=Wrong Section,20\n\n[General]\nfixed=Hack,10,-1,5,400\nfont=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1\n");
+  write("no-entry","[General]\nColorScheme=BreezeDark\n");
+  write("system","[General]\nfont[$i]=Cantarell,13\n");
+  auto font=kdeDesktopFont({directory.filePath("missing"),directory.filePath("user"),directory.filePath("system")});
+  QCOMPARE(font.family(),QString("Inter"));QCOMPARE(font.pointSize(),12);
+  // The first file that names a font wins, in KConfig's order.
+  font=kdeDesktopFont({directory.filePath("no-entry"),directory.filePath("system")});
+  QCOMPARE(font.family(),QString("Cantarell"));QCOMPARE(font.pointSize(),13);
+  font=kdeDesktopFont({directory.filePath("missing")});
+  QCOMPARE(font.family(),QString("Noto Sans"));QCOMPARE(font.pointSize(),10);
  }
  void screenshotFirstDrawsTheFrozenFrame(){
   // #629: the frozen pixels are the backdrop; the selection only adds an outline.
