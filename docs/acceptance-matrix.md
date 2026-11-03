@@ -169,8 +169,9 @@ memory window and the coordinator's OK for each logout.
   - The put.gd icon shows in the title bar (where the window decoration draws app icons) and in the task switcher.
 - **C. Idle memory:** after a 180 s idle window, the resident's RSS and PSS are under the 40 MiB budget.
   - No GTK, KDE platform theme, `libssl` or `libQt6Network` is mapped in the resident.
-    `libcrypto` is not on the list: Fedora's distro `libQt6Core` links it directly, so every Qt program
-    on Fedora maps it ([#1171](https://github.com/patrick-hudson/put.gd-desktop/issues/1171)).
+    `libcrypto` is not on the list, but the bundled Qt does not link it, so a `libcrypto` mapping in the
+    AppImage resident is still recorded as a finding. (The Fedora native package maps it through the
+    distro's `libQt6Core`; see the native profile's C and [#1171](https://github.com/patrick-hudson/put.gd-desktop/issues/1171).)
 - **D. Capture:** region, window and desktop captures each produce a PNG with a history entry.
   - **Edit & upload:** a blur and a solid redaction, checked in the uploaded pixels, then Upload.
   - **Save a copy…** opens the desktop's portal chooser (the themed fallback only where no portal FileChooser exists), and the saved file exists.
@@ -462,7 +463,9 @@ On the accepted nightly, installed by item L.
   - The put.gd icon shows in the menu, the title bar (where the decoration draws app icons) and the task switcher.
 - **C. Idle memory:** after a 180 s idle window on a quiet host, the resident's RSS and PSS are under the 40 MiB budget.
   - Record what the resident maps: GTK, the KDE platform theme, `libssl` and `libQt6Network`, against the AppImage's C (none).
-    `libcrypto` is expected with Fedora's distro Qt (its `libQt6Core` links it, #1171) and is not a finding.
+    `libcrypto` is expected on Fedora only: Fedora's distro `libQt6Core` links it directly, so every program
+    on that Qt maps it ([#1171](https://github.com/patrick-hudson/put.gd-desktop/issues/1171)); it is not a
+    finding there. The Debian and Ubuntu Qt do not link it, so a mapping on those packages is recorded.
   - Record the host load beside the numbers.
 - **D. Capture:**
   - Region, window and desktop captures each produce a PNG with a history entry, through the desktop's native path:
