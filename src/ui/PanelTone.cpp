@@ -1,4 +1,5 @@
 #include "PanelTone.h"
+#include "ChildProcess.h"
 #include "Theme.h"
 #include "core/HostEnvironment.h"
 #include <QColor>
@@ -109,6 +110,7 @@ void PanelTone::refresh(){
  QTimer::singleShot(3000,process,[process]{if(process->state()!=QProcess::NotRunning)process->kill();});
  // The host's gsettings, with the host's GLib (#326).
  process->setProcessEnvironment(host::environment());
+ terminateWithParent(*process);
  process->start("gsettings",{"get","org.cinnamon.theme","name"});
 }
 bool PanelTone::cinnamonThemeChanged(const QString& prefix,const QStringList& changes){
