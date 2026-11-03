@@ -7,6 +7,7 @@
 #include <QtTest>
 #include <QApplication>
 #include <QDir>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QTemporaryDir>
 #include <QWindow>
@@ -154,6 +155,15 @@ private slots:
    QCOMPARE(accepted.size(),1);const auto selected=qvariant_cast<QRectF>(accepted.first().first());
    QCOMPARE(selected,QRectF(2788,900,160,120));QCOMPARE(encoded(selected),selected);
   }
+ }
+ void pillsFollowOnceTheFontsLoad(){
+  // A surface maps before the worker finishes; the pills arrive with a repaint.
+  auto worker=KdeRegionOverlay::preloadFonts();
+  const auto join=qScopeGuard([&]{if(worker.joinable())worker.join();});
+  KdeRegionOverlay overlay({},nullptr,false,"Saves locally");auto* surface=add(overlay,QRectF(0,0,800,600));QVERIFY(surface);
+  QVERIFY(!surface->grab().isNull());
+  worker.join();QCoreApplication::processEvents();
+  QVERIFY(!surface->grab().isNull());overlay.cancel();
  }
  void desktopFontComesFromKdeglobals(){
   QTemporaryDir directory;QVERIFY(directory.isValid());

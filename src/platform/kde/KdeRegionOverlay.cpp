@@ -15,12 +15,23 @@
 #include <QWindow>
 #include <QTimer>
 #include <QCursor>
+#include <QFontMetricsF>
+#include <QPointer>
+#include <atomic>
+#include <utility>
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <LayerShellQt/Window>
 #include <wayland-client.h>
 #define PUTGD_NATIVE_REGION 1
 #endif
 namespace putgd {
+namespace {
+// Pill fonts in this process: 0 load on first use, 1 loading on a worker, 2 loaded.
+std::atomic_int pillFonts{0};
+// Overlays that drew frames without pills meanwhile; GUI thread only.
+QList<QPointer<KdeRegionOverlay>> fontWaiters;
+bool pillsReady(){return pillFonts.load()!=1;}
+}
 class KdeRegionOverlay::Surface final:public QWidget {
 public:
  Surface(KdeRegionOverlay& owner,const CaptureFrame& frame,QScreen* screen):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint),owner_(owner),logicalRect_(frame.logicalRect),identity_(frame.identity){
@@ -45,7 +56,8 @@ public:
  // the frozen backdrop is blitted for those pixels alone and Qt Wayland
  // commits that region, not a monitor-sized buffer, per pointer event (#6).
  void updateSelection(){describeRegion(this,owner_.selection_,owner_.recording_,QStringLiteral("Display %1").arg(activeScreen()+1),owner_.frames_[activeScreen()].logicalRect,owner_.frames_,owner_.dragging_,owner_.outcome_);const auto next=chromeArea();update(painted_|next);painted_=next;}
- QRegion chromeArea()const{const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
+ // The outline never waits for the fonts, only the pills do.
+ QRegion chromeArea()const{if(!pillsReady())return selectionOutlineArea(owner_.selection_.translated(-logicalRect_.topLeft())).intersected(rect());const int own=ownScreen();QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);return regionChromeArea(rect(),QFontMetrics(font()),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_&&owner_.hint_.visible(),regionLabelDisplay(displays,owner_.selection_)==own);}
 protected:
  void paintEvent(QPaintEvent* e) override{
   QElapsedTimer work;work.start();
@@ -57,7 +69,8 @@ protected:
   const auto clipped=owner_.selection_.intersected(logicalRect_);
   if(!clipped.isEmpty())paintSelectionOutline(p,clipped.translated(-logicalRect_.topLeft()));
   QList<QRectF> displays;for(const auto& frame:owner_.frames_)displays.append(frame.logicalRect);
-  paintRegionChrome(p,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
+  if(!pillsReady()){if(!fontWaiters.contains(&owner_))fontWaiters.append(&owner_);}
+  else paintRegionChrome(p,rect(),owner_.selection_.translated(-logicalRect_.topLeft()),regionSizeLabel(owner_.selection_,owner_.frames_),own==owner_.hintScreen_,owner_.hint_.opacity(),regionLabelDisplay(displays,owner_.selection_)==own);
   owner_.stats_.painted(work.nsecsElapsed()/1e6);
  }
  int ownScreen() const {for(int i=0;i<owner_.frames_.size();++i)if(owner_.frames_[i].identity==identity_)return i;return 0;}
@@ -85,6 +98,16 @@ private:KdeRegionOverlay& owner_;QRectF logicalRect_;QString identity_;QRegion p
 KdeRegionOverlay::KdeRegionOverlay(QList<CaptureFrame> frames,QObject* parent,bool recording,QString outcome,bool frozen):QObject(parent),frames_(std::move(frames)),outcome_(std::move(outcome)),recording_(recording),frozen_(frozen){}
 // The hint fade and the clearing commit before dismissal: clearing repaints everything.
 void KdeRegionOverlay::repaint(){for(auto* surface:surfaces_){if(clearing_)surface->update();else surface->updateSelection();}}
+std::thread KdeRegionOverlay::preloadFonts(){
+ pillFonts=1;
+ return std::thread([]{
+  // Qt shares the font database under its own lock; engines stay per thread.
+  QFontMetricsF(nativeRegionFont()).horizontalAdvance(regionHint());
+  pillFonts=2;
+  QMetaObject::invokeMethod(qApp,[]{for(const auto& overlay:std::exchange(fontWaiters,{}))if(overlay)overlay->fontsLoaded();},Qt::QueuedConnection);
+ });
+}
+void KdeRegionOverlay::fontsLoaded(){if(!finished_)repaint();}
 KdeRegionOverlay::~KdeRegionOverlay(){
 #ifdef PUTGD_NATIVE_REGION
  if(dismissal_)wl_callback_destroy(dismissal_);

@@ -8,6 +8,7 @@
 #include "core/BuildInfo.h"
 #include <QApplication>
 #include <QJsonDocument>
+#include <QScopeGuard>
 #include <QScreen>
 #include <QTimer>
 #include <QUuid>
@@ -15,6 +16,7 @@
 #include <cstring>
 #include <memory>
 #include <functional>
+#include <thread>
 #include <cerrno>
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <wayland-client.h>
@@ -53,6 +55,10 @@ int main(int argc,char** argv) {
  }
  QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
  if(plasmaFont) QGuiApplication::setFont(putgd::kdeDesktopFont(putgd::kdeGlobalsPaths()));
+ // Load the pill font while this process waits for its bootstrap; a surface does
+ // not wait for it to map.
+ std::thread fonts=putgd::KdeRegionOverlay::preloadFonts();
+ const auto joinFonts=qScopeGuard([&]{fonts.join();});
  app.setDesktopFileName("putgd-kde-region");
  QCoreApplication::setOrganizationName("putgd"); QCoreApplication::setApplicationName("putgd-kde-region");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
