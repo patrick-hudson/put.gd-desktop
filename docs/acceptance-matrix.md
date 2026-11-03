@@ -321,6 +321,12 @@ Each resident runs with private `XDG_CONFIG_HOME`,
     full download is taken and `zsync.fallbackReason` names the crash.
   - The new image is on the same path, with its mode kept. **Restart put.gd** runs N+1, and the hidden
     backup is gone after that first start.
+  - **One runtime, one mount after restart (#1165):** record the old runtime PID, its
+    `/tmp/.mount_put.gd*` mount and the resident's inherited mount descriptor before restarting.
+    After N+1 starts, exactly one AppImage runtime and one FUSE mount remain for this isolated
+    installation. The old runtime has exited, its mount is gone, and `fuser -vm` on the old mount
+    reports no holder. Repeat an update/restart to check that runtimes and mounts do not accumulate.
+    Save before/after process, mount and fd listings with both images' hashes and build identities.
 - **U8. appimageupdatetool** (continuous build, digest recorded) on N: `--check-for-update` says yes, and
   the update writes N+1 beside N, which matches `SHA256SUMS`. On Fedora this needs
   `SSL_CERT_FILE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem` ([#297](https://github.com/patrick-hudson/put.gd-desktop/issues/297)).
