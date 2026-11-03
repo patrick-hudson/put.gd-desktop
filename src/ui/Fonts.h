@@ -13,8 +13,9 @@ QString mono();
 // <dataDirectory>/putgd/fonts, where a relative dataDirectory is relative to
 // binDirectory ("../share" for the DEB, RPM and AppImage layouts) and an
 // absolute one is used as given. Empty when that directory is absent. The
-// one-argument form uses the data directory the build was configured with,
-// relative to its bin directory.
+// one-argument form passes the data directory the build was configured with:
+// the path from its bin directory when CMAKE_INSTALL_DATADIR is relative,
+// the absolute directory itself otherwise.
 QString installedDirectory(const QString& binDirectory, const QString& dataDirectory);
 QString installedDirectory(const QString& binDirectory);
 // Where a font is loaded from: the installed file when the directory has it,
