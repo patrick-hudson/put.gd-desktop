@@ -205,8 +205,9 @@ continues after dispatch to detect disconnects and release admission slots;
 lifetime-guarded late replies are harmless. Schema-1 commands serve `putgd-cli`,
 `UiSession` and the optional MCP helper. See [CLI](cli.md) and [MCP](mcp.md).
 
-On glibc Linux, startup recovery, accepted acquisition and explicit local
-image/text copying mark allocator reclamation pending. One two-second quiet
+On glibc Linux, startup recovery, accepted acquisition, explicit local
+image/text copying, a delivered history page and the interface helper's exit
+mark allocator reclamation pending. One two-second quiet
 timer waits for selectors, operations, copy queues, workers, payload leases and
 recording to drain, then calls `malloc_trim(0)` once. New background work stops
 the timer. Live clipboard data and widgets are preserved. Diagnostics expose the
