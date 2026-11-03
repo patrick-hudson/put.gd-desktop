@@ -173,7 +173,29 @@ private slots:
   // The sweep runs in the child, never in the resident.
   QVERIFY(::fcntl(low.handle(),F_GETFD)>=0);QVERIFY(::fcntl(high.handle(),F_GETFD)>=0);
  }
+ void failedExecIsReported(){
+  const auto program=root_.filePath("missing-interpreter");
+  QFile script(program);QVERIFY(script.open(QIODevice::WriteOnly));
+  script.write("#!/putgd-test-no-such-interpreter\n");script.close();
+  QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  qint64 pid=0;QVERIFY(!host::startDetached(program,{},&pid));QCOMPARE(pid,qint64(-1));
+ }
+ void childOutlivesItsLaunchingApplication(){
+  const auto receipt=root_.filePath("outliving-child.pid");
+  QProcess parent;parent.start(QCoreApplication::applicationFilePath(),{"--detached-parent",receipt});
+  QVERIFY(parent.waitForFinished(5000));QCOMPARE(parent.exitCode(),0);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QFile::exists(receipt),5000);
+  QFile file(receipt);QVERIFY(file.open(QIODevice::ReadOnly));
+  const auto pid=file.readAll().trimmed().toLongLong();QVERIFY(pid>0);
+  const auto stop=qScopeGuard([&]{::kill(pid,SIGKILL);});
+  QVERIFY(::kill(pid,0)==0);QCOMPARE(qint64(::getsid(pid)),pid);
+ }
 };
 
-QTEST_GUILESS_MAIN(HostEnvironmentTest)
+int main(int argc,char** argv){
+ QCoreApplication app(argc,argv);
+ if(app.arguments().size()==3&&app.arguments()[1]=="--detached-parent")
+  return host::startDetached("/bin/sh",{"-c","echo $$ > \"$1\"; exec /bin/sleep 30","putgd-parent-test",app.arguments()[2]})?0:1;
+ HostEnvironmentTest test;return QTest::qExec(&test,argc,argv);
+}
 #include "test_host_environment.moc"

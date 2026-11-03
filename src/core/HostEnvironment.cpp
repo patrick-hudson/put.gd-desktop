@@ -5,6 +5,9 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <fcntl.h>
+#include <unistd.h>
+#include <memory>
 
 namespace putgd::host {
 namespace {
@@ -85,19 +88,32 @@ bool startDetached(const QString& program,const QStringList& arguments,qint64* p
  const auto env=environment();
  const auto path=findProgram(program,env);
  if(path.isEmpty())return false;
- QProcess process;process.setProgram(path);process.setArguments(arguments);process.setProcessEnvironment(env);
- process.setStandardInputFile(QProcess::nullDevice());process.setStandardOutputFile(QProcess::nullDevice());process.setStandardErrorFile(QProcess::nullDevice());
+ auto process=std::make_unique<QProcess>();process->setProgram(path);process->setArguments(arguments);process->setProcessEnvironment(env);
+ process->setStandardInputFile(QProcess::nullDevice());process->setStandardOutputFile(QProcess::nullDevice());process->setStandardErrorFile(QProcess::nullDevice());
 #if QT_VERSION >= QT_VERSION_CHECK(6,6,0)
- process.setUnixProcessParameters(QProcess::UnixProcessFlag::CloseFileDescriptors);
+ process->setUnixProcessParameters(QProcess::UnixProcessFlag::CloseFileDescriptors);
+ return process->startDetached(pid);
 #else
- // Qt 6.4/6.5 startDetached ignores setChildProcessModifier. Close in a host
- // wrapper instead; bash supports fd 1023, unlike Debian/Ubuntu's /bin/sh.
- // Arguments stay positional, never shell source. exec preserves the PID.
- process.setProgram(QStringLiteral("/bin/bash"));
- process.setArguments(QStringList{"-c",QStringLiteral(
-  "for f in /proc/self/fd/*; do f=${f##*/}; if [ \"$f\" -gt 2 ]; then eval \"exec $f>&-\"; fi; done; exec \"$@\""),
-  "putgd-detached",path}+arguments);
+ // Qt 6.4/6.5 startDetached ignores setChildProcessModifier. Use start()
+ // with a new session instead, retaining QProcess only until the child exits.
+ // No QObject parent: exiting putgd must never destroy/kill this host child.
+ const long maximumFd=::sysconf(_SC_OPEN_MAX);
+ if(maximumFd<0)return false;
+ process->setChildProcessModifier([maximumFd]{
+  ::setsid();
+  for(int fd=3;fd<maximumFd;++fd){
+   const int flags=::fcntl(fd,F_GETFD);
+   // Preserve Qt's CLOEXEC startup/error pipe until exec so launch failures
+   // still reach waitForStarted(). These fds close atomically at execve.
+   if(flags>=0&&!(flags&FD_CLOEXEC))::close(fd);
+  }
+ });
+ QObject::connect(process.get(),&QProcess::finished,process.get(),&QObject::deleteLater);
+ process->start();
+ if(!process->waitForStarted()){if(pid)*pid=-1;return false;}
+ if(pid)*pid=process->processId();
+ process.release();
+ return true;
 #endif
- return process.startDetached(pid);
 }
 }
