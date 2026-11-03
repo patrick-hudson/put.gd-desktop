@@ -1,4 +1,5 @@
 #include "OperationService.h"
+#include "core/ImagePages.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
@@ -126,8 +127,20 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   malloc_trim(0);
   lastHeapReclamationUsec_=elapsed.nsecsElapsed()/1000;
   ++heapReclamationCount_;
+  imagePagesPending_=true;
 #endif
   heapReclamationPending_=false;
+  scheduleHeapReclamation();
+ });
+ imagePageTimer_.setSingleShot(true);
+ connect(&imagePageTimer_,&QTimer::timeout,this,[this] {
+  if(!imagePagesPending_||!heapReclamationIdle())return;
+  // Runs after the quiet that follows an interaction, so none of its own pages fault back mid-way.
+  QElapsedTimer elapsed;elapsed.start();
+  const auto release=releaseCleanImagePages();
+  lastImagePageReleaseUsec_=elapsed.nsecsElapsed()/1000;lastImagePageReleaseBytes_=release.bytes;
+  ++imagePageReleaseCount_;
+  imagePagesPending_=false;
  });
  const auto path=databasePath(),artifactsRoot=root_+"/artifacts";
  background([this,path,artifactsRoot](Error& e) {
@@ -150,19 +163,21 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;posterCancel_->store(true);cleanupTimer_.stop();if(cleanupStop_)cleanupStop_->store(true);heapReclamationTimer_.stop();imagePageTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);{std::lock_guard lock(itemCancelsMutex_);for(const auto& items:itemCancels_)for(const auto& flag:items)flag->store(true);}uploadSlots_.close();if(recording_)recording_->shutdown();if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0&&!(recording_&&recording_->active());
 }
 void OperationService::scheduleHeapReclamation() {
- if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);
+ if(!heapReclamationIdle())return;
+ if(heapReclamationPending_)heapReclamationTimer_.start(2000);
+ else if(imagePagesPending_)imagePageTimer_.start(imagePageDelayMs_);
 }
 void OperationService::requestHeapReclamation() {
  if(stopping_)return;
  heapReclamationPending_=true;scheduleHeapReclamation();
 }
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
- heapReclamationTimer_.stop();
+ heapReclamationTimer_.stop();imagePageTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
  threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {threads_.removeOne(thread);thread->deleteLater();scheduleHeapReclamation();});thread->start();
 }
@@ -1105,7 +1120,7 @@ QJsonObject OperationService::diagnostics() const {
  const auto logStatus=logging::status();
  return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
-  {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_}}}};
+  {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_}}}};
 }
 void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObject& outcome) {
  QSet<QString> changed;
