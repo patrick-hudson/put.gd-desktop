@@ -95,7 +95,7 @@ private slots:
   restart.start("/bin/bash",{"-c",QStringLiteral("[ -e /proc/self/fd/\"$3\" ] || exit 45; ")+UpdateService::restartScript(),
    "putgd-restart",QString::number(resident.processId()),image,QString::number(high.handle())});
   QVERIFY(restart.waitForStarted());
-  QTest::qWait(300);QVERIFY(!QFile::exists(receipt));QCOMPARE(restart.state(),QProcess::Running);
+  PUTGD_VERIFY_STEADY(!QFile::exists(receipt),300);QCOMPARE(restart.state(),QProcess::Running);
   resident.kill();QVERIFY(resident.waitForFinished());
   QVERIFY(restart.waitForFinished(5000));QCOMPARE(restart.exitStatus(),QProcess::NormalExit);QCOMPARE(restart.exitCode(),0);
   QFile recorded(receipt);QVERIFY(recorded.open(QIODevice::ReadOnly));
