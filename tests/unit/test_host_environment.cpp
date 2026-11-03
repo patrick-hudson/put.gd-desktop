@@ -4,7 +4,11 @@
 #include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
+#include <QScopeGuard>
 #include <QtTest>
+#include <fcntl.h>
+#include <signal.h>
+#include <unistd.h>
 #include "fixtures/Waits.h"
 
 using namespace putgd;
@@ -147,7 +151,52 @@ private slots:
   QVERIFY(recorded.contains("\nLD_LIBRARY_PATH=/opt/host/lib\n")||recorded.startsWith("LD_LIBRARY_PATH=/opt/host/lib\n"));
   QVERIFY(!recorded.contains("PUTGD_HOST_"));
  }
+ void detachedChildDoesNotInheritDescriptors(){
+  // A non-CLOEXEC directory at both a low fd and the AppImage runtime's
+  // high range. QFile owns their cleanup even when an assertion fails.
+  QFile low,high;
+  QVERIFY(low.open(::open(QFile::encodeName(root_.path()).constData(),O_RDONLY|O_DIRECTORY),QIODevice::ReadOnly,QFileDevice::AutoCloseHandle));
+  QVERIFY(high.open(::fcntl(low.handle(),F_DUPFD,1023),QIODevice::ReadOnly,QFileDevice::AutoCloseHandle));
+  QCOMPARE(::fcntl(low.handle(),F_GETFD)&FD_CLOEXEC,0);
+  QCOMPARE(::fcntl(high.handle(),F_GETFD)&FD_CLOEXEC,0);
+  const auto ready=root_.filePath("detached ready ' marker");
+  qint64 pid=0;
+  const bool started=host::startDetached("/bin/sh",{"-c","printf ready > \"$1\"; exec /bin/sleep 30","putgd-fd-test",ready},&pid);
+  const auto stop=qScopeGuard([&]{if(started&&pid>0)::kill(pid,SIGKILL);});
+  QVERIFY(started);QVERIFY(pid>0);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QFile::exists(ready),5000);
+  const QDir descriptors(QString("/proc/%1/fd").arg(pid));
+  const auto entries=descriptors.entryList(QDir::AllEntries|QDir::NoDotAndDotDot);
+  QVERIFY(!entries.isEmpty());
+  for(const auto& fd:entries)QVERIFY2(QFileInfo(descriptors.filePath(fd)).symLinkTarget()!=root_.path(),qPrintable(fd));
+  for(int fd=0;fd<=2;++fd)QCOMPARE(QFileInfo(descriptors.filePath(QString::number(fd))).symLinkTarget(),QString("/dev/null"));
+  // The sweep runs in the child, never in the resident.
+  QCOMPARE(::fcntl(low.handle(),F_GETFD)&FD_CLOEXEC,0);QCOMPARE(::fcntl(high.handle(),F_GETFD)&FD_CLOEXEC,0);
+ }
+ void failedExecIsReported(){
+  const auto program=root_.filePath("missing-interpreter");
+  QFile script(program);QVERIFY(script.open(QIODevice::WriteOnly));
+  script.write("#!/putgd-test-no-such-interpreter\n");script.close();
+  QVERIFY(script.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  qint64 pid=0;QVERIFY(!host::startDetached(program,{},&pid));QCOMPARE(pid,qint64(-1));
+ }
+ void childOutlivesItsLaunchingApplication(){
+  const auto receipt=root_.filePath("outliving-child.pid");
+  QProcess parent;parent.start(QCoreApplication::applicationFilePath(),{"--detached-parent",receipt});
+  QVERIFY(parent.waitForFinished(5000));QCOMPARE(parent.exitCode(),0);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QFile::exists(receipt),5000);
+  QFile file(receipt);QVERIFY(file.open(QIODevice::ReadOnly));
+  const auto pid=file.readAll().trimmed().toLongLong();QVERIFY(pid>0);
+  const auto stop=qScopeGuard([&]{::kill(pid,SIGKILL);});
+  QVERIFY(::kill(pid,0)==0);
+  const auto session=::getsid(pid);QVERIFY(session>0);QVERIFY(session!=::getsid(0));
+ }
 };
 
-QTEST_GUILESS_MAIN(HostEnvironmentTest)
+int main(int argc,char** argv){
+ QCoreApplication app(argc,argv);
+ if(app.arguments().size()==3&&app.arguments()[1]=="--detached-parent")
+  return host::startDetached("/bin/sh",{"-c","echo $$ > \"$1.tmp\" && mv \"$1.tmp\" \"$1\"; exec /bin/sleep 30","putgd-parent-test",app.arguments()[2]})?0:1;
+ HostEnvironmentTest test;return QTest::qExec(&test,argc,argv);
+}
 #include "test_host_environment.moc"

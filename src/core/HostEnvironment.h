@@ -39,6 +39,7 @@ QString installationClass();
 // The program's absolute path on the environment's PATH, or empty.
 QString findProgram(const QString& program,const QProcessEnvironment& environment);
 // Starts a host program detached with environment(), its standard streams on
-// /dev/null: it outlives this process and must not hold its pipes.
+// /dev/null and no inherited descriptors above 2: it outlives this process and
+// must not hold its pipes or an AppImage runtime's mount descriptor.
 bool startDetached(const QString& program,const QStringList& arguments,qint64* pid=nullptr);
 }

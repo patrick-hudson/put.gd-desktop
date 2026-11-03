@@ -122,8 +122,6 @@ bool openSoftwareUpdates(const QJsonObject& action) {
  // must not inherit that child's pipes: Discover logs to stderr and died of
  // SIGPIPE once the resident closed them (k72). It gets the host's libraries
  // and Qt plugins, not the AppImage's (#326).
- QProcess process;process.setProgram(updater["program"].toString());process.setArguments(known->arguments);process.setProcessEnvironment(host::environment());
- process.setStandardInputFile(QProcess::nullDevice());process.setStandardOutputFile(QProcess::nullDevice());process.setStandardErrorFile(QProcess::nullDevice());
- return process.startDetached();
+ return host::startDetached(updater["program"].toString(),known->arguments);
 }
 }

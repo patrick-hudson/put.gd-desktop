@@ -5,6 +5,11 @@
 #include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <fcntl.h>
+#include <unistd.h>
+#include <linux/close_range.h>
+#include <sys/syscall.h>
+#include <memory>
 
 namespace putgd::host {
 namespace {
@@ -85,8 +90,40 @@ bool startDetached(const QString& program,const QStringList& arguments,qint64* p
  const auto env=environment();
  const auto path=findProgram(program,env);
  if(path.isEmpty())return false;
- QProcess process;process.setProgram(path);process.setArguments(arguments);process.setProcessEnvironment(env);
- process.setStandardInputFile(QProcess::nullDevice());process.setStandardOutputFile(QProcess::nullDevice());process.setStandardErrorFile(QProcess::nullDevice());
- return process.startDetached(pid);
+ auto process=std::make_unique<QProcess>();process->setProgram(path);process->setArguments(arguments);process->setProcessEnvironment(env);
+ process->setStandardInputFile(QProcess::nullDevice());process->setStandardOutputFile(QProcess::nullDevice());process->setStandardErrorFile(QProcess::nullDevice());
+#if QT_VERSION >= QT_VERSION_CHECK(6,9,0)
+ process->setUnixProcessParameters(QProcess::UnixProcessFlag::CloseFileDescriptors);
+ return process->startDetached(pid);
+#else
+ // Qt 6.4/6.5 startDetached ignores setChildProcessModifier. Qt 6.6-6.8.2
+ // CloseFileDescriptors closes its own exec-error pipe too; use the safe
+ // native path only from 6.9, which marks descriptors CLOEXEC. Use start()
+ // with a new session instead, retaining QProcess only until the child exits.
+ // No QObject parent: exiting putgd must never destroy/kill this host child.
+ const long maximumFd=::sysconf(_SC_OPEN_MAX);
+ if(maximumFd<0)return false;
+ process->setChildProcessModifier([maximumFd]{
+  ::setsid();
+#if defined(SYS_close_range) && defined(CLOSE_RANGE_CLOEXEC)
+  // Linux 5.11+: mark the entire range in one syscall, including descriptors
+  // opened by other threads just before fork. Qt can still report exec errors
+  // through its startup pipe; everything above 2 closes at execve.
+  if(::syscall(SYS_close_range,3U,~0U,CLOSE_RANGE_CLOEXEC)==0)return;
+#endif
+  for(int fd=3;fd<maximumFd;++fd){
+   const int flags=::fcntl(fd,F_GETFD);
+   // Preserve Qt's CLOEXEC startup/error pipe until exec so launch failures
+   // still reach waitForStarted(). These fds close atomically at execve.
+   if(flags>=0&&!(flags&FD_CLOEXEC))::close(fd);
+  }
+ });
+ QObject::connect(process.get(),&QProcess::finished,process.get(),&QObject::deleteLater);
+ process->start();
+ if(!process->waitForStarted()){if(pid)*pid=-1;return false;}
+ if(pid)*pid=process->processId();
+ process.release();
+ return true;
+#endif
 }
 }

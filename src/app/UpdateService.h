@@ -46,6 +46,8 @@ public:
  // The child's own transfer timeout is 20 s.
  static constexpr int childTimeoutMs=40000;
  UpdateService(SettingsService&,QString stateRoot,QString program,QObject* parent=nullptr);
+ // Host bash script: drop inherited fds, wait for the resident, exec the image.
+ static QString restartScript();
  // Reads the saved state and schedules the next check; call once at startup.
  void start();
  QJsonObject status() const;
