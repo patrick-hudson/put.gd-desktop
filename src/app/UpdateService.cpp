@@ -31,10 +31,16 @@ UpdateService::UpdateService(SettingsService& settings,QString stateRoot,QString
  restarter_=[](qint64 pid,const QString& image){
   // A host shell, not a program inside this image's mount, which goes away
   // with this process; with the host's environment, not the image's (#326).
-  static const QString script=QStringLiteral(
-   "i=0; while kill -0 \"$1\" 2>/dev/null; do i=$((i+1)); [ \"$i\" -gt 150 ] && exit 1; sleep 0.2; done; exec \"$2\"");
-  return host::startDetached("/bin/sh",{"-c",script,"putgd-restart",QString::number(pid),image});
+  return host::startDetached("/bin/bash",{"-c",restartScript(),"putgd-restart",QString::number(pid),image});
  };
+}
+QString UpdateService::restartScript() {
+ // Also sweep here independently of host::startDetached (#1165). In
+ // particular fd 1023 can hold the OLD AppImage mount busy across exec.
+ // bash is required: dash's exec redirection only supports single-digit fds.
+ return QStringLiteral(
+  "for f in /proc/self/fd/*; do f=${f##*/}; if [ \"$f\" -gt 2 ]; then eval \"exec $f>&-\"; fi; done; "
+  "i=0; while kill -0 \"$1\" 2>/dev/null; do i=$((i+1)); [ \"$i\" -gt 150 ] && exit 1; sleep 0.2; done; exec \"$2\"");
 }
 qint64 UpdateService::random(qint64 low,qint64 high) const {return random_?random_(low,high):low+qint64(QRandomGenerator::global()->bounded(quint64(high-low+1)));}
 QString UpdateService::channel() const {

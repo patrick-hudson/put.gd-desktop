@@ -4,7 +4,11 @@
 #include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
+#include <QScopeGuard>
 #include <QtTest>
+#include <fcntl.h>
+#include <signal.h>
+#include <unistd.h>
 #include "fixtures/Waits.h"
 
 using namespace putgd;
@@ -146,6 +150,28 @@ private slots:
   QVERIFY2(!recorded.contains(mount_),qPrintable(recorded));
   QVERIFY(recorded.contains("\nLD_LIBRARY_PATH=/opt/host/lib\n")||recorded.startsWith("LD_LIBRARY_PATH=/opt/host/lib\n"));
   QVERIFY(!recorded.contains("PUTGD_HOST_"));
+ }
+ void detachedChildDoesNotInheritDescriptors(){
+  // A non-CLOEXEC directory at both a low fd and the AppImage runtime's
+  // high range. QFile owns their cleanup even when an assertion fails.
+  QFile low,high;
+  QVERIFY(low.open(::open(QFile::encodeName(root_.path()).constData(),O_RDONLY|O_DIRECTORY),QIODevice::ReadOnly,QFileDevice::AutoCloseHandle));
+  QVERIFY(high.open(::fcntl(low.handle(),F_DUPFD,1023),QIODevice::ReadOnly,QFileDevice::AutoCloseHandle));
+  QCOMPARE(::fcntl(low.handle(),F_GETFD)&FD_CLOEXEC,0);
+  QCOMPARE(::fcntl(high.handle(),F_GETFD)&FD_CLOEXEC,0);
+  const auto ready=root_.filePath("detached ready ' marker");
+  qint64 pid=0;
+  const bool started=host::startDetached("/bin/sh",{"-c","printf ready > \"$1\"; exec /bin/sleep 30","putgd-fd-test",ready},&pid);
+  const auto stop=qScopeGuard([&]{if(started&&pid>0)::kill(pid,SIGKILL);});
+  QVERIFY(started);QVERIFY(pid>0);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(QFile::exists(ready),5000);
+  const QDir descriptors(QString("/proc/%1/fd").arg(pid));
+  const auto entries=descriptors.entryList(QDir::AllEntries|QDir::NoDotAndDotDot);
+  QVERIFY(!entries.isEmpty());
+  for(const auto& fd:entries)QVERIFY2(QFileInfo(descriptors.filePath(fd)).symLinkTarget()!=root_.path(),qPrintable(fd));
+  for(int fd=0;fd<=2;++fd)QCOMPARE(QFileInfo(descriptors.filePath(QString::number(fd))).symLinkTarget(),QString("/dev/null"));
+  // The sweep runs in the child, never in the resident.
+  QVERIFY(::fcntl(low.handle(),F_GETFD)>=0);QVERIFY(::fcntl(high.handle(),F_GETFD)>=0);
  }
 };
 

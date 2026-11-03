@@ -87,6 +87,17 @@ bool startDetached(const QString& program,const QStringList& arguments,qint64* p
  if(path.isEmpty())return false;
  QProcess process;process.setProgram(path);process.setArguments(arguments);process.setProcessEnvironment(env);
  process.setStandardInputFile(QProcess::nullDevice());process.setStandardOutputFile(QProcess::nullDevice());process.setStandardErrorFile(QProcess::nullDevice());
+#if QT_VERSION >= QT_VERSION_CHECK(6,6,0)
+ process.setUnixProcessParameters(QProcess::UnixProcessFlag::CloseFileDescriptors);
+#else
+ // Qt 6.4/6.5 startDetached ignores setChildProcessModifier. Close in a host
+ // wrapper instead; bash supports fd 1023, unlike Debian/Ubuntu's /bin/sh.
+ // Arguments stay positional, never shell source. exec preserves the PID.
+ process.setProgram(QStringLiteral("/bin/bash"));
+ process.setArguments(QStringList{"-c",QStringLiteral(
+  "for f in /proc/self/fd/*; do f=${f##*/}; if [ \"$f\" -gt 2 ]; then eval \"exec $f>&-\"; fi; done; exec \"$@\""),
+  "putgd-detached",path}+arguments);
+#endif
  return process.startDetached(pid);
 }
 }

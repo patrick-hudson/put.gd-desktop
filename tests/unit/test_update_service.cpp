@@ -10,6 +10,8 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include "fixtures/Waits.h"
 using namespace putgd;
 // Records its arguments, prints the canned reply and exits with the canned code.
@@ -77,6 +79,29 @@ private slots:
   qputenv("PUTGD_UPDATE_SYSTEM_ROOT",(dir.path()+"/system").toUtf8());
  }
  void cleanup(){if(hadSystemRoot)qputenv("PUTGD_UPDATE_SYSTEM_ROOT",oldSystemRoot);else qunsetenv("PUTGD_UPDATE_SYSTEM_ROOT");}
+ void restartScriptClosesHighDescriptorsAndWaitsForResident(){
+  QFile directory;
+  QVERIFY(directory.open(::open(QFile::encodeName(dir.path()).constData(),O_RDONLY|O_DIRECTORY),QIODevice::ReadOnly,QFileDevice::AutoCloseHandle));
+  QFile high;
+  QVERIFY(high.open(::fcntl(directory.handle(),F_DUPFD,1023),QIODevice::ReadOnly,QFileDevice::AutoCloseHandle));
+  const auto image=dir.filePath("new image ' quoted.AppImage"),receipt=image+".fds";
+  QFile target(image);QVERIFY(target.open(QIODevice::WriteOnly));
+  target.write("#!/bin/bash\nfor f in /proc/self/fd/*; do readlink \"$f\"; done > \"$0.fds\"\ntrue\n");target.close();
+  QVERIFY(target.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  QProcess resident;resident.start("/bin/sleep",{"30"});QVERIFY(resident.waitForStarted());
+  QProcess restart;
+  // Deliberately bypass host::startDetached: test the script's independent
+  // defense and prove that a high descriptor really reached the shell.
+  restart.start("/bin/bash",{"-c",QStringLiteral("[ -e /proc/self/fd/\"$3\" ] || exit 45; ")+UpdateService::restartScript(),
+   "putgd-restart",QString::number(resident.processId()),image,QString::number(high.handle())});
+  QVERIFY(restart.waitForStarted());
+  QTest::qWait(300);QVERIFY(!QFile::exists(receipt));QCOMPARE(restart.state(),QProcess::Running);
+  resident.kill();QVERIFY(resident.waitForFinished());
+  QVERIFY(restart.waitForFinished(5000));QCOMPARE(restart.exitStatus(),QProcess::NormalExit);QCOMPARE(restart.exitCode(),0);
+  QFile recorded(receipt);QVERIFY(recorded.open(QIODevice::ReadOnly));
+  QVERIFY(!recorded.readAll().split('\n').contains(dir.path().toUtf8()));
+  QVERIFY(::fcntl(high.handle(),F_GETFD)>=0);
+ }
  void startupUsesLocalRepositoryWithoutAFeed_data(){
   QTest::addColumn<QString>("target");QTest::addColumn<QString>("state");QTest::addColumn<QString>("chosen");QTest::addColumn<bool>("checks");
   for(const auto& target:{"ubuntu24.04","ubuntu26.04","debian13","fedora44","appimage"})
