@@ -819,6 +819,8 @@ if(BUILD_TESTING)
   target_link_libraries(test_editor PRIVATE putgd_editor putgd_core Qt6::Test)
   add_executable(test_fonts tests/unit/test_fonts.cpp)
   target_link_libraries(test_fonts PRIVATE putgd_fonts Qt6::Test)
+  # The contract checks the one-argument lookup against the configured data directory.
+  target_compile_definitions(test_fonts PRIVATE PUTGD_INSTALL_DATADIR="${CMAKE_INSTALL_DATADIR}")
   add_test(NAME fonts_contract COMMAND test_fonts)
   add_test(NAME editor_contract COMMAND test_editor)
   set_tests_properties(editor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)

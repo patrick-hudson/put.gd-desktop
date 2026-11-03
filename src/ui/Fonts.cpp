@@ -19,14 +19,16 @@ namespace putgd::Fonts {
 // editor and recording process for its lifetime. The bytes are the same files
 // either way, so glyphs render identically; the resource copy remains the
 // fallback for a build that runs without the installed data directory.
-QString installedDirectory(const QString& binDirectory) {
-    // The configured data directory: beside bin/ when it is relative (the
-    // DEB, RPM and AppImage layouts; relocatable), or as given when absolute.
-    const QString dataDirectory = QStringLiteral(PUTGD_INSTALL_DATADIR);
+QString installedDirectory(const QString& binDirectory, const QString& dataDirectory) {
+    // Beside bin/ when the data directory is relative (the DEB, RPM and
+    // AppImage layouts; relocatable), or as given when absolute.
     const QString candidate = QDir::cleanPath(QDir::isAbsolutePath(dataDirectory)
         ? dataDirectory + QStringLiteral("/putgd/fonts")
         : QDir(binDirectory).filePath(QStringLiteral("../") + dataDirectory + QStringLiteral("/putgd/fonts")));
     return QFileInfo(candidate).isDir() ? candidate : QString();
+}
+QString installedDirectory(const QString& binDirectory) {
+    return installedDirectory(binDirectory, QStringLiteral(PUTGD_INSTALL_DATADIR));
 }
 QString source(const QString& installedDirectory, const QString& name) {
     if (!installedDirectory.isEmpty()) {

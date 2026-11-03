@@ -1,6 +1,9 @@
 #include "ui/Fonts.h"
 #include <QtTest>
 #include <QTemporaryDir>
+#ifndef PUTGD_INSTALL_DATADIR
+#define PUTGD_INSTALL_DATADIR "share"
+#endif
 using namespace putgd;
 // The interface, editor and recording processes map the installed font files
 // (shared page cache) and fall back to the resource copies, which cost each
@@ -8,13 +11,39 @@ using namespace putgd;
 class FontsContract:public QObject {
  Q_OBJECT
 private slots:
- void installedDirectoryBesideBin(){
+ // putgd_fonts is a static library: register its resources explicitly rather
+ // than relying on the linker pulling in the .qrc object's initializer.
+ void initTestCase(){Q_INIT_RESOURCE(fonts);}
+ void relativeDataDirectoryBesideBin(){
   QTemporaryDir root;QVERIFY(root.isValid());
   const QDir prefix(root.path());
   QVERIFY(prefix.mkpath("bin"));
-  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin")),QString());
+  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin"),"share"),QString());
   QVERIFY(prefix.mkpath("share/putgd/fonts"));
-  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin")),QDir::cleanPath(prefix.filePath("share/putgd/fonts")));
+  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin"),"share"),QDir::cleanPath(prefix.filePath("share/putgd/fonts")));
+  // A non-default relative data directory resolves beside bin/ the same way.
+  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin"),"data"),QString());
+  QVERIFY(prefix.mkpath("data/putgd/fonts"));
+  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin"),"data"),QDir::cleanPath(prefix.filePath("data/putgd/fonts")));
+ }
+ void absoluteDataDirectoryAsGiven(){
+  QTemporaryDir root,elsewhere;QVERIFY(root.isValid());QVERIFY(elsewhere.isValid());
+  const QDir prefix(root.path());QVERIFY(prefix.mkpath("bin"));
+  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin"),elsewhere.path()),QString());
+  QVERIFY(QDir(elsewhere.path()).mkpath("putgd/fonts"));
+  QCOMPARE(Fonts::installedDirectory(prefix.filePath("bin"),elsewhere.path()),QDir::cleanPath(QDir(elsewhere.path()).filePath("putgd/fonts")));
+ }
+ void configuredDataDirectoryIsTheDefault(){
+  // The one-argument form uses the data directory this build was configured
+  // with, whatever CMAKE_INSTALL_DATADIR was.
+  QTemporaryDir root;QVERIFY(root.isValid());
+  const QDir prefix(root.path());QVERIFY(prefix.mkpath("bin"));
+  const QString bin=prefix.filePath("bin");
+  QCOMPARE(Fonts::installedDirectory(bin),Fonts::installedDirectory(bin,QStringLiteral(PUTGD_INSTALL_DATADIR)));
+  if(!QDir::isAbsolutePath(QStringLiteral(PUTGD_INSTALL_DATADIR))){
+   QVERIFY(prefix.mkpath(QStringLiteral(PUTGD_INSTALL_DATADIR)+"/putgd/fonts"));
+   QCOMPARE(Fonts::installedDirectory(bin),QDir::cleanPath(prefix.filePath(QStringLiteral(PUTGD_INSTALL_DATADIR)+"/putgd/fonts")));
+  }
  }
  void sourcePrefersInstalledFile(){
   QTemporaryDir root;QVERIFY(root.isValid());
