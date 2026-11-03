@@ -5,7 +5,7 @@
 #include <QFileInfo>
 #include <QFontDatabase>
 #ifndef PUTGD_INSTALL_DATADIR
-#define PUTGD_INSTALL_DATADIR "share"
+#define PUTGD_INSTALL_DATADIR "../share"
 #endif
 
 // Q_INIT_RESOURCE must be outside putgd's namespace.
@@ -20,14 +20,17 @@ namespace putgd::Fonts {
 // either way, so glyphs render identically; the resource copy remains the
 // fallback for a build that runs without the installed data directory.
 QString installedDirectory(const QString& binDirectory, const QString& dataDirectory) {
-    // Beside bin/ when the data directory is relative (the DEB, RPM and
-    // AppImage layouts; relocatable), or as given when absolute.
+    // A relative data directory is relative to the executable's directory
+    // ("../share" for the DEB, RPM and AppImage layouts; relocatable); an
+    // absolute one is used as given.
     const QString candidate = QDir::cleanPath(QDir::isAbsolutePath(dataDirectory)
         ? dataDirectory + QStringLiteral("/putgd/fonts")
-        : QDir(binDirectory).filePath(QStringLiteral("../") + dataDirectory + QStringLiteral("/putgd/fonts")));
+        : QDir(binDirectory).filePath(dataDirectory + QStringLiteral("/putgd/fonts")));
     return QFileInfo(candidate).isDir() ? candidate : QString();
 }
 QString installedDirectory(const QString& binDirectory) {
+    // The build computes the data directory relative to its bin directory, so
+    // layouts such as usr/bin + usr/share (prefix "/") resolve correctly too.
     return installedDirectory(binDirectory, QStringLiteral(PUTGD_INSTALL_DATADIR));
 }
 QString source(const QString& installedDirectory, const QString& name) {

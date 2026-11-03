@@ -10,10 +10,11 @@ void load();
 QString ui();
 QString mono();
 // The installed copies of the bundled fonts for executables in binDirectory:
-// <dataDirectory>/putgd/fonts, resolved beside bin/ when dataDirectory is
-// relative (the DEB, RPM and AppImage layouts) and as given when absolute.
-// Empty when that directory is absent. The one-argument form uses the data
-// directory the build was configured with.
+// <dataDirectory>/putgd/fonts, where a relative dataDirectory is relative to
+// binDirectory ("../share" for the DEB, RPM and AppImage layouts) and an
+// absolute one is used as given. Empty when that directory is absent. The
+// one-argument form uses the data directory the build was configured with,
+// relative to its bin directory.
 QString installedDirectory(const QString& binDirectory, const QString& dataDirectory);
 QString installedDirectory(const QString& binDirectory);
 // Where a font is loaded from: the installed file when the directory has it,
