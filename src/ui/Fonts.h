@@ -9,4 +9,10 @@ namespace putgd::Fonts {
 void load();
 QString ui();
 QString mono();
+// The installed copies of the bundled fonts for executables in binDirectory
+// (share/putgd/fonts beside bin/), or empty when that directory is absent.
+QString installedDirectory(const QString& binDirectory);
+// Where a font is loaded from: the installed file when the directory has it,
+// otherwise the copy compiled into the executable's resources.
+QString source(const QString& installedDirectory, const QString& name);
 }

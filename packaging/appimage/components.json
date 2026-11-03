@@ -15,7 +15,7 @@
                 "usr/share/metainfo/gd.put.Putgd.metainfo.xml",
                 "usr/share/gnome-shell/extensions/putgd@put.gd/*", "usr/share/putgd/autostart/putgd.desktop",
                 "usr/share/putgd/build-info.json", "usr/share/putgd/dependency-lock.json",
-                "usr/share/putgd/aws-runtime-manifest.json"],
+                "usr/share/putgd/aws-runtime-manifest.json", "usr/share/putgd/fonts/*.ttf"],
       "noticeFiles": ["usr/share/doc/putgd/LICENSE", "usr/share/doc/putgd/wayland-*.xml", "usr/share/doc/putgd/fonts/*"],
       "embedded": [
         {"name": "IBM Plex Sans Regular, Medium and SemiBold", "license": "OFL-1.1",
