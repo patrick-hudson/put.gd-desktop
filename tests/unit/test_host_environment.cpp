@@ -171,7 +171,7 @@ private slots:
   for(const auto& fd:entries)QVERIFY2(QFileInfo(descriptors.filePath(fd)).symLinkTarget()!=root_.path(),qPrintable(fd));
   for(int fd=0;fd<=2;++fd)QCOMPARE(QFileInfo(descriptors.filePath(QString::number(fd))).symLinkTarget(),QString("/dev/null"));
   // The sweep runs in the child, never in the resident.
-  QVERIFY(::fcntl(low.handle(),F_GETFD)>=0);QVERIFY(::fcntl(high.handle(),F_GETFD)>=0);
+  QCOMPARE(::fcntl(low.handle(),F_GETFD)&FD_CLOEXEC,0);QCOMPARE(::fcntl(high.handle(),F_GETFD)&FD_CLOEXEC,0);
  }
  void failedExecIsReported(){
   const auto program=root_.filePath("missing-interpreter");
@@ -195,7 +195,7 @@ private slots:
 int main(int argc,char** argv){
  QCoreApplication app(argc,argv);
  if(app.arguments().size()==3&&app.arguments()[1]=="--detached-parent")
-  return host::startDetached("/bin/sh",{"-c","echo $$ > \"$1\"; exec /bin/sleep 30","putgd-parent-test",app.arguments()[2]})?0:1;
+  return host::startDetached("/bin/sh",{"-c","echo $$ > \"$1.tmp\" && mv \"$1.tmp\" \"$1\"; exec /bin/sleep 30","putgd-parent-test",app.arguments()[2]})?0:1;
  HostEnvironmentTest test;return QTest::qExec(&test,argc,argv);
 }
 #include "test_host_environment.moc"

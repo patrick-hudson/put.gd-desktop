@@ -7,6 +7,8 @@
 #include <QStandardPaths>
 #include <fcntl.h>
 #include <unistd.h>
+#include <linux/close_range.h>
+#include <sys/syscall.h>
 #include <memory>
 
 namespace putgd::host {
@@ -101,6 +103,12 @@ bool startDetached(const QString& program,const QStringList& arguments,qint64* p
  if(maximumFd<0)return false;
  process->setChildProcessModifier([maximumFd]{
   ::setsid();
+#if defined(SYS_close_range) && defined(CLOSE_RANGE_CLOEXEC)
+  // Linux 5.11+: mark the entire range in one syscall, including descriptors
+  // opened by other threads just before fork. Qt can still report exec errors
+  // through its startup pipe; everything above 2 closes at execve.
+  if(::syscall(SYS_close_range,3U,~0U,CLOSE_RANGE_CLOEXEC)==0)return;
+#endif
   for(int fd=3;fd<maximumFd;++fd){
    const int flags=::fcntl(fd,F_GETFD);
    // Preserve Qt's CLOEXEC startup/error pipe until exec so launch failures
