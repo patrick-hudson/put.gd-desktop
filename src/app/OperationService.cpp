@@ -1,5 +1,5 @@
 #include "OperationService.h"
-#include "client/SessionClient.h"
+#include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
 #include "core/RunMarker.h"

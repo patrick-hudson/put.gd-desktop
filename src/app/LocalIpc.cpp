@@ -21,11 +21,18 @@ namespace putgd {
 namespace {
 constexpr int activationDeadlineMs=15000;
 constexpr qsizetype maximumActivationResponse=16*1024;
-bool activationFrameComplete(LocalActivation& result) {
- if(result.response.size()>maximumActivationResponse)result.errorCode="response_too_large";
- else if(result.response.contains('\n')&&result.response.indexOf('\n')!=result.response.size()-1)result.errorCode="invalid_response";
- if(!result.errorCode.isEmpty()){result.response.clear();return true;}
- return result.response.endsWith('\n');
+bool frameComplete(QByteArray& response,QString& errorCode,qsizetype limit) {
+ if(response.size()>limit)errorCode="response_too_large";
+ else if(response.contains('\n')&&response.indexOf('\n')!=response.size()-1)errorCode="invalid_response";
+ if(!errorCode.isEmpty()){response.clear();return true;}
+ return response.endsWith('\n');
+}
+// A reply that never completed: the deadline passed, or the peer stopped.
+void incompleteFrame(QByteArray& response,QString& errorCode,const QDeadlineTimer& deadline) {
+ if(errorCode.isEmpty()&&!response.endsWith('\n')) {
+  errorCode=deadline.hasExpired()?"activation_timeout":"transport_failed";
+  response.clear();
+ }
 }
 }
 #ifdef Q_OS_LINUX
@@ -86,6 +93,31 @@ LocalPeer peerOf(int fd) {
  return peer;
 }
 }
+namespace {
+// Sends the whole request, then reads one reply frame of at most limit bytes.
+void exchange(int fd,const QByteArray& request,QDeadlineTimer& deadline,qsizetype limit,bool& sent,QByteArray& response,QString& errorCode) {
+ qsizetype done=0;
+ while(done<request.size()&&!deadline.hasExpired()) {
+  const auto count=::send(fd,request.constData()+done,size_t(request.size()-done),MSG_NOSIGNAL);
+  if(count>0){done+=count;continue;}
+  if(count<0&&errno==EINTR)continue;
+  if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK)&&waitSocket(fd,POLLOUT,deadline))continue;
+  break;
+ }
+ sent=done==request.size();
+ if(sent) {
+  char chunk[16384];
+  while(!deadline.hasExpired()) {
+   const auto count=::recv(fd,chunk,size_t(std::min<qsizetype>(sizeof(chunk),limit+1-response.size())),0);
+   if(count>0){response.append(chunk,count);if(frameComplete(response,errorCode,limit))break;continue;}
+   if(count<0&&errno==EINTR)continue;
+   if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK)&&waitSocket(fd,POLLIN,deadline))continue;
+   break;
+  }
+ }
+ incompleteFrame(response,errorCode,deadline);
+}
+}
 LocalActivation activateLocalSession(const QString& path,const QByteArray& request,const std::function<bool(const LocalPeer&)>& admit) {
  QDeadlineTimer deadline(activationDeadlineMs);
  LocalSessionState state;
@@ -93,30 +125,17 @@ LocalActivation activateLocalSession(const QString& path,const QByteArray& reque
  if(fd<0)return {};
  LocalActivation result;result.connected=true;result.peer=peerOf(fd);
  if(admit&&!admit(result.peer)){::close(fd);result.refused=true;return result;}
- if(!request.isEmpty()) {
-  qsizetype sent=0;
-  while(sent<request.size()&&!deadline.hasExpired()) {
-   const auto count=::send(fd,request.constData()+sent,size_t(request.size()-sent),MSG_NOSIGNAL);
-   if(count>0){sent+=count;continue;}
-   if(count<0&&errno==EINTR)continue;
-   if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK)&&waitSocket(fd,POLLOUT,deadline))continue;
-   break;
-  }
-  if(sent==request.size()) {
-   char chunk[4096];
-   while(!deadline.hasExpired()) {
-    const auto count=::recv(fd,chunk,size_t(std::min<qsizetype>(sizeof(chunk),maximumActivationResponse+1-result.response.size())),0);
-    if(count>0){result.response.append(chunk,count);if(activationFrameComplete(result))break;continue;}
-    if(count<0&&errno==EINTR)continue;
-    if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK)&&waitSocket(fd,POLLIN,deadline))continue;
-    break;
-   }
-  }
-  if(result.errorCode.isEmpty()&&!result.response.endsWith('\n')) {
-   result.errorCode=deadline.hasExpired()?"activation_timeout":"transport_failed";
-   result.response.clear();
-  }
- }
+ if(!request.isEmpty()){bool sent=false;exchange(fd,request,deadline,maximumActivationResponse,sent,result.response,result.errorCode);}
+ ::close(fd);
+ return result;
+}
+LocalExchange exchangeLocalSession(const QString& path,const QByteArray& request,int deadlineMs,qsizetype maximumResponse) {
+ QDeadlineTimer deadline(deadlineMs);
+ LocalSessionState state;
+ const int fd=connectSocket(path,deadlineMs,state);
+ if(fd<0)return {};
+ LocalExchange result;result.connected=true;
+ exchange(fd,request,deadline,maximumResponse,result.sent,result.response,result.errorCode);
  ::close(fd);
  return result;
 }
@@ -259,6 +278,21 @@ LocalSessionState probeLocalSession(const QString& path,int timeoutMs) {
  return socket.error()==QLocalSocket::ServerNotFoundError||socket.error()==QLocalSocket::ConnectionRefusedError?LocalSessionState::Absent:LocalSessionState::Unavailable;
 }
 quint64 processStartTime(qint64) {return 0;}
+namespace {
+void exchange(QLocalSocket& socket,const QByteArray& request,QDeadlineTimer& deadline,qsizetype limit,bool& sent,QByteArray& response,QString& errorCode) {
+ bool written=socket.write(request)==request.size();
+ while(written&&socket.bytesToWrite()>0&&!deadline.hasExpired())written=socket.waitForBytesWritten(int(deadline.remainingTime()));
+ sent=written&&socket.bytesToWrite()==0;
+ if(sent) {
+  while(!deadline.hasExpired()) {
+   response+=socket.read(limit+1-response.size());
+   if(frameComplete(response,errorCode,limit))break;
+   if(socket.state()==QLocalSocket::UnconnectedState||!socket.waitForReadyRead(int(deadline.remainingTime())))break;
+  }
+ }
+ incompleteFrame(response,errorCode,deadline);
+}
+}
 LocalActivation activateLocalSession(const QString& path,const QByteArray& request,const std::function<bool(const LocalPeer&)>& admit) {
  QDeadlineTimer deadline(activationDeadlineMs);
  QLocalSocket socket;socket.setReadBufferSize(maximumActivationResponse+1);socket.connectToServer(path);
@@ -266,19 +300,15 @@ LocalActivation activateLocalSession(const QString& path,const QByteArray& reque
  LocalActivation result;result.connected=true;result.peer.connected=true;
  if(admit&&!admit(result.peer)){result.refused=true;return result;}
  if(request.isEmpty())return result;
- bool written=socket.write(request)==request.size();
- while(written&&socket.bytesToWrite()>0&&!deadline.hasExpired())written=socket.waitForBytesWritten(int(deadline.remainingTime()));
- if(written&&socket.bytesToWrite()==0) {
-  while(!deadline.hasExpired()) {
-   result.response+=socket.read(maximumActivationResponse+1-result.response.size());
-   if(activationFrameComplete(result))break;
-   if(socket.state()==QLocalSocket::UnconnectedState||!socket.waitForReadyRead(int(deadline.remainingTime())))break;
-  }
- }
- if(result.errorCode.isEmpty()&&!result.response.endsWith('\n')) {
-  result.errorCode=deadline.hasExpired()?"activation_timeout":"transport_failed";
-  result.response.clear();
- }
+ bool sent=false;exchange(socket,request,deadline,maximumActivationResponse,sent,result.response,result.errorCode);
+ return result;
+}
+LocalExchange exchangeLocalSession(const QString& path,const QByteArray& request,int deadlineMs,qsizetype maximumResponse) {
+ QDeadlineTimer deadline(deadlineMs);
+ QLocalSocket socket;socket.setReadBufferSize(maximumResponse+1);socket.connectToServer(path);
+ if(!socket.waitForConnected(deadlineMs))return {};
+ LocalExchange result;result.connected=true;
+ exchange(socket,request,deadline,maximumResponse,result.sent,result.response,result.errorCode);
  return result;
 }
 struct LocalIpcConnection::State {QLocalSocket* socket;explicit State(QLocalSocket* value):socket(value){}};
