@@ -193,7 +193,8 @@ cache invalidation is outside this pipeline.
 ## Linux command transport and idle memory
 
 Linux uses native Unix-domain sockets with Qt Core socket notifications, rather
-than an eager Qt Network dependency. The runtime directory is owner-only and the
+than an eager Qt Network dependency, on both sides: the resident's server and
+the interface helper's `SessionClient` (#1174), so neither process maps QtNetwork. The runtime directory is owner-only and the
 socket is 0600. Live or indeterminate endpoints are preserved; stale cleanup
 requires an owned socket with an explicitly refused/missing endpoint. Complete
 socket paths fit within 107 encoded bytes, excluding NUL. Lab launches preflight
