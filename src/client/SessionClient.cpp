@@ -121,7 +121,12 @@ void SessionClient::receive(RequestId id) {
     auto* pending = pending_.value(id);
     if (!pending || pending->complete || !pending->socket || pending->socket->bytesAvailable() == 0) return;
     const auto previousSize = pending->incoming.size();
-    pending->incoming += pending->socket->read(maximumResponse + 1 - previousSize);
+    // Read what has arrived, bounded by the response limit. QIODevice::read(n)
+    // allocates n bytes before it copies, so asking for the whole 16 MiB limit
+    // made every reply a 16 MiB transient allocation; glibc then raised its
+    // mmap threshold and later rasters settled in the heap instead.
+    const auto remaining = maximumResponse + 1 - previousSize;
+    pending->incoming += pending->socket->read(qMin(pending->socket->bytesAvailable(), qint64(remaining)));
     if (pending->incoming.size() > maximumResponse) {
         finish(id, invalidResponse(pending->submitted));
         return;

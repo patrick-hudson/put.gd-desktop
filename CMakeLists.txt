@@ -411,6 +411,20 @@ endif()
 # The bundled IBM Plex fonts (OFL), for the interface and recording helper only.
 add_library(putgd_fonts STATIC src/ui/Fonts.cpp src/ui/fonts.qrc)
 target_link_libraries(putgd_fonts PUBLIC putgd_visual)
+# Fonts.cpp looks for the installed copies in the configured data directory:
+# beside bin/ when it is relative (relocatable, as the AppImage is).
+# The data directory relative to the bin directory, so the lookup also fits
+# layouts where both sit under a "/" prefix as usr/bin and usr/share.
+if(IS_ABSOLUTE "${CMAKE_INSTALL_DATADIR}")
+  set(PUTGD_FONTS_DATADIR "${CMAKE_INSTALL_DATADIR}")
+else()
+  file(RELATIVE_PATH PUTGD_FONTS_DATADIR "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_DATADIR}")
+endif()
+target_compile_definitions(putgd_fonts PRIVATE PUTGD_INSTALL_DATADIR="${PUTGD_FONTS_DATADIR}")
+# The same font files installed beside the executables: Fonts.cpp maps these
+# instead of copying the resource fonts into every interface process's heap.
+install(FILES src/ui/fonts/IBMPlexSans-Regular.ttf src/ui/fonts/IBMPlexSans-Medium.ttf src/ui/fonts/IBMPlexSans-SemiBold.ttf
+  src/ui/fonts/IBMPlexMono-Regular.ttf DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/fonts")
 add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/UiWindow.cpp src/ui/WindowActivation.cpp src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_s3_wire putgd_host_open putgd_shortcut_keyboard)
@@ -817,6 +831,11 @@ if(BUILD_TESTING)
   endif()
   add_executable(test_editor tests/unit/test_editor.cpp)
   target_link_libraries(test_editor PRIVATE putgd_editor putgd_core Qt6::Test)
+  add_executable(test_fonts tests/unit/test_fonts.cpp)
+  target_link_libraries(test_fonts PRIVATE putgd_fonts Qt6::Test)
+  # The contract checks the one-argument lookup against the configured data directory.
+  target_compile_definitions(test_fonts PRIVATE PUTGD_INSTALL_DATADIR="${PUTGD_FONTS_DATADIR}")
+  add_test(NAME fonts_contract COMMAND test_fonts)
   add_test(NAME editor_contract COMMAND test_editor)
   set_tests_properties(editor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
