@@ -40,7 +40,7 @@ private slots:
         QVERIFY(parent.waitForFinished(1000));
         int status = 0;
         pid_t reaped = 0;
-        QTRY_VERIFY_WITH_TIMEOUT((reaped = ::waitpid(child, &status, WNOHANG)) != 0, 1000);
+        QTRY_VERIFY_WITH_TIMEOUT(reaped != 0 || (reaped = ::waitpid(child, &status, WNOHANG)) != 0, 1000);
         QCOMPARE(reaped, child);
         child = -1;
         QVERIFY(WIFSIGNALED(status));
