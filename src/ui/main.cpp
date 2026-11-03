@@ -5,6 +5,7 @@
 #include "ViewState.h"
 #include "Ui.h"
 #include "Fonts.h"
+#include "QuickBackend.h"
 #include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "core/HostEnvironment.h"
@@ -39,6 +40,7 @@ int main(int argc,char** argv){
   // 1920x1080 preview kept 36 MiB resident until the editor closed.
   if(!putgd::applyResidentAllocatorPolicy())std::fputs("Could not apply the editor allocation policy\n",stderr);
  }
+ putgd::nameSoftwareSceneGraphBackend();
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());

@@ -431,6 +431,11 @@ target_compile_definitions(putgd_fonts PRIVATE PUTGD_INSTALL_DATADIR="${PUTGD_FO
 # instead of copying the resource fonts into every interface process's heap.
 install(FILES src/ui/fonts/IBMPlexSans-Regular.ttf src/ui/fonts/IBMPlexSans-Medium.ttf src/ui/fonts/IBMPlexSans-SemiBold.ttf
   src/ui/fonts/IBMPlexMono-Regular.ttf DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/fonts")
+# No probe OpenGL context from Plasma's platform theme in processes that draw
+# no Qt Quick (#1161).
+add_library(putgd_quick_backend STATIC src/ui/QuickBackend.cpp)
+target_include_directories(putgd_quick_backend PUBLIC src)
+target_link_libraries(putgd_quick_backend PUBLIC Qt6::Core putgd_build_options PRIVATE ${CMAKE_DL_LIBS})
 # PNG previews decode through the built-in handler by name (#1161).
 add_library(putgd_preview_reader STATIC src/ui/PreviewReader.cpp)
 target_include_directories(putgd_preview_reader PUBLIC src)
@@ -497,7 +502,7 @@ endif()
 install(TARGETS putgd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 if(TARGET putgd_kde)
   add_executable(putgd-kde-region src/platform/kde/region_main.cpp)
-  target_link_libraries(putgd-kde-region PRIVATE putgd_kde putgd_capture_control putgd_build_identity putgd_ui_control)
+  target_link_libraries(putgd-kde-region PRIVATE putgd_kde putgd_capture_control putgd_build_identity putgd_ui_control putgd_quick_backend)
   if(PUTGD_KDE_NATIVE_REGION)
     target_compile_definitions(putgd-kde-region PRIVATE PUTGD_HAVE_LAYER_SHELL=1)
     target_link_libraries(putgd-kde-region PRIVATE PkgConfig::PUTGD_WAYLAND)
@@ -511,7 +516,7 @@ if(TARGET putgd_x11_core)
   install(TARGETS putgd-capture RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
 add_executable(putgd-ui src/ui/main.cpp src/ui/ImageJob.cpp src/ui/ImageEditor.cpp)
-target_link_libraries(putgd-ui PRIVATE putgd_ui_application putgd_editor_window putgd_build_identity)
+target_link_libraries(putgd-ui PRIVATE putgd_ui_application putgd_editor_window putgd_build_identity putgd_quick_backend)
 install(TARGETS putgd-ui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Screen recording helper (#50): GStreamer acquisition and FFmpeg export live in
@@ -841,6 +846,9 @@ if(BUILD_TESTING)
   endif()
   add_executable(test_editor tests/unit/test_editor.cpp)
   target_link_libraries(test_editor PRIVATE putgd_editor putgd_core Qt6::Test)
+  add_executable(test_quick_backend tests/unit/test_quick_backend.cpp)
+  target_link_libraries(test_quick_backend PRIVATE putgd_quick_backend Qt6::Test ${CMAKE_DL_LIBS})
+  add_test(NAME quick_backend_contract COMMAND test_quick_backend)
   add_executable(test_preview_reader tests/unit/test_preview_reader.cpp)
   target_link_libraries(test_preview_reader PRIVATE putgd_preview_reader Qt6::Test)
   add_test(NAME preview_reader_contract COMMAND test_preview_reader)

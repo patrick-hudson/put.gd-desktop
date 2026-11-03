@@ -1,4 +1,5 @@
 #include "KdeRegionOverlay.h"
+#include "ui/QuickBackend.h"
 #include "KdeRegionProtocol.h"
 #include "platform/x11/CaptureControl.h"
 #include "ui/StdioDevice.h"
@@ -38,6 +39,7 @@ int main(int argc,char** argv) {
   std::printf("putgd-kde-region %s\n",putgd::buildVersion()); return 0;
  }
  putgd::UiControlPipes handles; if(!handles.valid()) return 2;
+ putgd::nameSoftwareSceneGraphBackend();
  QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
  app.setDesktopFileName("putgd-kde-region");
  QCoreApplication::setOrganizationName("putgd"); QCoreApplication::setApplicationName("putgd-kde-region");
