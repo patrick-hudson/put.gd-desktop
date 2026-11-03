@@ -201,9 +201,8 @@ private slots:
   stopFixture();QVERIFY(startFixture(0,missing));
   GnomeAdapter source;source.bindShortcuts({{"region","Ctrl+Shift+1"}});PUTGD_TRY_COMPARE(failure(source),missing);putgd::test::settle(100);
   QSignalSpy published(&source,&GnomeAdapter::capabilitiesChanged);const auto retriedFrom=state()["hellos"].toInt();
-  putgd::test::settle(6500);QVERIFY(state()["hellos"].toInt()>=retriedFrom+2);QCOMPARE(published.size(),0);
-  control("SetErrors",{denied,QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(failure(source)==denied,5000);QCOMPARE(published.size(),1);
-  putgd::test::settle(3300);QCOMPARE(published.size(),1);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(state()["hellos"].toInt()>=retriedFrom+2,10000);QCOMPARE(published.size(),0);
+  control("SetErrors",{denied,QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(failure(source)==denied,5000);PUTGD_COMPARE_STEADY(published.size(),1,3300);
   control("SetErrors",{QString{},QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);QVERIFY(published.size()>1);
  }
  void endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot(){
