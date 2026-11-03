@@ -627,6 +627,19 @@ private slots:
   PUTGD_TRY_COMPARE(source.reads,0);PUTGD_TRY_COMPARE(source.copies,0);
 #endif
  }
+ void cleanupPassRearmsHeapCleanup() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);
+  OperationService::CleanupSchedule schedule;schedule.startupDelayMs=2500;operations.setCleanupScheduleForTesting(schedule);
+  PUTGD_TRY_VERIFY(operations.ready());
+  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
+  // Startup's own cleanup, then the one after the pass that runs later.
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),2,8000);
+#endif
+ }
  void shutdownCancelsPendingStartupHeapCleanup() {
 #ifndef __GLIBC__
   QSKIP("Allocator reclamation uses glibc on supported Linux builds");

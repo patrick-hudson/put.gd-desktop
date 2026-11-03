@@ -1204,6 +1204,8 @@ void OperationService::announceIncompleteUploads(QJsonObject& outcome,bool autom
 void OperationService::finishCleanup(const QJsonObject& outcome) {
  cleanupInProgress_=false;automaticCleanup_=false;cleanupStop_.reset();
  if(!outcome.isEmpty())lastCleanup_=outcome;
+ // The pass frees its journal connection's page cache; hand that back too.
+ requestHeapReclamation();
 }
 QJsonObject OperationService::cleanArtifacts(const CleanupPass& pass,Error& e) {
  QElapsedTimer elapsed;elapsed.start();
