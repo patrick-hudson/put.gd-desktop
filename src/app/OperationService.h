@@ -180,6 +180,9 @@ public:
  // reference) is leased to one operation's provider work at a time.
  std::shared_ptr<DestinationLease> destinationLease(const Destination&);
  bool ready() const {return ready_;}
+ // Ask the idle gate to return freed heap once current work drains (#1149): a
+ // history page or a closed interface leaves query buffers free but resident.
+ void requestHeapReclamation();
 signals:
  void initialized();
  void changed(const QString& id);

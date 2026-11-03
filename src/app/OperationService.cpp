@@ -157,6 +157,10 @@ bool OperationService::heapReclamationIdle() const {
 void OperationService::scheduleHeapReclamation() {
  if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);
 }
+void OperationService::requestHeapReclamation() {
+ if(stopping_)return;
+ heapReclamationPending_=true;scheduleHeapReclamation();
+}
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
