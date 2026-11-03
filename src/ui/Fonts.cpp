@@ -4,6 +4,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFontDatabase>
+#ifndef PUTGD_INSTALL_DATADIR
+#define PUTGD_INSTALL_DATADIR "share"
+#endif
 
 // Q_INIT_RESOURCE must be outside putgd's namespace.
 static void initializeFontResources() { Q_INIT_RESOURCE(fonts); }
@@ -17,7 +20,12 @@ namespace putgd::Fonts {
 // either way, so glyphs render identically; the resource copy remains the
 // fallback for a build that runs without the installed data directory.
 QString installedDirectory(const QString& binDirectory) {
-    const auto candidate = QDir::cleanPath(QDir(binDirectory).filePath(QStringLiteral("../share/putgd/fonts")));
+    // The configured data directory: beside bin/ when it is relative (the
+    // DEB, RPM and AppImage layouts; relocatable), or as given when absolute.
+    const QString dataDirectory = QStringLiteral(PUTGD_INSTALL_DATADIR);
+    const QString candidate = QDir::cleanPath(QDir::isAbsolutePath(dataDirectory)
+        ? dataDirectory + QStringLiteral("/putgd/fonts")
+        : QDir(binDirectory).filePath(QStringLiteral("../") + dataDirectory + QStringLiteral("/putgd/fonts")));
     return QFileInfo(candidate).isDir() ? candidate : QString();
 }
 QString source(const QString& installedDirectory, const QString& name) {

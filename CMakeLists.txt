@@ -406,6 +406,9 @@ endif()
 # The bundled IBM Plex fonts (OFL), for the interface and recording helper only.
 add_library(putgd_fonts STATIC src/ui/Fonts.cpp src/ui/fonts.qrc)
 target_link_libraries(putgd_fonts PUBLIC putgd_visual)
+# Fonts.cpp looks for the installed copies in the configured data directory:
+# beside bin/ when it is relative (relocatable, as the AppImage is).
+target_compile_definitions(putgd_fonts PRIVATE PUTGD_INSTALL_DATADIR="${CMAKE_INSTALL_DATADIR}")
 # The same font files installed beside the executables: Fonts.cpp maps these
 # instead of copying the resource fonts into every interface process's heap.
 install(FILES src/ui/fonts/IBMPlexSans-Regular.ttf src/ui/fonts/IBMPlexSans-Medium.ttf src/ui/fonts/IBMPlexSans-SemiBold.ttf
