@@ -92,13 +92,19 @@ void GnomeAdapter::call(const QString& method,const QVariantList& args,Reply rep
 }
 void GnomeAdapter::discover(){
  if(!ownsName_||stopping_)return;
- const auto owner=bus_.interface()->serviceOwner(service);if(!owner.isValid()||owner.value().isEmpty()){ready_=false;helperError_={"helper_unavailable","GNOME Shell is unavailable on the session bus",{}};invalidateShortcutBindings();emit capabilitiesChanged();return;}
+ const auto owner=bus_.interface()->serviceOwner(service);if(!owner.isValid()||owner.value().isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
  if(owner_!=owner.value()){owner_=owner.value();bus_.connect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.connect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.connect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
  call("Hello",{},[this](Error error,QJsonObject hello){
   if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","GNOME helper requires protocol 1 and GNOME Shell 50",{}};
-  if(error){ready_=false;helperError_=error;invalidateShortcutBindings();emit capabilitiesChanged();return;}
+  if(error){helperUnavailable(error);return;}
   ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
  });
+}
+// The probe retries for as long as the helper stays away. Only a change may reach
+// the UI: every signal costs it a new snapshot and a reload of the History page.
+void GnomeAdapter::helperUnavailable(const Error& error){
+ const auto before=capabilities();ready_=false;helperError_=error;invalidateShortcutBindings();
+ if(capabilities()!=before)emit capabilitiesChanged();
 }
 void GnomeAdapter::setUiProcess(qint64 pid){
  uiProcess_=pid>0&&pid<=std::numeric_limits<quint32>::max()?pid:0;uiProcessError_={};

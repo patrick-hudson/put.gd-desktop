@@ -193,6 +193,19 @@ private slots:
   if(guidance){QVERIFY(result.error.message.contains("install"));QVERIFY(result.error.message.contains("log out and back in"));}
   if(failure.startsWith("org."))QCOMPARE(result.error.details["dbusError"].toString(),failure);
  }
+ void absentHelperPublishesOnlyWhatChanges(){
+  // Each signal makes an open UI reload its snapshot and History page, so the
+  // retry for a missing extension must stay silent until something is different.
+  const QString missing="org.freedesktop.DBus.Error.UnknownMethod",denied="org.freedesktop.DBus.Error.AccessDenied";
+  const auto failure=[](const GnomeAdapter& source){return source.capabilities()["helper"].toObject()["error"].toObject()["details"].toObject()["dbusError"].toString();};
+  stopFixture();QVERIFY(startFixture(0,missing));
+  GnomeAdapter source;source.bindShortcuts({{"region","Ctrl+Shift+1"}});PUTGD_TRY_COMPARE(failure(source),missing);putgd::test::settle(100);
+  QSignalSpy published(&source,&GnomeAdapter::capabilitiesChanged);const auto retriedFrom=state()["hellos"].toInt();
+  putgd::test::settle(6500);QVERIFY(state()["hellos"].toInt()>=retriedFrom+2);QCOMPARE(published.size(),0);
+  control("SetErrors",{denied,QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(failure(source)==denied,5000);QCOMPARE(published.size(),1);
+  putgd::test::settle(3300);QCOMPARE(published.size(),1);
+  control("SetErrors",{QString{},QString{}});PUTGD_TRY_VERIFY_WITH_TIMEOUT(helperAvailable(source),5000);QVERIFY(published.size()>1);
+ }
  void endpointDisappearingAfterDiscoveryGetsGuidanceButMissingMethodsDoNot(){
   GnomeAdapter source;PUTGD_TRY_VERIFY(helperAvailable(source));const QString missing="org.freedesktop.DBus.Error.UnknownMethod";
   // A missing Prepare on a live bridge is a different failure from a disabled extension.
