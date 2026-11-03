@@ -53,8 +53,9 @@ private slots:
         parent.closeWriteChannel(); // Release the race fixture only after parent death.
         int status = 0;
         pid_t reaped = 0;
-        PUTGD_TRY_VERIFY_WITH_TIMEOUT(reaped != 0 || (reaped = ::waitpid(child, &status, WNOHANG)) != 0,
-                                     qMax(qint64(0), 1000 - elapsed.elapsed()));
+        // Keep the product deadline unscaled even when CI scales wait budgets.
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(reaped != 0 || elapsed.elapsed() >= 1000 ||
+                                     (reaped = ::waitpid(child, &status, WNOHANG)) != 0, 1000);
         QCOMPARE(reaped, child);
         child = -1;
         QVERIFY(elapsed.elapsed() < 1000);
