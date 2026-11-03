@@ -184,6 +184,10 @@ public:
  // Ask the idle gate to return freed heap once current work drains (#1149): a
  // history page or a closed interface leaves query buffers free but resident.
  void requestHeapReclamation();
+ // Also unmaps clean library pages once quiet. Only for work whose pages nothing
+ // needs soon: captures and hotkeys keep theirs, so a press under memory pressure
+ // finds them still mapped.
+ void requestImagePageRelease();
 signals:
  void initialized();
  void changed(const QString& id);
@@ -323,6 +327,7 @@ private:
  // Clean library pages leave this process once it has been quiet for this long.
  int imagePageDelayMs_=30*1000;
  bool imagePagesPending_=false;
+ bool firstCleanupPending_=true;
  quint64 imagePageReleaseCount_=0;
  qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0;
  int running_=0,storageRequests_=0;

@@ -127,7 +127,6 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   malloc_trim(0);
   lastHeapReclamationUsec_=elapsed.nsecsElapsed()/1000;
   ++heapReclamationCount_;
-  imagePagesPending_=true;
 #endif
   heapReclamationPending_=false;
   scheduleHeapReclamation();
@@ -156,7 +155,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  },[this](Error e,QJsonObject) {
   startupError_=e;ready_=!e;
 #ifdef __GLIBC__
-  if(ready_) {heapReclamationPending_=true;scheduleHeapReclamation();}
+  if(ready_) {heapReclamationPending_=true;imagePagesPending_=true;scheduleHeapReclamation();}
 #endif
   emit initialized();
   if(ready_) {cleanupTimer_.start();QTimer::singleShot(cleanupSchedule_.startupDelayMs,this,&OperationService::cleanupExpired);}
@@ -175,6 +174,10 @@ void OperationService::scheduleHeapReclamation() {
 void OperationService::requestHeapReclamation() {
  if(stopping_)return;
  heapReclamationPending_=true;scheduleHeapReclamation();
+}
+void OperationService::requestImagePageRelease() {
+ if(stopping_)return;
+ imagePagesPending_=true;requestHeapReclamation();
 }
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
@@ -1220,7 +1223,9 @@ void OperationService::finishCleanup(const QJsonObject& outcome) {
  cleanupInProgress_=false;automaticCleanup_=false;cleanupStop_.reset();
  if(!outcome.isEmpty())lastCleanup_=outcome;
  // The pass frees its journal connection's page cache; hand that back too.
- requestHeapReclamation();
+ // The first pass also ends startup's own work, whose pages nothing needs again.
+ if(std::exchange(firstCleanupPending_,false))requestImagePageRelease();
+ else requestHeapReclamation();
 }
 QJsonObject OperationService::cleanArtifacts(const CleanupPass& pass,Error& e) {
  QElapsedTimer elapsed;elapsed.start();

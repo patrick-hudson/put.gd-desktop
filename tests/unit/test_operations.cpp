@@ -652,6 +652,12 @@ private slots:
   QVERIFY(!memory()["imagePageReleasePending"].toBool());QVERIFY(memory()["lastImagePageReleaseBytes"].toInteger()>0);
   // Nothing happened since, so nothing is released again.
   PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,2500);
+  // Ordinary work trims the heap but keeps the pages it just used mapped.
+  const auto trims=memory()["allocatorReclamationCount"].toInt();
+  operations.requestHeapReclamation();PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["allocatorReclamationCount"].toInt(),trims+1,5000);
+  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,500);QVERIFY(!memory()["imagePageReleasePending"].toBool());
+  // The interface helper's exit releases them.
+  operations.requestImagePageRelease();PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,6000);
 #endif
  }
  void shutdownCancelsImagePageRelease() {
