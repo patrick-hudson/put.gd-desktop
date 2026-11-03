@@ -18,6 +18,8 @@ except ModuleNotFoundError:
     from tools.releases.audit_proton import audit_proton
 
 RESIDENT_FORBIDDEN_NEEDED = re.compile(r"^lib(Qt6Network|ssl|crypto|gtk)")
+# The interface helper reaches the resident over a native Unix socket (#1161).
+UI_FORBIDDEN_NEEDED = re.compile(r"^libQt6Network")
 PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-b2-worker", "putgd-launcher")
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
@@ -173,6 +175,9 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require
         if path == root / "usr/bin/putgd":
             if forbidden := [soname for soname in needed if RESIDENT_FORBIDDEN_NEEDED.match(soname)]:
                 raise ValueError(f"Resident links a library gate C forbids: {', '.join(forbidden)}")
+        if path == root / "usr/bin/putgd-ui":
+            if forbidden := [soname for soname in needed if UI_FORBIDDEN_NEEDED.match(soname)]:
+                raise ValueError(f"Interface helper links a networking library: {', '.join(forbidden)}")
         resolved = command(["ldd", str(path)], env=env)
         if "not found" in resolved:
             raise ValueError(f"Unresolved native dependency: {path.name}\n{resolved}")

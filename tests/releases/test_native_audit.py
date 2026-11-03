@@ -141,6 +141,16 @@ class NativeInventoryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "gate C forbids: " + re.escape(soname)):
                     audit.audit_tree(self.root, self.manifest)
 
+    def test_interface_helper_must_not_link_qtnetwork(self):
+        # putgd-ui speaks to the resident over a native Unix socket (#1161).
+        def commands(argv, *, env=None):
+            if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd-ui"):
+                return " 0x0000000000000001 (NEEDED) Shared library: [libQt6Network.so.6]\n 0x000000000000000f (RPATH) Library rpath: [$ORIGIN]"
+            return self.commands(argv, env=env)
+        with patch.object(audit, "command", side_effect=commands):
+            with self.assertRaisesRegex(ValueError, "Interface helper links a networking library: libQt6Network.so.6"):
+                audit.audit_tree(self.root, self.manifest)
+
     def test_workers_may_link_networking(self):
         def commands(argv, *, env=None):
             if argv[:2] == ["readelf", "-d"] and argv[2].endswith("usr/bin/putgd-cli"):

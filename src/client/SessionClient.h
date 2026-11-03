@@ -24,6 +24,7 @@ public:
 private:
     struct Pending;
     void start(RequestId id);
+    void transmit(RequestId id);
     void receive(RequestId id);
     void finish(RequestId id, Error error, QJsonObject result = {});
     void transportFailed(RequestId id, bool timedOut);
