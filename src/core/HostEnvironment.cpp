@@ -92,11 +92,13 @@ bool startDetached(const QString& program,const QStringList& arguments,qint64* p
  if(path.isEmpty())return false;
  auto process=std::make_unique<QProcess>();process->setProgram(path);process->setArguments(arguments);process->setProcessEnvironment(env);
  process->setStandardInputFile(QProcess::nullDevice());process->setStandardOutputFile(QProcess::nullDevice());process->setStandardErrorFile(QProcess::nullDevice());
-#if QT_VERSION >= QT_VERSION_CHECK(6,6,0)
+#if QT_VERSION >= QT_VERSION_CHECK(6,9,0)
  process->setUnixProcessParameters(QProcess::UnixProcessFlag::CloseFileDescriptors);
  return process->startDetached(pid);
 #else
- // Qt 6.4/6.5 startDetached ignores setChildProcessModifier. Use start()
+ // Qt 6.4/6.5 startDetached ignores setChildProcessModifier. Qt 6.6-6.8.2
+ // CloseFileDescriptors closes its own exec-error pipe too; use the safe
+ // native path only from 6.9, which marks descriptors CLOEXEC. Use start()
  // with a new session instead, retaining QProcess only until the child exits.
  // No QObject parent: exiting putgd must never destroy/kill this host child.
  const long maximumFd=::sysconf(_SC_OPEN_MAX);

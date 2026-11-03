@@ -188,7 +188,8 @@ private slots:
   QFile file(receipt);QVERIFY(file.open(QIODevice::ReadOnly));
   const auto pid=file.readAll().trimmed().toLongLong();QVERIFY(pid>0);
   const auto stop=qScopeGuard([&]{::kill(pid,SIGKILL);});
-  QVERIFY(::kill(pid,0)==0);QCOMPARE(qint64(::getsid(pid)),pid);
+  QVERIFY(::kill(pid,0)==0);
+  const auto session=::getsid(pid);QVERIFY(session>0);QVERIFY(session!=::getsid(0));
  }
 };
 
