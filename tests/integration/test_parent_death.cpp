@@ -1,4 +1,5 @@
 #include "ui/ChildProcess.h"
+#include "../fixtures/Waits.h"
 #include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QProcess>
@@ -52,8 +53,8 @@ private slots:
         parent.closeWriteChannel(); // Release the race fixture only after parent death.
         int status = 0;
         pid_t reaped = 0;
-        QTRY_VERIFY_WITH_TIMEOUT(reaped != 0 || (reaped = ::waitpid(child, &status, WNOHANG)) != 0,
-                                qMax(qint64(0), 1000 - elapsed.elapsed()));
+        PUTGD_TRY_VERIFY_WITH_TIMEOUT(reaped != 0 || (reaped = ::waitpid(child, &status, WNOHANG)) != 0,
+                                     qMax(qint64(0), 1000 - elapsed.elapsed()));
         QCOMPARE(reaped, child);
         child = -1;
         QVERIFY(elapsed.elapsed() < 1000);
