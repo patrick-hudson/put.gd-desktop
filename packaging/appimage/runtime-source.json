@@ -15,22 +15,34 @@
     {
       "file": "fuse-3.15.0.tar.xz",
       "url": "https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz",
+      "mirrors": [
+        "https://source.ipfire.org/source-2.x/fuse-3.15.0.tar.xz"
+      ],
       "digest": "70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0"
     },
     {
       "file": "squashfuse-0.5.2.tar.gz",
       "url": "https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz",
+      "mirrors": [
+        "https://mirror.clarkson.edu/gentoo/distfiles/d2/squashfuse-0.5.2.tar.gz"
+      ],
       "digest": "db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3"
     },
     {
       "file": "musl-1.2.5.tar.gz",
       "url": "https://musl.libc.org/releases/musl-1.2.5.tar.gz",
+      "mirrors": [
+        "https://distfiles.alpinelinux.org/distfiles/v3.21/musl-1.2.5.tar.gz"
+      ],
       "algorithm": "sha512",
       "digest": "7bb7f7833923cd69c7a1a9b8a5f1784bfd5289663eb6061dcd43d583e45987df8a68a1be05d75cc1c88a3f5b610653d1a70f4a9cff4d8f7fd41ae73ee058c17c"
     },
     {
       "file": "zstd-1.5.6.tar.gz",
       "url": "https://github.com/facebook/zstd/archive/v1.5.6.tar.gz",
+      "mirrors": [
+        "https://distfiles.alpinelinux.org/distfiles/v3.21/zstd-1.5.6.tar.gz"
+      ],
       "algorithm": "sha512",
       "digest": "ca12dffd86618ca008e1ecc79056c1129cb4e61668bf13a3cd5b2fa5c93bc9c92c80f64c1870c68b9c20009d9b3a834eac70db72242d5106125a1c53cccf8de8"
     },
@@ -46,6 +58,9 @@
     {
       "file": "mimalloc-2.1.7.tar.gz",
       "url": "https://github.com/microsoft/mimalloc/archive/v2.1.7/mimalloc-2.1.7.tar.gz",
+      "mirrors": [
+        "https://distfiles.alpinelinux.org/distfiles/v3.21/mimalloc-2.1.7.tar.gz"
+      ],
       "algorithm": "sha512",
       "digest": "4e30976758015c76a146acc1bfc8501e2e5c61b81db77d253de0d58a8edef987669243f232210667b32ef8da3a33286642acb56ba526fd24c4ba925b44403730"
     }
