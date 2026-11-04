@@ -850,8 +850,10 @@ with audio, `putgd-record --export`): H.264 and H.265 on NVENC export at
 about 3.9× real time (15.6 s), H.264 on the Intel iGPU through VA-API at
 2.6× (23.5 s), `libx264` at 2.1×, VP9 at 1.7×, a 10 s GIF at 0.9×; `libx265`
 stays below real time (0.68× at `faster`), which is why the GPU paths come
-first. AMD hardware was not available; its VA-API export is the same libva
-code path exercised on Intel here and on the Skylake builders. H.265 links do not play in Firefox or Chrome on Linux; both format
+first. On an AMD Radeon 740M (Aurora Fedora 45, Plasma 6.8.2 Wayland, Mesa 26.2.6 from
+negativo17), live H.264 used `vah264enc`, and H.264 and H.265 exports used
+`h264_vaapi` and `hevc_vaapi`, with the GPU's encode engine counters confirming
+the work (#138). Fedora's stock Mesa on AMD has not been tested. H.265 links do not play in Firefox or Chrome on Linux; both format
 menus say so in the item tooltip and the review status, and the default
 stays H.264. Each decode pass
 opens its own demuxer and verifies that a backward seek did not overshoot the
