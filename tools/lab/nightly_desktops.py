@@ -44,6 +44,7 @@ FLOWS = dict(region_upload='Region', window_desktop='Window / desktop',
              file_manager_upload='Right-click upload',
              s3_region_upload='Live S3', proton_region_upload='Live Proton')
 LOCAL = [name for name in FLOWS if not name.startswith(('s3_', 'proton_'))]
+STABLE_TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+')
 TAG = re.compile(r'v\d{2}\.\d{3,4}\.\d+-nightly')
 HOSTS = ('m74', 'd69', 'k72', 'aurora-amd', 'f44')
 # The worker budget includes checkout verification, await_host and setup. Leave
@@ -230,6 +231,16 @@ class GitHub:
             raise RuntimeError('GitHub request failed; response withheld')
         return json.loads(result.stdout) if result.stdout.strip() else {}
 
+    def asset(self, asset_id, target):
+        # Draft assets have no public download route. gh supplies authentication
+        # from the private environment, never from argv or a receipt.
+        with target.open('xb') as stream:
+            result = subprocess.run(['gh', 'api', f'repos/{self.repo}/releases/assets/{asset_id}',
+                                     '-H', 'Accept: application/octet-stream'],
+                                    stdout=stream, stderr=subprocess.PIPE, env=self.env, timeout=900)
+        if result.returncode:
+            raise RuntimeError('authenticated release asset download failed')
+
     def issues(self):
         issues = []
         for page in range(1, 1001):
@@ -245,13 +256,38 @@ class GitHub:
                         'PATCH' if existing else 'POST', dict(title=title, body=body, state='open'))
 
 
-def release_assets(github, tag, out, rows):
+def validate_release(release, tag, stable_draft=False):
+    pattern = STABLE_TAG if stable_draft else TAG
+    if (not tag or not pattern.fullmatch(tag) or release['tag_name'] != tag
+            or bool(release['draft']) != stable_draft):
+        raise RuntimeError('expected a named stable draft' if stable_draft
+                           else 'expected a published nightly release tag')
+
+
+def tag_commit(github, tag):
+    obj = github.api(f'repos/{github.repo}/git/ref/tags/{tag}')['object']
+    for _ in range(8):
+        if obj['type'] == 'commit' and re.fullmatch('[0-9a-f]{40}', obj['sha']):
+            return obj['sha']
+        if obj['type'] != 'tag':
+            break
+        obj = github.api(f'repos/{github.repo}/git/tags/{obj["sha"]}')['object']
+    raise RuntimeError('release tag does not resolve to a commit')
+
+
+def release_assets(github, tag, out, rows, *, release=None):
     """Download the published bytes; every selected package must match SHA256SUMS."""
     out.mkdir(mode=0o700)
     version = tag[1:]
     assets = {f'putgd-{version}-{row["asset"]}' for row in rows}
     for name in sorted(assets | {'SHA256SUMS', 'release-builds.json'}):
-        github.gh('release', 'download', tag, '--repo', github.repo, '--pattern', name, '--dir', str(out))
+        if release is not None:
+            matches = [a for a in release['assets'] if a['name'] == name]
+            if len(matches) != 1:
+                raise RuntimeError('missing or duplicate draft asset: '+name)
+            github.asset(matches[0]['id'], out/name)
+        else:
+            github.gh('release', 'download', tag, '--repo', github.repo, '--pattern', name, '--dir', str(out))
     sums = {}
     for line in (out/'SHA256SUMS').read_text().splitlines():
         sha, name = line.split(maxsplit=1)
@@ -265,6 +301,8 @@ def release_assets(github, tag, out, rows):
     identity = json.loads((out/'release-builds.json').read_text())['release']
     if identity['tag'] != tag or not re.fullmatch('[0-9a-f]{40}', identity['gitCommit']):
         raise RuntimeError('release identity mismatch')
+    if release is not None and identity['gitCommit'] != tag_commit(github, tag):
+        raise RuntimeError('release build differs from tag commit')
     return identity
 
 
@@ -728,6 +766,16 @@ def eligible_desktops(result):
 
 
 def publish(github, result, out, *, previous=None):
+    if result.get('stableDraft'):
+        # Acceptance attachments stay private/local until a person attaches them.
+        # Do not update #1003, pin an issue, or file/close nightly regressions.
+        if previous is not None:
+            result['desktops'] = merge_desktops(previous, result)
+        for row in result['desktops']:
+            save(out/(row['host']+'-receipt.json'), row)
+        (out/'results.md').write_text(f'Stable draft: **{result["release"]}** · {result["date"]}\n\n'+table(result))
+        save(out/'results.json', result)
+        return
     issues = github.issues()
     title = 'Nightly desktop results'
     pinned = next((i for i in issues if i['title'] == title), None)
@@ -938,14 +986,20 @@ def run_hosts(builders, tag, artifacts, out, result, dispatch=run_host, *, local
 
 def controller(args, config, *, local_workers=None):
     state = Path(config.get('state', str(Path.home()/'putgd-lab/nightly')))
+    stable_draft = args.stable_draft
+    if stable_draft and (not args.tag or not STABLE_TAG.fullmatch(args.tag)):
+        raise RuntimeError('--stable-draft requires a named stable tag')
     state.mkdir(parents=True, mode=0o700, exist_ok=True)
     with (state/'controller.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if stable_draft:
+            state = state/'stable-drafts'/args.tag
+            state.mkdir(parents=True, mode=0o700, exist_ok=True)
         if not args.now and not args.tag:
             follow_nightly(sys.argv)
         github = GitHub(config['repository'], args.config.parent/'github-token')
         if args.tag:
-            if not TAG.fullmatch(args.tag):
+            if not (STABLE_TAG if stable_draft else TAG).fullmatch(args.tag):
                 raise RuntimeError('expected a published nightly release tag')
             release = github.api(f'repos/{github.repo}/releases/tags/{args.tag}')
         else:
@@ -955,17 +1009,16 @@ def controller(args, config, *, local_workers=None):
                 print('No new published nightly')
                 return
         tag = release['tag_name']
-        if release['draft']:
-            raise RuntimeError('draft releases cannot enter nightly checks')
+        validate_release(release, tag, stable_draft)
         done = state/(tag+'.json')
-        if tested_release(done) and not args.now:
+        if tested_release(done) and not args.now and not stable_draft:
             print('Already tested '+tag)
             return
         if set(config['builders']) != set(HOSTS) or any(len(b['rows']) != 1 for b in config['builders'].values()):
             raise RuntimeError('configure exactly one desktop on each of the five builders')
         builders = selected_builders(config['builders'], args.desktops)
         previous = None
-        if args.desktops:
+        if args.desktops and (not stable_draft or (state/'last-run.json').exists()):
             marker = json.loads((state/'last-run.json').read_text())
             previous = json.loads(Path(marker['results']).read_text())
             if previous['release'] != tag:
@@ -974,10 +1027,12 @@ def controller(args, config, *, local_workers=None):
         out.mkdir(mode=0o700)
         artifacts = out/'artifacts'
         artifacts.mkdir(mode=0o700)
-        result = dict(release=tag,build='unverified',date=dt.datetime.now(dt.timezone.utc).isoformat(),desktops=[])
+        result = dict(release=tag,build='unverified',date=dt.datetime.now(dt.timezone.utc).isoformat(),desktops=[],
+                      stableDraft=stable_draft)
         try:
             rows = [row for b in builders.values() for row in b['rows']]
-            identity = release_assets(github, tag, artifacts/'packages', rows)
+            identity = release_assets(github, tag, artifacts/'packages', rows,
+                                      **(dict(release=release) if stable_draft else {}))
             identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb','.rpm','.AppImage')}
             identity['driver'] = command(['git','rev-parse','HEAD']).strip()
             identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
@@ -997,15 +1052,16 @@ def controller(args, config, *, local_workers=None):
         publish(github,result,out,previous=previous)
         save(state/'last-run.json',dict(results=str(out/'results.json'),eligibleDesktops=result['eligibleDesktops']))
         # Grey is not a tested release. A later daily check may try it again.
-        if not args.desktops and result['eligibleDesktops'] >= 3:
+        if not stable_draft and not args.desktops and result['eligibleDesktops'] >= 3:
             save(done,dict(schemaVersion=2,eligibleDesktops=result['eligibleDesktops'],
                            issueUrl=result['issueUrl'],results=str(out/'results.json')))
-        print(result['issueUrl'])
+        print(str(out/'results.md') if stable_draft else result['issueUrl'])
 
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tag', nargs='?')
+    parser.add_argument('--stable-draft', action='store_true', help='manually test exact assets of a named stable draft; save separate local acceptance receipts')
     parser.add_argument('--now', action='store_true', help='manual trigger, including rechecking the same release')
     parser.add_argument('--desktops', nargs='+', help='recheck only these desktop names, profile names or builder IDs; preserve other rows')
     parser.add_argument('--config', type=Path, default=Path.home()/'.config/putgd-nightly/config.json')
@@ -1013,8 +1069,10 @@ def main():
     parser.add_argument('--artifacts', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--output', type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args()
-    if args.desktops and (not args.now or args.worker):
-        parser.error('--desktops requires --now on the controller')
+    if args.desktops and (not (args.now or args.stable_draft) or args.worker):
+        parser.error('--desktops requires --now or --stable-draft on the controller')
+    if args.stable_draft and (not args.tag or not STABLE_TAG.fullmatch(args.tag) or args.worker):
+        parser.error('--stable-draft requires a named stable tag on the controller')
     config = json.loads(private_file(args.config).read_text())
     expected = args.worker or 'd69'
     if socket.gethostname() not in config['builders'][expected]['hostnames']:
