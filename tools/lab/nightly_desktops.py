@@ -2,6 +2,7 @@
 """Unattended Tier 1 controller. Run on d69, never on the workstation.
 
   python3 tools/lab/nightly_desktops.py --now [vYY.MDD.N-nightly]
+  python3 tools/lab/nightly_desktops.py vYY.MDD.N --stable-draft --draft-token-file PATH
 
 Private configuration: ~/.config/putgd-nightly/config.json and github-token
 (owned, mode 0600). config.json supplies repository, builders (ssh argv, root,
@@ -263,6 +264,15 @@ def validate_release(release, tag, stable_draft=False):
             or stable_draft and bool(release.get('prerelease'))):
         raise RuntimeError('expected a named stable draft' if stable_draft
                            else 'expected a published nightly release tag')
+
+
+def draft_release(github, tag):
+    # releases/tags/TAG answers only for published releases; a draft is found by listing.
+    matches = [r for r in github.api(f'repos/{github.repo}/releases?per_page=100')
+               if r['draft'] and r['tag_name'] == tag]
+    if len(matches) != 1:
+        raise RuntimeError('expected exactly one draft release for '+tag)
+    return matches[0]
 
 
 def tag_commit(github, tag):
@@ -996,11 +1006,13 @@ def controller(args, config, *, local_workers=None):
             state.mkdir(parents=True, mode=0o700, exist_ok=True)
         if not args.now and not args.tag:
             follow_nightly(sys.argv)
-        github = GitHub(config['repository'], args.config.parent/'github-token')
+        github = GitHub(config['repository'],
+                        args.draft_token_file if stable_draft else args.config.parent/'github-token')
         if args.tag:
             if not (STABLE_TAG if stable_draft else TAG).fullmatch(args.tag):
                 raise RuntimeError('expected a published nightly release tag')
-            release = github.api(f'repos/{github.repo}/releases/tags/{args.tag}')
+            release = (draft_release(github, args.tag) if stable_draft
+                       else github.api(f'repos/{github.repo}/releases/tags/{args.tag}'))
         else:
             release = select_release(github.api(f'repos/{github.repo}/releases?per_page=100'),
                                      {p.stem for p in state.glob('v*-nightly.json') if tested_release(p)}, args.now)
@@ -1064,6 +1076,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tag', nargs='?')
     parser.add_argument('--stable-draft', action='store_true', help='manually test exact assets of a named stable draft; save separate local acceptance receipts')
+    parser.add_argument('--draft-token-file', type=Path, help='owned mode-0600 token with push access for --stable-draft; the unattended read-only token cannot see drafts')
     parser.add_argument('--now', action='store_true', help='manual trigger, including rechecking the same release')
     parser.add_argument('--desktops', nargs='+', help='recheck only these desktop names, profile names or builder IDs; preserve other rows')
     parser.add_argument('--config', type=Path, default=Path.home()/'.config/putgd-nightly/config.json')
@@ -1075,6 +1088,8 @@ def main():
         parser.error('--desktops requires --now or --stable-draft on the controller')
     if args.stable_draft and (not args.tag or not STABLE_TAG.fullmatch(args.tag) or args.worker):
         parser.error('--stable-draft requires a named stable tag on the controller')
+    if bool(args.stable_draft) != bool(args.draft_token_file):
+        parser.error('--stable-draft and --draft-token-file go together')
     config = json.loads(private_file(args.config).read_text())
     expected = args.worker or 'd69'
     if socket.gethostname() not in config['builders'][expected]['hostnames']:

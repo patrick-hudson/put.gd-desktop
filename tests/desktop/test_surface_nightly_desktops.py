@@ -812,6 +812,17 @@ with n.controller_shutdown(workers):
                 nightly.validate_release(release, tag, opt_in)
         self.assertIs(nightly.select_release([draft, published]), published)
 
+    def test_draft_lookup_lists_releases_and_requires_exactly_one_match(self):
+        tag = 'v26.1104.3870'
+        draft = dict(tag_name=tag, draft=True)
+        github = Mock(repo='owner/repo')
+        github.api.return_value = [dict(tag_name=tag, draft=False), draft]
+        self.assertIs(nightly.draft_release(github, tag), draft)
+        for listed in ([], [dict(tag_name=tag, draft=False)], [draft, dict(draft)]):
+            github.api.return_value = listed
+            with self.subTest(listed=listed), self.assertRaisesRegex(RuntimeError, 'exactly one draft'):
+                nightly.draft_release(github, tag)
+
     def draft_assets(self, root, *, corrupt=False, build=BUILD):
         import hashlib
         tag = 'v26.1104.3870'
@@ -850,12 +861,13 @@ with n.controller_shutdown(workers):
             state.mkdir()
             (state/'last-run.json').write_text('nightly sentinel')
             github = Mock(repo='owner/repo')
-            github.api.return_value = dict(tag_name=tag, draft=True)
+            github.api.return_value = [dict(tag_name=tag, draft=True),
+                                       dict(tag_name=tag+'-nightly', draft=False)]
             config = dict(state=str(state), repository='owner/repo', builders={
                 h: dict(rows=[dict(name=h, desktop=h, asset='ubuntu26.04-x86_64.deb')])
                 for h in nightly.HOSTS})
             args = SimpleNamespace(stable_draft=True, tag=tag, now=False, desktops=['d69'],
-                                   config=root/'config.json')
+                                   config=root/'config.json', draft_token_file=root/'draft-token')
             def assets(_github, _tag, out, rows, **kwargs):
                 self.assertTrue(kwargs['release']['draft'])
                 self.assertEqual(len(rows), 1)
@@ -865,13 +877,14 @@ with n.controller_shutdown(workers):
             def run(_builders, _tag, _artifacts, out, result, **kwargs):
                 self.assertEqual(list(_builders), ['d69'])
                 result['desktops'] = nightly.not_run_rows('d69', config['builders']['d69'], 'dry run', out)
-            with patch.object(nightly, 'GitHub', return_value=github), \
+            with patch.object(nightly, 'GitHub', return_value=github) as client, \
                  patch.object(nightly, 'release_assets', side_effect=assets), \
                  patch.object(nightly, 'catalog', return_value={}), \
                  patch.object(nightly, 'command', return_value=BUILD), \
                  patch.object(nightly, 'run_hosts', side_effect=run), \
                  patch.object(nightly, 'follow_nightly') as follow:
                 nightly.controller(args, config)
+                client.assert_called_with('owner/repo', root/'draft-token')
                 prior = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
                 # Draft snapshots are independent: failed/old/replaced assets can
                 # never be carried into a new filtered acceptance table.
@@ -881,6 +894,7 @@ with n.controller_shutdown(workers):
             github.issues.assert_not_called()
             github.issue.assert_not_called()
             self.assertEqual(github.api.call_count, 2)  # Only read the named release per snapshot.
+            self.assertNotIn('releases/tags/', str(github.api.call_args_list))
             self.assertEqual((state/'last-run.json').read_text(), 'nightly sentinel')
             self.assertFalse((state/(tag+'.json')).exists())
             marker = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
