@@ -9,6 +9,7 @@ frames.
 | --- | --- |
 | `mint-appimage-nightly-*`, `fedora-rpm-nightly-*`, `debian-deb-nightly-*`, `kubuntu-deb-nightly-*` | Nightly `61c556dbcb4b` |
 | `mint-appimage-head-*`, `fedora-rpm-head-*` | Final head `6d67545ca87c` on memory base `6a93abaf888d` |
+| `aurora-appimage-*` | Nightly `61c556dbcb4b` and final head `6d67545ca87c` |
 | `debian-deb-head-*`, `kubuntu-deb-head-*` | Earlier head `0f90e4f743c4` on the old base `6fe5c21e1439`. Its KDE code is the same as the final head's. |
 
 ## What differs
@@ -33,4 +34,6 @@ region, not of the frame, so the panel clock isn't in it.
   resident and profile seconds before each drag. Within the dragged region the
   decoded pixels are identical: PNG file hashes differ between runs here, so
   Fedora hashes the decoded RGB of the saved file.
-- **Aurora**: not compared. No nightly frame was taken there.
+- **Aurora**, nightly and the earlier final head `6d67545ca87c`, AppImage: the panel
+  clock on the overlay frame, and nothing at all on the mid-drag frame. Same
+  capture hash (`8aefb4d116df`).
