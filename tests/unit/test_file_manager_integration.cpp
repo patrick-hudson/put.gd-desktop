@@ -257,6 +257,9 @@ private slots:
    QFile::remove(starts);
    QProcess other;auto environment=QProcessEnvironment::systemEnvironment();environment.insert(variable,"putgd-other");
    other.setProcessEnvironment(environment);other.start(stub,{"--desktop"});
+   // The stub can write its marker before Qt consumes the startup notification.
+   // Establish Running before checking that the restart leaves it untouched.
+   QVERIFY(other.waitForStarted(putgd::test::scaled(5000)));
    PUTGD_TRY_COMPARE(lines().size(),1);
    QProcess second;restart(second);
    QVERIFY(second.waitForFinished(5000));QCOMPARE(second.exitCode(),0);
