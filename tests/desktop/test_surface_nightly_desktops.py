@@ -799,6 +799,113 @@ with n.controller_shutdown(workers):
             with self.assertRaisesRegex(RuntimeError,'carry-back unresolved'):
                 nightly.baton_returned('/current')
 
+    def test_stable_draft_requires_explicit_named_opt_in_and_timer_ignores_it(self):
+        draft = dict(tag_name='v26.1104.3870', draft=True, published_at=None)
+        published = dict(tag_name='v26.1104.3869-nightly', draft=False, published_at='today')
+        nightly.validate_release(draft, draft['tag_name'], True)
+        for release, tag, opt_in in ((draft, draft['tag_name'], False),
+                                     (published, published['tag_name'], True),
+                                     (dict(draft, draft=False), draft['tag_name'], True),
+                                     (dict(draft, prerelease=True), draft['tag_name'], True),
+                                     (draft, 'v26.1104.9999', True)):
+            with self.subTest(tag=tag, opt_in=opt_in), self.assertRaises(RuntimeError):
+                nightly.validate_release(release, tag, opt_in)
+        self.assertIs(nightly.select_release([draft, published]), published)
+
+    def test_draft_lookup_lists_releases_and_requires_exactly_one_match(self):
+        tag = 'v26.1104.3870'
+        draft = dict(tag_name=tag, draft=True)
+        github = Mock(repo='owner/repo')
+        github.api.return_value = [dict(tag_name=tag, draft=False), draft]
+        self.assertIs(nightly.draft_release(github, tag), draft)
+        github.api.side_effect = [[dict(tag_name='other', draft=False)]*100, [draft]]
+        self.assertIs(nightly.draft_release(github, tag), draft)
+        github.api.side_effect = None
+        for listed in ([], [dict(tag_name=tag, draft=False)], [draft, dict(draft)]):
+            github.api.return_value = listed
+            with self.subTest(listed=listed), self.assertRaisesRegex(RuntimeError, 'exactly one draft'):
+                nightly.draft_release(github, tag)
+
+    def draft_assets(self, root, *, corrupt=False, build=BUILD):
+        import hashlib
+        tag = 'v26.1104.3870'
+        package = f'putgd-{tag[1:]}-ubuntu26.04-x86_64.deb'
+        payloads = {package: b'synthetic package', 'release-builds.json': json.dumps(
+            dict(release=dict(tag=tag, gitCommit=build))).encode()}
+        payloads['SHA256SUMS'] = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n'
+                                       for name, data in payloads.items()).encode()
+        names = list(payloads)
+        github = Mock(repo='owner/repo')
+        github.api.side_effect = [dict(object=dict(type='tag', sha='b'*40)),
+                                  dict(object=dict(type='commit', sha=BUILD))]
+        def asset(asset_id, target):
+            target.write_bytes(b'corrupted' if corrupt and asset_id == 0 else payloads[names[asset_id]])
+        github.asset.side_effect = asset
+        release = dict(assets=[dict(id=i, name=name) for i, name in enumerate(names)])
+        identity = nightly.release_assets(github, tag, root/'packages',
+            [dict(asset='ubuntu26.04-x86_64.deb')], release=release)
+        github.gh.assert_not_called()
+        self.assertEqual(github.asset.call_count, 3)
+        self.assertEqual(identity['gitCommit'], BUILD)
+
+    def test_draft_download_uses_authenticated_asset_ids_and_verifies_sums_and_tag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.draft_assets(Path(tmp))
+        for kwargs, reason in ((dict(corrupt=True), 'checksum mismatch'),
+                               (dict(build='c'*40), 'differs from tag commit')):
+            with tempfile.TemporaryDirectory() as tmp, self.assertRaisesRegex(RuntimeError, reason):
+                self.draft_assets(Path(tmp), **kwargs)
+
+    def test_stable_draft_controller_isolates_state_and_has_no_github_writes(self):
+        tag = 'v26.1104.3870'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = root/'state'
+            state.mkdir()
+            (state/'last-run.json').write_text('nightly sentinel')
+            github = Mock(repo='owner/repo')
+            github.api.return_value = [dict(tag_name=tag, draft=True),
+                                       dict(tag_name=tag+'-nightly', draft=False)]
+            config = dict(state=str(state), repository='owner/repo', builders={
+                h: dict(rows=[dict(name=h, desktop=h, asset='ubuntu26.04-x86_64.deb')])
+                for h in nightly.HOSTS})
+            args = SimpleNamespace(stable_draft=True, tag=tag, now=False, desktops=['d69'],
+                                   config=root/'config.json', draft_token_file=root/'draft-token')
+            def assets(_github, _tag, out, rows, **kwargs):
+                self.assertTrue(kwargs['release']['draft'])
+                self.assertEqual(len(rows), 1)
+                out.mkdir()
+                (out/'SHA256SUMS').write_text('synthetic checksums')
+                return dict(gitCommit=BUILD)
+            def run(_builders, _tag, _artifacts, out, result, **kwargs):
+                self.assertEqual(list(_builders), ['d69'])
+                result['desktops'] = nightly.not_run_rows('d69', config['builders']['d69'], 'dry run', out)
+            with patch.object(nightly, 'GitHub', return_value=github) as client, \
+                 patch.object(nightly, 'release_assets', side_effect=assets), \
+                 patch.object(nightly, 'catalog', return_value={}), \
+                 patch.object(nightly, 'command', return_value=BUILD), \
+                 patch.object(nightly, 'run_hosts', side_effect=run), \
+                 patch.object(nightly, 'follow_nightly') as follow:
+                nightly.controller(args, config)
+                client.assert_called_with('owner/repo', root/'draft-token')
+                prior = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
+                # Draft snapshots are independent: a later run never reads an
+                # earlier snapshot's results.
+                Path(prior['results']).write_text('obsolete draft snapshot')
+                nightly.controller(args, config)
+            follow.assert_not_called()
+            github.issues.assert_not_called()
+            github.issue.assert_not_called()
+            self.assertEqual(github.api.call_count, 2)  # Only read the named release per snapshot.
+            self.assertNotIn('releases/tags/', str(github.api.call_args_list))
+            self.assertEqual((state/'last-run.json').read_text(), 'nightly sentinel')
+            self.assertFalse((state/(tag+'.json')).exists())
+            marker = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
+            out = Path(marker['results']).parent
+            self.assertTrue((out/'results.md').is_file())
+            self.assertTrue((out/'d69-receipt.json').is_file())
+            self.assertIn('dry run', (out/'results.md').read_text())
+
     def test_checksum_failure_blocks_before_guest_launch(self):
         class GitHub:
             repo='owner/repo'
