@@ -818,6 +818,9 @@ with n.controller_shutdown(workers):
         github = Mock(repo='owner/repo')
         github.api.return_value = [dict(tag_name=tag, draft=False), draft]
         self.assertIs(nightly.draft_release(github, tag), draft)
+        github.api.side_effect = [[dict(tag_name='other', draft=False)]*100, [draft]]
+        self.assertIs(nightly.draft_release(github, tag), draft)
+        github.api.side_effect = None
         for listed in ([], [dict(tag_name=tag, draft=False)], [draft, dict(draft)]):
             github.api.return_value = listed
             with self.subTest(listed=listed), self.assertRaisesRegex(RuntimeError, 'exactly one draft'):

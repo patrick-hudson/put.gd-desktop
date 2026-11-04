@@ -268,8 +268,12 @@ def validate_release(release, tag, stable_draft=False):
 
 def draft_release(github, tag):
     # releases/tags/TAG answers only for published releases; a draft is found by listing.
-    matches = [r for r in github.api(f'repos/{github.repo}/releases?per_page=100')
-               if r['draft'] and r['tag_name'] == tag]
+    matches = []
+    for page in range(1, 1001):
+        listed = github.api(f'repos/{github.repo}/releases?per_page=100&page={page}')
+        matches += [r for r in listed if r['draft'] and r['tag_name'] == tag]
+        if len(listed) < 100:
+            break
     if len(matches) != 1:
         raise RuntimeError('expected exactly one draft release for '+tag)
     return matches[0]
