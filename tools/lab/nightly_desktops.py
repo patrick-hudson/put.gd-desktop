@@ -551,8 +551,8 @@ def recovery_deadline():
 
 def recover_row(config, reservation, session, out, cells):
     recovery = out/'recovery'
-    recovery.mkdir(mode=0o700, exist_ok=True)
     try:
+        recovery.mkdir(mode=0o700, exist_ok=True)
         with recovery_deadline():
             recover_guest(config, dict(reservation, session=session, evidence=str(out)), recovery, cells)
     except NotRun:

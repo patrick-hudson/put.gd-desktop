@@ -268,21 +268,15 @@ class NightlyTests(unittest.TestCase):
         self.assertEqual(signal.getitimer(signal.ITIMER_REAL)[0], 0)
 
     def test_recovery_time_comes_out_of_the_outer_budget(self):
-        before = signal.signal(signal.SIGALRM, lambda *_: None)
-        signal.setitimer(signal.ITIMER_REAL, 1000)
-        try:
-            with patch.object(nightly.time, 'monotonic', side_effect=[100, 400]):
+        for clock, remaining in (([100, 400], 700.0), ([100, 5000], 0.001)):
+            with self.subTest(remaining=remaining), \
+                    patch.object(nightly.signal, 'setitimer', return_value=(1000.0, 0.0)) as timer, \
+                    patch.object(nightly.time, 'monotonic', side_effect=clock):
+                before = signal.getsignal(signal.SIGALRM)
                 with nightly.recovery_deadline():
                     pass
-            self.assertLessEqual(signal.getitimer(signal.ITIMER_REAL)[0], 700)
-            signal.setitimer(signal.ITIMER_REAL, 1000)
-            with patch.object(nightly.time, 'monotonic', side_effect=[100, 5000]):
-                with nightly.recovery_deadline():
-                    pass
-            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0], 0)
-        finally:
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, before)
+                self.assertEqual(signal.getsignal(signal.SIGALRM), before)
+                timer.assert_called_with(signal.ITIMER_REAL, remaining, 0.0)
 
     def test_failed_stale_recovery_names_a_receipt_that_exists(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -319,6 +313,9 @@ class NightlyTests(unittest.TestCase):
                     nightly.recover_row({}, reservation, 's', out, {})
                 self.assertNotIn('private payload', str(caught.exception))
             self.assertTrue(reservation['retained'])
+            with patch.object(nightly.Path, 'mkdir', side_effect=OSError('private path')), \
+                    self.assertRaisesRegex(nightly.NotRun, 'explicit recovery required'):
+                nightly.recover_row({}, reservation, 's', out, {})
             with patch.object(nightly, 'recover_guest'):
                 nightly.recover_row({}, reservation, 's', out, {})
             self.assertEqual(reservation, dict(run='/run'))
