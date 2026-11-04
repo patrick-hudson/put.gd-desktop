@@ -14,7 +14,7 @@ namespace putgd {
 namespace {
 // /proc/<pid>/pagemap entry bits (Documentation/admin-guide/mm/pagemap.rst).
 constexpr quint64 pagePresent=1ULL<<63,pageSwapped=1ULL<<62,pageFile=1ULL<<61;
-struct ReleasePass {int pagemap=-1;uintptr_t pageSize=0;ImagePageRelease result;};
+struct ReleasePass {int pagemap=-1;uintptr_t pageSize=0;ImagePageRelease result;bool keepCode=false;};
 // No page in the range holds anything but the file's own bytes.
 bool holdsOnlyFilePages(const ReleasePass& pass,uintptr_t start,uintptr_t end) {
  quint64 entries[512];
@@ -35,6 +35,7 @@ int releaseObject(dl_phdr_info* info,size_t,void* data) {
  for(int i=0;i<info->dlpi_phnum;++i) {
   const auto& segment=info->dlpi_phdr[i];
   if(segment.p_type!=PT_LOAD||(segment.p_flags&PF_W)||!segment.p_filesz)continue;
+  if(pass.keepCode&&(segment.p_flags&PF_X))continue;
   // Whole pages inside the segment only: a page at either edge may be another segment's.
   const uintptr_t mask=pass.pageSize-1,first=info->dlpi_addr+segment.p_vaddr;
   const auto start=(first+mask)&~mask,end=(first+segment.p_filesz)&~mask;
@@ -45,8 +46,8 @@ int releaseObject(dl_phdr_info* info,size_t,void* data) {
  return 0;
 }
 }
-ImagePageRelease releaseCleanImagePages() {
- ReleasePass pass;pass.pageSize=uintptr_t(sysconf(_SC_PAGESIZE));
+ImagePageRelease releaseCleanImagePages(bool keepCode) {
+ ReleasePass pass;pass.pageSize=uintptr_t(sysconf(_SC_PAGESIZE));pass.keepCode=keepCode;
  // Without page flags nothing proves a segment clean, so nothing is released.
  pass.pagemap=open("/proc/self/pagemap",O_RDONLY|O_CLOEXEC);
  if(pass.pagemap<0)return pass.result;
@@ -57,6 +58,6 @@ ImagePageRelease releaseCleanImagePages() {
 }
 #else
 namespace putgd {
-ImagePageRelease releaseCleanImagePages() {return {};}
+ImagePageRelease releaseCleanImagePages(bool) {return {};}
 }
 #endif

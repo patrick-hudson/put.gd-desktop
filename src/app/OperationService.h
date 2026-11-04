@@ -326,7 +326,7 @@ private:
  qint64 lastHeapReclamationUsec_=0;
  // Clean library pages leave this process once it has been quiet for this long.
  int imagePageDelayMs_=30*1000;
- bool imagePagesPending_=false;
+ bool imagePagesPending_=false,imagePagesKeepCode_=false;
  bool firstCleanupPending_=true;
  quint64 imagePageReleaseCount_=0;
  qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0;

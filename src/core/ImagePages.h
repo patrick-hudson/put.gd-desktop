@@ -10,5 +10,6 @@ struct ImagePageRelease {int segments=0,skipped=0;qint64 bytes=0;};
 // toward this process until then. Writable segments are never touched, and a
 // segment holding any private or swapped page (a debugger's breakpoint, say)
 // is skipped whole, because dropping such a page would lose its contents.
-ImagePageRelease releaseCleanImagePages();
+// With keepCode, code segments stay mapped and only read-only data goes.
+ImagePageRelease releaseCleanImagePages(bool keepCode=false);
 }

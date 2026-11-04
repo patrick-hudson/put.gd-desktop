@@ -136,7 +136,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(!imagePagesPending_||!heapReclamationIdle())return;
   // Runs after the quiet that follows an interaction, so none of its own pages fault back mid-way.
   QElapsedTimer elapsed;elapsed.start();
-  const auto release=releaseCleanImagePages();
+  const auto release=releaseCleanImagePages(imagePagesKeepCode_);imagePagesKeepCode_=false;
   lastImagePageReleaseUsec_=elapsed.nsecsElapsed()/1000;lastImagePageReleaseBytes_=release.bytes;
   ++imagePageReleaseCount_;
   imagePagesPending_=false;
@@ -177,7 +177,7 @@ void OperationService::requestHeapReclamation() {
 }
 void OperationService::requestImagePageRelease() {
  if(stopping_)return;
- imagePagesPending_=true;requestHeapReclamation();
+ imagePagesPending_=true;imagePagesKeepCode_=false;requestHeapReclamation();
 }
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
@@ -279,6 +279,8 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
 #ifdef __GLIBC__
  heapReclamationPending_=true;
+ // A full release already due stays full; otherwise only this capture's read-only data goes.
+ if(!imagePagesPending_){imagePagesPending_=true;imagePagesKeepCode_=true;}
 #endif
  // Preview reports terminal metadata only. Latch it on the session thread so
  // it can stop either checkpoint continuation without ever delivering pixels.
