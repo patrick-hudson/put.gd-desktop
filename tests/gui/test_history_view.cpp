@@ -202,7 +202,10 @@ private slots:
  void scrollingPaintsOnlyWhatScrollsIn(){
   QFETCH(bool,gallery);QFETCH(bool,light);const auto previous=Theme::scheme();Theme::setScheme(light?Theme::Scheme::Light:Theme::Scheme::Dark);auto theme=qScopeGuard([previous]{Theme::setScheme(previous);});
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());QVERIFY(seedCaptures(d,settings,operations,50));
-  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);Ui::styleWindow(window);window.resize(1400,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),50);auto* bar=list->verticalScrollBar();const int listStep=bar->singleStep();
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);Ui::styleWindow(window);window.resize(1400,700);window.show();auto* list=window.findChild<QListView*>("historyList");PUTGD_TRY_COMPARE(list->model()->rowCount(),50);
+  // A model reply can populate rows before QListView runs its delayed layout.
+  // Complete that layout before capturing the automatic list scroll step.
+  list->doItemsLayout();auto* bar=list->verticalScrollBar();const int listStep=bar->singleStep();
   if(gallery){window.findChild<QToolButton*>("historyGridMode")->click();QCOMPARE(bar->singleStep(),listStep);window.findChild<QToolButton*>("historyListMode")->click();QCOMPARE(bar->singleStep(),listStep);window.findChild<QToolButton*>("historyGridMode")->click();}
   putgd::test::settle(100);PUTGD_TRY_VERIFY(bar->maximum()>100);
   // What the view fills has to match what it used to show through.
@@ -848,7 +851,9 @@ private slots:
  void manyActiveOperationsKeepOneBannerLine(){
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());
   {HistoryStore ledger(operations.databasePath());for(int i=0;i<24;++i){Operation op;op.id=QString("active-%1").arg(i);op.action="clipboard";op.created=QDateTime::currentDateTimeUtc().addSecs(i).toString(Qt::ISODateWithMs);op.state="running";op.phase="uploading";op.settings=settings.snapshot();QVERIFY(!ledger.saveOperation(op));}}
-  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1060,680);window.show();auto* model=qobject_cast<HistoryModel*>(window.findChild<QListView*>("historyList")->model());PUTGD_TRY_COMPARE(model->activeOperations().size(),24);auto* banner=window.findChild<QWidget*>("historyActiveBanner");PUTGD_TRY_VERIFY(banner->isVisible());auto* summary=window.findChild<QLabel*>("historyActiveSummary");QVERIFY(!summary->text().contains('\n'));QVERIFY(!summary->text().contains('%'));QVERIFY(!summary->wordWrap());QVERIFY(banner->findChild<QProgressBar*>()->height()<=Ui::scaled(8));QVERIFY(banner->height()<=qMax(64,Ui::scaled(108)));auto* more=window.findChild<QPushButton*>("historyMoreActive");QVERIFY(more->isVisible());QCOMPARE(more->text(),QString("23 more active"));// An in-app filter shortcut is a text action; the link role (accent ink) is for real URLs.
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1060,680);window.show();auto* model=qobject_cast<HistoryModel*>(window.findChild<QListView*>("historyList")->model());PUTGD_TRY_COMPARE(model->activeOperations().size(),24);auto* banner=window.findChild<QWidget*>("historyActiveBanner");PUTGD_TRY_VERIFY(banner->isVisible());auto* summary=window.findChild<QLabel*>("historyActiveSummary");QVERIFY(!summary->text().contains('\n'));QVERIFY(!summary->text().contains('%'));QVERIFY(!summary->wordWrap());QVERIFY(banner->findChild<QProgressBar*>()->height()<=Ui::scaled(8));
+  // Showing the banner posts a layout request; visibility alone is not geometry readiness.
+  PUTGD_TRY_VERIFY(banner->height()<=qMax(64,Ui::scaled(108)));auto* more=window.findChild<QPushButton*>("historyMoreActive");QVERIFY(more->isVisible());QCOMPARE(more->text(),QString("23 more active"));// An in-app filter shortcut is a text action; the link role (accent ink) is for real URLs.
   QCOMPARE(more->property("visualRole").toString(),QString("textAction"));auto* cancel=window.findChild<QPushButton*>("cancelBannerOperation");QVERIFY(cancel->accessibleName().contains(summary->text()));window.findChild<QLineEdit*>("historySearch")->setText("no match");QTest::keyClick(window.findChild<QLineEdit*>("historySearch"),Qt::Key_Return);PUTGD_TRY_COMPARE(model->rowCount(),0);more->click();PUTGD_TRY_COMPARE(model->rowCount(),24);
  }
  void activitySurvivesFiltersAndPaging(){
@@ -913,7 +918,7 @@ private slots:
   QCOMPARE(retry->height(),Ui::scaled(Ui::Metric::control));
   PUTGD_TRY_COMPARE(retry->width(),retry->parentWidget()->contentsRect().width()-retry->parentWidget()->layout()->contentsMargins().left()-retry->parentWidget()->layout()->contentsMargins().right());
   auto* localSettings=window.findChild<QPushButton*>("historyChangeLocalCopies");
-  QCOMPARE(localSettings->isHidden(),keepLocalCopy);
+  PUTGD_TRY_COMPARE(localSettings->isHidden(),keepLocalCopy);
   QWidget* lastAction=keepLocalCopy?actions:localSettings;
   auto* rule=window.findChild<QWidget*>("historyActionsRule");
   PUTGD_TRY_COMPARE(rule->mapTo(&window,QPoint()).y()-lastAction->mapTo(&window,QPoint(0,lastAction->height())).y(),Ui::space(Ui::Space::m));
