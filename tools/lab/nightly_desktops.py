@@ -259,7 +259,8 @@ class GitHub:
 def validate_release(release, tag, stable_draft=False):
     pattern = STABLE_TAG if stable_draft else TAG
     if (not tag or not pattern.fullmatch(tag) or release['tag_name'] != tag
-            or bool(release['draft']) != stable_draft):
+            or bool(release['draft']) != stable_draft
+            or stable_draft and bool(release.get('prerelease'))):
         raise RuntimeError('expected a named stable draft' if stable_draft
                            else 'expected a published nightly release tag')
 
@@ -769,8 +770,6 @@ def publish(github, result, out, *, previous=None):
     if result.get('stableDraft'):
         # Acceptance attachments stay private/local until a person attaches them.
         # Do not update #1003, pin an issue, or file/close nightly regressions.
-        if previous is not None:
-            result['desktops'] = merge_desktops(previous, result)
         for row in result['desktops']:
             save(out/(row['host']+'-receipt.json'), row)
         (out/'results.md').write_text(f'Stable draft: **{result["release"]}** · {result["date"]}\n\n'+table(result))
@@ -1018,7 +1017,7 @@ def controller(args, config, *, local_workers=None):
             raise RuntimeError('configure exactly one desktop on each of the five builders')
         builders = selected_builders(config['builders'], args.desktops)
         previous = None
-        if args.desktops and (not stable_draft or (state/'last-run.json').exists()):
+        if args.desktops and not stable_draft:
             marker = json.loads((state/'last-run.json').read_text())
             previous = json.loads(Path(marker['results']).read_text())
             if previous['release'] != tag:
@@ -1038,6 +1037,9 @@ def controller(args, config, *, local_workers=None):
             identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
             save(artifacts/'identity.json', identity)
             result['build'] = identity['gitCommit']
+            if stable_draft:
+                result['assetChecksums'] = identity['packages']
+                result['checksumManifestSha256'] = digest(artifacts/'packages/SHA256SUMS')
             if previous is not None:
                 merge_desktops(previous, result)  # Fail before launching any guest on identity mismatch.
         except Exception as error:

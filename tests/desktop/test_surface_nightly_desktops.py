@@ -806,6 +806,7 @@ with n.controller_shutdown(workers):
         for release, tag, opt_in in ((draft, draft['tag_name'], False),
                                      (published, published['tag_name'], True),
                                      (dict(draft, draft=False), draft['tag_name'], True),
+                                     (dict(draft, prerelease=True), draft['tag_name'], True),
                                      (draft, 'v26.1104.9999', True)):
             with self.subTest(tag=tag, opt_in=opt_in), self.assertRaises(RuntimeError):
                 nightly.validate_release(release, tag, opt_in)
@@ -859,6 +860,7 @@ with n.controller_shutdown(workers):
                 self.assertTrue(kwargs['release']['draft'])
                 self.assertEqual(len(rows), 1)
                 out.mkdir()
+                (out/'SHA256SUMS').write_text('synthetic checksums')
                 return dict(gitCommit=BUILD)
             def run(_builders, _tag, _artifacts, out, result, **kwargs):
                 self.assertEqual(list(_builders), ['d69'])
@@ -870,10 +872,15 @@ with n.controller_shutdown(workers):
                  patch.object(nightly, 'run_hosts', side_effect=run), \
                  patch.object(nightly, 'follow_nightly') as follow:
                 nightly.controller(args, config)
+                prior = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
+                # Draft snapshots are independent: failed/old/replaced assets can
+                # never be carried into a new filtered acceptance table.
+                Path(prior['results']).write_text('obsolete draft snapshot')
+                nightly.controller(args, config)
             follow.assert_not_called()
             github.issues.assert_not_called()
             github.issue.assert_not_called()
-            self.assertEqual(github.api.call_count, 1)  # Only read the named release.
+            self.assertEqual(github.api.call_count, 2)  # Only read the named release per snapshot.
             self.assertEqual((state/'last-run.json').read_text(), 'nightly sentinel')
             self.assertFalse((state/(tag+'.json')).exists())
             marker = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
