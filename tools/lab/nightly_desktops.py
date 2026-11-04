@@ -523,8 +523,10 @@ def recover_stale_guest(config, out):
             slot.rmdir()
     except NotRun:
         raise
-    except Exception:
-        raise NotRun('nightly guest recovery incomplete; inspect '+str(out/'stale-recovery')+
+    except Exception as error:
+        # The type alone: exception payloads can carry private paths or responses.
+        save(out/'stale-recovery-error.json', dict(type=type(error).__name__))
+        raise NotRun('nightly guest recovery incomplete; inspect '+str(out/'stale-recovery-error.json')+
                      ' and tier1-guest.lock.d; explicit recovery required') from None
 
 

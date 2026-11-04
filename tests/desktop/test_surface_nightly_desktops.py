@@ -284,6 +284,18 @@ class NightlyTests(unittest.TestCase):
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, before)
 
+    def test_failed_stale_recovery_names_a_receipt_that_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root)
+            (slot/'retained.json').write_text('not json')
+            with patch.object(nightly.Path, 'home', return_value=root), \
+                    self.assertRaisesRegex(nightly.NotRun, 'stale-recovery-error.json'):
+                nightly.recover_stale_guest(dict(host='d69'), out)
+            self.assertEqual(json.loads((out/'stale-recovery-error.json').read_text()),
+                             dict(type='JSONDecodeError'))
+            self.assertTrue(slot.exists())
+
     def test_recovery_mutex_contention_is_reported_as_transient(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
