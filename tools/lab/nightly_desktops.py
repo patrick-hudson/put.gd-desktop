@@ -1045,13 +1045,13 @@ def controller(args, config, *, local_workers=None):
             identity = release_assets(github, tag, artifacts/'packages', rows,
                                       **(dict(release=release) if stable_draft else {}))
             identity['packages'] = {p.name:digest(p) for p in (artifacts/'packages').iterdir() if p.suffix in ('.deb','.rpm','.AppImage')}
+            if stable_draft:
+                result['assetChecksums'] = identity['packages']
+                result['checksumManifestSha256'] = digest(artifacts/'packages/SHA256SUMS')
             identity['driver'] = command(['git','rev-parse','HEAD']).strip()
             identity['catalog'] = catalog(github, identity['gitCommit'], artifacts/'catalog')
             save(artifacts/'identity.json', identity)
             result['build'] = identity['gitCommit']
-            if stable_draft:
-                result['assetChecksums'] = identity['packages']
-                result['checksumManifestSha256'] = digest(artifacts/'packages/SHA256SUMS')
             if previous is not None:
                 merge_desktops(previous, result)  # Fail before launching any guest on identity mismatch.
         except Exception as error:

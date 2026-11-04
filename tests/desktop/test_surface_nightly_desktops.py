@@ -886,8 +886,8 @@ with n.controller_shutdown(workers):
                 nightly.controller(args, config)
                 client.assert_called_with('owner/repo', root/'draft-token')
                 prior = json.loads((state/'stable-drafts'/tag/'last-run.json').read_text())
-                # Draft snapshots are independent: failed/old/replaced assets can
-                # never be carried into a new filtered acceptance table.
+                # Draft snapshots are independent: a later run never reads an
+                # earlier snapshot's results.
                 Path(prior['results']).write_text('obsolete draft snapshot')
                 nightly.controller(args, config)
             follow.assert_not_called()
