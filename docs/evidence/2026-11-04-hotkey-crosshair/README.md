@@ -13,10 +13,14 @@ frames.
 
 ## What differs
 
-Compared per pixel at each phase, on the same desktop:
+Compared per pixel at each phase, on the same desktop. The pictures here are a
+selection; the full frame sets were kept on the workstation.
 
-- **Mint**, nightly, `6a93abaf888d` and final head, AppImage and DEB: the panel
-  clock only. Same capture hash.
+A **capture hash** is the SHA-256 of the PNG file put.gd saved from the dragged
+region, not of the frame, so the panel clock isn't in it.
+
+- **Mint**, builds nightly, `6a93abaf888d` and the final head, AppImage and DEB:
+  the panel clock only. Same capture hash.
 - **Debian**, nightly through the old-base head, DEB: the panel clock only. Same
   capture hash.
 - **Kubuntu**, nightly through the old-base head, DEB and AppImage: the panel
@@ -26,6 +30,7 @@ Compared per pixel at each phase, on the same desktop:
 - **Fedora**: not identical. Besides the clock, some frames show GNOME's busy
   cursor instead of the crosshair, or the first-run "right-click menu" banner,
   both following no build. The cause isn't proven; the lab tool starts a fresh
-  resident and profile seconds before each drag. The captured pixels are identical.
-  PNG file hashes differ between runs here, so Fedora compares decoded pixels.
+  resident and profile seconds before each drag. Within the dragged region the
+  decoded pixels are identical: PNG file hashes differ between runs here, so
+  Fedora hashes the decoded RGB of the saved file.
 - **Aurora**: not compared. No nightly frame was taken there.
