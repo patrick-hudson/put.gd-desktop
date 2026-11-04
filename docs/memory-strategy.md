@@ -61,6 +61,11 @@ in an arena whose free pages the idle cleanup can return. Other allocators retai
 their own policy. After qualifying work drains, one two-second quiet gate calls
 `malloc_trim(0)`. New work stops it. It preserves live clipboard data, fonts and
 widgets and has no repeating idle timer.
+Thirty quiet seconds after that trim the resident also unmaps the clean
+read-only and code pages of its libraries (see [architecture](architecture.md)),
+which lowers the reported RSS and PSS well below the idle target without
+returning memory beyond the trim's; a press or query maps them back from the
+page cache.
 
 ## Measure the complete workload
 

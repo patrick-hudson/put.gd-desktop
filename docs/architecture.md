@@ -207,10 +207,21 @@ lifetime-guarded late replies are harmless. Schema-1 commands serve `putgd-cli`,
 `UiSession` and the optional MCP helper. See [CLI](cli.md) and [MCP](mcp.md).
 
 On glibc Linux, startup recovery, accepted acquisition, explicit local
-image/text copying, a delivered history page and the interface helper's exit
-mark allocator reclamation pending. One two-second quiet
-timer waits for selectors, operations, copy queues, workers, payload leases and
-recording to drain, then calls `malloc_trim(0)` once. New background work stops
-the timer. Live clipboard data and widgets are preserved. Diagnostics expose the
-pending flag, count and duration; shutdown stops the timer. The fixed allocator
-policy and whole-family measurement budget are in [memory strategy](memory-strategy.md).
+image/text copying, a delivered history page, the interface helper's exit and
+each artifact cleanup pass mark allocator reclamation pending. One two-second
+quiet timer waits for selectors, operations, copy queues, workers, payload
+leases and recording to drain, then calls `malloc_trim(0)` once. New background
+work stops the timer. Live clipboard data and widgets are preserved. Diagnostics
+expose the pending flag, count and duration; shutdown stops the timer.
+
+After that trim, a second single-shot timer waits for thirty seconds of the same
+quiet and then releases the clean pages of the loaded images' read-only and code
+segments (`src/core/ImagePages.cpp`): whole pages only, never a writable
+segment, and a segment holding any private or swapped page is skipped whole;
+without readable page flags nothing is released. The pages stay in the page
+cache and return through minor faults on the next touch, the state the kernel
+leaves an idle resident in under memory pressure, so reported RSS and PSS fall
+while the heap and every live object are untouched; the memory actually
+returned is the trim's. Diagnostics expose the release's pending flag, count,
+duration and bytes. The fixed allocator policy and whole-family measurement
+budget are in [memory strategy](memory-strategy.md).
