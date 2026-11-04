@@ -711,6 +711,49 @@ with n.controller_shutdown(workers):
         self.assertTrue(ctx._probe.call_args.args[1]['raise'])
         ctx.target.pointer.assert_not_called()
 
+    def atomic_tools(self, ostree_status, ostree_output):
+        from tools.lab import nightly_desktop_guest as guest
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            calls = root/'calls'
+            stubs = dict(rpm='case "$2" in tesseract|xclip) exit 1;; esac\n', sudo=f"""
+printf '%s\\n' "$*" >> {calls}
+case "$*" in
+ '-n rpm-ostree install'*) echo "{ostree_output}"; exit {ostree_status};;
+ '-S -p  dnf'*) [ "$(cat)" = putgd-lab ];;
+esac
+""")
+            for name, body in stubs.items():
+                (root/name).write_text('#!/bin/sh\n'+body)
+                (root/name).chmod(0o700)
+            result = subprocess.run(['sh', '-c', guest.ATOMIC_TOOLS], capture_output=True, text=True,
+                                    env=dict(os.environ, PATH=f"{root}:{os.environ['PATH']}"))
+            return result, calls.read_text().splitlines()
+
+    def test_atomic_tools_layer_without_dnf_when_rpm_ostree_works(self):
+        result, calls = self.atomic_tools(0, 'layered')
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('-n rpm-ostree install --apply-live tesseract xclip', calls)
+        self.assertFalse([call for call in calls if 'dnf' in call or 'usroverlay' in call])
+        self.assertIn('NIGHTLY_TOOLS_APPLIED', result.stdout)
+        self.assertNotIn('NIGHTLY_TOOLS_DNF_OVERLAY', result.stdout)
+
+    def test_atomic_tools_use_dnf_overlay_only_for_broken_updates_archive(self):
+        result, calls = self.atomic_tools(1, "error: Updating rpm-md repo 'updates-archive': 404")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls[-2:], ['-n rpm-ostree usroverlay',
+                                      '-S -p  dnf -y --setopt=install_weak_deps=False '
+                                      '--disablerepo=updates-archive install tesseract xclip'])
+        self.assertIn('NIGHTLY_TOOLS_DNF_OVERLAY', result.stdout)
+
+    def test_atomic_tools_stop_on_any_other_rpm_ostree_failure(self):
+        for output in ("error: Updating rpm-md repo 'fedora': 404", 'error: conflicting requests'):
+            with self.subTest(output=output):
+                result, calls = self.atomic_tools(7, output)
+                self.assertEqual(result.returncode, 7)
+                self.assertFalse([call for call in calls if 'dnf' in call or 'usroverlay' in call])
+                self.assertNotIn('NIGHTLY_TOOLS_APPLIED', result.stdout)
+
     def rpm_install(self, root, *, failure=False, desktop_changed=False, verify_failure=False):
         from tools.lab import nightly_desktop_guest as guest
         run, out, package = root/'run', root/'out', root/'published.rpm'
