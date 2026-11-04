@@ -52,7 +52,7 @@ bool traceCursor(const QString& phase,const QJsonObject& bootstrap,const QJsonOb
  const auto cursor=bootstrap["cursor"].toObject();
  const auto record=QJsonObject{{"phase",phase},{"appearance",bootstrap["appearance"]},{"outcome",bootstrap["outcome"]},{"action",bootstrap["target"].toObject()["action"]},
                               {"generation",bootstrap["generation"]},{"cache",cursor["cache"]},
-                              {"cursorId",phase=="bootstrap"?cursor["id"]:frame["cursor"]}};
+                              {"cursorId",phase=="bootstrap"?cursor["id"]:frame["cursor"]},{"hold",frame["hold"]},{"buttons",frame["buttons"]}};
  const auto bytes=QJsonDocument(record).toJson(QJsonDocument::Compact)+'\n';
  return file.write(bytes)==bytes.size()&&file.flush();
 }
@@ -62,7 +62,7 @@ int main(int argc,char** argv){
  QObject::connect(&control,&putgd::CaptureControl::frame,&app,[&](const QString& type,const QJsonObject& payload){
   if(type=="bootstrap"){
    const auto cursor=payload["cursor"].toObject();
-   if(payload.size()!=((payload.contains("outcome")?10:9)+int(payload.contains("appearance")))||cursor.size()!=2||!cursorId(cursor["id"])||!cursor["cache"].isBool()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){app.exit(4);return;}
+   if(payload.size()!=((payload.contains("outcome")?10:9)+int(payload.contains("appearance"))+int(payload.contains("regionMode")))||cursor.size()!=3||!cursorId(cursor["id"])||!cursor["cache"].isBool()||!cursor["observe"].isBool()||(payload.contains("outcome")&&(!payload["outcome"].isString()||payload["outcome"].toString().size()>256))){app.exit(4);return;}
    if(!artifact.acquire(payload["path"].toString(),payload["device"].toString(),payload["inode"].toString())){app.exit(5);return;}
    if(bootstrapped){app.exit(4);return;}bootstrapped=true;bootstrap=payload;
    if(!traceCursor("bootstrap",bootstrap,payload)){app.exit(5);return;}
@@ -71,12 +71,14 @@ int main(int argc,char** argv){
    else if(mode.startsWith("cursor-")&&mode!="cursor-empty")ready["cursor"]=cursorSeed(mode);
    if(mode=="cursor-ready-type")ready["cursor"]="123";
    ready["build"]=QJsonDocument::fromJson(putgd::buildManifestJson()).object();if(mode=="wrong-build")ready["build"]=QJsonObject{};
+   // The helper is still loading while the resident holds the pointer.
+   if(mode.startsWith("preview-late")){QTimer::singleShot(mode=="preview-late-long"?6000:700,&app,[&,ready]{control.send("ready",ready);});return;}
    control.send("ready",ready);
    if(mode=="early-exit"){app.quit();return;}
    if(mode=="prebegin-result"){auto result=identity;result["bytes"]="45";result["sha256"]=QString(64,'0');result["width"]=1;result["height"]=1;control.send("result",result);}
    return;
   }
-  if(!bootstrapped||payload.size()!=((type=="begin"||type=="preview")?3:2)||payload["nonce"]!=identity["nonce"]||payload["generation"]!=identity["generation"]){control.stop();app.exit(4);return;}
+  if(!bootstrapped||payload.size()!=(type=="preview"?4:type=="begin"||type=="handoff_done"?3:2)||payload["nonce"]!=identity["nonce"]||payload["generation"]!=identity["generation"]){control.stop();app.exit(4);return;}
   if(type=="preview"){
    if(previewed||begun||terminal||bootstrap["target"].toObject()["action"]!="region"||!cursorId(payload["cursor"])){control.stop();app.exit(4);return;}
    QFile output(bootstrap["path"].toString());if(output.size()!=0){control.stop();app.exit(5);return;}
@@ -84,6 +86,10 @@ int main(int argc,char** argv){
    // Existing cache tests keep their bootstrap/begin trace contract. Preview
    // evidence is opt-in and contains no image, nonce or artifact path.
    if(mode.startsWith("preview-")&&!traceCursor("preview",bootstrap,payload)){control.stop();app.exit(5);return;}
+   if((mode=="preview-handoff"||mode.startsWith("preview-late"))&&payload["hold"]!="0")control.send("handoff",identity);
+   if(mode=="observe-cursor"&&bootstrap["cursor"].toObject()["observe"].toBool()){
+    auto image=identity;image["width"]=2;image["height"]=2;image["xhot"]=1;image["yhot"]=1;image["pixels"]=QString::fromLatin1(QByteArray(16,char(0xff)).toBase64());control.send("cursor_image",image);
+   }
    if(mode=="preview-cancel"||mode=="preview-error"){
     terminal=true;auto reply=identity;reply["code"]=mode=="preview-cancel"?"cancelled":"capture_geometry";
     reply["reason"]=mode=="preview-cancel"?QString{}:QString("Synthetic selection outside the layout");reply["details"]=mode=="preview-cancel"?QJsonObject{}:QJsonObject{{"stage","select"},{"check","fixture_selection"},{"selection",QJsonArray{0,1080,100,100}}};
@@ -92,6 +98,12 @@ int main(int argc,char** argv){
     // final process completion. The controller must retain the ticket's error.
     QTimer::singleShot(200,&app,&QCoreApplication::quit);
    }
+   return;
+  }
+  if(type=="handoff_done"){
+   if(!traceCursor("released",bootstrap,payload)){app.exit(5);return;}
+   // A held right-click ends the selection, as the real selector does.
+   for(const auto& button:payload["buttons"].toArray())if(button.toObject()["press"].toBool()&&button.toObject()["button"]==3){auto reply=identity;reply["code"]="cancelled";reply["reason"]="";reply["details"]=QJsonObject{};terminal=true;control.send("cancelled",reply);app.quit();return;}
    return;
   }
   if(type=="begin"){

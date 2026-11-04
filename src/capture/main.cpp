@@ -12,6 +12,7 @@
 #include <QScreen>
 #include <QSurfaceFormat>
 #include <QCoreApplication>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QTimer>
 #include <QThread>
@@ -115,7 +116,7 @@ int main(int argc,char** argv){
  putgd::X11NativeSnapshot native;putgd::X11Capture resolver;putgd::X11SourceAdapter source(nullptr,true);
  const auto build=QJsonDocument::fromJson(putgd::buildManifestJson()).object();QString nonce,generation,path,device,inode;QJsonObject frozen;putgd::ResourceLimits limits;
  putgd::CaptureArtifactLease artifact;putgd::X11Target target;
- quint32 preparedCursor=0;bool cacheCursor=false;
+ quint32 preparedCursor=0;bool cacheCursor=false,observeCursor=false;
  bool bootstrapped=false,ready=false,begun=false,settled=false,resultSent=false,cancelled=false;
  bool previewed=false,selectionStarted=false,acquisitionQueued=false,acquisitionStarted=false;quint32 previewCursor=0;
  std::optional<putgd::RegionSelectionResult> selection;std::optional<QRectF> selectedRect;QThread* encoder=nullptr;
@@ -199,8 +200,8 @@ int main(int argc,char** argv){
    const auto parent=QFile::encodeName(path.left(path.lastIndexOf('/')));struct stat directory{};if(::lstat(parent.constData(),&directory)||!S_ISDIR(directory.st_mode)||directory.st_uid!=getuid()||(directory.st_mode&0777)!=0700){rejectProtocol();return;}
    const int fd=::open(QFile::encodeName(path).constData(),O_WRONLY|O_CLOEXEC|O_NOFOLLOW);struct stat s{};const bool valid=fd>=0&&!::fstat(fd,&s)&&identity(s,device,inode)&&s.st_size==0;if(fd>=0)::close(fd);if(!valid||!artifact.acquire(path,device,inode)){rejectProtocol();return;}
    const auto cursor=payload["cursor"].toObject();bool cursorOk=false;const auto cursorId=cursor["id"].toString().toULongLong(&cursorOk);
-   if(cursor.size()!=2||!cursor["id"].isString()||!cursor["cache"].isBool()||!cursorOk||cursorId>UINT32_MAX||QString::number(cursorId)!=cursor["id"].toString()||(cursorId&&(!cursor["cache"].toBool()||frozen["action"]!="region"))){rejectProtocol();return;}
-   preparedCursor=quint32(cursorId);cacheCursor=cursor["cache"].toBool();
+   if(cursor.size()!=3||!cursor["id"].isString()||!cursor["cache"].isBool()||!cursor["observe"].isBool()||!cursorOk||cursorId>UINT32_MAX||QString::number(cursorId)!=cursor["id"].toString()||(cursorId&&(!cursor["cache"].toBool()||frozen["action"]!="region"))){rejectProtocol();return;}
+   preparedCursor=quint32(cursorId);cacheCursor=cursor["cache"].toBool();observeCursor=cursor["observe"].toBool();
    bootstrapped=true;putgd::Error error;target=native.resolve(frozen,resolver,error);target.outcome=payload["outcome"].toString();
    // Screenshot first (#629) reads pixels, so its selection waits for BEGIN.
    target.screenshotFirst=target.action=="region"&&payload["regionMode"]=="screenshot_first";
@@ -224,8 +225,19 @@ int main(int argc,char** argv){
    deadline.start(10000);return;
 
   }
+  // The selection can end for another reason while the resident lets go.
+  if(type=="handoff_done"&&settled)return;
+  if(type=="handoff_done"&&ready&&payload.size()==3&&payload["nonce"]==nonce&&payload["generation"]==generation&&payload["buttons"].isArray()&&payload["buttons"].toArray().size()<=64){
+   QList<putgd::NativeRegionOverlay::HeldButton> buttons;
+   for(const auto& value:payload["buttons"].toArray()){
+    const auto button=value.toObject();const auto in=[](const QJsonValue& v,int low,int high){return v.isDouble()&&v.toDouble()==v.toInteger()&&v.toInteger()>=low&&v.toInteger()<=high;};
+    if(button.size()!=4||!button["press"].isBool()||!in(button["button"],1,255)||!in(button["x"],-32768,32767)||!in(button["y"],-32768,32767)){rejectProtocol();return;}
+    buttons.append({button["press"].toBool(),button["button"].toInt(),{button["x"].toInt(),button["y"].toInt()}});
+   }
+   source.regionPointerReleased(std::move(buttons));return;
+  }
   const bool cursorCommand=type=="begin"||type=="preview";
-  if(!ready||settled||payload.size()!=(cursorCommand?3:2)||payload["nonce"]!=nonce||payload["generation"]!=generation){rejectProtocol();return;}
+  if(!ready||settled||payload.size()!=(type=="preview"?4:cursorCommand?3:2)||payload["nonce"]!=nonce||payload["generation"]!=generation){rejectProtocol();return;}
   if(type=="cancel"){cancelled=true;selection.reset();source.cancelAcquisition();finish({"cancelled",{},{}});return;}
   if(cursorCommand){
    bool cursorOk=false;const auto cursor=payload["cursor"].toString().toULongLong(&cursorOk);
@@ -235,6 +247,15 @@ int main(int argc,char** argv){
     putgd::Error changed;if(!native.unchanged(frozen,changed)){finish(changed);return;}
     previewed=true;previewCursor=quint32(cursor);
     source.setResidentRegionCursor(previewCursor);
+    bool holdOk=false;const auto hold=payload["hold"].toString().toULongLong(&holdOk);
+    if(!payload["hold"].isString()||!holdOk||hold>UINT32_MAX||QString::number(hold)!=payload["hold"].toString()){rejectProtocol();return;}
+    if(hold)source.setRegionPointerHandoff(quint32(hold),[&]{control.send("handoff",envelope());});
+    if(observeCursor)source.setRegionCursorObserver([&](int width,int height,int xhot,int yhot,const uint32_t* pixels){
+     QByteArray bytes(qsizetype(width)*height*4,Qt::Uninitialized);
+     for(qsizetype i=0;i<width*height;++i)qToBigEndian<quint32>(pixels[i],bytes.data()+i*4);
+     auto image=envelope();image["width"]=width;image["height"]=height;image["xhot"]=xhot;image["yhot"]=yhot;image["pixels"]=QString::fromLatin1(bytes.toBase64());
+     control.send("cursor_image",image);
+    });
     // Authenticated preview authorizes geometry/input only. It never reads a
     // screen or starts encoding, even if the user completes selection here.
     // Screenshot first reads every monitor, so it starts only after BEGIN.

@@ -83,6 +83,7 @@ void X11SourceAdapter::selectRegionFrozen(const X11Target& target,const Resource
   openSelector(target,limits,generation,std::move(frames),[callback](RegionSelectionResult result){(*callback)(std::move(result));});
  });
 }
+void X11SourceAdapter::regionPointerReleased(QList<NativeRegionOverlay::HeldButton> buttons){if(auto* native=qobject_cast<NativeRegionOverlay*>(overlay_.data()))native->pointerReleased(std::move(buttons));}
 void X11SourceAdapter::captureLayout(const X11Target& target,const ResourceLimits& limits,quint64 generation,std::function<void(QList<CaptureFrame>,Error)> cb){
  if(!capture_.cinnamonCompositor()){Error error;auto frames=capture_.frames(target,error);cb(std::move(frames),error);return;}
  auto* request=new CinnamonRegionCapture(target.layout,limits,this);regionCaptures_.insert(request);
@@ -98,7 +99,16 @@ void X11SourceAdapter::openSelector(const X11Target& target,const ResourceLimits
  if(overlay_){cb({{},0,{"busy_selecting","Region selection is already active",{}}});return;}
  const bool screenshot=!frozen.isEmpty();
  auto layout=screenshot?frozen:target.layout;
- RegionSelector* overlay=nativeRegionSelector_&&NativeRegionOverlay::supportsLayout(target.layout)?static_cast<RegionSelector*>(new NativeRegionOverlay(layout,this,residentRegionCursor_,target.outcome,screenshot)):static_cast<RegionSelector*>(new RegionOverlay(layout,this,target.outcome,screenshot));overlay_=overlay;
+ RegionSelector* overlay=nullptr;
+ if(nativeRegionSelector_&&NativeRegionOverlay::supportsLayout(target.layout)){
+  auto* native=new NativeRegionOverlay(layout,this,residentRegionCursor_,target.outcome,screenshot);overlay=native;
+  if(releasePointer_)native->setPointerHandoff(handoffCursor_,std::exchange(releasePointer_,{}));
+  if(cursorObserver_)native->setCursorObserver(std::exchange(cursorObserver_,{}));
+ }else{
+  overlay=new RegionOverlay(layout,this,target.outcome,screenshot);
+  if(releasePointer_)std::exchange(releasePointer_,{})();
+ }
+ overlay_=overlay;
  auto callback=std::make_shared<std::function<void(RegionSelectionResult)>>(std::move(cb));
  auto pixels=std::make_shared<QList<CaptureFrame>>(std::move(frozen));
  connect(overlay,&RegionSelector::selected,this,[this,overlay,target,limits,callback,generation,pixels](const QRectF& rectangle){

@@ -3,6 +3,7 @@
 #include "X11Capture.h"
 #include "X11Clipboard.h"
 #include "X11Shortcuts.h"
+#include "NativeRegionOverlay.h"
 #include "ui/RegionSelector.h"
 #include <QPointer>
 #include <QSet>
@@ -30,6 +31,11 @@ public:
  void selectRegionFrozen(const X11Target&,const ResourceLimits&,std::function<void(RegionSelectionResult)>);
  void acquireSelectedRegionFrozen(const X11Target&,const RegionSelectionResult&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void setResidentRegionCursor(quint32 cursor){residentRegionCursor_=cursor;}
+ // See NativeRegionOverlay::setPointerHandoff. A selector without native
+ // surfaces asks for the pointer at once.
+ void setRegionPointerHandoff(quint32 cursor,std::function<void()> release){handoffCursor_=cursor;releasePointer_=std::move(release);}
+ void regionPointerReleased(QList<NativeRegionOverlay::HeldButton> buttons);
+ void setRegionCursorObserver(std::function<void(int,int,int,int,const uint32_t*)> observer){cursorObserver_=std::move(observer);}
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void setShortcutRecording(bool active,std::function<void(Error)> reply){shortcuts_.setRecording(active,std::move(reply));}
@@ -52,7 +58,9 @@ private:
  X11Shortcuts shortcuts_;
  QPointer<RegionSelector> overlay_;
  bool nativeRegionSelector_=false;
- quint32 residentRegionCursor_=0;
+ quint32 residentRegionCursor_=0,handoffCursor_=0;
+ std::function<void()> releasePointer_;
+ std::function<void(int,int,int,int,const uint32_t*)> cursorObserver_;
  QList<QThread*> workers_;
  QSet<CinnamonRegionCapture*> regionCaptures_;
  QSet<X11CompositorSettle*> settles_;

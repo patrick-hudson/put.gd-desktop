@@ -27,9 +27,36 @@ CaptureCursorCache::CaptureCursorCache(){
  }
  std::free(formats);supported_=format_!=0;
 }
-CaptureCursorCache::~CaptureCursorCache(){clear();if(connection_)xcb_disconnect(connection_);}
+CaptureCursorCache::~CaptureCursorCache(){releasePointer();clear();if(connection_)xcb_disconnect(connection_);}
 bool CaptureCursorCache::checked(xcb_void_cookie_t cookie){
  auto* error=xcb_request_check(connection_,cookie);const bool ok=!error&&!xcb_connection_has_error(connection_);std::free(error);return ok;
+}
+bool CaptureCursorCache::holdPointer(){
+ if(holding_||!cursor_||!supported_||xcb_connection_has_error(connection_))return false;
+ const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection_)).data->root;
+ // Buttons only: motion is not needed to place a selection, and this connection
+ // reads nothing until the release, however long the helper takes to load.
+ auto* reply=xcb_grab_pointer_reply(connection_,xcb_grab_pointer(connection_,false,root,XCB_EVENT_MASK_BUTTON_PRESS|XCB_EVENT_MASK_BUTTON_RELEASE,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,cursor_,XCB_CURRENT_TIME),nullptr);
+ holding_=reply&&reply->status==XCB_GRAB_STATUS_SUCCESS;std::free(reply);
+ return holding_;
+}
+QList<CaptureCursorCache::HeldButton> CaptureCursorCache::releasePointer(){
+ QList<HeldButton> buttons;
+ if(!holding_)return buttons;
+ holding_=false;
+ xcb_ungrab_pointer(connection_,XCB_CURRENT_TIME);
+ // Every event from before the ungrab has reached this connection after the fence.
+ auto* fence=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);std::free(fence);
+ while(auto* event=xcb_poll_for_event(connection_)){
+  const auto type=event->response_type&127;
+  if(type==XCB_BUTTON_PRESS||type==XCB_BUTTON_RELEASE){
+   const auto* button=reinterpret_cast<xcb_button_press_event_t*>(event);
+   // Only these act on a selection; a wheel sends a stream of presses of its own.
+   if((button->detail==1||button->detail==3)&&buttons.size()<64)buttons.append({type==XCB_BUTTON_PRESS,button->detail,button->root_x,button->root_y});
+  }
+  std::free(event);
+ }
+ return buttons;
 }
 void CaptureCursorCache::clear(){
  if(cursor_&&connection_){xcb_free_cursor(connection_,cursor_);xcb_flush(connection_);}

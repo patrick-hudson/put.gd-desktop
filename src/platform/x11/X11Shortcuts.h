@@ -22,6 +22,10 @@ public:
  // {passive, raw:{available, xinput}, lastActivation:{action, path, ...}}.
  QJsonObject keyPaths()const;
 signals:
+ // Ahead of activated and its logging, for what must show at the press itself.
+ void pressed(const QString& action);
+ // Escape anywhere: raw events arrive whichever window has the keyboard.
+ void escapePressed();
  void activated(const QString& action);
  void bindingsChanged();
  // The X server closed this connection: its session is over (#490).
