@@ -369,8 +369,13 @@ def previous_worker_gone(owner):
     from tools.lab.desktop_lock import process_start
     if owner.get('worker'):
         old = owner['worker']
-        return (old['boot'] != worker_identity()['boot'] or
-                bool(old['start']) and process_start(old['pid']) != old['start'])
+        if old['boot'] != worker_identity()['boot']:
+            return True
+        current = process_start(old['pid'])
+        # An unreadable live process is not proof of exit.
+        if not current:
+            return not Path(f'/proc/{old["pid"]}').exists()
+        return bool(old['start']) and current != old['start']
     # Legacy retained slots have no PID identity. Require a terminal matching
     # row AND absence of the exact worker output argv (not a process pattern).
     evidence = Path(owner['evidence'])

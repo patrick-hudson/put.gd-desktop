@@ -160,6 +160,8 @@ class NightlyTests(unittest.TestCase):
         self.assertFalse(nightly.previous_worker_gone(owner))
         with patch('tools.lab.desktop_lock.process_start', return_value='different-start'):
             self.assertTrue(nightly.previous_worker_gone(owner))
+        with patch('tools.lab.desktop_lock.process_start', return_value=''):
+            self.assertFalse(nightly.previous_worker_gone(owner))
         owner['worker']['boot'] = 'previous-boot'
         self.assertTrue(nightly.previous_worker_gone(owner))
 
