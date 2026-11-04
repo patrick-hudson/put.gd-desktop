@@ -39,6 +39,8 @@
 #endif
 namespace putgd {
 namespace {
+// Static so it costs nothing until a press touches it; the process has one resident.
+ImagePageSnapshot hotkeyPages;
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 Error unsupported() {return {"source_unsupported","Native desktop adapter is not available",{}};}
 bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
@@ -136,10 +138,10 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(!imagePagesPending_||!heapReclamationIdle())return;
   // Runs after the quiet that follows an interaction, so none of its own pages fault back mid-way.
   QElapsedTimer elapsed;elapsed.start();
-  const auto release=releaseCleanImagePages();
-  lastImagePageReleaseUsec_=elapsed.nsecsElapsed()/1000;lastImagePageReleaseBytes_=release.bytes;
+  const auto release=releaseCleanImagePages(hotkeyPagesKnown_?&hotkeyPages:nullptr);
+  lastImagePageReleaseUsec_=elapsed.nsecsElapsed()/1000;lastImagePageReleaseBytes_=release.bytes;lastImagePageReleaseKeptBytes_=release.keptBytes;
   ++imagePageReleaseCount_;
-  imagePagesPending_=false;
+  imagePagesPending_=false;imagePagesReleasedSinceSnapshot_=true;
  });
  const auto path=databasePath(),artifactsRoot=root_+"/artifacts";
  background([this,path,artifactsRoot](Error& e) {
@@ -178,6 +180,18 @@ void OperationService::requestHeapReclamation() {
 void OperationService::requestImagePageRelease() {
  if(stopping_)return;
  imagePagesPending_=true;requestHeapReclamation();
+}
+void OperationService::snapshotHotkeyPages(const QString& operationId) {
+ if(operationId!=hotkeySnapshotDue_)return;
+ hotkeySnapshotDue_.clear();
+ // Before any release, or a second press before the next one, what's mapped is
+ // startup's or the last capture's work too. The pages already recorded still stand.
+ if(!imagePagesReleasedSinceSnapshot_)return;
+ QElapsedTimer elapsed;elapsed.start();
+ if(!snapshotImagePages(hotkeyPages))return;
+ lastHotkeyPageSnapshotUsec_=elapsed.nsecsElapsed()/1000;
+ ++hotkeyPageSnapshotCount_;
+ hotkeyPagesKnown_=true;imagePagesReleasedSinceSnapshot_=false;
 }
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
  heapReclamationTimer_.stop();imagePageTimer_.stop();
@@ -276,9 +290,9 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
  if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=hotkeySnapshotDue_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
 #ifdef __GLIBC__
- heapReclamationPending_=true;
+ heapReclamationPending_=true;imagePagesPending_=true;
 #endif
  // Preview reports terminal metadata only. Latch it on the session thread so
  // it can stop either checkpoint continuation without ever delivering pixels.
@@ -338,11 +352,14 @@ void OperationService::invoke(const QString& action,JsonReply reply,const QJsonO
       if(guarded->selectingId_==op.id&&!guarded->preparedOwners_.contains(op.id))guarded->selectingId_.clear();
       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
       guarded->clipboardImports_.remove(op.id);
+      if(guarded->hotkeySnapshotDue_==op.id)guarded->hotkeySnapshotDue_.clear();
       if(op.action=="edit")guarded->startEditing(op,flag,std::move(r.payload));
       else guarded->enqueue({op,std::move(r.payload),true,flag,{}});
       guarded->pumpCopies();
      },Qt::QueuedConnection);
     });
+    // The overlay or helper has started; only a selector's path takes this long to run.
+    QTimer::singleShot(op.action=="region"?hotkeyPageSnapshotDelayMs_:0,this,[this,id=op.id]{snapshotHotkeyPages(id);});
    });
   });
  });
@@ -414,7 +431,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
 }
 void OperationService::enqueue(Job job) {
 #ifdef __GLIBC__
- if(job.acquire)heapReclamationPending_=true;
+ if(job.acquire)heapReclamationPending_=imagePagesPending_=true;
 #endif
  if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.state="cancelled";finish(job.op);return;}
  if(job.payload.kind=="image"){
@@ -503,7 +520,7 @@ Error OperationService::acceptRecording(Operation& op) {
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,false);
 #ifdef __GLIBC__
- heapReclamationPending_=true;
+ heapReclamationPending_=imagePagesPending_=true;
 #endif
  logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output",upload?"upload":"local"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId}});
  return {};
@@ -800,6 +817,8 @@ void OperationService::releaseActive(const QString& id) {
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  clipboardImports_.remove(op.id);pumpCopies();
+ // Cancelled before its delay: all it ran was the press's path.
+ if(op.cancelled)snapshotHotkeyPages(op.id);
  // Its link is copied only when asked for (diagnostics.bundle copyLink).
  if(op.action==diagnosticsAction&&op.copyStatus=="pending")op.copyStatus="suppressed";
  if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}
@@ -1123,7 +1142,7 @@ QJsonObject OperationService::diagnostics() const {
  const auto logStatus=logging::status();
  return {{"schemaVersion",1},{"build",build},{"release",releaseLink(build).toJson()},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"previews",QJsonObject{{"running",posterRunning_},{"queued",posterQueue_.size()}}},{"uploadSlots",uploadSlots_.diagnostics()},{"journalReady",ready_},{"artifactCleanup",QJsonObject{{"running",cleanupInProgress_},{"automatic",automaticCleanup_},{"intervalMs",cleanupSchedule_.intervalMs},{"last",lastCleanup_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastCleanup_)},{"incompleteUploadNotice",lastIncompleteNotice_.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(lastIncompleteNotice_)}}},{"capabilities",capabilities()},{"storage",providers_.diagnostics()},{"locations",locations_},
   {"logging",logStatus},{"loggingDegraded",logStatus["degraded"].toBool()},{"uncleanExit",RunMarker::report()},
-  {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_}}}};
+  {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_},{"imagePageReleasePending",imagePagesPending_},{"imagePageReleaseCount",qint64(imagePageReleaseCount_)},{"lastImagePageReleaseUsec",lastImagePageReleaseUsec_},{"lastImagePageReleaseBytes",lastImagePageReleaseBytes_},{"lastImagePageReleaseKeptBytes",lastImagePageReleaseKeptBytes_},{"hotkeyPageSnapshotCount",qint64(hotkeyPageSnapshotCount_)},{"lastHotkeyPageSnapshotUsec",lastHotkeyPageSnapshotUsec_},{"hotkeyPageSnapshotMappedBytes",hotkeyPagesKnown_?hotkeyPages.mappedBytes:qint64(0)},{"hotkeyPageSnapshotStorageBytes",hotkeyPagesKnown_?hotkeyPages.bytesInUse():qint64(0)}}}};
 }
 void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObject& outcome) {
  QSet<QString> changed;

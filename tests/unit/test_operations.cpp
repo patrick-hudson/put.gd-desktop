@@ -1,4 +1,5 @@
 #include "fixtures/U2Fixtures.h"
+#include "core/ImagePages.h"
 #include "core/Log.h"
 #include <QScopeGuard>
 #include <utility>
@@ -658,6 +659,106 @@ private slots:
   PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,500);QVERIFY(!memory()["imagePageReleasePending"].toBool());
   // The interface helper's exit releases them.
   operations.requestImagePageRelease();PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,6000);
+#endif
+ }
+ void aPressRecordsItsPathOnceAReleaseHasClearedTheRest() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;source.defer=true;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  const auto press=[&](const QString& action){const auto was=source.acquisitions.size();operations.invoke(action,[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.acquisitions.size(),was+1);};
+  const auto cancel=[&]{source.acquisitions.takeFirst()({{},{"cancelled","Selection cancelled",{}}});PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);};
+  PUTGD_TRY_VERIFY(operations.ready());
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
+  // Nothing recorded yet, so startup's release kept nothing.
+  QCOMPARE(memory()["lastImagePageReleaseKeptBytes"].toInteger(),qint64(0));
+  QCOMPARE(memory()["hotkeyPageSnapshotStorageBytes"].toInteger(),qint64(0));
+  press("region");
+  PUTGD_TRY_COMPARE(memory()["hotkeyPageSnapshotCount"].toInt(),1);
+  const auto storage=memory()["hotkeyPageSnapshotStorageBytes"].toInteger();
+  QVERIFY(storage>0);QVERIFY(storage<=qint64(sizeof(ImagePageSnapshot)));
+  QVERIFY(memory()["hotkeyPageSnapshotMappedBytes"].toInteger()>0);
+  // A capture's release keeps those pages, and no second press has run to change them.
+  cancel();PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,6000);
+  QVERIFY(memory()["lastImagePageReleaseKeptBytes"].toInteger()>0);
+  QCOMPARE(memory()["hotkeyPageSnapshotCount"].toInt(),1);
+  // A second press before the next release would record the first capture's pages.
+  operations.setImagePageDelayForTesting(60000);
+  press("region");PUTGD_TRY_COMPARE(memory()["hotkeyPageSnapshotCount"].toInt(),2);
+  cancel();
+  press("region");PUTGD_COMPARE_STEADY(memory()["hotkeyPageSnapshotCount"].toInt(),2,500);
+  cancel();
+  // Sources with no selector record their path straight away.
+  operations.setImagePageDelayForTesting(100);
+  operations.requestImagePageRelease();PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),3,6000);
+  operations.setHotkeyPageSnapshotDelayForTesting(60000);
+  press("desktop");PUTGD_TRY_COMPARE(memory()["hotkeyPageSnapshotCount"].toInt(),3);
+  cancel();
+#endif
+ }
+ void aPressBeforeAnyReleaseRecordsNothing() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;source.defer=true;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);operations.setHotkeyPageSnapshotDelayForTesting(50);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());
+  operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
+  // All of startup is still mapped, so what's mapped says nothing about the press.
+  PUTGD_COMPARE_STEADY(memory()["hotkeyPageSnapshotCount"].toInt(),0,500);
+  source.acquisitions.takeFirst()({{},{"cancelled","Selection cancelled",{}}});
+  // The release that follows is the same one startup would have run.
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
+  QCOMPARE(memory()["lastImagePageReleaseKeptBytes"].toInteger(),qint64(0));
+  // And the next press records its path.
+  operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(memory()["hotkeyPageSnapshotCount"].toInt(),1);
+  source.acquisitions.takeFirst()({{},{"cancelled","Selection cancelled",{}}});
+  PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+#endif
+ }
+ void aPayloadBeforeTheDelayRecordsNothingButACancelRecordsAtOnce() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;source.defer=true;
+  source.payload.kind="image";source.payload.image=QImage(16,16,QImage::Format_ARGB32);source.payload.image.fill(Qt::cyan);
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);operations.setHotkeyPageSnapshotDelayForTesting(1000);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
+  operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
+  // The capture's own pages are about to come in.
+  source.acquisitions.takeFirst()({source.payload,{}});
+  PUTGD_COMPARE_STEADY(memory()["hotkeyPageSnapshotCount"].toInt(),0,1500);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,6000);
+  // A cancelled selector can't wait for the delay and has run nothing else.
+  operations.setHotkeyPageSnapshotDelayForTesting(60000);
+  operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
+  source.acquisitions.takeFirst()({{},{"cancelled","Selection cancelled",{}}});
+  PUTGD_TRY_COMPARE(memory()["hotkeyPageSnapshotCount"].toInt(),1);
+#endif
+ }
+ void aCaptureArmsAReleaseButOrdinaryWorkDoesNot() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;source.defer=true;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
+  const auto trims=memory()["allocatorReclamationCount"].toInt();
+  operations.requestHeapReclamation();PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["allocatorReclamationCount"].toInt(),trims+1,5000);
+  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,500);
+  operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});PUTGD_TRY_COMPARE(source.acquisitions.size(),1);
+  QVERIFY(memory()["imagePageReleasePending"].toBool());
+  // Nothing is released while the selector is up.
+  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,500);
+  source.acquisitions.takeFirst()({{},{"cancelled","Selection cancelled",{}}});
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),2,6000);
 #endif
  }
  void shutdownCancelsImagePageRelease() {

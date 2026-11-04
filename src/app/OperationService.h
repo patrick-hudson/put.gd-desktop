@@ -164,6 +164,7 @@ public:
  // Tests substitute the schedule (before ready) and the clock retention compares against.
  void setCleanupScheduleForTesting(CleanupSchedule schedule) {cleanupSchedule_=schedule;cleanupTimer_.setInterval(schedule.intervalMs);}
  void setImagePageDelayForTesting(int delayMs) {imagePageDelayMs_=delayMs;}
+ void setHotkeyPageSnapshotDelayForTesting(int delayMs) {hotkeyPageSnapshotDelayMs_=delayMs;}
  void setClockForTesting(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void shutdown();
  QJsonObject capabilities() const;
@@ -184,9 +185,8 @@ public:
  // Ask the idle gate to return freed heap once current work drains (#1149): a
  // history page or a closed interface leaves query buffers free but resident.
  void requestHeapReclamation();
- // Also unmaps clean library pages once quiet. Only for work whose pages nothing
- // needs soon: captures and hotkeys keep theirs, so a press under memory pressure
- // finds them still mapped.
+ // Also unmaps clean library pages once quiet, except those a hotkey's path was
+ // last seen using, so a press under memory pressure finds them still mapped.
  void requestImagePageRelease();
 signals:
  void initialized();
@@ -245,6 +245,7 @@ private:
  void pump();
  bool heapReclamationIdle() const;
  void scheduleHeapReclamation();
+ void snapshotHotkeyPages(const QString& operationId);
  Operation run(Job);
  void finish(Operation,JsonReply={});
  // #112: video poster frames, made one item at a time after its operation
@@ -329,7 +330,15 @@ private:
  bool imagePagesPending_=false;
  bool firstCleanupPending_=true;
  quint64 imagePageReleaseCount_=0;
- qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0;
+ qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0,lastImagePageReleaseKeptBytes_=0;
+ // A region's selector has usually drawn by now and few selections are this quick.
+ int hotkeyPageSnapshotDelayMs_=150;
+ // What's mapped only shows a hotkey's path once a release has cleared the rest.
+ bool imagePagesReleasedSinceSnapshot_=false,hotkeyPagesKnown_=false;
+ // The press still to be recorded, until its payload starts bringing in a capture's pages.
+ QString hotkeySnapshotDue_;
+ quint64 hotkeyPageSnapshotCount_=0;
+ qint64 lastHotkeyPageSnapshotUsec_=0;
  int running_=0,storageRequests_=0;
  quint64 invocation_=0;
  QString selectingId_;
