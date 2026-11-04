@@ -39,6 +39,28 @@ build identity, nonce, generation, bounds, message order and normal exit.
 Missing required selector-cleanup proof fails closed. See the
 [desktop contracts](overview.md#desktop-adapters) for compositor-specific details.
 
+A live selection starts ahead of the operation's two journal saves on every
+route, and returns geometry only. On KDE the region helper runs from a
+`prepare`/`begin` ticket, as `putgd-capture` does on X11. On GNOME the resident
+calls the Shell bridge's `Preview` when `Hello` advertises `previewVersion`, and
+`Acquire` takes up that geometry; an extension loaded before `Preview` existed
+selects through `Acquire` with no logout. Screenshot first keeps its order on all
+of them. Pixels wait for both checkpoints in every case.
+
+On Cinnamon/X11 the crosshair shows at the key press, from the resident, before
+`putgd-capture` has loaded. It needs a cursor from an earlier selection: the
+helper reports the image Qt chose, so the first press after startup has none, and
+Qt below 6.5 seeds the cache from libXcursor as before. The hold is an ordinary
+pointer grab on the resident's cursor connection, with button events only. The
+helper maps its surfaces, asks for the pointer and receives the buttons pressed
+meanwhile, in order, before it takes its own grab, so a drag begun during the hold
+is kept with its real coordinates. A sync grab would replay a press at the
+pointer's final position. Escape during the hold releases it and cancels the
+operation, and the focused window receives the key as well, since the keyboard is
+not held. A right-click is applied when the helper arrives. A second press of the
+hotkey is ignored. A failed or cancelled helper releases the hold, and it never
+outlasts `crosshairHoldMs` (5 s).
+
 `UiProcessController` starts one matching `putgd-ui` window helper on demand.
 `UiApplicationController` owns the main History/Destinations/Settings window and
 About. `UiSession` caches JSON and bounded thumbnails; it owns no SQLite
