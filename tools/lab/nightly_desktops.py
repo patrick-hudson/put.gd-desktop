@@ -409,6 +409,213 @@ def controller_ssh_identities(*, proc=Path('/proc')):
         return []
 
 
+RECOVERY_SECONDS = 180
+
+
+def worker_identity():
+    from tools.lab.desktop_lock import process_start
+    return dict(pid=os.getpid(), start=process_start(os.getpid()),
+                boot=Path('/proc/sys/kernel/random/boot_id').read_text().strip())
+
+
+def previous_worker_gone(owner):
+    from tools.lab.desktop_lock import process_start
+    if owner.get('worker'):
+        old = owner['worker']
+        if old['boot'] != worker_identity()['boot']:
+            return True
+        current = process_start(old['pid'])
+        # An unreadable live process is not proof of exit.
+        if not current:
+            return not Path(f'/proc/{old["pid"]}').exists()
+        return bool(old['start']) and current != old['start']
+    # Legacy retained slots have no PID identity. Require a terminal matching
+    # row AND absence of the exact worker output argv (not a process pattern).
+    evidence = Path(owner['evidence'])
+    result = json.loads((evidence/'result.json').read_text())
+    if result.get('session') != owner['session'] or not result.get('finishedAt'):
+        return False
+    for proc in Path('/proc').glob('[0-9]*'):
+        try:
+            if proc.stat().st_uid != os.getuid():
+                continue
+            argv = os.fsdecode((proc/'cmdline').read_bytes()).rstrip('\0').split('\0')
+            if ('--worker' in argv and '--output' in argv
+                    and argv[argv.index('--output')+1] == str(evidence.parent)):
+                return False
+        except FileNotFoundError:
+            continue
+        except (OSError, IndexError):
+            return False
+    return True
+
+
+def guest_clients_live(run):
+    """Refuse an orphaned lend/recipe, or a QEMU whose run was removed."""
+    disk = str(run/'disk.qcow2').encode()
+    for proc in Path('/proc').glob('[0-9]*'):
+        try:
+            if proc.stat().st_uid != os.getuid():
+                continue
+            raw = (proc/'cmdline').read_bytes().rstrip(b'\0').split(b'\0')
+            argv = [os.fsdecode(a) for a in raw]
+            if (str(run) in argv and ('tools.lab.surface_driver.run' in argv or
+                    any(Path(a).name == 'proton_lab.py' for a in argv) and 'lend' in argv)):
+                return True
+            if (not run.exists() and raw and Path(os.fsdecode(raw[0])).name.startswith('qemu-system-')
+                    and any(disk in a.split(b',') or b'file='+disk in a.split(b',') for a in raw)):
+                return True
+        except FileNotFoundError:
+            continue
+        except OSError:
+            return True
+    return False
+
+
+def recover_guest(config, owner, out, cells):
+    """Recover only this slot's credential baton, then guarded overlay retirement.
+
+    Each external recovery step is bounded. Unknown/private publication cleanup
+    stays retained; destroying a disposable VM can resolve only guest-local loss.
+    """
+    from tools.lab.desktop_lock import Desktop
+    run, evidence, session = Path(owner['run']), Path(owner['evidence']), owner['session']
+    if run.parent != ROOT/'work/lab-runs' or not re.fullmatch(r'n[0-9a-f]{8}', run.name):
+        raise NotRun('guest recovery refused: run is not an owned nightly overlay')
+    from tools.lab.overlay_cleanup import _no_symlinks
+    _no_symlinks(run)
+    _no_symlinks(evidence)
+    if guest_clients_live(run):
+        raise NotRun('guest recovery refused: exact lend/recipe or missing-run QEMU is still live')
+    locks = Path.home()/'putgd-lab/locks'
+    proton = Desktop(locks, config['host'], resource='proton')
+    state = proton.status()
+    held = state.get('lock', {})
+    if state['state'] != 'free' and (held.get('session') != session or held.get('owner') != 'nightly-desktops'):
+        raise NotRun('guest recovery waiting: Proton lease belongs to another session')
+    lends = []
+    for path in (Path.home()/'putgd-lab/proton/receipts').glob('*/lend.json'):
+        lent = json.loads(private_file(path).read_text())
+        if lent.get('run') == str(run) and lent.get('session') == session:
+            lends.append((lent.get('updated', ''), path.parent, lent))
+    safe_steps = ('cleaned', 'recovered', 'recovered_nothing_lent', 'provision_failed_abandoned')
+    if lends:
+        _, folder, lent = max(lends, key=lambda item:item[0])
+        if lent.get('step') not in safe_steps:
+            if run.exists():
+                # Use this driver's recover implementation, including on Atomic.
+                command([sys.executable, ROOT/'tools/lab/proton_lab.py', 'recover', folder,
+                         '--session', session, '--owner', 'nightly-desktops'],
+                        log=out/'proton-recover.json', timeout=120,
+                        env=dict(os.environ, HOME=str(Path.home().resolve())))
+                lent = json.loads((folder/'lend.json').read_text())
+                if lent.get('step') not in safe_steps:
+                    raise NotRun('guest recovery incomplete: run proton_lab.py recover with retained lend receipts')
+            else:
+                from tools.lab.provision_live_credentials import _load_receipt
+                _, provision = _load_receipt(folder/'provision.json')
+                if not (lent.get('step') == 'carried_back' and provision['run'] == str(run)
+                        and provision['provider'] == 'proton' and provision['kind'] == 'chain_guest'
+                        and provision.get('cleanupAllowed') is True
+                        and provision.get('state') in ('cleanup_pending', 'cleanup_confirmed')):
+                    raise NotRun('guest missing with unresolved Proton carry-back; inspect retained lend receipts')
+        # The guest is no longer the sole current copy. This also handles old
+        # expired leases whose VM/run directory has already been retired.
+        if proton.status()['state'] != 'free':
+            save(out/'proton-release.json', proton.release(session, verified_clean=True))
+    elif state['state'] != 'free':
+        raise NotRun('guest recovery refused: owned Proton lease has no matching lend receipt')
+    local_loss = {'resident quit transport unavailable; private session retained',
+                  'resident quit was rejected; private session retained'}
+    for path in evidence.glob('*/receipt.json'):
+        environment = json.loads(path.read_text()).get('environment', {})
+        errors = environment.get('cleanup_errors', [])
+        if (any(error not in local_loss for error in errors) or
+                'retained' in str(environment.get('private_cleanup', '')) and not errors):
+            raise NotRun('guest retained: inspect private cleanup in '+str(path)+' before explicit recovery')
+    if (run/'state.json').exists():
+        # retire uses exact QEMU/overlay ownership and the existing evidence gate.
+        retire(run, evidence, cells)
+    elif run.exists():
+        raise NotRun('guest retained: missing state.json; inspect exact overlay before recovery')
+    save(out/'guest-recovered.json', dict(session=session, run=str(run), evidence=str(evidence)))
+
+
+def recover_stale_guest(config, out):
+    """Before waiting, reconcile one dead worker's durable slot. Never steal a live lease."""
+    from tools.lab.desktop_lock import Desktop
+    locks = Path.home()/'putgd-lab/locks'
+    slot = locks/'tier1-guest.lock.d'
+    if not slot.exists():
+        return
+    try:
+        with (locks/'tier1-recovery.lock').open('a') as mutex:
+            try:
+                fcntl.flock(mutex, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise NotRun('nightly guest recovery is already running in another worker') from None
+            owner = json.loads(private_file(slot/('retained.json' if (slot/'retained.json').exists()
+                                                  else 'owner.json')).read_text())
+            if (slot/'session').read_text().strip() != owner['session'] or not previous_worker_gone(owner):
+                raise NotRun('nightly guest slot belongs to a live or unverified worker')
+            desktop = Desktop(locks, config['host'])
+            state = desktop.status()
+            if state['state'] != 'free' and (state.get('lock', {}).get('session') != owner['session']
+                    or state.get('lock', {}).get('owner') != 'nightly-desktops' or not state.get('breakable')):
+                raise NotRun('nightly guest recovery refused: desktop lease is live or belongs to another session')
+            recovery = out/'stale-recovery'
+            recovery.mkdir(mode=0o700)
+            recover_guest(config, owner, recovery, {})
+            # Ordinary checked release refuses any unexplained host leftovers.
+            if state['state'] != 'free':
+                save(recovery/'desktop-release.json', desktop.release(owner['session'], verified_clean=True,
+                     not_mine=controller_ssh_identities if config['host'] == 'd69' else []))
+            save(locks/'history/recovered'/(uuid.uuid4().hex+'.json'), owner)
+            for name in ('session', 'owner.json', 'retained.json'):
+                (slot/name).unlink(missing_ok=True)
+            slot.rmdir()
+    except NotRun:
+        raise
+    except Exception as error:
+        # The type alone: exception payloads can carry private paths or responses.
+        save(out/'stale-recovery-error.json', dict(type=type(error).__name__))
+        raise NotRun('nightly guest recovery incomplete; inspect '+str(out/'stale-recovery-error.json')+
+                     ' and tier1-guest.lock.d; explicit recovery required') from None
+
+
+@contextmanager
+def recovery_deadline():
+    """One bounded cleanup attempt, independent of the expired flow budget."""
+    def expired(_signum, _frame):
+        raise NotRun('guest recovery deadline exhausted; explicit recovery required')
+    previous = signal.signal(signal.SIGALRM, expired)
+    started = time.monotonic()
+    remaining, interval = signal.setitimer(signal.ITIMER_REAL, RECOVERY_SECONDS)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+        if remaining:
+            # Recovery spends the outer budget; one that ran out meanwhile fires now.
+            remaining = max(remaining-(time.monotonic()-started), 0.001)
+        signal.setitimer(signal.ITIMER_REAL, remaining, interval)
+
+
+def recover_row(config, reservation, session, out, cells):
+    recovery = out/'recovery'
+    try:
+        recovery.mkdir(mode=0o700, exist_ok=True)
+        with recovery_deadline():
+            recover_guest(config, dict(reservation, session=session, evidence=str(out)), recovery, cells)
+    except NotRun:
+        raise
+    except Exception:
+        raise NotRun('guest recovery failed; inspect '+str(recovery)+'; explicit recovery required') from None
+    reservation.pop('retained', None)
+    reservation.pop('reason', None)
+
+
 @contextmanager
 def lease(host, session, out, *, reservation=None):
     from tools.lab.desktop_lock import Desktop
@@ -431,6 +638,9 @@ def lease(host, session, out, *, reservation=None):
         slot.mkdir(mode=0o700)
         acquired = True
         (slot/'session').write_text(session+'\n')
+        (slot/'session').chmod(0o600)
+        owner = dict(reservation or {}, session=session, evidence=str(out), worker=worker_identity())
+        save(slot/'owner.json', owner)
         yield errors
     finally:
         stop.set()
@@ -438,16 +648,19 @@ def lease(host, session, out, *, reservation=None):
         if acquired and reservation and reservation.get('retained'):
             # The guest may still hold a credential baton or private publication.
             # Keep the durable slot until explicit recovery, even after lease expiry.
-            save(slot/'retained.json', dict(reservation, session=session, evidence=str(out)))
+            save(slot/'retained.json', dict(owner, **reservation))
             save(out/'lock-retained.json', lock.heartbeat(session, blocked=reservation['reason']))
         else:
-            if acquired:
-                (slot/'session').unlink()
-                slot.rmdir()
             try:
                 not_mine = controller_ssh_identities if host == 'd69' else []
                 save(out/'lock-release.json', lock.release(session, verified_clean=True, not_mine=not_mine))
+                if acquired:
+                    (slot/'session').unlink()
+                    (slot/'owner.json').unlink(missing_ok=True)
+                    slot.rmdir()
             except Exception as error:
+                if acquired:
+                    save(slot/'retained.json', dict(owner, reason='desktop release failed; checked recovery required'))
                 save(out/'lock-release-error.json', dict(type=type(error).__name__, message=str(error),
                                                         details=getattr(error, 'details', {})))
                 raise
@@ -521,6 +734,8 @@ def retire(run, out, rows):
     from tools.lab.surface_driver.collect import collect
     attempts = [p.parent for p in out.glob('*/receipt.json')]
     archive = out/'attachments.tgz'
+    if archive.exists():
+        archive = out/('attachments-recovery-'+uuid.uuid4().hex[:8]+'.tgz')
     if attempts:
         collect(attempts, archive)
         with tarfile.open(archive) as stream:
@@ -529,9 +744,12 @@ def retire(run, out, rows):
                     content = stream.extractfile(member).read()
                     if hashlib.sha256(content).hexdigest() != digest(out/member.name):
                         raise RuntimeError('exported evidence checksum mismatch')
+    for name in ('completion.json', 'completion-manifest.json'):
+        if (out/name).exists():
+            shutil.copy2(out/name, out/(name+'.before-recovery-'+uuid.uuid4().hex[:8]))
     completion = dict(schemaVersion=1, kind='vm-overlay-cleanup-evidence', run=str(run),
         runId=info['id'], completed=True, evidenceExportVerified=True,
-        outcome='passed' if all(c['green'] for c in rows.values()) else 'failed')
+        outcome='passed' if rows and all(c['green'] for c in rows.values()) else 'failed')
     save(out/'completion.json', completion)
     files = {'completion.json': digest(out/'completion.json')}
     if archive.exists():
@@ -598,6 +816,8 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
         reservation = dict(run=str(run))
         setup_started = None
         try:
+            with recovery_deadline():
+                recover_stale_guest(config, rowout)
             record['waitSeconds'] = round(await_host(config, rowout, worker_deadline=deadline), 3)
             with lease(host, session, rowout, reservation=reservation) as lease_errors:
                 try:
@@ -707,6 +927,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                         retained |= 'retained' in str(environment.get('private_cleanup', ''))
                     if outstanding or retained:
                         reservation.update(retained=True, reason='guest retained; explicit cleanup recovery required')
+                        recover_row(config, reservation, session, rowout, cells)
                     if (run/'state.json').exists() and not outstanding and not retained:
                         try:
                             try:
@@ -716,7 +937,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                 lab.reset(run)
                         except Exception:
                             reservation.update(retained=True, reason='guest cleanup failed; explicit recovery required')
-                            raise
+                            recover_row(config, reservation, session, rowout, cells)
                     if not outstanding and not retained:
                         reservation.pop('retained', None)
                         reservation.pop('reason', None)
@@ -727,6 +948,12 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
             for value in cells.values():
                 if value['status'] == 'not_run' and not value.get('attempts'):
                     value.update(assertion=reason)
+        if reservation.get('retained') or (rowout/'lock-release-error.json').exists():
+            reason = record.get('notRunReason') or reservation.get('reason') or 'desktop release failed; inspect lock-release-error.json'
+            record['notRunReason'] = reason
+            record['cleanupBlocked'] = True
+            for value in cells.values():
+                value.update(status='not_run', green=False, assertion=reason)
         if (rowout/'availability.json').exists():
             record['waitSeconds'] = json.loads((rowout/'availability.json').read_text()).get('waitedSeconds', 0)
         record['seconds'] = round(time.monotonic()-started, 3)
