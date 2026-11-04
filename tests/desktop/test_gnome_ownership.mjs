@@ -583,3 +583,71 @@ print('PASS recording bar placement prefers below, above, another monitor, then 
     for (const id of extension._requests.keys()) extension._drop(id);
     print('PASS selection hotkeys close only the resident\'s own open tray menu');
 }
+// A live region selection can show at the press (Preview) and be taken up by
+// Acquire once the journal is durable. A resident that predates Preview only
+// calls Acquire, which selects as it always did. Synthetic selector and streams.
+{
+    const layout = [{logical: [0, 0, 640, 480], density: 1}];
+    const bounds = JSON.stringify({imageMimes: ['image/png'], textBytes: 1, imageBytes: 8388608, imagePixels: 2097152, maxFiles: 1});
+    let pixelReads = 0;
+    context.Gio.MemoryOutputStream = {new_resizable() {pixelReads++; throw Object.assign(new Error('Synthetic stop'), {bridgeCode: 'capture_failed'});}};
+    const prepared = async () => {
+        const {extension} = fixture();
+        extension._layout = async () => layout;
+        const request = id();
+        await extension._prepare(request, 'region', resident);
+        return {extension, request};
+    };
+    pendingSelectors.length = 0;
+    {
+        const {extension, request} = await prepared();
+        globalThis.Config = {PACKAGE_VERSION: '50.0'};
+        extension.metadata = {version: 18};
+        assert.equal((await bridge(extension, 'HelloAsync', [])).previewVersion, 1);
+        assert.deepEqual(await bridge(extension, 'PreviewAsync', [request, JSON.stringify({outcome: 'Saves locally', appearance: {}})]), {version: 1, requestId: request, shown: true});
+        assert.equal(pendingSelectors.length, 1);
+        // The user finishes before the journal does: geometry waits, no pixels are read.
+        pendingSelectors.shift().resolve({x: 40, y: 50, width: 64, height: 36});
+        await flush();
+        assert.equal(pixelReads, 0); assert.equal(extension._selector, null);
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'capture_failed');
+        assert.equal(pixelReads, 1); assert.equal(pendingSelectors.length, 0);
+        print('PASS Preview shows the selector and only Acquire reads pixels');
+    }
+    {
+        pixelReads = 0;
+        const {extension, request} = await prepared();
+        const acquired = bridge(extension, 'AcquireAsync', [request, bounds]); await flush();
+        assert.equal(pendingSelectors.length, 1);
+        pendingSelectors.shift().resolve({x: 40, y: 50, width: 64, height: 36});
+        assert.equal((await acquired).error.code, 'capture_failed');
+        assert.equal(pixelReads, 1);
+        print('PASS a resident without Preview still selects through Acquire');
+    }
+    {
+        pixelReads = 0;
+        const {extension, request} = await prepared();
+        await bridge(extension, 'PreviewAsync', [request, '{}']);
+        pendingSelectors.shift().cancel();
+        await flush();
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'cancelled');
+        assert.equal(pixelReads, 0);
+        print('PASS cancelling a previewed selection cancels the acquisition');
+    }
+    {
+        const {extension, request} = await prepared();
+        extension._selector = {};
+        assert.equal((await bridge(extension, 'PreviewAsync', [request, '{}'])).shown, false);
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'busy_selecting');
+        print('PASS a busy selector leaves Preview unshown and Acquire reports it');
+    }
+    {
+        const {extension, request} = await prepared();
+        extension._requests.get(request).error = Object.assign(new Error('Synthetic layout failure'), {bridgeCode: 'capture_geometry'});
+        assert.equal((await bridge(extension, 'PreviewAsync', [request, '{}'])).shown, false);
+        assert.equal(pendingSelectors.length, 0);
+        assert.equal((await bridge(extension, 'AcquireAsync', [request, bounds])).error.code, 'capture_geometry');
+        print('PASS Preview leaves a failed request for Acquire to report');
+    }
+    delete context.Gio.MemoryOutputStream;
+}
