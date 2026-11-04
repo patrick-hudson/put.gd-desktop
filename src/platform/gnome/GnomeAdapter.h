@@ -44,6 +44,7 @@ private:
  using Reply=std::function<void(Error,QJsonObject)>;
  struct Transfer {QString id,outcome;bool screenshotFirst=false;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
+ void helperUnavailable(const Error&);
  void applyShortcutBindings(std::function<void(Error)> reply={});
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
