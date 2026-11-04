@@ -149,6 +149,156 @@ class NightlyTests(unittest.TestCase):
                         self.assertTrue(desktop.lock.exists())
                         items.clear()
                         desktop.release('owned-session', verified_clean=True)
+                        slot = root/'putgd-lab/locks/tier1-guest.lock.d'
+                        self.assertTrue((slot/'retained.json').exists())
+                        for name in ('session', 'owner.json', 'retained.json'):
+                            (slot/name).unlink()
+                        slot.rmdir()
+
+    def test_worker_identity_refuses_live_pid_and_detects_exit_reuse_and_reboot(self):
+        owner = dict(worker=nightly.worker_identity())
+        self.assertFalse(nightly.previous_worker_gone(owner))
+        with patch('tools.lab.desktop_lock.process_start', return_value='different-start'):
+            self.assertTrue(nightly.previous_worker_gone(owner))
+        owner['worker']['boot'] = 'previous-boot'
+        self.assertTrue(nightly.previous_worker_gone(owner))
+
+    def stale_fixture(self, root, *, live=False, legacy=False, lend=None, missing=True):
+        from tools.lab.desktop_lock import Desktop, now_utc
+        locks = root/'putgd-lab/locks'
+        locks.mkdir(parents=True)
+        slot = locks/'tier1-guest.lock.d'
+        slot.mkdir(mode=0o700)
+        run = root/'work/lab-runs/n12345678'
+        evidence = root/'old/row'
+        evidence.mkdir(parents=True)
+        out = root/'new'
+        out.mkdir()
+        owner = dict(run=str(run), session='old-nightly', evidence=str(evidence),
+                     worker=dict(nightly.worker_identity(), boot='old-boot'))
+        if legacy:
+            owner.pop('worker')
+            nightly.save(evidence/'result.json', dict(session=owner['session'], finishedAt='yesterday'))
+        nightly.save(slot/'retained.json', owner)
+        (slot/'session').write_text(owner['session'])
+        desktop = Desktop(locks, 'd69', inventory=lambda:([], []))
+        desktop.acquire('nightly-desktops', owner['session'], 'test', 45)
+        if not live:
+            record = desktop.state(now_utc())['lock']
+            record.update(heartbeat='2020-01-01T00:00:00Z', expires='2020-01-01T00:45:00Z')
+            from tools.lab.desktop_lock import render_lock
+            desktop.replace(desktop.lock, render_lock(record))
+        proton = Desktop(locks, 'd69', inventory=lambda:([], []), resource='proton')
+        if lend:
+            proton.acquire('nightly-desktops', owner['session'], 'test', 45)
+            folder = root/'putgd-lab/proton/receipts/test'
+            nightly.save(folder/'lend.json', dict(run=str(run), session=owner['session'], step=lend))
+            nightly.save(folder/'provision.json', dict(schema=1, provider='proton', target='guest',
+                run=str(run), kind='chain_guest', credentialReference=dict(mode='keychain',
+                reference='putgd-lab-11111111-1111-4111-8111-111111111111'), state='cleanup_pending', cleanupAllowed=True))
+        if not missing:
+            run.mkdir(parents=True)
+            (run/'state.json').write_text('{}')
+        return slot, out, owner, desktop, proton
+
+    def test_dead_slot_missing_run_recovers_checked_leases_and_archives_owner(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                slot, out, owner, desktop, proton = self.stale_fixture(root, legacy=legacy, lend='carried_back')
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                              proton if kw.get('resource') == 'proton' else desktop):
+                    nightly.recover_stale_guest(dict(host='d69'), out)
+                self.assertFalse(slot.exists())
+                self.assertEqual(desktop.status()['state'], 'free')
+                self.assertEqual(proton.status()['state'], 'free')
+                archived = list((root/'putgd-lab/locks/history/recovered').glob('*.json'))
+                self.assertEqual(json.loads(archived[0].read_text()), owner)
+
+    def test_live_foreign_and_unresolved_baton_are_never_released(self):
+        for mode in ('live', 'foreign', 'unresolved', 'worker-live'):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                slot, out, owner, desktop, proton = self.stale_fixture(root, live=mode == 'live',
+                    lend='provisioned' if mode == 'unresolved' else None)
+                if mode == 'foreign':
+                    from tools.lab.desktop_lock import render_lock, now_utc
+                    record = desktop.state(now_utc())['lock']
+                    desktop.replace(desktop.lock, render_lock(dict(record, session='other-session')))
+                if mode == 'worker-live':
+                    nightly.save(slot/'retained.json', dict(owner, worker=nightly.worker_identity()))
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                              proton if kw.get('resource') == 'proton' else desktop), \
+                        patch.object(nightly, 'retire') as retire, patch.object(nightly, 'command') as command:
+                    with self.assertRaises(nightly.NotRun):
+                        nightly.recover_stale_guest(dict(host='d69'), out)
+                retire.assert_not_called()
+                command.assert_not_called()
+                self.assertTrue(slot.exists())
+                self.assertNotEqual(desktop.status()['state'], 'free')
+
+    def test_owned_recovery_calls_bounded_proton_recover_then_guarded_retirement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root, lend='carried_back', missing=False)
+            folder = root/'putgd-lab/proton/receipts/test'
+            def recovered(*args, **kwargs):
+                self.assertEqual(kwargs['timeout'], 120)
+                self.assertIn('recover', args[0])
+                nightly.save(folder/'lend.json', dict(run=owner['run'], session=owner['session'], step='recovered'))
+            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                    patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                          proton if kw.get('resource') == 'proton' else desktop), \
+                    patch.object(nightly, 'retire') as retire, patch.object(nightly, 'command', side_effect=recovered):
+                nightly.recover_stale_guest(dict(host='d69'), out)
+            retire.assert_called_once_with(Path(owner['run']), Path(owner['evidence']), {})
+            self.assertFalse(slot.exists())
+
+    def test_recovery_budget_unwinds_and_restores_alarm(self):
+        before = signal.getsignal(signal.SIGALRM)
+        with self.assertRaisesRegex(nightly.NotRun, 'recovery deadline'):
+            with nightly.recovery_deadline():
+                os.kill(os.getpid(), signal.SIGALRM)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), before)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL)[0], 0)
+
+    def test_guest_local_quit_loss_can_retire_but_unknown_cleanup_cannot(self):
+        for safe in (True, False):
+            with self.subTest(safe=safe), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                slot, out, owner, desktop, proton = self.stale_fixture(root, missing=False)
+                message = ('resident quit transport unavailable; private session retained'
+                           if safe else 'fixture cleanup failed; publication outstanding')
+                nightly.save(Path(owner['evidence'])/'flow/receipt.json', dict(environment=dict(
+                    cleanup_errors=[message], private_cleanup='not-owned-or-retained')))
+                with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                        patch('tools.lab.desktop_lock.Desktop', side_effect=lambda *a, **kw:
+                              proton if kw.get('resource') == 'proton' else desktop), \
+                        patch.object(nightly, 'retire') as retire:
+                    if safe:
+                        nightly.recover_stale_guest(dict(host='d69'), out)
+                        retire.assert_called_once()
+                        self.assertFalse(slot.exists())
+                    else:
+                        with self.assertRaisesRegex(nightly.NotRun, 'private cleanup'):
+                            nightly.recover_stale_guest(dict(host='d69'), out)
+                        retire.assert_not_called()
+                        self.assertTrue(slot.exists())
+
+    def test_exact_active_guest_client_prevents_recovery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root)
+            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                    patch('tools.lab.desktop_lock.Desktop', return_value=desktop), \
+                    patch.object(nightly, 'guest_clients_live', return_value=True), \
+                    patch.object(nightly, 'retire') as retire:
+                with self.assertRaisesRegex(nightly.NotRun, 'still live'):
+                    nightly.recover_stale_guest(dict(host='d69'), out)
+            retire.assert_not_called()
+            self.assertTrue(slot.exists())
 
     def test_retained_guest_keeps_durable_reservation_and_blocks_lease(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -255,6 +405,9 @@ class NightlyTests(unittest.TestCase):
                 lock.return_value.release.assert_not_called()
                 self.assertTrue((slot/'retained.json').exists())
                 self.assertTrue((runs[0]/'disk.qcow2').exists())
+                self.assertTrue(records[0]['cleanupBlocked'])
+                self.assertTrue(all(c['status'] == 'not_run' for c in records[0]['cells'].values()))
+                self.assertIn(records[0]['notRunReason'][:80], nightly.table(dict(desktops=records)))
             else:
                 if not finished:
                     self.assertIn('deadline exhausted', records[0]['notRunReason'])
