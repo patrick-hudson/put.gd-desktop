@@ -2,6 +2,7 @@
 #include <QtGlobal>
 
 namespace putgd {
+// bytes counts the pages that were resident when released, not the segments' extent.
 struct ImagePageRelease {int segments=0,skipped=0;qint64 bytes=0;};
 // Unmaps the clean pages of every loaded program and library's read-only and
 // code segments from this process. They stay in the page cache and return on

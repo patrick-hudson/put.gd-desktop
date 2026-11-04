@@ -19,10 +19,16 @@ private slots:
 #if !defined(__linux__) || !defined(__GLIBC__)
   QSKIP("Linux glibc only");
 #else
+  if(sysconf(_SC_PAGESIZE)!=4096)QSKIP("The fixture is laid out for 4 KiB pages");
   // The table faults in from the binary before and after the release.
   const auto before=QByteArray(readOnlyTable,sizeof readOnlyTable);
   const auto resident=residentPages();
   const auto release=releaseCleanImagePages();
+  if(!std::ifstream("/proc/self/pagemap").good()) {
+   // Without page flags nothing can be proven clean, so nothing is released.
+   QCOMPARE(release.segments,0);QCOMPARE(release.bytes,qint64(0));
+   QSKIP("No readable /proc/self/pagemap here");
+  }
   QVERIFY(release.segments>0);QVERIFY(release.bytes>0);
   QVERIFY(residentPages()<resident);
   QCOMPARE(QByteArray(readOnlyTable,sizeof readOnlyTable),before);
@@ -34,8 +40,10 @@ private slots:
 #if !defined(__linux__) || !defined(__GLIBC__)
   QSKIP("Linux glibc only");
 #else
-  // What a debugger's breakpoint does: one private page in a read-only segment.
   const auto pageSize=size_t(sysconf(_SC_PAGESIZE));
+  if(pageSize!=4096)QSKIP("The fixture is laid out for 4 KiB pages");
+  if(!std::ifstream("/proc/self/pagemap").good())QSKIP("No readable /proc/self/pagemap here");
+  // What a debugger's breakpoint does: one private page in a read-only segment.
   auto* page=const_cast<char*>(readOnlyTable)+pageSize;
   QCOMPARE(mprotect(page,pageSize,PROT_READ|PROT_WRITE),0);
   *reinterpret_cast<volatile char*>(page)='x';
