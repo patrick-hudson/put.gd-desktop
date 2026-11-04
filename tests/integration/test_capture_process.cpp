@@ -96,6 +96,8 @@ private slots:
   auto* menu=xcb_connect(nullptr,nullptr);QVERIFY(menu&&!xcb_connection_has_error(menu));const auto closeMenu=qScopeGuard([&]{xcb_disconnect(menu);});
   putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
   QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  // Free, the hold succeeds: what refuses it below is the other client.
+  QVERIFY(controller.holdCrosshair());controller.releaseUnclaimedCrosshair();
   const auto root=xcb_setup_roots_iterator(xcb_get_setup(menu)).data->root;
   auto* grab=xcb_grab_pointer_reply(menu,xcb_grab_pointer(menu,0,root,0,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,XCB_CURSOR_NONE,XCB_CURRENT_TIME),nullptr);
   const int menuStatus=grab?grab->status:-1;std::free(grab);QCOMPARE(menuStatus,int(XCB_GRAB_STATUS_SUCCESS));
