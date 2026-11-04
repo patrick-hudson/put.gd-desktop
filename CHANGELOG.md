@@ -20,7 +20,7 @@ The first stable release of put.gd for Linux: screenshots and screen recordings 
 - **Capture:** a region, the active window or the whole desktop, from the main window, the tray menu or a keyboard shortcut you can change.
 - **Region selection:** the desktop stays live while you drag. A setting freezes the screen first if you prefer.
 - **Image editor:** crop, add arrows and text, and redact private details. Nothing uploads until you choose Upload.
-- **Screen recording:** record a region with system audio, then pause, resume, trim and add timed blur or solid covers. Export MP4, WebM, GIF or animated WebP.
+- **Screen recording:** record a region, with pause and resume, then trim it and add timed blur or solid covers. Export MP4 or WebM with system audio, or a silent GIF or animated WebP.
 - **Storage:** Amazon S3, Cloudflare R2 and other S3-compatible services, plus Backblaze B2. Large files upload in parts and several uploads can run at once, with live progress.
 - **Proton Drive (experimental):** save privately or share through Proton Drive. This is a third-party integration, and its links open a share page rather than the image itself.
 - **File managers:** right-click files or folders and choose Upload with put.gd.
