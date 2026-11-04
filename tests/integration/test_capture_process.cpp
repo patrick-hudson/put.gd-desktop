@@ -47,7 +47,9 @@ int pointerGrabStatus(xcb_connection_t* connection){
  const auto root=xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
  auto* reply=xcb_grab_pointer_reply(connection,xcb_grab_pointer(connection,0,root,0,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,XCB_CURSOR_NONE,XCB_CURRENT_TIME),nullptr);
  const int status=reply?reply->status:-1;std::free(reply);
- if(status==XCB_GRAB_STATUS_SUCCESS){xcb_ungrab_pointer(connection,XCB_CURRENT_TIME);xcb_flush(connection);}
+ // The next grab comes from another connection, and the server may read that one
+ // first: a flush alone lets it find this probe's grab still in place (#398).
+ if(status==XCB_GRAB_STATUS_SUCCESS){xcb_ungrab_pointer(connection,XCB_CURRENT_TIME);std::free(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));}
  return status;
 }
 void seedCursor(putgd::CaptureProcessController& controller){
@@ -86,6 +88,26 @@ private slots:
   auto dropped=controller.prepare(regionSnapshot(),{});PUTGD_TRY_VERIFY(controller.preparedReady());
   QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_ALREADY_GRABBED));
   controller.cancel();QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));PUTGD_TRY_VERIFY(!controller.busy());
+ }
+ void crosshairHoldRefusedByAnotherClient(){
+  // An open menu or a drag holds the pointer. The press still captures, on the
+  // helper's own crosshair, and the resident has nothing left to let go of.
+  auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
+  auto* menu=xcb_connect(nullptr,nullptr);QVERIFY(menu&&!xcb_connection_has_error(menu));const auto closeMenu=qScopeGuard([&]{xcb_disconnect(menu);});
+  putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);seedCursor(controller);
+  QTemporaryDir directory("/tmp/putgd-hold-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  // Free, the hold succeeds: what refuses it below is the other client.
+  QVERIFY(controller.holdCrosshair());controller.releaseUnclaimedCrosshair();
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(menu)).data->root;
+  auto* grab=xcb_grab_pointer_reply(menu,xcb_grab_pointer(menu,0,root,0,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC,XCB_WINDOW_NONE,XCB_CURSOR_NONE,XCB_CURRENT_TIME),nullptr);
+  const int menuStatus=grab?grab->status:-1;std::free(grab);QCOMPARE(menuStatus,int(XCB_GRAB_STATUS_SUCCESS));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","preview-handoff");
+  QVERIFY(!controller.holdCrosshair());QVERIFY(!controller.crosshairHeld());
+  auto ticket=controller.prepare(regionSnapshot(),{});
+  PUTGD_TRY_COMPARE(cursorTrace(trace).size(),2);QCOMPARE(cursorTrace(trace)[1]["hold"].toString(),QString("0"));QVERIFY(!controller.crosshairHeld());
+  int completed=0;putgd::Error error;controller.begin(ticket,[&](putgd::PayloadResult value){error=value.error;++completed;});PUTGD_TRY_COMPARE(completed,1);QVERIFY2(!error,qPrintable(error.code));
+  xcb_ungrab_pointer(menu,XCB_CURRENT_TIME);std::free(xcb_get_input_focus_reply(menu,xcb_get_input_focus(menu),nullptr));
+  QCOMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));
  }
  void inputDuringTheHold_data(){
   QTest::addColumn<QString>("input");
