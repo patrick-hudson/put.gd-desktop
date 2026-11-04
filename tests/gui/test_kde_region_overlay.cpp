@@ -161,10 +161,14 @@ private slots:
   write("user","[Colors:Window]\nfont=Wrong Section,20\n\n[General]\nfixed=Hack,10,-1,5,400\nfont=Inter,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1\n");
   write("no-entry","[General]\nColorScheme=BreezeDark\n");
   write("system","[General]\nfont[$i]=Cantarell,13\n");
-  auto font=kdeDesktopFont({directory.filePath("missing"),directory.filePath("user"),directory.filePath("system")});
-  QCOMPARE(font.family(),QString("Inter"));QCOMPARE(font.pointSize(),12);
+  write("plain","[General]\nfont=Noto Serif,11\n");
   // The first file that names a font wins, in KConfig's order.
-  font=kdeDesktopFont({directory.filePath("no-entry"),directory.filePath("system")});
+  auto font=kdeDesktopFont({directory.filePath("missing"),directory.filePath("user"),directory.filePath("plain")});
+  QCOMPARE(font.family(),QString("Inter"));QCOMPARE(font.pointSize(),12);
+  font=kdeDesktopFont({directory.filePath("no-entry"),directory.filePath("plain")});
+  QCOMPARE(font.family(),QString("Noto Serif"));QCOMPARE(font.pointSize(),11);
+  // An immutable entry wins from a less specific file.
+  font=kdeDesktopFont({directory.filePath("user"),directory.filePath("system")});
   QCOMPARE(font.family(),QString("Cantarell"));QCOMPARE(font.pointSize(),13);
   font=kdeDesktopFont({directory.filePath("missing")});
   QCOMPARE(font.family(),QString("Noto Sans"));QCOMPARE(font.pointSize(),10);
