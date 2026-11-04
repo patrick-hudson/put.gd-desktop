@@ -220,6 +220,35 @@ print(json.dumps(dict(pid=p.pid,start=Path('/proc/%d/stat'%p.pid).read_text().rs
         root=root, collection=status, desktopServicePreserved=after == prior), indent=2))
 
 
+# A broken repository stops rpm-ostree from layering anything, and it reads its
+# repository list from the image, so no guest configuration can leave one out.
+# Fedora's updates-archive has broken this way (#1206) and is not needed for
+# these tools. Only then, install them with dnf on a /usr overlay, which lasts
+# until the next reboot; the sudo rule does not cover dnf, so this uses the
+# standard guest password (docs/remote-golden-images.md).
+ATOMIC_TOOLS = '''set -eu
+sudo -n systemctl stop uupd.service
+sudo -n systemctl disable --now uupd.timer
+sudo -n systemctl mask uupd.timer
+missing=''
+for package in python3-pyqt6 python3-pyatspi python3-dbus python3-pillow python3-gobject tesseract xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring; do
+ if ! rpm -q "$package" >/dev/null; then missing="$missing $package"; fi
+done
+if [ -n "$missing" ]; then
+ status=0
+ layered=$(sudo -n rpm-ostree install --apply-live $missing 2>&1) || status=$?
+ printf '%s\n' "$layered"
+ if [ "$status" -ne 0 ]; then
+  case "$layered" in *"rpm-md repo 'updates-archive'"*) ;; *) exit "$status" ;; esac
+  sudo -n rpm-ostree usroverlay
+  printf '%s\n' putgd-lab | sudo -S -p '' dnf -y --setopt=install_weak_deps=False --disablerepo=updates-archive install $missing
+  echo NIGHTLY_TOOLS_DNF_OVERLAY
+ fi
+ echo NIGHTLY_TOOLS_APPLIED
+fi
+'''
+
+
 def prepare(run, row, out):
     lab.verify_owned_guest(run)
     # AppImages also run on Debian-derived guests. Their probe dependencies
@@ -239,17 +268,7 @@ def prepare(run, row, out):
         # read-only. rpm-ostree install layers tools onto the pinned base.
         components = 'kwin plasma-workspace qt6-qtbase qt6-qtwayland xdg-desktop-portal xdg-desktop-portal-kde'
         before = lab.ssh(run, 'rpm -q '+components).strip()
-        script = '''set -eu
-sudo -n systemctl stop uupd.service
-sudo -n systemctl disable --now uupd.timer
-sudo -n systemctl mask uupd.timer
-missing=''
-for package in python3-pyqt6 python3-pyatspi python3-dbus python3-pillow python3-gobject tesseract xdotool xprop xwininfo xrandr xclip wl-clipboard gstreamer1-plugins-good-gtk gnome-keyring; do
- if ! rpm -q "$package" >/dev/null; then missing="$missing $package"; fi
-done
-if [ -n "$missing" ]; then sudo -n rpm-ostree install --apply-live $missing; echo NIGHTLY_TOOLS_APPLIED; fi
-'''
-        preparation = lab.guest_session(run, script, timeout=1200)
+        preparation = lab.guest_session(run, ATOMIC_TOOLS, timeout=1200)
         (out/'atomic-overlay.txt').write_text(preparation)
         if lab.ssh(run, 'rpm -q '+components).strip() != before:
             raise RuntimeError('Atomic overlay changed a desktop component; no acceptance run allowed')
