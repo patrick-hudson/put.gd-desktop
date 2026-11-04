@@ -1,4 +1,5 @@
 #include "KdeRegionOverlay.h"
+#include "KdeDesktopFont.h"
 #include "ui/QuickBackend.h"
 #include "KdeRegionProtocol.h"
 #include "platform/x11/CaptureControl.h"
@@ -39,8 +40,16 @@ int main(int argc,char** argv) {
   std::printf("putgd-kde-region %s\n",putgd::buildVersion()); return 0;
  }
  putgd::UiControlPipes handles; if(!handles.valid()) return 2;
- putgd::nameSoftwareSceneGraphBackend();
+ // This helper paints its own surfaces and pills from the app theme. Plasma's
+ // platform theme would load KDE Frameworks, Qt Quick and Mesa on every region
+ // press, 90 ms of the hotkey on Kubuntu's native package, for one thing the
+ // selector shows: the desktop font, which is read directly below.
+ const bool plasmaFont=putgd::plasmaThemeExpected(qgetenv("QT_QPA_PLATFORMTHEME"),qgetenv("XDG_CURRENT_DESKTOP"))&&putgd::plasmaThemeInstalled(QCoreApplication::libraryPaths());
+ QGuiApplication::setDesktopSettingsAware(false);
+ qunsetenv("QT_QPA_PLATFORMTHEME");
+ qunsetenv("QT_STYLE_OVERRIDE");
  QApplication app(argc,argv); app.setQuitOnLastWindowClosed(false);
+ if(plasmaFont) QGuiApplication::setFont(putgd::kdeDesktopFont(putgd::kdeGlobalsPaths()));
  app.setDesktopFileName("putgd-kde-region");
  QCoreApplication::setOrganizationName("putgd"); QCoreApplication::setApplicationName("putgd-kde-region");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
