@@ -497,7 +497,10 @@ def recover_stale_guest(config, out):
         return
     try:
         with (locks/'tier1-recovery.lock').open('a') as mutex:
-            fcntl.flock(mutex, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            try:
+                fcntl.flock(mutex, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise NotRun('nightly guest recovery is already running in another worker') from None
             owner = json.loads(private_file(slot/('retained.json' if (slot/'retained.json').exists()
                                                   else 'owner.json')).read_text())
             if (slot/'session').read_text().strip() != owner['session'] or not previous_worker_gone(owner):
@@ -531,13 +534,31 @@ def recovery_deadline():
     def expired(_signum, _frame):
         raise NotRun('guest recovery deadline exhausted; explicit recovery required')
     previous = signal.signal(signal.SIGALRM, expired)
-    timer = signal.setitimer(signal.ITIMER_REAL, RECOVERY_SECONDS)
+    started = time.monotonic()
+    remaining, interval = signal.setitimer(signal.ITIMER_REAL, RECOVERY_SECONDS)
     try:
         yield
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
-        signal.setitimer(signal.ITIMER_REAL, *timer)
+        if remaining:
+            # Recovery spends the outer budget; one that ran out meanwhile fires now.
+            remaining = max(remaining-(time.monotonic()-started), 0.001)
+        signal.setitimer(signal.ITIMER_REAL, remaining, interval)
+
+
+def recover_row(config, reservation, session, out, cells):
+    recovery = out/'recovery'
+    recovery.mkdir(mode=0o700, exist_ok=True)
+    try:
+        with recovery_deadline():
+            recover_guest(config, dict(reservation, session=session, evidence=str(out)), recovery, cells)
+    except NotRun:
+        raise
+    except Exception:
+        raise NotRun('guest recovery failed; inspect '+str(recovery)+'; explicit recovery required') from None
+    reservation.pop('retained', None)
+    reservation.pop('reason', None)
 
 
 @contextmanager
@@ -851,16 +872,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                         retained |= 'retained' in str(environment.get('private_cleanup', ''))
                     if outstanding or retained:
                         reservation.update(retained=True, reason='guest retained; explicit cleanup recovery required')
-                        try:
-                            recovery = rowout/'recovery'
-                            recovery.mkdir(mode=0o700)
-                            with recovery_deadline():
-                                recover_guest(config, dict(reservation, session=session, evidence=str(rowout)), recovery, cells)
-                            reservation.pop('retained', None)
-                            reservation.pop('reason', None)
-                        except Exception as error:
-                            raise NotRun(str(error) if isinstance(error, NotRun) else
-                                         'guest recovery failed; inspect '+str(recovery)+'; explicit recovery required') from None
+                        recover_row(config, reservation, session, rowout, cells)
                     if (run/'state.json').exists() and not outstanding and not retained:
                         try:
                             try:
@@ -870,14 +882,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                 lab.reset(run)
                         except Exception:
                             reservation.update(retained=True, reason='guest cleanup failed; explicit recovery required')
-                            recovery = rowout/'recovery'
-                            recovery.mkdir(mode=0o700, exist_ok=True)
-                            try:
-                                with recovery_deadline():
-                                    recover_guest(config, dict(reservation, session=session, evidence=str(rowout)), recovery, cells)
-                            except Exception:
-                                raise NotRun('guest cleanup recovery failed; inspect '+str(recovery)+
-                                             '; explicit recovery required') from None
+                            recover_row(config, reservation, session, rowout, cells)
                     if not outstanding and not retained:
                         reservation.pop('retained', None)
                         reservation.pop('reason', None)

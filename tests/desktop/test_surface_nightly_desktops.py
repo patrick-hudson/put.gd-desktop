@@ -1,4 +1,5 @@
 """Controller policy tests; these do not claim graphical desktop acceptance."""
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -265,6 +266,50 @@ class NightlyTests(unittest.TestCase):
                 os.kill(os.getpid(), signal.SIGALRM)
         self.assertEqual(signal.getsignal(signal.SIGALRM), before)
         self.assertEqual(signal.getitimer(signal.ITIMER_REAL)[0], 0)
+
+    def test_recovery_time_comes_out_of_the_outer_budget(self):
+        before = signal.signal(signal.SIGALRM, lambda *_: None)
+        signal.setitimer(signal.ITIMER_REAL, 1000)
+        try:
+            with patch.object(nightly.time, 'monotonic', side_effect=[100, 400]):
+                with nightly.recovery_deadline():
+                    pass
+            self.assertLessEqual(signal.getitimer(signal.ITIMER_REAL)[0], 700)
+            signal.setitimer(signal.ITIMER_REAL, 1000)
+            with patch.object(nightly.time, 'monotonic', side_effect=[100, 5000]):
+                with nightly.recovery_deadline():
+                    pass
+            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0], 0)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, before)
+
+    def test_recovery_mutex_contention_is_reported_as_transient(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            slot, out, owner, desktop, proton = self.stale_fixture(root)
+            with (root/'putgd-lab/locks/tier1-recovery.lock').open('a') as held:
+                fcntl.flock(held, fcntl.LOCK_EX)
+                with patch.object(nightly.Path, 'home', return_value=root), \
+                        self.assertRaisesRegex(nightly.NotRun, 'already running in another worker'):
+                    nightly.recover_stale_guest(dict(host='d69'), out)
+            self.assertTrue(slot.exists())
+
+    def test_row_recovery_keeps_specific_reasons_and_clears_the_reservation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            reservation = dict(run='/run', retained=True, reason='guest retained')
+            with patch.object(nightly, 'recover_guest', side_effect=nightly.NotRun('specific reason')):
+                with self.assertRaisesRegex(nightly.NotRun, 'specific reason'):
+                    nightly.recover_row({}, reservation, 's', out, {})
+            with patch.object(nightly, 'recover_guest', side_effect=ValueError('private payload')):
+                with self.assertRaisesRegex(nightly.NotRun, 'explicit recovery required') as caught:
+                    nightly.recover_row({}, reservation, 's', out, {})
+                self.assertNotIn('private payload', str(caught.exception))
+            self.assertTrue(reservation['retained'])
+            with patch.object(nightly, 'recover_guest'):
+                nightly.recover_row({}, reservation, 's', out, {})
+            self.assertEqual(reservation, dict(run='/run'))
 
     def test_guest_local_quit_loss_can_retire_but_unknown_cleanup_cannot(self):
         for safe in (True, False):
