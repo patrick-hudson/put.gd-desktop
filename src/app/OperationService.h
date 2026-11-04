@@ -163,6 +163,7 @@ public:
  struct CleanupSchedule {int startupDelayMs=60*1000,intervalMs=60*60*1000,followUpMs=60*1000,batch=50;};
  // Tests substitute the schedule (before ready) and the clock retention compares against.
  void setCleanupScheduleForTesting(CleanupSchedule schedule) {cleanupSchedule_=schedule;cleanupTimer_.setInterval(schedule.intervalMs);}
+ void setImagePageDelayForTesting(int delayMs) {imagePageDelayMs_=delayMs;}
  void setClockForTesting(std::function<QDateTime()> clock) {clock_=std::move(clock);}
  void shutdown();
  QJsonObject capabilities() const;
@@ -314,11 +315,16 @@ private:
  void forgetItemCancellations(const QString& operation);
  mutable std::mutex itemCancelsMutex_;QHash<QString,QHash<QString,std::shared_ptr<std::atomic_bool>>> itemCancels_;
 
- QTimer heapReclamationTimer_,observationTimer_;
+ QTimer heapReclamationTimer_,imagePageTimer_,observationTimer_;
  mutable std::mutex observationsMutex_;QHash<QString,QJsonObject> observations_;QSet<QString> observationsDirty_;bool observationScheduled_=false;
  bool heapReclamationPending_=false;
  quint64 heapReclamationCount_=0;
  qint64 lastHeapReclamationUsec_=0;
+ // Clean library pages leave this process once it has been quiet for this long.
+ int imagePageDelayMs_=30*1000;
+ bool imagePagesPending_=false;
+ quint64 imagePageReleaseCount_=0;
+ qint64 lastImagePageReleaseUsec_=0,lastImagePageReleaseBytes_=0;
  int running_=0,storageRequests_=0;
  quint64 invocation_=0;
  QString selectingId_;

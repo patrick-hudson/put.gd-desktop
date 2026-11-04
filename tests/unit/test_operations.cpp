@@ -640,6 +640,32 @@ private slots:
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),1,5000);PUTGD_TRY_COMPARE_WITH_TIMEOUT(count(),2,8000);
 #endif
  }
+ void quietResidentReleasesImagePagesOnceAfterHeapCleanup() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(100);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());QCOMPARE(memory()["imagePageReleaseCount"].toInt(),0);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleaseCount"].toInt(),1,6000);
+  QVERIFY(!memory()["imagePageReleasePending"].toBool());QVERIFY(memory()["lastImagePageReleaseBytes"].toInteger()>0);
+  // Nothing happened since, so nothing is released again.
+  PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),1,2500);
+#endif
+ }
+ void shutdownCancelsImagePageRelease() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);operations.setImagePageDelayForTesting(1000);
+  const auto memory=[&]{return operations.diagnostics()["memory"].toObject();};
+  PUTGD_TRY_VERIFY(operations.ready());
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(memory()["imagePageReleasePending"].toBool(),true,6000);
+  operations.shutdown();PUTGD_COMPARE_STEADY(memory()["imagePageReleaseCount"].toInt(),0,1500);
+#endif
+ }
  void shutdownCancelsPendingStartupHeapCleanup() {
 #ifndef __GLIBC__
   QSKIP("Allocator reclamation uses glibc on supported Linux builds");

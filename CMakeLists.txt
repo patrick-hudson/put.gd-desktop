@@ -108,7 +108,7 @@ add_library(putgd_log STATIC src/core/Log.cpp src/core/RunMarker.cpp src/core/Cr
 set_target_properties(putgd_log PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_log PUBLIC src)
 target_link_libraries(putgd_log PUBLIC Qt6::Core putgd_build_options)
-add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
+add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
   src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
@@ -852,6 +852,9 @@ if(BUILD_TESTING)
   add_executable(test_preview_reader tests/unit/test_preview_reader.cpp)
   target_link_libraries(test_preview_reader PRIVATE putgd_preview_reader Qt6::Test)
   add_test(NAME preview_reader_contract COMMAND test_preview_reader)
+  add_executable(test_image_pages tests/unit/test_image_pages.cpp)
+  target_link_libraries(test_image_pages PRIVATE putgd_core Qt6::Test)
+  add_test(NAME image_pages_contract COMMAND test_image_pages)
   add_executable(test_fonts tests/unit/test_fonts.cpp)
   target_link_libraries(test_fonts PRIVATE putgd_fonts Qt6::Test)
   # The contract checks the one-argument lookup against the configured data directory.
