@@ -1,5 +1,5 @@
 #pragma once
-#include "app/OperationService.h"
+#include "core/SourceAdapter.h"
 #include "core/Log.h"
 #include "ipc/CaptureControl.h"
 #include "CaptureArtifactLease.h"

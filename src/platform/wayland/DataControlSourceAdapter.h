@@ -1,5 +1,5 @@
 #pragma once
-#include "app/OperationService.h"
+#include "core/SourceAdapter.h"
 #include "platform/kde/DataControlClipboard.h"
 #include <QObject>
 namespace putgd {

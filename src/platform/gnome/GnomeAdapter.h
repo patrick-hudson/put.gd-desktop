@@ -1,5 +1,6 @@
 #pragma once
-#include "app/OperationService.h"
+#include "app/RecordingBackend.h"
+#include "core/SourceAdapter.h"
 #include <QDBusConnection>
 #include <QDBusServiceWatcher>
 #include <QJsonArray>

@@ -1,5 +1,5 @@
 #pragma once
-#include "app/OperationService.h"
+#include "core/SourceAdapter.h"
 #include "X11NativeSnapshot.h"
 #include "X11Clipboard.h"
 #include "X11Shortcuts.h"

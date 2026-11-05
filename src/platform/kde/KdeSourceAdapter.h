@@ -1,5 +1,5 @@
 #pragma once
-#include "app/OperationService.h"
+#include "core/SourceAdapter.h"
 #include "KWinCapture.h"
 #include "DataControlClipboard.h"
 #include "KdeShortcuts.h"
