@@ -754,6 +754,43 @@ esac
                 self.assertFalse([call for call in calls if 'dnf' in call or 'usroverlay' in call])
                 self.assertNotIn('NIGHTLY_TOOLS_APPLIED', result.stdout)
 
+    def catalog_run(self, *, staged, conclusion, ci, status_filter):
+        class Runs:
+            repo = 'owner/repo'
+            def __init__(self):
+                self.downloaded = False
+            def api(self, path):
+                if '/jobs' in path:
+                    return dict(jobs=[dict(name='ci / packages / sbom', conclusion='success'),
+                                      dict(name='ci / CI', conclusion=ci)])
+                if '/artifacts' in path:
+                    return dict(artifacts=[dict(name='ui-catalog', expired=False)])
+                status_filter.append('status=success' in path)
+                return dict(workflow_runs=[dict(id=7, conclusion=conclusion)])
+            def gh(self, *args):
+                self.downloaded = True
+                (Path(args[args.index('--dir')+1])/'manifest.json').write_text(
+                    json.dumps(dict(build=dict(gitCommit=BUILD, dirty=False))))
+        with tempfile.TemporaryDirectory() as tmp:
+            github = Runs()
+            return nightly.catalog(github, BUILD, Path(tmp), staged=staged)['runId'], github.downloaded
+
+    def test_stable_draft_catalog_accepts_a_failed_release_run_only_when_its_ci_passed(self):
+        filters = []
+        self.assertEqual(self.catalog_run(staged=True, conclusion='failure', ci='success', status_filter=filters), (7, True))
+        self.assertEqual(filters, [False])
+        with self.assertRaisesRegex(RuntimeError, 'no exact-build UI catalog'):
+            self.catalog_run(staged=True, conclusion='failure', ci='failure', status_filter=[])
+        with self.assertRaisesRegex(RuntimeError, 'no exact-build UI catalog'):
+            self.catalog_run(staged=True, conclusion=None, ci='cancelled', status_filter=[])
+
+    def test_nightly_catalog_still_requires_a_successful_run(self):
+        filters = []
+        self.assertEqual(self.catalog_run(staged=False, conclusion='success', ci='success', status_filter=filters), (7, True))
+        self.assertEqual(filters, [True])
+        with self.assertRaisesRegex(RuntimeError, 'no exact-build UI catalog'):
+            self.catalog_run(staged=False, conclusion='failure', ci='success', status_filter=[])
+
     def rpm_install(self, root, *, failure=False, desktop_changed=False, verify_failure=False):
         from tools.lab import nightly_desktop_guest as guest
         run, out, package = root/'run', root/'out', root/'published.rpm'
