@@ -163,9 +163,11 @@ socket-path checks, the visible display wall and saved visuals, come from
 Record the result:
 
 1. Raw evidence stays under `work/releases/$tag/`.
-2. Write a sanitized `docs/evidence/YYYY-MM-DD-$tag-acceptance.md` and `.json`
-   with exact identities, rows, results and blocked gates, then add an entry to
-   `docs/testing/verification.md`. Land them through a pull request into `nightly`.
+2. Write a sanitized record directory `YYYY-MM-DD-$tag-acceptance/`, with a
+   `README.md` and a `.json` giving exact identities, rows, results and blocked
+   gates, and publish it with `python3 tools/maintenance/evidence.py publish <dir>`
+   ([evidence retention](../testing/evidence-retention.md)). Then add an entry with
+   its link to `docs/testing/verification.md`. Land that through a pull request into `nightly`.
 3. Write the receipt that publication checks. Start it as `pending`:
 
 ```sh
@@ -177,7 +179,7 @@ sums = dict(reversed(line.split('  ', 1)) for line in (root / 'assets/SHA256SUMS
 commit = subprocess.check_output(['git', 'rev-parse', tag + '^{commit}'], text=True).strip()
 (root / 'acceptance.json').write_text(json.dumps({
     'tag': tag, 'gitCommit': commit, 'status': 'pending', 'assetSha256': sums,
-    'evidence': 'docs/evidence/YYYY-MM-DD-' + tag + '-acceptance.md', 'rows': []}, indent=2) + '\n')
+    'evidence': 'records/YYYY-MM-DD-' + tag + '-acceptance/README.md', 'rows': []}, indent=2) + '\n')
 PY
 ```
 
@@ -238,7 +240,7 @@ the next version: nightlies continue with the next commit's date and count.
 Tell the user, with links:
 
 - The stable tag, its release page and Release run ID.
-- Where the receipt and evidence record are, and the evidence pull request.
+- Where the receipt and evidence record are, and the verification pull request.
 - Any gate that was blocked, and what remains open.
 - The CHANGELOG pull request.
 

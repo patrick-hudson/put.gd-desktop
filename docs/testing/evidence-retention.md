@@ -8,7 +8,7 @@ coverage. Compression changes storage, never a pass/fail decision.
 
 | Material | Retention |
 | --- | --- |
-| Merged acceptance summaries, source/tree and binary identities, workload parameters, evaluator inputs, original failures, review resolutions, production cleanup receipts | Keep readable and indexed in the repository when sanitized; retain referenced raw evidence |
+| Merged acceptance summaries, source/tree and binary identities, workload parameters, evaluator inputs, original failures, review resolutions, production cleanup receipts | Keep readable and indexed in [put.gd-evidence](https://github.com/patrick-hudson/put.gd-evidence) when sanitized; retain referenced raw evidence |
 | Cold source-transfer tar files and large repeated build/test logs | Lossless compression with original and compressed SHA-256, original path, size, mode and restore instructions |
 | Latest baseline, active experiment, pending PR/release evidence | Keep directly usable until superseded and reviewed |
 | Rebuildable object files and dependency caches | Separate lifecycle decision; verify no active build or installed runtime needs them before removal |
@@ -21,9 +21,31 @@ expected/actual result and the successful correction. Large repetitive logs can
 be archived without retaining every copy inline. Never rewrite historic receipts
 or relabel old measurements with a newer documentation commit.
 
+## Where records live
+
+Records live in [put.gd-evidence](https://github.com/patrick-hudson/put.gd-evidence)
+under `records/<name>/`. They are add-only; a correction needs an `Evidence-Amend:`
+trailer. Publish a record with:
+
+```sh
+python3 tools/maintenance/evidence.py publish <dir>
+```
+
+The command arrives in the companion code pull request `feat/evidence-publish`. It
+validates the record, commits it, pushes it and prints commit-pinned links. The
+evidence repository's CI scans for secrets and maintains the index.
+
+A record's own `README.md` is the acceptance summary: what was tested, the host and
+session, the exact source and build identity, and the result.
+[Verification](verification.md) changes only when the current state or a blocked
+gate changes.
+
+Never add files under `docs/evidence`. What remains there is the
+[pointer](../evidence/README.md) and two directories this repository's checks read.
+
 ## Find the accepted checkpoints
 
-Start at [the evidence index](../evidence/README.md), [verification](verification.md)
+Start at [the evidence index](https://github.com/patrick-hudson/put.gd-evidence/blob/main/records/README.md), [verification](verification.md)
 and [memory strategy](../design/memory-strategy.md). Historical experiment documents remain
 available, but their unmerged/open-gate statements describe their own revision.
 The later source114 record includes replayable, sanitized archives and production
@@ -71,9 +93,9 @@ apparent sizes are not disk usage. Do not move or compress referenced VM bases.
 Do not erase branches/worktrees that hold the only measured candidate or unmerged
 changes. Current worktrees and open PRs need an ownership check before archival.
 
-The October 12 housekeeping pass keeps committed raw evidence in place so its
-existing links and replay hashes continue to work. It compresses selected cold
-local transfer archives/logs instead. Its private selection and hash index live
+The October 12 housekeeping pass kept committed raw evidence in place so its
+existing links and replay hashes continued to work; that evidence is now in
+put.gd-evidence. The pass compressed selected cold local transfer archives/logs instead. Its private selection and hash index live
 under `work/housekeeping/`; these files may contain local paths and are not release
 assets. Repeating the same selection is deliberately rejected rather than
 silently overwriting the first archive.

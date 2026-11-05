@@ -105,5 +105,5 @@ a public-domain NASA work. The annotations are the editor's own shapes.
 Frames were captured through the lab's VNC/QMP witnesses and cropped with
 Pillow (`Image.crop`, `optimize=True`); the composite images are built with the
 same library. The raw frames were not retained in the repository. The README
-claims no acceptance result from these images; acceptance evidence lives under
-`docs/evidence/` and is recorded in `docs/testing/verification.md`.
+claims no acceptance result from these images; acceptance evidence lives in
+[put.gd-evidence](https://github.com/patrick-hudson/put.gd-evidence) and is recorded in `docs/testing/verification.md`.
